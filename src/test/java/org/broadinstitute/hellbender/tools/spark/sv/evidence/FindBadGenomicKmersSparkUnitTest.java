@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -23,7 +24,7 @@ import java.util.*;
 public class FindBadGenomicKmersSparkUnitTest extends GATKBaseTest {
 
     private static final int KMER_SIZE = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.KMER_SIZE;
-    private static final String REFERENCE_FILE_NAME = hg19MiniReference;
+    private static final GATKPath REFERENCE_FILE_NAME = new GATKPath(hg19MiniReference);
 
     @Test(groups = "sv")
     public void badKmersTest() {

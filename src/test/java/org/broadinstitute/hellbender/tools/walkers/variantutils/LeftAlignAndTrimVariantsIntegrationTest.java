@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -63,5 +64,26 @@ public class LeftAlignAndTrimVariantsIntegrationTest extends CommandLineProgramT
                 1, CommandLineException.MissingArgument.class
         );
         spec.executeTest("testLeftAlignment--requireReference", this);
+    }
+
+    @Test
+    public void testSplitAllelesWithASFilters() throws IOException {
+        Path inputFile = testDataDir.resolve("test_split_with_AS_filters.vcf");
+        final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
+
+        Path expectedOutputFile = testDataDir.resolve("expected_split_with_AS_filters.vcf");
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -R " + MITO_REF.getAbsolutePath()
+                        + " -V " + inputFile
+                        + " -O %s"
+                        + " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false"
+                        + " --suppress-reference-path "
+                        + " --" + LeftAlignAndTrimVariants.SPLIT_MULTIALLELEICS_LONG_NAME
+                        + " --" + LeftAlignAndTrimVariants.KEEP_ORIGINAL_AC_LONG_NAME,
+                Collections.singletonList(expectedOutputFile.toString())
+        );
+        spec.executeTest("testSplitAllelesWithASFilters--" + expectedOutputFile.toString(), this);
+
     }
 }

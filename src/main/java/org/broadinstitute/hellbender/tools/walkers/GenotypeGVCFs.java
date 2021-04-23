@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantLocusWalker;
@@ -27,7 +28,6 @@ import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import java.io.File;
 import java.util.*;
 
 /**
@@ -67,7 +67,7 @@ import java.util.*;
  *   -R Homo_sapiens_assembly38.fasta \
  *   -V gendb://my_database \
  *   -O output.vcf.gz \
- *   --tmp-dir=/path/to/large/tmp
+ *   --tmp-dir /path/to/large/tmp
  * </pre>
  *
  * <h3>Caveats</h3>
@@ -100,7 +100,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
-    private File outputFile;
+    private GATKPath outputFile;
 
     @Argument(fullName=ALL_SITES_LONG_NAME, shortName=ALL_SITES_SHORT_NAME, doc="Include loci found to be non-variant after genotyping", optional=true)
     private boolean includeNonVariants = false;
@@ -282,7 +282,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         if (regenotypedVC != null) {
             final SimpleInterval variantStart = new SimpleInterval(regenotypedVC.getContig(), regenotypedVC.getStart(), regenotypedVC.getStart());
-            if ((inForceOutputIntervals || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC)) &&
+            if ((forceOutput || !GATKVariantContextUtils.isSpanningDeletionOnly(regenotypedVC)) &&
                     (!onlyOutputCallsStartingInIntervals || intervals.stream().anyMatch(interval -> interval.contains (variantStart)))) {
                 vcfWriter.add(regenotypedVC);
             }

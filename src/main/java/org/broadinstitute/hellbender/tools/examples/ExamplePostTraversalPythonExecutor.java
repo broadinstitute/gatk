@@ -42,7 +42,7 @@ public class ExamplePostTraversalPythonExecutor extends ReadWalker {
     private File javaOutputFile; // output file produced by Java code
 
     @Argument(fullName = "pythonOutputFile", shortName = "P", doc = "Output file for output of python process")
-    private File pythonOutputFile;   // output file produced by Python post-processing step
+    private File pythonOutputFile;   // output File produced by Python post-processing step
 
     // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
     final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
@@ -55,7 +55,7 @@ public class ExamplePostTraversalPythonExecutor extends ReadWalker {
             outputStream = javaOutputFile != null ? new PrintStream(javaOutputFile) : System.out;
         }
         catch ( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(javaOutputFile, e);
+            throw new UserException.CouldNotCreateOutputFile(javaOutputFile.getAbsolutePath(), e);
         }
     }
 

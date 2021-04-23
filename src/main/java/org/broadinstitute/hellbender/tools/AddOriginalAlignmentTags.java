@@ -4,11 +4,13 @@ import htsjdk.samtools.SAMTag;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
@@ -19,11 +21,13 @@ import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
         programGroup = ReadDataManipulationProgramGroup.class
 )
 @ExperimentalFeature
+@WorkflowProperties
 public class AddOriginalAlignmentTags extends ReadWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="Write output to this file")
-    public String output;
+    @WorkflowOutput(optionalCompanions = {StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
+    public GATKPath output;
     private SAMFileGATKReadWriter outputWriter;
 
     public final static String MATE_CONTIG_TAG_NAME = "XM";
@@ -32,7 +36,7 @@ public class AddOriginalAlignmentTags extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(IOUtils.getPath(output), true);
+        outputWriter = createSAMWriter(output, true);
     }
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {

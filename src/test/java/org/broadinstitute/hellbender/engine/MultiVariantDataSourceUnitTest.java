@@ -40,7 +40,7 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
     public void testRejectNullFile() {
         new MultiVariantDataSource(
                 Collections.singletonList(
-                        new FeatureInput<>(null, "sourceName1")),
+                        new FeatureInput<>((GATKPath) null, "sourceName1")),
                 FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES);
     }
 

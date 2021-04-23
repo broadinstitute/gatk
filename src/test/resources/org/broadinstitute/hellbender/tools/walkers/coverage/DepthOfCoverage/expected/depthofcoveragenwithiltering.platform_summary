@@ -1,0 +1,4 @@
+sample_id,total,mean,granular_third_quartile,granular_median,granular_first_quartile,%_bases_above_15
+illumina,146,0.10,1,1,1,0.1
+notillumina,20,0.01,1,1,1,0.0
+Total,166,0.12,N/A,N/A,N/A

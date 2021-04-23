@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.spark;
 
-import com.google.common.collect.*;
+import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Lists;
+import com.google.common.collect.PeekingIterator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextHeaderCodec;
@@ -16,7 +19,6 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -26,10 +28,8 @@ import org.broadinstitute.hellbender.utils.read.*;
 import scala.Tuple2;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
+import java.net.URI;
+import java.util.*;
 
 /**
  * Miscellaneous Spark-related utilities
@@ -110,17 +110,18 @@ public final class SparkUtils {
     /**
      * Determine if the <code>targetPath</code> exists.
      * @param ctx JavaSparkContext
-     * @param targetPath the <code>org.apache.hadoop.fs.Path</code> object to check
+     * @param targetURI the <code>org.apache.hadoop.fs.Path</code> URI to check
      * @return true if the targetPath exists, otherwise false
      */
-    public static boolean pathExists(final JavaSparkContext ctx, final Path targetPath) {
+    public static boolean hadoopPathExists(final JavaSparkContext ctx, final URI targetURI) {
         Utils.nonNull(ctx);
-        Utils.nonNull(targetPath);
+        Utils.nonNull(targetURI);
         try {
-            final FileSystem fs = targetPath.getFileSystem(ctx.hadoopConfiguration());
-            return fs.exists(targetPath);
+            final Path targetHadoopPath = new Path(targetURI);
+            final FileSystem fs = targetHadoopPath.getFileSystem(ctx.hadoopConfiguration());
+            return fs.exists(targetHadoopPath);
         } catch (IOException e) {
-            throw new UserException("Error validating existence of path " + targetPath + ": " + e.getMessage());
+            throw new UserException("Error validating existence of path " + targetURI + ": " + e.getMessage());
         }
     }
 
@@ -176,60 +177,72 @@ public final class SparkUtils {
      * The RDD must be queryname sorted.  If there are so many reads with the same name that they span multiple partitions
      * this will throw {@link GATKException}.
      */
-    public static JavaRDD<GATKRead> putReadsWithTheSameNameInTheSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads, final JavaSparkContext ctx) {
+    public static JavaRDD<GATKRead> putReadsWithTheSameNameInTheSamePartition( final SAMFileHeader header,
+                                                                               final JavaRDD<GATKRead> reads,
+                                                                               final JavaSparkContext ctx ) {
         Utils.validateArg(ReadUtils.isReadNameGroupedBam(header), () -> "Reads must be queryname grouped or sorted. " +
-                "Actual sort:" + header.getSortOrder() + "  Actual grouping:" +header.getGroupOrder());
-        int numPartitions = reads.getNumPartitions();
-        final String firstNameInBam = reads.first().getName();
+                "Actual sort:" + header.getSortOrder() + "  Actual grouping:" + header.getGroupOrder());
+
         // Find the first group in each partition
-        List<List<GATKRead>> firstReadNameGroupInEachPartition = reads
-                .mapPartitions(it -> { PeekingIterator<GATKRead> current = Iterators.peekingIterator(it);
-                                List<GATKRead> firstGroup = new ArrayList<>(2);
-                                firstGroup.add(current.next());
-                                String name = firstGroup.get(0).getName();
-                                while (current.hasNext() && current.peek().getName().equals(name)) {
-                                    firstGroup.add(current.next());
-                                }
-                                return Iterators.singletonIterator(firstGroup);
-                                })
+        final List<List<GATKRead>> firstReadNameGroupInEachPartition = reads
+                .mapPartitions(it -> {
+                    if ( !it.hasNext() ) {
+                        return Iterators.singletonIterator(Collections.<GATKRead>emptyList());
+                    }
+                    final List<GATKRead> firstGroup = new ArrayList<>(2);
+                    final GATKRead firstRead = it.next();
+                    firstGroup.add(firstRead);
+                    final String groupName = firstRead.getName();
+                    while ( it.hasNext() ) {
+                        final GATKRead read = it.next();
+                        if ( !groupName.equals(read.getName()) ) {
+                            break;
+                        }
+                        firstGroup.add(read);
+                    }
+                    return Iterators.singletonIterator(firstGroup);
+                })
                 .collect();
 
-        // Checking for pathological cases (read name groups that span more than 2 partitions)
-        String groupName = null;
-        for (List<GATKRead> group : firstReadNameGroupInEachPartition) {
-            if (group!=null && !group.isEmpty()) {
-                // If a read spans multiple partitions we expect its name to show up multiple times and we don't expect this to work properly
-                if (groupName != null && group.get(0).getName().equals(groupName)) {
-                    throw new GATKException(String.format("The read name '%s' appeared across multiple partitions this could indicate there was a problem " +
-                            "with the sorting or that the rdd has too many partitions, check that the file is queryname sorted and consider decreasing the number of partitions", groupName));
+        // Shift left, so that each partition will be zipped with the first read group from the _next_ partition
+        final int numPartitions = reads.getNumPartitions();
+        final List<List<GATKRead>> firstGroupFromNextPartition =
+                new ArrayList<>(firstReadNameGroupInEachPartition.subList(1, numPartitions));
+        firstGroupFromNextPartition.add(Collections.emptyList()); // the last partition does not have any reads to add to it
+
+        // Take care of the situation where an entire partition contains reads with the same name
+        // (unlikely, but could happen with very long reads, or very small partitions).
+        for ( int idx = numPartitions - 1; idx >= 1; --idx ) {
+            final List<GATKRead> curGroup = firstGroupFromNextPartition.get(idx);
+            if ( !curGroup.isEmpty() ) {
+                final String groupName = curGroup.get(0).getName();
+                int idx2 = idx;
+                while ( --idx2 >= 0 ) {
+                    final List<GATKRead> prevGroup = firstGroupFromNextPartition.get(idx2);
+                    if ( !prevGroup.isEmpty() ) {
+                        if ( groupName.equals(prevGroup.get(0).getName()) ) {
+                            prevGroup.addAll(curGroup);
+                            curGroup.clear();
+                        }
+                        break;
+                    }
                 }
-                groupName =  group.get(0).getName();
             }
         }
 
-        // Shift left, so that each partition will be joined with the first read group from the _next_ partition
-        List<List<GATKRead>> firstReadInNextPartition = new ArrayList<>(firstReadNameGroupInEachPartition.subList(1, numPartitions));
-        firstReadInNextPartition.add(null); // the last partition does not have any reads to add to it
+        // Peel off the first group in each partition
+        final int[] firstGroupSizes = firstReadNameGroupInEachPartition.stream().mapToInt(List::size).toArray();
+        firstGroupSizes[0] = 0; // first partition has no predecessor to handle its first group of reads
+        JavaRDD<GATKRead> readsSansFirstGroup = reads.mapPartitionsWithIndex( (idx, itr) ->
+            { int groupSize = firstGroupSizes[idx];
+              while ( itr.hasNext() && groupSize-- > 0 ) {
+                  itr.next();
+              }
+              return itr; }, true);
 
-        // Join the reads with the first read from the _next_ partition, then filter out the first reads in this partition
-        return reads.zipPartitions(ctx.parallelize(firstReadInNextPartition, numPartitions),
-                (FlatMapFunction2<Iterator<GATKRead>, Iterator<List<GATKRead>>, GATKRead>) (it1, it2) -> {
-            PeekingIterator<GATKRead> current = Iterators.peekingIterator(it1);
-            String firstName = current.peek().getName();
-            // Make sure we don't remove reads from the first partition
-            if (!firstNameInBam.equals(firstName)) {
-                // skip the first read name group in the _current_ partition since it will be handled in the previous partition
-                while (current.hasNext() && current.peek() != null && current.peek().getName().equals(firstName)) {
-                    current.next();
-                }
-            }
-            // append the first reads in the _next_ partition to the _current_ partition
-            PeekingIterator<List<GATKRead>> next = Iterators.peekingIterator(it2);
-            if (next.hasNext() && next.peek() != null) {
-                return Iterators.concat(current, next.peek().iterator());
-            }
-            return current;
-        });
+        // Zip up the remaining reads with the first read group from the _next_ partition
+        return readsSansFirstGroup.zipPartitions(ctx.parallelize(firstGroupFromNextPartition, numPartitions),
+                (it1, it2) -> Iterators.concat(it1, it2.next().iterator()));
     }
 
     /**

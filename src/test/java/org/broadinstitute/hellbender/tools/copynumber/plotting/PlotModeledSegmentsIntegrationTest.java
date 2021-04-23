@@ -52,6 +52,25 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").length() > THRESHOLD_PLOT_FILE_SIZE_IN_BYTES);
     }
 
+    //checks that output files with reasonable file sizes are generated, but correctness of output is not checked
+    @Test(groups = "R")
+    public void testPlottingInfiniteMaximumCopyRatio() {
+        final File outputDir = createTempDir("testDir");
+        final String[] arguments = {
+                "--" + CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, DENOISED_COPY_RATIOS_FILE.getAbsolutePath(),
+                "--" + CopyNumberStandardArgument.ALLELIC_COUNTS_FILE_LONG_NAME, ALLELIC_COUNTS_FILE.getAbsolutePath(),
+                "--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, MODELED_SEGMENTS_FILE.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, SEQUENCE_DICTIONARY_FILE.getAbsolutePath(),
+                "--" + PlottingUtils.MAXIMUM_COPY_RATIO_LONG_NAME, "Infinity",
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputDir.getAbsolutePath(),
+                "--" + CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX
+        };
+        runCommandLine(arguments);
+        Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").exists());
+        Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").length() > THRESHOLD_PLOT_FILE_SIZE_IN_BYTES);
+    }
+
+    //checks that output files with reasonable file sizes are generated, but correctness of output is not checked
     @Test(groups = "R")
     public void testPlottingDenoisedCopyRatiosOnly() {
         final File outputDir = createTempDir("testDir");
@@ -67,6 +86,7 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ".modeled.png").length() > THRESHOLD_PLOT_FILE_SIZE_IN_BYTES / 2);    //copy-ratio-only plot is half the size
     }
 
+    //checks that output files with reasonable file sizes are generated, but correctness of output is not checked
     @Test(groups = "R")
     public void testPlottingAllelicCountsOnly() {
         final File outputDir = createTempDir("testDir");
@@ -138,7 +158,7 @@ public final class PlotModeledSegmentsIntegrationTest extends CommandLineProgram
         runCommandLine(arguments);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = RuntimeException.class)
     public void testNonExistentSequenceDictionaryFile() {
         final File outputDir = createTempDir("testDir");
         final String[] arguments = {

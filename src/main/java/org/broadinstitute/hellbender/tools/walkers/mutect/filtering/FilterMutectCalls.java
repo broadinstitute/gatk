@@ -120,7 +120,12 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
                 .collect(Collectors.toSet());
         headerLines.add(new VCFHeaderLine(FILTERING_STATUS_VCF_KEY, "These calls have been filtered by " + FilterMutectCalls.class.getSimpleName() + " to label false positives with a list of failed filters and true positives with PASS."));
 
+        // all possible filters, even allele specific (since they can apply to the site as well
         GATKVCFConstants.MUTECT_FILTER_NAMES.stream().map(GATKVCFHeaderLines::getFilterLine).forEach(headerLines::add);
+
+        // these are the possible allele specific filters which will be in the INFO section
+        // when all relevant alleles (non-symbolic, etc) are filtered, the filter will be applied to the site level filter also
+        GATKVCFConstants.MUTECT_AS_FILTER_NAMES.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerLines::add);
 
         headerLines.addAll(getDefaultToolVCFHeaderLines());
 

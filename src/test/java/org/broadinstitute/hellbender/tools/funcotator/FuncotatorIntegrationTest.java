@@ -498,7 +498,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     // DO NOT ADD THIS TO ANY TEST GROUPS!
     @Test
     public void metaTestEnsureTempDirs() {
-        Assert.assertEquals(enableFullScaleValidationTest, false);
+        Assert.assertFalse(enableFullScaleValidationTest);
     }
 
     @Test(dataProvider = "provideForIntegrationTest")
@@ -1183,20 +1183,22 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
             // Have to get the contig / start / end from the interval itself for MAF:
             List<String> mafFieldValues;
-            if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_Chromosome) ) {
-                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getContig).collect(Collectors.toList());
-            }
-            else if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_Start_Position) ) {
-                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getStart).map(Object::toString).collect(Collectors.toList());
-            }
-            else if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_End_Position) ) {
-                mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getEnd).map(Object::toString).collect(Collectors.toList());
-            }
-            else if ( annotationsToCheckMaf.get(i).equals(MafOutputRendererConstants.FieldName_Hugo_Symbol) ) {
-                mafFieldValues = maf.getRecords().stream().map(x -> x.getAnnotationValue(MafOutputRendererConstants.FieldName_Hugo_Symbol)).map(a -> a.isEmpty() ? "Unknown" : a).collect(Collectors.toList());
-            }
-            else {
-                mafFieldValues = maf.getRecords().stream().map(v -> v.getAnnotationValue(annotationToCheckMaf)).collect(Collectors.toList());
+            switch ( annotationsToCheckMaf.get(i) ) {
+                case MafOutputRendererConstants.FieldName_Chromosome:
+                    mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getContig).collect(Collectors.toList());
+                    break;
+                case MafOutputRendererConstants.FieldName_Start_Position:
+                    mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getStart).map(Object::toString).collect(Collectors.toList());
+                    break;
+                case MafOutputRendererConstants.FieldName_End_Position:
+                    mafFieldValues = maf.getRecords().stream().map(AnnotatedInterval::getEnd).map(Object::toString).collect(Collectors.toList());
+                    break;
+                case MafOutputRendererConstants.FieldName_Hugo_Symbol:
+                    mafFieldValues = maf.getRecords().stream().map(x -> x.getAnnotationValue(MafOutputRendererConstants.FieldName_Hugo_Symbol)).map(a -> a.isEmpty() ? "Unknown" : a).collect(Collectors.toList());
+                    break;
+                default:
+                    mafFieldValues = maf.getRecords().stream().map(v -> v.getAnnotationValue(annotationToCheckMaf)).collect(Collectors.toList());
+                    break;
             }
             mafFieldValues = mafFieldValues.stream().map(val -> MafOutputRenderer.mafTransformInvert(annotationToCheckMaf, val, funcotatorRef)).collect(Collectors.toList());
 
@@ -1689,7 +1691,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.CANONICAL.toString());
         runCommandLine(arguments);
         assertEqualVariantFiles(outputFile, E_COLI_EXPECTED_OUT);
-
     }
 
     private void assertEqualVariantFiles(final File outputFile, final String eColiExpectedOut) {

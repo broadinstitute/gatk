@@ -28,7 +28,7 @@ public class StandardCallerArgumentCollection implements Serializable {
     public void copyStandardCallerArgsFrom( final StandardCallerArgumentCollection other ) {
         Utils.nonNull(other);
 
-        this.genotypeArgs = new GenotypeCalculationArgumentCollection(other.genotypeArgs);
+        this.genotypeArgs = other.genotypeArgs.clone();
         this.CONTAMINATION_FRACTION = other.CONTAMINATION_FRACTION;
         this.CONTAMINATION_FRACTION_FILE = other.CONTAMINATION_FRACTION_FILE != null ? new File(other.CONTAMINATION_FRACTION_FILE.getAbsolutePath()) : null;
         if ( other.sampleContamination != null ) {

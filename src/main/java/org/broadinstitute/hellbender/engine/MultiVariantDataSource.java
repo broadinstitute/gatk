@@ -68,7 +68,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
      */
     public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases) {
-        this(featureInputs, queryLookaheadBases, 0, 0, null);
+        this(featureInputs, queryLookaheadBases, 0, 0, null, false);
     }
 
     /**
@@ -81,7 +81,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      * @param reference reference to use when creating FeatureDataSources, may be null, only needed by GenomicsDB
      */
-    public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
+    public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference, final boolean skipDictionaryValidation) {
         Utils.validateArg(queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         Utils.validateArg(featureInputs != null && featureInputs.size() > 0, "FeatureInputs list must be non-null and non-empty");
 
@@ -98,7 +98,9 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
         // 2) Create and cache a merged header using versions of the individual headers from each data source that
         //    have been updated to include the actual dictionary returned from that data source
         //
-        validateAllSequenceDictionaries();
+        if (!skipDictionaryValidation) {
+            validateAllSequenceDictionaries();
+        }
         mergedHeader = getMergedHeader();
         mergedSamples = getSortedSamples();
         if ((mergedHeader == null || mergedHeader.getSequenceDictionary() == null) && featureInputs.size() > 1) {
@@ -106,6 +108,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
                     "No sequence dictionary was found for any input. When using multiple inputs, at least one input " +
                     "must have a sequence dictionary, or an index from which a sequence dictionary can be derived.");
         }
+
     }
 
     /**
@@ -264,8 +267,9 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      */
     private VCFHeader getHeaderWithUpdatedSequenceDictionary(final FeatureDataSource<VariantContext> dataSource) {
         final VCFHeader header = (VCFHeader) dataSource.getHeader();
-        if (header.getSequenceDictionary() == null && dataSource.getSequenceDictionary() != null) {
-            header.setSequenceDictionary(dataSource.getSequenceDictionary());
+        final SAMSequenceDictionary sourceDict = dataSource.getSequenceDictionary();
+        if (header.getSequenceDictionary() == null && sourceDict != null) {
+            header.setSequenceDictionary(sourceDict);
         }
         return header;
     }
@@ -279,32 +283,42 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
     private void validateAllSequenceDictionaries() {
         final Map<String, FeatureDataSource<VariantContext>> contigMap = new HashMap<>();
         featureDataSources.forEach(
-            ds -> {
-                final SAMSequenceDictionary dictionary = ds.getSequenceDictionary();
-                if (dictionary == null) {
-                    logger.warn(
-                            "A sequence dictionary is required for each input when using multiple inputs, and one could" +
+            ds -> getDataSourceDictionaryAndValidate(ds, contigMap)
+        );
+    }
+
+    private void getDataSourceDictionaryAndValidate(final FeatureDataSource<VariantContext> ds,
+                                                    final Map<String, FeatureDataSource<VariantContext>> contigMap) {
+        final SAMSequenceDictionary dictionary = ds.getSequenceDictionary();
+        if (dictionary == null) {
+            logger.warn(
+                    "A sequence dictionary is required for each input when using multiple inputs, and one could" +
                             " not be obtained for feature input: " + ds.getName() +
                             ". The input may not exist or may not have a valid header");
-                } else {
-                    dictionary.getSequences().forEach(
-                        sourceSequence -> {
-                            final String sourceSequenceName = sourceSequence.getSequenceName();
-                            final FeatureDataSource<VariantContext> previousDataSource = contigMap.getOrDefault(sourceSequenceName, null);
-                            if (previousDataSource != null) {
-                                final SAMSequenceDictionary previousDictionary = previousDataSource.getSequenceDictionary();
-                                final SAMSequenceRecord previousSequence = previousDictionary.getSequence(sourceSequenceName);
-                                validateSequenceDictionaryRecords(
-                                        ds.getName(), dictionary, sourceSequence,
-                                        previousDataSource.getName(), previousDictionary, previousSequence);
-                            } else {
-                                contigMap.put(sourceSequenceName, ds);
-                            }
-                        }
-                    );
-                }
-            }
-        );
+        } else {
+            //This is HORRIFICALLY inefficient -- for tools with many inputs instead skip cross-validation by
+            // overloading doDictionaryCrossValidation as false and require a reference
+            dictionary.getSequences().forEach(
+                    sourceSequence -> validateContigAgainstPreviousDataSource(sourceSequence, dictionary, contigMap, ds)
+            );
+        }
+    }
+
+    private void validateContigAgainstPreviousDataSource(final SAMSequenceRecord sourceSequence,
+                  final SAMSequenceDictionary dictionary,
+                  final Map<String, FeatureDataSource<VariantContext>> contigMap,
+                  final FeatureDataSource<VariantContext> ds){
+        final String sourceSequenceName = sourceSequence.getSequenceName();
+        final FeatureDataSource<VariantContext> previousDataSource = contigMap.getOrDefault(sourceSequenceName, null);
+        if (previousDataSource != null) {
+            final SAMSequenceDictionary previousDictionary = previousDataSource.getSequenceDictionary();
+            final SAMSequenceRecord previousSequence = previousDictionary.getSequence(sourceSequenceName);
+            validateSequenceDictionaryRecords(
+                    ds.getName(), dictionary, sourceSequence,
+                    previousDataSource.getName(), previousDictionary, previousSequence);
+        } else {
+            contigMap.put(sourceSequenceName, ds);
+        }
     }
 
     // Cross validate the length and md5 for a pair of sequence records.

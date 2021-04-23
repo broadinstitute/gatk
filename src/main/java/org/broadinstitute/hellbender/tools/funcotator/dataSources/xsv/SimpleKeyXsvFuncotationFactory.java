@@ -122,6 +122,22 @@ public class SimpleKeyXsvFuncotationFactory extends DataSourceFuncotationFactory
                                           final int numHeaderLinesToIgnore,
                                           final boolean permissiveColumns,
                                           final boolean isDataSourceB37) {
+        this(name, filePath, version, delim, keyColumn, keyType, annotationOverrides, numHeaderLinesToIgnore, permissiveColumns, isDataSourceB37, FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT);
+    }
+
+    public SimpleKeyXsvFuncotationFactory(final String name,
+                                          final Path filePath,
+                                          final String version,
+                                          final String delim,
+                                          final int keyColumn,
+                                          final XsvDataKeyType keyType,
+                                          final LinkedHashMap<String, String> annotationOverrides,
+                                          final int numHeaderLinesToIgnore,
+                                          final boolean permissiveColumns,
+                                          final boolean isDataSourceB37,
+                                          final int minBasesForValidSegment) {
+
+        super(minBasesForValidSegment);
 
         this.name = name;
 

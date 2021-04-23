@@ -3,12 +3,12 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.FileExtensions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.io.Serializable;
 
 /**
- * Wrapper to load a reference sequence from the Google Genomics API, or a file stored on HDFS or locally.
+ * Wrapper to load a reference sequence from a file stored on HDFS, GCS, or locally.
  *
  * This class needs to subclassed by test code, so it cannot be declared final.
  */
@@ -30,46 +30,39 @@ public class ReferenceMultiSparkSource implements ReferenceSparkSource, Serializ
     protected ReferenceMultiSparkSource() {};
 
     /**
-     * @param referenceURL the name of the reference (if using the Google Genomics API), or a path to the reference file
+     * @param referencePathSpecifier local path or URL to the reference file
      * @param referenceWindowFunction the custom reference window function used to map reads to desired reference bases
      */
-    public ReferenceMultiSparkSource( final String referenceURL,
+    public ReferenceMultiSparkSource( final GATKPath referencePathSpecifier,
                                       final SerializableFunction<GATKRead, SimpleInterval> referenceWindowFunction) {
         Utils.nonNull(referenceWindowFunction);
-        if ( ReferenceTwoBitSparkSource.isTwoBit(referenceURL)) {
+        if ( ReferenceTwoBitSparkSource.isTwoBit(referencePathSpecifier)) {
             try {
-                referenceSource = new ReferenceTwoBitSparkSource(referenceURL);
+                referenceSource = new ReferenceTwoBitSparkSource(referencePathSpecifier);
             } catch (IOException e) {
                 throw new UserException("Failed to create a ReferenceTwoBitSource object" + e.getMessage());
             }
-        } else if (isFasta(referenceURL)) {
-            if (BucketUtils.isHadoopUrl(referenceURL)) {
-                referenceSource = new ReferenceHadoopSparkSource(referenceURL);
+        } else if (referencePathSpecifier.isFasta()) {
+            if (referencePathSpecifier.isHadoopURL()) {
+                referenceSource = new ReferenceHadoopSparkSource(referencePathSpecifier);
             } else {
-                referenceSource = new ReferenceFileSparkSource(referenceURL);
+                referenceSource = new ReferenceFileSparkSource(referencePathSpecifier);
             }
         } else {
             throw new UserException.CouldNotReadInputFile("Couldn't read the given reference, reference must be a .fasta or .2bit file.\n" +
-                                                                  " Reference provided was: " + referenceURL);
+                    " Reference provided was: " + referencePathSpecifier);
         }
         this.referenceWindowFunction = referenceWindowFunction;
     }
 
-    private static boolean isFasta(String reference) {
+    static boolean isFasta(final GATKPath referencePathSpecifier) {
+        final String referencePathString = referencePathSpecifier.getURI().getPath();
         for (final String ext : FileExtensions.FASTA) {
-            if (reference.endsWith(ext)) {
+            if (referencePathString.endsWith(ext)) {
                 return true;
             }
         }
         return false;
-    }
-
-    /**
-     * Returns whether this reference source can be used with Spark broadcast.
-     */
-    @Override
-    public boolean isCompatibleWithSparkBroadcast(){
-        return referenceSource.isCompatibleWithSparkBroadcast();
     }
 
     /**

@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -105,19 +106,15 @@ public class PathSeqScoreSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     public static final String PAIRED_INPUT_LONG_NAME = "paired-input";
-    public static final String PAIRED_INPUT_SHORT_NAME = "PI";
     public static final String UNPAIRED_INPUT_LONG_NAME = "unpaired-input";
-    public static final String UNPAIRED_INPUT_SHORT_NAME = "UI";
 
     @Argument(doc = "Input queryname-sorted BAM containing only paired reads",
             fullName = PAIRED_INPUT_LONG_NAME,
-            shortName = PAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String pairedInput = null;
 
     @Argument(doc = "Input BAM containing only unpaired reads",
             fullName = UNPAIRED_INPUT_LONG_NAME,
-            shortName = UNPAIRED_INPUT_SHORT_NAME,
             optional = true)
     public String unpairedInput = null;
 
@@ -141,8 +138,8 @@ public class PathSeqScoreSpark extends GATKSparkTool {
         if (path != null) {
             if (BucketUtils.fileExists(path)) {
                 recommendedNumReducers += PSUtils.pathseqGetRecommendedNumReducers(path, numReducers, getTargetPartitionSize());
-                final SAMFileHeader header = readsSource.getHeader(path, null);
-                JavaRDD<GATKRead> reads = readsSource.getParallelReads(path, null, null, bamPartitionSplitSize, useNio);
+                final SAMFileHeader header = readsSource.getHeader(new GATKPath(path), null);
+                JavaRDD<GATKRead> reads = readsSource.getParallelReads(new GATKPath(path), null, null, bamPartitionSplitSize, useNio);
                 reads = PSUtils.primaryReads(reads);
                 return new Tuple2<>(reads, header);
             } else {
@@ -185,7 +182,7 @@ public class PathSeqScoreSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        if (!readArguments.getReadFiles().isEmpty()) {
+        if (!readArguments.getReadPathSpecifiers().isEmpty()) {
             throw new UserException.BadInput("Please use --paired-input or --unpaired-input instead of --input");
         }
 

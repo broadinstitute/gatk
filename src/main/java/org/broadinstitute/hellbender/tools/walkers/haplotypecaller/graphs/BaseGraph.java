@@ -381,7 +381,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         try (PrintStream stream = new PrintStream(new FileOutputStream(destination))) {
             printGraph(stream, true, pruneFactor);
         } catch ( final FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(destination, e);
+            throw new UserException.CouldNotReadInputFile(destination.getAbsolutePath(), e);
         }
     }
 

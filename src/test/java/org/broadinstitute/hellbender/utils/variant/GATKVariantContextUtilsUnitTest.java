@@ -882,7 +882,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         int insLocStop = 20;
 
         Pair<List<Integer>,byte[]> result;
-        byte[] refBytes = "TATCATCATCGGA".getBytes();
+        byte[] refBytes = "ATCATCATCGGA".getBytes();    // excludes leading match base common to VC's ref and alt alleles
 
         Assert.assertEquals(GATKVariantContextUtils.findRepeatedSubstring("ATG".getBytes()),3);
         Assert.assertEquals(GATKVariantContextUtils.findRepeatedSubstring("AAA".getBytes()),1);
@@ -908,7 +908,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result.getRight().length,3);
 
         // simple non-tandem deletion: CCCC*, -
-        refBytes = "TCCCCCCCCATG".getBytes();
+        refBytes = "CCCCCCCCATG".getBytes();    // excludes leading match base common to VC's ref and alt alleles
         vc = new VariantContextBuilder("foo", delLoc, 10, 14, Arrays.asList(ccccR,nullA)).make();
         result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, refBytes);
         Assert.assertEquals(result.getLeft().toArray()[0],8);
@@ -916,7 +916,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result.getRight().length,1);
 
         // CCCC*,CC,-,CCCCCC, context = CCC: (C)7 -> (C)5,(C)3,(C)9
-        refBytes = "TCCCCCCCAGAGAGAG".getBytes();
+        refBytes = "CCCCCCCAGAGAGAG".getBytes();    // excludes leading match base common to VC's ref and alt alleles
         vc = new VariantContextBuilder("foo", insLoc, insLocStart, insLocStart+4, Arrays.asList(ccccR,cc, nullA,cccccc)).make();
         result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, refBytes);
         Assert.assertEquals(result.getLeft().toArray()[0],7);
@@ -926,7 +926,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(result.getRight().length,1);
 
         // GAGA*,-,GAGAGAGA
-        refBytes = "TGAGAGAGAGATTT".getBytes();
+        refBytes = "GAGAGAGAGATTT".getBytes();  // excludes leading match base common to VC's ref and alt alleles
         vc = new VariantContextBuilder("foo", insLoc, insLocStart, insLocStart+4, Arrays.asList(gagaR, nullA,gagagaga)).make();
         result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, refBytes);
         Assert.assertEquals(result.getLeft().toArray()[0],5);
@@ -1370,6 +1370,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final double[] aRefPL = new double[]{0.9, 0.09, 0.01};
         final double[] cPL = new double[]{0.09, 0.9, 0.01};
         final double[] gPL = new double[]{0.01, 0.09, 0.9};
+        final double[] nonRefPL = gPL;
         final List<double[]> allHaploidPLs = Arrays.asList(aRefPL, cPL, gPL);
         final List<List<Allele>> allHaploidSubsetAlleles = Arrays.asList(Collections.singletonList(Aref), Collections.singletonList(G));
 
@@ -1408,9 +1409,11 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
         final List<Allele> originalHaploidGT = Collections.singletonList(Aref);
         final List<Allele> haploidAllelesToUse = Arrays.asList(Aref, C, G );
+        final List<Allele> haploidAllelesWithNonRef = Arrays.asList(Aref, C, Allele.NON_REF_ALLELE );
         tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, aRefPL, originalHaploidGT, haploidAllelesToUse, Collections.singletonList(Aref)});
         tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, cPL, originalHaploidGT, haploidAllelesToUse, Collections.singletonList(C)});
         tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, gPL, originalHaploidGT, haploidAllelesToUse, Collections.singletonList(G)});
+        tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, nonRefPL, originalHaploidGT, haploidAllelesWithNonRef, Collections.singletonList(Allele.NO_CALL)});
 
         for ( final List<Allele> originalGT : Arrays.asList(AA, AC, CC, AG, CG, GG) ) {
             tests.add(new Object[]{2, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, homRefPL, originalGT, AC, AA});
@@ -1446,9 +1449,10 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         final GenotypeBuilder gb = new GenotypeBuilder("test");
         final double[] logLikelhoods = MathUtils.normalizeLog10(likelihoods);
 
-        GATKVariantContextUtils.makeGenotypeCall(originalGT.size(), gb, mode, logLikelhoods, allelesToUse);
+        GATKVariantContextUtils.makeGenotypeCall(originalGT.size(), gb, mode, logLikelhoods, allelesToUse, null);
 
         final Genotype g = gb.make();
+        Assert.assertEquals(g.getAlleles().size(), expectedAlleles.size());
         Assert.assertEquals(new LinkedHashSet<>(g.getAlleles()), new LinkedHashSet<>(expectedAlleles));
     }
 

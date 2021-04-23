@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
@@ -10,8 +11,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentDefinition;
 import org.broadinstitute.barclay.argparser.ClassFinder;
-import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -21,8 +22,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
 
-import java.io.File;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -198,15 +197,15 @@ public final class FeatureManager implements AutoCloseable {
         // Discover all arguments of type FeatureInput (or Collections thereof) in our tool's class hierarchy
         // (and associated ArgumentCollections). Arguments not specified by the user on the command line will
         // come back to us with a null FeatureInput.
-        final List<Pair<Field, FeatureInput>> featureArgumentValues =
-                CommandLineParser.gatherArgumentValuesOfType(FEATURE_ARGUMENT_CLASS, toolInstance);
+        final List<Pair<ArgumentDefinition, FeatureInput>> featureArgumentValues =
+                toolInstance.getCommandLineParser().gatherArgumentValuesOfType(FEATURE_ARGUMENT_CLASS);
 
-        for ( final Pair<Field, FeatureInput> featureArgument : featureArgumentValues ) {
+        for ( final Pair<ArgumentDefinition, FeatureInput> featureArgument : featureArgumentValues ) {
             final FeatureInput<? extends Feature> featureInput = featureArgument.getValue();
 
             // Only create a data source for Feature arguments that were actually specified
             if ( featureInput != null ) {
-                final Class<? extends Feature> featureType = getFeatureTypeForFeatureInputField(featureArgument.getKey());
+                final Class<? extends Feature> featureType = getFeatureTypeForFeatureInputArgument(featureArgument.getKey());
                 addToFeatureSources(featureQueryLookahead, featureInput, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
                         gdbOptions);
             }
@@ -248,29 +247,29 @@ public final class FeatureManager implements AutoCloseable {
     }
 
     /**
-     * Given a Field known to be of type FeatureInput (or a Collection thereof), retrieves the type
+     * Given a ArgumentDefinition for an argument known to be of type FeatureInput (or a Collection thereof), retrieves the type
      * parameter for the FeatureInput (eg., for FeatureInput<VariantContext> or List<FeatureInput<VariantContext>>
      * this would be VariantContext).
      *
-     * @param field a Field known to be of type FeatureInput whose type parameter to retrieve
-     * @return type parameter of the FeatureInput declaration represented by the given field
+     * @param argDef an {@code ArgumentDefinition} for an argument known to be of type FeatureInput whose type parameter to retrieve
+     * @return type parameter of the FeatureInput declaration represented by the given ArgumentDefinition
      */
     @SuppressWarnings("unchecked")
-    static Class<? extends Feature> getFeatureTypeForFeatureInputField( final Field field ) {
-        final Type featureInputType = CommandLineParser.isCollectionField(field) ?
-                                getNextTypeParameter((ParameterizedType)(field.getGenericType())) :
-                                field.getGenericType();
+    static Class<? extends Feature> getFeatureTypeForFeatureInputArgument( final ArgumentDefinition argDef ) {
+        final Type featureInputType = argDef.isCollection() ?
+                                getNextTypeParameter((ParameterizedType)(argDef.getUnderlyingField().getGenericType())) :
+                                argDef.getUnderlyingField().getGenericType();
 
         if ( ! (featureInputType instanceof ParameterizedType) ) {
             throw new GATKException(String.format("FeatureInput declaration for argument --%s lacks an explicit type parameter for the Feature type",
-                                                  field.getAnnotation(Argument.class).fullName()));
+                                argDef.getUnderlyingField().getAnnotation(Argument.class).fullName()));
         }
 
         return (Class<? extends Feature>)getNextTypeParameter((ParameterizedType)featureInputType);
     }
 
     /**
-     * Helper method for {@link #getFeatureTypeForFeatureInputField(Field)} that "unpacks" a
+     * Helper method for {@link #getFeatureTypeForFeatureInputArgument(ArgumentDefinition)} that "unpacks" a
      * parameterized type by one level of parameterization. Eg., given List<FeatureInput<VariantContext>>
      * would return FeatureInput<VariantContext>.
      *

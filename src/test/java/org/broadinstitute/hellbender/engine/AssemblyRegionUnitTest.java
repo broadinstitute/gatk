@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
@@ -16,7 +19,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 
 public final class AssemblyRegionUnitTest extends GATKBaseTest {
@@ -120,6 +126,19 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
         }
 
         return tests.subList(2,3).toArray(new Object[][]{});       //HACK!
+    }
+
+    @Test(expectedExceptions = UserException.MissingContigInSequenceDictionary.class)
+    //Testing a case where an NPE was thrown when somehow the reference sequence dictionary didn't contain a contig in the
+    //assembly region.
+    public void testMismatchedReferenceAndRegion(){
+        final SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary(new ArrayList<>(header.getSequenceDictionary().getSequences()));
+        final String contigNotInReference = "chrNotInReference";
+        sequenceDictionary.addSequence(new SAMSequenceRecord(contigNotInReference, 1000));
+        //it's not possible to create an assembly region on a contig that isn't in the given SamHeader
+        final SAMFileHeader modifiedHeader = new SAMFileHeader(sequenceDictionary);
+        final AssemblyRegion assemblyRegion = new AssemblyRegion(new SimpleInterval(contigNotInReference,1, 200), 10, modifiedHeader);
+        assemblyRegion.getAssemblyRegionReference(hg19ReferenceReader, 10);
     }
 
     @Test(dataProvider = "AssemblyRegionReads")

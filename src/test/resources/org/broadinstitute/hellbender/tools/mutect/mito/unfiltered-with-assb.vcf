@@ -1,0 +1,47 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions of alternate alleles in the tumor">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=F1R2,Number=R,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting each allele">
+##FORMAT=<ID=F2R1,Number=R,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting each allele">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MBQ,Number=R,Type=Integer,Description="median base quality">
+##FORMAT=<ID=MFRL,Number=R,Type=Integer,Description="median fragment length">
+##FORMAT=<ID=MMQ,Number=A,Type=Integer,Description="median mapping quality">
+##FORMAT=<ID=MPOS,Number=A,Type=Integer,Description="median distance from end of read">
+##INFO=<ID=OCM,Number=1,Type=Integer,Description="Number of alt reads whose original alignment doesn't match the current contig.">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=POTENTIAL_POLYMORPHIC_NUMT,Number=1,Type=String,Description="Potentially a polymorphic NuMT false positive rather than a real mitochondrial variant.">
+##FORMAT=<ID=SAAF,Number=3,Type=Float,Description="MAP estimates of allele fraction given z">
+##FORMAT=<ID=SAPP,Number=3,Type=Float,Description="posterior probabilities of the presence of strand artifact">
+##INFO=<ID=SEQQ,Number=1,Type=Integer,Description="None">
+##INFO=<ID=STRANDQ,Number=1,Type=Integer,Description="None">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=ECNT,Number=1,Type=Integer,Description="Number of events in this haplotype">
+##INFO=<ID=PON,Number=0,Type=Flag,Description="site found in panel of normals">
+##INFO=<ID=TLOD,Number=A,Type=Float,Description="LOD score for variant">
+##INFO=<ID=NLOD,Number=A,Type=Float,Description="Normal LOD score">
+##INFO=<ID=N_ART_LOD,Number=A,Type=Float,Description="log odds of artifact in normal with same allele fraction as tumor">
+##INFO=<ID=POPAF,Number=A,Type=Float,Description="population allele frequencies of alt alleles">
+##INFO=<ID=CONTQ,Number=1,Type=Float,Description="Posterior probability for alt allele to be due to contamination">
+##INFO=<ID=GERMQ,Number=A,Type=Float,Description="Posterior probability for alt allele to be germline variants">
+##INFO=<ID=RPA,Number=.,Type=Integer,Description="Number of times tandem repeat unit is repeated, for each allele (including reference)">
+##INFO=<ID=RU,Number=1,Type=String,Description="Tandem repeat unit (bases)">
+##INFO=<ID=STR,Number=0,Type=Flag,Description="Variant is a short tandem repeat">
+##INFO=<ID=AS_SB_TABLE,Number=R,Type=String,Description="Allele-specific forward/reverse read counts for strand bias tests">
+##INFO=<ID=AS_UNIQ_ALT_READ_COUNT,Number=A,Type=String,Description="Number of reads with unique start and mate end positions for each alt at a variant site">
+##Mutect Version=2.1
+##contig=<ID=chrM,length=16569>
+##filtering_status=Warning: unfiltered Mutect2 calls.  Please run FilterMutectCalls to remove false positives.
+##source=Mutect2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
+chrM	152	.	T	C	.	.	AS_SB_TABLE=0,3|0,1556;DP=1582;ECNT=1;TLOD=5266.19;POPAF=5.000e-08;OCM=0	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:POTENTIAL_POLYMORPHIC_NUMT	0/1:3,1556:0.998:2,777:1,779:30,30:16270,369:60,60:42:true
+chrM	263	.	A	G	.	.	AS_SB_TABLE=1,0|431,400;DP=858;ECNT=4;TLOD=2641.72;POPAF=5.000e-08;OCM=800	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS	0/1:1,831:0.999:0,403:1,428:10,30:292,305:60,60:32
+chrM	301	.	A	AC	.	.	AS_SB_TABLE=500,149|41,12;DP=680;ECNT=4;TLOD=3.32;POPAF=5.000e-08;OCM=0	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS	0/1:579,53:0.084:243,27:336,26:30,20:309,324:60,60:34
+chrM	302	.	A	AC,C,ACC	.	.	AS_SB_TABLE=0,5|51,350|60,7|49,0;DP=659;ECNT=4;TLOD=891.23,10.66,67.66;POPAF=5.000e-08,5.000e-08,5.000e-08;OCM=0	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS	0/1/2/3:5,401,67,49:0.768,0.128,0.094:2,163,35,20:3,238,32,29:20,20,30,20:419,316,340,278:60,60,60,60:41,33,38
+chrM	310	.	T	TC	.	.	AS_SB_TABLE=0,0|300,358;DP=705;ECNT=4;TLOD=1974.89;POPAF=5.000e-08;RPA=5,6;RU=C;STR;OCM=0	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS	0/1:0,658:1.00:0,273:0,385:0,30:0,311:60,60:33
+chrM	750	.	A	G	.	.	AS_UNIQ_ALT_READ_COUNT=2;AS_SB_TABLE=0,1|100,1424;DP=1568;ECNT=1;TLOD=5097.90;POPAF=5.000e-08;OCM=0	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS:POTENTIAL_POLYMORPHIC_NUMT	0/1:1,1524:0.999:0,728:1,796:2,30:417,335:60,60:40:true
+chrM	802	.	A	C,ACC	.	.	AS_SB_TABLE=55,50|0,301|30,37;DP=659;ECNT=4;TLOD=10.66,891.23;POPAF=5.000e-08,5.000e-08;OCM=0	GT:AD:AF:F1R2:F2R1:MBQ:MFRL:MMQ:MPOS	0/1/2:105,301,67:0.636,0.141:2,163,35:3,238,32:20,20,30:419,316,340:60,60,60:41,33

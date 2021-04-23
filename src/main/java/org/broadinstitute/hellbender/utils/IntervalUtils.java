@@ -40,6 +40,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -246,7 +247,6 @@ public final class IntervalUtils {
 
         return sortAndMergeIntervals(genomeLocParser, allIntervals, intervalMergingRule);
     }
-
 
     /**
      * Method that takes a list of interval strings in the command line format and parses them into GenomicLoc objects
@@ -1524,7 +1524,7 @@ public final class IntervalUtils {
      *                   exceptions to be thrown.  Never {@code null}.
      * @return an instance of {@code Comapator<Locatable>} for use in sorting of Locatables.
      */
-    public static Comparator<Locatable> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {
+    public static <T extends Locatable> Comparator<T> getDictionaryOrderComparator(final SAMSequenceDictionary dictionary) {
         Utils.nonNull(dictionary);
         return (o1, o2) -> IntervalUtils.compareLocatables(o1, o2, dictionary);
     }
@@ -1559,5 +1559,27 @@ public final class IntervalUtils {
         return interval1.overlaps(interval2) &&
                 (interval1.intersect(interval2).size() >= (interval2.size() * reciprocalOverlapThreshold)) &&
                 (interval2.intersect(interval1).size() >= (interval1.size() * reciprocalOverlapThreshold));
+    }
+
+    /**
+     * Given a collection of {@link SimpleInterval} instances returns a map where the key is the enclosing contig name and the value is the
+     * list of the intervals  on that contig that result from sorting and then merging those that are contiguous or overlap.
+     *
+     * <p>
+     *     The output collections (map and lists) are mutable, and any modification on them should not change the inputs as a side effect.
+     * </p>
+     *
+     * @param input input collection of lacatables, may contain duplicates.
+     * @param dictionary the referene dictionary.
+     * @param <L> the locatable type.
+     * @throws IllegalArgumentException if input is {@code null}.
+     * @return never {@code null}, but perhaps an empty map. It is guarantee that no value in the map is an empty list upon return.
+     */
+    public static <L extends Locatable> Map<String, List<SimpleInterval>> sortAndMergeIntervals(final Collection<SimpleInterval> input,
+                                                                                                final SAMSequenceDictionary dictionary, final IntervalMergingRule rule) {
+        final GenomeLocParser parser = new GenomeLocParser(dictionary);
+        final List<GenomeLoc> locs = input.stream().map(parser::createGenomeLoc).collect(Collectors.toList());
+        final GenomeLocSortedSet resultSet = sortAndMergeIntervals(parser, locs, rule);
+        return resultSet.stream().map(loc -> new SimpleInterval(loc.contigName, loc.start, loc.stop)).collect(Collectors.groupingBy(SimpleInterval::getContig));
     }
 }

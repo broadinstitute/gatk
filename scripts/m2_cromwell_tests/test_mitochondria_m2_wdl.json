@@ -1,8 +1,8 @@
 {
+  "MitochondriaPipeline.gatk_docker_override": "__GATK_DOCKER__",
   "MitochondriaPipeline.wgs_aligned_input_bam_or_cram": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/NA12878.alignedHg38.duplicateMarked.baseRealigned.bam",
   "MitochondriaPipeline.wgs_aligned_input_bam_or_cram_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/NA12878.alignedHg38.duplicateMarked.baseRealigned.bam.bai",
   "MitochondriaPipeline.autosomal_coverage": 30,
-  "MitochondriaPipeline.sample_name": "NA12878",
   "MitochondriaPipeline.mt_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/Homo_sapiens_assembly38.chrM.dict",
   "MitochondriaPipeline.mt_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/Homo_sapiens_assembly38.chrM.fasta",
   "MitochondriaPipeline.mt_fasta_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/Homo_sapiens_assembly38.chrM.fasta.fai",
@@ -21,8 +21,6 @@
   "MitochondriaPipeline.mt_shifted_bwt": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/Homo_sapiens_assembly38.chrM.shifted_by_8000_bases.fasta.bwt",
   "MitochondriaPipeline.mt_shifted_pac": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/Homo_sapiens_assembly38.chrM.shifted_by_8000_bases.fasta.pac",
   "MitochondriaPipeline.mt_shifted_sa": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/Homo_sapiens_assembly38.chrM.shifted_by_8000_bases.fasta.sa",
-  "MitochondriaPipeline.blacklisted_sites_shifted": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/blacklist_sites.hg38.chrM.shifted_by_8000_bases.bed",
-  "MitochondriaPipeline.blacklisted_sites_shifted_index": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/blacklist_sites.hg38.chrM.shifted_by_8000_bases.bed.idx",
   "MitochondriaPipeline.shift_back_chain": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/ShiftBack.chain",
   "MitochondriaPipeline.control_region_shifted_reference_interval_list": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/control_region_shifted.chrM.interval_list",
   "MitochondriaPipeline.non_control_region_interval_list": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/mitochondria_references/non_control_region.chrM.interval_list"

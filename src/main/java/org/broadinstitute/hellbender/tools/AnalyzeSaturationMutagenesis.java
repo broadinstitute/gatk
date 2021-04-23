@@ -10,6 +10,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -17,13 +18,13 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Tail;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.text.DecimalFormat;
@@ -186,7 +187,7 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         reference = new Reference(ReferenceDataSource.of(referenceArguments.getReferencePath()));
         codonTracker = new CodonTracker(orfCoords, reference.getRefSeq(), logger);
         if ( writeRejectedReads ) {
-            rejectedReadsBAMWriter = createSAMWriter(new File(outputFilePrefix + ".rejected.bam"), false);
+            rejectedReadsBAMWriter = createSAMWriter(new GATKPath(outputFilePrefix + ".rejected.bam"), false);
         }
     }
 
@@ -1622,8 +1623,8 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
             final List<CigarElement> elements = cigar.getCigarElements();
             final int nElements = elements.size();
             if ( nElements < 2 ) return cigar;
-            final int initialClipLength = CigarUtils.countLeftClippedBases(cigar);
-            final int finalClipLength = CigarUtils.countRightClippedBases(cigar);
+            final int initialClipLength = CigarUtils.countClippedBases(cigar, Tail.LEFT);
+            final int finalClipLength = CigarUtils.countClippedBases(cigar, Tail.RIGHT);
             if ( initialClipLength >= minAltLength || finalClipLength >= minAltLength ) {
                 final String saTag = read.getAttributeAsString("SA");
                 if ( saTag == null ) return cigar;
@@ -1652,8 +1653,8 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                     final List<CigarElement> altElements = altCigar.getCigarElements();
                     final int nAltElements = altElements.size();
                     if ( nAltElements < 2 ) continue;
-                    final int initialAltClipLength = CigarUtils.countLeftClippedBases(altCigar);
-                    final int finalAltClipLength = CigarUtils.countRightClippedBases(altCigar);
+                    final int initialAltClipLength = CigarUtils.countClippedBases(altCigar, Tail.LEFT);
+                    final int finalAltClipLength = CigarUtils.countClippedBases(altCigar, Tail.RIGHT);
                     final Interval altReadInterval =
                             new Interval(initialAltClipLength, readLength - finalAltClipLength);
                     final int overlapLength = primaryReadInterval.overlapLength(altReadInterval);

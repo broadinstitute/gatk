@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 public class MethylationTypeCaller extends LocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output VCF file")
-    private GATKPathSpecifier outputFile;
+    private GATKPath outputFile;
 
     private VariantContextWriter vcfWriter;
 

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -12,6 +13,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -172,7 +175,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     public List<FeatureInput<VariantContext>> supportVariants = new ArrayList<>();
 
     @Argument(doc="File to which variants should be written", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = false)
-    public File out = null;
+    public GATKPath out = null;
 
     /**
      * Prior SNP pseudocounts for Dirichlet distribution of allele frequencies. The posterior distribution is a
@@ -255,7 +258,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
      *
      */
     @Argument(fullName=StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName=StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file for samples", optional=true)
-    private File pedigreeFile = null;
+    private GATKPath pedigreeFile = null;
 
     private FamilyLikelihoods famUtils;
 
@@ -267,7 +270,7 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
     public void onTraversalStart() {
         vcfWriter = createVCFWriter(out);
 
-        SampleDB sampleDB = initializeSampleDB();
+        final SampleDB sampleDB = SampleDB.createSampleDBFromPedigree(pedigreeFile);
 
         // Get list of samples to include in the output
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
@@ -318,17 +321,6 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
 
         options = new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(globalPriorSnp, globalPriorIndel,
                         !ignoreInputSamples, !defaultToAC, ignoreInputSamplesForMissingResources, useFlatPriorsForIndels);
-    }
-
-    /**
-     * Entry-point function to initialize the samples database from input data
-     */
-    private SampleDB initializeSampleDB() {
-        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-        if (pedigreeFile != null) {
-            sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-        }
-        return sampleDBBuilder.getFinalSampleDB();
     }
 
     @Override

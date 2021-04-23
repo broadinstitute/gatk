@@ -193,7 +193,7 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
                     unFilteredReads.filter(r -> readFilter.test(r)),
                     getHeaderForReads()
             );
-            metricsCollector.saveMetrics(getReadSourceName().get(0));
+            metricsCollector.saveMetrics(getReadSourceName());
         }
     }
 

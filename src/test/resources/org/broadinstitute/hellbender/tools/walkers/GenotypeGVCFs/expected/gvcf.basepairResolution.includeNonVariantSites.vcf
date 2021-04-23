@@ -8,7 +8,6 @@
 ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
 ##FORMAT=<ID=RGQ,Number=1,Type=Integer,Description="Unconditional reference genotype confidence, encoded as a phred quality -10*log10 p(genotype call is wrong)">
 ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
-##GATKCommandLine=<ID=GenotypeGVCFs,CommandLine="GenotypeGVCFs  --output /var/folders/56/l8cj86792b773xql3374k3dcmtd1k5/T/genotypegvcf8453174056672361677.vcf --include-non-variant-sites true --variant /Users/davidben/broad/gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/gvcf.basepairResolution.gvcf --reference /Users/davidben/broad/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta --verbosity ERROR --allow-old-rms-mapping-quality-annotation-data true  --merge-input-intervals false --input-is-somatic false --tumor-lod-to-emit 3.5 --allele-fraction-error 0.001 --keep-combined-raw-annotations false --use-new-qual-calculator true --annotate-with-num-discovered-alleles false --heterozygosity 0.001 --indel-heterozygosity 1.25E-4 --heterozygosity-stdev 0.01 --standard-min-confidence-threshold-for-calling 30.0 --max-alternate-alleles 6 --max-genotype-count 1024 --sample-ploidy 2 --num-reference-samples-if-no-call 0 --only-output-calls-starting-in-intervals false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --disable-tool-default-annotations false --enable-all-annotations false",Version="Unavailable",Date="January 21, 2020 1:52:13 PM EST">
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
@@ -113,7 +112,6 @@
 ##contig=<ID=GL000225.1,length=211173,assembly=b37>
 ##contig=<ID=GL000192.1,length=547496,assembly=b37>
 ##reference=file:///humgen/1kg/reference/human_g1k_v37.fasta
-##source=GenotypeGVCFs
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
 20	10000000	.	T	.	.	.	DP=52	GT:AD:DP:RGQ	0/0:52:52:99
 20	10000001	.	T	.	.	.	DP=54	GT:AD:DP:RGQ	0/0:54:54:99
@@ -4885,16 +4883,16 @@
 20	10004767	.	A	.	.	.	DP=43	GT:AD:DP:RGQ	0/0:43:43:75
 20	10004768	.	C	.	.	.	DP=43	GT:AD:DP:RGQ	0/0:43:43:72
 20	10004769	.	TAAAACTATGC	T	675.60	.	AC=1;AF=0.500;AN=2;BaseQRankSum=-8.710e-01;ClippingRankSum=-5.370e-01;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=218.95;MQ0=0;MQRankSum=-4.022e+00;QD=15.35;ReadPosRankSum=0.585;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
-20	10004770	.	A	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
-20	10004771	.	A	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
-20	10004772	.	A	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
-20	10004773	.	A	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
-20	10004774	.	C	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
-20	10004775	.	T	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
-20	10004776	.	A	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
-20	10004777	.	T	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
-20	10004778	.	G	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
-20	10004779	.	C	.	Infinity	.	DP=48;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:44:99
+20	10004770	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
+20	10004771	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
+20	10004772	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
+20	10004773	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
+20	10004774	.	C	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
+20	10004775	.	T	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
+20	10004776	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
+20	10004777	.	T	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
+20	10004778	.	G	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
+20	10004779	.	C	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.752	GT:AD:DP:GQ:PL	0/1:26,18:44:99:683,0,2740
 20	10004780	.	A	.	.	.	DP=47	GT:AD:DP:RGQ	./.:31:47:0
 20	10004781	.	A	.	.	.	DP=47	GT:AD:DP:RGQ	0/0:47:47:99
 20	10004782	.	A	.	.	.	DP=47	GT:AD:DP:RGQ	0/0:47:47:99
@@ -6935,6 +6933,10 @@
 20	10006817	.	A	.	.	.	DP=38	GT:AD:DP:RGQ	0/0:37:38:12
 20	10006818	.	A	.	.	.	DP=37	GT:AD:DP:RGQ	0/0:36:37:12
 20	10006819	.	AAAAC	A	1513.03	.	AC=2;AF=1.00;AN=2;DP=39;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;MQ=210.67;MQ0=0;QD=29.11;SOR=0.693	GT:AD:DP:GQ:PL	1/1:0,35:35:99:1527,107,0
+20	10006820	.	A	*	0	LowQual	AC=2;AF=1.00;AN=2;DP=39;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;QD=0.00;SOR=0.693	GT:AD:DP:GQ:PL	1/1:0,35:35:99:1527,107,0
+20	10006821	.	A	*	0	LowQual	AC=2;AF=1.00;AN=2;DP=39;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;QD=0.00;SOR=0.693	GT:AD:DP:GQ:PL	1/1:0,35:35:99:1527,107,0
+20	10006822	.	A	*	0	LowQual	AC=2;AF=1.00;AN=2;DP=39;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;QD=0.00;SOR=0.693	GT:AD:DP:GQ:PL	1/1:0,35:35:99:1527,107,0
+20	10006823	.	C	*	0	LowQual	AC=2;AF=1.00;AN=2;DP=39;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;QD=0.00;SOR=0.693	GT:AD:DP:GQ:PL	1/1:0,35:35:99:1527,107,0
 20	10006824	.	A	.	.	.	DP=40	GT:AD:DP:RGQ	./.:8:40:0
 20	10006825	.	A	.	.	.	DP=42	GT:AD:DP:RGQ	0/0:42:42:99
 20	10006826	.	A	.	.	.	DP=42	GT:AD:DP:RGQ	0/0:42:42:99
@@ -8258,6 +8260,7 @@
 20	10008144	.	A	.	.	.	DP=50	GT:AD:DP:RGQ	./.:50:50:0
 20	10008145	.	T	.	.	.	DP=51	GT:AD:DP:RGQ	./.:51:51:0
 20	10008146	.	TA	T	1727.03	.	AC=2;AF=1.00;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;MQ=210.35;MQ0=0;QD=28.08;SOR=0.693	GT:AD:DP:GQ:PL	1/1:0,47:47:99:1741,142,0
+20	10008147	.	A	*	0	LowQual	AC=2;AF=1.00;AN=2;DP=48;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;QD=0.00;SOR=0.693	GT:AD:DP:GQ:PL	1/1:0,47:47:99:1741,142,0
 20	10008148	.	A	.	.	.	DP=49	GT:AD:DP:RGQ	./.:1:49:0
 20	10008149	.	A	.	.	.	DP=49	GT:AD:DP:RGQ	0/0:49:49:99
 20	10008150	.	A	.	.	.	DP=49	GT:AD:DP:RGQ	0/0:49:49:99
@@ -9059,20 +9062,21 @@
 20	10008946	.	T	.	.	.	DP=24	GT:AD:DP:RGQ	0/0:23:24:15
 20	10008947	.	T	.	.	.	DP=24	GT:AD:DP:RGQ	0/0:24:24:12
 20	10008948	.	TA	T	1057.03	.	AC=2;AF=1.00;AN=2;DP=24;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;MQ=168.45;MQ0=0;QD=23.23;SOR=0.693	GT:AD:DP:GQ:PL	1/1:0,24:24:78:1071,78,0
+20	10008949	.	A	*	0	LowQual	AC=2;AF=1.00;AN=2;DP=24;ExcessHet=3.0103;FS=0.000;MLEAC=2;MLEAF=1.00;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	1/1:0,24:24:78:1071,78,0
 20	10008950	.	A	.	.	.	DP=24	GT:AD:DP:RGQ	./.:5:24:0
 20	10008951	.	A	.	.	.	DP=24	GT:AD:DP:RGQ	./.:15:24:0
 20	10008952	.	CACACACACACA	C,CCACACACACA	988.02	.	AC=1,1;AF=0.500,0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1,1;MLEAF=0.500,0.500;MQ=170.70;MQ0=0;QD=29.03;SOR=0.693	GT:AD:DP:GQ:PL	1/2:0,12,9:21:99:1005,402,1011,556,0,1362
-20	10008953	.	A	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008954	.	C	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008955	.	A	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008956	.	C	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008957	.	A	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008958	.	C	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008959	.	A	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008960	.	C	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008961	.	A	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008962	.	C	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
-20	10008963	.	A	.	Infinity	.	DP=25;MLEAC=.;MLEAF=.	GT:DP:RGQ	0/0:21:99
+20	10008953	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008954	.	C	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008955	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008956	.	C	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008957	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008958	.	C	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008959	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008960	.	C	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008961	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008962	.	C	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
+20	10008963	.	A	*	0	LowQual	AC=1;AF=0.500;AN=2;DP=25;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;QD=-0.00;SOR=0.693	GT:AD:DP:GQ:PL	0/1:0,12:21:99:603,0,609
 20	10008964	.	C	.	.	.	DP=23	GT:AD:DP:RGQ	0/0:23:23:60
 20	10008965	.	A	.	.	.	DP=23	GT:AD:DP:RGQ	0/0:23:23:60
 20	10008966	.	C	.	.	.	DP=23	GT:AD:DP:RGQ	0/0:23:23:60

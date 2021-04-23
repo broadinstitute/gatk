@@ -64,6 +64,7 @@ public class FuncotatorArgumentDefinitions {
     public static final int LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE = VariantWalkerBase.DEFAULT_DRIVING_VARIANTS_LOOKAHEAD_BASES;
 
     public static final String FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION = "force-b37-to-hg19-reference-contig-conversion";
+    public static final String MIN_NUM_BASES_FOR_SEGMENT_FUNCOTATION = "min-num-bases-for-segment-funcotation";
 
     // ------------------------------------------------------------
     // Helper Types:

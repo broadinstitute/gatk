@@ -19,7 +19,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
@@ -41,7 +41,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.*;
 
-import java.io.File;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -60,7 +59,7 @@ import java.util.stream.Collectors;
  *     <li>Specify criteria for inclusion that place thresholds on annotation values, e.g. "DP > 1000" (depth of
  *     coverage greater than 1000x), "AF < 0.25" (sites with allele frequency less than 0.25). These criteria are written
  *     as "JEXL expressions", which are documented in the
- *     <a href="https://www.broadinstitute.org/gatk/guide/article?id=1255">article about using JEXL expressions</a>.</li>
+ *     <a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions">article about using JEXL expressions</a>.</li>
  *     <li>Provide concordance or discordance tracks in order to include or exclude variants that are also present
  *     in other given callsets.</li>
  *     <li>Select variants based on criteria like their type (e.g. INDELs only), evidence of mendelian violation,
@@ -140,7 +139,7 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
               shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
               doc="Path to which variants should be written")
-    public GATKPathSpecifier vcfOutput = null;
+    public GATKPath vcfOutput = null;
 
     /**
      * This argument can be specified multiple times in order to provide multiple sample names, or to specify
@@ -281,7 +280,7 @@ public final class SelectVariants extends VariantWalker {
     private double mendelianViolationQualThreshold = 0;
 
     @Argument(fullName=StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName=StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file", optional=true)
-    private File pedigreeFile = null;
+    private GATKPath pedigreeFile = null;
 
     /**
      * The value of this argument should be a number between 0 and 1 specifying the fraction of total variants to be
@@ -502,7 +501,7 @@ public final class SelectVariants extends VariantWalker {
         }
 
         if (mendelianViolations) {
-            sampleDB = initializeSampleDB();
+            sampleDB = SampleDB.createSampleDBFromPedigree(pedigreeFile);
             mv = new MendelianViolation(mendelianViolationQualThreshold, false, true);
         }
 
@@ -600,9 +599,6 @@ public final class SelectVariants extends VariantWalker {
                 return;
         }
 
-        // Initialize the cache of PL index to a list of alleles for each ploidy.
-        initalizeAlleleAnyploidIndicesCache(vc);
-
         final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
         final VariantContext filteredGenotypeToNocall;
 
@@ -638,7 +634,7 @@ public final class SelectVariants extends VariantWalker {
                 // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
                 //  expression detected...")
                 throw new UserException(e.getMessage() +
-                        "\nSee https://www.broadinstitute.org/gatk/guide/article?id=1255 for documentation on using JEXL in GATK", e);
+                        "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
             }
 
             if (!failedJexlMatch &&
@@ -699,30 +695,6 @@ public final class SelectVariants extends VariantWalker {
         }
 
         return filters;
-    }
-
-    /**
-     * Initialize cache of allele anyploid indices
-     *
-     * Initialize the cache of PL index to a list of alleles for each ploidy.
-     *
-     * @param vc    Variant Context
-     */
-    private void initalizeAlleleAnyploidIndicesCache(final VariantContext vc) {
-        if (vc.getType() != VariantContext.Type.NO_VARIATION) { // Bypass if not a variant
-            for (final Genotype g : vc.getGenotypes()) {
-                // Make a new entry if the we have not yet cached a PL to allele indices map for this ploidy and allele count
-                // skip if there are no PLs -- this avoids hanging on high-allelic somatic samples, for example, where
-                // there's no need for the PL indices since they don't exist
-                if (g.getPloidy() != 0 && (!ploidyToNumberOfAlleles.containsKey(g.getPloidy()) || ploidyToNumberOfAlleles.get(g.getPloidy()) < vc.getNAlleles())) {
-                    if (vc.getGenotypes().stream().anyMatch(Genotype::hasLikelihoods)) {
-                        GenotypeLikelihoods.initializeAnyploidPLIndexToAlleleIndices(vc.getNAlleles() - 1, g.getPloidy());
-                        ploidyToNumberOfAlleles.put(g.getPloidy(), vc.getNAlleles());
-                    }
-                }
-            }
-        }
-
     }
 
     /**
@@ -844,11 +816,6 @@ public final class SelectVariants extends VariantWalker {
         final Set<VCFHeaderLine> headerLines = VCFUtils.smartMergeHeaders(vcfHeaders.values(), true);
         headerLines.addAll(getDefaultToolVCFHeaderLines());
 
-        // need AC, AN and AF since output if set filtered genotypes to no-call
-        if (setFilteredGenotypesToNocall) {
-            GATKVariantContextUtils.addChromosomeCountsToHeader(headerLines);
-        }
-
         if (keepOriginalChrCounts) {
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_AC_KEY));
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_AF_KEY));
@@ -858,7 +825,12 @@ public final class SelectVariants extends VariantWalker {
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_DP_KEY));
         }
 
-        headerLines.addAll(Arrays.asList(ChromosomeCounts.descriptions));
+        for (final String key : ChromosomeCounts.keyNames) {
+            headerLines.removeIf(line->line instanceof VCFInfoHeaderLine && ((VCFInfoHeaderLine)line).getID().equals(key));
+            headerLines.add(VCFStandardHeaderLines.getInfoLine(key));
+        }
+
+        headerLines.removeIf(line->line instanceof VCFInfoHeaderLine && ((VCFInfoHeaderLine)line).getID().equals(VCFConstants.DEPTH_KEY));
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));
 
         //remove header lines for info field and genotype annotations being dropped
@@ -867,16 +839,6 @@ public final class SelectVariants extends VariantWalker {
 
         return headerLines;
     }
-
-    /**
-     * Entry-point function to initialize the samples database from input data
-     */
-    private SampleDB initializeSampleDB() {
-        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-        sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-        return sampleDBBuilder.getFinalSampleDB();
-    }
-
 
     /**
      * Invert logic if specified
@@ -1069,7 +1031,7 @@ public final class SelectVariants extends VariantWalker {
         // fix the PL and AD values if sub has fewer alleles than original vc and remove a fraction of the genotypes if needed
         final GenotypesContext oldGs = sub.getGenotypes();
         GenotypesContext newGC = sub.getNAlleles() == vc.getNAlleles() ? oldGs :
-                AlleleSubsettingUtils.subsetAlleles(oldGs, 0, vc.getAlleles(), sub.getAlleles(), GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                AlleleSubsettingUtils.subsetAlleles(oldGs, 0, vc.getAlleles(), sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
 
         if (fractionGenotypes > 0) {
             final List<Genotype> genotypes = newGC.stream().map(genotype -> randomGenotypes.nextDouble() > fractionGenotypes ? genotype :

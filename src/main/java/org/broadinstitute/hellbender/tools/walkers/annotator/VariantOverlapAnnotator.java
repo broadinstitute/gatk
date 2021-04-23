@@ -1,14 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -16,7 +18,9 @@ import java.util.Map;
 
 /**
  * Annotate the ID field and attribute overlap FLAGs for a VariantContext against a FeatureContext or a list
- * of VariantContexts. It uses dbSNP to look up RSIDs for variants.
+ * of VariantContexts. It uses dbSNP to look up RSIDs for variants.  Note that while attempts are made to account
+ * for variant representation issues, in rare cases differences in variant representation can lead to a variant
+ * not being annotated when it optimally should be.
  */
 public final class VariantOverlapAnnotator {
     private final FeatureInput<VariantContext> dbSNP;
@@ -137,8 +141,8 @@ public final class VariantOverlapAnnotator {
     }
 
     /**
-     * Returns the ID field of the first VariantContext in rsIDSourceVCs that has the same reference allele
-     * as vcToAnnotate and all of the alternative alleles in vcToAnnotate.
+     * Returns the ID fields (separated by semicolons) of all VariantContexts in rsIDSourceVCs that have the same reference and alternate alleles
+     * as vcToAnnotate, after splitting to bi-allelics and trimming both the rsIDSourceVCs and vcToAnnotate
      *
      * Doesn't require vcToAnnotate to be a complete match, so
      *
@@ -151,31 +155,44 @@ public final class VariantOverlapAnnotator {
      *
      * @param rsIDSourceVCs a non-null list of potential overlaps that start at vcToAnnotate
      * @param vcToAnnotate a non-null VariantContext to annotate
-     * @return a String to use for the rsID from rsIDSourceVCs if one matches, or null if none matches
+     * @return a String to use for the rsID from rsIDSourceVCs if any match, or null if none match
      */
     private static String getRsID(final List<VariantContext> rsIDSourceVCs, final VariantContext vcToAnnotate) {
         Utils.nonNull(rsIDSourceVCs, "rsIDSourceVCs cannot be null");
         Utils.nonNull(vcToAnnotate, "vcToAnnotate cannot be null");
+        final List<String> rsids = new ArrayList<>();
 
-        for ( final VariantContext vcComp : rsIDSourceVCs ) {
-            if ( vcComp.isFiltered() ) {
+        final List<VariantContext> vcAnnotateList = GATKVariantContextUtils.splitVariantContextToBiallelics(vcToAnnotate, true,
+                GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS, true);
+
+        for ( final VariantContext vcCompSource : rsIDSourceVCs ) {
+            if ( vcCompSource.isFiltered() ) {
                 continue; // don't process any failed VCs
             }
 
-            if ( ! vcComp.getContig().equals(vcToAnnotate.getContig()) || vcComp.getStart() != vcToAnnotate.getStart() ) {
-                throw new IllegalArgumentException("source rsID VariantContext " + vcComp + " doesn't start at the same position as vcToAnnotate " + vcToAnnotate);
+            if (!vcCompSource.getContig().equals(vcToAnnotate.getContig())) {
+                throw new IllegalArgumentException("source rsID VariantContext " + vcCompSource + " is not on same chromosome as vcToAnnotate " + vcToAnnotate);
             }
 
-            if ( vcToAnnotate.getReference().equals(vcComp.getReference()) ) {
-                for ( final Allele allele : vcToAnnotate.getAlternateAlleles() ) {
-                    if ( vcComp.getAlternateAlleles().contains(allele) ) {
-                        return vcComp.getID();
+            final List<VariantContext> vcCompList = GATKVariantContextUtils.splitVariantContextToBiallelics(vcCompSource, true,
+                    GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS, true);
+            boolean addThisID = false;
+            for (final VariantContext vcComp : vcCompList) {
+                for (final VariantContext vcToAnnotateBi : vcAnnotateList) {
+                    if (vcComp.getStart() == vcToAnnotateBi.getStart() && vcToAnnotateBi.getReference().equals(vcComp.getReference()) && vcComp.getAlternateAlleles().equals(vcToAnnotateBi.getAlternateAlleles())) {
+                        addThisID = true;
+                        break;
                     }
+                }
+
+                if (addThisID) {
+                    rsids.add(vcCompSource.getID());
+                    break;
                 }
             }
         }
 
-        return null;
+        return rsids.isEmpty()? null : String.join(";", rsids);
     }
 
     /**

@@ -1,15 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.commons.lang3.mutable.MutableInt;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class StrictStrandBiasFilter extends HardFilter {
+public class StrictStrandBiasFilter extends HardAlleleFilter {
     private final int minReadsOnEachStrand;
 
     public StrictStrandBiasFilter(final int minReadsOnEachStrand) {
@@ -20,25 +21,18 @@ public class StrictStrandBiasFilter extends HardFilter {
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
     @Override
-    public boolean isArtifact(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        if (minReadsOnEachStrand == 0) {
-            return false;
+    public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+        List<List<Integer>> sbs = StrandBiasUtils.getSBsForAlleles(vc);
+        if (minReadsOnEachStrand == 0 || sbs == null || sbs.isEmpty() || sbs.size() <= 1) {
+            return Collections.emptyList();
         }
-
-        final MutableInt altForwardCount = new MutableInt(0);
-        final MutableInt altReverseCount = new MutableInt(0);
-
-        vc.getGenotypes().stream().filter(filteringEngine::isTumor)
-                .filter(g -> g.hasExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY))
-                .forEach(g -> {
-                    final int[] strandBiasCounts = VariantContextGetters.getAttributeAsIntArray(g, GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, () -> null, 0);
-                    altForwardCount.add(StrandBiasBySample.getAltForwardCountFromFlattenedContingencyTable(strandBiasCounts));
-                    altReverseCount.add(StrandBiasBySample.getAltReverseCountFromFlattenedContingencyTable(strandBiasCounts));
-                });
-
-    // filter if there is no alt evidence in the forward or reverse strand
-        return Math.min(altForwardCount.getValue(), altReverseCount.getValue()) < minReadsOnEachStrand;
-}
+        // remove symbolic alleles
+        if (vc.hasSymbolicAlleles()) {
+            sbs = GATKVariantContextUtils.removeDataForSymbolicAlleles(vc, sbs);
+        }
+        // skip the reference
+        return sbs.subList(1, sbs.size()).stream().map(altList -> altList.stream().anyMatch(x -> x == 0)).collect(Collectors.toList());
+    }
 
     @Override
     public String filterName() {
@@ -46,5 +40,5 @@ public class StrictStrandBiasFilter extends HardFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.emptyList(); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.AS_SB_TABLE_KEY); }
 }

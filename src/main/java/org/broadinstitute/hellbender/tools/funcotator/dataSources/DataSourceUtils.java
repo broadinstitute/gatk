@@ -23,6 +23,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.*;
+import java.time.LocalDate;
+import java.time.Month;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,24 +59,37 @@ final public class DataSourceUtils {
 
     // Track our minimum version number here:
     @VisibleForTesting
-    static final int MIN_MAJOR_VERSION_NUMBER = 1;
+    static final int       MIN_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
-    static final int MIN_MINOR_VERSION_NUMBER = 6;
+    static final int       MIN_MINOR_VERSION_NUMBER = 6;
     @VisibleForTesting
-    static final int MIN_YEAR_RELEASED        = 2019;
+    static final LocalDate MIN_DATE                 = LocalDate.of(2019, Month.JANUARY, 24);
+
+    // Track out maximum version number here:
     @VisibleForTesting
-    static final int MIN_MONTH_RELEASED       = 1;
+    static final int MAX_MAJOR_VERSION_NUMBER = 1;
     @VisibleForTesting
-    static final int MIN_DAY_RELEASED         = 24;
+    static final int MAX_MINOR_VERSION_NUMBER = 7;
+    @VisibleForTesting
+    static final LocalDate MAX_DATE            = LocalDate.of(2020, Month.MAY, 21);
 
     //==================================================================================================================
     // Public Static Members:
 
     /** The minimum version of the data sources required for funcotator to run.  */
-    public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = String.format("v%d.%d.%d%02d%02d", MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_YEAR_RELEASED, MIN_MONTH_RELEASED, MIN_DAY_RELEASED);
+    public static final String CURRENT_MINIMUM_DATA_SOURCE_VERSION         = getDataSourceMinVersionString();
+
+    /** The maximum supported version of the data sources for funcotator to run.  */
+    public static final String CURRENT_MAXIMUM_DATA_SOURCE_VERSION         = getDataSourceMaxVersionString();
+
     public static final String MANIFEST_FILE_NAME                          = "MANIFEST.txt";
     public static final String DATA_SOURCES_FTP_PATH                       = "ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/";
     public static final String DATA_SOURCES_BUCKET_PATH                    = "gs://broad-public-datasets/funcotator/";
+    public static final String DATA_SOURCES_NAME_PREFIX                    = "funcotator_dataSources";
+    public static final String DS_SOMATIC_NAME_MODIFIER                    = "s";
+    public static final String DS_GERMLINE_NAME_MODIFIER                   = "g";
+    public static final String DS_EXTENSION                                = ".tar.gz";
+    public static final String DS_CHECKSUM_EXTENSION                       = ".sha256";
 
     // TODO: Turn these into an enum (Issue #5465 - https://github.com/broadinstitute/gatk/issues/5465):
     public static final String CONFIG_FILE_FIELD_NAME_NAME                 = "name";
@@ -99,6 +114,51 @@ final public class DataSourceUtils {
 
     //==================================================================================================================
     // Public Static Methods:
+
+    /**
+     * Get the string representing the Min version information for funcotator as it would be written in the data sources
+     * release files.
+     * Max version info is specified in the following variables:
+     *    {@link #MIN_MAJOR_VERSION_NUMBER}
+     *    {@link #MIN_MINOR_VERSION_NUMBER}
+     *    {@link #MIN_DATE}
+     * @return A {@link String} representing the Min version information as it would appear in the data sources file name.
+     */
+    public static String getDataSourceMinVersionString() {
+        return getDataSourceVersionString(MIN_MAJOR_VERSION_NUMBER, MIN_MINOR_VERSION_NUMBER, MIN_DATE);
+    }
+
+    /**
+     * Get the string representing the Max version information for funcotator as it would be written in the data sources
+     * release files.
+     * Max version info is specified in the following variables:
+     *    {@link #MAX_MAJOR_VERSION_NUMBER}
+     *    {@link #MAX_MINOR_VERSION_NUMBER}
+     *    {@link #MAX_DATE}
+     * @return A {@link String} representing the Max version information as it would appear in the data sources file name.
+     */
+    public static String getDataSourceMaxVersionString() {
+        return getDataSourceVersionString(MAX_MAJOR_VERSION_NUMBER, MAX_MINOR_VERSION_NUMBER, MAX_DATE);
+    }
+
+
+    /**
+     * Get the string representing the given version information for funcotator as it would be written in the data sources
+     * release files.
+     * @param major {@code int} representing the major version of the data sources to use.
+     * @param minor {@code int} representing the minor version of the data sources to use.
+     * @param date {@link LocalDate} representing the date of the data sources to use.
+     * @return A {@link String} representing the given version information as it would appear in the data sources file name.
+     */
+    public static String getDataSourceVersionString(final int major, final int minor, final LocalDate date) {
+        return String.format("v%d.%d.%d%02d%02d",
+                major,
+                minor,
+                date.getYear(),
+                date.getMonthValue(),
+                date.getDayOfMonth()
+        );
+    }
 
     /**
      * Initializes the data sources for {@link Funcotator}.
@@ -196,7 +256,7 @@ final public class DataSourceUtils {
      * @param directory The {@link Path} of the directory in which to search for a config file.  Must not be {@code null}.
      * @return The {@link Path} to the config file found in the given {@code directory}.
      */
-    public static Path getConfigfile(final Path directory) {
+    private static Path getConfigfile(final Path directory) {
 
         Utils.nonNull(directory);
 
@@ -225,7 +285,7 @@ final public class DataSourceUtils {
     }
 
     /** @return {@code true} if the given {@link Path} exists, is readable, and is a directory; {@code false} otherwise. */
-    public static boolean isValidDirectory(final Path p) {
+    private static boolean isValidDirectory(final Path p) {
         Utils.nonNull(p);
         return Files.exists(p) && Files.isReadable(p) && Files.isDirectory(p);
     }
@@ -239,6 +299,7 @@ final public class DataSourceUtils {
      * @param gatkToolInstance Instance of the {@link GATKTool} into which to add {@link FeatureInput}s.  Must not be {@code null}.
      * @param lookaheadFeatureCachingInBp Number of base-pairs to cache when querying variants.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @param doAttemptSegmentFuncotationForTranscriptDatasources Allow the caller to specify whether segments should
      *                                                            be annotated with a gencode/transcript datasource.
      *                                                            Not all datasources support this flag and it is
@@ -252,7 +313,8 @@ final public class DataSourceUtils {
                                                                                                         final GATKTool gatkToolInstance,
                                                                                                         final int lookaheadFeatureCachingInBp,
                                                                                                         final FlankSettings flankSettings,
-                                                                                                        final boolean doAttemptSegmentFuncotationForTranscriptDatasources) {
+                                                                                                        final boolean doAttemptSegmentFuncotationForTranscriptDatasources,
+                                                                                                        final int minBasesForValidSegment) {
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
         Utils.nonNull(transcriptSelectionMode);
@@ -280,22 +342,22 @@ final public class DataSourceUtils {
             switch ( FuncotatorArgumentDefinitions.DataSourceType.getEnum(stringType) ) {
                 case LOCATABLE_XSV:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, XsvTableFeature.class, true);
-                    funcotationFactory = DataSourceUtils.createLocatableXsvDataSource(path, properties, annotationOverridesMap, featureInput);
+                    funcotationFactory = DataSourceUtils.createLocatableXsvDataSource(path, properties, annotationOverridesMap, featureInput, minBasesForValidSegment);
                     break;
                 case SIMPLE_XSV:
-                    funcotationFactory = DataSourceUtils.createSimpleXsvDataSource(path, properties, annotationOverridesMap);
+                    funcotationFactory = DataSourceUtils.createSimpleXsvDataSource(path, properties, annotationOverridesMap, minBasesForValidSegment);
                     break;
                 case COSMIC:
-                    funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap);
+                    funcotationFactory = DataSourceUtils.createCosmicDataSource(path, properties, annotationOverridesMap, minBasesForValidSegment);
                     break;
                 case GENCODE:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class, false);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode,
-                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources);
+                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources, minBasesForValidSegment);
                     break;
                 case VCF:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class, false);
-                    funcotationFactory = DataSourceUtils.createVcfDataSource(path, properties, annotationOverridesMap, featureInput);
+                    funcotationFactory = DataSourceUtils.createVcfDataSource(path, properties, annotationOverridesMap, featureInput, minBasesForValidSegment);
                     break;
                 default:
                     throw new GATKException("Unknown type of DataSourceFuncotationFactory encountered: " + stringType );
@@ -339,12 +401,14 @@ final public class DataSourceUtils {
      * @param dataSourceProperties {@link Properties} consisting of the contents of the config file for the data source.  Must not be {@code null}.
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
      * @param featureInput The {@link FeatureInput<? extends Feature>} object for the LocatableXsv data source we are creating.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @return A new {@link LocatableXsvFuncotationFactory} based on the given data source file information and field overrides map.
      */
     private static LocatableXsvFuncotationFactory createLocatableXsvDataSource(final Path dataSourceFile,
                                                                                final Properties dataSourceProperties,
                                                                                final LinkedHashMap<String, String> annotationOverridesMap,
-                                                                               final FeatureInput<? extends Feature> featureInput) {
+                                                                               final FeatureInput<? extends Feature> featureInput,
+                                                                               final int minBasesForValidSegment) {
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
@@ -360,7 +424,8 @@ final public class DataSourceUtils {
                         version,
                         annotationOverridesMap,
                         featureInput,
-                        isB37
+                        isB37,
+                        minBasesForValidSegment
                 );
 
         // Set the supported fields by the LocatableXsvFuncotationFactory:
@@ -421,11 +486,13 @@ final public class DataSourceUtils {
      * @param dataSourceFile {@link Path} to the data source file.  Must not be {@code null}.
      * @param dataSourceProperties {@link Properties} consisting of the contents of the config file for the data source.  Must not be {@code null}.
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @return A new {@link SimpleKeyXsvFuncotationFactory} based on the given data source file information and field overrides map.
      */
     private static SimpleKeyXsvFuncotationFactory createSimpleXsvDataSource(final Path dataSourceFile,
-                                                                   final Properties dataSourceProperties,
-                                                                   final LinkedHashMap<String, String> annotationOverridesMap) {
+                                                                            final Properties dataSourceProperties,
+                                                                            final LinkedHashMap<String, String> annotationOverridesMap,
+                                                                            final int minBasesForValidSegment) {
 
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
@@ -435,16 +502,17 @@ final public class DataSourceUtils {
 
         // Create our SimpleKeyXsvFuncotationFactory:
         return new SimpleKeyXsvFuncotationFactory(
-                        dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME),
-                        resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
-                        dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION),
-                        dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_DELIMITER),
-                        Integer.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN)),
-                        SimpleKeyXsvFuncotationFactory.XsvDataKeyType.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY)),
-                        annotationOverridesMap,
-                        0,
-                        Boolean.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS)),
-                        isB37
+                    dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_NAME),
+                    resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
+                    dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_VERSION),
+                    dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_DELIMITER),
+                    Integer.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY_COLUMN)),
+                    SimpleKeyXsvFuncotationFactory.XsvDataKeyType.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_KEY)),
+                    annotationOverridesMap,
+                    0,
+                    Boolean.valueOf(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_XSV_PERMISSIVE_COLS)),
+                    isB37,
+                    minBasesForValidSegment
                 );
     }
 
@@ -453,11 +521,13 @@ final public class DataSourceUtils {
      * @param dataSourceFile {@link Path} to the data source file.  Must not be {@code null}.
      * @param dataSourceProperties {@link Properties} consisting of the contents of the config file for the data source.  Must not be {@code null}.
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @return A new {@link CosmicFuncotationFactory} based on the given data source file information and field overrides map.
      */
     private static CosmicFuncotationFactory createCosmicDataSource(final Path dataSourceFile,
                                                                 final Properties dataSourceProperties,
-                                                                final LinkedHashMap<String, String> annotationOverridesMap) {
+                                                                final LinkedHashMap<String, String> annotationOverridesMap,
+                                                                   final int minBasesForValidSegment) {
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
@@ -469,7 +539,8 @@ final public class DataSourceUtils {
                         resolveFilePathStringFromKnownPath(dataSourceProperties.getProperty(CONFIG_FILE_FIELD_NAME_SRC_FILE), dataSourceFile),
                         annotationOverridesMap,
                         version,
-                        isB37
+                        isB37,
+                minBasesForValidSegment
                 );
     }
 
@@ -482,6 +553,7 @@ final public class DataSourceUtils {
      * @param userTranscriptIdSet {@link Set} of {@link String}s containing transcript IDs of interest to be selected for first.  Must not be {@code null}.
      * @param featureInput The {@link FeatureInput<? extends Feature>} object for the Gencode data source we are creating.
      * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @param isSegmentFuncotationEnabled Do we want to allow the output Gencode Funcotation Factory to do segment annotations?  If false,
      *                                    segments will be funcotated with variant classifications of
      *                                    {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#COULD_NOT_DETERMINE}
@@ -493,8 +565,9 @@ final public class DataSourceUtils {
                                                                      final TranscriptSelectionMode transcriptSelectionMode,
                                                                      final Set<String> userTranscriptIdSet,
                                                                      final FeatureInput<? extends Feature> featureInput,
-                                                                     final FlankSettings flankSettings, final boolean isSegmentFuncotationEnabled) {
-
+                                                                     final FlankSettings flankSettings,
+                                                                     final boolean isSegmentFuncotationEnabled,
+                                                                     final int minBasesForValidSegment) {
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
@@ -521,7 +594,9 @@ final public class DataSourceUtils {
                 featureInput,
                 flankSettings,
                 isB37,
-                ncbiBuildVersion, isSegmentFuncotationEnabled
+                ncbiBuildVersion,
+                isSegmentFuncotationEnabled,
+                minBasesForValidSegment
             );
     }
 
@@ -531,12 +606,14 @@ final public class DataSourceUtils {
      * @param dataSourceProperties {@link Properties} consisting of the contents of the config file for the data source.  Must not be {@code null}.
      * @param annotationOverridesMap {@link LinkedHashMap}{@code <String->String>} containing any annotation overrides to be included in the resulting data source.  Must not be {@code null}.
      * @param featureInput The {@link FeatureInput<? extends Feature>} object for the VCF data source we are creating.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
      * @return A new {@link GencodeFuncotationFactory} based on the given data source file information, field overrides map, and transcript information.
      */
     private static VcfFuncotationFactory createVcfDataSource(final Path dataSourceFile,
                                                              final Properties dataSourceProperties,
                                                              final LinkedHashMap<String, String> annotationOverridesMap,
-                                                             final FeatureInput<? extends Feature> featureInput) {
+                                                             final FeatureInput<? extends Feature> featureInput,
+                                                             final int minBasesForValidSegment) {
 
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
@@ -555,7 +632,8 @@ final public class DataSourceUtils {
                 resolveFilePathStringFromKnownPath(srcFile, dataSourceFile),
                 annotationOverridesMap,
                 featureInput,
-                isB37
+                isB37,
+                minBasesForValidSegment
         );
     }
 
@@ -610,7 +688,7 @@ final public class DataSourceUtils {
                 Integer versionYear      = null;
                 Integer versionMonth     = null;
                 Integer versionDay       = null;
-                String  versionDecorator = null;
+                String  versionDecorator;
                 String  source           = null;
                 String  alternateSource  = null;
 
@@ -693,10 +771,12 @@ final public class DataSourceUtils {
 
         // Warn the user if they need newer stuff.
         if ( !dataSourcesPathIsAcceptable ) {
-
             String message = "";
-            message = message + "ERROR: Given data source path is too old!  Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + " (yours: " + version + ")\n";
-            message = message + "       You must download a newer version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH + "\n";
+            message = message + "ERROR: Given data source path is too old or too new!  \n";
+            message = message + "       Minimum required version is: " + CURRENT_MINIMUM_DATA_SOURCE_VERSION + "\n";
+            message = message + "       Maximum allowed version is:  " + CURRENT_MAXIMUM_DATA_SOURCE_VERSION + "\n";
+            message = message + "       Yours:                       " + version + "\n";
+            message = message + "       You must download a compatible version of the data sources from the Broad Institute FTP site: " + DATA_SOURCES_FTP_PATH + "\n";
             message = message + "       or the Broad Institute Google Bucket: " + DATA_SOURCES_BUCKET_PATH + "\n";
             throw new UserException( message );
         }
@@ -704,35 +784,38 @@ final public class DataSourceUtils {
         return dataSourcesPathIsAcceptable;
     }
 
+    /**
+     * Checks that the version information given is within the valid range for data source versions.
+     *
+     * @param major int containing the major version number to be checked.
+     * @param minor int containing the minor version number to be checked.
+     * @param year int containing the year version number to be checked.RecQ DNA helicase WRN
+     * @param month int containing the month version number to be checked.
+     * @param day int containing the day version number to be checked.
+     *
+     * @return {@code true} iff the given version information is valid for the current data source ranges.  {@code false} otherwise.
+     */
     @VisibleForTesting
     static boolean validateVersionInformation(final int major, final int minor, final int year, final int month, final int day) {
 
-        // Compare from largest to smallest differences:
-
-        if ( major < MIN_MAJOR_VERSION_NUMBER ) {
+        // Compare Major Version:
+        if ((major < MIN_MAJOR_VERSION_NUMBER) || (major > MAX_MAJOR_VERSION_NUMBER)) {
             return false;
         }
 
-        if ( minor <  MIN_MINOR_VERSION_NUMBER ) {
+        // Compare minor version if we're on the edge of versions:
+        if ( major == MIN_MAJOR_VERSION_NUMBER && minor < MIN_MINOR_VERSION_NUMBER ) {
+            return false;
+        }
+        if ( major == MAX_MAJOR_VERSION_NUMBER && minor > MAX_MINOR_VERSION_NUMBER ) {
             return false;
         }
 
-        if ( year < MIN_YEAR_RELEASED ) {
-            return false;
-        }
+        // Now make sure the date is between or equal to the min and max date:
+        final LocalDate versionDate = LocalDate.of(year, month, day);
 
-        else if ( year == MIN_YEAR_RELEASED ) {
-            if ( month < MIN_MONTH_RELEASED ) {
-                return false;
-            }
-            else if ( month == MIN_MONTH_RELEASED ) {
-                if ( day < MIN_DAY_RELEASED ) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        // A valid date is between min and max date inclusive.
+        return (!versionDate.isBefore(MIN_DATE)) && (!versionDate.isAfter(MAX_DATE));
     }
 
     // ========================================================================================================

@@ -12,12 +12,12 @@ import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResult;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.NearbyKmerErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadErrorCorrector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -28,11 +28,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class ReadThreadingAssembler {
     private static final Logger logger = LogManager.getLogger(ReadThreadingAssembler.class);
 
-    private static final int DEFAULT_NUM_PATHS_PER_GRAPH = 128;
+    static final int DEFAULT_NUM_PATHS_PER_GRAPH = 128;
     private static final int KMER_SIZE_ITERATION_INCREASE = 10;
     private static final int MAX_KMER_ITERATIONS_TO_ATTEMPT = 6;
 
@@ -44,6 +45,7 @@ public final class ReadThreadingAssembler {
     private boolean recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = true;
     private final int numPruningSamples;
     private final int numBestHaplotypesPerGraph;
+    private final boolean pruneBeforeCycleCounting;
 
     private boolean removePathsNotConnectedToRef = true;
     private boolean justReturnRawGraph = false;
@@ -64,6 +66,7 @@ public final class ReadThreadingAssembler {
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
+    private int minMatchingBasesToDanglingEndRecovery;
 
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
     private File graphOutputPath = null;
@@ -75,32 +78,40 @@ public final class ReadThreadingAssembler {
                                   final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef,
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
-                                  final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs) {
+                                  final double pruningSeedingLogOddsThreshold, final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs,
+                                  final boolean enableLegacyGraphCycleDetection, final int minMachingBasesToDanglngEndRecovery) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
-        this.kmerSizes = new ArrayList<>(kmerSizes);
-        kmerSizes.sort(Integer::compareTo);
+        this.kmerSizes = kmerSizes.stream().sorted(Integer::compareTo).collect(Collectors.toList());
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
         this.pruneFactor = pruneFactor;
         this.generateSeqGraph = !useLinkedDebruijnGraphs;
+        this.pruneBeforeCycleCounting = !enableLegacyGraphCycleDetection;
         if (!generateSeqGraph) {
             logger.error("JunctionTreeLinkedDeBruijnGraph is enabled.\n This is an experimental assembly graph mode that has not been fully validated\n\n");
         }
 
-        chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants) :
+        chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, pruningSeedingLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
+        this.minMatchingBasesToDanglingEndRecovery = minMachingBasesToDanglngEndRecovery;
     }
 
     @VisibleForTesting
     ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final int pruneFactor) {
-        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, Integer.MAX_VALUE, false);
+        this(maxAllowedPathsForReadThreadingAssembler, kmerSizes, true, true, 1, pruneFactor, false, 0.001, 2, 2, Integer.MAX_VALUE, false, false, 3);
     }
 
     @VisibleForTesting
     ReadThreadingAssembler() {
         this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25), 2);
+    }
+
+    // this method should not be used, only exposed for testing purposes. This should be set in the constructor.
+    @VisibleForTesting
+    void setMinMatchingBasesToDanglingEndRecovery(final int mimMatchingBases) {
+        this.minMatchingBasesToDanglingEndRecovery = mimMatchingBases;
     }
 
     /**
@@ -129,8 +140,11 @@ public final class ReadThreadingAssembler {
         Utils.validateArg( fullReferenceWithPadding.length == refLoc.size(), "Reference bases and reference loc must be the same size.");
         ParamUtils.isPositiveOrZero(pruneFactor, "Pruning factor cannot be negative");
 
-        // Note that error correction does not modify the original reads, which are used for genotyping
-        final List<GATKRead> correctedReads = readErrorCorrector == null ? assemblyRegion.getReads() : readErrorCorrector.correctReads(assemblyRegion.getReads());
+        // Note that error correction does not modify the original reads, which are used for genotyping TODO this might come before error correction /
+        List<GATKRead> correctedReads = readErrorCorrector == null ? assemblyRegion.getReads() : readErrorCorrector.correctReads(assemblyRegion.getReads());
+
+        // Revert clipped bases if necessary (since we do not want to assemble them)
+        correctedReads = correctedReads.stream().map(r -> ReadClipper.hardClipSoftClippedBases(r)).collect(Collectors.toList());
 
         final List<AbstractReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
@@ -316,6 +330,7 @@ public final class ReadThreadingAssembler {
                     assemblyResult.setContainsSuspectHaplotypes(true);
                 }
                 final Haplotype h = kBestHaplotype.haplotype();
+                h.setKmerSize(kBestHaplotype.getGraph().getKmerSize());
 
                 if (!returnHaplotypes.contains(h)) {
                     // TODO this score seems to be irrelevant at this point...
@@ -334,9 +349,25 @@ public final class ReadThreadingAssembler {
                         // N cigar elements means that a bubble was too divergent from the reference so skip over this path
                         continue;
                     } else if (cigar.getReferenceLength() != refHaplotype.getCigar().getReferenceLength()) { // SW failure
-                        throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length "
-                                + cigar.getReferenceLength() + " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength()
-                                + " ref = " + refHaplotype + " path " + new String(h.getBases()));
+                        final Cigar cigarWithIndelStrategy = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, SWOverhangStrategy.INDEL);
+                        // the SOFTCLIP strategy can produce a haplotype cigar that matches the beginning of the reference and
+                        // skips the latter part of the reference.  For example, when padded haplotype = NNNNNNNNNN[sequence 1]NNNNNNNNNN
+                        // and padded ref = NNNNNNNNNN[sequence 1][sequence 2]NNNNNNNNNN, the alignment may choose to align only sequence 1.
+                        // If aligning with an indel strategy produces a cigar with deletions for sequence 2 (which is reflected in the
+                        // reference length of the cigar matching the reference length of the ref haplotype), then the assembly window was
+                        // simply too small to reliably resolve the deletion; it should only throw an IllegalStateException when aligning
+                        // with the INDEL strategy still produces discrepant reference lengths.
+                        // You might wonder why not just use the INDEL strategy from the beginning.  This is because the SOFTCLIP strategy only fails
+                        // when there is insufficient flanking sequence to resolve the cigar unambiguously.  The INDEL strategy would produce
+                        // valid but most likely spurious indel cigars.
+                        if (cigarWithIndelStrategy.getReferenceLength() == refHaplotype.getCigar().getReferenceLength()) {
+                            failedCigars++;
+                            continue;
+                        } else {
+                            throw new IllegalStateException("Smith-Waterman alignment failure. Cigar = " + cigar + " with reference length "
+                                    + cigar.getReferenceLength() + " but expecting reference length of " + refHaplotype.getCigar().getReferenceLength()
+                                    + " ref = " + refHaplotype + " path " + new String(h.getBases()));
+                        }
                     }
 
                     h.setCigar(cigar);
@@ -587,8 +618,8 @@ public final class ReadThreadingAssembler {
         }
 
         // TODO figure out how you want to hook this in
-        final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples) :
-                new JunctionTreeLinkedDeBruijnGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
+        final AbstractReadThreadingGraph rtgraph = generateSeqGraph ? new ReadThreadingGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMatchingBasesToDanglingEndRecovery) :
+                new JunctionTreeLinkedDeBruijnGraph(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, minMatchingBasesToDanglingEndRecovery);
 
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
@@ -603,10 +634,16 @@ public final class ReadThreadingAssembler {
         // actually build the read threading graph
         rtgraph.buildGraphIfNecessary();
 
+        if (debugGraphTransformations) {
+            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
+        }
+
         // It's important to prune before recovering dangling ends so that we don't waste time recovering bad ends.
         // It's also important to prune before checking for cycles so that sequencing errors don't create false cycles
         // and unnecessarily abort assembly
-        chainPruner.pruneLowWeightChains(rtgraph);
+        if (pruneBeforeCycleCounting) {
+            chainPruner.pruneLowWeightChains(rtgraph);
+        }
 
         // sanity check: make sure there are no cycles in the graph, unless we are in experimental mode
         if ( generateSeqGraph && rtgraph.hasCycles() ) {
@@ -633,8 +670,12 @@ public final class ReadThreadingAssembler {
     }
 
     private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
+        if (!pruneBeforeCycleCounting) {
+            chainPruner.pruneLowWeightChains(rtgraph);
+        }
+
         if (debugGraphTransformations) {
-            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
+            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.chain_pruned_readthreading_graph.dot");
         }
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
@@ -650,14 +691,14 @@ public final class ReadThreadingAssembler {
         }
 
         if (debugGraphTransformations) {
-            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.cleaned_readthreading_graph.dot");
+            printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.cleaned_readthreading_graph.dot");
         }
 
         // Either return an assembly result with a sequence graph or with an unchanged sequence graph deptending on the kmer duplication behavior
         if (generateSeqGraph) {
             final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
             if (debugGraphTransformations) {
-                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.1.initial_seqgraph.dot"), 10000);
+                rtgraph.printGraph(new File(debugGraphOutputPath, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.3.initial_seqgraph.dot"), 10000);
             }
 
             // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
@@ -669,7 +710,7 @@ public final class ReadThreadingAssembler {
                 logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
             }
             if (debugGraphTransformations) {
-                printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
+                printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.4.initial_seqgraph.dot");
             }
             initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 

@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -43,8 +44,14 @@ import java.util.stream.Stream;
 
 public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
+    // If true, update the expected outputs in tests that assert an exact match vs. prior output,
+    // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=GenotypeGVCFsIntegrationTest"
+    // to update all of the exact-match tests at once. After you do this, you should look at the
+    // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
+    private static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
-     private static final String BASE_PAIR_EXPECTED = "gvcf.basepairResolution.gatk3.7_30_ga4f720357.output.vcf";
+    private static final String BASE_PAIR_EXPECTED = "gvcf.basepairResolution.gatk3.7_30_ga4f720357.output.vcf";
     private static final String b38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
     private static final String BASE_PAIR_GVCF = "gvcf.basepairResolution.gvcf";
     private static final double TLOD_THRESHOLD = 4.0;
@@ -163,6 +170,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     /*
+     * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on
+     */
+    @Test
+    public void assertThatExpectedOutputUpdateToggleIsDisabled() {
+        Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled");
+    }
+
+    /*
     This test is useful for testing changes in GATK4 versus different versions of GATK3.
     To use, set GATK3_PATH to point to a particular version of gatk, then enable this test and run.
 
@@ -220,8 +235,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     //this is different from the above data provider because we can currently only load a single interval into a genomics db in a sane way
     //so we need to provide a list of intervals and then look at each one
     public Object[][] getGVCFsForGenomicsDB(){
-
-
         return new Object[][]{
                 {getTestFile(BASE_PAIR_GVCF), getTestFile(BASE_PAIR_EXPECTED), new SimpleInterval("20", 1, 11_000_000), b37_reference_20_21},
                 {CEUTRIO_20_21_GATK3_4_G_VCF, getTestFile("CEUTrio.20.gatk3.7_30_ga4f720357.expected.vcf"), new SimpleInterval("20", 1, 11_000_000), b37_reference_20_21},
@@ -244,10 +257,26 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     //this only tests single-sample
     @Test(dataProvider = "getGVCFsForGenomicsDB", timeOut = 1000000)
-    public void assertMatchingGenotypesFromTileDB(File input, File expected, Locatable interval, String reference) throws IOException {
+    public void assertMatchingGenotypesFromGenomicsDB(File input, File expected, Locatable interval, String reference) throws IOException {
         final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, interval);
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
         runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, NO_EXTRA_ARGS, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
+
+        // The default option with GenomicsDB input uses VCFCodec for decoding, test BCFCodec explicitly
+        final List<String> args = new ArrayList<String>();
+        args.add("--"+GenomicsDBArgumentCollection.USE_BCF_CODEC_LONG_NAME);
+        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, args, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
+    }
+
+    private void runAndCheckGenomicsDBOutput(final ArgumentsBuilder args, final File expected, final File output) {
+        Utils.resetRandomGenerator();
+        runCommandLine(args);
+
+        // Note that if this isn't working it will take *FOREVER*
+        // runs in 0.06 minutes with no input intervals specfied
+        final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
+        assertForEachElementInLists(actualVC, expectedVC, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes);
     }
 
     @Test(dataProvider = "getGVCFsForGenomicsDBOverMultipleIntervals")
@@ -259,21 +288,17 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
-                .add("V", genomicsDBUri)
-                .addOutput(output);
+                .add("V", genomicsDBUri);
+        args.addOutput(output);
         intervals.forEach(args::addInterval);
         args.addRaw("--" + GenomicsDBImport.MERGE_INPUT_INTERVALS_LONG_NAME);
         args.addRaw("--only-output-calls-starting-in-intervals");  //note that this will restrict calls to just the specified intervals
 
-        Utils.resetRandomGenerator();
-        runCommandLine(args);
+        runAndCheckGenomicsDBOutput(args, expected, output);
 
-        //Note that if this isn't working it will take *FOREVER*
-        // runs in 0.06 minutes with no input intervals specfied
-        final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
-        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
-        assertForEachElementInLists(actualVC, expectedVC, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes);
-
+        // The default option with GenomicsDB input uses VCFCodec for decoding, test BCFCodec explicitly
+        args.addRaw("--"+GenomicsDBArgumentCollection.USE_BCF_CODEC_LONG_NAME);
+        runAndCheckGenomicsDBOutput(args, expected, output);
     }
 
     //this tests single-sample with new MQ format
@@ -285,6 +310,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(IOUtils.getPath(expected.getAbsolutePath())));
         final List<String> attributesToFilter = Stream.concat(ATTRIBUTES_WITH_JITTER.stream(), ATTRIBUTES_TO_IGNORE.stream()).collect(Collectors.toList());
         runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, NO_EXTRA_ARGS, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
+
+        // The default option with GenomicsDB input uses VCFCodec for decoding, test BCFCodec explicitly
+        final List<String> args = new ArrayList<String>();
+        args.add("--"+GenomicsDBArgumentCollection.USE_BCF_CODEC_LONG_NAME);
+        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, args, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
     }
 
     @Test(dataProvider = "gvcfsToGenotype")
@@ -338,12 +368,13 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     private void runGenotypeGVCFSAndAssertSomething(String input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
-        final File output = createTempFile("genotypegvcf", ".vcf");
+        final File output = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected : createTempFile("genotypegvcf", ".vcf");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
                 .add("V", input)
                 .addFlag(RMSMappingQuality.RMS_MAPPING_QUALITY_OLD_BEHAVIOR_OVERRIDE_ARGUMENT)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
                 .addOutput(output);
 
         additionalArguments.forEach(args::addRaw);
@@ -351,12 +382,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
         runCommandLine(args);
 
-        final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
-        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
-        try {
-            assertForEachElementInLists(actualVC, expectedVC, assertion);
-        } catch (final AssertionError error) {
-            throw error;
+        if (! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
+            final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
+            final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
+            try {
+                assertForEachElementInLists(actualVC, expectedVC, assertion);
+            } catch (final AssertionError error) {
+                throw error;
+            }
         }
     }
 

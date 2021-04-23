@@ -5,9 +5,11 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 
 import java.io.Serializable;
@@ -23,8 +25,9 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
 
     public static final String GQ_BAND_LONG_NAME = "gvcf-gq-bands";
     public static final String GQ_BAND_SHORT_NAME = "GQB";
-    public static final String CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "correct-overlapping-quality";
+    public static final String DO_NOT_CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "do-not-correct-overlapping-quality";
     public static final String OUTPUT_BLOCK_LOWER_BOUNDS = "floor-blocks";
+    public static final String DRAGEN_GATK_MODE_LONG_NAME = "dragen-mode";
 
 
     @ArgumentCollection
@@ -119,6 +122,41 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
             optional = true)
     public boolean disableOptimizations = false;
 
+    /**
+     * These arguments are associated with DRAGEN-GATK
+     */
+
+    /**
+     * DRAGEN-GATK mode changes a long list of arguments to support running DRAGEN-GATK with FRD + BQD + STRE (with or without
+     * a provided STRE table provided):
+     *
+     *
+     */
+    @Argument(fullName = DRAGEN_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).")
+    public Boolean dragenMode = false;
+    @Advanced
+    @Argument(fullName = "apply-bqd", doc = "If enabled this argument will apply the DRAGEN-GATK BaseQualityDropout model to the genotyping model for filtering sites due to Linked Error mode.", optional = true)
+    public boolean applyBQD = false;
+    @Advanced
+    @Argument(fullName = "apply-frd", doc = "If enabled this argument will apply the DRAGEN-GATK ForeignReadDetection model to the genotyping model for filtering sites.", optional = true)
+    public boolean applyFRD = false;
+    @Advanced
+    @Argument(fullName = "disable-spanning-event-genotyping", doc = "If enabled this argument will disable inclusion of the '*' spanning event when genotyping events that overlap deletions", optional = true)
+    public boolean disableSpanningEventGenotyping = false;
+    @Advanced
+    @Argument(fullName = "transform-dragen-mapping-quality", doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
+    public boolean transformDRAGENMapQ = false;
+    //TODO NOTE TO THE REVIEWER, THIS ARGUMENT IS INSUFFICIENT BOTH THIS AND --minimum-mapping-quality must be set, unfortunatley
+    //TODO they can't be unified since the toolDefaultReadFilters get instantiated before this field gets populated, and we can't
+    //TODO pull the threshold from that filter since it might or might not exist by the time we go to filter for threading, really
+    //TODO we should unify on the readFilter version of this check i think but perhaps they are seperate for athropological historical reasons and it is thus culturally protected?
+    @Advanced
+    @Argument(fullName = "mapping-quality-threshold-for-genotyping", doc = "Control the threshold for discounting reads from the genotyper due to mapping quality after the active region detection and assembly steps but before genotyping. NOTE: this is in contrast to the --"+ ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME+" argument which filters reads from all parts of the HaplotypeCaller. If you would like to call genotypes with a different threshold both arguments must be set.", optional = true)
+    public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
+    @Advanced
+    @Argument(fullName = "max-effective-depth-adjustment-for-frd", doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)
+    public int maxEffectiveDepthAdjustment = 0;
+
     @Hidden
     @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
     public String keepRG = null;
@@ -134,7 +172,12 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Hidden
     @Advanced
     @Argument(fullName="debug-assembly-region-state", doc="Write output files for assembled regions with read summaries and called haplotypes to the specified path", optional = true)
-    public String assemblyStateOutput = null;
+    public GATKPath assemblyStateOutput = null;
+
+    @Hidden
+    @Advanced
+    @Argument(fullName="debug-genotyper-output", doc ="Location to write genotyper debug stream that contains detailed information about the internal state of the genotyepr", optional = true)
+    public String genotyperDebugOutStream = null;
 
     /**
      * This argument is intended for benchmarking and scalability testing.
@@ -150,7 +193,11 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME,  doc = "Disable physical phasing", optional = true)
     public boolean doNotRunPhysicalPhasing = false;
 
-    @Argument(fullName = CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME)
+    /**
+     * Base quality is capped at half of PCR error rate for bases where read and mate overlap, to account for full correlation of PCR errors at these bases.  This argument disables that correction.
+     */
+    @Advanced
+    @Argument(fullName = DO_NOT_CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME, doc = "Disable overlapping base quality correction")
     public boolean doNotCorrectOverlappingBaseQualities = false;
 
     @Advanced

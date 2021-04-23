@@ -786,24 +786,30 @@ public final class AlignmentUtilsUnitTest {
     // given a read string and a reference string over the same context, test with different permutations of clipping
     // and preceding/following reference bases
     private void testWithClipsAndReferenceContext(final String refString, final String readString, final String originalCigar, final String expectedCigar) {
-        for (int leadingSoftClips : new int[] {0, 5}) {
-            for (int trailingSoftClips : new int[] {0, 5}) {
-                for (int extraRefInFront : new int[] {0, 10}) {
-                    for (int extraRefInBack : new int[] {0, 10}) {
-                        final byte[] readBases = new byte[readString.length() + leadingSoftClips + trailingSoftClips];
-                        final byte[] refBases = new byte[refString.length() + leadingSoftClips + trailingSoftClips + extraRefInFront + extraRefInBack];
-                        BaseUtils.fillWithRandomBases(readBases, 0, leadingSoftClips);
-                        BaseUtils.fillWithRandomBases(readBases, leadingSoftClips + readString.length(), readBases.length);
-                        System.arraycopy(readString.getBytes(), 0, readBases, leadingSoftClips, readString.length());
+        for (int leadingHardClips : new int[] {0, 5}) {
+            for (int trailingHardClips : new int[]{0, 5}) {
+                for (int leadingSoftClips : new int[]{0, 5}) {
+                    for (int trailingSoftClips : new int[]{0, 5}) {
+                        for (int extraRefInFront : new int[]{0, 10}) {
+                            for (int extraRefInBack : new int[]{0, 10}) {
+                                final byte[] readBases = new byte[readString.length() + leadingSoftClips + trailingSoftClips];
+                                final byte[] refBases = new byte[refString.length() + extraRefInFront + extraRefInBack];
+                                BaseUtils.fillWithRandomBases(readBases, 0, leadingSoftClips);
+                                BaseUtils.fillWithRandomBases(readBases, leadingSoftClips + readString.length(), readBases.length);
+                                System.arraycopy(readString.getBytes(), 0, readBases, leadingSoftClips, readString.length());
 
-                        BaseUtils.fillWithRandomBases(refBases, 0, extraRefInFront + leadingSoftClips);
-                        BaseUtils.fillWithRandomBases(refBases, extraRefInFront + leadingSoftClips + refString.length(), refBases.length);
-                        System.arraycopy(refString.getBytes(), 0, refBases, extraRefInFront + leadingSoftClips, refString.length());
-                        final String originalCigarWithClips = (leadingSoftClips > 0 ? leadingSoftClips + "S" : "") + originalCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "");
-                        final String expectedCigarWithClips = (leadingSoftClips > 0 ? leadingSoftClips + "S" : "") + expectedCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "");
+                                BaseUtils.fillWithRandomBases(refBases, 0, extraRefInFront);
+                                BaseUtils.fillWithRandomBases(refBases, extraRefInFront + refString.length(), refBases.length);
+                                System.arraycopy(refString.getBytes(), 0, refBases, extraRefInFront, refString.length());
+                                final String originalCigarWithClips = (leadingHardClips > 0 ? leadingHardClips + "H" : "") + (leadingSoftClips > 0 ? leadingSoftClips + "S" : "")
+                                        + originalCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "") + (trailingHardClips > 0 ? trailingHardClips + "H" : "");
+                                final String expectedCigarWithClips = (leadingHardClips > 0 ? leadingHardClips + "H" : "") + (leadingSoftClips > 0 ? leadingSoftClips + "S" : "") +
+                                        expectedCigar + (trailingSoftClips > 0 ? trailingSoftClips + "S" : "") + (trailingHardClips > 0 ? trailingHardClips + "H" : "");
 
-                        final Cigar result = AlignmentUtils.leftAlignIndels(TextCigarCodec.decode(originalCigarWithClips), refBases, readBases, extraRefInFront + leadingSoftClips);
-                        Assert.assertEquals(result.toString(), expectedCigarWithClips);
+                                final Cigar result = AlignmentUtils.leftAlignIndels(TextCigarCodec.decode(originalCigarWithClips), refBases, readBases, extraRefInFront).getCigar();
+                                Assert.assertEquals(result.toString(), expectedCigarWithClips);
+                            }
+                        }
                     }
                 }
             }
@@ -993,6 +999,30 @@ public final class AlignmentUtilsUnitTest {
         return tests.toArray(new Object[][]{});
     }
 
+    @DataProvider(name = "AppendClippedElementsFromOriginalCigarData")
+    public Object[][] testAppendClippedElementsFromOriginalCigar() {
+        List<Object[]> tests = new ArrayList<>();
+        tests.add(new Object[]{"30M", "30M", "30M"});
+        tests.add(new Object[]{"30M", "15M6I15M", "15M6I15M"});
+        tests.add(new Object[]{"5S30M", "30M", "5S30M"});
+        tests.add(new Object[]{"5H30M", "30M", "5H30M"});
+        tests.add(new Object[]{"5H5S30M", "30M", "5H5S30M"});
+        tests.add(new Object[]{"30M5H", "30M", "30M5H"});
+        tests.add(new Object[]{"30M5S", "30M", "30M5S"});
+        tests.add(new Object[]{"10H30M5S5H", "30M", "10H30M5S5H"});
+        tests.add(new Object[]{"10H10M6D6M6D50M5S5H", "10M6I50M", "10H10M6I50M5S5H"});
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "AppendClippedElementsFromOriginalCigarData")
+    public void testAppendClippedElementsFromOriginalCigar(final String originalCigarString, final String shiftedCigarString, final String expectedString) {
+        final Cigar originalCigar = TextCigarCodec.decode(originalCigarString);
+        final Cigar shiftedCigar = TextCigarCodec.decode(shiftedCigarString);
+        final Cigar expectedCigar = TextCigarCodec.decode(expectedString);
+        final Cigar actualCigar = AlignmentUtils.appendClippedElementsFromCigarToCigar(shiftedCigar, originalCigar);
+        Assert.assertEquals(actualCigar, expectedCigar);
+    }
+
     @Test(dataProvider = "ApplyCigarToCigarData", enabled = !DEBUG)
     public void testApplyCigarToCigar(final String firstToSecondString, final String secondToThirdString, final String expectedCigarString) {
         final Cigar firstToSecond = TextCigarCodec.decode(firstToSecondString);
@@ -1041,6 +1071,10 @@ public final class AlignmentUtilsUnitTest {
         tests.add(new Object[]{"ACTTGT", 1, 2, "2M2I2M", "CTTG"});
         tests.add(new Object[]{"ACTTGT", 2, 2, "2M2I2M", "G"});
         tests.add(new Object[]{"ACTTGT", 1, 1, "2M2I2M", "C"});
+
+        // leading and terminal insertions - test that they are excluded
+        tests.add(new Object[]{"ACTTGT", 0, 3, "2I4M", "TTGT"});
+        tests.add(new Object[]{"ACTTGT", 0, 3, "4M2I", "ACTT"});
 
         tests.add(new Object[]{"ACGT", 0, 1, "2M2I", "AC"});
         tests.add(new Object[]{"ACGT", 1, 1, "2M2I", "C"});

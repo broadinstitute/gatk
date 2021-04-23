@@ -318,9 +318,43 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final FeatureInput<? extends Feature> mainFeatureInput,
                                      final FlankSettings flankSettings,
                                      final boolean isDataSourceB37,
-                                     final String ncbiBuildVersion, final boolean isSegmentFuncotationEnabled) {
+                                     final String ncbiBuildVersion,
+                                     final boolean isSegmentFuncotationEnabled) {
+        this(gencodeTranscriptFastaFilePath, version, name,
+                transcriptSelectionMode, userRequestedTranscripts, annotationOverrides, mainFeatureInput,
+                flankSettings, isDataSourceB37, ncbiBuildVersion, isSegmentFuncotationEnabled,
+                FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT);
+    }
 
-        super(mainFeatureInput);
+        /**
+         * Create a {@link GencodeFuncotationFactory}.
+         *
+         * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
+         * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
+         * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
+         * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
+         * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
+         * @param annotationOverrides A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+         * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
+         * @param flankSettings Settings object containing our 5'/3' flank sizes
+         * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link GencodeFuncotationFactory} contains B37 data.
+         * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
+         * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
+         */
+    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
+                                     final String version,
+                                     final String name,
+                                     final TranscriptSelectionMode transcriptSelectionMode,
+                                     final Set<String> userRequestedTranscripts,
+                                     final LinkedHashMap<String, String> annotationOverrides,
+                                     final FeatureInput<? extends Feature> mainFeatureInput,
+                                     final FlankSettings flankSettings,
+                                     final boolean isDataSourceB37,
+                                     final String ncbiBuildVersion,
+                                     final boolean isSegmentFuncotationEnabled,
+                                     final int minBasesForValidSegment) {
+
+        super(mainFeatureInput, minBasesForValidSegment);
 
         // Set up our local transcript fasta file.
         // We must localize it (if not on disk) to make read times fast enough to be manageable:
@@ -456,7 +490,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     @Override
     protected List<Funcotation> createDefaultFuncotationsOnVariant( final VariantContext variant, final ReferenceContext referenceContext ) {
-        if (FuncotatorUtils.isSegmentVariantContext(variant)) {
+
+        if (FuncotatorUtils.isSegmentVariantContext(variant, minBasesForValidSegment)) {
             return createSegmentFuncotations(variant, Collections.emptyList(), null, null, null, null);
         } else {
             // Simply create IGR
@@ -1044,11 +1079,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Before we get started, check to see if this is a non-protein-coding feature.
         // If it is, we must handle it differently:
-        if ( transcript.getGeneType() != GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING) {
-            return createCodingRegionFuncotationForNonProteinCodingFeature(variant, altAllele, reference, transcript, exon);
+        if ( GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
+            return createCodingRegionFuncotationForProteinCodingFeature(variant, altAllele, reference, transcript, exon);
         }
         else {
-            return createCodingRegionFuncotationForProteinCodingFeature(variant, altAllele, reference, transcript, exon);
+            return createCodingRegionFuncotationForNonProteinCodingFeature(variant, altAllele, reference, transcript, exon);
         }
     }
 
@@ -1270,7 +1305,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Sort by exon number first:
         transcript.getExons().sort((lhs, rhs) -> lhs.getExonNumber() < rhs.getExonNumber() ? -1 : (lhs.getExonNumber() > rhs.getExonNumber() ) ? 1 : 0 );
 
-        final List<Locatable> regionList = new ArrayList<>(transcript.getExons().size());
+        final List<GencodeGtfFeature> regionList = new ArrayList<>(transcript.getExons().size());
         for ( final GencodeGtfExonFeature exon : transcript.getExons() ) {
 
             // Add in a CDS region:
@@ -1302,6 +1337,15 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                 regionList.add( exon.getStopCodon() );
             }
         }
+
+        // Now we have to sort by the transcript direction because of assumptions in the code later.
+        // If the transcript is in the + direction, we don't do anything.
+        // For - transcripts, we sort in order by reverse starting position.
+        // This is a fix for issue https://github.com/broadinstitute/gatk/issues/7051
+        if (transcript.getGenomicStrand() == Strand.NEGATIVE) {
+            regionList.sort(Comparator.comparingInt(GencodeGtfFeature::getStart).reversed());
+        }
+
         return regionList;
     }
 
@@ -1656,7 +1700,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
 
         // Set the VariantClassification:
-        if ( transcript.getGeneType() == GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING ) {
+        if ( GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
             gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.INTRON);
         }
         else {
@@ -2692,84 +2736,20 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Converts a given {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType} to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
-     * Assumes the given {@code type} is not {@link GencodeGtfFeature.GeneTranscriptType#PROTEIN_CODING}.
+     * Converts a given GeneTranscriptType {@link String} to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
+     * Assumes the given {@code type} is not {@link GencodeGtfFeature.KnownGeneBiotype#PROTEIN_CODING}.
      * If no type can be assessed, returns {@code null}.
-     * @param type A {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType} to convert to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
-     * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} representing the given {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType}, or {@code null}.
+     * @param type A {@link String} representing a GeneTranscriptType to convert to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
+     * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} representing the given GeneTranscriptType {@link String}, or {@code null}.
      */
-    private static GencodeFuncotation.VariantClassification convertGeneTranscriptTypeToVariantClassification (final GencodeGtfFeature.GeneTranscriptType type ) {
+    private static GencodeFuncotation.VariantClassification convertGeneTranscriptTypeToVariantClassification (final String type ) {
 
-        //TODO: This all needs to be fixed so there is a 1:1 mapping of GeneTranscriptType->VariantClassification - Issue #4405
-        switch (type) {
-//             case IG_C_GENE:				            break;
-//             case IG_D_GENE:				            break;
-//             case IG_J_GENE:				            break;
-//             case IG_LV_GENE:				            break;
-//             case IG_V_GENE:				            break;
-//             case TR_C_GENE:				            break;
-//             case TR_J_GENE:				            break;
-//             case TR_V_GENE:				            break;
-//             case TR_D_GENE:				            break;
-//             case IG_PSEUDOGENE:			            break;
-//             case IG_C_PSEUDOGENE:			            break;
-//             case IG_J_PSEUDOGENE:			            break;
-//             case IG_V_PSEUDOGENE:			            break;
-//             case TR_V_PSEUDOGENE:			            break;
-//             case TR_J_PSEUDOGENE:			            break;
-             case MT_RRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case MT_TRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case MIRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case MISC_RNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case RRNA:					                return GencodeFuncotation.VariantClassification.RNA;
-             case SCRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case SNRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case SNORNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case RIBOZYME:					            return GencodeFuncotation.VariantClassification.RNA;
-             case SRNA:					                return GencodeFuncotation.VariantClassification.RNA;
-             case SCARNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case MT_TRNA_PSEUDOGENE:		            return GencodeFuncotation.VariantClassification.RNA;
-             case TRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-             case SNORNA_PSEUDOGENE:		            return GencodeFuncotation.VariantClassification.RNA;
-             case SNRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-             case SCRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-             case RRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-             case MISC_RNA_PSEUDOGENE:		            return GencodeFuncotation.VariantClassification.RNA;
-             case MIRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-//             case TEC:					                break;
-//             case NONSENSE_MEDIATED_DECAY:	            break;
-//             case NON_STOP_DECAY:			            break;
-//             case RETAINED_INTRON:			            break;
-//             case PROTEIN_CODING:			            break;
-//             case PROCESSED_TRANSCRIPT:		            break;
-//             case NON_CODING:				            break;
-//             case AMBIGUOUS_ORF:			            break;
-//             case SENSE_INTRONIC:			            break;
-//             case SENSE_OVERLAPPING:		            break;
-//             case ANTISENSE:				            break;
-             case ANTISENSE_RNA:			            return GencodeFuncotation.VariantClassification.RNA;
-             case KNOWN_NCRNA:				            return GencodeFuncotation.VariantClassification.RNA;
-//             case PSEUDOGENE:				            break;
-//             case PROCESSED_PSEUDOGENE:		            break;
-//             case POLYMORPHIC_PSEUDOGENE:	            break;
-//             case RETROTRANSPOSED:			            break;
-//             case TRANSCRIBED_PROCESSED_PSEUDOGENE:	    break;
-//             case TRANSCRIBED_UNPROCESSED_PSEUDOGENE:   break;
-//             case TRANSCRIBED_UNITARY_PSEUDOGENE:	    break;
-//             case TRANSLATED_PROCESSED_PSEUDOGENE:	    break;
-//             case TRANSLATED_UNPROCESSED_PSEUDOGENE:    break;
-//             case UNITARY_PSEUDOGENE:				    break;
-//             case UNPROCESSED_PSEUDOGENE:			    break;
-//             case ARTIFACT:					            break;
-             case LINCRNA:					            return GencodeFuncotation.VariantClassification.LINCRNA;
-             case MACRO_LNCRNA:					        return GencodeFuncotation.VariantClassification.LINCRNA;
-             case THREE_PRIME_OVERLAPPING_NCRNA:	    return GencodeFuncotation.VariantClassification.RNA;
-//             case DISRUPTED_DOMAIN:					    break;
-             case VAULTRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case BIDIRECTIONAL_PROMOTER_LNCRNA:	    return GencodeFuncotation.VariantClassification.RNA;
-             default:
-                return GencodeFuncotation.VariantClassification.RNA;
-        }
+        //TODO: This all needs to be fixed so there is a 1:1 mapping of GencodeGtfFeature.KnownGeneBiotype->VariantClassification - Issue #4405
+        if (GencodeGtfFeature.KnownGeneBiotype.LINCRNA.toString().equals(type) ||
+                GencodeGtfFeature.KnownGeneBiotype.MACRO_LNCRNA.toString().equals(type)) {
+			return GencodeFuncotation.VariantClassification.LINCRNA;
+		}
+        return GencodeFuncotation.VariantClassification.RNA;
     }
 
     //==================================================================================================================

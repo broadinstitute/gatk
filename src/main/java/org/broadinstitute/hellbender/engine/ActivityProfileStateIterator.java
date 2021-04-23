@@ -60,7 +60,7 @@ public class ActivityProfileStateIterator implements Iterator<ActivityProfileSta
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
         // for uncovered locations. This is critical for reproducing GATK 3.x behavior!
-        LocusIteratorByState libs = new LocusIteratorByState(readShard.iterator(), DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(readHeader), readHeader);
+        LocusIteratorByState libs = new LocusIteratorByState(readShard.iterator(), DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(readHeader), readHeader, true);
         final IntervalLocusIterator intervalLocusIterator = new IntervalLocusIterator(readShard.getIntervals().iterator());
         this.locusIterator = new IntervalAlignmentContextIterator(libs, intervalLocusIterator, readHeader.getSequenceDictionary());
     }

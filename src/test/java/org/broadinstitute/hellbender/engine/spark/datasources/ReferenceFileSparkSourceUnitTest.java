@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.SparkTestUtils;
 import org.testng.annotations.Test;
@@ -15,10 +16,9 @@ import java.nio.file.Path;
 public class ReferenceFileSparkSourceUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = UserException.MissingReference.class)
-    public void testMissingReferenceFile() throws IOException {
+    public void testMissingReferenceFile() {
         new ReferenceFileSparkSource(
-                GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta")
-                        .getAbsolutePath());
+                new GATKPath(GATKBaseTest.getSafeNonExistentFile("NonExistentReference.fasta").toString()));
     }
 
     @Test
@@ -31,7 +31,7 @@ public class ReferenceFileSparkSourceUnitTest extends GATKBaseTest {
             final Path dictPath = jimfs.getPath("reference.dict");
             Files.createFile(dictPath);
 
-            new ReferenceFileSparkSource(refPath);
+            new ReferenceFileSparkSource(new GATKPath(refPath.toUri().toString()));
         }
     }
 
@@ -41,7 +41,7 @@ public class ReferenceFileSparkSourceUnitTest extends GATKBaseTest {
         GATKBaseTest.createTempFile("reference", ".fasta.fai");
         GATKBaseTest.createTempFile("reference", ".dict");
 
-        final ReferenceFileSparkSource referenceFileSource = new ReferenceFileSparkSource(refPath);
+        final ReferenceFileSparkSource referenceFileSource = new ReferenceFileSparkSource(new GATKPath(refPath.toUri().toString()));
 
         //can we serialize it?
         ReferenceFileSparkSource otherSide = SparkTestUtils.roundTripThroughJavaSerialization(referenceFileSource);

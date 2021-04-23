@@ -14,7 +14,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.GetSampleName;
@@ -55,34 +55,6 @@ public final class IOUtils {
      * Patterns identifying GenomicsDB paths
      */
     private static final Pattern GENOMICSDB_URI_PATTERN = Pattern.compile("^" + GENOMIC_DB_URI_SCHEME + "(\\.?)(.*)(://)(.*)");
-
-    /**
-     * Returns true if the file's extension is CRAM.
-     */
-    public static boolean isCramFile(final File inputFile) {
-        return isCramFileName(inputFile.getName());
-    }
-
-    /**
-     * Returns true if the file's extension is CRAM.
-     */
-    public static boolean isCramFile(final Path path) {
-        return isCramFileName(path.getFileName().toString());
-    }
-
-    /**
-     * Returns true if the file's extension is CRAM.
-     */
-    public static boolean isCramFileName(final String inputFileName) {
-        return FileExtensions.CRAM.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
-    }
-
-    /**
-     * Returns true if the file's extension is BAM.
-     */
-    public static boolean isBamFileName(final String inputFileName) {
-        return FileExtensions.BAM.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
-    }
 
     /**
      * Given a Path, determine if it is an HDF5 file without requiring that we're on a platform that supports
@@ -278,7 +250,7 @@ public final class IOUtils {
             fileContents = readStreamIntoByteArray(new FileInputStream(source), readBufferSize);
         }
         catch ( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(source, e);
+            throw new UserException.CouldNotReadInputFile(source.getAbsolutePath(), e);
         }
 
         if ( fileContents.length != source.length() ) {
@@ -674,11 +646,11 @@ public final class IOUtils {
     /**
      * Makes a print stream for a file, gzipping on the fly if the file's name ends with '.gz'.
      */
-    public static PrintStream makePrintStreamMaybeGzipped(File file) throws IOException {
-        if (file.getPath().endsWith(".gz")) {
-            return new PrintStream(new GZIPOutputStream(new FileOutputStream(file)));
+    public static PrintStream makePrintStreamMaybeGzipped(GATKPath filePath) throws IOException {
+        if (filePath.hasExtension(".gz")) {
+            return new PrintStream(new GZIPOutputStream(filePath.getOutputStream()));
         } else {
-            return new PrintStream(file);
+            return new PrintStream(filePath.getOutputStream());
         }
     }
 
@@ -910,7 +882,7 @@ public final class IOUtils {
         for (final File file : files) {
             Utils.nonNull(file, "Unexpected null file reference.");
             if (!file.exists()) {
-                throw new UserException.CouldNotReadInputFile(file, "The input file does not exist.");
+                throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file does not exist.");
             } else if (!file.isFile()) {
                 throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(), "The input file is not a regular file");
             } else if (!file.canRead()) {
@@ -945,12 +917,12 @@ public final class IOUtils {
     }
 
     /**
-     * Check if a given GATKPathSpecifier represents a GenomicsDB URI.
+     * Check if a given GATKPath represents a GenomicsDB URI.
      *
-     * @param pathSpec {@code GATKPathSpecifier} containing the path to test
+     * @param pathSpec {@code GATKPath} containing the path to test
      * @return true if path represents a GenomicsDB URI, otherwise false
      */
-    public static boolean isGenomicsDBPath(final GATKPathSpecifier pathSpec) {
+    public static boolean isGenomicsDBPath(final GATKPath pathSpec) {
         return getGenomicsDBPath(pathSpec) != null;
     }
 
@@ -970,7 +942,7 @@ public final class IOUtils {
      * @param genomicsDBPath String representing legal gendb URI
      * @return absolute gendb URI to the path
      */
-    public static String getAbsolutePathWithGenomicsDBURIScheme(final GATKPathSpecifier genomicsDBPath) {
+    public static String getAbsolutePathWithGenomicsDBURIScheme(final GATKPath genomicsDBPath) {
         String path = getGenomicsDBAbsolutePath(genomicsDBPath);
         if (path == null) {
             return null;
@@ -988,7 +960,7 @@ public final class IOUtils {
      * @return absolute name to the given GenomicsDB path
      * @see #getGenomicsDBPath(String)
      */
-    public static String getGenomicsDBAbsolutePath(final GATKPathSpecifier gendbPath) {
+    public static String getGenomicsDBAbsolutePath(final GATKPath gendbPath) {
         String path = getGenomicsDBPath(gendbPath);
         if (path == null) {
             return null;
@@ -1015,7 +987,7 @@ public final class IOUtils {
      *             </ul>
      * @return Valid GenomicsDB path or null
      */
-    public static String getGenomicsDBPath(final GATKPathSpecifier path) {
+    public static String getGenomicsDBPath(final GATKPath path) {
         return getGenomicsDBPath(path.getRawInputString());
     }
 

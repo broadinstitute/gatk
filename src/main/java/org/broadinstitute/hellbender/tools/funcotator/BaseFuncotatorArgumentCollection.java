@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
@@ -12,19 +13,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-abstract class BaseFuncotatorArgumentCollection implements Serializable {
+public abstract class BaseFuncotatorArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** String representing the b37 version of the homo sapiens reference. */
-    protected static String FuncotatorReferenceVersionB37 = "b37";
+    protected static final String FuncotatorReferenceVersionB37 = "b37";
     /**
      * String representing the hg19 version of the homo sapiens reference.
      * This variable is necessary to resolve the differences between b37 and hg19 when
      * dealing with Homo Sapiens samples.
      */
-    protected static String FuncotatorReferenceVersionHg19 = "hg19";
+    @VisibleForTesting
+    public static final String FuncotatorReferenceVersionHg19 = "hg19";
     /** String representing the hg38 version of the homo sapiens reference. */
-    protected static String FuncotatorReferenceVersionHg38 = "hg38";
+    @VisibleForTesting
+    public static final String FuncotatorReferenceVersionHg38 = "hg38";
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -105,4 +108,11 @@ abstract class BaseFuncotatorArgumentCollection implements Serializable {
     )
     public int lookaheadFeatureCachingInBp = FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE;
 
+    @Advanced
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.MIN_NUM_BASES_FOR_SEGMENT_FUNCOTATION,
+            optional = true,
+            doc = "The minimum number of bases for a variant to be annotated as a segment.  Recommended to be changed only for use with FuncotateSegments.  Defaults to " + FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT
+    )
+    public int minNumBasesForValidSegment = FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT;
 }

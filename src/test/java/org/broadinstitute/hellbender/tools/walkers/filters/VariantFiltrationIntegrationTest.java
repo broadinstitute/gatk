@@ -48,6 +48,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 {"foo", "--mask " + getToolTestDataDir() + "vcfexample2.vcf", "testVariantFiltration_testMask1.vcf"},
                 {"foo", "--mask " + new File(getToolTestDataDir() + "vcfMask.vcf").getAbsolutePath(), "testVariantFiltration_testMask2.vcf"},
                 {"foo", "--" + VariantFiltration.MASK_EXTENSION_LONG_NAME + " 10 --mask:VCF " + getToolTestDataDir() + "vcfMask.vcf", "testVariantFiltration_testMask3.vcf"},
+                {"foo", "--apply-allele-specific-filters --mask " + new File(getToolTestDataDir() + "vcfMask.vcf").getAbsolutePath(), "testVariantFiltration_testMask4.vcf"}
         };
     }
 
@@ -55,6 +56,25 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
     public void testMask(final String maskName, final String mask, final String expected) throws IOException {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString("vcfexample2.vcf", " -mask-name " + maskName + " " + mask),
+                Arrays.asList(getToolTestDataDir() + "expected/" + expected)
+        );
+
+        spec.executeTest("testMask", this);
+    }
+
+    @DataProvider(name="masksWithFilters")
+    public Object[][] masksWithFilters() {
+        return new String[][]{
+                {"blacklisted_site", "--apply-allele-specific-filters --mask " + new File(getToolTestDataDir() + "blacklistedMask.bed").getAbsolutePath(), "testVariantFiltration_testMaskWithFilters1.vcf"},
+                {"blacklisted_site", "--invalidate-previous-filters --apply-allele-specific-filters --mask " + new File(getToolTestDataDir() + "blacklistedMask.bed").getAbsolutePath(), "testVariantFiltration_testMaskWithFilters2.vcf"}
+        };
+    }
+
+
+    @Test(dataProvider = "masksWithFilters")
+    public void testMaskWithFilters(final String maskName, final String mask, final String expected) throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString("filtered.vcf", " -mask-name " + maskName + " " + mask),
                 Arrays.asList(getToolTestDataDir() + "expected/" + expected)
         );
 

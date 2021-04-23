@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpile
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -25,7 +26,7 @@ public class AllelePileupCounterUnitTest extends GATKBaseTest {
 
         final List<Path> bamFiles = Collections.singletonList(IOUtils.getPath(TEST_DREAM_TUMOR_BAM));
         final List<Path> baiFiles = Collections.singletonList(IOUtils.getPath(TEST_DREAM_TUMOR_BAI));
-        final ReadsDataSource readsDataSource = new ReadsDataSource(bamFiles, baiFiles);
+        final ReadsDataSource readsDataSource = new ReadsPathDataSource(bamFiles, baiFiles);
         final ReadPileup readPileup = new ReadPileup(interval, () -> readsDataSource.query(interval));
 
         final AllelePileupCounter allelePileupCounter = new AllelePileupCounter(ref,

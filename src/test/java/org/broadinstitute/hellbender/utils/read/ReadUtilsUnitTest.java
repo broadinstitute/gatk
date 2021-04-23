@@ -8,13 +8,11 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.RandomDNA;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -242,6 +240,29 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 103).getLeft().intValue(), 3);  // the first N base
         Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 202).getLeft().intValue(), 3);  // the last N base
         Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 203).getLeft().intValue(), 3);  // the first D base
+    }
+
+    @Test
+    public void testReadsWithSoftclipsInReadCoordinateRefCoordinate( ){
+        final SAMFileHeader header;
+        try(final CachingIndexedFastaSequenceFile seq = new CachingIndexedFastaSequenceFile(IOUtils.getPath(exampleReference))) {
+            header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
+        }
+        final int readLength = 120;
+
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "myRead", 0, 100, readLength);
+        read.setBases(Utils.dupBytes((byte) 'A', readLength));
+        read.setBaseQualities(Utils.dupBytes((byte)30, readLength));
+        read.setCigar("10H10S100M10S");
+
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 89).getLeft().intValue(), -1); // Beyond the start of the read
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 90).getLeft().intValue(), 0);  // the first S base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 99).getLeft().intValue(), 9);  // the last S base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 100).getLeft().intValue(), 10);  // the first M base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 199).getLeft().intValue(), 109);  // the last M base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 200).getLeft().intValue(), 110);  // the first trailing S base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 209).getLeft().intValue(), 119);  // the last trailing S base
+        Assert.assertEquals(ReadUtils.getReadIndexForReferenceCoordinate(read, 210).getLeft().intValue(), -1);  // the first base beyond the end of the read
     }
 
     @DataProvider(name = "HasWellDefinedFragmentSizeData")
@@ -723,65 +744,15 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "mappedGatkReadsData")
-    public void testHasBasesAligned(final GATKRead read) {
-        Assert.assertTrue(ReadUtils.hasBasesAlignedAgainstTheReference(read));
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
     public void testGetFirstAlignedBaseOffset(final GATKRead read) {
         final int actual = ReadUtils.getFirstAlignedBaseOffset(read);
-        final int expected = CigarUtils.countLeftClippedBases(read.getCigar()) - CigarUtils.countLeftHardClippedBases(read.getCigar());
+        final int expected = CigarUtils.countClippedBases(read.getCigar(), Tail.LEFT) - CigarUtils.countClippedBases(read.getCigar(), Tail.LEFT, CigarOperator.HARD_CLIP);
         Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetAfterLastAlignedBaseOffset(final GATKRead read) {
-        final int actual = ReadUtils.getAfterLastAlignedBaseOffset(read);
-        final int expected = read.getLength() - (CigarUtils.countRightClippedBases(read.getCigar()) - CigarUtils.countRightHardClippedBases(read.getCigar()));
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetFirstPositionAligned(final GATKRead read) {
-        final int actual = ReadUtils.getFirstAlignedReadPosition(read);
-        final int expected = (!read.isReverseStrand()
-                    ? CigarUtils.countLeftClippedBases(read.getCigar()) + 1
-                    : CigarUtils.countRightClippedBases(read.getCigar()) + 1);
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "mappedGatkReadsData")
-    public void testGetLastPositionAligned(final GATKRead read) {
-        final int actual = ReadUtils.getLastAlignedReadPosition(read);
-        final int expected = (!read.isReverseStrand()
-                ? CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countRightClippedBases(read.getCigar())
-                : CigarUtils.countUnclippedReadBases(read.getCigar()) - CigarUtils.countLeftClippedBases(read.getCigar()));
-        Assert.assertEquals(actual, expected);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData")
-    public void testHashBasesNotAligned(final GATKRead read) {
-        Assert.assertFalse(ReadUtils.hasBasesAlignedAgainstTheReference(read));
     }
 
     @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
     public void testGetFirstAlignedBaseOffsetOnUnmapped(final GATKRead read) {
         ReadUtils.getFirstAlignedBaseOffset(read);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetAfterLastAlignedBaseOffsetOnUnmapped(final GATKRead read) {
-        ReadUtils.getAfterLastAlignedBaseOffset(read);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetFirtAlignedReadPositionOnUnmapped(final GATKRead read) {
-        ReadUtils.getFirstAlignedReadPosition(read);
-    }
-
-    @Test(dataProvider = "unmappedGatkReadData", expectedExceptions = IllegalArgumentException.class)
-    public void testGetLastAlignedReadPositionOnUnmapped(final GATKRead read) {
-        ReadUtils.getLastAlignedReadPosition(read);
     }
 
     @DataProvider(name="unmappedGatkReadData")
@@ -838,7 +809,7 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testGetReadToMateMap() {
         final String bam = largeFileTestDir + "mutect/dream_synthetic_bams/tumor_1.bam";
-        final ReadsDataSource readsDataSource = new ReadsDataSource(IOUtils.getPath(bam));
+        final ReadsDataSource readsDataSource = new ReadsPathDataSource(IOUtils.getPath(bam));
 
         // to keep this example small, we choose a place that only four reads overlap
         final SimpleInterval interval = new SimpleInterval("20", 576_940, 577_000);

@@ -6,6 +6,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceFileSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.utils.LargeLongHopscotchSet;
@@ -97,7 +98,7 @@ public final class PathSeqBuildKmers extends CommandLineProgram {
     @Argument(doc = "Reference FASTA file path on local disk",
             fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME,
             shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME)
-    public String reference;
+    public GATKPath reference;
 
     /**
      * <p>Note that the provided argument is used as an upper limit on the probability, and the actual false positive

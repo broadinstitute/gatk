@@ -11,17 +11,19 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.AlleleFilterUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.singleton;
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.AS_FILTER_STATUS_KEY;
 
 
 /**
@@ -93,7 +95,7 @@ import static java.util.Collections.singleton;
  *    --filter-name "my_filter" \
  *    --filter-expression "AB < 0.2 || MQ0 > 50"
  *  </pre>
- * See this <a href="https://www.broadinstitute.org/gatk/guide/article?id=1255">article about using JEXL expressions</a>
+ * See this <a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions">article about using JEXL expressions</a>
  * for more information.
  */
 @CommandLineProgramProperties(
@@ -117,6 +119,7 @@ public final class VariantFiltration extends VariantWalker {
     public static final String INVERT_LONG_NAME = "invert-filter-expression";
     public static final String INVERT_GT_LONG_NAME = "invert-genotype-filter-expression";
     public static final String NO_CALL_GTS_LONG_NAME = "set-filtered-genotype-to-no-call";
+    public static final String ALLELE_SPECIFIC_LONG_NAME = "apply-allele-specific-filters";
 
     private static final String FILTER_DELIMITER = ";";
 
@@ -130,7 +133,7 @@ public final class VariantFiltration extends VariantWalker {
     public FeatureInput<Feature> mask;
 
     @Argument(doc="File to which variants should be written", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = false)
-    public String out = null;
+    public GATKPath out = null;
 
     /**
      * VariantFiltration accepts any number of JEXL expressions (so you can have two named filters by using
@@ -232,6 +235,9 @@ public final class VariantFiltration extends VariantWalker {
     @Argument(fullName=NO_CALL_GTS_LONG_NAME, optional=true, doc="Set filtered genotypes to no-call")
     public boolean setFilteredGenotypesToNocall = false;
 
+    @Argument(fullName=ALLELE_SPECIFIC_LONG_NAME, optional=true, doc="Set mask at the allele level. This option is not compatible with clustering.")
+    public boolean applyForAllele = false;
+
     // JEXL expressions for the filters
     private List<JexlVCMatchExp> filterExps;
     private List<JexlVCMatchExp> genotypeFilterExps;
@@ -266,11 +272,14 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     private void initializeVcfWriter() {
-        writer = createVCFWriter(new File(out));
+        writer = createVCFWriter(out);
 
         // setup the header fields
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>();
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
+        if (applyForAllele) {
+            hInfo.add(new VCFInfoHeaderLine(AS_FILTER_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Filter status for each allele, as assessed by ApplyVQSR. Note that the VCF filter field will reflect the most lenient/sensitive status across all alleles."));
+        }
 
         // need AC, AN and AF since output if set filtered genotypes to no-call
         // If setting filtered genotypes to no-call, then allele counts (AC, AN and AF ) will be recomputed and these annotations
@@ -333,11 +342,25 @@ public final class VariantFiltration extends VariantWalker {
 
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext ref, final FeatureContext featureContext) {
+        if (applyForAllele) {
+            final List<VariantContext> filtered = splitMultiAllelics(variant).stream().map(vc -> filter(vc, new FeatureContext(featureContext, new SimpleInterval(vc.getContig(), vc.getStart(), vc.getEnd())))).collect(Collectors.toList());
+            // get filters for each allele
+            final List<Set<String>> alleleFilters = filtered.stream().map(filteredvc -> filteredvc.getFilters()).collect(Collectors.toList());
+            // add in the AS_FilterStatus and set the variant filters
+            final VariantContext filteredVC = AlleleFilterUtils.addAlleleAndSiteFilters(variant, alleleFilters, invalidatePreviousFilters);
+            writer.add(filteredVC);
+        } else {
+            writer.add(filter(variant, featureContext));
+        }
+    }
 
-        final VariantContext vc1 = invalidatePreviousFilters ? (new VariantContextBuilder(variant)).unfiltered().make() : variant;
-        final VariantContext vc = isMaskFilterPresent(vc1) ? vc1: addMaskIfCoversVariant(vc1, featureContext);
-
-        filter(vc, featureContext);
+    private List<VariantContext> splitMultiAllelics(VariantContext vc) {
+        final List<VariantContext> results = new ArrayList<>();
+        final VariantContextBuilder vcb = new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
+                    Arrays.asList(vc.getReference(), Allele.NO_CALL));
+        vc.getAlternateAlleles().forEach(allele -> results.add(GATKVariantContextUtils.trimAlleles(
+                    vcb.alleles(Arrays.asList(vc.getReference(), allele)).make(true), true, true)));
+        return results;
     }
 
     /**
@@ -360,7 +383,9 @@ public final class VariantFiltration extends VariantWalker {
         return vc.getFilters() != null && vc.getFilters().contains(maskName);
     }
 
-    private void filter(final VariantContext vc, final FeatureContext featureContext) {
+    private VariantContext filter(final VariantContext variant, final FeatureContext featureContext) {
+        final VariantContext vcModFilters = invalidatePreviousFilters ? (new VariantContextBuilder(variant)).unfiltered().make() : variant;
+        final VariantContext vc = isMaskFilterPresent(vcModFilters) ? vcModFilters: addMaskIfCoversVariant(vcModFilters, featureContext);
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
 
         // make new Genotypes based on filters
@@ -394,7 +419,7 @@ public final class VariantFiltration extends VariantWalker {
             builder.filters(filters);
         }
 
-        writer.add(builder.make());
+        return builder.make();
     }
 
     /**

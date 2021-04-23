@@ -9,8 +9,8 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.Strand;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SvCigarUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Tail;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -152,13 +152,14 @@ public final class AlignmentInterval {
 
         this.referenceSpan = new SimpleInterval(referenceContig, start,
                 Math.max(start, cigar.getReferenceLength() + start - 1));
-        this.startInAssembledContig = 1 + CigarUtils.countLeftClippedBases(cigar);
-        this.endInAssembledContig = CigarUtils.countUnclippedReadBases(cigar) - CigarUtils.countRightClippedBases(cigar);
+        this.startInAssembledContig = 1 + CigarUtils.countClippedBases(cigar, Tail.LEFT);
+        this.endInAssembledContig =
+                CigarUtils.countUnclippedReadBases(cigar) - CigarUtils.countClippedBases(cigar, Tail.RIGHT);
+        this.cigarAlong5to3DirectionOfContig = cigar;
         this.mapQual = mappingQuality;
         this.mismatches = mismatches;
         this.alnScore = alignmentScore;
         this.forwardStrand = forwardStrand;
-        this.cigarAlong5to3DirectionOfContig = cigar;
         this.alnModType = ContigAlignmentsModifier.AlnModType.NONE;
     }
 
@@ -237,11 +238,11 @@ public final class AlignmentInterval {
 
         final boolean isMappedReverse = samRecord.getReadNegativeStrandFlag();
         this.referenceSpan = new SimpleInterval(samRecord);
-        this.startInAssembledContig = getAlignmentStartInOriginalContig(samRecord);
-        this.endInAssembledContig = getAlignmentEndInOriginalContig(samRecord);
-
-        this.cigarAlong5to3DirectionOfContig = isMappedReverse ? CigarUtils.invertCigar(samRecord.getCigar())
-                                                               : samRecord.getCigar();
+        final Cigar cigar = isMappedReverse ? CigarUtils.invertCigar(samRecord.getCigar()) : samRecord.getCigar();
+        this.startInAssembledContig = 1 + CigarUtils.countClippedBases(cigar, Tail.LEFT);
+        this.endInAssembledContig =
+                CigarUtils.countUnclippedReadBases(cigar) - CigarUtils.countClippedBases(cigar, Tail.RIGHT);
+        this.cigarAlong5to3DirectionOfContig = cigar;
         this.forwardStrand = !isMappedReverse;
         this.mapQual = samRecord.getMappingQuality();
         this.mismatches = ReadUtils.getOptionalIntAttribute(samRecord, SAMTag.NM.name()).orElse(NO_NM);
@@ -262,9 +263,11 @@ public final class AlignmentInterval {
 
         final boolean isMappedReverse = read.isReverseStrand();
         this.referenceSpan = new SimpleInterval(read);
-        this.startInAssembledContig = ReadUtils.getFirstAlignedReadPosition(read);
-        this.endInAssembledContig = ReadUtils.getLastAlignedReadPosition(read);
-        this.cigarAlong5to3DirectionOfContig = isMappedReverse ? CigarUtils.invertCigar(read.getCigar()) : read.getCigar();
+        final Cigar cigar = isMappedReverse ? CigarUtils.invertCigar(read.getCigar()) : read.getCigar();
+        this.cigarAlong5to3DirectionOfContig = cigar;
+        this.startInAssembledContig = 1 + CigarUtils.countClippedBases(cigar, Tail.LEFT);
+        this.endInAssembledContig =
+                CigarUtils.countUnclippedReadBases(cigar) - CigarUtils.countClippedBases(cigar, Tail.RIGHT);
         this.forwardStrand = !isMappedReverse;
         this.mapQual = read.getMappingQuality();
         this.mismatches = ReadUtils.getOptionalIntAttribute(read, SAMTag.NM.name()).orElse(NO_NM);
@@ -282,7 +285,7 @@ public final class AlignmentInterval {
         this.cigarAlong5to3DirectionOfContig = forwardStrand ? TextCigarCodec.decode(alignment.getCigar())
                 : CigarUtils.invertCigar(TextCigarCodec.decode(alignment.getCigar()));
         Utils.validateArg(
-                cigarAlong5to3DirectionOfContig.getReadLength() + SvCigarUtils.getTotalHardClipping(cigarAlong5to3DirectionOfContig)
+                cigarAlong5to3DirectionOfContig.getReadLength() + CigarUtils.countClippedBases(cigarAlong5to3DirectionOfContig, CigarOperator.HARD_CLIP)
                         == unclippedContigLength,
                 "contig length provided in constructor and inferred length by computation are different: " +
                         unclippedContigLength + "\t" + alignment.toString());
@@ -322,10 +325,10 @@ public final class AlignmentInterval {
     }
 
     @VisibleForTesting
-    static final void checkValidArgument(final Cigar cigar, final SimpleInterval referenceSpan,
+    static void checkValidArgument(final Cigar cigar, final SimpleInterval referenceSpan,
                                          final int readStart, final int readEnd) {
 
-        final int softClippedBases = SvCigarUtils.checkCigarAndConvertTerminalInsertionToSoftClip(cigar).stream().filter(ce -> ce.getOperator().equals(CigarOperator.S)).mapToInt(CigarElement::getLength).sum();
+        final int softClippedBases = CigarUtils.convertTerminalInsertionToSoftClip(cigar).getCigarElements().stream().filter(ce -> ce.getOperator().equals(CigarOperator.S)).mapToInt(CigarElement::getLength).sum();
         final int readLength = cigar.getReadLength() - softClippedBases;
         final int referenceLength = cigar.getReferenceLength();
         final boolean validState = referenceLength == referenceSpan.size() && readLength == (readEnd - readStart + 1);
@@ -378,16 +381,6 @@ public final class AlignmentInterval {
                          intTwo = new SVInterval(dummyChr, two.referenceSpan.getStart(), two.referenceSpan.getEnd() + 1);
 
         return intOne.overlapLen(intTwo);
-    }
-
-    private static int getAlignmentStartInOriginalContig(final SAMRecord samRecord) {
-        return SvCigarUtils.getNumClippedBases(!samRecord.getReadNegativeStrandFlag(), samRecord.getCigar()) + 1;
-    }
-
-    private static int getAlignmentEndInOriginalContig(final SAMRecord samRecord) {
-        final Cigar cigar = samRecord.getCigar();
-        return cigar.getReadLength() + SvCigarUtils.getTotalHardClipping(cigar) -
-                SvCigarUtils.getNumClippedBases(samRecord.getReadNegativeStrandFlag(), cigar);
     }
 
     AlignmentInterval(final Kryo kryo, final Input input) {
@@ -653,12 +646,12 @@ public final class AlignmentInterval {
             int walkDistOnReadFromStart = 0;
             if ( distOnRefForStart != 0 ) {
                 final int startPosOnRead = startInAssembledContig - hardClipOffset; // utility method requests no hard clipped counted
-                walkDistOnReadFromStart = SvCigarUtils.computeAssociatedDistOnRead(cigarAlong5to3DirectionOfContig, startPosOnRead, distOnRefForStart, false);
+                walkDistOnReadFromStart = CigarUtils.computeAssociatedDistOnRead(cigarAlong5to3DirectionOfContig, startPosOnRead, distOnRefForStart, false);
             }
             int walkDistOnReadFromEnd = 0;
             if ( distOnRefForEnd != 0 ) {
                 final int startPosOnRead = endInAssembledContig - hardClipOffset; // utility method requests no hard clipped counted
-                walkDistOnReadFromEnd = SvCigarUtils.computeAssociatedDistOnRead(cigarAlong5to3DirectionOfContig, startPosOnRead, distOnRefForEnd, true);
+                walkDistOnReadFromEnd = CigarUtils.computeAssociatedDistOnRead(cigarAlong5to3DirectionOfContig, startPosOnRead, distOnRefForEnd, true);
             }
 
             start = startInAssembledContig + walkDistOnReadFromStart;

@@ -12,6 +12,7 @@ import htsjdk.samtools.util.StringUtil;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -81,6 +82,19 @@ public final class CachingIndexedFastaSequenceFile implements ReferenceSequenceF
             throw new GATKException("Could not load " + fasta.toUri().toString() + " as an indexed fasta despite passing checks before loading.");
         }
         return referenceSequenceFile;
+    }
+
+    /**
+     * Open the given indexed fasta sequence file.  Throw an exception if the file cannot be opened.
+     *
+     * Looks for index files for the fasta on disk.
+     * This CachingIndexedFastaReader will convert all FASTA bases to upper cases under the hood and
+     * all IUPAC bases to `N`.
+     *
+     * @param fasta The file to open.
+     */
+    public CachingIndexedFastaSequenceFile(final GATKPath fasta) {
+        this(fasta.toPath(), false);
     }
 
     /**

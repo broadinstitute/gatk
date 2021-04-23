@@ -1,21 +1,23 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
-import java.nio.file.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowInput;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
@@ -70,6 +72,7 @@ import java.io.File;
         programGroup = ReadDataManipulationProgramGroup.class
 )
 @DocumentedFeature
+@WorkflowProperties
 public final class ApplyBQSR extends ReadWalker{
     static final String USAGE_ONE_LINE_SUMMARY = "Apply base quality score recalibration";
     static final String USAGE_SUMMARY = "Apply a linear base quality recalibration model trained with the BaseRecalibrator tool.";
@@ -77,7 +80,8 @@ public final class ApplyBQSR extends ReadWalker{
     private static final Logger logger = LogManager.getLogger(ApplyBQSR.class);
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
-    public String OUTPUT;
+    @WorkflowOutput(optionalCompanions = {StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
+    public GATKPath OUTPUT;
 
     /**
      * This argument is required for recalibration of base qualities. The recalibration table is a file produced by
@@ -85,6 +89,7 @@ public final class ApplyBQSR extends ReadWalker{
      * created on the same input data.
      */
     @Argument(fullName=StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME, shortName=StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME, doc="Input recalibration table for BQSR")
+    @WorkflowInput
     public File BQSR_RECAL_FILE;
 
     /**
@@ -105,7 +110,7 @@ public final class ApplyBQSR extends ReadWalker{
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT), true);
+        outputWriter = createSAMWriter(OUTPUT, true);
         Utils.warnOnNonIlluminaReadGroups(getHeaderForReads(), logger);
     }
 

@@ -35,5 +35,8 @@
   "CNVGermlineCohortWorkflow.minimum_segmental_duplication_content": 0.0,
   "CNVGermlineCohortWorkflow.maximum_segmental_duplication_content": 1.0,
   "CNVGermlineCohortWorkflow.low_count_filter_count_threshold": 0,
-  "CNVGermlineCohortWorkflow.maximum_number_events_per_sample": 120
+  "CNVGermlineCohortWorkflow.maximum_number_events_per_sample": 120,
+  "CNVGermlineCohortWorkflow.maximum_number_pass_events_per_sample": 10,
+  "CNVGermlineCohortWorkflow.cpu_for_determine_germline_contig_ploidy": 1,
+  "CNVGermlineCohortWorkflow.cpu_for_germline_cnv_caller": 1
 }

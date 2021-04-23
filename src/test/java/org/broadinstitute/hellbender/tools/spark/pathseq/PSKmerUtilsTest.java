@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceFileSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.tools.spark.utils.LargeLongHopscotchSet;
@@ -23,7 +24,7 @@ public class PSKmerUtilsTest extends CommandLineProgramTest {
 
     @Test
     public void testGetKmersFromReference() throws IOException {
-        final ReferenceFileSparkSource ref = new ReferenceFileSparkSource( hg19MiniReference);
+        final ReferenceFileSparkSource ref = new ReferenceFileSparkSource( new GATKPath(hg19MiniReference));
         final Collection<long[]> longCollection = PSKmerUtils.getMaskedKmersFromLocalReference(ref, 31, 1, SVKmerShort.getMask(new byte[0], 31));
 
         Assert.assertNotNull(longCollection);

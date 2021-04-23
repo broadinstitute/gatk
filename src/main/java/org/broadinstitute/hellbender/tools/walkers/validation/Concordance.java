@@ -7,10 +7,10 @@ import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.Predicate;
 import org.apache.commons.lang.mutable.MutableLong;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.tools.walkers.variantutils.VariantsToTable;
 import org.broadinstitute.hellbender.utils.Utils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -90,30 +89,30 @@ public class Concordance extends AbstractConcordanceWalker {
     @Argument(doc = "A table of summary statistics (true positives, sensitivity, etc.)",
             fullName = SUMMARY_LONG_NAME,
             shortName = SUMMARY_SHORT_NAME)
-    protected File summary;
+    protected GATKPath summary;
 
     @Argument(doc = "A table of the contribution of each filter to true and false negatives",
             fullName = FILTER_ANALYSIS_LONG_NAME,
             optional = true)
-    protected File filterAnalysis;
+    protected GATKPath filterAnalysis;
 
     @Argument(doc = "A vcf to write true positives and false negatives",
             fullName = TRUE_POSITIVES_AND_FALSE_NEGATIVES_LONG_NAME,
             shortName = TRUE_POSITIVES_AND_FALSE_NEGATIVES_SHORT_NAME,
             optional = true)
-    protected File truePositivesAndFalseNegativesVcf = null;
+    protected GATKPath truePositivesAndFalseNegativesVcf = null;
 
     @Argument(doc = "A vcf to write true positives and false positives",
             fullName = TRUE_POSITIVES_AND_FALSE_POSITIVES_LONG_NAME,
             shortName = TRUE_POSITIVES_AND_FALSE_POSITIVES_SHORT_NAME,
             optional = true)
-    protected File truePositivesAndFalsePositivesVcf = null;
+    protected GATKPath truePositivesAndFalsePositivesVcf = null;
 
     @Argument(doc = "A vcf to write filtered true negatives and false negatives",
             fullName = FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_LONG_NAME,
             shortName = FILTERED_TRUE_NEGATIVES_AND_FALSE_NEGATIVES_SHORT_NAME,
             optional = true)
-    protected File filteredTrueNegativesAndFalseNegativesVcf = null;
+    protected GATKPath filteredTrueNegativesAndFalseNegativesVcf = null;
 
     // we count true positives, false positives, false negatives for snps and indels
     private final EnumMap<ConcordanceState, MutableLong> snpCounts = new EnumMap<>(ConcordanceState.class);

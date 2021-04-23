@@ -22,10 +22,17 @@ import java.util.stream.Collectors;
 final class PlottingUtils {
     static final String CNV_PLOTTING_R_LIBRARY = "CNVPlottingLibrary.R";
 
-    static final String MINIMUM_CONTIG_LENGTH_LONG_NAME = "minimum-contig-length";
-
     static final String CONTIG_DELIMITER = "CONTIG_DELIMITER";  //used to delimit contig names and lengths passed to the R script
+
+    static final String MINIMUM_CONTIG_LENGTH_LONG_NAME = "minimum-contig-length";
+    static final String MAXIMUM_COPY_RATIO_LONG_NAME = "maximum-copy-ratio";
+    static final String POINT_SIZE_COPY_RATIO_LONG_NAME = "point-size-copy-ratio";
+    static final String POINT_SIZE_ALLELE_FRACTION_LONG_NAME = "point-size-allele-fraction";
+
     static final int DEFAULT_MINIMUM_CONTIG_LENGTH = 1000000;   //can be used to filter out mitochondrial contigs, unlocalized contigs, etc.
+    static final double DEFAULT_MAXIMUM_COPY_RATIO = 4.;
+    static final double DEFAULT_POINT_SIZE_COPY_RATIO = 0.2;
+    static final double DEFAULT_POINT_SIZE_ALLELE_FRACTION = 0.4;
 
     static final String SEQUENCE_DICTIONARY_DOC_STRING = "File containing a sequence dictionary, which specifies the contigs to be plotted and their relative lengths. " +
             "The sequence dictionary must be a subset of those contained in other input files. " +
@@ -39,6 +46,13 @@ final class PlottingUtils {
     static final String MINIMUM_CONTIG_LENGTH_DOC_STRING = "Threshold length (in bp) for contigs to be plotted. " +
             "Contigs with lengths less than this threshold will not be plotted. " +
             "This can be used to filter out mitochondrial contigs, unlocalized contigs, etc.";
+
+    static final String MAXIMUM_COPY_RATIO_DOC_STRING = "Maximum copy ratio to be plotted. " +
+            "If Infinity, the maximum copy ratio will be automatically determined.";
+
+    static final String POINT_SIZE_COPY_RATIO_DOC_STRING = "Point size to use for plotting copy-ratio points.";
+
+    static final String POINT_SIZE_ALLELE_FRACTION_DOC_STRING = "Point size to use for plotting allele-fraction points.";
 
     private PlottingUtils() {}
 
@@ -81,7 +95,7 @@ final class PlottingUtils {
         }
         final Map<String, Integer> fileContigMaxPositionMap = locatableCollection.getIntervals().stream().filter(i -> contigNames.contains(i.getContig()))
                 .collect(Collectors.toMap(SimpleInterval::getContig, SimpleInterval::getEnd, Integer::max));
-        fileContigMaxPositionMap.keySet().forEach(c -> Utils.validateArg(fileContigMaxPositionMap.get(c) <= contigLengthMap.get(c),
+        fileContigMaxPositionMap.forEach((c, integer) -> Utils.validateArg(integer <= contigLengthMap.get(c),
                 String.format("Position present in the file %s exceeds contig length in the sequence dictionary.", file)));
     }
 

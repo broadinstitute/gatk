@@ -18,6 +18,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     private static final long serialVersionUID = 1L;
 
     public static final double DEFAULT_PRUNING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(1.0);
+    public static final double DEFAULT_PRUNING_SEEDING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(4.0);
 
     public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
     public static final String PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME = "error-correction-log-odds";
@@ -119,6 +120,13 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public double pruningLogOddsThreshold = DEFAULT_PRUNING_LOG_ODDS_THRESHOLD;
 
     /**
+     * Log-10 likelihood ratio threshold for adaptive pruning algorithm.
+     */
+    @Advanced
+    @Argument(fullName="pruning-seeding-lod-threshold", doc = "Ln likelihood ratio threshold for seeding subgraph of good variation in adaptive pruning algorithm", optional = true)
+    public double pruningSeedingLogOddsThreshold = DEFAULT_PRUNING_SEEDING_LOG_ODDS_THRESHOLD;
+
+    /**
      * The maximum number of variants in graph the adaptive pruner will allow
      */
     @Advanced
@@ -132,7 +140,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      *        the regular HaplotypeCaller. Specifically the haplotype finding code does not perform correctly at complicated
      *        sites. Use this mode at your own risk.
      */
-    @Hidden
+    @Advanced
     @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Bruijn graph to recover better haplotypes", optional = true)
     public boolean useLinkedDeBruijnGraph = false;
 
@@ -143,6 +151,15 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Hidden
     @Argument(fullName="disable-artificial-haplotype-recovery", doc = "If in 'linked-de-bruijn-graph' mode, disable recovery of haplotypes based on graph edges that are not in junction trees", optional = true)
     public boolean disableArtificialHaplotypeRecovery = false;
+
+    /**
+     * This option exists purely to support concordance with DRAGEN-GATK, it is not recommended to enable this in most use cases.
+     * Use this toggle to re-enable the GATK3 behavior of checking for graph cycles (and consequently throwing away the graph) before
+     * purning low weight chains.
+     */
+    @Hidden
+    @Argument(fullName="enable-legacy-graph-cycle-detection", doc = "Use to revert the change to assembly graph code that moved pruning to before cycle detection")
+    public boolean enableLegacyGraphCycleDetection = false;
 
     @Advanced
     @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
@@ -168,6 +185,10 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Hidden
     @Argument(fullName = CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME, doc = "Write a BAM called assemblyFailure.bam capturing all of the reads that were in the active region when the assembler failed for any reason", optional = true)
     public boolean captureAssemblyFailureBAM = false;
+
+    @Hidden
+    @Argument(fullName = "num-matching-bases-in-dangling-end-to-recover", doc = "Sets the number of exactly matching bases in the suffix of a dangling tail and the prefix for a dangling head necessary in order to recover the path. (-1 indicates legacy behavior)", optional = true)
+    public int minMatchingBasesToDanglingEndRecovery = -1;
 
     //---------------------------------------------------------------------------------------------------------------
     //

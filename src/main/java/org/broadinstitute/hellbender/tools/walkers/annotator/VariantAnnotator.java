@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.collect.Lists;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -14,6 +15,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -25,6 +27,7 @@ import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VcfUtils;
 import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
 import java.io.File;
@@ -103,6 +106,8 @@ import java.util.stream.IntStream;
 public class VariantAnnotator extends VariantWalker {
     public static final String EXPRESSION_LONG_NAME = "expression";
     public static final String EXPRESSION_SHORT_NAME = "E";
+
+    private  SAMSequenceDictionary sequenceDictionary;
     private VariantContextWriter vcfWriter;
     private static final int REFERENCE_PADDING = 100;
 
@@ -138,7 +143,7 @@ public class VariantAnnotator extends VariantWalker {
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc="The file to whcih variants should be written", optional=false)
+            doc="The file to which variants should be written", optional=false)
     protected File outputFile;
 
     /**
@@ -188,23 +193,34 @@ public class VariantAnnotator extends VariantWalker {
      */
     public void onTraversalStart() {
         // get the list of all sample names from the variant VCF, if applicable
-        final  List<String> samples = getHeaderForVariants().getGenotypeSamples();
+        final List<String> samples = getHeaderForVariants().getGenotypeSamples();
+        sequenceDictionary = getBestAvailableSequenceDictionary();
         variantSamples = new IndexedSampleList(samples);
 
+        // Check that the reads have compatible samples to the variants:
+        if (hasReads()) {
+            final Set<String> readsSamples = getHeaderForReads().getReadGroups().stream().map(rg -> rg.getSample()).collect(Collectors.toSet());
+            readsSamples.forEach(readSample -> {
+                if (!samples.contains(readSample))
+                    throw new UserException(String.format("Reads sample '%s' from readgroups tags does not match any sample in the variant genotypes", readSample));
+            });
+        }
         annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, comps, false, false);
-        annotatorEngine.addExpressions(expressionsToUse, resources, expressionAlleleConcordance );
+        annotatorEngine.addExpressions(expressionsToUse, resources, expressionAlleleConcordance);
 
         // setup the header fields
         // note that if any of the definitions conflict with our new ones, then we want to overwrite the old ones
-        final Set<VCFHeaderLine> hInfo = new HashSet<>();
-
+        Set<VCFHeaderLine> hInfo = new HashSet<>();
         hInfo.addAll(annotatorEngine.getVCFAnnotationDescriptions(false));
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
+        hInfo = VcfUtils.updateHeaderContigLines(
+                hInfo,
+                hasReference() ? referenceArguments.getReferencePath() : null,
+                hasReference() ? getReferenceDictionary() : sequenceDictionary,
+                false);
 
-        // TODO ask reviewer, VCFUtils.withUpdatedContigs is what GATK3 calls into, it isn't used anywhere in 4 though so should it be used here?
-        VCFHeader vcfHeader = new VCFHeader(hInfo, samples);
         vcfWriter = createVCFWriter(outputFile);
-        vcfWriter.writeHeader(VCFUtils.withUpdatedContigs(vcfHeader, hasReference()? new File(referenceArguments.getReferenceFileName()): null, referenceArguments.getReferencePath()==null ? getBestAvailableSequenceDictionary(): getReferenceDictionary()));
+        vcfWriter.writeHeader(new VCFHeader(hInfo, samples));
     }
 
     /**
@@ -223,7 +239,7 @@ public class VariantAnnotator extends VariantWalker {
         // if the reference is present and base is not ambiguous, we can annotate
         if (refContext.getBases().length ==0 || BaseUtils.simpleBaseToBaseIndex(refContext.getBase()) != -1 ) {
             final ReferenceContext expandedRefContext = !hasReference() ? refContext :
-                    new ReferenceContext(refContext, new SimpleInterval(vc).expandWithinContig(REFERENCE_PADDING, getBestAvailableSequenceDictionary()));
+                    new ReferenceContext(refContext, new SimpleInterval(vc).expandWithinContig(REFERENCE_PADDING, sequenceDictionary));
             VariantContext annotatedVC = annotatorEngine.annotateContext(vc, fc, expandedRefContext, makeLikelihoods(vc, readsContext), a -> true);
             vcfWriter.add(annotatedVC);
         } else {

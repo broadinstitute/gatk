@@ -39,16 +39,17 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
     // TODO should this be constructed here or elsewhere
     private final Set<Kmer> kmers = new HashSet<>();
 
+    @VisibleForTesting
     public JunctionTreeLinkedDeBruijnGraph(int kmerSize) {
-        this(kmerSize, false, (byte)6, 1);
+        this(kmerSize, false, (byte)6, 1, -1);
     }
 
     /**
      * Create a new ReadThreadingAssembler using kmerSize for matching
      * @param kmerSize must be >= 1
      */
-    JunctionTreeLinkedDeBruijnGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
-        super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples);
+    JunctionTreeLinkedDeBruijnGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples, final int numDanglingMatchingPrefixBases) {
+        super(kmerSize, debugGraphTransformations, minBaseQualityToUseInAssembly, numPruningSamples, numDanglingMatchingPrefixBases);
     }
 
     /**
@@ -256,7 +257,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         try (PrintStream stream = new PrintStream(new FileOutputStream(destination))) {
             printSimplifiedGraph(stream, true, pruneFactor);
         } catch ( final FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(destination, e);
+            throw new UserException.CouldNotReadInputFile(destination.getAbsolutePath(), e);
         }
     }
     private final void printSimplifiedGraph(final PrintStream graphWriter, final boolean writeHeader, final int pruneFactor) {

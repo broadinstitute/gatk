@@ -611,9 +611,8 @@ public final class ModelSegments extends CommandLineProgram {
 
     private CopyRatioSegmentCollection performCopyRatioSegmentation(final CopyRatioCollection denoisedCopyRatios) {
         logger.info("Starting segmentation of denoised copy ratios...");
-        final int maxNumChangepointsPerChromosome = maxNumSegmentsPerChromosome - 1;
         return new CopyRatioKernelSegmenter(denoisedCopyRatios)
-                .findSegmentation(maxNumChangepointsPerChromosome, kernelVarianceCopyRatio, kernelApproximationDimension,
+                .findSegmentation(maxNumSegmentsPerChromosome, kernelVarianceCopyRatio, kernelApproximationDimension,
                         ImmutableSet.copyOf(windowSizes).asList(),
                         numChangepointsPenaltyFactor, numChangepointsPenaltyFactor);
     }
@@ -745,9 +744,8 @@ public final class ModelSegments extends CommandLineProgram {
 
     private AlleleFractionSegmentCollection performAlleleFractionSegmentation(final AllelicCountCollection hetAllelicCounts) {
         logger.info("Starting segmentation of heterozygous allelic counts...");
-        final int maxNumChangepointsPerChromosome = maxNumSegmentsPerChromosome - 1;
         return new AlleleFractionKernelSegmenter(hetAllelicCounts)
-                .findSegmentation(maxNumChangepointsPerChromosome, kernelVarianceAlleleFraction, kernelApproximationDimension,
+                .findSegmentation(maxNumSegmentsPerChromosome, kernelVarianceAlleleFraction, kernelApproximationDimension,
                         ImmutableSet.copyOf(windowSizes).asList(),
                         numChangepointsPenaltyFactor, numChangepointsPenaltyFactor);
     }

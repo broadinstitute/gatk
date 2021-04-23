@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pathseq;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.util.CollectionUtil;
 import htsjdk.samtools.util.SequenceUtil;
@@ -11,6 +12,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.filters.AmbiguousBaseReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadLengthReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.pathseq.loggers.PSFilterLogger;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.utils.ReadFilterSparkifier;
@@ -57,6 +59,7 @@ public final class PSFilter implements AutoCloseable {
         this.ctx = ctx;
         this.filterArgs = filterArgs;
         this.header = header;
+        validateFilterArguments();
     }
 
     @VisibleForTesting
@@ -171,6 +174,21 @@ public final class PSFilter implements AutoCloseable {
     }
 
     /**
+     * Validate arguments
+     */
+    private void validateFilterArguments() {
+        final SAMSequenceDictionary dictionary = header.getSequenceDictionary();
+        if (filterArgs.alignedInput) {
+            final Set<String> contigsToIgnoreSet = new HashSet<>(filterArgs.alignmentContigsToIgnore);
+            for (final String contig : contigsToIgnoreSet) {
+                if (dictionary.getSequence(contig) == null) {
+                    throw new UserException.BadInput("Ignored sequence " + contig + " not found in input header.");
+                }
+            }
+        }
+    }
+
+    /**
      * Pairs reads with canonical Long ID using the lesser 64-bit hash of the sequence and its reverse complement
      */
     @VisibleForTesting
@@ -210,7 +228,8 @@ public final class PSFilter implements AutoCloseable {
         filterLogger.logPrimaryReads(reads);
 
         if (filterArgs.alignedInput) {
-            reads = reads.filter(new ReadFilterSparkifier(new HostAlignmentReadFilter(filterArgs.minIdentity)));
+            final Set<String> contigsToIgnoreSet = Collections.unmodifiableSet(new HashSet<>(filterArgs.alignmentContigsToIgnore));
+            reads = reads.filter(new ReadFilterSparkifier(new HostAlignmentReadFilter(filterArgs.minIdentity, contigsToIgnoreSet)));
         }
         filterLogger.logReadsAfterPrealignedHostFilter(reads);
 

@@ -2,15 +2,18 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.UniqueAltReadCount;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class UniqueAltReadCountUnitTest {
     final String sampleName = "Mark";
@@ -31,8 +34,8 @@ public class UniqueAltReadCountUnitTest {
         final Map<String, Object> annotations = uniqueAltReadCountAnnotation.annotate(null, vc, likelihoods);
 
 
-        final int uniqueReadSetCount = (int) annotations.get(UniqueAltReadCount.KEY);
-        Assert.assertEquals(uniqueReadSetCount, 1);
+        final List<Integer> uniqueReadSetCount = AnnotationUtils.decodeAnyASListWithRawDelim((String)annotations.get(UniqueAltReadCount.KEY)).stream().map(Integer::valueOf).collect(Collectors.toList());
+        Assert.assertEquals(uniqueReadSetCount.get(0).intValue(), 1);
     }
 
     @Test
@@ -45,8 +48,8 @@ public class UniqueAltReadCountUnitTest {
         final Map<String, Object> annotations1 = duplicateReadCountsAnnotation.annotate(null, vc, likelihoods1);
 
 
-        final int uniqueReadSetCount1 = (int) annotations1.get(UniqueAltReadCount.KEY);
-        Assert.assertEquals(uniqueReadSetCount1, numUniqueStarts1);
+        final List<Integer> uniqueReadSetCount1 = AnnotationUtils.decodeAnyASListWithRawDelim((String) annotations1.get(UniqueAltReadCount.KEY)).stream().map(Integer::valueOf).collect(Collectors.toList());
+        Assert.assertEquals(uniqueReadSetCount1.get(0).intValue(), numUniqueStarts1);
 
         // here ALT reads are all distinct
         final int numUniqueStarts2 = numAltReads;
@@ -54,9 +57,8 @@ public class UniqueAltReadCountUnitTest {
         final Map<String, Object> annotations2 = duplicateReadCountsAnnotation.annotate(null, vc, likelihoods2);
 
 
-        final int uniqueReadSetCount2 = (int) annotations2.get(UniqueAltReadCount.KEY);
-
-        Assert.assertEquals(uniqueReadSetCount2, numUniqueStarts2);
+        final List<Integer> uniqueReadSetCount2 = AnnotationUtils.decodeAnyASListWithRawDelim((String) annotations2.get(UniqueAltReadCount.KEY)).stream().map(Integer::valueOf).collect(Collectors.toList());
+        Assert.assertEquals(uniqueReadSetCount2.get(0).intValue(), numUniqueStarts2);
     }
 
     private AlleleLikelihoods<GATKRead, Allele> createTestLikelihoods(final Optional<Integer> shiftModulus) {

@@ -6,11 +6,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.PrintStream;
 
 /**
@@ -26,7 +23,7 @@ import java.io.PrintStream;
 public final class ExampleVariantWalker extends VariantWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private File outputFile = null;
+    private GATKPath outputFile = null;
 
     @Argument(fullName="auxiliaryVariants", shortName="av", doc="Auxiliary set of variants", optional=true)
     private FeatureInput<VariantContext> auxiliaryVariants;
@@ -35,12 +32,7 @@ public final class ExampleVariantWalker extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
-        try {
-            outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
-        }
-        catch ( final FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(outputFile, e);
-        }
+        outputStream = outputFile != null ? new PrintStream(outputFile.getOutputStream()) : System.out;
     }
 
     @Override

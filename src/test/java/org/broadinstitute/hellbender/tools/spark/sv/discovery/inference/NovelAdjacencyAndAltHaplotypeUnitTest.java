@@ -53,8 +53,7 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends AssemblyBasedSVDiscov
         for (final AssemblyBasedSVDiscoveryTestDataProvider.AssemblyBasedSVDiscoveryTestDataForSimpleChimera assemblyBasedSVDiscoveryTestDataForSimpleChimera : getAllTestData()) {
             data.add(new Object[]{assemblyBasedSVDiscoveryTestDataForSimpleChimera.expectedNovelAdjacencyAndAltSeq,
                                   assemblyBasedSVDiscoveryTestDataForSimpleChimera.expectedSvTypes,
-                                  assemblyBasedSVDiscoveryTestDataForSimpleChimera.getAppropriateRef(),
-                                  assemblyBasedSVDiscoveryTestDataForSimpleChimera.getAppropriateDictionary()}
+                                  assemblyBasedSVDiscoveryTestDataForSimpleChimera.getAppropriateRef()}
             );
         }
 
@@ -63,9 +62,8 @@ public class NovelAdjacencyAndAltHaplotypeUnitTest extends AssemblyBasedSVDiscov
     @Test(groups = "sv", dataProvider = "forToSimpleOrBNDTypes")
     public void testToSimpleOrBNDTypes(final NovelAdjacencyAndAltHaplotype breakpoints,
                                        final List<SvType> expectedInferredTypes,
-                                       final ReferenceMultiSparkSource ref,
-                                       final SAMSequenceDictionary dict) {
-        final List<SvType> actual = breakpoints.toSimpleOrBNDTypes(ref, dict);
+                                       final ReferenceMultiSparkSource ref) {
+        final List<SvType> actual = breakpoints.toSimpleOrBNDTypes(ref);
         Assert.assertEquals(actual, expectedInferredTypes);
         for (int i = 0; i < actual.size(); ++i) {
             Assert.assertEquals(actual.get(i).hashCode(), expectedInferredTypes.get(i).hashCode());

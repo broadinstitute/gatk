@@ -119,7 +119,9 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 new HashSet<>(),
                 new DummyPlaceholderGatkTool(),
                 FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE,
-                new FlankSettings(0, 0), false
+                new FlankSettings(0, 0),
+                false,
+                FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT
         );
 
         // Sort the datasources to ensure the same order every time:
@@ -1161,8 +1163,11 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
             }
         }
 
+        // Make sure our files are as we expect them to be:
         try {
-            IntegrationTestSpec.assertEqualTextFiles(outFile, expectedFile, "#");
+            // For this test it is important to check that there is no trailing whitespace, hence
+            // we are running it with doTrimWhitespace set to false:
+            IntegrationTestSpec.assertEqualTextFiles(outFile, expectedFile, MafOutputRendererConstants.COMMENT_STRING, false);
         }
         catch (final IOException ex) {
             throw new GATKException("ERROR comparing text files: " + outFile.toURI().toString() + " and " + expectedFile.toURI().toString(), ex);

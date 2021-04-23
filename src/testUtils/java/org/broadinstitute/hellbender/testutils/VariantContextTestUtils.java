@@ -182,7 +182,7 @@ public final class VariantContextTestUtils {
         final VariantContextBuilder result = new VariantContextBuilder(vc);
         result.alleles(sortedAlleles);
 
-        GenotypesContext newGT = AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(),sortedAlleles,
+        GenotypesContext newGT = AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(),sortedAlleles, null,
                                                                      GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY,0));
 
         // Asserting that the new genotypes were calculated properly in case AlleleSubsettingUtils behavior changes
@@ -734,5 +734,11 @@ public final class VariantContextTestUtils {
         gb.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, Utils.listFromPrimitives(PPs));
         gb.GQ(MathUtils.secondSmallestMinusSmallest(PPs, gq));
         return vcb.genotypes(gb.make()).id(VCFConstants.EMPTY_ID_FIELD).make();
+    }
+
+    public static String keyForVariant(final VariantContext variant) {
+        final int end = variant.hasAttribute(VCFConstants.END_KEY) ? Integer.parseInt(variant.getAttribute(VCFConstants.END_KEY).toString()) : variant.getEnd();
+        return String.format("%s:%d-%d %s, %s", variant.getContig(), variant.getStart(), end, variant.getReference(),
+                variant.getAlternateAlleles().stream().map(Allele::getDisplayString).sorted().collect(Collectors.toList()));
     }
 }

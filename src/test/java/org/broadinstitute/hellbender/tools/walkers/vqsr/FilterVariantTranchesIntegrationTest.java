@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
+import htsjdk.tribble.TribbleException;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -22,6 +23,7 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
     private final static String indelTruthVCF = largeFileTestDir + "VQSR/ALL.wgs.indels_mills_devine_hg19_leftAligned_collapsed_double_hit.sites.20.1M-10M.vcf";
     private final static String snpTruthVCF = largeFileTestDir + "VQSR/Omni25_sites_1525_samples.b37.20.1M-10M.vcf";
     private final static String emptyVCF = largeFileTestDir + "VQSR/emptyB37.vcf";
+    private final static String badRef = toolsTestDir + "VQSR/chr20.badRefAlleles.snps.vcf";
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
 
     @DataProvider(name="getFilteringArgs")
@@ -79,7 +81,8 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
     public Object[][] getBadResourceCombos() {
         return new Object[][]{
                 //default tranches
-                {snpInput, indelTruthVCF}, {indelInput, snpTruthVCF}, {emptyVCF, snpTruthVCF}, {trancheVCF, emptyVCF}
+                {snpInput, indelTruthVCF}, {indelInput, snpTruthVCF}, {emptyVCF, snpTruthVCF}, {trancheVCF, emptyVCF},
+                {badRef, snpTruthVCF}
         };
     }
 
@@ -110,17 +113,17 @@ public class FilterVariantTranchesIntegrationTest  extends CommandLineProgramTes
         spec.executeTest("testTrancheFiltering", this);
     }
 
-        @Test(dataProvider = "getBadResourceCombos", expectedExceptions = UserException.BadInput.class)
-        public void runTrancheFilteringOnBadInputs(final String inputVcf, final String resourceVcf) {
-            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-            argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
-                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME, resourceVcf)
-                    .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
-                    .add("info-key", "MIX_SMALL_2D_W_DROPOUT")
-                    .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+    @Test(dataProvider = "getBadResourceCombos", expectedExceptions = UserException.BadInput.class)
+    public void runTrancheFilteringOnBadInputs(final String inputVcf, final String resourceVcf) {
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVcf)
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME, resourceVcf)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, "%s")
+                .add("info-key", "MIX_SMALL_2D_W_DROPOUT")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
 
-            runCommandLine(argsBuilder);
-        }
+        runCommandLine(argsBuilder);
+    }
 
     @Test(dataProvider = "getGoodResourceCombos")
     public void runTrancheFilteringOnGoodInputs(final String inputVcf, final String resourceVcf) {

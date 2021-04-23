@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.common.base.Strings;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.StandardPairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -20,10 +23,12 @@ import java.util.*;
 public final class PairHMMUnitTest extends GATKBaseTest {
     private final static boolean ALLOW_READS_LONGER_THAN_HAPLOTYPE = true;
     private final static boolean DEBUG = false;
-    final static boolean EXTENSIVE_TESTING = true;
-    final N2MemoryPairHMM exactHMM = new Log10PairHMM(true); // the log truth implementation
-    final N2MemoryPairHMM originalHMM = new Log10PairHMM(false); // the reference implementation
-    final N2MemoryPairHMM loglessHMM = new LoglessPairHMM();
+    private final static boolean EXTENSIVE_TESTING = true;
+    private final N2MemoryPairHMM exactHMM = new Log10PairHMM(true); // the log truth implementation
+    private final N2MemoryPairHMM originalHMM = new Log10PairHMM(false); // the reference implementation
+    private final N2MemoryPairHMM loglessHMM = new LoglessPairHMM();
+
+    private static final byte MASSIVE_QUAL = 100;
 
     @BeforeClass
     public void initialize() {
@@ -42,7 +47,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
     //
     // --------------------------------------------------------------------------------
 
-    private class BasicLikelihoodTestProvider {
+    private static class BasicLikelihoodTestProvider {
         final String ref, nextRef, read;
         final byte[] refBasesWithContext, nextRefBasesWithContext, readBasesWithContext;
         final int baseQual, insQual, delQual, gcp;
@@ -52,11 +57,11 @@ public final class PairHMMUnitTest extends GATKBaseTest {
         final static String LEFT_FLANK = "GATTTATCATCGAGTCTGC";
         final static String RIGHT_FLANK = "CATGGATCGTTATCAGCTATCTCGAGGGATTCACTTAACAGTTTTA";
 
-        public BasicLikelihoodTestProvider(final String ref, final String nextRef, final String read, final int baseQual, final int insQual, final int delQual, final int expectedQual, final int gcp ) {
+        BasicLikelihoodTestProvider(final String ref, final String nextRef, final String read, final int baseQual, final int insQual, final int delQual, final int expectedQual, final int gcp) {
             this(ref, nextRef, read, baseQual, insQual, delQual, expectedQual, gcp, false, false);
         }
 
-        public BasicLikelihoodTestProvider(final String ref, final String nextRef, final String read, final int baseQual, final int insQual, final int delQual, final int expectedQual, final int gcp, final boolean left, final boolean right) {
+        BasicLikelihoodTestProvider(final String ref, final String nextRef, final String read, final int baseQual, final int insQual, final int delQual, final int expectedQual, final int gcp, final boolean left, final boolean right) {
             this.baseQual = baseQual;
             this.delQual = delQual;
             this.insQual = insQual;
@@ -78,13 +83,12 @@ public final class PairHMMUnitTest extends GATKBaseTest {
             return String.format("ref=%s nextRef=%s read=%s b/i/d/c quals = %d/%d/%d/%d l/r flank = %b/%b e[qual]=%d", ref, nextRef, read, baseQual, insQual, delQual, gcp, left, right, expectedQual);
         }
 
-        public double expectedLogLikelihood() {
-            final double log10MagicConstant = 0.03;
+        double expectedLogLikelihood() {
             return (expectedQual / -10.0) + 0.03 + Math.log10(1.0 /
                     refBasesWithContext.length);
         }
 
-        public double getTolerance(final PairHMM hmm) {
+        double getTolerance(final PairHMM hmm) {
             if ( hmm instanceof Log10PairHMM) {
                 return ((Log10PairHMM)hmm).isDoingExactLog10Calculations() ? toleranceFromExact() : toleranceFromReference();
             } else
@@ -92,19 +96,19 @@ public final class PairHMMUnitTest extends GATKBaseTest {
         }
 
         // NOTE: natural log units rescale log10 units by a factor of log(10), so we rescale tolerances by this factor
-        public double toleranceFromTheoretical() {
+        double toleranceFromTheoretical() {
             return 0.2;
         }
 
-        public double toleranceFromReference() {
+        double toleranceFromReference() {
             return 1E-3; // has to be very tolerant -- this approximation is quite approximate
         }
 
-        public double toleranceFromExact() {
+        double toleranceFromExact() {
             return 1E-9;
         }
 
-        public double calcLog10Likelihood(final PairHMM pairHMM, boolean anchorIndel) {
+        double calcLog10Likelihood(final PairHMM pairHMM, boolean anchorIndel) {
             pairHMM.initialize(readBasesWithContext.length, refBasesWithContext.length);
             return pairHMM.computeReadLikelihoodGivenHaplotypeLog10(
                     refBasesWithContext, readBasesWithContext,
@@ -120,11 +124,11 @@ public final class PairHMMUnitTest extends GATKBaseTest {
         }
 
         private byte[] qualAsBytes(final int phredQual, final boolean doGOP, final boolean anchorIndel) {
-            final byte phredQuals[] = new byte[readBasesWithContext.length];
+            final byte[] phredQuals = new byte[readBasesWithContext.length];
 
             if( anchorIndel ) {
                 // initialize everything to MASSIVE_QUAL so it cannot be moved by HMM
-                Arrays.fill(phredQuals, (byte) 100);
+                Arrays.fill(phredQuals, MASSIVE_QUAL);
 
                 // update just the bases corresponding to the provided micro read with the quality scores
                 if( doGOP ) {
@@ -145,10 +149,10 @@ public final class PairHMMUnitTest extends GATKBaseTest {
     public Object[][] makeBasicLikelihoodTests() {
         // context on either side is ACGTTGCA REF ACGTTGCA
         // test all combinations
-        final List<Integer> baseQuals = EXTENSIVE_TESTING ? Arrays.asList(10, 20, 30, 40, 50) : Arrays.asList(30);
-        final List<Integer> indelQuals = EXTENSIVE_TESTING ? Arrays.asList(20, 30, 40, 50) : Arrays.asList(40);
-        final List<Integer> gcps = EXTENSIVE_TESTING ? Arrays.asList(8, 10, 20) : Arrays.asList(10);
-        final List<Integer> sizes = EXTENSIVE_TESTING ? Arrays.asList(2, 3, 4, 5, 7, 8, 9, 10, 20, 30, 35) : Arrays.asList(2);
+        final List<Integer> baseQuals = EXTENSIVE_TESTING ? Arrays.asList(10, 20, 30, 40, 50) : Collections.singletonList(30);
+        final List<Integer> indelQuals = EXTENSIVE_TESTING ? Arrays.asList(20, 30, 40, 50) : Collections.singletonList(40);
+        final List<Integer> gcps = EXTENSIVE_TESTING ? Arrays.asList(8, 10, 20) : Collections.singletonList(10);
+        final List<Integer> sizes = EXTENSIVE_TESTING ? Arrays.asList(2, 3, 4, 5, 7, 8, 9, 10, 20, 30, 35) : Collections.singletonList(2);
 
         final List<Object[]> tests = new ArrayList<>();
 
@@ -198,10 +202,10 @@ public final class PairHMMUnitTest extends GATKBaseTest {
     public Object[][] makeOptimizedLikelihoodTests() {
         Utils.resetRandomGenerator();
         final Random random = Utils.getRandomGenerator();
-        final List<Integer> baseQuals = EXTENSIVE_TESTING ? Arrays.asList(10, 30, 40, 60) : Arrays.asList(30);
-        final List<Integer> indelQuals = EXTENSIVE_TESTING ? Arrays.asList(20, 40, 60) : Arrays.asList(40);
-        final List<Integer> gcps = EXTENSIVE_TESTING ? Arrays.asList(10, 20, 30) : Arrays.asList(10);
-        final List<Integer> sizes = EXTENSIVE_TESTING ? Arrays.asList(3, 20, 50, 90, 160) : Arrays.asList(2);
+        final List<Integer> baseQuals = EXTENSIVE_TESTING ? Arrays.asList(10, 30, 40, 60) : Collections.singletonList(30);
+        final List<Integer> indelQuals = EXTENSIVE_TESTING ? Arrays.asList(20, 40, 60) : Collections.singletonList(40);
+        final List<Integer> gcps = EXTENSIVE_TESTING ? Arrays.asList(10, 20, 30) : Collections.singletonList(10);
+        final List<Integer> sizes = EXTENSIVE_TESTING ? Arrays.asList(3, 20, 50, 90, 160) : Collections.singletonList(2);
 
         final List<Object[]> tests = new ArrayList<>();
 
@@ -210,19 +214,19 @@ public final class PairHMMUnitTest extends GATKBaseTest {
                 for ( final int gcp : gcps ) {
                     for ( final int refSize : sizes ) {
                         for ( final int readSize : sizes ) {
-                            String ref = "";
-                            String read = "";
+                            StringBuilder ref = new StringBuilder();
+                            StringBuilder read = new StringBuilder();
                             for( int iii = 0; iii < refSize; iii++) {
-                                ref += (char) BaseUtils.BASES[random.nextInt(4)];
+                                ref.append((char) BaseUtils.BASES[random.nextInt(4)]);
                             }
                             for( int iii = 0; iii < readSize; iii++) {
-                                read += (char) BaseUtils.BASES[random.nextInt(4)];
+                                read.append((char) BaseUtils.BASES[random.nextInt(4)]);
                             }
 
                             for ( final boolean leftFlank : Arrays.asList(true, false) )
                                 for ( final boolean rightFlank : Arrays.asList(true, false) )
                                     // runOptimizedLikelihoodTests uses calcLogLikelihood(), which runs HMM with recacheReads=true. Since we will not cache, should pass null in place of a nextRef
-                                    tests.add(new Object[]{new BasicLikelihoodTestProvider(ref, null, read, baseQual, indelQual, indelQual, -0, gcp, leftFlank, rightFlank)});
+                                    tests.add(new Object[]{new BasicLikelihoodTestProvider(ref.toString(), null, read.toString(), baseQual, indelQual, indelQual, -0, gcp, leftFlank, rightFlank)});
                         }
                     }
                 }
@@ -369,14 +373,13 @@ public final class PairHMMUnitTest extends GATKBaseTest {
     @Test(enabled = !DEBUG, dataProvider = "HMMProviderSimple")
     void testReadSameAsHaplotype(final PairHMM hmm, final int readSize) {
         final byte[] readBases =  Utils.dupBytes((byte)'A', readSize);
-        final byte[] refBases = readBases;
         final byte baseQual = 20;
         final byte insQual = 37;
         final byte delQual = 37;
         final byte gcp = 10;
-        hmm.initialize(readBases.length, refBases.length);
+        hmm.initialize(readBases.length, readBases.length);
         // running HMM with no haplotype caching. Should therefore pass null in place of nextRef bases
-        final double d = hmm.computeReadLikelihoodGivenHaplotypeLog10(refBases, readBases,
+        final double d = hmm.computeReadLikelihoodGivenHaplotypeLog10(readBases, readBases,
                 Utils.dupBytes(baseQual, readBases.length),
                 Utils.dupBytes(insQual, readBases.length),
                 Utils.dupBytes(delQual, readBases.length),
@@ -506,24 +509,24 @@ public final class PairHMMUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "JustHMMProvider")
     public void testLikelihoodsFromHaplotypes(final PairHMM hmm){
-        final int readSize= 10;
-        final int refSize = 20;
+        final int readSize = 10;
+        final int refSize  = 20;
         final byte[] readBases =  Utils.dupBytes((byte)'A', readSize);
         final byte[] refBases = Utils.dupBytes((byte) 'A', refSize);
         final byte baseQual = 20;
-        final byte insQual = 100;
-        final byte gcp = 100;
+        final byte insQual = MASSIVE_QUAL;
 
         final Haplotype refH= new Haplotype(refBases, true);
 
         final byte[] readQuals= Utils.dupBytes(baseQual, readBases.length);
-        final List<GATKRead> reads = Arrays.asList(ArtificialReadUtils.createArtificialRead(readBases, readQuals, readBases.length + "M"));
-        final Map<GATKRead, byte[]> gpcs = buildGapContinuationPenalties(reads, gcp);
+        final List<GATKRead> reads = Arrays.asList(ArtificialReadUtils.createArtificialRead(readBases, readQuals, readBases.length + CigarOperator.M.toString()));
 
-        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), Collections.emptyList(), gpcs);
+        final PairHMMInputScoreImputator inputScoreImputator = StandardPairHMMInputScoreImputator.newInstance(MASSIVE_QUAL);
+
+        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), Collections.emptyList(), inputScoreImputator);
         Assert.assertEquals(hmm.getLogLikelihoodArray(), null);
 
-        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), reads, gpcs);
+        hmm.computeLog10Likelihoods(matrix(Arrays.asList(refH)), reads, inputScoreImputator);
         final double expected = getExpectedMatchingLogLikelihood(readBases, refBases, baseQual, insQual);
         final double[] la = hmm.getLogLikelihoodArray();
 
@@ -555,7 +558,7 @@ public final class PairHMMUnitTest extends GATKBaseTest {
             }
 
             @Override
-            public int indexOfAllele(Haplotype allele) {
+            public int indexOfAllele(final Allele allele) {
                 throw new UnsupportedOperationException();
             }
 

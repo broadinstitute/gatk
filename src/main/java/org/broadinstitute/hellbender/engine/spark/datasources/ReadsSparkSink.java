@@ -17,6 +17,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.adam.models.ReadGroupDictionary;
 import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.formats.avro.AlignmentRecord;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -43,22 +44,22 @@ public final class ReadsSparkSink {
      * writeReads writes rddReads to outputFile with header as the file header.
      * @param ctx the JavaSparkContext to write.
      * @param outputFile path to the output bam.
-     * @param referenceFile path to the reference. required for cram output, otherwise may be null.
+     * @param referencePathSpecifier GATKPath to the reference. required for cram output, otherwise may be null.
      * @param reads reads to write.
      * @param header the header to put at the top of the files
      * @param format should the output be a single file, sharded, ADAM, etc.
      */
     public static void writeReads(
-            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
+            final JavaSparkContext ctx, final String outputFile, final GATKPath referencePathSpecifier, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format) throws IOException {
-        writeReads(ctx, outputFile, referenceFile, reads, header, format, 0, null, true, SBIIndexWriter.DEFAULT_GRANULARITY);
+        writeReads(ctx, outputFile, referencePathSpecifier, reads, header, format, 0, null, true, SBIIndexWriter.DEFAULT_GRANULARITY);
     }
 
     /**
      * writeReads writes rddReads to outputFile with header as the file header.
      * @param ctx the JavaSparkContext to write.
      * @param outputFile path to the output bam.
-     * @param referenceFile path to the reference. required for cram output, otherwise may be null.
+     * @param referencePathSpecifier GATKPath to the reference. required for cram output, otherwise may be null.
      * @param reads reads to write.
      * @param header the header to put at the top of the files
      * @param format should the output be a single file, sharded, ADAM, etc.
@@ -69,16 +70,16 @@ public final class ReadsSparkSink {
      * @param splittingIndexGranularity the granularity of the splitting index
      */
     public static void writeReads(
-            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
+            final JavaSparkContext ctx, final String outputFile, final GATKPath referencePathSpecifier, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir, final boolean sortReadsToHeader, final long splittingIndexGranularity) throws IOException {
-        writeReads(ctx, outputFile, referenceFile, reads, header, format, numReducers, outputPartsDir, true, true, sortReadsToHeader, splittingIndexGranularity);
+        writeReads(ctx, outputFile, referencePathSpecifier, reads, header, format, numReducers, outputPartsDir, true, true, sortReadsToHeader, splittingIndexGranularity);
     }
 
     /**
      * writeReads writes rddReads to outputFile with header as the file header.
      * @param ctx the JavaSparkContext to write.
      * @param outputFile path to the output bam.
-     * @param referenceFile path to the reference. required for cram output, otherwise may be null.
+     * @param referencePathSpecifier GATKPath to the reference. required for cram output, otherwise may be null.
      * @param reads reads to write.
      * @param header the header to put at the top of the files
      * @param format should the output be a single file, sharded, ADAM, etc.
@@ -91,15 +92,12 @@ public final class ReadsSparkSink {
      * @param splittingIndexGranularity  the granularity of the splitting index if one is created
      */
     public static void writeReads(
-            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<GATKRead> reads,
+            final JavaSparkContext ctx, final String outputFile, final GATKPath referencePathSpecifier, final JavaRDD<GATKRead> reads,
             final SAMFileHeader header, ReadsWriteFormat format, final int numReducers, final String outputPartsDir,
             final boolean writeBai, final boolean writeSbi, final boolean sortReadsToHeader, final long splittingIndexGranularity) throws IOException {
 
         String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
-        String absoluteReferenceFile = referenceFile != null ?
-                                        BucketUtils.makeFilePathAbsolute(referenceFile) :
-                                        referenceFile;
-      ReadsSparkSource.checkCramReference(ctx, absoluteOutputFile, absoluteReferenceFile);
+        ReadsSparkSource.checkCramReference(ctx, new GATKPath(absoluteOutputFile), referencePathSpecifier);
 
         // The underlying reads are required to be in SAMRecord format in order to be
         // written out, so we convert them to SAMRecord explicitly here. If they're already
@@ -118,12 +116,12 @@ public final class ReadsSparkSink {
                     absoluteOutputFile.endsWith(FileExtensions.CRAM) ||
                     absoluteOutputFile.endsWith(FileExtensions.SAM)) {
                 // don't specify a write option for format since it is inferred from the extension in the path
-                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, readsToOutput, header,
+                writeReads(ctx, absoluteOutputFile, referencePathSpecifier, readsToOutput, header,
                         splittingIndexGranularity, fileCardinalityWriteOption, tempPartsDirectoryWriteOption, baiWriteOption, sbiWriteOption);
             } else {
                 // default to BAM
                 ReadsFormatWriteOption formatWriteOption = ReadsFormatWriteOption.BAM;
-                writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, readsToOutput, header, splittingIndexGranularity, formatWriteOption,
+                writeReads(ctx, absoluteOutputFile, referencePathSpecifier, readsToOutput, header, splittingIndexGranularity, formatWriteOption,
                         fileCardinalityWriteOption, tempPartsDirectoryWriteOption, baiWriteOption, sbiWriteOption);
             }
         } else if (format == ReadsWriteFormat.SHARDED) {
@@ -132,7 +130,7 @@ public final class ReadsSparkSink {
             }
             ReadsFormatWriteOption formatWriteOption = ReadsFormatWriteOption.BAM; // use BAM if output file is a directory
             FileCardinalityWriteOption fileCardinalityWriteOption = FileCardinalityWriteOption.MULTIPLE;
-            writeReads(ctx, absoluteOutputFile, absoluteReferenceFile, readsToOutput, header, splittingIndexGranularity, formatWriteOption, fileCardinalityWriteOption);
+            writeReads(ctx, absoluteOutputFile, referencePathSpecifier, readsToOutput, header, splittingIndexGranularity, formatWriteOption, fileCardinalityWriteOption);
         } else if (format == ReadsWriteFormat.ADAM) {
             if (outputPartsDir!=null) {
                 throw new  GATKException(String.format("You specified the bam output parts directory %s, but requested an ADAM output format which does not use this option",outputPartsDir));
@@ -142,7 +140,7 @@ public final class ReadsSparkSink {
     }
 
     private static void writeReads(
-            final JavaSparkContext ctx, final String outputFile, final String referenceFile, final JavaRDD<SAMRecord> reads,
+            final JavaSparkContext ctx, final String outputFile, final GATKPath referencePathSpecifier, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header, final long sbiIndexGranularity, final WriteOption... writeOptions) throws IOException {
 
         Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
@@ -152,7 +150,7 @@ public final class ReadsSparkSink {
         });
         HtsjdkReadsRdd htsjdkReadsRdd = new HtsjdkReadsRdd(header, sortedReadsWithHeader);
         HtsjdkReadsRddStorage.makeDefault(ctx)
-                .referenceSourcePath(referenceFile)
+                .referenceSourcePath(referencePathSpecifier == null ? null : referencePathSpecifier.getRawInputString())
                 .sbiIndexGranularity(sbiIndexGranularity)
                 .write(htsjdkReadsRdd, outputFile, writeOptions);
     }

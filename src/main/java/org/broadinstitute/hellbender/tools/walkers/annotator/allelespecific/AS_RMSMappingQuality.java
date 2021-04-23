@@ -11,8 +11,8 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
-import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -44,7 +44,7 @@ import java.util.*;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific root-mean-square of the mapping quality of reads across all samples (AS_MQ)")
-public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements AS_StandardAnnotation, ReducibleAnnotation, AlleleSpecificAnnotation {
+public final class AS_RMSMappingQuality implements InfoFieldAnnotation, AS_StandardAnnotation, ReducibleAnnotation, AlleleSpecificAnnotation {
 
     private final String printFormat = "%.2f";
 
@@ -216,7 +216,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
         String annotationString = "";
         for (final Allele current : vcAlleles) {
             if (!annotationString.isEmpty()) {
-                annotationString += AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM;
+                annotationString += AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM;
             }
             if(perAlleleValues.get(current) != null) {
                 annotationString += String.format(printFormat, perAlleleValues.get(current));

@@ -91,6 +91,44 @@ public final class VariantOverlapAnnotatorUnitTest extends GATKBaseTest {
         tests.add(new Object[]{callNoIDAC, Arrays.asList(dbSNP_AC_AG), "rsID1;rsID3", true});
         tests.add(new Object[]{callNoIDAT, Arrays.asList(dbSNP_AC_AG), VCFConstants.EMPTY_ID_FIELD, false});
 
+        //multiple rsid which match multiallelic site
+        final VariantContext callNoIDT_C_TAC = makeVC("call", VCFConstants.EMPTY_ID_FIELD, Arrays.asList("T", "C", "TAC"));
+
+        final VariantContext dbSNP_T_TAC_TATAC = makeVC("DBSNP", "rsID1", Arrays.asList("T", "TAC", "TATAC"));
+        final VariantContext dbSNP_T_C = makeVC("DBSNP", "rsID2", Arrays.asList("T", "C"));
+
+        tests.add(new Object[]{callNoIDT_C_TAC, Arrays.asList(dbSNP_T_TAC_TATAC, dbSNP_T_C), "rsID1;rsID2", true});
+        tests.add(new Object[]{callNoIDT_C_TAC, Arrays.asList(dbSNP_T_C,dbSNP_T_TAC_TATAC), "rsID2;rsID1", true});
+
+        //mixed multiallelic in dbsnp
+        final VariantContext callNOID_T_TTCC = makeVC("call", VCFConstants.EMPTY_ID_FIELD, Arrays.asList("T", "TTCC"));
+
+        final VariantContext dbSNP_complex_mixed_site = makeVC("DBSNP", "rsID1", Arrays.asList("TTCCTCCTCCTCCTCCTCC", "T", "TTCCTCCTCCTCCTCCTCCTCC"));
+
+        tests.add(new Object[]{callNOID_T_TTCC, Arrays.asList(dbSNP_complex_mixed_site), "rsID1", true});
+
+        //mixed multialleleic in call
+        final VariantContext callNOID_complex_mixed_site = makeVC("call", VCFConstants.EMPTY_ID_FIELD, Arrays.asList("TTCCTCCTCCTCCTCCTCC", "T", "TTCCTCCTCCTCCTCCTCCTCC"));
+
+        final VariantContext dbSNP_T_TTCC = makeVC("DBSNP", "rsID1", Arrays.asList("T", "TTCC"));
+
+        tests.add(new Object[]{callNOID_complex_mixed_site, Arrays.asList(dbSNP_T_TTCC), "rsID1", true});
+
+        //dbsnp and call both deletions different length
+        final VariantContext call_deletion = makeVC("call", VCFConstants.EMPTY_ID_FIELD, Arrays.asList("TTTT", "T"));
+
+        final VariantContext dbSNP_deletion_different_length = makeVC("DBSNP", "rsID1", Arrays.asList("TTTTTT", "T"));
+        final VariantContext dbSNP_deletion_and_insertion_multiallelic = makeVC("DBSNP", "rsID2", Arrays.asList("TTTTTT", "T", "TTTTTTTTTTT"));
+
+        tests.add(new Object[]{call_deletion, Arrays.asList(dbSNP_deletion_different_length, dbSNP_deletion_and_insertion_multiallelic), VCFConstants.EMPTY_ID_FIELD, false});
+
+        //dbsnp and call both insert different lengths
+        final VariantContext call_insertion = makeVC("call", VCFConstants.EMPTY_ID_FIELD, Arrays.asList("T", "TTTT"));
+
+        final VariantContext dbSNP_insertion_different_length = makeVC("DBSNP", "rsID1", Arrays.asList("T", "TTTTTT"));
+
+        tests.add(new Object[]{call_insertion, Arrays.asList(dbSNP_insertion_different_length, dbSNP_deletion_and_insertion_multiallelic), VCFConstants.EMPTY_ID_FIELD, false});
+
         final VariantContext dbSNP_AC_FAIL = new VariantContextBuilder(makeVC("DBSNP", "rsID1", Arrays.asList("A", "C"))).filter("FAIL").make();
         tests.add(new Object[]{callNoIDAC, Arrays.asList(dbSNP_AC_FAIL), VCFConstants.EMPTY_ID_FIELD, false});
 

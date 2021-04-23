@@ -5,11 +5,9 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import java.io.File;
 
 public final class ReferenceInputArgumentCollectionTest {
     private static class WithOptionalReferenceCollection {
@@ -43,7 +41,7 @@ public final class ReferenceInputArgumentCollectionTest {
     public void testGetNullPath(){
         final ReferenceInputArgumentCollection nullPath = new ReferenceInputArgumentCollection(){
             private static final long serialVersionUID = 0L;
-            @Override public String getReferenceFileName() { return null;}
+            @Override public GATKPath getReferenceSpecifier() { return null;}
         };
 
         Assert.assertNull(nullPath.getReferencePath());

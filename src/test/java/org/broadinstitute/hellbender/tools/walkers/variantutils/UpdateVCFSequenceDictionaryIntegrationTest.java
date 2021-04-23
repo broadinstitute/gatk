@@ -35,10 +35,8 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
                 new Object[]{ new File(testDir, "variantsNoDict.vcf"), new File(testDir, "exampleFASTA.dict"), null, null, false, false},
                 // can't handle CRAM - see https://github.com/samtools/htsjdk/issues/731
                 new Object[]{ new File(testDir, "variantsNoDict.vcf"), new File(testDir, "exampleBAM.bam"), null, null, false, false},
-                // already has a dictionary - but force a replace
-                new Object[]{ new File(testDir, "variantsWithDict.vcf"), new File(testDir, "exampleFASTA.dict"), null, null, true, false},
-                // already has a dictionary - but force a replace
-                new Object[]{ new File(testDir, "variantsWithDict.vcf"), new File(testDir, "exampleFASTA.dict"), null, null, true, false},
+                // already has a dictionary - but force a replace; validation passes because vcf dictionary is subset of .dict
+                new Object[]{ new File(testDir, "variantsWithSubsetDict.vcf"), new File(testDir, "exampleFASTA.dict"), null, null, true, false},
                 // can force a replace with an invalid sequence dictionary if also disable sequence validation
                 new Object[]{ new File(testDir, "variantsWithDictBadContigLength.vcf"), new File(testDir, "exampleFASTA.dict"), null, null, true, true}
         };

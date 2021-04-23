@@ -118,9 +118,7 @@ public final class MainTest extends CommandLineProgramTest {
     public void testEnsureShortDescriptionsAreShort() {
         // Test each command line tool to ensure that one line summaries don't exceed the maximum allowable length
 
-        //TODO: replace this constant with the Picard-defined length when its available in GATK
-        //final int MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH = picard.cmdline.CommandLineProgram.MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH;
-        final int MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH = 120;
+        final int MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH = picard.cmdline.CommandLineProgram.MAX_ALLOWABLE_ONE_LINE_SUMMARY_LENGTH;
 
         // Picard tools are validated independently by a similar test in Picard, and also use a CommandLineProgram
         // class from a different package, so bypass tools from that package for this test

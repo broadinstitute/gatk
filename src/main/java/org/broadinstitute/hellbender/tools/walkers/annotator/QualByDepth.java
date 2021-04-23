@@ -43,7 +43,7 @@ import java.util.Map;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Variant confidence normalized by unfiltered depth of variant samples (QD)")
-public final class QualByDepth extends InfoFieldAnnotation implements StandardAnnotation {
+public final class QualByDepth implements InfoFieldAnnotation, StandardAnnotation {
 
     @VisibleForTesting
     static final double MAX_QD_BEFORE_FIXING = 35;

@@ -16,10 +16,12 @@ public class PipelineSupportIntegrationTest extends GATKBaseTest {
     // Asserting that Picard programs are able to pipe their output without errors
     public void testPipeForPicardTools() {
         File output = createTempFile("testOutput",".bam");
-        BaseTest.runProcess(ProcessController.getThreadLocal(), new String[]{"/bin/sh","-c"," ./gatk SortSam -I "+INPUT_BAM+" -O /dev/stdout -SO coordinate " +
-                "| ./gatk SetNmMdAndUqTags -I /dev/stdin -O "+ output.getAbsolutePath()+ " --CREATE_INDEX true -R "+b37_reference_20_21});//.split(" "));
-        try (ReadsDataSource inputReads = new ReadsDataSource(new File(INPUT_BAM).toPath());
-             ReadsDataSource outputReads = new ReadsDataSource(output.toPath())) {
+        String gatkLaunchScript = System.getenv("GATK_LAUNCH_SCRIPT");
+        String gatkLaunchScriptSubsitution = gatkLaunchScript == null ? "./gatk" : gatkLaunchScript;
+        BaseTest.runProcess(ProcessController.getThreadLocal(), new String[]{"/bin/sh","-c"," "+gatkLaunchScriptSubsitution+" SortSam -I "+INPUT_BAM+" -O /dev/stdout -SO coordinate " +
+                "| "+gatkLaunchScriptSubsitution+" SetNmMdAndUqTags -I /dev/stdin -O "+ output.getAbsolutePath()+ " --CREATE_INDEX true -R "+b37_reference_20_21});//.split(" "));
+        try (ReadsDataSource inputReads = new ReadsPathDataSource(new File(INPUT_BAM).toPath());
+             ReadsDataSource outputReads = new ReadsPathDataSource(output.toPath())) {
             Assert.assertTrue(inputReads.iterator().hasNext());
             Assert.assertTrue(outputReads.iterator().hasNext());
             final int[] count = {0};

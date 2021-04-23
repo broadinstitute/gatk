@@ -22,10 +22,7 @@ import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.OptionalInt;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -109,7 +106,7 @@ public final class CopyNumberArgumentValidationUtils {
             logger.info(String.format("Retrieving intervals from read-count file (%s)...", readCountPath));
         }
 
-        final SimpleCountCollection readCounts = BucketUtils.isCloudStorageUrl(readCountPath)
+        final SimpleCountCollection readCounts = BucketUtils.isGcsUrl(readCountPath)
                 ? SimpleCountCollection.readFromGCS(readCountPath)
                 : SimpleCountCollection.read(new File(readCountPath));
         final SAMSequenceDictionary sequenceDictionary = readCounts.getMetadata().getSequenceDictionary();
@@ -143,7 +140,7 @@ public final class CopyNumberArgumentValidationUtils {
                     final String inputReadCountPath = inputReadCountPaths.get(sampleIndex);
                     logger.info(String.format("Aggregating read-count file %s (%d / %d)",
                             inputReadCountPath, sampleIndex + 1, numSamples));
-                    final SimpleCountCollection subsetReadCounts = BucketUtils.isCloudStorageUrl(inputReadCountPath)
+                    final SimpleCountCollection subsetReadCounts = BucketUtils.isGcsUrl(inputReadCountPath)
                             ? SimpleCountCollection.readOverlappingSubsetFromGCS(inputReadCountPath, mergedIntervalSubset)
                             : SimpleCountCollection.readAndSubset(new File(inputReadCountPath), intervalSubset);
                     if (!CopyNumberArgumentValidationUtils.isSameDictionary(
@@ -226,7 +223,7 @@ public final class CopyNumberArgumentValidationUtils {
                     if (input.isFile()) {
                         IOUtils.canReadFile(input);
                     } else if (input.isDirectory() && !input.canRead()) {
-                        throw new UserException.CouldNotReadInputFile(input);
+                        throw new UserException.CouldNotReadInputFile(input.getAbsolutePath());
                     }
                 }
             }
@@ -254,7 +251,7 @@ public final class CopyNumberArgumentValidationUtils {
         for (final File outputFile : outputFiles) {
             Utils.nonNull(outputFile);
             if ((outputFile.exists() && !outputFile.canWrite()) || (!outputFile.exists() && !outputFile.getAbsoluteFile().getParentFile().canWrite())) {
-                throw new UserException.CouldNotCreateOutputFile(outputFile, ": The output file is not writeable.");
+                throw new UserException.CouldNotCreateOutputFile(outputFile.getAbsolutePath(), ": The output file is not writeable.");
             }
         }
     }
@@ -268,13 +265,13 @@ public final class CopyNumberArgumentValidationUtils {
             Utils.nonNull(outputDirectory);
             if (outputDirectory.exists()) {
                 if (!outputDirectory.canWrite()) {
-                    throw new UserException.CouldNotCreateOutputFile(outputDirectory, ": The output directory is not writeable.");
+                    throw new UserException.CouldNotCreateOutputFile(outputDirectory.getAbsolutePath(), ": The output directory is not writeable.");
                 }
             } else {
                 try {
                     IOUtils.createDirectory(outputDirectory.getAbsolutePath());
                 } catch (final IOException e) {
-                    throw new UserException.CouldNotCreateOutputFile(outputDirectory, ": The output directory does not exist and could not be created.");
+                    throw new UserException.CouldNotCreateOutputFile(outputDirectory.getAbsolutePath(), ": The output directory does not exist and could not be created.");
                 }
             }
         }

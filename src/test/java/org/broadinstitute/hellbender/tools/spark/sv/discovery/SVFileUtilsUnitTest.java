@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordCoordinateComparator;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVFileUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -21,7 +22,7 @@ public class SVFileUtilsUnitTest extends GATKBaseTest {
     public void testWriteSAMRecords() {
 
         final String inputBam = exampleTestDir + "/metrics/exampleMetrics.bam";
-        final ReadsDataSource gatkReads = new ReadsDataSource(IOUtils.getPath(inputBam));
+        final ReadsDataSource gatkReads = new ReadsPathDataSource(IOUtils.getPath(inputBam));
         SAMFileHeader expectedHeader = gatkReads.getHeader();
         final List<SAMRecord> expectedSamRecords = new ArrayList<>(100_000);
         gatkReads.forEach(gatkRead -> expectedSamRecords.add(gatkRead.convertToSAMRecord(expectedHeader)));
@@ -36,7 +37,7 @@ public class SVFileUtilsUnitTest extends GATKBaseTest {
         SVFileUtils.writeSAMFile(outputPath, expectedSamRecords.iterator(), expectedHeader, true);
         Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + ".bai"))
                                 || Files.exists(IOUtils.getPath(outputPath.replace(".bam", ".bai"))));
-        final ReadsDataSource bamOut = new ReadsDataSource(IOUtils.getPath(outputPath));
+        final ReadsDataSource bamOut = new ReadsPathDataSource(IOUtils.getPath(outputPath));
         final SAMFileHeader bamOutHeader = bamOut.getHeader();
         Assert.assertEquals(bamOutHeader, expectedHeader);
         final List<SAMRecord> bamOutRecords = new ArrayList<>(100_000);
@@ -47,7 +48,7 @@ public class SVFileUtilsUnitTest extends GATKBaseTest {
         // test output SAM, equivalent contents
         outputPath = tempDirNew.getAbsolutePath() + "/out.sam";
         SVFileUtils.writeSAMFile(outputPath, expectedSamRecords.iterator(), expectedHeader, false);
-        final ReadsDataSource samOut = new ReadsDataSource(IOUtils.getPath(outputPath));
+        final ReadsDataSource samOut = new ReadsPathDataSource(IOUtils.getPath(outputPath));
         SAMFileHeader samOutHeader = samOut.getHeader();
         Assert.assertEquals(samOutHeader, expectedHeader);
         final List<SAMRecord> samOutRecords = new ArrayList<>(100_000);

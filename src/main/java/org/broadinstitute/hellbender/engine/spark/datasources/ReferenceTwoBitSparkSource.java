@@ -8,13 +8,13 @@ import org.bdgenomics.adam.util.TwoBitFile;
 import org.bdgenomics.adam.util.TwoBitRecord;
 import org.bdgenomics.formats.avro.Strand;
 import org.bdgenomics.utils.io.ByteAccess;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.Tuple2;
 import scala.collection.JavaConversions;
-import scala.collection.immutable.IndexedSeq;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -37,9 +37,12 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
     private final TwoBitFile twoBitFile;
     private final Map<String, TwoBitRecord> twoBitSeqEntries;
 
-    public ReferenceTwoBitSparkSource( String referenceURL) throws IOException {
-        this.referenceURL = referenceURL;
-        Utils.validateArg(isTwoBit(this.referenceURL), "ReferenceTwoBitSource can only take .2bit files");
+    public ReferenceTwoBitSparkSource( GATKPath referencePathSpecifier) throws IOException {
+        // It would simplify this class if we could cache the GATKPath, but ReferenceFileSparkSource
+        // objects are used as Spark broadcast variables, and caching GATKPath here triggers a known
+        // issue during broadcast with the Java 11 GATK build. See https://issues.apache.org/jira/browse/SPARK-26963.
+        this.referenceURL = referencePathSpecifier.getRawInputString();
+        Utils.validateArg(isTwoBit(referencePathSpecifier), "ReferenceTwoBitSource can only take .2bit files");
         byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL));
         ByteAccess byteAccess = new DirectFullByteArrayByteAccess(bytes);
         this.twoBitFile = new TwoBitFile(byteAccess);
@@ -72,8 +75,8 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
         return new SAMSequenceDictionary(records);
     }
 
-    public static boolean isTwoBit(String file) {
-        return file.endsWith(TWO_BIT_EXTENSION);
+    public static boolean isTwoBit(final GATKPath referenceSpecifier) {
+        return referenceSpecifier.getURI().getPath().endsWith(TWO_BIT_EXTENSION);
     }
 
     private static ReferenceRegion simpleIntervalToReferenceRegion(SimpleInterval interval) {

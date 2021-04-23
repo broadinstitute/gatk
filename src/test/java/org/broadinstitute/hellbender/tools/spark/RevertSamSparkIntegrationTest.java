@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import picard.sam.RevertSam;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,7 +21,7 @@ import java.util.*;
 @Test(groups = "Spark")
 public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
 
-    private static List<String> defaultAttributesToClearPlusXT = new ArrayList<String>() {
+    private static final List<String> defaultAttributesToClearPlusXT = new ArrayList<String>() {
         private static final long serialVersionUID = 1L;
         {
         addAll(RevertSamSpark.DEFAULT_ATTRIBUTES_TO_CLEAR);
@@ -28,6 +29,8 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
     }};
 
     private final File basicSamToRevert = getTestFile("revert_sam_basic.sam");
+    private final File basicBamToRevert = getTestFile("revert_sam_basic.bam");
+    private final File basicCramToRevert = getTestFile("revert_sam_basic.cram");
     private final File sampleLibraryOverrideSam = getTestFile("revert_sam_sample_library_override.sam");
     private final File validOutputMap = getTestFile("revert_sam_valid_output_map.txt");
     private final File nonExistentOutputMap = getTestFile("revert_sam_does_not_exist.txt");
@@ -44,45 +47,57 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="positiveTestData")
     public Object[][] positiveTestData() {
         return new Object[][] {
-                {null, false, false, true, true, null, null, Collections.EMPTY_LIST},
-                {SAMFileHeader.SortOrder.queryname, false, false, true, false, "Hey,Dad!", null, defaultAttributesToClearPlusXT},
-                {null, true, false, false, false, "Hey,Dad!", "NewLibraryName", defaultAttributesToClearPlusXT},
-                {null, true, true, false, false, null, null, Collections.EMPTY_LIST}
+                {basicSamToRevert, null, false, false, true, true, null, null, Collections.EMPTY_LIST},
+                {basicSamToRevert, SAMFileHeader.SortOrder.queryname, false, false, true, false, "Hey,Dad!", null, defaultAttributesToClearPlusXT},
+                {basicSamToRevert, null, true, false, false, false, "Hey,Dad!", "NewLibraryName", defaultAttributesToClearPlusXT},
+                {basicSamToRevert, null, true, true, false, false, null, null, Collections.EMPTY_LIST},
+
+                {basicBamToRevert, null, false, false, true, true, null, null, Collections.EMPTY_LIST},
+                {basicBamToRevert, SAMFileHeader.SortOrder.queryname, false, false, true, false, "Hey,Dad!", null, defaultAttributesToClearPlusXT},
+                {basicBamToRevert, null, true, false, false, false, "Hey,Dad!", "NewLibraryName", defaultAttributesToClearPlusXT},
+                {basicBamToRevert, null, true, true, false, false, null, null, Collections.EMPTY_LIST},
+
+                {basicCramToRevert, null, false, false, true, true, null, null, Collections.EMPTY_LIST},
+                {basicCramToRevert, SAMFileHeader.SortOrder.queryname, false, false, true, false, "Hey,Dad!", null, defaultAttributesToClearPlusXT},
+                {basicCramToRevert, null, true, false, false, false, "Hey,Dad!", "NewLibraryName", defaultAttributesToClearPlusXT},
+                {basicCramToRevert, null, true, true, false, false, null, null, Collections.EMPTY_LIST}
         };
     }
 
     @Test(dataProvider= "positiveTestData")
-    public void basicPositiveTests(final SAMFileHeader.SortOrder so, final boolean removeDuplicates, final boolean removeAlignmentInfo,
+    public void basicPositiveTests(final File input, final SAMFileHeader.SortOrder so, final boolean removeDuplicates, final boolean removeAlignmentInfo,
                                    final boolean restoreOriginalQualities, final boolean outputByReadGroup, final String sample, final String library,
                                    final List<String> attributesToClear) throws Exception {
 
         final File output = outputByReadGroup ? Files.createTempDirectory("picardRevertSamSparkTest").toFile() : BaseTest.createTempFile("reverted", ".sam");
-        File output0 = new File(output.getPath()+"/0.sam");
-        File output1 = new File(output.getPath()+"/1.sam");
-        File output2 = new File(output.getPath()+"/2.sam");
-        File output3 = new File(output.getPath()+"/3.sam");
+        final File output0 = new File(output.getPath()+"/0.sam");
+        final File output1 = new File(output.getPath()+"/1.sam");
+        final File output2 = new File(output.getPath()+"/2.sam");
+        final File output3 = new File(output.getPath()+"/3.sam");
         final RevertSamSpark reverter = new RevertSamSpark();
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addInput(basicSamToRevert);
+        args.addInput(input);
         args.addOutput(output);
+        args.addReference(referenceFasta);
 
         if (outputByReadGroup) {
-            args.addRaw("--"+RevertSamSpark.OUTPUT_BY_READGROUP_LONG_NAME);
+            args.add(RevertSamSpark.OUTPUT_BY_READGROUP_FILE_FORMAT_LONG_NAME, RevertSamSpark.FileType.sam);
+            args.add(RevertSamSpark.OUTPUT_BY_READGROUP_LONG_NAME, true);
         }
         if (so != null) {
-            args.add("sort-order",so.name()); //TODO decide on sort order outputing
+            args.add("sort-order", so); //TODO decide on sort order outputing
         }
         if (!removeAlignmentInfo) {
-            args.addRaw("--"+RevertSamSpark.KEEP_ALIGNMENT_INFORMATION);
+            args.add(RevertSamSpark.KEEP_ALIGNMENT_INFORMATION, true);
         }
         if (sample != null) {
-            args.add("sample-alias",sample);
+            args.add("sample-alias", sample);
         }
         if (library != null) {
-            args.add("library-name",library);
+            args.add("library-name", library);
         }
         for (final String attr : attributesToClear) {
-            args.add("attributes-to-clear",attr);
+            args.add("attributes-to-clear", attr);
         }
 
         runCommandLine(args);
@@ -97,32 +112,42 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test
-    public void testOutputByReadGroupWithOutputMap() throws Exception {
+    @DataProvider
+    public Object[][] getInputs(){
+        return new Object[][] {
+                {basicSamToRevert},
+                {basicBamToRevert},
+                {basicCramToRevert}
+        };
+    }
+
+    @Test(dataProvider = "getInputs")
+    public void testOutputByReadGroupWithOutputMap(File input) throws Exception {
         final File outputDir = createTempDir("testOutputByReadGroupWithOutputMap");
         // Create the output map
         final File outputMapFile = BaseTest.createTempFile("picardRevertSamSparkTestOutputMap", ".txt");
-        final PrintWriter mapWriter = new PrintWriter(outputMapFile);
-        final String outputPath0 = outputDir + "/my_rg0.sam";
-        final String outputPath1 = outputDir + "/rg1.sam";
-        final String outputPath2 = outputDir + "/my_rg2.bam";
-        final String outputPath3 = outputDir + "/my_rg3.sam";//TODO not used?
-        mapWriter.println("READ_GROUP_ID\tOUTPUT");
-        mapWriter.println("0\t" + outputPath0);
-        mapWriter.println("2\t" + outputPath2);
-        mapWriter.println("1\t" + outputPath1);
-        mapWriter.println("3\t" + outputPath3);
-        System.out.println("outputFile: " + outputPath0);
-        System.out.println("outputFile: " + outputPath1);
-        System.out.println("outputFile: " + outputPath2);
-        System.out.println("outputFile: " + outputPath3);
-        mapWriter.close();
+        final String outputPath0;
+        final String outputPath1;
+        final String outputPath2;
+        try (final PrintWriter mapWriter = new PrintWriter(outputMapFile)) {
+            outputPath0 = outputDir + "/my_rg0.sam";
+            outputPath1 = outputDir + "/rg1.sam";
+            outputPath2 = outputDir + "/my_rg2.bam";
+            final String outputPath3 = outputDir + "/my_rg3.sam";//TODO not used?
+            mapWriter.println("READ_GROUP_ID\tOUTPUT");
+            mapWriter.println("0\t" + outputPath0);
+            mapWriter.println("2\t" + outputPath2);
+            mapWriter.println("1\t" + outputPath1);
+            mapWriter.println("3\t" + outputPath3);
+            Assert.assertFalse(mapWriter.checkError(), "PrintWriter encountered an error");
+        }
 
         final RevertSamSpark reverter = new RevertSamSpark();
 
         final String args[] = new String[] {
-                "-I",basicSamToRevert.getPath(),
+                "-I",input.getPath(),
                 "--output-by-readgroup",
+                "--output-by-readgroup-file-format", "sam",
                 "--output-map",outputMapFile.getPath(),
                 "-R",referenceFasta.getPath(),
                 "--sort-order",SAMFileHeader.SortOrder.queryname.name(),
@@ -141,10 +166,10 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         verifyPositiveResults(output2, reverter, true, true, true, true, "2", 2, "test_sample_1", "test_library_1");
     }
 
-    @Test
-    public void testSingleEndSanitize() throws Exception {
+    @Test(dataProvider = "getInputs")
+    public void testSingleEndSanitize(File input) throws Exception {
         final File output = createTempFile("single_end_reverted", ".sam");
-        final String args[] = { "-I", singleEndSamToRevert.getAbsolutePath(), "-O", output.getAbsolutePath(), "--sanitize"};
+        final String[] args = { "-I", input.getAbsolutePath(), "-O", output.getAbsolutePath(), "--sanitize", "-R", referenceFasta.getAbsolutePath()};
         runCommandLine(args);
     }
 
@@ -214,24 +239,34 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test
-    public void testSanitizeAndDeduplicateRecords() throws Exception {
-        final File input  = BaseTest.createTempFile("test-input-santize-and-deduplicate-records", ".sam");
-        final File output = BaseTest.createTempFile("test-output-santize-and-deduplicate-records", ".sam");
+    @DataProvider
+    public Object[][] getFileTypes(){
+        return new Object[][] {
+                {".sam"},
+                {".bam"},
+                {".cram"}
+        };
+    }
+
+    @Test(dataProvider = "getFileTypes")
+    public void testSanitizeAndDeduplicateRecords(String extension) throws Exception {
+        final File input  = BaseTest.createTempFile("test-input-santize-and-deduplicate-records", extension);
+        final File output = BaseTest.createTempFile("test-output-santize-and-deduplicate-records", extension);
 
         // Create a SAM file that has duplicate records
-        final SamReader reader = SamReaderFactory.makeDefault().open(basicSamToRevert);
-        final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), false, input);
-        int numDuplicated = 0;
-        for (final SAMRecord rec : reader) {
-            writer.addAlignment(rec);
-            if (!rec.getReadPairedFlag() || rec.getFirstOfPairFlag()) {
+        int numDuplicated;
+        try (final SamReader reader = SamReaderFactory.makeDefault().open(basicSamToRevert);
+             final SAMFileWriter writer = new SAMFileWriterFactory().makeWriter(reader.getFileHeader(), false, input, referenceFasta)) {
+
+            numDuplicated = 0;
+            for (final SAMRecord rec : reader) {
                 writer.addAlignment(rec);
-                numDuplicated++;
+                if (!rec.getReadPairedFlag() || rec.getFirstOfPairFlag()) {
+                    writer.addAlignment(rec);
+                    numDuplicated++;
+                }
             }
         }
-        reader.close();
-        writer.close();
 
         // Make sure some records are duplicated
         Assert.assertTrue(numDuplicated > 0);
@@ -241,7 +276,8 @@ public class RevertSamSparkIntegrationTest extends CommandLineProgramTest {
                 "--sanitize",
                 "--keep-first-duplicate",
                 "--"+RevertSamSpark.DONT_RESTORE_ORIGINAL_QUALITIES_LONG_NAME,
-                "-O", output.getAbsolutePath()
+                "-O", output.getAbsolutePath(),
+                "-R", referenceFasta.getAbsolutePath()
         };
         runCommandLine(args);
         verifyPositiveResults(output, new RevertSamSpark(), false, true, false, false, null, 8, null, null);

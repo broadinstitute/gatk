@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.utils.samples;
 
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,8 +24,8 @@ public class SampleDBBuilder {
         this.validationStrictness = validationStrictness;
     }
 
-    public SampleDBBuilder addSamplesFromPedigreeFiles(final List<File> pedigreeFiles) {
-        for (final File pedFile : pedigreeFiles) {
+    public SampleDBBuilder addSamplesFromPedigreeFiles(final List<GATKPath> pedigreeFiles) {
+        for (final GATKPath pedFile : pedigreeFiles) {
             Collection<Sample> samples = addSamplesFromPedigreeArgument(pedFile);
             samplesFromPedigrees.addAll(samples);
         }
@@ -44,13 +46,12 @@ public class SampleDBBuilder {
      * Parse one sample file and integrate it with samples that are already there
      * Fail quickly if we find any errors in the file
      */
-    private Collection<Sample> addSamplesFromPedigreeArgument(File sampleFile) {
-        final PedReader reader = new PedReader();
-
-        try {
-            return reader.parse(sampleFile, getMissingFields(sampleFile), sampleDB);
-        } catch ( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(sampleFile, e);
+    private Collection<Sample> addSamplesFromPedigreeArgument(GATKPath sampleFile) {
+        try (final InputStream is = sampleFile.getInputStream();
+             final InputStreamReader isr = new InputStreamReader(is)) {
+            return new PedReader().parse(isr, getMissingFields(sampleFile), sampleDB);
+        } catch (IOException e) {
+            throw new UserException.CouldNotReadInputFile(sampleFile, "Could not read sample file", e);
         }
     }
 

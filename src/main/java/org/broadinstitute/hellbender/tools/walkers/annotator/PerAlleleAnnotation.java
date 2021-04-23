@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * Apply an annotation based on aggregation data from all reads supporting each allele.
  */
-public abstract class PerAlleleAnnotation extends InfoFieldAnnotation{
+public abstract class PerAlleleAnnotation implements InfoFieldAnnotation {
 
     /**
      * Calculate annotations for each allele based on given VariantContext and likelihoods for a given genotype's sample

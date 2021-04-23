@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
+import com.google.common.primitives.Doubles;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
-import java.util.stream.IntStream;
+import java.util.stream.Collectors;
 
-public class MinAlleleFractionFilter extends HardFilter {
+public class MinAlleleFractionFilter extends HardAlleleFilter {
     private final double minAf;
 
     public MinAlleleFractionFilter(final double minAf) {
@@ -17,16 +21,17 @@ public class MinAlleleFractionFilter extends HardFilter {
     @Override
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
+    public List<Double> getAltData(final Genotype g) {
+        double[] data = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 1.0);
+        return Doubles.asList(data);
+    }
+
     @Override
-    public boolean isArtifact(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        return vc.getGenotypes().stream().filter(filteringEngine::isTumor)
-                .filter(g -> g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY))
-                .anyMatch(g -> {
-                    final double[] alleleFractions = VariantContextGetters.getAttributeAsDoubleArray(g, GATKVCFConstants.ALLELE_FRACTION_KEY, () -> null, 1.0);
-                    final int numRealAlleles = vc.hasSymbolicAlleles() ? alleleFractions.length - 1 : alleleFractions.length;
-                    final OptionalDouble max = IntStream.range(0, numRealAlleles).mapToDouble(a -> alleleFractions[a]).max();
-                    return max.getAsDouble() < minAf;
-                });
+    public List<Boolean> areAllelesArtifacts(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+        LinkedHashMap<Allele, List<Double>> dataByAllele = getAltDataByAllele(vc, g -> g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY) && filteringEngine.isTumor(g), this::getAltData, filteringEngine);
+        return dataByAllele.entrySet().stream()
+                .filter(entry -> !vc.getReference().equals(entry.getKey()))
+                .map(entry -> entry.getValue().stream().max(Double::compare).orElse(1.0) < minAf).collect(Collectors.toList());
     }
 
     @Override
@@ -35,5 +40,5 @@ public class MinAlleleFractionFilter extends HardFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.emptyList(); }
+    protected List<String> requiredInfoAnnotations() { return Collections.emptyList(); }
 }

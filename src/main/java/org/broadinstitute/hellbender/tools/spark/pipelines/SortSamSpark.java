@@ -106,7 +106,7 @@ public final class SortSamSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
         final int numReducers = getRecommendedNumReducers();
-        logger.info("Using %d reducers", numReducers);
+        logger.info("Using {} reducers", numReducers);
 
         final SAMFileHeader header = getHeaderForReads();
         header.setSortOrder(sortOrder.getSamOrder());

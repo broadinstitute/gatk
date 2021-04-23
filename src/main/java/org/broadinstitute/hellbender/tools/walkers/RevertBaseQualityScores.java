@@ -2,9 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -16,28 +18,28 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
-@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Simple tool to revert the quality scores in a SAM/BAM/CRAM file. Copies the scores from the OQ tag to the quality scores.",
         oneLineSummary = "Revert Quality Scores in a SAM/BAM/CRAM file",
         usageExample = "hellbender RevertQualityScores -I input.bam -O output.bam",
         programGroup = ReadDataManipulationProgramGroup.class
 )
-
+@DocumentedFeature
+@WorkflowProperties
 public class RevertBaseQualityScores extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
-    public String OUTPUT;
+    @WorkflowOutput(optionalCompanions={StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
+    public GATKPath OUTPUT;
 
     private SAMFileGATKReadWriter outputWriter;
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT), true);
+        outputWriter = createSAMWriter(OUTPUT, true);
     }
 
     @Override

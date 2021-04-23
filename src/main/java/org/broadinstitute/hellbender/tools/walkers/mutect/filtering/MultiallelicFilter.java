@@ -32,5 +32,5 @@ public class MultiallelicFilter extends HardFilter {
         return GATKVCFConstants.MULTIALLELIC_FILTER_NAME;
     }
 
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY); }
 }

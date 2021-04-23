@@ -108,7 +108,12 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  *     counts files, and all contigs appearing in the input counts files must have a corresponding entry in the priors
  *     table. The order of contigs is immaterial in the priors table. The highest ploidy state is determined by the
  *     prior table (3 in the above example). A ploidy state can be strictly forbidden by setting its prior probability
- *     to 0. For example, the X contig in the above example can only assume 0 and 1 ploidy states.</p>
+ *     to 0. For example, the Y contig in the above example can only assume 0 and 1 ploidy states.</p>
+ *
+ *     <p>If the provided count data only contains intervals from a single chromosome, the model degeneracy in this
+ *     case will lead to no meaningful inference and the ploidy states will be resolved to the most likely ploidy
+ *     states given by the ploidy prior table. As an example, autosomal contigs will assume ploidy 2, and
+ *     X could assume either 1 or 2 depending on tie breakers.</p>
  *
  *     <p>The tool output in the COHORT mode will contain two subdirectories, one ending with "-model" and the other
  *     ending with "-calls". The model subdirectory contains the inferred parameters of the ploidy model, which may
@@ -293,8 +298,17 @@ public final class DetermineGermlineContigPloidy extends CommandLineProgram {
 
         setModeAndResolveIntervals();
 
+        final boolean intervalListContainsMultipleContigs = specifiedIntervals.getRecords().stream()
+                .map(SimpleInterval::getContig).collect(Collectors.toSet()).size() > 1;
+        if (!intervalListContainsMultipleContigs) {
+            logger.warn("The interval list only contains a single contig! Inference of the ploidy states will be" +
+                    "limited to what is provided in contig-ploidy prior table, i.e. the ploidy state with" +
+                    " highest value of prior will be chosen");
+        }
+
         //read in count files and output intervals and samples x coverage-per-contig table to temporary files
         specifiedIntervalsFile = IOUtils.createTempFile("intervals", ".tsv");
+
         specifiedIntervals.write(specifiedIntervalsFile);
         final File samplesByCoveragePerContigFile = IOUtils.createTempFile("samples-by-coverage-per-contig", ".tsv");
         writeSamplesByCoveragePerContig(samplesByCoveragePerContigFile);

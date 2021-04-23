@@ -5,21 +5,27 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -28,12 +34,14 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.util.*;
 
 /**
  * Unit tests for {@link HaplotypeCallerGenotypingEngine}.
  */
 public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest {
+    static String DRAGEN_GATK_BQDFRD_TEST_BAM_SRA = "/Users/emeryj/hellbender/DRAGENMatlab/frdbqd/SRA056922_hs37d5_xmapq.bam";
 
     private class BasicGenotypingTestProvider extends TestDataProvider {
         byte[] ref;
@@ -57,6 +65,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
             return "REF:" + new String(ref) + ",ALT:" + new String(hap);
         }
     }
+
 
     @DataProvider(name = "BasicGenotypingTestProvider")
     public Object[][] makeBasicGenotypingTests() {

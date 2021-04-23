@@ -1,0 +1,16 @@
+@HD	VN:1.0	SO:coordinate
+@SQ	SN:chr1	LN:248956422	M5:6aef897c3d6ff0c78aff06ac189178dd	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo	sapiens
+chr1	6192571	6192617	+	target_7
+chr1	6192870	6192942	+	target_8
+chr1	6193017	6193085	+	target_9
+chr1	6193517	6193585	+	target_10
+chr1	6193668	6193765	+	target_11
+chr1	6195713	6195830	+	target_15
+chr1	16245617	16245745	+	target_20
+chr1	16246987	16247126	+	target_21
+chr1	16247425	16247502	+	target_22
+chr1	16249598	16249682	+	target_27
+chr1	16250792	16250902	+	target_30
+chr1	16251280	16251493	+	target_31
+chr1	16254517	16254605	+	target_33
+chr1	16254757	16254840	+	target_34

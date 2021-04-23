@@ -59,7 +59,7 @@ import java.util.stream.Stream;
  * </p>
  */
 @DefaultSerializer(CpxVariantInducingAssemblyContig.Serializer.class)
-final class CpxVariantInducingAssemblyContig {
+public final class CpxVariantInducingAssemblyContig {
     private static final AssemblyContigWithFineTunedAlignments.Serializer contigSerializer =
             new AssemblyContigWithFineTunedAlignments.Serializer();
     private static final BasicInfo.Serializer basicInfoSerializer =

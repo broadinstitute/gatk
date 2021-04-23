@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.BaseTest;
@@ -444,7 +445,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgramTest extends Comma
         args.addInput(getTestFile("supplementaryReadUnmappedmate.bam"));
         runCommandLine(args);
 
-        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(output.toPath()) ) {
+        try ( final ReadsDataSource outputReadsSource = new ReadsPathDataSource(output.toPath()) ) {
             final List<GATKRead> actualReads = new ArrayList<>();
             for ( final GATKRead read : outputReadsSource ) {
                 Assert.assertFalse(read.isDuplicate());

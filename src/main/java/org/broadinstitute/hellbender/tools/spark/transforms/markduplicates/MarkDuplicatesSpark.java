@@ -14,6 +14,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -309,11 +310,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         final SAMFileHeader mergedHeader = getHeaderForReads();
 
         // Check if we are using multiple inputs that the headers are all in the correct querygrouped ordering, if so set the aggregate header to reflect this
-        Map<String, SAMFileHeader> headerMap = getReadSourceHeaderMap();
-        if (headerMap.size() > 1) {
-            final Optional<Map.Entry<String, SAMFileHeader>> badlySorted = headerMap.entrySet()
-                    .stream()
-                    .filter(h -> !treatAsReadGroupOrdered(h.getValue(), treatUnsortedAsOrdered))
+        if (readArguments.getReadPathSpecifiers().size() > 1) {
+            final Optional<GATKPath> badlySorted = readArguments.getReadPathSpecifiers().stream()
+                    .filter(spec -> !treatAsReadGroupOrdered(getHeaderForReadsInput(spec), treatUnsortedAsOrdered))
                     .findFirst();
 
             if(badlySorted.isPresent()) {
@@ -321,11 +320,10 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                     //don't set an ordering, the files will all be sorted downstream
                     logger.info("Input files are not all grouped by read name so they will be sorted together.");
                 } else {
-                    final Map.Entry<String, SAMFileHeader> badPair = badlySorted.get();
                     throw new UserException(
                             "Multiple inputs to MarkDuplicatesSpark detected. MarkDuplicatesSpark requires all inputs to be queryname sorted " +
-                                    "or querygroup-sorted for multi-input processing but input " + badPair.getKey() + " was sorted in " + badPair
-                                    .getValue().getSortOrder() + " order");
+                                    "or querygroup-sorted for multi-input processing but input " + badlySorted.get() + " was sorted in " +
+                                    getHeaderForReadsInput(badlySorted.get()) + " order");
                 }
             } else {
                 // The default sort order for merged input files is unsorted, so this will be fed to the tool to be sorted
@@ -343,8 +341,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         }
 
         JavaRDD<GATKRead> reads = getReads();
-        final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
-                new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
+        final OpticalDuplicateFinder finder = new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null);
         // If we need to remove optical duplicates, set the engine to mark optical duplicates using the DT tag.
         if (markDuplicatesSparkArgumentCollection.removeSequencingDuplicates && markDuplicatesSparkArgumentCollection.taggingPolicy == MarkDuplicates.DuplicateTaggingPolicy.DontTag) {
             markDuplicatesSparkArgumentCollection.taggingPolicy = MarkDuplicates.DuplicateTaggingPolicy.OpticalOnly;

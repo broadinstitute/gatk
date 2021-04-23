@@ -12,7 +12,7 @@ import java.io.File;
 public class PathSeqBwaSparkIntegrationTest extends CommandLineProgramTest {
 
     private final String IMAGE_PATH = publicTestDir + "hg19mini.fasta.img";
-    private final String REF_PATH = publicTestDir + "hg19mini.fasta";
+    private final String REF_DICT_PATH = publicTestDir + "hg19mini.dict";
 
     @DataProvider(name = "pathseqBwaTestData")
     public Object[][] getTestData() {
@@ -35,7 +35,7 @@ public class PathSeqBwaSparkIntegrationTest extends CommandLineProgramTest {
         args.add(PathSeqBwaSpark.PAIRED_INPUT_LONG_NAME, inputBamFile);
         args.add(PathSeqBwaSpark.PAIRED_OUTPUT_LONG_NAME, pairedOutputBamFile);
         args.add(PSBwaArgumentCollection.MICROBE_BWA_IMAGE_LONG_NAME, IMAGE_PATH);
-        args.add(PSBwaArgumentCollection.MICROBE_FASTA_LONG_NAME, REF_PATH);
+        args.add(PSBwaArgumentCollection.MICROBE_REF_DICT_LONG_NAME, REF_DICT_PATH);
         this.runCommandLine(args.getArgsArray());
         SamAssertionUtils.assertSamsEqual(pairedOutputBamFile, getTestFile(expectedBamFilename), ValidationStringency.LENIENT);
     }

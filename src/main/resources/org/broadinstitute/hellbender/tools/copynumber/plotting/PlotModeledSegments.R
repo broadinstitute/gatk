@@ -11,6 +11,9 @@ option_list = list(
     make_option(c("--modeled_segments_file"), dest="modeled_segments_file", action="store"),
     make_option(c("--contig_names"), dest="contig_names", action="store"),      #string with elements separated by "CONTIG_DELIMITER"
     make_option(c("--contig_lengths"), dest="contig_lengths", action="store"),  #string with elements separated by "CONTIG_DELIMITER"
+    make_option(c("--maximum_copy_ratio"), dest="maximum_copy_ratio", action="store", type="double"),
+    make_option(c("--point_size_copy_ratio"), dest="point_size_copy_ratio", action="store", type="double"),
+    make_option(c("--point_size_allele_fraction"), dest="point_size_allele_fraction", action="store", type="double"),
     make_option(c("--output_file"), dest="output_file", action="store"))
 
 opt = parse_args(OptionParser(option_list=option_list))
@@ -21,6 +24,9 @@ allelic_counts_file = opt[["allelic_counts_file"]]
 modeled_segments_file = opt[["modeled_segments_file"]]
 contig_names_string = opt[["contig_names"]]
 contig_lengths_string = opt[["contig_lengths"]]
+maximum_copy_ratio = opt[["maximum_copy_ratio"]]
+point_size_copy_ratio = opt[["point_size_copy_ratio"]]
+point_size_allele_fraction = opt[["point_size_allele_fraction"]]
 output_file = opt[["output_file"]]
 
 #check that required input files exist; if not, quit with error code that GATK will pick up
@@ -50,15 +56,17 @@ WriteModeledSegmentsPlot = function(sample_name, allelic_counts_file, denoised_c
         #determine copy-ratio midpoints
         denoised_copy_ratios_df[["MIDDLE"]] = round((denoised_copy_ratios_df[["START"]] + denoised_copy_ratios_df[["END"]]) / 2)
 
-        SetUpPlot(sample_name, "denoised copy ratio", 0, 4, "contig", contig_names, contig_starts, contig_ends, TRUE)
-        PlotCopyRatiosWithModeledSegments(denoised_copy_ratios_df, modeled_segments_df, contig_names, contig_starts)
+        #plot up to maximum_copy_ratio (or full range, if maximum_copy_ratio = Infinity)
+        maximum_denoised_copy_ratio = if(is.finite(maximum_copy_ratio)) maximum_copy_ratio else 1.05 * max(denoised_copy_ratios_df[["COPY_RATIO"]])
+        SetUpPlot(sample_name, "denoised copy ratio", 0, maximum_denoised_copy_ratio, "contig", contig_names, contig_starts, contig_ends, TRUE)
+        PlotCopyRatiosWithModeledSegments(denoised_copy_ratios_df, modeled_segments_df, contig_names, contig_starts, point_size_copy_ratio)
     }
 
     if (file.exists(allelic_counts_file) && allelic_counts_file != "null") {
         allelic_counts_df = ReadTSV(allelic_counts_file)
 
         SetUpPlot(sample_name, "alternate-allele fraction", 0, 1.0, "contig", contig_names, contig_starts, contig_ends, TRUE)
-        PlotAlternateAlleleFractionsWithModeledSegments(allelic_counts_df, modeled_segments_df, contig_names, contig_starts)
+        PlotAlternateAlleleFractionsWithModeledSegments(allelic_counts_df, modeled_segments_df, contig_names, contig_starts, point_size_allele_fraction)
     }
 
     dev.off()

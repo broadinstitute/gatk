@@ -23,6 +23,13 @@ from ..models.fancy_model import GeneralizedContinuousModel
 _logger = logging.getLogger(__name__)
 
 
+class ConvergenceError(Exception):
+    """Exception raised in case inference optimizer produces a NaN. """
+
+    def __init__(self):
+        self.message = "The optimization step for ELBO update returned a NaN"
+
+
 class Sampler:
     """Base class for log emission posterior probability samplers to be used in the hybrid ADVI scheme."""
     def __init__(self, hybrid_inference_params: 'HybridInferenceParameters'):
@@ -392,7 +399,9 @@ class HybridInferenceTask(InferenceTask):
             try:
                 for _ in progress_bar:
                     loss = self.continuous_model_step_func() / self.elbo_normalization_factor
-                    assert not np.isnan(loss), "The optimization step for ELBO update returned a NaN"
+                    if np.isnan(loss):
+                        raise ConvergenceError
+
                     self.i_advi += 1
 
                     try:
@@ -704,6 +713,10 @@ class HybridInferenceParameters:
         process_and_maybe_add("adamax_beta2",
                               type=float,
                               help="Adamax second moment estimator forgetting factor")
+
+        process_and_maybe_add("random_seed",
+                              type=int,
+                              help="Random seed for the inference task")
 
         process_and_maybe_add("log_emission_samples_per_round",
                               type=int,

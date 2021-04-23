@@ -1,12 +1,13 @@
 package org.broadinstitute.hellbender.tools;
 
 
-import htsjdk.samtools.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -44,16 +45,18 @@ import org.broadinstitute.hellbender.utils.read.*;
  * </pre>
  *
  */
-@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Left-aligns indels from reads in a SAM/BAM/CRAM file.",
         oneLineSummary = "Left-aligns indels from reads in a SAM/BAM/CRAM file",
         programGroup = ReadDataManipulationProgramGroup.class
 )
+@DocumentedFeature
+@WorkflowProperties
 public final class LeftAlignIndels extends ReadWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,doc="Output BAM")
-    private String output;
+    @WorkflowOutput(optionalCompanions={StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
+    private GATKPath output;
 
     private SAMFileGATKReadWriter outputWriter = null;
 
@@ -64,7 +67,7 @@ public final class LeftAlignIndels extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(IOUtils.getPath(output), true);
+        outputWriter = createSAMWriter(output, true);
     }
 
     @Override
@@ -75,8 +78,12 @@ public final class LeftAlignIndels extends ReadWalker {
             return;
         }
 
-        final Cigar newCigar = AlignmentUtils.leftAlignIndels(read.getCigar(), ref.getBases(), read.getBases(), 0);
-        read.setCigar(newCigar);
+        final CigarBuilder.Result result = AlignmentUtils.leftAlignIndels(read.getCigar(), ref.getBases(), read.getBases(), 0);
+
+        read.setCigar(result.getCigar());
+        if (result.getLeadingDeletionBasesRemoved() > 0) {
+            read.setPosition(read.getContig(), read.getStart() + result.getLeadingDeletionBasesRemoved());
+        }
 
         outputWriter.addRead(read);
     }

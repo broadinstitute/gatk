@@ -942,7 +942,7 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
                         maxLog = likelihood;
                     likelihoods.add(likelihood);
                 }
-                //System.out.printf("%d likelihoods and max is (probability) %e\n",likelihoods.size(),Math.pow(10,maxLog));
+                System.out.printf("%d likelihoods and max is (probability) %e\n",likelihoods.size(),Math.pow(10,maxLog));
                 Assert.assertEquals(MathUtils.sumLog10(unwrap(likelihoods)),1.0,1e-7,
                         String.format("Counts %d and alleles %d have nLikelihoods %d. \n Counts: %s",
                                 count,alleles.length,likelihoods.size(), "NODEBUG"/*,countLog*/));

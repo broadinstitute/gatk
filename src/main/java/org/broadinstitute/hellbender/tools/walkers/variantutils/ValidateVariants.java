@@ -262,7 +262,7 @@ public final class ValidateVariants extends VariantWalker {
             try{
                 applyValidationType(vc, reportedRefAllele, observedRefAllele, rsIDs, t);
             } catch (TribbleException e) {
-                throwOrWarn(new UserException.FailsStrictValidation(drivingVariantFile, t, e.getMessage()));
+                throwOrWarn(new UserException.FailsStrictValidation(drivingVariantFile.getRawInputString(), t, e.getMessage()));
             }
         }
     }

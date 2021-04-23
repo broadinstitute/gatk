@@ -32,7 +32,7 @@ import java.util.*;
  * <h3>Detailed Information and Tutorial</h3>
  * <p>Detailed information and a tutorial can be found here:
  *     <ul>
- *         <li><a href="https://gatkforums.broadinstitute.org/dsde/discussion/11193/funcotator-information-and-tutorial">https://gatkforums.broadinstitute.org/dsde/discussion/11193/funcotator-information-and-tutorial</a></li>
+ *         <li><a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035889931-Funcotator-Information-and-Tutorial">https://gatk.broadinstitute.org/hc/en-us/articles/360035889931-Funcotator-Information-and-Tutorial</a></li>
  *     </ul>
  * </p>
  *
@@ -745,10 +745,13 @@ public class Funcotator extends VariantWalker {
     @Override
     public void onTraversalStart() {
 
-        logger.info("Validating Sequence Dictionaries...");
         if (seqValidationArguments.performSequenceDictionaryValidation()) {
+            logger.info("Validating sequence dictionaries...");
             // Ensure that the reference dictionary is a superset of the variant dictionary:
             checkReferenceDictionaryIsSupersetOfVariantDictionary();
+        }
+        else {
+            logger.info("Skipping sequence dictionary validation.");
         }
 
         logger.info("Processing user transcripts/defaults/overrides...");
@@ -784,7 +787,8 @@ public class Funcotator extends VariantWalker {
                 this,
                 funcotatorArgs.lookaheadFeatureCachingInBp,
                 new FlankSettings(funcotatorArgs.fivePrimeFlankSize, funcotatorArgs.threePrimeFlankSize),
-                false
+                false,
+                funcotatorArgs.minNumBasesForValidSegment
         );
 
         logger.info("Initializing Funcotator Engine...");

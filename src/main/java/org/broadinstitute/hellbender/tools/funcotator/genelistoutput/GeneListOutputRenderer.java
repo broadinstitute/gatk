@@ -79,10 +79,21 @@ public class GeneListOutputRenderer extends OutputRenderer {
     final private Pattern gencodeEndGeneFieldPattern;
     final private Pattern gencodeEndExonFieldPattern;
 
+    final private int minNumBasesForValidSegment;
+
     public GeneListOutputRenderer(final Path outputFilePath,
                                   final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
                                   final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
                                   final Set<String> excludedOutputFields, final String toolVersion){
+        this(outputFilePath, unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations,
+                excludedOutputFields, toolVersion, FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT);
+    }
+
+    public GeneListOutputRenderer(final Path outputFilePath,
+                                  final LinkedHashMap<String, String> unaccountedForDefaultAnnotations,
+                                  final LinkedHashMap<String, String> unaccountedForOverrideAnnotations,
+                                  final Set<String> excludedOutputFields, final String toolVersion,
+                                  final int minNumBasesForValidSegment){
         super(toolVersion);
         Utils.nonNull(unaccountedForDefaultAnnotations);
         Utils.nonNull(unaccountedForOverrideAnnotations);
@@ -105,6 +116,8 @@ public class GeneListOutputRenderer extends OutputRenderer {
         gencodeStartExonFieldPattern = Pattern.compile(GENCODE_START_EXON_FIELD_PATTERN_STRING);
         gencodeEndGeneFieldPattern = Pattern.compile(GENCODE_END_GENE_FIELD_PATTERN_STRING);
         gencodeEndExonFieldPattern = Pattern.compile(GENCODE_END_EXON_FIELD_PATTERN_STRING);
+
+        this.minNumBasesForValidSegment = minNumBasesForValidSegment;
     }
 
     /**
@@ -223,9 +236,10 @@ public class GeneListOutputRenderer extends OutputRenderer {
      * Will convert illegal argument exceptions into user errors, since this means that the user probably gave the wrong
      *  type of input file.
      */
-    private void validateAbleToWrite(final VariantContext variant, final FuncotationMap txToFuncotationMap) {
+    @VisibleForTesting
+    void validateAbleToWrite(final VariantContext variant, final FuncotationMap txToFuncotationMap) {
         try {
-            Utils.validateArg(FuncotatorUtils.isSegmentVariantContext(variant), ERR_STR_IS_THIS_SEG_FILE + INVALID_VARIANT_CONTEXT_ERR_MSG + ": " + variant);
+            Utils.validateArg(FuncotatorUtils.isSegmentVariantContext(variant, minNumBasesForValidSegment), ERR_STR_IS_THIS_SEG_FILE + INVALID_VARIANT_CONTEXT_ERR_MSG + ": " + variant);
             Utils.validateArg(txToFuncotationMap.getTranscriptList().size() == 1, ERR_STR_IS_THIS_SEG_FILE + INCORRECT_NUM_TRANSCRIPT_ERR_MSG + ": " + StringUtils.join(txToFuncotationMap.getTranscriptList(), ","));
             Utils.validateArg(txToFuncotationMap.getTranscriptList().get(0).equals(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY), ERR_STR_IS_THIS_SEG_FILE + INVALID_TRANSCRIPT_ID_ERR_MSG + "  (must be no transcript available dummy ID): " + txToFuncotationMap.getTranscriptList().get(0));
             Utils.validateArg(txToFuncotationMap.getAlleles(FuncotationMap.NO_TRANSCRIPT_AVAILABLE_KEY).size() == 1, ERR_STR_IS_THIS_SEG_FILE + ONE_ALTERNATE_ALLELE_ERR_MSG);

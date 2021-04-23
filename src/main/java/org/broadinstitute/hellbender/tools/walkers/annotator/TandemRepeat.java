@@ -22,7 +22,7 @@ import java.util.*;
  * <p>A tandem repeat unit is composed of one or more nucleotides that are repeated multiple times in series. Repetitive sequences are difficult to map to the reference because they are associated with multiple alignment possibilities. Knowing the number of repeat units in a set of tandem repeats tells you the number of different positions the tandem repeat can be placed in. The observation of many tandem repeat units multiplies the number of possible representations that can be made of the region.
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Tandem repeat unit composition and counts per allele (STR, RU, RPA)")
-public final class TandemRepeat extends InfoFieldAnnotation implements StandardMutectAnnotation {
+public final class TandemRepeat implements InfoFieldAnnotation, StandardMutectAnnotation {
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -50,9 +50,8 @@ public final class TandemRepeat extends InfoFieldAnnotation implements StandardM
 
     public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final ReferenceContext ref, final VariantContext vc) {
         final byte[] refBases = ref.getBases();
-        final int startIndex = vc.getStart() - ref.getWindow().getStart();
-        final byte[] refBasesStartingAtVariantLocus = new String(refBases).substring(startIndex).getBytes();
-        return GATKVariantContextUtils.getNumTandemRepeatUnits(vc, refBasesStartingAtVariantLocus);
+        final int startIndex = vc.getStart() + 1 - ref.getWindow().getStart();  // +1 to exclude leading match base common to VC's ref and alt alleles
+        return GATKVariantContextUtils.getNumTandemRepeatUnits(vc, Arrays.copyOfRange(refBases, startIndex, refBases.length));
     }
 
     @Override

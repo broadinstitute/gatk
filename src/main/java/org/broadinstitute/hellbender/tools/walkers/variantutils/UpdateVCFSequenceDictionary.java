@@ -13,16 +13,14 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
-import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-
-import java.io.File;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 
 /**
  * Updates the reference contigs in the header of the VCF format file, i.e. the reference dictionary, using the
@@ -86,7 +84,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which updated variants should be written")
-    public String outFile = null;
+    public GATKPath outFile = null;
 
     public final static String DICTIONARY_ARGUMENT_NAME = "source-dictionary";
     @Argument(fullName=DICTIONARY_ARGUMENT_NAME,
@@ -95,7 +93,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
                 "presented must be valid (contain a sequence record) for each sequence that is referenced by any " +
                 "variant in the input file.",
             optional=true)
-    String dictionarySource; // optional since a reference can be provided as a dictionary source instead
+    GATKPath dictionarySource; // optional since a reference can be provided as a dictionary source instead
 
     public final static String REPLACE_ARGUMENT_NAME = "replace";
     @Argument(fullName=REPLACE_ARGUMENT_NAME,
@@ -136,7 +134,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
         }
 
         outputHeader.setSequenceDictionary(sourceDictionary);
-        vcfWriter = createVCFWriter(new File(outFile));
+        vcfWriter = createVCFWriter(outFile);
         vcfWriter.writeHeader(outputHeader);
     }
 
@@ -207,7 +205,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
                         StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
                         DICTIONARY_ARGUMENT_NAME));
             }
-            resultDictionary = SAMSequenceDictionaryExtractor.extractDictionary(IOUtils.getPath(dictionarySource));
+            resultDictionary = SAMSequenceDictionaryExtractor.extractDictionary(dictionarySource.toPath());
             if (resultDictionary == null || resultDictionary.getSequences().isEmpty()) {
                 throw new CommandLineException.BadArgumentValue(
                     String.format(
@@ -220,7 +218,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
         if( seqValidationArguments.performSequenceDictionaryValidation()
                 && resultDictionary != null
                 && dictionaryHasMissingLengths(resultDictionary)) {
-            throw new UserException.SequenceDictionaryIsMissingContigLengths(dictionarySource, resultDictionary);
+            throw new UserException.SequenceDictionaryIsMissingContigLengths(dictionarySource.getRawInputString(), resultDictionary);
         }
 
         return resultDictionary;

@@ -20,7 +20,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParamUtils;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
 import org.broadinstitute.hellbender.utils.fragments.FragmentUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
@@ -50,6 +50,7 @@ public final class AssemblyBasedCallerUtils {
     public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
+    public static final String READ_ORIGINAL_ALIGNMENT_KEY = "originalAlignment";
     public static final Function<Haplotype, Double> HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY = h -> {
         final Cigar cigar = h.getCigar();
         final int referenceTerm = (h.isReference() ? 1 : 0);
@@ -62,8 +63,28 @@ public final class AssemblyBasedCallerUtils {
     // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
     public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
 
-    private static final String phase01 = "0|1";
-    private static final String phase10 = "1|0";
+    // Phase group notation can be interpreted as a representation of the alleles present on the two phased haplotypes at the site:
+    // "0": REF or '*'; "1": site-specific alt allele
+    enum PhaseGroup {
+        PHASE_01("0|1", 1),
+        PHASE_10("1|0", 0);
+
+        PhaseGroup(final String description, final int altAlleleIndex) {
+            this.description = description;
+            this.altAlleleIndex = altAlleleIndex;
+        }
+
+        private final String description;
+        private final int altAlleleIndex;
+
+        public String getDescription() {
+            return description;
+        }
+
+        public int getAltAlleleIndex() {
+            return altAlleleIndex;
+        }
+    }
 
     /**
      * Returns a map with the original read as a key and the realigned read as the value.
@@ -88,29 +109,42 @@ public final class AssemblyBasedCallerUtils {
 
     public static void finalizeRegion(final AssemblyRegion region,
                                       final boolean errorCorrectReads,
-                                      final boolean skipSoftClips,
+                                      final boolean dontUseSoftClippedBases,
                                       final byte minTailQuality,
                                       final SAMFileHeader readsHeader,
                                       final SampleList samplesList,
-                                      final boolean correctOverlappingBaseQualities) {
+                                      final boolean correctOverlappingBaseQualities,
+                                      final boolean softClipLowQualityEnds) {
         if ( region.isFinalized() ) {
             return;
         }
 
         final byte minTailQualityToUse = errorCorrectReads ? HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION : minTailQuality;
-        final List<GATKRead> readsToUse = region.getReads().stream()
-                // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
-                // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-                .map(read -> skipSoftClips || ! ReadUtils.hasWellDefinedFragmentSize(read) ?
-                    ReadClipper.hardClipSoftClippedBases(read) : ReadClipper.revertSoftClippedBases(read))
-                .map(read -> ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse))
-                .filter(read -> read.getStart() <= read.getEnd())
-                .map(read -> read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read))
-                .filter(read ->  !read.isEmpty() && read.getCigar().getReadLength() > 0)
-                .map(read -> ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() ))
-                .filter(read -> read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan()))
-                .sorted(new ReadCoordinateComparator(readsHeader)) // TODO: sort may be unnecessary here
-                .collect(Collectors.toList());
+
+        final List<GATKRead> readsToUse = new ArrayList<>();
+        for (GATKRead originalRead : region.getReads()) {
+            // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
+            // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
+            GATKRead read = (dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
+                    ReadClipper.hardClipSoftClippedBases(originalRead) : ReadClipper.revertSoftClippedBases(originalRead));
+            read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(read, minTailQualityToUse) :
+                    ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse));
+
+            if (read.getStart() <= read.getEnd()) {
+                read = (read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read));
+
+                if (!read.isEmpty() && read.getCigar().getReadLength() > 0) {
+                    read = ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() );
+
+                    if (read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan())) {
+                        // NOTE: here we make a defensive copy of the read if it has not been modified by the above operations
+                        // which might only make copies in the case that the read is actually clipped
+                        readsToUse.add(read == originalRead? read.copy() : read);
+                    }
+                }
+            }
+        }
+        readsToUse.sort(new ReadCoordinateComparator(readsHeader));
 
         // handle overlapping read pairs from the same fragment
         if (correctOverlappingBaseQualities) {
@@ -180,22 +214,20 @@ public final class AssemblyBasedCallerUtils {
         return new SimpleInterval(region.getPaddedSpan().getContig(), padLeft, padRight);
     }
 
-    public static CachingIndexedFastaSequenceFile createReferenceReader(final String reference) {
-        // fasta reference reader to supplement the edges of the reference sequence
-        return new CachingIndexedFastaSequenceFile(IOUtils.getPath(reference));
-    }
-
     /**
      * Instantiates the appropriate likelihood calculation engine.
      *
      * @return never {@code null}.
      */
-    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs) {
+    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs, final boolean handleSoftclips) {
         //AlleleLikelihoods::normalizeLikelihoods uses Double.NEGATIVE_INFINITY as a flag to disable capping
         final double log10GlobalReadMismappingRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
                 : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
 
-        return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel, likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD);
+        return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
+                likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel,
+                likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD, likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
+                likelihoodArgs.expectedErrorRatePerBase, !likelihoodArgs.disableSymmetricallyNormalizeAllelesToReference, likelihoodArgs.disableCapReadQualitiesToMapQ, handleSoftclips);
     }
 
     public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
@@ -205,18 +237,6 @@ public final class AssemblyBasedCallerUtils {
         return args.bamOutputPath != null ?
                 Optional.of(new HaplotypeBAMWriter(args.bamWriterType, IOUtils.getPath(args.bamOutputPath), createBamOutIndex, createBamOutMD5, header)) :
                 Optional.empty();
-    }
-
-    // create the assembly using just high quality reads (eg Q20 or higher).  We may want to use lower
-    // quality reads in the PairHMM downstream, so we can't use a ReadFilter
-    public static AssemblyRegion assemblyRegionWithWellMappedReads(final AssemblyRegion originalAssemblyRegion,
-                                                                   final int minMappingQuality,
-                                                                   final SAMFileHeader readsHeader) {
-        final AssemblyRegion result = new AssemblyRegion(originalAssemblyRegion.getSpan(), originalAssemblyRegion.getPaddedSpan(), originalAssemblyRegion.isActive(), readsHeader);
-        originalAssemblyRegion.getReads().stream()
-                .filter(rec -> rec.getMappingQuality() >= minMappingQuality)
-                .forEach(result::add);
-        return result;
     }
 
     // Contract: the List<Allele> alleles of the resulting VariantContext is the ref allele followed by alt alleles in the
@@ -247,7 +267,7 @@ public final class AssemblyBasedCallerUtils {
                                                   final ReadThreadingAssembler assemblyEngine,
                                                   final SmithWatermanAligner aligner,
                                                   final boolean correctOverlappingBaseQualities){
-        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities);
+        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities, argumentCollection.softClipLowQualityEnds);
         if( argumentCollection.assemblerArgs.debugAssembly) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getPaddedSpan() + ")");
         }
@@ -432,7 +452,7 @@ public final class AssemblyBasedCallerUtils {
         reads.sort(new ReadCoordinateComparator(readsHeader));  //because we updated the reads based on the local realignments we have to re-sort or the pileups will be... unpredictable
 
         final LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING,
-                false, samples.asSetOfSamples(), readsHeader);
+                false, samples.asSetOfSamples(), readsHeader, true);
 
         final int startPos = activeRegionSpan.getStart();
         final List<ReadPileup> pileups = new ArrayList<>(activeRegionSpan.getEnd() - startPos);
@@ -495,6 +515,7 @@ public final class AssemblyBasedCallerUtils {
         return results;
     }
 
+
     /**
      * Returns the list of events discovered in assembled haplotypes that are active at this location. The results will
      * include events that span the current location if includeSpanningEvents is set to true; otherwise it will only
@@ -531,9 +552,10 @@ public final class AssemblyBasedCallerUtils {
      * @param mergedVC The merged variant context for the locus, which includes all active alternate alleles merged to a single reference allele
      * @param loc The active locus being genotyped
      * @param haplotypes Haplotypes for the current active region
+     * @param emitSpanningDels If true will map spanning events to a * allele instead of reference // TODO add a test for this behavior
      * @return
      */
-    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC, final int loc, final List<Haplotype> haplotypes) {
+    public static Map<Allele, List<Haplotype>> createAlleleMapper(final VariantContext mergedVC, final int loc, final List<Haplotype> haplotypes, final boolean emitSpanningDels) {
 
         final Map<Allele, List<Haplotype>> result = new LinkedHashMap<>();
 
@@ -583,12 +605,18 @@ public final class AssemblyBasedCallerUtils {
                     }
 
                 } else {
-                    // the event starts prior to the current location, so it's a spanning deletion
-                    if (! result.containsKey(Allele.SPAN_DEL)) {
-                        result.put(Allele.SPAN_DEL, new ArrayList<>());
+                    if (emitSpanningDels) {
+                        // the event starts prior to the current location, so it's a spanning deletion
+                        if (!result.containsKey(Allele.SPAN_DEL)) {
+                            result.put(Allele.SPAN_DEL, new ArrayList<>());
+                        }
+                        result.get(Allele.SPAN_DEL).add(h);
+                        // there might be a del+ins at the site in question and this would miss one of them unless its a continue
+                        break; //Why is there a break here? Shouldn't this be a continue? Why should the first spanning event overlap?A
+                    } else {
+                        result.get(ref).add(h);
+                        break;
                     }
-                    result.get(Allele.SPAN_DEL).add(h);
-                    break;
                 }
             }
 
@@ -609,8 +637,9 @@ public final class AssemblyBasedCallerUtils {
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = constructHaplotypeMapping(calls, calledHaplotypes);
 
         // construct a mapping from call to phase set ID
-        final Map<VariantContext, Pair<Integer, String>> phaseSetMapping = new HashMap<>();
-        final int uniqueCounterEndValue = constructPhaseSetMapping(calls, haplotypeMap, calledHaplotypes.size() - 1, phaseSetMapping);
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping =
+                constructPhaseSetMapping(calls, haplotypeMap);
+        final int uniqueCounterEndValue = Math.toIntExact(phaseSetMapping.values().stream().map(Pair::getLeft).distinct().count());
 
         // we want to establish (potential) *groups* of phased variants, so we need to be smart when looking at pairwise phasing partners
         return constructPhaseGroups(calls, phaseSetMapping, uniqueCounterEndValue);
@@ -629,15 +658,14 @@ public final class AssemblyBasedCallerUtils {
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = new HashMap<>(originalCalls.size());
         for ( final VariantContext call : originalCalls ) {
             // don't try to phase if there is not exactly 1 alternate allele
-            if ( ! isBiallelic(call) ) {
-                haplotypeMap.put(call, Collections.<Haplotype>emptySet());
+            if ( ! isBiallelicWithOneSiteSpecificAlternateAllele(call) ) {
+                haplotypeMap.put(call, Collections.emptySet());
                 continue;
             }
 
             // keep track of the haplotypes that contain this particular alternate allele
-            final Allele alt = call.getAlternateAllele(0);
-            final Predicate<VariantContext> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt)) ||
-                    (Allele.SPAN_DEL.equals(alt) && vc.getStart() < call.getStart() && vc.getEnd() >= call.getStart());
+            final Allele alt = getSiteSpecificAlternateAllele(call);
+            final Predicate<VariantContext> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt));
             final Set<Haplotype> hapsWithAllele = calledHaplotypes.stream()
                     .filter(h -> h.getEventMap().getVariantContexts().stream().anyMatch(hasThisAlt))
                     .collect(Collectors.toCollection(HashSet<Haplotype>::new));
@@ -649,20 +677,33 @@ public final class AssemblyBasedCallerUtils {
     }
 
     /**
+     * If at least one exists, returns a concrete (not NONREF) site-specific (starting at the current POS) alternate allele
+     * from within the current variant context.
+     */
+    private static Allele getSiteSpecificAlternateAllele(final VariantContext call) {
+        final Allele allele = call.getAlternateAlleles().stream().filter(a -> isSiteSpecificAltAllele(a)).findFirst().orElse(null);
+        return allele;
+    }
+
+    /**
      * Construct the mapping from call (variant context) to phase set ID
      *
+     * @param totalAvailableHaplotypes the total number haplotypes that support alternate alleles of called variants
      * @param originalCalls    the original unphased calls
      * @param haplotypeMap     mapping from alternate allele to the set of haplotypes that contain that allele
-     * @param totalAvailableHaplotypes the total number of possible haplotypes used in calling
-     * @param phaseSetMapping  the map to populate in this method;
-     *                         note that it is okay for this method NOT to populate the phaseSetMapping at all (e.g. in an impossible-to-phase situation)
-     * @return the next incremental unique index
+     * @return a map from each variant context to a pair with the phase set ID and phase group of the alt allele
+     *  note this may be empty in impossible-to-phase situations
      */
     @VisibleForTesting
-    static int constructPhaseSetMapping(final List<VariantContext> originalCalls,
-                                                  final Map<VariantContext, Set<Haplotype>> haplotypeMap,
-                                                  final int totalAvailableHaplotypes,
-                                                  final Map<VariantContext, Pair<Integer, String>> phaseSetMapping) {
+    static Map<VariantContext, Pair<Integer, PhaseGroup>> constructPhaseSetMapping(final List<VariantContext> originalCalls,
+                                                                                   final Map<VariantContext, Set<Haplotype>> haplotypeMap) {
+
+        // count the total number of alternate haplotypes
+        final Set<Haplotype> haplotypesWithCalledVariants = new HashSet<>();
+        haplotypeMap.values().forEach(haplotypesWithCalledVariants::addAll);
+        final int totalAvailableHaplotypes = haplotypesWithCalledVariants.size();
+
+        final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping = new HashMap<>(haplotypeMap.size());
 
         final int numCalls = originalCalls.size();
         int uniqueCounter = 0;
@@ -675,7 +716,16 @@ public final class AssemblyBasedCallerUtils {
                 continue;
             }
 
-            final boolean callIsOnAllHaps = haplotypesWithCall.size() == totalAvailableHaplotypes;
+            // NB: callIsOnAllAltHaps does not necessarily mean a homozygous genotype, since this method does
+            // not consider the reference haplotype
+            final boolean callIsOnAllAltHaps = haplotypesWithCall.size() == totalAvailableHaplotypes;
+
+            // if the call is on all haplotypes but we only use some of them to phase it with another variant
+            // we need to keep track of which ones are still active for downstream phasing.
+            // ie if the call is on all alt haps but we phase it with a site that is only on one of the alt haps,
+            // we remove the haplotypes with ref at the comp site for the purposes of phasing with additional variants
+            // downstream. This set keeps track of what call haplotypes are available for phasing downstream for "callIsOnAllAltHaps" variants.
+            final Set<Haplotype> callHaplotypesAvailableForPhasing = new HashSet<>(haplotypesWithCall);
 
             for ( int j = i+1; j < numCalls; j++ ) {
                 final VariantContext comp = originalCalls.get(j);
@@ -684,10 +734,13 @@ public final class AssemblyBasedCallerUtils {
                     continue;
                 }
 
-                // if the variants are together on all haplotypes, record that fact.
-                // another possibility is that one of the variants is on all possible haplotypes (i.e. it is homozygous).
-                final boolean compIsOnAllHaps = haplotypesWithComp.size() == totalAvailableHaplotypes;
-                if ( (haplotypesWithCall.size() == haplotypesWithComp.size() && haplotypesWithCall.containsAll(haplotypesWithComp)) || callIsOnAllHaps || compIsOnAllHaps ) {
+                // if the variants are together on all alt haplotypes, record that fact. NB that this does not mean that the
+                // genotype for the variant is homozygous since this method does not consider the ref haplotype
+                final boolean compIsOnAllAltHaps = haplotypesWithComp.size() == totalAvailableHaplotypes;
+
+                if ( (haplotypesWithCall.size() == haplotypesWithComp.size() && haplotypesWithCall.containsAll(haplotypesWithComp))
+                        || (callIsOnAllAltHaps &&  callHaplotypesAvailableForPhasing.containsAll(haplotypesWithComp))
+                        || compIsOnAllAltHaps ) {
 
                     // create a new group if these are the first entries
                     if ( ! phaseSetMapping.containsKey(call) ) {
@@ -696,25 +749,31 @@ public final class AssemblyBasedCallerUtils {
                         // situation, we should abort if we encounter it.
                         if ( phaseSetMapping.containsKey(comp) ) {
                             phaseSetMapping.clear();
-                            return 0;
+                            return phaseSetMapping;
                         }
 
-                        // An important note: even for homozygous variants we are setting the phase as "0|1" here.
-                        // We do this because we cannot possibly know for sure at this time that the genotype for this
+                        // An important note: even for homozygous variants we are setting the phase as "0|1" here. We
+                        // don't know at this point whether the genotype is homozygous vs the variant being on all alt
+                        // haplotypes, for one thing. Also, we cannot possibly know for sure at this time that the genotype for this
                         // sample will actually be homozygous downstream: there are steps in the pipeline that are liable
                         // to change the genotypes.  Because we can't make those assumptions here, we have decided to output
                         // the phase as if the call is heterozygous and then "fix" it downstream as needed.
-                        phaseSetMapping.put(call, Pair.of(uniqueCounter, phase01));
-                        phaseSetMapping.put(comp, Pair.of(uniqueCounter, phase01));
+                        phaseSetMapping.put(call, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
+                        phaseSetMapping.put(comp, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
+
+                        // if the call was on all alternate haps but the comp isn't, we need to narrow down the set of
+                        // alt haps we'll consider for further phasing other variants with the call
+                        callHaplotypesAvailableForPhasing.retainAll(haplotypesWithComp);
+
                         uniqueCounter++;
                     }
                     // otherwise it's part of an existing group so use that group's unique ID
                     else if ( ! phaseSetMapping.containsKey(comp) ) {
-                        final Pair<Integer, String> callPhase = phaseSetMapping.get(call);
+                        final Pair<Integer, PhaseGroup> callPhase = phaseSetMapping.get(call);
                         phaseSetMapping.put(comp, Pair.of(callPhase.getLeft(), callPhase.getRight()));
                     }
                 }
-                // if the variants are apart on *all* haplotypes, record that fact
+                // if the variants are apart on *all* alternate haplotypes, record that fact
                 else if ( haplotypesWithCall.size() + haplotypesWithComp.size() == totalAvailableHaplotypes ) {
 
                     final Set<Haplotype> intersection = new HashSet<>();
@@ -728,24 +787,24 @@ public final class AssemblyBasedCallerUtils {
                             // situation, we should abort if we encounter it.
                             if ( phaseSetMapping.containsKey(comp) ) {
                                 phaseSetMapping.clear();
-                                return 0;
+                                return phaseSetMapping;
                             }
 
-                            phaseSetMapping.put(call, Pair.of(uniqueCounter, phase01));
-                            phaseSetMapping.put(comp, Pair.of(uniqueCounter, phase10));
+                            phaseSetMapping.put(call, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
+                            phaseSetMapping.put(comp, Pair.of(uniqueCounter, PhaseGroup.PHASE_10));
                             uniqueCounter++;
                         }
                         // otherwise it's part of an existing group so use that group's unique ID
                         else if ( ! phaseSetMapping.containsKey(comp) ){
-                            final Pair<Integer, String> callPhase = phaseSetMapping.get(call);
-                            phaseSetMapping.put(comp, Pair.of(callPhase.getLeft(), callPhase.getRight().equals(phase01) ? phase10 : phase01));
+                            final Pair<Integer, PhaseGroup> callPhase = phaseSetMapping.get(call);
+                            phaseSetMapping.put(comp, Pair.of(callPhase.getLeft(), callPhase.getRight().equals(PhaseGroup.PHASE_01) ? PhaseGroup.PHASE_10 : PhaseGroup.PHASE_01));
                         }
                     }
                 }
             }
         }
 
-        return uniqueCounter;
+        return phaseSetMapping;
     }
 
     /**
@@ -758,7 +817,7 @@ public final class AssemblyBasedCallerUtils {
      */
     @VisibleForTesting
     static List<VariantContext> constructPhaseGroups(final List<VariantContext> originalCalls,
-                                                               final Map<VariantContext, Pair<Integer, String>> phaseSetMapping,
+                                                               final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping,
                                                                final int indexTo) {
         final List<VariantContext> phasedCalls = new ArrayList<>(originalCalls);
 
@@ -797,10 +856,18 @@ public final class AssemblyBasedCallerUtils {
      * Is this variant bi-allelic?  This implementation is very much specific to this class so shouldn't be pulled out into a generalized place.
      *
      * @param vc the variant context
-     * @return true if this variant context is bi-allelic, ignoring the NON-REF symbolic allele, false otherwise
+     * @return true if this variant context is bi-allelic, ignoring the NON-REF symbolic allele and '*' symbolic allele, false otherwise
      */
-    private static boolean isBiallelic(final VariantContext vc) {
-        return vc.isBiallelic() || (vc.getNAlleles() == 3 && vc.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
+    private static boolean isBiallelicWithOneSiteSpecificAlternateAllele(final VariantContext vc) {
+        return vc.getAlternateAlleles().stream().filter(AssemblyBasedCallerUtils::isSiteSpecificAltAllele).count() == 1;
+    }
+
+    /**
+     * A site-specific alternate allele is one that represents concrete (i.e. not NONREF) variation that begins at the
+     * site (i.e. not '*', which represents a concrete alternate allele that begins upstream of the current site).
+     */
+    private static boolean isSiteSpecificAltAllele(final Allele a) {
+        return !(a.isReference() || a.isNonRefAllele() || Allele.SPAN_DEL.equals(a));
     }
 
     /**
@@ -821,16 +888,20 @@ public final class AssemblyBasedCallerUtils {
      * @param phaseGT the phase GT string to use
      * @return phased non-null variant context
      */
-    private static VariantContext phaseVC(final VariantContext vc, final String ID, final String phaseGT, final int phaseSetID) {
+    private static VariantContext phaseVC(final VariantContext vc, final String ID, final PhaseGroup phaseGT, final int phaseSetID) {
         final List<Genotype> phasedGenotypes = new ArrayList<>();
         for ( final Genotype g : vc.getGenotypes() ) {
             final List<Allele> alleles = g.getAlleles();
-            if (phaseGT.equals(phase10) && g.isHet()) Collections.reverse(alleles); // swap the alleles if heterozygous
+            final List<Allele> newAlleles = new ArrayList<>(alleles);
+            final int phasedAltAlleleIndex = phaseGT.getAltAlleleIndex();
+            if (g.isHet() && ! isSiteSpecificAltAllele(newAlleles.get(phasedAltAlleleIndex))) {
+                Collections.reverse(newAlleles);
+            }
             final Genotype genotype = new GenotypeBuilder(g)
-                .alleles(alleles)
+                .alleles(newAlleles)
                 .phased(true)
                 .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID)
-                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT)
+                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT.getDescription())
                 .attribute(VCFConstants.PHASE_SET_KEY, phaseSetID)
                 .make();
             phasedGenotypes.add(genotype);

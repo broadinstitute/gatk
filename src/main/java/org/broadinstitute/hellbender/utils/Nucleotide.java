@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.utils;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import com.google.common.collect.Sets;
+
+import java.util.*;
 
 /**
  * Represents the nucleotide alphabet with support for IUPAC ambiguity codes.
@@ -29,7 +29,7 @@ import java.util.List;
  * <p>
  *     For naming consistency it is recommended to use {@link #decode} and {@link #encodeAsByte}
  *     or {@link #encodeAsString} methods to translate byte/char and string encodings from and
- *     into values of this enum over the inherited {@link #toString}, {@link #name} or {@link #valueOf}.
+ *     into values of this enum over the inherited {@link #toString}, {@link #name()} or {@link #valueOf}.
  * </p>
  *
  * <p>
@@ -102,9 +102,9 @@ public enum Nucleotide {
     public static final Nucleotide INVALID = X;
 
     /**
-     * List of the standard (non-redundant) nucleotide values in their preferred alphabetical order.
+     * Set of the standard (non-redundant) nucleotide values in their preferred alphabetical order.
      */
-    public static final List<Nucleotide> STANDARD_BASES = Collections.unmodifiableList(Arrays.asList(A, C, G, T));
+    public static final Set<Nucleotide> STANDARD_BASES = Sets.immutableEnumSet(A, C, G, T);
 
     // Since calling values() is costly (creates a new array every time) and often we do it just to find out the
     // total number of constants is best to cache it in a constant.
@@ -284,10 +284,11 @@ public enum Nucleotide {
      * to a valid nucleotide specification.
      */
     public static Nucleotide decode(final char ch) {
-        if ((ch & 0xFF00) != 0) {
-            return INVALID;
+        if ((ch & 0xFFFFFF80) == 0) { // all valid codes have ascii lower than 127 so we may just treat all
+            // higher values as invalid.
+            return baseToValue[ch & 0x7F];
         } else {
-            return baseToValue[ch & 0xFF];
+            return INVALID;
         }
     }
 
@@ -554,10 +555,10 @@ public enum Nucleotide {
         }
 
         public void add(final char base) {
-            if ((base & 0xFF00) != 0) {
-                counts[INVALID.ordinal()]++;
+            if ((base & 0xFFFFFF80) == 0) {
+                counts[baseToOrdinal[base & 0x7F]]++;
             } else {
-                counts[baseToOrdinal[base & 0xFF]]++;
+                counts[INVALID.ordinal()]++;
             }
         }
 

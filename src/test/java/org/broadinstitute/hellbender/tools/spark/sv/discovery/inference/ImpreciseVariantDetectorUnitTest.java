@@ -6,6 +6,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
@@ -32,7 +33,7 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
 
 
     private final Logger localLogger = LogManager.getLogger(ImpreciseVariantDetectorUnitTest.class);
-    private static String twoBitRefURL = publicTestDir + "large/human_g1k_v37.20.21.2bit";
+    private static GATKPath twoBitRefURL = new GATKPath(publicTestDir + "large/human_g1k_v37.20.21.2bit");
 
     @DataProvider(name = "evidenceTargetLinksAndVariants")
     public Object[][] getEvidenceTargetLinksAndVariants() {
@@ -40,7 +41,7 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
         final VariantContext impreciseDeletion = new VariantContextBuilder()
                 .id("DEL_IMPRECISE_20_950_1050_1975_2025")
                 .chr("20").start(1000).stop(2000)
-                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL))
+                .alleles("N", SimpleSVType.ImpreciseDeletion.createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_DEL))
                 .attribute(VCFConstants.END_KEY, 2000)
                 .attribute(GATKSVVCFConstants.SVTYPE, SimpleSVType.SupportedType.DEL.toString())
                 .attribute(GATKSVVCFConstants.READ_PAIR_SUPPORT, 7)
@@ -68,10 +69,10 @@ public class ImpreciseVariantDetectorUnitTest extends GATKBaseTest {
     public void testProcessEvidenceTargetLinks(final List<EvidenceTargetLink> etls,
                                                final List<VariantContext> expectedVariants) {
         final int impreciseEvidenceVariantCallingThreshold =
-                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection().impreciseVariantEvidenceThreshold;
+                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsArgumentCollection().impreciseVariantEvidenceThreshold;
 
         final int maxCallableImpreciseVariantDeletionSize =
-                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsSparkArgumentCollection().maxCallableImpreciseVariantDeletionSize;
+                new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigAlignmentsArgumentCollection().maxCallableImpreciseVariantDeletionSize;
 
         final ReferenceMultiSparkSource referenceMultiSource = new ReferenceMultiSparkSource(twoBitRefURL, ReferenceWindowFunctions.IDENTITY_FUNCTION);
 

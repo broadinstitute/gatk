@@ -29,7 +29,7 @@ import java.util.*;
  * <p>These summaries can all be recomputed from the genotypes on the fly but it is a lot faster to add them here as INFO field annotations.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Summary of genotype statistics from all samples (NCC, GQ_MEAN, GQ_STDDEV)")
-public final class GenotypeSummaries extends InfoFieldAnnotation {
+public final class GenotypeSummaries implements InfoFieldAnnotation {
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,

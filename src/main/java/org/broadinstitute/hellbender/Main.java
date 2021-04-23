@@ -3,10 +3,7 @@ package org.broadinstitute.hellbender;
 import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.*;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.DeprecatedToolsRegistry;
-import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.exceptions.PicardNonZeroExitException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
@@ -314,7 +311,8 @@ public class Main {
         toCheck.addAll(classList);
         final Map<String, Class<?>> simpleNameToClass = new LinkedHashMap<>();
         for (final Class<?> clazz : toCheck) {
-            if (clazz.equals(PicardCommandLineProgramExecutor.class)) {
+            if (clazz.equals(PicardCommandLineProgramExecutor.class) ||
+                    clazz.equals(CommandLineArgumentValidator.class)) {
                 continue;
             }
             // No interfaces, synthetic, primitive, local, or abstract classes.

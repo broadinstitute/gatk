@@ -2,9 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -14,7 +16,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
@@ -60,6 +61,7 @@ import java.util.List;
         usageExample = "gatk UnmarkDuplicates -I marked_duplicates.bam -O unmarked_duplicates.bam",
         programGroup = ReadDataManipulationProgramGroup.class)
 @DocumentedFeature
+@WorkflowProperties
 public class UnmarkDuplicates extends ReadWalker {
 
     static final String USAGE_SUMMARY = "Clears the 0x400 duplicate SAM flag";
@@ -67,13 +69,14 @@ public class UnmarkDuplicates extends ReadWalker {
             "Clears the 0x400 SAM flag bit on all reads.";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="Write output to this file")
-    public String OUTPUT;
+    @WorkflowOutput(optionalCompanions={StandardArgumentDefinitions.OUTPUT_INDEX_COMPANION})
+    public GATKPath OUTPUT;
 
     private SAMFileGATKReadWriter outputWriter;
 
     @Override
     public void onTraversalStart() {
-        outputWriter = createSAMWriter(IOUtils.getPath(OUTPUT), true);
+        outputWriter = createSAMWriter(OUTPUT, true);
     }
 
     @Override

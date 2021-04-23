@@ -623,7 +623,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
 
     private interface ParentAnnotationGroup extends Annotation { }
     private interface ChildAnnotationGroup extends ParentAnnotationGroup { }
-    static class testChildAnnotation extends InfoFieldAnnotation implements ChildAnnotationGroup  {
+    static class testChildAnnotation implements InfoFieldAnnotation, ChildAnnotationGroup  {
         public int argument = 5;
 
         @Override
@@ -636,7 +636,7 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         }
     }
 
-    static class testParentAnnotation extends InfoFieldAnnotation implements ParentAnnotationGroup  {
+    static class testParentAnnotation implements InfoFieldAnnotation, ParentAnnotationGroup  {
         boolean dontAnnotate = false;
 
         testParentAnnotation() { }

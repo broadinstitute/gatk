@@ -47,30 +47,40 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
     private static final AnnotatedIntervalCollection ANNOTATED_INTERVALS = new AnnotatedIntervalCollection(
             LOCATABLE_METADATA,
             Arrays.asList(
-                    new AnnotatedInterval(new SimpleInterval("20", 1,	10),
+                    new AnnotatedInterval(new SimpleInterval("20", 1, 10),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.05),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.05)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 11,	20),
+                    new AnnotatedInterval(new SimpleInterval("20", 11, 20),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.95)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 21,	30),
+                    new AnnotatedInterval(new SimpleInterval("20", 21, 30),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 31,	40),
+                    new AnnotatedInterval(new SimpleInterval("20", 31, 40),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.05),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
-                    new AnnotatedInterval(new SimpleInterval("20", 41,	50),
+                    new AnnotatedInterval(new SimpleInterval("20", 41, 50),
                             new AnnotationMap(Arrays.asList(
                                     Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.95),
                                     Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.95),
+                                    Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
+                    new AnnotatedInterval(new SimpleInterval("20", 51, 60),
+                            new AnnotationMap(Arrays.asList(
+                                    Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
+                                    Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
+                                    Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5)))),
+                    new AnnotatedInterval(new SimpleInterval("21", 1, 10),
+                            new AnnotationMap(Arrays.asList(
+                                    Pair.of(CopyNumberAnnotations.GC_CONTENT, 0.5),
+                                    Pair.of(CopyNumberAnnotations.MAPPABILITY, 0.5),
                                     Pair.of(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, 0.5))))));
 
     @DataProvider(name = "dataAnnotationBasedFilters")
@@ -92,28 +102,29 @@ public final class FilterIntervalsIntegrationTest extends CommandLineProgramTest
         return new Object[][]{
                 //intervals file, array of strings for excluded intervals, annotated-intervals file,
                 //min/max GC content, mix/max mappability, min/max seg-dupe content, expected array of indices of retained intervals
-                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(0, 1, 2, 3, 4)},
-                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 2)},
-                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0., 1., Arrays.asList(1, 2, 3)},
-                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0.1, 0.9, Arrays.asList(2, 3, 4)},
-                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0., 1., Arrays.asList(1, 2)},
-                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0.1, 0.9, Collections.singletonList(2)},
-                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 3)},
-                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, Collections.singletonList(2)},
-                {intervalsFile, Collections.singletonList("20:1-10"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(1, 2, 3, 4)},
-                {intervalsFile, Arrays.asList("20:1-15", "20:35-45"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Collections.singletonList(2)},
-                {intervalsFile, Collections.singletonList("20:25-50"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1)},
-                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(0, 1, 2, 3, 4)},
-                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 2)},
-                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0., 1., Arrays.asList(1, 2, 3)},
-                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0.1, 0.9, Arrays.asList(2, 3, 4)},
-                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0., 1., Arrays.asList(1, 2)},
-                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0.1, 0.9, Collections.singletonList(2)},
-                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 3)},
-                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, Collections.singletonList(2)},
-                {intervalsWithExtraIntervalFile, Collections.singletonList("20:1-10"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(1, 2, 3, 4)},
-                {intervalsWithExtraIntervalFile, Arrays.asList("20:1-15", "20:35-45"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Collections.singletonList(2)},
-                {intervalsWithExtraIntervalFile, Collections.singletonList("20:25-50"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1)}};
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(0, 1, 2, 3, 4, 5)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 2, 5)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0., 1., Arrays.asList(1, 2, 3, 5)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0.1, 0.9, Arrays.asList(2, 3, 4, 5)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0., 1., Arrays.asList(1, 2, 5)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0.1, 0.9, Arrays.asList(2, 5)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 3, 5)},
+                {intervalsFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 5)},
+                {intervalsFile, Collections.singletonList("20:1-10"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(1, 2, 3, 4, 5)},
+                {intervalsFile, Collections.singletonList("20:1-15"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(2, 5)}, //regression test for https://github.com/broadinstitute/gatk/pull/7046
+                {intervalsFile, Arrays.asList("20:1-15", "20:35-45"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(2, 5)},
+                {intervalsFile, Collections.singletonList("20:25-50"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 5)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(0, 1, 2, 3, 4, 5)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 2, 5)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0., 1., Arrays.asList(1, 2, 3, 5)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0., 1., 0.1, 0.9, Arrays.asList(2, 3, 4, 5)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0., 1., Arrays.asList(1, 2, 5)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0.1, 0.9, Arrays.asList(2, 5)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0., 1., 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 3, 5)},
+                {intervalsWithExtraIntervalFile, Collections.emptyList(), annotatedIntervalsFile, 0.1, 0.9, 0.1, 0.9, 0.1, 0.9, Arrays.asList(2, 5)},
+                {intervalsWithExtraIntervalFile, Collections.singletonList("20:1-10"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(1, 2, 3, 4, 5)},
+                {intervalsWithExtraIntervalFile, Arrays.asList("20:1-15", "20:35-45"), annotatedIntervalsFile, 0., 1., 0., 1., 0., 1., Arrays.asList(2, 5)},
+                {intervalsWithExtraIntervalFile, Collections.singletonList("20:25-50"), annotatedIntervalsFile, 0.1, 0.9, 0., 1., 0., 1., Arrays.asList(0, 1, 5)}};
     }
 
     @Test(dataProvider = "dataAnnotationBasedFilters")

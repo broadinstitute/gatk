@@ -28,9 +28,9 @@ SetUpPlot = function(sample_name, y.lab, y.min, y.max, x.lab, contig_names, cont
     }
 }
 
-PlotCopyRatios = function(copy_ratios_df, color, contig_names, contig_starts) {
+PlotCopyRatios = function(copy_ratios_df, color, contig_names, contig_starts, point_size) {
     genomic_coordinates = contig_starts[match(copy_ratios_df[["CONTIG"]], contig_names)] + copy_ratios_df[["MIDDLE"]]
-    points(x=genomic_coordinates, y=copy_ratios_df[["COPY_RATIO"]], col=color, pch=".", cex=0.2)
+    points(x=genomic_coordinates, y=copy_ratios_df[["COPY_RATIO"]], col=color, pch=".", cex=point_size)
 }
 
 PlotCopyRatiosWithModeledSegments = function(denoised_copy_ratios_df, modeled_segments_df, contig_names, contig_starts, point_size=0.2) {

@@ -11,6 +11,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCF3Codec;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentDefinition;
+import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -150,7 +152,12 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "DetectFeatureTypeFromFeatureInputFieldTestData")
     public void testDetectFeatureTypeFromFeatureInputField( final String fieldName, final Class<?> expectedFeatureType ) throws NoSuchFieldException {
-        Assert.assertEquals(FeatureManager.getFeatureTypeForFeatureInputField(ValidFeatureArgumentSource.class.getDeclaredField(fieldName)),
+        final ValidFeatureArgumentSource validFeatureSource = new ValidFeatureArgumentSource();
+        final CommandLineArgumentParser clp = new CommandLineArgumentParser(validFeatureSource);
+        final ArgumentDefinition fieldArgumentDefinition =
+                clp.getNamedArgumentDefinitions().stream().filter(argDef -> argDef.getFullName().equals(fieldName)).findFirst().get();
+        Assert.assertNotNull(fieldArgumentDefinition);
+        Assert.assertEquals(FeatureManager.getFeatureTypeForFeatureInputArgument(fieldArgumentDefinition),
                             expectedFeatureType,
                             "Wrong Feature type detected for field " + fieldName);
     }
@@ -166,7 +173,12 @@ public final class FeatureManagerUnitTest extends GATKBaseTest {
     @Test(dataProvider = "DetectParameterlessFeatureInputsTestData", expectedExceptions = GATKException.class)
     public void testDetectParameterlessFeatureInputs( final String fieldName ) throws NoSuchFieldException {
         // FeatureInput fields that lack a type parameter should cause a GATKException to be thrown
-        FeatureManager.getFeatureTypeForFeatureInputField(InvalidFeatureArgumentSource.class.getDeclaredField(fieldName));
+        final InvalidFeatureArgumentSource invalidFeatureSource = new InvalidFeatureArgumentSource();
+        final CommandLineArgumentParser clp = new CommandLineArgumentParser(invalidFeatureSource);
+        final ArgumentDefinition fieldArgumentDefinition =
+                clp.getNamedArgumentDefinitions().stream().filter(argDef -> argDef.getFullName().equals(fieldName)).findFirst().get();
+        Assert.assertNotNull(fieldArgumentDefinition);
+        FeatureManager.getFeatureTypeForFeatureInputArgument(fieldArgumentDefinition);
     }
 
     @Test

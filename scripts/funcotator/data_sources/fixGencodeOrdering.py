@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Reorders a GENCODE GTF file to be in ascending order by chromosome, start, end.
 
@@ -63,16 +63,18 @@ if __name__ == "__main__":
     sys.stderr.write("Processing file: " + args.GENCODE_GTF_FILE + " ...\n")
 
     # Open our GTF file:
-    with open(args.GENCODE_GTF_FILE, 'rb') as f:
+    with open(args.GENCODE_GTF_FILE, 'r') as f:
 
         # Set up our CSV reader:
         gtf_csv_reader = csv.reader(f, delimiter=DELIMITER)
 
+        row = next(gtf_csv_reader)
         # Save the header:
-        for i in xrange(0, 5):
-            out_writer.writerow(gtf_csv_reader.next())
+        while row[0].startswith("#"):
+            out_writer.writerow(row)
+            row = next(gtf_csv_reader)
 
-        gene = [gtf_csv_reader.next()]
+        gene = [row] 
 
         # contig -> gene_list
         contig_dictionary = {gene[0][0]: []}
@@ -80,16 +82,16 @@ if __name__ == "__main__":
         # Read until there's nothing left:
         try:
             while True:
-                l = gtf_csv_reader.next()
+                row = next(gtf_csv_reader) 
 
                 if gtf_csv_reader.line_num % PERCENT_MARKER == 0:
                     percent_done = (float(gtf_csv_reader.line_num) / float(TOTAL_EXPECTED_LINES)) * 100.0
                     sys.stderr.write("\tRead " + "{0:1.0f}".format(percent_done) + "%\n")
 
-                if l[2] == "gene":
+                if row[2] == "gene":
 
                     # Add our gene to the contig:
-                    if not contig_dictionary.has_key(gene[0][0]):
+                    if gene[0][0] not in contig_dictionary:
                         contig_dictionary[gene[0][0]] = [gene]
                     else:
                         contig_dictionary[gene[0][0]].append(gene)
@@ -98,7 +100,7 @@ if __name__ == "__main__":
                     gene = []
 
                 # add this line to the new gene
-                gene.append(l)
+                gene.append(row)
 
         except StopIteration as e:
             pass
@@ -106,7 +108,7 @@ if __name__ == "__main__":
         sys.stderr.write("File Read Complete.\n")
 
         # Get the contigs that we've found:
-        contigs = contig_dictionary.keys()
+        contigs = list(contig_dictionary.keys())
 
         # Go through and print our prioritized contig list first:
         for contig in CONTIG_PRINT_ORDER_LIST:

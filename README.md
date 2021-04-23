@@ -1,13 +1,13 @@
 [![Build Status](https://travis-ci.com/broadinstitute/gatk.svg?branch=master)](https://travis-ci.com/broadinstitute/gatk)
 [![Maven Central](https://img.shields.io/maven-central/v/org.broadinstitute/gatk.svg)](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk)
-[![License (3-Clause BSD)](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ***Please see the [GATK website](http://www.broadinstitute.org/gatk), where you can download a precompiled executable, read documentation, ask questions, and receive technical support. For GitHub basics, see [here](https://software.broadinstitute.org/gatk/documentation/article?id=23405).***
 
 ### GATK 4
 
 This repository contains the next generation of the Genome Analysis Toolkit (GATK). The contents
-of this repository are 100% open source and released under the BSD 3-Clause license (see [LICENSE.TXT](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT)).
+of this repository are 100% open source and released under the Apache 2.0 license (see [LICENSE.TXT](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT)).
 
 GATK4 aims to bring together well-established tools from the [GATK](http://www.broadinstitute.org/gatk) and
 [Picard](http://broadinstitute.github.io/picard/) codebases under a streamlined framework,
@@ -24,6 +24,7 @@ releases of the toolkit.
     * [Passing JVM options to gatk](#jvmoptions)
     * [Passing a configuration file to gatk](#configFileOptions)
     * [Running GATK4 with inputs on Google Cloud Storage](#gcs)
+    * [Running GATK4 Spark tools locally](#sparklocal)
     * [Running GATK4 Spark tools on a Spark cluster](#sparkcluster)
     * [Running GATK4 Spark tools on Google Cloud Dataproc](#dataproc)
     * [Using R to generate plots](#R)
@@ -40,6 +41,7 @@ releases of the toolkit.
     * [Building GATK4 Docker images](#docker_building)
     * [Releasing GATK4](#releasing_gatk)
     * [Generating GATK4 documentation](#gatkdocs)
+    * [Generating GATK4 WDL Wrappers](#gatkwdlgen)
     * [Using Zenhub to track github issues](#zenhub)
 * [Further Reading on Spark](#spark_further_reading)
 * [How to contribute to GATK](#contribute)
@@ -64,7 +66,7 @@ releases of the toolkit.
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater. Required to download the large files used to build GATK, and
       test files required to run the test suite. Run `git lfs install` after downloading, followed by `git lfs pull` from
       the root of your git clone to download all of the large files, including those required to run the test suite. The
-      full download is approximately 2 gigabytes. Alternatively, if you are just building GATK and not running the test
+      full download is approximately 5 gigabytes. Alternatively, if you are just building GATK and not running the test
       suite, you can skip this step since the build itself will use git-lfs to download the minimal set of large `lfs`
       resource files required to complete the build. The test resources will not be downloaded, but this greatly reduces
       the size of the download.
@@ -76,10 +78,13 @@ releases of the toolkit.
    docker client, which can be found on the [docker website](https://www.docker.com/get-docker).
 * Python Dependencies:<a name="python"></a>
     * GATK4 uses the [Conda](https://conda.io/docs/index.html) package manager to establish and manage the
-      Python environment and dependencies required by GATK tools that have a Python dependency. The ```gatk``` environment, 
+      Python environment and dependencies required by GATK tools that have a Python dependency. This environment also 
+      includes the R dependencies used for plotting in some of the tools. The ```gatk``` environment 
       requires hardware with AVX support for tools that depend on TensorFlow (e.g. CNNScoreVariant). The GATK Docker image 
       comes with the ```gatk``` environment pre-configured.
-    * To establish the  environment when not using the Docker image, a conda environment must first be "created", and
+      	* At this time, the only supported platforms are 64-bit Linux distributions. The required Conda environment is not
+	  currently supported on OS X/macOS. 
+    * To establish the environment when not using the Docker image, a conda environment must first be "created", and
       then "activated":
         * First, make sure [Miniconda or Conda](https://conda.io/docs/index.html) is installed (Miniconda is sufficient).
         * To "create" the conda environment:
@@ -232,6 +237,29 @@ You can download and run pre-built versions of GATK4 from the following places:
         ```
         * Done! GATK will pick up the service account. You can also do this in a VM if you'd like to override the default credentials.
 
+#### <a name="sparklocal">Running GATK4 Spark tools locally:</a>
+
+* GATK4 Spark tools can be run in local mode (without a cluster). In this mode, Spark will run the tool
+  in multiple parallel execution threads using the cores in your CPU. You can control how many threads
+  Spark will use via the `--spark-master` argument.
+  
+* Examples:
+
+  Run `PrintReadsSpark` with 4 threads on your local machine:
+  ``` 
+    ./gatk PrintReadsSpark -I src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -O output.bam \
+        -- \
+        --spark-runner LOCAL --spark-master 'local[4]'
+  ```
+  Run `PrintReadsSpark` with as many worker threads as there are logical cores on your local machine:
+  ``` 
+    ./gatk PrintReadsSpark -I src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -O output.bam \
+        -- \
+        --spark-runner LOCAL --spark-master 'local[*]'
+  ```   
+  
+* Note that the Spark-specific arguments are separated from the tool-specific arguments by a `--`.
+
 #### <a name="sparkcluster">Running GATK4 Spark tools on a Spark cluster:</a>
 
 **`./gatk ToolName toolArguments -- --spark-runner SPARK --spark-master <master_url> additionalSparkArguments`**
@@ -302,24 +330,7 @@ You can download and run pre-built versions of GATK4 from the following places:
   * Dataproc Spark clusters are configured with [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) so you can omit the "--num-executors" argument and let YARN handle it automatically.
 
 #### <a name="R">Using R to generate plots</a>
-Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.2.5** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.
-
-R installation is not part of the gradle build.  See http://cran.r-project.org/ for general information on installing R for your system.
-* for ubuntu see these [ubuntu specific instructions](http://cran.r-project.org/bin/linux/ubuntu/README)
-* for OSX we recommend installation through [homebrew](http://brew.sh/)
-```
-brew install R
-```
-
-The plotting R scripts require certain R packages to be installed. You can install these by running `scripts/docker/gatkbase/install_R_packages.R`.  Either run it as superuser to force installation into the sites library or run interactively and create a local library.
-```
-sudo Rscript scripts/docker/gatkbase/install_R_packages.R
-```
-**or**
-```
-R 
-source("scripts/docker/gatkbase/install_R_packages.R")
-```
+Certain GATK tools may optionally generate plots using the R installation provided within the conda environment.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convenience rather than a primary output.
 
 #### <a name="tab_completion">Bash Command-line Tab Completion (BETA)</a>
 
@@ -357,7 +368,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
 
 * **Try to keep datafiles under 100kb in size.** Larger test files should go into `src/test/resources/large` (and subdirectories) so that they'll be stored and tracked by git-lfs as described [above](#lfs).
 
-* GATK4 is BSD licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
+* GATK4 is Apache 2.0 licensed.  The license is in the top level LICENSE.TXT file.  Do not add any additional license text or accept files with a license included in them.
 
 * Each tool should have at least one good end-to-end integration test with a check for expected output, plus high-quality unit tests for all non-trivial utility methods/classes used by the tool. Although we have no specific coverage target, coverage should be extensive enough that if tests pass, the tool is guaranteed to be in a usable state.
 
@@ -393,7 +404,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
     * Test report is in `build/reports/tests/test/index.html`.
     * What will happen depends on the value of the `TEST_TYPE` environment variable: 
        * unset or any other value         : run non-cloud unit and integration tests, this is the default
-       * `cloud`, `unit`, `integration`, `spark`, `python`   : run only the cloud, unit, integration, python, or Spark tests
+       * `cloud`, `unit`, `integration`, `conda`, `spark`   : run only the cloud, unit, integration, conda (python + R), or Spark tests
        * `all`                            : run the entire test suite
     * Cloud tests require being logged into `gcloud` and authenticated with a project that has access
       to the cloud test data.  They also require setting several certain environment variables.
@@ -404,9 +415,7 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
     * Setting the environment variable `TEST_VERBOSITY=minimal` will produce much less output from the test suite 
 
 * To run a subset of tests, use gradle's test filtering (see [gradle doc](https://docs.gradle.org/current/userguide/java_plugin.html)):
-    * You can use `test.single` when you just want to run a specific test class:
-        * `./gradlew test -Dtest.single=SomeSpecificTestClass`
-    * You can also use `--tests` with a wildcard to run a specific test class, method, or to select multiple test classes:
+    * You can use `--tests` with a wildcard to run a specific test class, method, or to select multiple test classes:
         * `./gradlew test --tests *SomeSpecificTestClass`
         * `./gradlew test --tests *SomeTest.someSpecificTestMethod`
         * `./gradlew test --tests all.in.specific.package*`
@@ -435,7 +444,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
     * This adds hooks to your git configuration that will cause git-lfs files to be checked out for you automatically in the future.
     
 * To manually retrieve the large test data, run `git lfs pull` from the root of your GATK git clone.
-    * The download is several hundred megabytes.
+    * The download size is approximately 5 gigabytes.
     
 * To add a new large file to be tracked by git-lfs, simply:
     * Put the new file(s) in `src/test/resources/large` (or a subdirectory)
@@ -547,6 +556,23 @@ To generate GATK documentation, run `./gradlew gatkDoc`
 
 * Generated docs will be in the `build/docs/gatkdoc` directory.
 
+#### <a name="gatkwdlgen">Generating GATK4 WDL Wrappers</a>
+
+* A WDL wrapper can be generated for any GATK4 tool that is annotated for WDL generation (see the wiki article
+[How to Prepare a GATK tool for WDL Auto Generation](https://github.com/broadinstitute/gatk/wiki/How-to-Prepare-a-GATK-tool-for-WDL-Auto-Generation))
+to learn more about WDL annotations.
+
+* To generate the WDL Wrappers, run `./gradlew gatkWDLGen`. The generated WDLs and accompanying JSON input files can
+be found in the `build/docs/wdlGen` folder.
+
+* To generate WDL Wrappers and validate the resulting outputs, run `./gradlew gatkWDLGenValidation`.
+Running this task requires a local [cromwell](https://github.com/broadinstitute/cromwell) installation, and environment
+variables `CROMWELL_JAR` and `WOMTOOL_JAR` to be set to the full pathnames of the `cromwell` and `womtool` jar files.
+If no local install is available, this task will run automatically on travis in a separate job whenever a PR is submitted.
+
+* WDL wrappers for each GATK release are published to the [gatk-tool-wdls](https://github.com/broadinstitute/gatk-tool-wdls) repository.
+Only tools that have been annotated for WDL generation will show up there. 
+
 #### <a name="zenhub">Using Zenhub to track github issues</a>
 
 We use [Zenhub](https://www.zenhub.com/) to organize and track github issues.
@@ -617,4 +643,4 @@ The authors list is maintained in the [AUTHORS](https://github.com/broadinstitut
 See also the [Contributors](https://github.com/broadinstitute/gatk/graphs/contributors) list at github. 
 
 ## <a name="license">License</a>
-Licensed under the BSD License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.
+Licensed under the Apache 2.0 License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.

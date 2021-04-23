@@ -498,7 +498,8 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
                 downsampler,
                 keepReads,
                 bamBuilder.getSamples(),
-                bamBuilder.getHeader()
+                bamBuilder.getHeader(),
+                true
         );
 
         final Set<GATKRead> seenSoFar = new LinkedHashSet<>();
@@ -660,7 +661,8 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
                 downsampler,
                 false,
                 samples,
-                header
+                header,
+                true
         );
 
         while ( li.hasNext() ) {
@@ -757,7 +759,8 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
                 DownsamplingMethod.NONE,
                 false,
                 sampleListForSAMWithoutReadGroups(),
-                header
+                header,
+                true
         );
 
         int expectedPos = read.getStart() + nClipsOnLeft;

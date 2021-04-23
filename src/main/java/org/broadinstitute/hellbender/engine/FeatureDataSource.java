@@ -31,9 +31,11 @@ import org.genomicsdb.reader.GenomicsDBFeatureReader;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -373,8 +375,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             // a query by interval is attempted.
             final boolean requireIndex = false;
 
-            // Only apply the wrappers if the feature input is on Google Cloud Storage
-            if (BucketUtils.isCloudStorageUrl(featureInput)) {
+            // Only apply the wrappers if the feature input is in a remote location which will benefit from prefetching.
+            if (BucketUtils.isEligibleForPrefetching(featureInput)) {
                 return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, cloudWrapper, cloudIndexWrapper);
             } else {
                 return AbstractFeatureReader.getFeatureReader(absoluteRawPath, null, codec, requireIndex, Utils.identityFunction(), Utils.identityFunction());
@@ -384,11 +386,11 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
     }
 
-    protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final GATKPathSpecifier path, final File reference, final GenomicsDBOptions genomicsDBOptions) {
+    protected static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final GATKPath path, final File reference, final GenomicsDBOptions genomicsDBOptions) {
         final String workspace = IOUtils.getGenomicsDBAbsolutePath(path) ;
         if (workspace == null) {
-            throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB inputpath " + path);
-        } else if (Files.notExists(IOUtils.getPath(workspace))) {
+            throw new IllegalArgumentException("Trying to create a GenomicsDBReader from  non-GenomicsDB input path " + path);
+        } else if (Files.notExists(IOUtils.getPath(workspace.endsWith("/") ? workspace : workspace + "/"))) {
             throw new UserException("GenomicsDB workspace " + path + " does not exist");
         }
 
@@ -401,10 +403,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         try {
             final GenomicsDBExportConfiguration.ExportConfiguration exportConfigurationBuilder =
                     createExportConfiguration(workspace, callsetJson, vidmapJson, vcfHeader, genomicsDBOptions);
-            if (genomicsDBOptions.useVCFCodec()) {
-                return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new VCFCodec(), Optional.empty());
-            } else {
+            if (genomicsDBOptions.useBCFCodec()) {
                 return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new BCF2Codec(), Optional.empty());
+            } else {
+                return new GenomicsDBFeatureReader<>(exportConfigurationBuilder, new VCFCodec(), Optional.empty());
             }
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
@@ -427,7 +429,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             return dict;
         }
         if (hasIndex) {
-            return IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(featureInput.getFeaturePath()));
+            return IndexUtils.createSequenceDictionaryFromFeatureIndex(IOUtils.getPath(featureInput.getFeaturePath()));
         }
         return null;
     }

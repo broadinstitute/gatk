@@ -71,6 +71,11 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
     /**
      * Should we include reads in the pileup which are aligned with a deletion operator to the reference?
      */
+    private final boolean includeReadsWithDeletionAtLoci;
+
+    /**
+     * Should we include reads in the pileup which are aligned with a deletion operator to the reference?
+     */
     private final boolean includeReadsWithNsAtLoci;
 
     /**
@@ -89,42 +94,48 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
 
     /**
      * Create a new LocusIteratorByState
-     *  @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
+     *
+     * @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
      *                                       according to standard coordinate-sorted BAM conventions
      * @param downsamplingMethod             information about how to downsample the reads
      * @param keepUniqueReadListInLIBS       if true, we will keep the unique reads from the samIterator and make them
- *                                       available via the transferReadsFromAllPreviousPileups interface
+     *                                       available via the transferReadsFromAllPreviousPileups interface
      * @param samples                        a complete list of samples present in the read groups for the reads coming from samIterator.
-*                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
-*                                       list of samples may contain a null element, and all reads without read groups will
-*                                       be mapped to this null sample
+     *                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
+     *                                       list of samples may contain a null element, and all reads without read groups will
+     *                                       be mapped to this null sample
      * @param header                         header from the reads
+     * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
      */
     public LocusIteratorByState(final Iterator<GATKRead> samIterator,
                                 final DownsamplingMethod downsamplingMethod,
                                 final boolean keepUniqueReadListInLIBS,
                                 final Collection<String> samples,
-                                final SAMFileHeader header) {
+                                final SAMFileHeader header,
+                                final boolean includeReadsWithDeletionAtLoci) {
         this(samIterator,
                 LIBSDownsamplingInfo.toDownsamplingInfo(downsamplingMethod),
                 keepUniqueReadListInLIBS,
                 samples,
-                header
+                header,
+                includeReadsWithDeletionAtLoci
         );
     }
 
     /**
      * Create a new LocusIteratorByState
-     *  @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
+     *
+     * @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
      *                                       according to standard coordinate-sorted BAM conventions
      * @param downsamplingMethod             information about how to downsample the reads
      * @param keepUniqueReadListInLIBS       if true, we will keep the unique reads from the samIterator and make them
- *                                       available via the transferReadsFromAllPreviousPileups interface
+     *                                       available via the transferReadsFromAllPreviousPileups interface
      * @param samples                        a complete list of samples present in the read groups for the reads coming from samIterator.
-*                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
-*                                       list of samples may contain a null element, and all reads without read groups will
-*                                       be mapped to this null sample
+     *                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
+     *                                       list of samples may contain a null element, and all reads without read groups will
+     *                                       be mapped to this null sample
      * @param header                         header from the reads
+     * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
      * @param includeReadsWithNsAtLoci       Include reads with Ns at loci (usually it is not needed)
      */
     public LocusIteratorByState(final Iterator<GATKRead> samIterator,
@@ -132,49 +143,63 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
                                 final boolean keepUniqueReadListInLIBS,
                                 final Collection<String> samples,
                                 final SAMFileHeader header,
+                                final boolean includeReadsWithDeletionAtLoci,
                                 final boolean includeReadsWithNsAtLoci) {
         this(samIterator,
                 LIBSDownsamplingInfo.toDownsamplingInfo(downsamplingMethod),
                 keepUniqueReadListInLIBS,
                 samples,
                 header,
+                includeReadsWithDeletionAtLoci,
                 includeReadsWithNsAtLoci
         );
     }
 
     /**
      * Create a new LocusIteratorByState
-     *  @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
+     *
+     * @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
      *                                       according to standard coordinate-sorted BAM conventions
      * @param downsamplingInfo               meta-information about how to downsample the reads
      * @param keepUniqueReadListInLIBS       if true, we will keep the unique reads from the samIterator and make them
- *                                       available via the transferReadsFromAllPreviousPileups interface
+     *                                       available via the transferReadsFromAllPreviousPileups interface
      * @param samples                        a complete list of samples present in the read groups for the reads coming from samIterator.
-*                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
-*                                       list of samples may contain a null element, and all reads without read groups will
-*                                       be mapped to this null sample
+     *                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
+     *                                       list of samples may contain a null element, and all reads without read groups will
+     *                                       be mapped to this null sample
      * @param header                         header from the reads
+     * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
      */
     public LocusIteratorByState(final Iterator<GATKRead> samIterator,
                                 final LIBSDownsamplingInfo downsamplingInfo,
                                 final boolean keepUniqueReadListInLIBS,
                                 final Collection<String> samples,
-                                final SAMFileHeader header) {
-        this(samIterator, downsamplingInfo, keepUniqueReadListInLIBS, samples, header, false);
+                                final SAMFileHeader header,
+                                final boolean includeReadsWithDeletionAtLoci) {
+        this(samIterator,
+                downsamplingInfo,
+                keepUniqueReadListInLIBS,
+                samples,
+                header,
+                includeReadsWithDeletionAtLoci,
+                false
+        );
     }
 
     /**
      * Create a new LocusIteratorByState
-     *  @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
+     *
+     * @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
      *                                       according to standard coordinate-sorted BAM conventions
      * @param downsamplingInfo               meta-information about how to downsample the reads
      * @param keepUniqueReadListInLIBS       if true, we will keep the unique reads from the samIterator and make them
- *                                       available via the transferReadsFromAllPreviousPileups interface
+     *                                       available via the transferReadsFromAllPreviousPileups interface
      * @param samples                        a complete list of samples present in the read groups for the reads coming from samIterator.
-*                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
-*                                       list of samples may contain a null element, and all reads without read groups will
-*                                       be mapped to this null sample
+     *                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
+     *                                       list of samples may contain a null element, and all reads without read groups will
+     *                                       be mapped to this null sample
      * @param header                         header from the reads
+     * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
      * @param includeReadsWithNsAtLoci       Include reads with Ns at loci (usually it is not needed)
      */
     public LocusIteratorByState(final Iterator<GATKRead> samIterator,
@@ -182,6 +207,7 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
                                 final boolean keepUniqueReadListInLIBS,
                                 final Collection<String> samples,
                                 final SAMFileHeader header,
+                                final boolean includeReadsWithDeletionAtLoci,
                                 final boolean includeReadsWithNsAtLoci) {
         Utils.nonNull(samIterator, "samIterator cannot be null");
         Utils.nonNull(downsamplingInfo, "downsamplingInfo cannot be null");
@@ -194,6 +220,7 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
             throw new IllegalArgumentException("samples list must not be empty");
         }
 
+        this.includeReadsWithDeletionAtLoci = includeReadsWithDeletionAtLoci;
         this.includeReadsWithNsAtLoci = includeReadsWithNsAtLoci;
         this.samples = new ArrayList<>(samples);
         this.readStates = new ReadStateManager(samIterator, this.samples, downsamplingInfo, keepUniqueReadListInLIBS, header);
@@ -310,6 +337,10 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
                     }
 
                     if (!dontIncludeReadInPileup(read, location.getStart())) {
+                        if (!includeReadsWithDeletionAtLoci && op == CigarOperator.D) {
+                            continue;
+                        }
+
                         allPileupElements.add(state.makePileupElement());
                     }
                 }

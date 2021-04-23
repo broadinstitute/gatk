@@ -48,9 +48,9 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
                 new SimpleInterval("20", 10001019, 10001019)
         );
 
-        try ( final ReadsDataSource reads = new ReadsDataSource(testBam.toPath());
-              final ReferenceDataSource ref = new ReferenceFileSource(reference);
-              final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference)) {
+        try (final ReadsDataSource reads = new ReadsPathDataSource(testBam.toPath());
+             final ReferenceDataSource ref = new ReferenceFileSource(reference);
+             final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference)) {
 
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, new AssemblyRegionArgumentCollection(), false, false, reads.getHeader(), referenceReader, new VariantAnnotatorEngine(new ArrayList<>(), hcArgs.dbsnp.dbsnp, hcArgs.comps, false, false));
 
@@ -62,7 +62,7 @@ public class HaplotypeCallerEngineUnitTest extends GATKBaseTest {
             }
             final Iterator<GATKRead> readIter = new ReadFilteringIterator(reads.query(paddedShardInterval), hcCombinedFilter);
 
-            final LocusIteratorByState libs = new LocusIteratorByState(readIter, DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(reads.getHeader()), reads.getHeader());
+            final LocusIteratorByState libs = new LocusIteratorByState(readIter, DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(reads.getHeader()), reads.getHeader(), true);
 
             libs.forEachRemaining(pileup -> {
                 final SimpleInterval pileupInterval = new SimpleInterval(pileup.getLocation());

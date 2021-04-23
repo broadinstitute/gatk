@@ -31,7 +31,7 @@ import java.util.Iterator;
  * return empty arrays / iterators. You can determine whether there is a backing source of reference
  * data via {@link #hasBackingDataSource()}, and whether there is an interval via {@link #getInterval}.
  */
-public final class ReferenceContext implements Iterable<Byte>, Locatable {
+public final class ReferenceContext implements Iterable<Byte>, Locatable, BasicReference {
 
     /**
      * Backing data source. Null if there is no reference data.
@@ -153,6 +153,10 @@ public final class ReferenceContext implements Iterable<Byte>, Locatable {
     public int getEnd() { return interval.getEnd(); }
 
 
+    public SAMSequenceRecord getSequenceRecord() {
+        return dataSource != null ? dataSource.getSequenceDictionary().getSequence(getContig()) : null;
+    }
+
     /**
      * Determines whether this ReferenceContext has a backing reference data source. A ReferenceContext with
      * no backing data source will always return an empty bases array from {@link #getBases()} and an
@@ -206,6 +210,7 @@ public final class ReferenceContext implements Iterable<Byte>, Locatable {
      *
      * @return reference bases in this context, as a byte array
      */
+    @Override
     public byte[] getBases(final SimpleInterval window) {
         if ( dataSource == null || window == null ) {
             return new byte[0];

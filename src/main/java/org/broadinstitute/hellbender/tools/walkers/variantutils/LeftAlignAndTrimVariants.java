@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
@@ -24,7 +25,6 @@ import picard.cmdline.programgroups.VariantManipulationProgramGroup;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -136,7 +136,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "File to which variants should be written")
-    public File outFile = null;
+    public GATKPath outFile = null;
     /**
      * If this argument is set, bases common to all alleles will not be removed and will not leave their minimal representation.
      */
@@ -176,6 +176,7 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     private boolean suppressReferencePath = false;
 
     private VariantContextWriter vcfWriter = null;
+    private VCFHeader vcfHeader = null;
 
     VariantContext lastVariant;
 
@@ -189,7 +190,8 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
         final Set<VCFHeaderLine> actualLines = VcfUtils.updateHeaderContigLines(createVCFHeaderLineList(vcfHeaders), refPath, getReferenceDictionary(), suppressReferencePath);
 
         vcfWriter = createVCFWriter(outFile);
-        vcfWriter.writeHeader(new VCFHeader(actualLines, vcfSamples));
+        vcfHeader = new VCFHeader(actualLines, vcfSamples);
+        vcfWriter.writeHeader(vcfHeader);
     }
 
     /**
@@ -217,8 +219,16 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      */
     @Override
     public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
-        final List<VariantContext> vcList = splitMultiallelics ? GATKVariantContextUtils.splitVariantContextToBiallelics(vc, false,
-                GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts) : Collections.singletonList(vc);
+        final List<VariantContext> vcList;
+        if (splitMultiallelics) {
+            if (vc.getGenotypes().stream().anyMatch(g -> g.hasAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY))) {
+                vcList = GATKVariantContextUtils.splitSomaticVariantContextToBiallelics(vc, false, vcfHeader);
+            } else {
+                vcList = GATKVariantContextUtils.splitVariantContextToBiallelics(vc, false, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts);
+            }
+        } else {
+            vcList = Collections.singletonList(vc);
+        }
 
         for (final VariantContext splitVariant : vcList) {
             final List<Integer> indelLengths = splitVariant.getIndelLengths();

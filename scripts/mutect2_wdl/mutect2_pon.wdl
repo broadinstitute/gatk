@@ -9,7 +9,7 @@ version 1.0
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  pon_name: the resulting panel of normals is {pon_name}.vcf
 #  m2_extra_args: additional command line parameters for Mutect2.  This should not involve --max-mnp-distance,
-#  which the wdl hard-codes to 0 because GenpmicsDBImport can't handle MNPs
+#  which the wdl hard-codes to 0 because GenomicsDBImport can't handle MNPs
 
 import "mutect2.wdl" as m2
 workflow Mutect2_Panel {
@@ -29,7 +29,9 @@ workflow Mutect2_Panel {
     String pon_name
 
     Int? min_contig_size
-    Int? num_contigs
+    Int? create_panel_scatter_count
+
+    String? gcs_project_for_requester_pays
 
     # runtime
     String gatk_docker
@@ -70,7 +72,8 @@ workflow Mutect2_Panel {
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 preemptible = preemptible,
-                max_retries = max_retries
+                max_retries = max_retries,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
 
@@ -79,8 +82,8 @@ workflow Mutect2_Panel {
             ref_fasta = ref_fasta,
             ref_fai = ref_fai,
             ref_dict = ref_dict,
-            scatter_count = select_first([num_contigs, 24]),
-            split_intervals_extra_args = "--subdivision-mode BALANCING_WITHOUT_INTERVAL_SUBDIVISION --min-contig-size " + contig_size,
+            scatter_count = select_first([create_panel_scatter_count, 24]),
+            split_intervals_extra_args = "--dont-mix-contigs --min-contig-size " + contig_size,
             runtime_params = standard_runtime
     }
 

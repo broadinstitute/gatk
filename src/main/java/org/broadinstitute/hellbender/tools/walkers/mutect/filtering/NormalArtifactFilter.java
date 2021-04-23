@@ -69,7 +69,7 @@ public class NormalArtifactFilter extends Mutect2VariantFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() {
+    protected List<String> requiredInfoAnnotations() {
         return Arrays.asList(GATKVCFConstants.NORMAL_ARTIFACT_LOG_10_ODDS_KEY, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY);
     }
 }

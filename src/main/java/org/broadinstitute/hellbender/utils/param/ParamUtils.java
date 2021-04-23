@@ -297,4 +297,23 @@ public class ParamUtils {
         }
         return value;
     }
+
+    /**
+     * Checks that a range in an array specified using the first element index/offset and the length of the range is valid.
+     * @param from  the first position of th range.
+     * @param length the length of the range.
+     * @param arrayLength the target array length, thus indexes from 0 to arrayLength - 1.
+     * @param definition the description of the parameter.
+     */
+    public static void isValidArrayOffsetAndRangeLength(final int from, final int length,
+                                                        final int arrayLength, final String definition) {
+        if (length < 0) {
+            throw new IllegalArgumentException("range length cannot be negative for " + definition);
+        } else if (from < 0) {
+            throw new IllegalArgumentException("range offset cannot be negative for " + definition);
+        } else if (from + length > arrayLength) {
+            throw new IllegalArgumentException("range goes beyond the end of the array for " + definition);
+        }
+    }
+
 }

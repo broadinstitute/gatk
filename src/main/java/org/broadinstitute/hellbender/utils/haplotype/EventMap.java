@@ -304,6 +304,8 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
             // Walk along the alignment and turn any difference from the reference into an event
             h.setEventMap(new EventMap(h, ref, refLoc, "HC" + hapNumber++, maxMnpDistance));
             startPosKeySet.addAll(h.getEventMap().getStartPositions());
+            // Assert that all of the events discovered have 2 alleles
+            h.getEventMap().getVariantContexts().forEach(vc -> Utils.validate(vc.getAlleles().size() == 2, () -> "Error Haplotype event map Variant Context has too many alleles "+vc.getAlleles()+" for hapllotype: "+h));
 
             if( debug ) {
                 logger.info(h.toString());
@@ -319,7 +321,16 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
      * Returns any events in the map that overlap loc, including spanning deletions and events that start at loc.
      */
     public List<VariantContext> getOverlappingEvents(final int loc) {
-        return headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).collect(Collectors.toList());
+        final List<VariantContext> overlappingEvents = headMap(loc, true).values().stream().filter(v -> v.getEnd() >= loc).collect(Collectors.toList());
+        final List<VariantContext> deletionEventsEndingAtLoc = overlappingEvents.stream()
+                .filter(v -> v.isSimpleDeletion() && v.getEnd() == loc).collect(Collectors.toList());
+        final boolean containsDeletionEndingAtLoc = deletionEventsEndingAtLoc.size() > 0;
+        final boolean containsInsertionAtLoc = overlappingEvents.stream().anyMatch(VariantContext::isSimpleInsertion);
+        if (containsDeletionEndingAtLoc && containsInsertionAtLoc){
+            // We are at the end of a deletion and the start of an insertion;
+            // only the insertion should be kept in this case.
+            overlappingEvents.remove(deletionEventsEndingAtLoc.get(0));
+        }
+        return overlappingEvents;
     }
-
 }

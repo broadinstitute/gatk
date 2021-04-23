@@ -82,6 +82,35 @@ public class CigarBuilderUnitTest {
         Assert.assertEquals(builder.make().toString(), expected);
     }
 
+    @DataProvider(name = "retain_deletions")
+    public Object[][] retainDeletions() {
+        return new Object[][] {
+                // terminal deletions should be kept
+                {Arrays.asList("10M", "10D"), "10M10D"},
+                {Arrays.asList("10D", "10M"), "10D10M"},
+                {Arrays.asList("10H", "10D", "10M"), "10H10D10M"},
+                {Arrays.asList("10S", "10D", "10M"), "10S10D10M"},
+                {Arrays.asList("10S", "10D", "10M", "10S"), "10S10D10M10S"},
+                {Arrays.asList("10M", "10D", "10S"), "10M10D10S"},
+                {Arrays.asList("10M", "10D", "10H"), "10M10D10H"},
+                {Arrays.asList("10S", "10M", "10D", "10H"), "10S10M10D10H"},
+
+                // merging consecutive elements should still work
+                {Arrays.asList("10M", "10D", "10D"), "10M20D"},
+                {Arrays.asList("10M", "10M", "10D", "10D"), "20M20D"}
+        };
+    }
+
+    @Test(dataProvider = "retain_deletions")
+    public void testRetainDeletions(final List<String> cigarElementStrings, final String expected) {
+        final CigarBuilder builder = new CigarBuilder(false);
+        for (final String elementString : cigarElementStrings) {
+            builder.add(TextCigarCodec.decode(elementString).getFirstCigarElement());
+        }
+
+        Assert.assertEquals(builder.make().toString(), expected);
+    }
+
     @DataProvider(name = "merge_consecutive")
     public Object[][] mergeConsecutive() {
         return new Object[][] {
@@ -123,11 +152,11 @@ public class CigarBuilderUnitTest {
     @DataProvider(name = "indel_sandwich")
     public Object[][] indelSandwich() {
         return new Object[][] {
-                {Arrays.asList("10M", "10I", "10D", "10M"), "10M10I10D10M"},
-                {Arrays.asList("10M", "10D", "10I", "10M"), "10M10I10D10M"},
-                {Arrays.asList("10M", "10I", "10D", "10I", "10M"), "10M20I10D10M"},
-                {Arrays.asList("10M", "10I", "10D", "10I", "10D", "10I", "10M"), "10M30I20D10M"},
-                {Arrays.asList("10M", "10I", "10D", "10I", "10M", "10D", "10I", "10M"), "10M20I10D10M10I10D10M"},
+                {Arrays.asList("10M", "10I", "10D", "10M"), "10M10D10I10M"},
+                {Arrays.asList("10M", "10D", "10I", "10M"), "10M10D10I10M"},
+                {Arrays.asList("10M", "10I", "10D", "10I", "10M"), "10M10D20I10M"},
+                {Arrays.asList("10M", "10I", "10D", "10I", "10D", "10I", "10M"), "10M20D30I10M"},
+                {Arrays.asList("10M", "10I", "10D", "10I", "10M", "10D", "10I", "10M"), "10M10D20I10M10D10I10M"},
 
                 //does the indel sandwich logic interfere with removing leading/trailing deletions
                 {Arrays.asList("10D", "10I", "10M"), "10I10M"},

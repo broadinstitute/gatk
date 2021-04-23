@@ -11,6 +11,7 @@ import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.MathArrays;
 import org.apache.commons.math3.util.Pair;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
 import java.util.function.*;
@@ -32,6 +33,7 @@ public final class MathUtils {
     public static final double LOG_ONE_THIRD = -Math.log(3.0);
     public static final double INV_LOG_2 = 1.0 / Math.log(2.0);
     private static final double LOG_10 = Math.log(10);
+    private static final double INV_LOG_10 = 1.0 / LOG_10;
     public static final double LOG10_E = Math.log10(Math.E);
 
     private static final double ROOT_TWO_PI = Math.sqrt(2.0 * Math.PI);
@@ -105,6 +107,18 @@ public final class MathUtils {
             return result;
     }
 
+    public static double[] ebeAdd(final double[] a, final double[] b) throws DimensionMismatchException {
+        if (a.length != b.length) {
+            throw new DimensionMismatchException(a.length, b.length);
+        }
+
+        final double[] result = a.clone();
+        for (int i = 0; i < a.length; i++) {
+            result[i] += b[i];
+        }
+        return result;
+    }
+
     // sum of int -> double[] function mapped to an index range
     public static double[] sumArrayFunction(final int min, final int max, final IntToDoubleArrayFunction function) {
         Utils.validateArg(max >= min, "max must be at least as great as min");
@@ -150,6 +164,75 @@ public final class MathUtils {
 
     public static double dotProduct(double[] a, double[] b){
         return sum(MathArrays.ebeMultiply(Utils.nonNull(a), Utils.nonNull(b)));
+    }
+
+    /**
+     * Composes and array of doubles given the start, end (enclosed*) and the step or interval between consecutive
+     * values in the sequence.
+     * <p>
+     *     For example {@code doubles(1, 10, 1)} results in the sequence {@code  1.0, 2.0, 3.0, ..., 9.0, 10.0}.
+     * </p>
+     * <p>
+     *     It also works with a negative step as long as end < start. For example {@code doubles(3, 1, -.5)} results in
+     *     {@code 3.0, 2.5, 2.0, 1.5, 1.0}.
+     * </p>
+     * <p>
+     *     The 'end' values might be included if there is a N >= 1 such that N * step + start == end. There is a
+     *     difference "tolerances" three orders of magnitude below thet step absolut value's so if the step is 1. and
+     *     the last value is under 0.001 absolute difference with 'end', the 'end' value is used instead.
+     * </p>
+     * <p>
+     *     A sequence request where the difference between the start and end is less than the 'tolerance' described above
+     *     results in a single value sequence equal to the start.
+     * </p>
+     *
+     * @param start the first values of the sequence.
+     * @param limit the limit of the sequence
+     * @param step the step increment (or decrement) between elements of the sequence.
+     * @return never {@code null}.
+     */
+    public static double[] doubles(final double start, final double limit, final double step) {
+        ParamUtils.isFinite(start, "the start must be finite");
+        ParamUtils.isFinite(limit, "the limit must be finite");
+        ParamUtils.isFinite(step, "the step must be finite");
+        final double tolerance = Math.pow(10, Math.floor(Math.min(0, Math.log10(Math.abs(step)) - 3)));
+        final double diff = limit - start;
+        if (Math.abs(diff) < tolerance) {
+            return new double[] {start};
+        }
+        Utils.validateArg(diff * step > 0, "the difference between start and end must have the same sign as the step");
+        if (diff == 0) {
+            return new double[] {start};
+        } else if ((diff > 0) == (step > 0)) {
+            final long lengthAsLong = Math.round(Math.floor(1.0 + tolerance + diff / step));
+            if (lengthAsLong > Integer.MAX_VALUE) {
+                throw new IllegalArgumentException("cannot produce such a large sequence with " + lengthAsLong + " elements");
+            }
+            final int length = (int) lengthAsLong;
+            final double[] result = new double[length];
+            for (int i = 0; i < length; i++) {
+                result[i] = start + step * i;
+            }
+            if (Math.abs(result[result.length - 1] - limit) <= tolerance) {
+                result[result.length - 1] = limit;
+            }
+            return result;
+        } else {
+            throw new IllegalArgumentException("the max - min difference and increment must have the same sign");
+        }
+    }
+
+    /**
+     * Returns an array of doubles filled with a particular value.
+     * @param repeats number of elements in the returned array.
+     * @param val the fill value.
+     * @return never {@code null}.
+     */
+    public static double[] doubles(final int repeats, final double val) {
+        ParamUtils.isPositiveOrZero(repeats, "repeats must be 0 or greater");
+        final double[] result = new double[repeats];
+        Arrays.fill(result, val);
+        return result;
     }
 
     @FunctionalInterface
@@ -218,7 +301,6 @@ public final class MathUtils {
         }
     }
 
-
     /**
      * Computes the sum of squares of the given collection of ints or 0.0 if the collection is empty.
      */
@@ -247,7 +329,7 @@ public final class MathUtils {
         if (a > 0) return Double.NaN;
         if (a == 0) return Double.NEGATIVE_INFINITY;
         final double b = a * LOG_10;
-        return NaturalLogUtils.log1mexp(b) / LOG_10;
+        return NaturalLogUtils.log1mexp(b) * INV_LOG_10;
     }
 
     /**
@@ -285,7 +367,6 @@ public final class MathUtils {
         return new IndexRange(0, x.length).mapToInteger(k -> x[k] - y[k]);
     }
 
-
     /**
      * Calculates the log10 of the multinomial coefficient. Designed to prevent
      * overflows even with very large numbers.
@@ -319,19 +400,19 @@ public final class MathUtils {
 
     public static double log10sumLog10(final double[] log10p, final int start, final int finish) {
         Utils.nonNull(log10p);
-        if (start >= finish) {
-            return Double.NEGATIVE_INFINITY;
+        if (finish - start < 2) {
+            return finish == start ? Double.NEGATIVE_INFINITY : log10p[start];
+        } else {
+            final int maxElementIndex = maxElementIndex(log10p, start, finish);
+            final double maxValue = log10p[maxElementIndex];
+            if (maxValue == Double.NEGATIVE_INFINITY) {
+                return maxValue;
+            }
+            final double sum = 1.0 + new IndexRange(start, finish).sum(i -> i == maxElementIndex ? 0 : Math.pow(10.0, log10p[i] - maxValue));
+            Utils.validateArg(!Double.isNaN(sum) && sum != Double.POSITIVE_INFINITY, "log10p values must be non-infinite and non-NAN");
+            return maxValue + Math.log10(sum);
         }
-        final int maxElementIndex = maxElementIndex(log10p, start, finish);
-        final double maxValue = log10p[maxElementIndex];
-        if(maxValue == Double.NEGATIVE_INFINITY) {
-            return maxValue;
-        }
-        final double sum = 1.0 + new IndexRange(start, finish).sum(i -> i == maxElementIndex ? 0 : Math.pow(10.0, log10p[i] - maxValue));
-        Utils.validateArg(!Double.isNaN(sum) && sum != Double.POSITIVE_INFINITY, "log10p values must be non-infinite and non-NAN");
-        return maxValue + Math.log10(sum);
     }
-
 
     /**
      * Encapsulates the second term of Jacobian log identity for differences up to MAX_TOLERANCE
@@ -618,6 +699,23 @@ public final class MathUtils {
     }
 
     /**
+     * Do the log-sum trick for three double values.
+     * @param a
+     * @param b
+     * @param c
+     * @return the sum... perhaps NaN or infinity if it applies.
+     */
+    public static double log10SumLog10(final double a, final double b, final double c) {
+        if (a >= b && a >= c)  {
+            return a + Math.log10(1 + Math.pow(10.0, b - a) + Math.pow(10.0, c - a));
+        } else if (b >= c) {
+            return b + Math.log10(1 + Math.pow(10.0, a - b) + Math.pow(10.0, c - b));
+        } else {
+            return c + Math.log10(1 + Math.pow(10.0, a - c) + Math.pow(10.0, b - c));
+        }
+    }
+
+    /**
      * Calculate f(x) = log10 ( Normal(x | mu = mean, sigma = sd) )
      * @param mean the desired mean of the Normal distribution
      * @param sd the desired standard deviation of the Normal distribution
@@ -668,7 +766,6 @@ public final class MathUtils {
         return normalizeLog10(Utils.nonNull(array), true, true);
     }
 
-
     /**
      * See #normalizeFromLog but with the additional option to use an approximation that keeps the calculation always in log-space
      *
@@ -683,7 +780,6 @@ public final class MathUtils {
         final double[] result = inPlace ? applyToArrayInPlace(array, x -> x - log10Sum) : applyToArray(array, x -> x - log10Sum);
         return takeLog10OfOutput ? result : applyToArrayInPlace(result, x -> Math.pow(10.0, x));
     }
-
 
     //TODO: delete after we are satisfied with the concordance of VQSR with GATK3
     public static double[] normalizeLog10DeleteMePlease(final double[] array, final boolean takeLog10OfOutput) {
@@ -758,6 +854,36 @@ public final class MathUtils {
         return array[maxElementIndex(array)];
     }
 
+    /**
+     * Returns the maximum value within and int array interval.
+     * <p>
+     *     A default value must be provided in case the requested interval is empty.
+     * </p>
+     *
+     * @param array the source array.
+     * @param from first position to be considered.
+     * @param to position after the last to be considered (i.e. exclusive).
+     * @param defaultValue the default value to return in case that the interval provided is empty.
+     * @throws IndexOutOfBoundsException if the from-to interval indexes point to a invalid index range.
+     * @return any integer value is a valid return for this method.
+     */
+    public static int arrayMax(final int[] array, final int from, final int to, final int defaultValue) {
+        if (to > from) {
+            int value = array[from];
+            for (int i = from + 1; i < to; i++) {
+                final int candidate = array[i];
+                if (candidate > value) {
+                    value = candidate;
+                }
+            }
+            return value;
+        } else if (from >= 0) {
+            return defaultValue;
+        } else {
+            throw new ArrayIndexOutOfBoundsException(from);
+        }
+    }
+
     public static double arrayMax(final double[] array) {
         Utils.nonNull(array);
         return array[maxElementIndex(array)];
@@ -813,6 +939,10 @@ public final class MathUtils {
      * Uses the approximation log10(1-x) = log10(1/x - 1) + log10(x) to avoid very quick underflow
      * in 1-x when x is very small
      *
+     * log10(1-x) = log10( x * (1-x) / x )
+     *            = log10(x) + log10( (1-x) / x)
+     *            = log10(x) + log10(1/x - 1)
+     *
      * @param x a positive double value between 0.0 and 1.0
      * @return an estimate of log10(1-x)
      */
@@ -830,8 +960,8 @@ public final class MathUtils {
     /**
      * Compute the median of a list of numbers
      *
-     * If values.length is even, this will be the middle value when the elements are sorted
-     * If values.length is odd then it will be the mean of the two values closest to the middle.
+     * If values.length is odd, this will be the middle value when the elements are sorted
+     * If values.length is even then it will be the mean of the two values closest to the middle.
      *
      * @param values a list of numbers
      * @return the median element of values

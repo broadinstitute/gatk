@@ -11,18 +11,36 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.funcotator.*;
+import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
+import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotationMap;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorConstants;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorUtils;
+import org.broadinstitute.hellbender.tools.funcotator.OutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.SamplePairExtractor;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.TumorNormalPair;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -344,9 +362,17 @@ public class MafOutputRenderer extends OutputRenderer {
 
                 try {
                     // Write the output (with manual annotations at the end):
-                    for (final Map.Entry<String, String> entry : mafCompliantOutputMap.entrySet()) {
-                        writeString(entry.getValue());
+                    final Iterator<Map.Entry<String, String>> entryIterator =
+                            mafCompliantOutputMap.entrySet().iterator();
+
+                    // We should always have at least 1 field here:
+                    Map.Entry<String, String> entry = entryIterator.next();
+                    writeString(entry.getValue());
+
+                    while (entryIterator.hasNext()) {
+                        entry = entryIterator.next();
                         writeString(MafOutputRendererConstants.FIELD_DELIMITER);
+                        writeString(entry.getValue());
                     }
                     writeLine("");
                 } catch (IOException e){
@@ -666,10 +692,14 @@ public class MafOutputRenderer extends OutputRenderer {
 
             // Write the column headers for our output set and our manual annotations:
             writer.write(outputFields.stream().collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
-            writeLine(MafOutputRendererConstants.FIELD_DELIMITER + manualAnnotations.keySet()
-                    .stream()
-                    .collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
-
+            if (manualAnnotations.size() > 0) {
+                writeLine(MafOutputRendererConstants.FIELD_DELIMITER + manualAnnotations.keySet()
+                        .stream()
+                        .collect(Collectors.joining(MafOutputRendererConstants.FIELD_DELIMITER)));
+            }
+            else {
+                writer.write("\n");
+            }
             // Make sure we keep track of the fact that we've now written the header:
             hasWrittenHeader = true;
         } catch (IOException e){

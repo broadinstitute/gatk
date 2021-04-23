@@ -27,8 +27,8 @@ version 1.0
 ##
 ## ** Primary inputs **
 ## ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
-## tumor_bam, tumor_bam_index: BAM and index for the tumor sample
-## normal_bam, normal_bam_index: BAM and index for the normal sample
+## tumor_reas, tumor_reads_index: BAM and index for the tumor sample
+## normal_reads, normal_reads_index: BAM and index for the normal sample
 ##
 ## ** Primary resources ** (optional but strongly recommended)
 ## pon, pon_idx: optional panel of normals (and its index) in VCF format containing probable technical artifacts (false positves)
@@ -60,12 +60,13 @@ version 1.0
 ## - Successfully tested on v34
 ##
 ## LICENSING :
-## This script is released under the WDL source code license (BSD-3) (see LICENSE in
-## https://github.com/broadinstitute/wdl). Note however that the programs it calls may
+## This script is released under the GATK source code license (Apache 2.0) (see LICENSE in
+## https://github.com/broadinstitute/gatk). Note however that the programs it calls may
 ## be subject to different licenses. Users are responsible for checking that they are
-## authorized to run all programs before running this script. Please see the docker
+## authorized to run all programs before running this script.  Please see the docker
 ## pages at https://hub.docker.com/r/broadinstitute/* for detailed licensing information
 ## pertaining to the included programs.
+
 
 struct Runtime {
     String gatk_docker
@@ -102,11 +103,13 @@ workflow Mutect2 {
       Boolean? run_orientation_bias_mixture_model_filter
       String? m2_extra_args
       String? m2_extra_filtering_args
+      String? getpileupsummaries_extra_args
       String? split_intervals_extra_args
       Boolean? make_bamout
       Boolean? compress_vcfs
       File? gga_vcf
       File? gga_vcf_idx
+      String? gcs_project_for_requester_pays
 
       # Funcotator inputs
       Boolean? run_funcotator
@@ -191,45 +194,13 @@ workflow Mutect2 {
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
             "disk": small_task_disk + disk_pad, "boot_disk_size": boot_disk_size}
 
-    if (basename(tumor_reads) != basename(tumor_reads, ".cram")) {
-        call CramToBam as TumorCramToBam {
-            input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                cram = tumor_reads,
-                crai = tumor_reads_index,
-                name = output_basename,
-                disk_size = tumor_cram_to_bam_disk
-        }
-    }
 
-    String normal_or_empty = select_first([normal_reads, ""])
-    if (basename(normal_or_empty) != basename(normal_or_empty, ".cram")) {
-        String normal_basename = basename(basename(normal_or_empty, ".bam"),".cram")
-        call CramToBam as NormalCramToBam {
-            input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                cram = normal_reads,
-                crai = normal_reads_index,
-                name = normal_basename,
-                disk_size = normal_cram_to_bam_disk
-        }
-    }
+    Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
+    Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
 
-    File tumor_bam = select_first([TumorCramToBam.output_bam, tumor_reads])
-    File tumor_bai = select_first([TumorCramToBam.output_bai, tumor_reads_index])
-    File? normal_bam = if defined(normal_reads) then select_first([NormalCramToBam.output_bam, normal_reads]) else normal_reads
-    File? normal_bai = if defined(normal_reads) then select_first([NormalCramToBam.output_bai, normal_reads_index]) else normal_reads_index
-
-    Int tumor_bam_size = ceil(size(tumor_bam, "GB") + size(tumor_bai, "GB"))
-    Int normal_bam_size = if defined(normal_bam) then ceil(size(normal_bam, "GB") + size(normal_bai, "GB")) else 0
-
-    Int m2_output_size = tumor_bam_size / scatter_count
+    Int m2_output_size = tumor_reads_size / scatter_count
     #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
-    Int m2_per_scatter_size = (tumor_bam_size + normal_bam_size) + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
+    Int m2_per_scatter_size = (tumor_reads_size + normal_reads_size) + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
 
     call SplitIntervals {
         input:
@@ -249,10 +220,10 @@ workflow Mutect2 {
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
-                tumor_bam = tumor_bam,
-                tumor_bai = tumor_bai,
-                normal_bam = normal_bam,
-                normal_bai = normal_bai,
+                tumor_reads = tumor_reads,
+                tumor_reads_index = tumor_reads_index,
+                normal_reads = normal_reads,
+                normal_reads_index = normal_reads_index,
                 pon = pon,
                 pon_idx = pon_idx,
                 gnomad = gnomad,
@@ -260,6 +231,7 @@ workflow Mutect2 {
                 preemptible = preemptible,
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
+                getpileupsummaries_extra_args = getpileupsummaries_extra_args,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_idx = variants_for_contamination_idx,
                 make_bamout = make_bamout_or_default,
@@ -269,7 +241,8 @@ workflow Mutect2 {
                 gga_vcf_idx = gga_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                disk_space = m2_per_scatter_size
+                disk_space = m2_per_scatter_size,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
 
@@ -318,7 +291,7 @@ workflow Mutect2 {
                 runtime_params = standard_runtime
         }
 
-        if (defined(normal_bam)){
+        if (defined(normal_reads)){
             call MergePileupSummaries as MergeNormalPileups {
                 input:
                     input_tables = flatten(M2.normal_pileups),
@@ -361,8 +334,8 @@ workflow Mutect2 {
                 ref_fasta = ref_fasta,
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
-                bam = tumor_bam,
-                bai = tumor_bai,
+                reads = tumor_reads,
+                reads_index = tumor_reads_index,
                 realignment_index_bundle = select_first([realignment_index_bundle]),
                 realignment_extra_args = realignment_extra_args,
                 compress = compress,
@@ -370,7 +343,8 @@ workflow Mutect2 {
                 input_vcf = Filter.filtered_vcf,
                 input_vcf_idx = Filter.filtered_vcf_idx,
                 runtime_params = standard_runtime,
-                mem = filter_alignment_artifacts_mem
+                mem = filter_alignment_artifacts_mem,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
 
@@ -422,45 +396,6 @@ workflow Mutect2 {
     }
 }
 
-task CramToBam {
-    input {
-      File ref_fasta
-      File ref_fai
-      File ref_dict
-      #cram and crai must be optional since Normal cram is optional
-      File? cram
-      File? crai
-      String name
-      Int disk_size
-      Int? mem
-    }
-
-    Int machine_mem = if defined(mem) then mem * 1000 else 6000
-
-    #Calls samtools view to do the conversion
-    command {
-        #Set -e and -o says if any command I run fails in this script, make sure to return a failure
-        set -e
-        set -o pipefail
-
-        samtools view -h -T ~{ref_fasta} ~{cram} |
-            samtools view -b -o ~{name}.bam -
-        samtools index -b ~{name}.bam
-        mv ~{name}.bam.bai ~{name}.bai
-    }
-
-    runtime {
-        docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.3.3-1513176735"
-        memory: machine_mem + " MB"
-        disks: "local-disk " + disk_size + " HDD"
-    }
-
-    output {
-        File output_bam = "~{name}.bam"
-        File output_bai = "~{name}.bai"
-    }
-}
-
 task SplitIntervals {
     input {
       File? intervals
@@ -509,15 +444,16 @@ task M2 {
       File ref_fasta
       File ref_fai
       File ref_dict
-      File tumor_bam
-      File tumor_bai
-      File? normal_bam
-      File? normal_bai
+      File tumor_reads
+      File tumor_reads_index
+      File? normal_reads
+      File? normal_reads_index
       File? pon
       File? pon_idx
       File? gnomad
       File? gnomad_idx
       String? m2_extra_args
+      String? getpileupsummaries_extra_args
       Boolean? make_bamout
       Boolean? run_ob_filter
       Boolean compress
@@ -527,6 +463,8 @@ task M2 {
       File? variants_for_contamination_idx
 
       File? gatk_override
+
+      String? gcs_project_for_requester_pays
 
       # runtime
       String gatk_docker
@@ -552,10 +490,10 @@ task M2 {
       ref_fasta: {localization_optional: true}
       ref_fai: {localization_optional: true}
       ref_dict: {localization_optional: true}
-      tumor_bam: {localization_optional: true}
-      tumor_bai: {localization_optional: true}
-      normal_bam: {localization_optional: true}
-      normal_bai: {localization_optional: true}
+      tumor_reads: {localization_optional: true}
+      tumor_reads_index: {localization_optional: true}
+      normal_reads: {localization_optional: true}
+      normal_reads_index: {localization_optional: true}
       pon: {localization_optional: true}
       pon_idx: {localization_optional: true}
       gnomad: {localization_optional: true}
@@ -576,12 +514,14 @@ task M2 {
         touch f1r2.tar.gz
         echo "" > normal_name.txt
 
-        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_bam} -O tumor_name.txt -encode
-        tumor_command_line="-I ~{tumor_bam} -tumor `cat tumor_name.txt`"
+        gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_reads} -O tumor_name.txt -encode \
+        ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
+        tumor_command_line="-I ~{tumor_reads} -tumor `cat tumor_name.txt`"
 
-        if [[ ! -z "~{normal_bam}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_bam} -O normal_name.txt -encode
-            normal_command_line="-I ~{normal_bam} -normal `cat normal_name.txt`"
+        if [[ ! -z "~{normal_reads}" ]]; then
+            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_name.txt -encode \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
+            normal_command_line="-I ~{normal_reads} -normal `cat normal_name.txt`"
         fi
 
         gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
@@ -595,7 +535,8 @@ task M2 {
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
-            ~{m2_extra_args}
+            ~{m2_extra_args} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
 
         m2_exit_code=$?
 
@@ -608,12 +549,15 @@ task M2 {
         set +e
 
         if [[ ! -z "~{variants_for_contamination}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table
+            gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+                -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table ~{getpileupsummaries_extra_args} \
+                ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
 
-            if [[ ! -z "~{normal_bam}" ]]; then
-                gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_bam} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table
+
+            if [[ ! -z "~{normal_reads}" ]]; then
+                gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+                    -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table ~{getpileupsummaries_extra_args} \
+                    ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
             fi
         fi
 
@@ -926,12 +870,13 @@ task FilterAlignmentArtifacts {
       File ref_dict
       File input_vcf
       File input_vcf_idx
-      File bam
-      File bai
+      File reads
+      File reads_index
       String output_name
       Boolean compress
       File realignment_index_bundle
       String? realignment_extra_args
+      String? gcs_project_for_requester_pays
       Runtime runtime_params
       Int mem
     }
@@ -948,8 +893,8 @@ task FilterAlignmentArtifacts {
       ref_dict: {localization_optional: true}
       input_vcf: {localization_optional: true}
       input_vcf_idx: {localization_optional: true}
-      bam: {localization_optional: true}
-      bai: {localization_optional: true}
+      reads: {localization_optional: true}
+      reads_index: {localization_optional: true}
     }
 
     command {
@@ -960,10 +905,11 @@ task FilterAlignmentArtifacts {
         gatk --java-options "-Xmx~{command_mem}m" FilterAlignmentArtifacts \
             -R ~{ref_fasta} \
             -V ~{input_vcf} \
-            -I ~{bam} \
+            -I ~{reads} \
             --bwa-mem-index-image ~{realignment_index_bundle} \
             ~{realignment_extra_args} \
-            -O ~{output_vcf}
+            -O ~{output_vcf} \
+            ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
     }
 
     runtime {
@@ -996,7 +942,7 @@ task Funcotate {
        Boolean use_gnomad
        # This should be updated when a new version of the data sources is released
        # TODO: Make this dynamically chosen in the command.
-       File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz"
+       File? data_sources_tar_gz = "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.7.20200521s.tar.gz"
        String? control_id
        String? case_id
        String? sequencing_center
@@ -1010,6 +956,7 @@ task Funcotate {
        File? interval_list
 
        String? extra_args
+       String? gcs_project_for_requester_pays
 
        # ==============
        Runtime runtime_params
@@ -1091,7 +1038,8 @@ task Funcotate {
              ~{annotation_over_arg}~{default="" sep=" --annotation-override " annotation_overrides} \
              ~{excluded_fields_args}~{default="" sep=" --exclude-field " funcotator_excluded_fields} \
              ~{filter_funcotations_args} \
-             ~{extra_args_arg}
+             ~{extra_args_arg} \
+             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
          # Make sure we have a placeholder index for MAF files so this workflow doesn't fail:
          if [[ "~{output_format}" == "MAF" ]] ; then
             touch ~{output_maf_index}

@@ -32,6 +32,9 @@ public final class Haplotype extends Allele {
     private int alignmentStartHapwrtRef;
     private double score = Double.NaN;
 
+    // debug information for tracking kmer sizes used in graph construction for debug output
+    private int kmerSize = 0;
+
     /**
      * Main constructor
      *
@@ -92,18 +95,35 @@ public final class Haplotype extends Allele {
 
         final int newStart = loc.getStart() - this.genomeLocation.getStart();
         final int newStop = newStart + loc.getEnd() - loc.getStart();
+
+        // note: the following returns null if the bases covering the ref interval start or end in a deletion.
         final byte[] newBases = AlignmentUtils.getBasesCoveringRefInterval(newStart, newStop, getBases(), 0, getCigar());
 
         if ( newBases == null || newBases.length == 0 ) { // we cannot meaningfully chop down the haplotype, so return null
             return null;
         }
 
+        // note: trimCigarByReference does not remove leading or trailing indels, while getBasesCoveringRefInterval does remove bases
+        // of leading and trailing insertions.  We must remove leading and trailing insertions from the Cigar manually.
+        // we keep leading and trailing deletions because these are necessary for haplotypes to maintain consistent reference coordinates
         final Cigar newCigar = AlignmentUtils.trimCigarByReference(getCigar(), newStart, newStop).getCigar();
+        final boolean leadingInsertion = !newCigar.getFirstCigarElement().getOperator().consumesReferenceBases();
+        final boolean trailingInsertion = !newCigar.getLastCigarElement().getOperator().consumesReferenceBases();
+        final int firstIndexToKeepInclusive = leadingInsertion ? 1 : 0;
+        final int lastIndexToKeepExclusive = newCigar.numCigarElements() - (trailingInsertion ? 1 : 0);
+
+        if (lastIndexToKeepExclusive <= firstIndexToKeepInclusive) {    // edge case of entire cigar is insertion
+            return null;
+        }
+
+        final Cigar leadingIndelTrimmedNewCigar = !(leadingInsertion || trailingInsertion)  ? newCigar :
+                new CigarBuilder(false).addAll(newCigar.getCigarElements().subList(firstIndexToKeepInclusive, lastIndexToKeepExclusive)).make();
 
         final Haplotype ret = new Haplotype(newBases, isReference());
-        ret.setCigar(newCigar);
+        ret.setCigar(leadingIndelTrimmedNewCigar);
         ret.setGenomeLocation(loc);
         ret.setScore(score);
+        ret.setKmerSize(kmerSize);
         ret.setAlignmentStartHapwrtRef(newStart + getAlignmentStartHapwrtRef());
         return ret;
     }
@@ -182,12 +202,13 @@ public final class Haplotype extends Allele {
     /**
      * Set the cigar of this haplotype to cigar.
      *
-     * Note that this function consolidates the cigar, so that 1M1M1I1M1M => 2M1I2M
+     * This method consolidates the cigar, so that 1M1M1I1M1M => 2M1I2M.  It does not remove leading or trailing deletions
+     * because haplotypes, unlike reads, are pegged to a specific reference start and end.
      *
      * @param cigar a cigar whose readLength == length()
      */
     public void setCigar( final Cigar cigar ) {
-        this.cigar = new CigarBuilder().addAll(cigar).make();
+        this.cigar = new CigarBuilder(false).addAll(cigar).make();
         Utils.validateArg( this.cigar.getReadLength() == length(), () -> "Read length " + length() + " not equal to the read length of the cigar " + cigar.getReadLength() + " " + this.cigar);
     }
 
@@ -242,4 +263,11 @@ public final class Haplotype extends Allele {
     }
 
 
+    public int getKmerSize() {
+        return kmerSize;
+    }
+
+    public void setKmerSize(int kmerSize) {
+        this.kmerSize = kmerSize;
+    }
 }

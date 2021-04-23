@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.discovery;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.engine.BasicReference;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.StrandSwitch;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.BreakpointComplications;
@@ -35,7 +36,7 @@ public abstract class SimpleSVType extends SvType {
     }
 
     public enum SupportedType {
-        INV, DEL, INS, DUP, DUP_INV;
+        INV, DEL, INS, DUP, DUP_INV
     }
 
     public static final class Inversion extends SimpleSVType {
@@ -56,13 +57,13 @@ public abstract class SimpleSVType extends SvType {
         // TODO: 6/12/18 note the following implementation sets POS and REF at the anchor base, which is not requested by the VCF spec
         // TODO: 6/12/18 also, this interface lets one call inversion with SVLEN !=0, which is not the same as VCF spec examples
         public Inversion(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype, final int svLength,
-                         final ReferenceMultiSparkSource reference) {
+                         final BasicReference reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getEnd(),
                     getIDString(novelAdjacencyAndAltHaplotype),
                     Allele.create(extractRefBases(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc(), reference), true),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INV)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_INV)),
                     svLength,
                     Collections.singletonMap((novelAdjacencyAndAltHaplotype.getStrandSwitch() == StrandSwitch.FORWARD_TO_REVERSE) ? GATKSVVCFConstants.INV55 : GATKSVVCFConstants.INV33, true));
         }
@@ -89,13 +90,13 @@ public abstract class SimpleSVType extends SvType {
         }
 
         public Deletion(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                        final ReferenceMultiSparkSource reference) {
+                        final BasicReference reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedRightRefLoc().getEnd(),
                     getIDString(novelAdjacencyAndAltHaplotype),
                     Allele.create(extractRefBases(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc(), reference), true),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_DEL)),
                     - novelAdjacencyAndAltHaplotype.getDistanceBetweenNovelAdjacencies(),
                     novelAdjacencyAndAltHaplotype.hasDuplicationAnnotation() ? Collections.singletonMap(GATKSVVCFConstants.DUP_TAN_CONTRACTION_STRING, true) : noExtraAttributes);
         }
@@ -122,13 +123,13 @@ public abstract class SimpleSVType extends SvType {
         }
 
         public Insertion(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                         final ReferenceMultiSparkSource reference) {
+                         final BasicReference reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     getEnd(novelAdjacencyAndAltHaplotype),
                     getIDString(novelAdjacencyAndAltHaplotype),
                     Allele.create(getRefBases(novelAdjacencyAndAltHaplotype, reference), true),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INS)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_INS)),
                     getLength(novelAdjacencyAndAltHaplotype),
                     noExtraAttributes);
         }
@@ -141,7 +142,7 @@ public abstract class SimpleSVType extends SvType {
         }
 
         private static byte[] getRefBases(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                                          final ReferenceMultiSparkSource reference) {
+                                          final BasicReference reference) {
             return extractRefBases(novelAdjacencyAndAltHaplotype.isCandidateForFatInsertion()
                     ? novelAdjacencyAndAltHaplotype.getIntervalForFatInsertion()
                     : novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc(), reference);
@@ -182,13 +183,13 @@ public abstract class SimpleSVType extends SvType {
 
         // TODO: 6/12/18 the following implementation treats DuplicationTandem as simple insertions, and duplication annotations will be saved in INFO columns
         public DuplicationTandem(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                                 final ReferenceMultiSparkSource reference) {
+                                 final BasicReference reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     getIDString(novelAdjacencyAndAltHaplotype),
                     Allele.create(extractRefBases(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc(), reference), true),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DUP)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_DUP)),
                     novelAdjacencyAndAltHaplotype.getLengthForDupTandemExpansion(),
                     Collections.singletonMap(GATKSVVCFConstants.DUP_TAN_EXPANSION_STRING, true));
         }
@@ -219,7 +220,7 @@ public abstract class SimpleSVType extends SvType {
                     evidenceTargetLink.getPairedStrandedIntervals().getRight().getInterval().midpoint(),
                     getIDString(evidenceTargetLink, metadata),
                     Allele.create(getRefBases(evidenceTargetLink, metadata, reference), true),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_DEL)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_DEL)),
                     svLength,
                     Collections.singletonMap(GATKSVVCFConstants.IMPRECISE, true));
         }
@@ -257,13 +258,13 @@ public abstract class SimpleSVType extends SvType {
         }
 
         public DuplicationInverted(final NovelAdjacencyAndAltHaplotype novelAdjacencyAndAltHaplotype,
-                                   final ReferenceMultiSparkSource reference) {
+                                   final BasicReference reference) {
             super(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getContig(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc().getStart(),
                     getIDString(novelAdjacencyAndAltHaplotype),
                     Allele.create(extractRefBases(novelAdjacencyAndAltHaplotype.getLeftJustifiedLeftRefLoc(), reference), true),
-                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_ALLELE_INVDUP)),
+                    Allele.create(createBracketedSymbAlleleString(GATKSVVCFConstants.SYMB_ALT_STRING_INVDUP)),
                     getSVLen(novelAdjacencyAndAltHaplotype),
                     noExtraAttributes);
         }

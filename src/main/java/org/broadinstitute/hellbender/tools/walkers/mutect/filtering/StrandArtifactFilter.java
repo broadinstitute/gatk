@@ -4,16 +4,19 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-public class StrandArtifactFilter extends Mutect2VariantFilter {
+public class StrandArtifactFilter extends Mutect2AlleleFilter {
     // beta prior on strand bias allele fraction
     private double INITIAL_ALPHA_STRAND = 1.0;
     private double INITIAL_BETA_STRAND = 20.0;
@@ -43,30 +46,45 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
     public ErrorType errorType() { return ErrorType.ARTIFACT; }
 
     @Override
-    public double calculateErrorProbability(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
-        final EStep probabilities = calculateArtifactProbabilities(vc, filteringEngine);
-        return probabilities.forwardArtifactResponsibility + probabilities.reverseArtifactResponsibility;
+    public List<Double> calculateErrorProbabilityForAlleles(final VariantContext vc, final Mutect2FilteringEngine filteringEngine, ReferenceContext referenceContext) {
+        final List<EStep> alleleProbs = calculateArtifactProbabilities(vc, filteringEngine);
+        return alleleProbs.isEmpty() ? Collections.emptyList() :
+                alleleProbs.stream().map(probabilities -> probabilities.forwardArtifactResponsibility + probabilities.reverseArtifactResponsibility).collect(Collectors.toList());
     }
 
-    public EStep calculateArtifactProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
-        // {fwd ref, rev ref, fwd alt, rev alt}
-        final int[] counts = filteringEngine.sumStrandCountsOverSamples(vc, true, false);
-
-        final int indelSize = Math.abs(vc.getReference().length() - vc.getAlternateAllele(0).length());
-        if (counts[2] + counts[3] == 0 || indelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
-            return new EStep(0, 0, counts[0] + counts[2], counts[1] + counts[3], counts[2], counts[3]);
+    public List<EStep> calculateArtifactProbabilities(final VariantContext vc, final Mutect2FilteringEngine filteringEngine) {
+        // for each allele, forward and reverse count
+        List<List<Integer>> sbs = StrandBiasUtils.getSBsForAlleles(vc);
+        if (sbs == null || sbs.isEmpty() || sbs.size() <= 1) {
+            return Collections.emptyList();
+        }
+        // remove symbolic alleles
+        if (vc.hasSymbolicAlleles()) {
+            sbs = GATKVariantContextUtils.removeDataForSymbolicAlleles(vc, sbs);
         }
 
+        final List<Integer> indelSizes = vc.getAlternateAlleles().stream().map(alt -> Math.abs(vc.getReference().length() - alt.length())).collect(Collectors.toList());
+        int totalFwd = sbs.stream().map(sb -> sb.get(0)).mapToInt(i -> i).sum();
+        int totalRev = sbs.stream().map(sb -> sb.get(1)).mapToInt(i -> i).sum();
+        // skip the reference
+        final List<List<Integer>> altSBs = sbs.subList(1, sbs.size());
 
-        return strandArtifactProbability(strandArtifactPrior, counts[0] + counts[2], counts[1] + counts[3], counts[2], counts[3], indelSize);
-
+        return IntStream.range(0, altSBs.size()).mapToObj(i -> {
+            final List<Integer> altSB = altSBs.get(i);
+            final int altIndelSize = indelSizes.get(i);
+            if (altSB.stream().mapToInt(Integer::intValue).sum() == 0 || altIndelSize > LONGEST_STRAND_ARTIFACT_INDEL_SIZE) {
+                return new EStep(0, 0, totalFwd, totalRev, altSB.get(0), altSB.get(1));
+            } else {
+                return strandArtifactProbability(strandArtifactPrior, totalFwd, totalRev, altSB.get(0), altSB.get(1), altIndelSize);
+            }
+            }).collect(Collectors.toList());
     }
 
     @Override
     protected void accumulateDataForLearning(final VariantContext vc, final ErrorProbabilities errorProbabilities, final Mutect2FilteringEngine filteringEngine) {
-        if (requiredAnnotations().stream().allMatch(vc::hasAttribute)) {
-            final EStep eStep = calculateArtifactProbabilities(vc, filteringEngine);
-            eSteps.add(eStep);
+        if (requiredInfoAnnotations().stream().allMatch(vc::hasAttribute)) {
+            final List<EStep> altESteps = calculateArtifactProbabilities(vc, filteringEngine);
+            eSteps.addAll(altESteps);
         }
     }
 
@@ -139,8 +157,8 @@ public class StrandArtifactFilter extends Mutect2VariantFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() {
-        return Collections.emptyList();
+    protected List<String> requiredInfoAnnotations() {
+        return Collections.singletonList(GATKVCFConstants.AS_SB_TABLE_KEY);
     }
 
     private double artifactStrandLogLikelihood(final int strandCount, final int strandAltCount) {

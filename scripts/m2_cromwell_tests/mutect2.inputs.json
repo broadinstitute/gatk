@@ -1,0 +1,28 @@
+{
+  "Mutect2.gatk_docker": "broadinstitute/gatk:4.1.4.1",
+
+  "Mutect2.intervals": "gs://gatk-best-practices/somatic-b37/whole_exome_agilent_1.1_refseq_plus_3_boosters.Homo_sapiens_assembly19.baits.interval_list",
+  "Mutect2.scatter_count": 50,
+  "Mutect2.m2_extra_args": "--downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6",
+  "Mutect2.filter_funcotations": "True",
+  "Mutect2.funco_reference_version": "hg19",
+  "Mutect2.funco_data_sources_tar_gz": "gs://broad-public-datasets/funcotator/funcotator_dataSources.v1.6.20190124s.tar.gz",
+  "Mutect2.funco_transcript_selection_list": "gs://broad-public-datasets/funcotator/transcriptList.exact_uniprot_matches.AKT1_CRLF2_FGFR1.txt",
+
+  "Mutect2.ref_fasta": "gs://gatk-best-practices/somatic-b37/Homo_sapiens_assembly19.fasta",
+  "Mutect2.ref_dict": "gs://gatk-best-practices/somatic-b37/Homo_sapiens_assembly19.dict",
+  "Mutect2.ref_fai": "gs://gatk-best-practices/somatic-b37/Homo_sapiens_assembly19.fasta.fai",
+  "Mutect2.normal_reads": "gs://gatk-best-practices/somatic-b37/HCC1143_normal.bam",
+  "Mutect2.normal_reads_index": "gs://gatk-best-practices/somatic-b37/HCC1143_normal.bai",
+  "Mutect2.tumor_reads": "gs://gatk-best-practices/somatic-b37/HCC1143.bam",
+  "Mutect2.tumor_reads_index": "gs://gatk-best-practices/somatic-b37/HCC1143.bai",
+
+  "Mutect2.pon": "gs://gatk-best-practices/somatic-b37/Mutect2-exome-panel.vcf",
+  "Mutect2.pon_idx": "gs://gatk-best-practices/somatic-b37/Mutect2-exome-panel.vcf.idx",
+  "Mutect2.gnomad": "gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf",
+  "Mutect2.gnomad_idx": "gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf.idx",
+  "Mutect2.variants_for_contamination": "gs://gatk-best-practices/somatic-b37/small_exac_common_3.vcf",
+  "Mutect2.variants_for_contamination_idx": "gs://gatk-best-practices/somatic-b37/small_exac_common_3.vcf.idx",
+  "Mutect2.realignment_index_bundle": "gs://gatk-test-data/mutect2/Homo_sapiens_assembly38.index_bundle"
+
+}

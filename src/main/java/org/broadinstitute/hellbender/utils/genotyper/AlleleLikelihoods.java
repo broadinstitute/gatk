@@ -7,10 +7,12 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections.ListUtils;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingDebugger;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
 import java.util.function.Function;
@@ -33,7 +35,8 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     public static final double LOG_10_INFORMATIVE_THRESHOLD = 0.2;
     public static final double NATURAL_LOG_INFORMATIVE_THRESHOLD = MathUtils.log10ToLog(LOG_10_INFORMATIVE_THRESHOLD);
 
-    protected boolean isNaturalLog = false;
+    private boolean isNaturalLog = false;
+    private SimpleInterval subsettedGenomicLoc;
 
     private double getInformativeThreshold() {
         return isNaturalLog ? NATURAL_LOG_INFORMATIVE_THRESHOLD : LOG_10_INFORMATIVE_THRESHOLD;
@@ -47,7 +50,12 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     /**
      * Evidence by sample index. Each sub array contains reference to the evidence of the ith sample.
      */
-    protected final List<List<EVIDENCE>> evidenceBySampleIndex;
+    private final List<List<EVIDENCE>> evidenceBySampleIndex;
+
+    /**
+     * Evidence disqualified by .
+     */
+    protected final List<List<EVIDENCE>> filteredEvidenceBySampleIndex;
 
     /**
      * Indexed per sample, allele and finally evidence (within sample).
@@ -55,12 +63,18 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *     valuesBySampleIndex[s][a][r] == lnLk(R_r | A_a) where R_r comes from Sample s.
      * </p>
      */
-    protected final double[][][] valuesBySampleIndex;
+    private final double[][][] valuesBySampleIndex;
+
+    /**
+     * Keeps track of the maximum number of evidences and likelihood values that can be stored
+     * stored across all alleles.
+     */
+    private final int[] likelihoodsMatrixEvidenceCapacityBySampleIndex;
 
     /**
      * Holds the number of evidence per sample.
      */
-    protected final int[] numberOfEvidences;
+    private final int[] numberOfEvidences;
 
     /**
      * Sample list.
@@ -77,8 +91,10 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *
      * <p>In order to save CPU time the indices contained in this array (not the array itself) is
      * lazily initialized by invoking {@link #evidenceIndexBySampleIndex(int)}.</p>
+     *
+     * <p>Whenever a sample's evidence list is modified this cache must either be updated or invalidated by {@link #invalidateEvidenceToIndexCache(int)}.</p>
      */
-    protected final List<Object2IntMap<EVIDENCE>> evidenceIndexBySampleIndex;
+    private final List<Object2IntMap<EVIDENCE>> evidenceIndexBySampleIndex;
 
     /**
      * Index of the reference allele if any, otherwise {@link #MISSING_INDEX}.
@@ -122,10 +138,13 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
         evidenceBySampleIndex = new ArrayList<>(sampleCount);
         valuesBySampleIndex = new double[sampleCount][][];
+        likelihoodsMatrixEvidenceCapacityBySampleIndex = new int[sampleCount]; // set to 0s; what we need.
         referenceAlleleIndex = findReferenceAllele(alleles);
         numberOfEvidences = new int[sampleCount];
 
         evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
+        filteredEvidenceBySampleIndex = new ArrayList<>();
+        samples().forEach(s -> this.filteredEvidenceBySampleIndex.add(new ArrayList<>(2)));
 
         setupIndexes(evidenceBySample, sampleCount, alleleCount);
 
@@ -138,19 +157,36 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     AlleleLikelihoods(final AlleleList alleles,
                       final SampleList samples,
                       final List<List<EVIDENCE>> evidenceBySampleIndex,
+                      final List<List<EVIDENCE>> filteredEvidenceBySampleIndex,
                       final double[][][] values) {
         this.samples = samples;
         this.alleles = alleles;
         this.evidenceBySampleIndex = evidenceBySampleIndex;
         this.valuesBySampleIndex = values;
+
         final int sampleCount = samples.numberOfSamples();
-        evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
+
+        this.evidenceIndexBySampleIndex = new ArrayList<>(Collections.nCopies(sampleCount, null));
+        if (filteredEvidenceBySampleIndex != null) {
+            this.filteredEvidenceBySampleIndex = filteredEvidenceBySampleIndex;
+        } else {
+            this.filteredEvidenceBySampleIndex = new ArrayList<>();
+            samples().forEach(s -> this.filteredEvidenceBySampleIndex.add(new ArrayList<>(2)));
+        }
 
         referenceAlleleIndex = findReferenceAllele(alleles);
         sampleMatrices = (LikelihoodMatrix<EVIDENCE,A>[]) new LikelihoodMatrix[sampleCount];
         numberOfEvidences = IntStream.range(0, sampleCount)
           .map(i -> evidenceBySampleIndex.get(i).size())
           .toArray();
+
+        // We take the shortest allele's values array as the maximum evidence capacity for
+        // each sample.
+        likelihoodsMatrixEvidenceCapacityBySampleIndex = Arrays.stream(values)
+                .mapToInt(sampleValues -> Arrays.stream(sampleValues)
+                        .mapToInt(v -> v.length)
+                        .min().orElse(0))
+                .toArray();
     }
 
     // Add all the indices to alleles, sample and evidence in the look-up maps.
@@ -163,6 +199,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final int sampleEvidenceCount = evidenceBySampleIndex.get(s).size();
 
             final double[][] sampleValues = new double[alleleCount][sampleEvidenceCount];
+            likelihoodsMatrixEvidenceCapacityBySampleIndex[s] = sampleEvidenceCount;
             valuesBySampleIndex[s] = sampleValues;
         }
     }
@@ -218,7 +255,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      * @return -1 if the allele is not included, 0 or greater otherwise.
      */
     @Override
-    public int indexOfAllele(final A allele) {
+    public int indexOfAllele(final Allele allele) {
         return alleles.indexOfAllele(allele);
     }
 
@@ -254,6 +291,18 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      */
     public List<EVIDENCE> sampleEvidence(final int sampleIndex) {
         return Collections.unmodifiableList(evidenceBySampleIndex.get(sampleIndex));
+    }
+
+    /**
+     * Returns the units of evidence that have been removed by PairHMM error score filtering (and intentially not evidence
+     * filtered by any other mechanism).
+     *
+     * @param sampleIndex the requested sample.
+     * @return never {@code null} but perhaps a zero-length array if there is no filtered evidence for a sample. No element in
+     *   the array will be null.
+     */
+    public List<EVIDENCE> filteredSampleEvidence(final int sampleIndex) {
+        return Collections.unmodifiableList(filteredEvidenceBySampleIndex.get(sampleIndex));
     }
 
     /**
@@ -302,7 +351,6 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     public void contaminationDownsampling(final Map<String, Double> perSampleDownsamplingFraction) {
         Utils.nonNull(perSampleDownsamplingFraction);
 
-        final int alleleCount = alleles.numberOfAlleles();
         for (int s = 0; s < samples.numberOfSamples(); s++) {
             final double fraction = perSampleDownsamplingFraction.getOrDefault(samples.getSample(s), 0.0);
             if (Double.isNaN(fraction) || fraction <= 0.0) {
@@ -325,7 +373,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *
      * @throws IllegalArgumentException if {@code maximumDifferenceWithBestAlternative} is not 0 or less.
      */
-    public void normalizeLikelihoods(final double maximumLikelihoodDifferenceCap) {
+    public void normalizeLikelihoods(final double maximumLikelihoodDifferenceCap, final boolean symmetricallyNormalizeAllelesToReference) {
         Utils.validateArg(maximumLikelihoodDifferenceCap < 0.0 && !Double.isNaN(maximumLikelihoodDifferenceCap),
                 "the minimum reference likelihood fall must be negative");
 
@@ -344,17 +392,17 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final double[][] sampleValues = valuesBySampleIndex[s];
             final int evidenceCount = evidenceBySampleIndex.get(s).size();
             for (int r = 0; r < evidenceCount; r++) {
-                normalizeLikelihoodsPerEvidence(maximumLikelihoodDifferenceCap, sampleValues, s, r);
+                normalizeLikelihoodsPerEvidence(maximumLikelihoodDifferenceCap, sampleValues, s, r, symmetricallyNormalizeAllelesToReference);
             }
         }
     }
 
     // Does the normalizeLikelihoods job for each piece of evidence.
     private void normalizeLikelihoodsPerEvidence(final double maximumBestAltLikelihoodDifference,
-                                                 final double[][] sampleValues, final int sampleIndex, final int evidenceIndex) {
+                                                 final double[][] sampleValues, final int sampleIndex, final int evidenceIndex, final boolean symmetricallyNormalizeAllelesToReference) {
 
         //allow the best allele to be the reference because asymmetry leads to strange artifacts like het calls with >90% alt reads
-        final BestAllele bestAllele = searchBestAllele(sampleIndex,evidenceIndex,true);
+        final BestAllele bestAllele = searchBestAllele(sampleIndex,evidenceIndex,symmetricallyNormalizeAllelesToReference);
 
         final double worstLikelihoodCap = bestAllele.likelihood + maximumBestAltLikelihoodDifference;
 
@@ -414,7 +462,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      * @return never {@code null}, but with {@link BestAllele#allele allele} == {@code null}
      * if non-could be found.
      */
-    private BestAllele searchBestAllele(final int sampleIndex, final int evidenceIndex, final boolean canBeReference, Optional<double[]> priorities) {
+    private BestAllele searchBestAllele(final int sampleIndex, final int evidenceIndex, final boolean canBeReference, final double[] priorities) {
         final int alleleCount = alleles.numberOfAlleles();
         if (alleleCount == 0 || (alleleCount == 1 && referenceAlleleIndex == 0 && !canBeReference)) {
             return new BestAllele(sampleIndex, evidenceIndex, MISSING_INDEX, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
@@ -443,15 +491,15 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             }
         }
 
-        if (priorities.isPresent() && bestLikelihood - secondBestLikelihood < getInformativeThreshold()) {
-            double bestPriority = priorities.get()[bestAlleleIndex];
-            double secondBestPriority = priorities.get()[secondBestIndex];
+        if (priorities != null && bestLikelihood - secondBestLikelihood < getInformativeThreshold()) {
+            double bestPriority = priorities[bestAlleleIndex];
+            double secondBestPriority = priorities[secondBestIndex];
             for (int a = 0; a < alleleCount; a++) {
                 final double candidateLikelihood = sampleValues[a][evidenceIndex];
                 if (a == bestAlleleIndex || (!canBeReference && a == referenceAlleleIndex) || bestLikelihood - candidateLikelihood > getInformativeThreshold()) {
                     continue;
                 }
-                final double candidatePriority = priorities.get()[a];
+                final double candidatePriority = priorities[a];
 
                 if (candidatePriority > bestPriority) {
                     secondBestIndex = bestAlleleIndex;
@@ -472,7 +520,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     }
 
     private BestAllele searchBestAllele(final int sampleIndex, final int evidenceIndex, final boolean canBeReference) {
-        return searchBestAllele(sampleIndex, evidenceIndex, canBeReference, Optional.empty());
+        return searchBestAllele(sampleIndex, evidenceIndex, canBeReference, null);
     }
 
     public void changeEvidence(final Map<EVIDENCE, EVIDENCE> evidenceReplacements) {
@@ -545,10 +593,12 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final int sampleEvidenceCount = evidenceBySampleIndex.get(s).size();
             final double[][] newValuesBySampleIndex = Arrays.copyOf(valuesBySampleIndex[s], newAlleleCount);
             for (int a = oldAlleleCount; a < newAlleleCount; a++) {
-                newValuesBySampleIndex[a] = new double[sampleEvidenceCount];
+                newValuesBySampleIndex[a] = new double[likelihoodsMatrixEvidenceCapacityBySampleIndex[s]];
                 if (defaultLikelihood != 0.0) {
-                    Arrays.fill(newValuesBySampleIndex[a], defaultLikelihood);
+                    Arrays.fill(newValuesBySampleIndex[a], 0, sampleEvidenceCount, defaultLikelihood);
                 }
+                // Fill the rest with NaNs
+                Arrays.fill(newValuesBySampleIndex[a], sampleEvidenceCount, newValuesBySampleIndex[a].length, Double.NaN);
             }
             valuesBySampleIndex[s] = newValuesBySampleIndex;
         }
@@ -598,10 +648,11 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
 
         // Finally we create the new read-likelihood
-        final AlleleLikelihoods<NEW_EVIDENCE_TYPE, A> result = new AlleleLikelihoods<NEW_EVIDENCE_TYPE, A>(
+        final AlleleLikelihoods<NEW_EVIDENCE_TYPE, A> result = new AlleleLikelihoods<>(
                 alleles,
                 samples,
                 newEvidenceBySampleIndex,
+                null, //TODO this is only currently used for Somatic and i'm alright with removing this for now but this is NOT robust and 3 of these methods is too many
                 newLikelihoodValues);
 
         result.isNaturalLog = this.isNaturalLog;
@@ -645,10 +696,11 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
 
         // Finally we create the new evidence-likelihood
-        final AlleleLikelihoods<EVIDENCE, B> result = new AlleleLikelihoods<EVIDENCE, B>(
+        final AlleleLikelihoods<EVIDENCE, B> result = new AlleleLikelihoods<>(
                 new IndexedAlleleList(newAlleles),
                 samples,
                 newEvidenceBySampleIndex,
+                filteredEvidenceBySampleIndex,
                 newLikelihoodValues);
         result.isNaturalLog = isNaturalLog;
         return result;
@@ -689,19 +741,19 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     private <B extends Allele> int[] oldToNewAlleleIndexMap(final Map<B, List<A>> newToOldAlleleMap, final int oldAlleleCount, final B[] newAlleles) {
         Arrays.stream(newAlleles).forEach(Utils::nonNull);
         Utils.containsNoNull(newToOldAlleleMap.values(), "no new allele list can be null");
-        newToOldAlleleMap.values().stream().forEach(oldList -> Utils.containsNoNull(oldList,"old alleles cannot be null"));
+        newToOldAlleleMap.values().forEach(oldList -> Utils.containsNoNull(oldList,"old alleles cannot be null"));
 
         final int[] oldToNewAlleleIndexMap = new int[oldAlleleCount];
-        Arrays.fill(oldToNewAlleleIndexMap, MISSING_INDEX);  // -1 indicate that there is no new allele that make reference to that old one.
+        Arrays.fill(oldToNewAlleleIndexMap, -1);  // -1 indicate that there is no new allele that make reference to that old one.
 
         for (int newIndex = 0; newIndex < newAlleles.length; newIndex++) {
             final B newAllele = newAlleles[newIndex];
             for (final A oldAllele : newToOldAlleleMap.get(newAllele)) {
                 final int oldAlleleIndex = indexOfAllele(oldAllele);
-                if (oldAlleleIndex == MISSING_INDEX) {
+                if (oldAlleleIndex == -1) {
                     throw new IllegalArgumentException("missing old allele " + oldAllele + " in likelihood collection ");
                 }
-                if (oldToNewAlleleIndexMap[oldAlleleIndex] != MISSING_INDEX) {
+                if (oldToNewAlleleIndexMap[oldAlleleIndex] != -1) {
                     throw new IllegalArgumentException("collision: two new alleles make reference to the same old allele");
                 }
                 oldToNewAlleleIndexMap[oldAlleleIndex] = newIndex;
@@ -712,9 +764,6 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
     /**
      * Add more evidence to the collection.
-     * <p>
-     *     This method takes care of not allowing for repeated evidence.
-     * </p>
      *
      * @param evidenceBySample evidence to add.
      * @param initialLikelihood the likelihood for the new entries.
@@ -737,67 +786,58 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                 continue;
             }
 
-            final int initialNumberOfEvidences = evidenceBySampleIndex.get(sampleIndex).size();
-            final List<EVIDENCE> newlyAddedEvidence = appendEvidence(newSampleEvidence, sampleIndex);
-            extendsLikelihoodArrays(initialLikelihood, sampleIndex, initialNumberOfEvidences, initialNumberOfEvidences + newlyAddedEvidence.size());
+            final int oldEvidenceCount = evidenceBySampleIndex.get(sampleIndex).size();
+            appendEvidence(newSampleEvidence, sampleIndex);
+            final int newEvidenceCount = evidenceBySampleIndex.get(sampleIndex).size();
+            extendsLikelihoodArrays(initialLikelihood, sampleIndex, oldEvidenceCount, newEvidenceCount);
         }
     }
 
     // Extends the likelihood arrays-matrices.
-    private void extendsLikelihoodArrays(final double initialLikelihood, final int sampleIndex, final int sampleEvidenceCount, final int newSampleEvidenceCount) {
+    private void extendsLikelihoodArrays(final double initialLikelihood, final int sampleIndex, final int oldEvidenceCount, final int newEvidenceCount) {
         final double[][] sampleValues = valuesBySampleIndex[sampleIndex];
-        final int alleleCount = alleles.numberOfAlleles();
-        for (int a = 0; a < alleleCount; a++) {
-            sampleValues[a] = sampleValues[a].length < newSampleEvidenceCount ? Arrays.copyOf(sampleValues[a], newSampleEvidenceCount) : sampleValues[a];
-        }
-        if (initialLikelihood != 0.0) // the default array new value.
-        {
-            for (int a = 0; a < alleleCount; a++) {
-                Arrays.fill(sampleValues[a], sampleEvidenceCount, newSampleEvidenceCount, initialLikelihood);
-            }
+        final int numberOfAlleles = alleles.numberOfAlleles();
+        ensureLikelihoodsMatrixEvidenceCapacity(sampleIndex, newEvidenceCount, sampleValues, numberOfAlleles);
+        for (int a = 0; a < numberOfAlleles; a++) {
+            Arrays.fill(sampleValues[a], oldEvidenceCount, newEvidenceCount, initialLikelihood);
         }
     }
 
-    // Append the new evidence reference into the structure per-sample.
-    private List<EVIDENCE> appendEvidence(final List<EVIDENCE> newSampleEvidence, final int sampleIndex) {
+    // Resizes the lk value holding arrays to be able to handle at least "x" amount of evidence.
+    private void ensureLikelihoodsMatrixEvidenceCapacity(final int sampleIndex, final int x,
+                                                         final double[][] sampleValues, final int numberOfAlleles) {
+        final int currentCapacity = likelihoodsMatrixEvidenceCapacityBySampleIndex[sampleIndex];
+        if (currentCapacity < x) {
+            final int newCapacity = Math.max(currentCapacity, x) << 1; // we double it to avoid repetitive 1-element extensions resizing.
+            for (int a  = 0; a < numberOfAlleles; a++) {
+                sampleValues[a] = Arrays.copyOf(sampleValues[a], newCapacity);
+                // We don't need the following fill for this to work as intended but
+                // with NaN we ensure some clear failure output in case there is a bug that
+                // uses "zombie" likelihoods (e.g. github issue {@link https://github.com/broadinstitute/gatk/pull/7153 #7153).
+                Arrays.fill(sampleValues[a], currentCapacity, newCapacity, Double.NaN);
+            }
+            likelihoodsMatrixEvidenceCapacityBySampleIndex[sampleIndex] = newCapacity;
+        }
+    }
+
+    // Append the new evidence reference into the structure per-sample, returning the count of evidence actually added (duplicates are not added)
+    // NOTE: the evidence-to-index cache is updated in place and not invalidated via {@link #invalidateEvidenceToIndexCache(int)} because adding new evidence
+    // to the cache, as opposed to removing evidence, is just a matter of appending entries
+    private void appendEvidence(final List<EVIDENCE> newSampleEvidence, final int sampleIndex) {
 
         final List<EVIDENCE> sampleEvidence = evidenceBySampleIndex.get(sampleIndex);
         final Object2IntMap<EVIDENCE> sampleEvidenceIndex = evidenceIndexBySampleIndex(sampleIndex);
 
-        // actually-added will have the list of evidence added at the end of this method.
-        // this won't include those that were already in the table.
-        // being optimistic we assume that there is no repeats in the input new evidence so we set it to
-        // the input list but if we found something we then start a new list.
-        List<EVIDENCE> actuallyAdded = newSampleEvidence;
-
-        int i, nextIndex = sampleEvidence.size();
-        final int stop = newSampleEvidence.size();
-        for (i = 0; i < stop; i++) {
-            final EVIDENCE newEvidence = newSampleEvidence.get(i);
-            final int previousValue = sampleEvidenceIndex.put(newEvidence, nextIndex);
+        for (final EVIDENCE newEvidence : newSampleEvidence) {
+            final int previousValue = sampleEvidenceIndex.put(newEvidence, sampleEvidence.size());
             if (previousValue == MISSING_INDEX) {
-                nextIndex++;
                 sampleEvidence.add(newEvidence);
-            } else {
-                actuallyAdded = new ArrayList<>(newSampleEvidence.subList(0, i));
-                i++; // skip the repeated element.
-                break;
-            }
-        }
-        // second for below only use if we encounter some evidence that is already in the table:
-        for (; i < stop; i++) {
-            final EVIDENCE newEvidence = newSampleEvidence.get(i);
-            final int previousValue = sampleEvidenceIndex.put(newEvidence, nextIndex);
-            if (previousValue == MISSING_INDEX) {
-                nextIndex++;
-                sampleEvidence.add(newEvidence);
-                actuallyAdded.add(newEvidence);
             } else {
                 sampleEvidenceIndex.put(newEvidence, previousValue); // revert
             }
         }
+
         numberOfEvidences[sampleIndex] = sampleEvidence.size();
-        return actuallyAdded;
     }
 
     /**
@@ -822,10 +862,10 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         Utils.nonNull(nonRefAllele, "non-ref allele cannot be null");
         if (!nonRefAllele.equals(Allele.NON_REF_ALLELE)) {
             throw new IllegalArgumentException("the non-ref allele is not valid");
-        } else if (alleles.containsAllele(nonRefAllele)) {
-            return;
-        } else if (addMissingAlleles(Collections.singleton(nonRefAllele), Double.NEGATIVE_INFINITY)) {
-            updateNonRefAlleleLikelihoods();
+        } else if (!alleles.containsAllele(nonRefAllele)) {
+            if (addMissingAlleles(Collections.singleton(nonRefAllele), Double.NEGATIVE_INFINITY)) {
+                updateNonRefAlleleLikelihoods();
+            }
         }
     }
 
@@ -838,15 +878,9 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
 
     /**
      * Updates the likelihood of the NonRef allele (if present) based on the likelihoods of a set of non-symbolic
-     * <p>
-     *     This method does
-     * </p>
-     *
-     * @param allelesToConsider
      */
-    @SuppressWarnings("unchecked")  // for the cast (A) Allele.NON_REF_ALLELE below
     public void updateNonRefAlleleLikelihoods(final AlleleList<A> allelesToConsider) {
-        final int nonRefAlleleIndex = indexOfAllele((A) Allele.NON_REF_ALLELE);
+        final int nonRefAlleleIndex = indexOfAllele(Allele.NON_REF_ALLELE);
         if ( nonRefAlleleIndex < 0) {
             return;
         }
@@ -934,8 +968,8 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         Utils.validIndex(sampleIndex, numberOfSamples());
 
         //TODO: this currently just does ref vs alt.  Really we want CIGAR complexity.
-        final Optional<double[]> priorities = alleles == null ? Optional.empty() :
-                Optional.of(alleles.asListOfAlleles().stream().mapToDouble(tieBreakingPriority::apply).toArray());
+        final double[] priorities = alleles == null ? null :
+                alleles.asListOfAlleles().stream().mapToDouble(tieBreakingPriority::apply).toArray();
 
         final int evidenceCount = evidenceBySampleIndex.get(sampleIndex).size();
         final List<BestAllele> result = new ArrayList<>(evidenceCount);
@@ -958,7 +992,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      * @param sampleIndex the target sample.
      * @return never {@code null}, perhaps empty.
      */
-    protected Map<A,List<EVIDENCE>> evidenceByBestAlleleMap(final int sampleIndex) {
+    private Map<A,List<EVIDENCE>> evidenceByBestAlleleMap(final int sampleIndex) {
         Utils.validIndex(sampleIndex, numberOfSamples());
         final int alleleCount = alleles.numberOfAlleles();
         final int sampleEvidenceCount = evidenceBySampleIndex.get(sampleIndex).size();
@@ -1029,7 +1063,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      */
     public int sampleEvidenceCount(final int sampleIndex) {
         Utils.validIndex(sampleIndex, samples.numberOfSamples());
-        return numberOfEvidences[sampleIndex];
+        return evidenceBySampleIndex.get(sampleIndex).size();
     }
 
     /**
@@ -1051,11 +1085,17 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         final int sampleCount = samples.numberOfSamples();
 
         for (int s = 0; s < sampleCount; s++) {
+            // Remove evidence from the primary data
             final List<EVIDENCE> sampleEvidence = this.evidenceBySampleIndex.get(s);
             final int[] removeIndices = IntStream.range(0, sampleEvidence.size())
                     .filter(i -> !predicate.test(sampleEvidence.get(i)))
                     .toArray();
             removeEvidenceByIndex(s, removeIndices);
+
+            // If applicable also apply the predicate to the filters
+            final List<EVIDENCE> sampleFiltered = filteredEvidenceBySampleIndex.get(s).stream()
+                    .filter(predicate).collect(Collectors.toList());
+            filteredEvidenceBySampleIndex.set(s, sampleFiltered);
         }
     }
 
@@ -1069,6 +1109,17 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             }
         }
         return result;
+    }
+
+    public void setVariantCallingSubsetUsed(final SimpleInterval loc) {
+        this.subsettedGenomicLoc = loc;
+    }
+
+    /**
+     * Returns the location used for subsetting. May be null.
+     */
+    public SimpleInterval getVariantCallingSubsetApplied() {
+        return subsettedGenomicLoc;
     }
 
     /**
@@ -1129,60 +1180,44 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         removeEvidenceByIndex(sampleIndex, indexesToRemove);
     }
 
+    // remove evidence and unset the {@code evidenceIndexBySampleIndex} cache for this sample
     // assumes that evidencesToRemove is sorted and without duplicates.
     private void removeEvidenceByIndex(final int sampleIndex, final int[] evidencesToRemove) {
-        if (evidencesToRemove.length == 0) {
+        final int numToRemove = evidencesToRemove.length;
+        if (numToRemove == 0) {
             return;
-        } else {
-            final Object2IntMap<EVIDENCE> evidenceIndex = evidenceIndexBySampleIndex(sampleIndex);
-            final int oldEvidenceCount = numberOfEvidences[sampleIndex];
-            final int newEvidenceCount = oldEvidenceCount - evidencesToRemove.length;
-            if (newEvidenceCount < 0) {
-                throw new IllegalStateException("attempt to remove non-existent evidence or repeated evidence");
-            } else if (newEvidenceCount == 0) { // taking in consideration the assumption we simply remove
-                // all evidence.
-                evidenceIndex.clear();
-                numberOfEvidences[sampleIndex] = 0;
-            } else {
-                final List<EVIDENCE> evidences = evidenceBySampleIndex.get(sampleIndex);
-                final double[][] values = valuesBySampleIndex[sampleIndex];
+        }
+        final int oldEvidenceCount = numberOfEvidences[sampleIndex];
+        final int newEvidenceCount = oldEvidenceCount - numToRemove;
 
-                int nextIndexToRemove = evidencesToRemove[0];
-                if (nextIndexToRemove < 0) {
-                    throw new IllegalStateException("invalid input index array as it contains negatives");
+        // update the list of evidence and evidence count
+        final List<EVIDENCE> oldEvidence = evidenceBySampleIndex.get(sampleIndex);
+        final List<EVIDENCE> newEvidence = new ArrayList<>(newEvidenceCount);
+        for (int n = 0, numRemoved = 0; n < oldEvidenceCount; n++) {
+            if (numRemoved < numToRemove && n == evidencesToRemove[numRemoved]) {
+                numRemoved++;
+            } else {
+                newEvidence.add(oldEvidence.get(n));
+
+                // update the likelihoods arrays in place
+                for (final double[] alleleValues : valuesBySampleIndex[sampleIndex]) {
+                    alleleValues[n - numRemoved] = alleleValues[n];
                 }
-                evidenceIndex.remove(evidences.get(nextIndexToRemove));
-                for (int etrIndex = 1, to = nextIndexToRemove, from = to + 1; to < newEvidenceCount; etrIndex++, from++) {
-                    if (etrIndex < evidencesToRemove.length) {
-                        nextIndexToRemove = evidencesToRemove[etrIndex];
-                        if (nextIndexToRemove < from) {
-                            throw new IllegalStateException("invalid input index array contains indexes out of order");
-                        } else if (nextIndexToRemove >= oldEvidenceCount) {
-                            throw new IllegalStateException("invalid input index array contains indexes out of order");
-                        }
-                        evidenceIndex.remove(evidences.get(nextIndexToRemove));
-                    } else {
-                        nextIndexToRemove = oldEvidenceCount;
-                    }
-                    for (; from < nextIndexToRemove; from++) {
-                        final EVIDENCE evidence = evidences.get(from);
-                        evidences.set(to, evidence);
-                        evidenceIndex.put(evidence, to++);
-                    }
-                }
-                Utils.truncate(evidences, newEvidenceCount);
-                // now we do the likelihood values, we save ourselves all the checks:
-                for (final double[] alleleValues : values) {
-                    for (int etrIndex = 1, to = evidencesToRemove[0], from = to + 1; to < newEvidenceCount; from++, etrIndex++) {
-                        nextIndexToRemove = etrIndex < evidencesToRemove.length ? evidencesToRemove[etrIndex] : oldEvidenceCount;
-                        for (; from < nextIndexToRemove; from++) {
-                            alleleValues[to++] = alleleValues[from];
-                        }
-                    }
-                }
-                numberOfEvidences[sampleIndex] = newEvidenceCount;
             }
         }
+        // set to NaN lks of the deleted positions in lk value arrays.
+        for (final double[] alleleValues : valuesBySampleIndex[sampleIndex]) {
+            Arrays.fill(alleleValues, newEvidenceCount, alleleValues.length, Double.NaN);
+        }
+        evidenceBySampleIndex.set(sampleIndex, newEvidence);
+        numberOfEvidences[sampleIndex] = newEvidenceCount;
+        invalidateEvidenceToIndexCache(sampleIndex);
+    }
+
+    // The evidenceToIndex map becomes invalid when the evidence list is modified, for example by deleting evidence
+    // When adding evidence it is simple enough to add new entries to the map, but we must be careful to do so.
+    private void invalidateEvidenceToIndexCache(final int sampleIndex) {
+        evidenceIndexBySampleIndex.set(sampleIndex, null);
     }
 
     /**
@@ -1197,6 +1232,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
      *
      * @throws IllegalArgumentException if {@code maximumErrorPerBase} is negative.
      */
+    @VisibleForTesting
     public void filterPoorlyModeledEvidence(final ToDoubleFunction<EVIDENCE> log10MinTrueLikelihood) {
         Utils.validateArg(alleles.numberOfAlleles() > 0, "unsupported for read-likelihood collections with no alleles");
 
@@ -1209,27 +1245,38 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final int[] indexesToRemove = IntStream.range(0, numberOfEvidence)
                     .filter(i -> maximumLikelihoodOverAllAlleles(sampleIndex, i) < log10MinTrueLikelihood.applyAsDouble(sampleEvidence.get(i)))
                     .toArray();
+
+            // Retain the filtered evidence for later genotyping purposes
+            final List<EVIDENCE> filtered = filteredEvidenceBySampleIndex.get(sampleIndex);
+            Arrays.stream(indexesToRemove).forEach(idx -> {
+                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
+                    HaplotypeCallerGenotypingDebugger.println("disqualified read: " + idx + " "+((GATKRead)sampleEvidence.get(idx)).getName()+ " with max likelihood " +maximumLikelihoodOverAllAlleles(sampleIndex, idx) +" and threshold "+log10MinTrueLikelihood.applyAsDouble(sampleEvidence.get(idx)));
+                }
+                filtered.add(sampleEvidence.get(idx));
+            });
+
+            // Remove the evidence now
             removeEvidenceByIndex(s, indexesToRemove);
         }
     }
 
 
     private Object2IntMap<EVIDENCE> evidenceIndexBySampleIndex(final int sampleIndex) {
-        if (evidenceIndexBySampleIndex.get(sampleIndex) == null) {
-            final List<EVIDENCE> sampleEvidence = evidenceBySampleIndex.get(sampleIndex);
-            final int sampleEvidenceCount = sampleEvidence.size();
-            final Object2IntMap<EVIDENCE> index = new Object2IntOpenHashMap<>(sampleEvidenceCount);
-            index.defaultReturnValue(MISSING_INDEX);
-            evidenceIndexBySampleIndex.set(sampleIndex, index);
-            for (int r = 0; r < sampleEvidenceCount; r++) {
-                index.put(sampleEvidence.get(r), r);
-            }
-            return index;
-        } else {
-            return evidenceIndexBySampleIndex.get(sampleIndex);
-        }
+        final Object2IntMap<EVIDENCE> cached = evidenceIndexBySampleIndex.get(sampleIndex);
+        return cached == null ? fillEvidenceToIndexCache(sampleIndex) : cached;
     }
 
+    private Object2IntMap<EVIDENCE> fillEvidenceToIndexCache(int sampleIndex) {
+        final List<EVIDENCE> sampleEvidence = evidenceBySampleIndex.get(sampleIndex);
+        final int sampleEvidenceCount = sampleEvidence.size();
+        final Object2IntMap<EVIDENCE> index = new Object2IntOpenHashMap<>(sampleEvidenceCount);
+        index.defaultReturnValue(MISSING_INDEX);
+        for (int r = 0; r < sampleEvidenceCount; r++) {
+            index.put(sampleEvidence.get(r), r);
+        }
+        evidenceIndexBySampleIndex.set(sampleIndex, index);
+        return index;
+    }
 
     /**
      * Implements a likelihood matrix per sample given its index.
@@ -1266,7 +1313,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
         }
 
         @Override
-        public int indexOfAllele(final A allele) {
+        public int indexOfAllele(final Allele allele) {
             Utils.nonNull(allele);
             return AlleleLikelihoods.this.indexOfAllele(allele);
         }

@@ -29,14 +29,14 @@ public final class ExampleVariantWalkerSpark extends VariantWalkerSpark {
     private static final long serialVersionUID = 1L;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private String outputFile = null;
+    private GATKPath outputFile = null;
 
     @Argument(fullName="auxiliaryVariants", shortName="av", doc="Auxiliary set of variants", optional=true)
     private FeatureInput<VariantContext> auxiliaryVariants;
 
     @Override
     protected void processVariants(JavaRDD<VariantWalkerContext> rdd, JavaSparkContext ctx) {
-        rdd.map(variantFunction(auxiliaryVariants)).saveAsTextFile(outputFile);
+        rdd.map(variantFunction(auxiliaryVariants)).saveAsTextFile(outputFile.toPath().toString());
     }
 
     private static Function<VariantWalkerContext, String> variantFunction(FeatureInput<VariantContext> auxiliaryVariants) {

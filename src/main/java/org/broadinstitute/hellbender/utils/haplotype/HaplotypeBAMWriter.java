@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -35,7 +36,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
 
     private final HaplotypeBAMDestination output;
     private WriterType writerType;
-    private boolean writeHaplotypes = true;
+
     /**
      * Possible modes for writing haplotypes to BAMs
      */
@@ -50,8 +51,12 @@ public class HaplotypeBAMWriter implements AutoCloseable {
          * A mode for users.  Writes out the reads aligned only to the called
          * haplotypes.  Useful to understand why the caller is calling what it is
          */
-        CALLED_HAPLOTYPES
+        CALLED_HAPLOTYPES,
 
+        /**
+         * With this option, haplotypes will not be included in the output bam.
+         */
+        NO_HAPLOTYPES
     }
 
     /**
@@ -70,8 +75,8 @@ public class HaplotypeBAMWriter implements AutoCloseable {
             final boolean createBamOutIndex,
             final boolean createBamOutMD5,
             final SAMFileHeader sourceHeader) {
-
-        this(type, new SAMFileDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader, DEFAULT_HAPLOTYPE_READ_GROUP_ID));
+        this(type, new SAMFileDestination(outputPath, createBamOutIndex, createBamOutMD5, sourceHeader,
+                type == WriterType.NO_HAPLOTYPES ? Optional.empty() : Optional.of(DEFAULT_HAPLOTYPE_READ_GROUP_ID)));
     }
 
     /**
@@ -133,7 +138,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
             }
             writeHaplotypesAsReads(calledHaplotypes, calledHaplotypes, paddedReferenceLoc, callableRegion);
 
-        } else {
+        } else if (writerType.equals(WriterType.ALL_POSSIBLE_HAPLOTYPES)){
             writeHaplotypesAsReads(haplotypes, new LinkedHashSet<>(bestHaplotypes), paddedReferenceLoc, callableRegion);
         }
 
@@ -180,10 +185,8 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         Utils.nonNull(bestHaplotypes, "bestHaplotypes cannot be null");
         Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
 
-        if (writeHaplotypes) {
-            for (final Haplotype haplotype : haplotypes) {
-                writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype), callableRegion);
-            }
+        for (final Haplotype haplotype : haplotypes) {
+            writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype), callableRegion);
         }
     }
 
@@ -213,20 +216,13 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         record.setAttribute(output.getHaplotypeSampleTag(), haplotype.hashCode());
         record.setReadUnmappedFlag(false);
         record.setReferenceIndex(output.getBAMOutputHeader().getSequenceIndex(paddedRefLoc.getContig()));
-        record.setAttribute(SAMTag.RG.toString(), output.getHaplotypeReadGroupID());
+        // If we get here, the WriterType is not NO_HAPLOTYPES, so it is safe to call .get().
+        record.setAttribute(SAMTag.RG.toString(), output.getHaplotypeReadGroupID().get());
         record.setFlags(SAMFlag.READ_REVERSE_STRAND.intValue());
         if (callableRegion != null) {
             record.setAttribute(AssemblyBasedCallerUtils.CALLABLE_REGION_TAG, callableRegion.toString());
         }
 
         output.add(new SAMRecordToGATKReadAdapter(record));
-    }
-
-    /**
-     * Set the HaplotypeBAMWriter to write out the haplotypes as reads.
-     * @param writeHaplotypes true if haplotypes should be written as reads
-     */
-    public void setWriteHaplotypes(final boolean writeHaplotypes) {
-        this.writeHaplotypes = writeHaplotypes;
     }
 }

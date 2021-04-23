@@ -42,6 +42,8 @@ workflow Mutect2_Multi {
     Boolean? compress_vcfs
     Boolean? make_bamout
 
+    String? gcs_project_for_requester_pays
+
     # Oncotator inputs
     String? sequencing_center
     String? sequence_source
@@ -106,7 +108,8 @@ workflow Mutect2_Multi {
                 compress_vcfs = compress_vcfs,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                preemptible = preemptible_attempts
+                preemptible = preemptible_attempts,
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
 

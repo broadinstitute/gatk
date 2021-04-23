@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -37,7 +36,7 @@ import java.util.stream.Collectors;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of coverage of each allele per sample (AD)")
-public final class DepthPerAlleleBySample extends GenotypeAnnotation implements StandardAnnotation, StandardMutectAnnotation {
+public final class DepthPerAlleleBySample implements GenotypeAnnotation, StandardAnnotation, StandardMutectAnnotation {
 
     @Override
     public void annotate(final ReferenceContext ref,

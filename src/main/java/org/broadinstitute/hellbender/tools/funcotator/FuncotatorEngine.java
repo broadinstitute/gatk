@@ -234,10 +234,10 @@ public final class FuncotatorEngine implements AutoCloseable {
      * @return The requested {@link OutputRenderer} based on the given {@code funcotatorArgs}.
      */
     OutputRenderer createOutputRenderer(final LinkedHashMap<String, String> annotationDefaultsMap,
-                                               final LinkedHashMap<String, String> annotationOverridesMap,
-                                               final VCFHeader headerForVariants,
-                                               final Set<VCFHeaderLine> defaultToolVcfHeaderLines,
-                                               final GATKTool gatkToolInstance) {
+                                        final LinkedHashMap<String, String> annotationOverridesMap,
+                                        final VCFHeader headerForVariants,
+                                        final Set<VCFHeaderLine> defaultToolVcfHeaderLines,
+                                        final GATKTool gatkToolInstance) {
 
         final OutputRenderer outputRenderer;
 
@@ -286,7 +286,7 @@ public final class FuncotatorEngine implements AutoCloseable {
 
                                     new GeneListOutputRenderer(new File(funcotatorArgs.outputFile.getAbsolutePath() + GENE_LIST_FILE_SUFFIX).toPath(),
                                         unaccountedForDefaultAnnotations, unaccountedForOverrideAnnotations,
-                                        funcotatorArgs.excludedFields, gatkToolInstance.getVersion())
+                                        funcotatorArgs.excludedFields, gatkToolInstance.getVersion(), funcotatorArgs.minNumBasesForValidSegment)
                         ), gatkToolInstance.getVersion());
                 break;
             default:
@@ -471,10 +471,21 @@ public final class FuncotatorEngine implements AutoCloseable {
 
         boolean mustConvertInputContigsToHg19 = false;
 
-        if ( funcotatorArgs.forceB37ToHg19ContigNameConversion ||
-                ( funcotatorArgs.referenceVersion.equals(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersionHg19) &&
-                        FuncotatorUtils.isSequenceDictionaryUsingB37Reference(sequenceDictionaryForDrivingVariants) )) {
+        // Do individual checks here so we can have a helpful log message for each case:
+        if ( funcotatorArgs.forceB37ToHg19ContigNameConversion ) {
+            logger.info("Forcing B37 -> HG19 Variant conversion.");
+            mustConvertInputContigsToHg19 = true;
+        }
+        else if ( funcotatorArgs.referenceVersion.equals(BaseFuncotatorArgumentCollection.FuncotatorReferenceVersionHg19) &&
+                        FuncotatorUtils.isSequenceDictionaryUsingB37Reference(sequenceDictionaryForDrivingVariants) ) {
+            logger.info("VCF sequence dictionary detected as B37 in HG19 annotation mode.  Performing conversion.");
+            mustConvertInputContigsToHg19 = true;
+        }
+        else {
+            logger.info("Using given VCF and Reference.  No conversion required.");
+        }
 
+        if (mustConvertInputContigsToHg19) {
             // NOTE AND WARNING:
             // hg19 is from ucsc. b37 is from the genome reference consortium.
             // ucsc decided the grc version had some bad data in it, so they blocked out some of the bases, aka "masked" them
@@ -487,8 +498,6 @@ public final class FuncotatorEngine implements AutoCloseable {
             logger.warn("WARNING: You are using B37 as a reference.  " +
                     "Funcotator will convert your variants to GRCh37, and this will be fine in the vast majority of cases.  " +
                     "There MAY be some errors (e.g. in the Y chromosome, but possibly in other places as well) due to changes between the two references.");
-
-            mustConvertInputContigsToHg19 = true;
         }
 
         return mustConvertInputContigsToHg19;

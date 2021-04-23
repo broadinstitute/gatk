@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 
 import java.io.File;
+import java.util.Collections;
 
 public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadingAssemblerArgumentCollection {
     private static final long serialVersionUID = 5304L;
@@ -20,9 +21,10 @@ public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadin
 
     @Override
     public ReadThreadingAssembler makeReadThreadingAssembler() {
-        final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(maxNumHaplotypesInPopulation, kmerSizes,
+        final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(maxNumHaplotypesInPopulation, Collections.unmodifiableList(kmerSizes),
                 dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, numPruningSamples, disableAdaptivePruning ? minPruneFactor : 0,
-                !disableAdaptivePruning, initialErrorRateForPruning, pruningLogOddsThreshold, maxUnprunedVariants, useLinkedDeBruijnGraph);
+                !disableAdaptivePruning, initialErrorRateForPruning, pruningLogOddsThreshold, pruningSeedingLogOddsThreshold, maxUnprunedVariants, useLinkedDeBruijnGraph,
+                enableLegacyGraphCycleDetection, minMatchingBasesToDanglingEndRecovery);
         assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
         assemblyEngine.setRecoverDanglingBranches(true);
         assemblyEngine.setRecoverAllDanglingBranches(recoverAllDanglingBranches);

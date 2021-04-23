@@ -37,8 +37,7 @@ public class M2FiltersArgumentCollection {
     public double initialPosteriorThreshold = DEFAULT_INITIAL_POSTERIOR_THRESHOLD;
 
     /**
-     * Mitochondria mode includes the filter{@link ChimericOriginalAlignmentFilter} and {@link PolymorphicNuMTFilter},
-     * and excludes the filters {@link ClusteredEventsFilter}, {@link MultiallelicFilter}, {@link PolymeraseSlippageFilter},
+     * Mitochondria mode excludes the filters {@link ClusteredEventsFilter}, {@link MultiallelicFilter}, {@link PolymeraseSlippageFilter},
      * {@link FilteredHaplotypeFilter}, {@link FragmentLengthFilter}, and {@link GermlineFilter}
      */
     @Argument(fullName = M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, optional = true, doc = "Set filters to mitochondrial defaults")
@@ -57,8 +56,6 @@ public class M2FiltersArgumentCollection {
     public static final String MIN_MEDIAN_READ_POSITION_LONG_NAME = "min-median-read-position";
     public static final String MAX_N_RATIO_LONG_NAME = "max-n-ratio";
     public static final String MIN_READS_ON_EACH_STRAND_LONG_NAME = "min-reads-per-strand";
-    public static final String MAX_NUMT_FRACTION_LONG_NAME = "max-numt-fraction";
-    public static final String MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME = "autosomal-coverage";
     public static final String MIN_AF_LONG_NAME = "min-allele-fraction";
 
     private static final int DEFAULT_MAX_EVENTS_IN_REGION = 2;
@@ -71,7 +68,6 @@ public class M2FiltersArgumentCollection {
     private static final double DEFAULT_MAX_N_RATIO = Double.POSITIVE_INFINITY;
     private static final int DEFAULT_MIN_READS_ON_EACH_STRAND = 0;
     private static final double DEFAULT_MAX_NUMT_FRACTION = 0.85;
-    private static final double DEFAULT_MEDIAN_AUTOSOMAL_COVERAGE = 0;
     private static final double DEFAULT_MIN_AF = 0;
 
     @Argument(fullName = MAX_EVENTS_IN_REGION_LONG_NAME, optional = true, doc = "Maximum events in a single assembly region.  Filter all variants if exceeded.")
@@ -100,12 +96,6 @@ public class M2FiltersArgumentCollection {
 
     @Argument(fullName = MIN_READS_ON_EACH_STRAND_LONG_NAME, optional = true, doc = "Minimum alt reads required on both forward and reverse strands")
     public int minReadsOnEachStrand = DEFAULT_MIN_READS_ON_EACH_STRAND;
-
-    @Argument(fullName = MEDIAN_AUTOSOMAL_COVERAGE_LONG_NAME, optional = true, doc = "Median autosomal coverage for filtering potential polymporphic NuMTs when calling on mitochondria.")
-    public double medianAutosomalCoverage = DEFAULT_MEDIAN_AUTOSOMAL_COVERAGE;
-
-    @Argument(fullName = MAX_NUMT_FRACTION_LONG_NAME, doc="Maximum fraction of alt reads that originally aligned outside the mitochondria.  These are due to NuMTs.", optional = true)
-    public double maxNuMTFraction = DEFAULT_MAX_NUMT_FRACTION;
 
     @Argument(fullName = MIN_AF_LONG_NAME, doc="Minimum allele fraction required", optional = true)
     public double minAf = DEFAULT_MIN_AF;

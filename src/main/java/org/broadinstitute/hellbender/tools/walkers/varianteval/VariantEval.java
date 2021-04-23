@@ -180,13 +180,13 @@ public class VariantEval extends MultiVariantWalker {
     protected Set<String> SAMPLE_EXPRESSIONS = new TreeSet<>();
 
     @Argument(fullName = StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName = StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file for determining the population \"founders\"", optional=true)
-    private File pedigreeFile;
+    private GATKPath pedigreeFile;
 
     /**
      * List of feature tracks to be used for specifying "known" variants other than dbSNP.
      */
     @Argument(shortName="known-name", doc="Name of feature bindings containing variant sites that should be treated as known when splitting eval features into known and novel subsets", optional=true)
-    protected HashSet<String> KNOWN_NAMES = new HashSet<String>();
+    protected Set<String> KNOWN_NAMES = new HashSet<String>();
     List<FeatureInput<VariantContext>> knowns = new ArrayList<>();
 
     // Stratification arguments
@@ -255,7 +255,7 @@ public class VariantEval extends MultiVariantWalker {
             private static final long serialVersionUID = 1L;
 
             @Override
-            public List<String> getDrivingVariantPaths() {
+            public List<GATKPath> getDrivingVariantPaths() {
                 //driving variants will be determined by initializeDrivingVariants()
                 return Collections.emptyList();
             }
@@ -316,7 +316,7 @@ public class VariantEval extends MultiVariantWalker {
         // Just list the modules, and exit quickly.
         if (LIST) { variantEvalUtils.listModulesAndExit(); }
 
-        sampleDB = initializeSampleDB();
+        sampleDB = SampleDB.createSampleDBFromPedigreeAndDataSources(pedigreeFile, getSamplesForVariants(), PedigreeValidationType.STRICT);
 
         comps.addAll(compsProvided);
         compsProvided.forEach(x -> inputToNameMap.put(x, x.hasUserSuppliedName() ? x.getName() : StandardArgumentDefinitions.COMPARISON_SHORT_NAME));
@@ -407,7 +407,7 @@ public class VariantEval extends MultiVariantWalker {
         // Load ancestral alignments
         if (ancestralAlignmentsFile != null) {
             try {
-                ancestralAlignments = new IndexedFastaSequenceFile(ancestralAlignmentsFile);
+                ancestralAlignments = new IndexedFastaSequenceFile(ancestralAlignmentsFile.toPath());
             } catch (FileNotFoundException e) {
                 throw new GATKException(String.format("The ancestral alignments file, '%s', could not be found", ancestralAlignmentsFile.getAbsolutePath()));
             }
@@ -755,7 +755,7 @@ public class VariantEval extends MultiVariantWalker {
                 metricsCollection.setData(compOverlap.concordantRate, indelSummary.n_SNPs, countVariants.nSNPs, indelSummary.n_indels, multiallelicSummary.nIndels, indelSummary.insertion_to_deletion_ratio, countVariants.insertionDeletionRatio, tiTvVariantEvaluator.tiTvRatio);
         }
 
-        try (PrintStream out = IOUtils.makePrintStreamMaybeGzipped(outFile)){
+        try (PrintStream out = IOUtils.makePrintStreamMaybeGzipped(new GATKPath(outFile.getAbsolutePath()))) {
             VariantEvalReportWriter.writeReport(out, stratManager, stratManager.getStratifiers(), stratManager.get(0).getVariantEvaluators());
         }
         catch(IOException e) {
@@ -816,22 +816,6 @@ public class VariantEval extends MultiVariantWalker {
 
     public boolean ignoreAC0Sites() {
         return ! keepSitesWithAC0;
-    }
-
-    /**
-     * Entry-point function to initialize the samples database from input data
-     */
-    private SampleDB initializeSampleDB() {
-        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-        if (pedigreeFile != null)
-            sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-
-        Collection<String> samples = getSamplesForVariants();
-        if (samples != null) {
-            sampleDBBuilder.addSamplesFromSampleNames(samples);
-        }
-
-        return sampleDBBuilder.getFinalSampleDB();
     }
 
     public SampleDB getSampleDB() {

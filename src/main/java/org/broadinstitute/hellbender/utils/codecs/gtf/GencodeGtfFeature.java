@@ -155,11 +155,11 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     baseData.transcriptId = fieldValue;
                     break;
                 case "gene_type":
-                    baseData.geneType = GeneTranscriptType.getEnum(fieldValue);
+                    baseData.geneType = fieldValue;
                     break;
                 // For ENSEMBL GTF files:
                 case "gene_biotype":
-                    baseData.geneType = GeneTranscriptType.getEnum(fieldValue);
+                    baseData.geneType = fieldValue;
                     break;
                 case "gene_status":
                     baseData.geneStatus = GeneTranscriptStatus.valueOf(fieldValue);
@@ -168,10 +168,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     baseData.geneName = fieldValue;
                     break;
                 case "transcript_type":
-                    baseData.transcriptType = GeneTranscriptType.getEnum(fieldValue);
+                    baseData.transcriptType = fieldValue;
                     break;
                 case "transcript_biotype":
-                    baseData.transcriptType = GeneTranscriptType.getEnum(fieldValue);
+                    baseData.transcriptType = fieldValue;
                     break;
                 case "transcript_status":
                     baseData.transcriptStatus = GeneTranscriptStatus.valueOf(fieldValue);
@@ -221,7 +221,14 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
                 case "remap_original_location":
-                    optionalField = new OptionalField<>(fieldName, Long.valueOf(fieldValue));
+                    try {
+                        optionalField = new OptionalField<>(fieldName, Long.valueOf(fieldValue));
+                    }
+                    catch (final NumberFormatException nfe) {
+                        // We must have gotten a field that has a different format.
+                        // For now, just copy it over:
+                        optionalField = new OptionalField<>(fieldName, fieldValue);
+                    }
                     break;
                 case "remap_num_mappings":
                     optionalField = new OptionalField<>(fieldName, Long.valueOf(fieldValue));
@@ -520,7 +527,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.transcriptId;
     }
 
-    public GeneTranscriptType getGeneType() {
+    public String getGeneType() {
         return baseData.geneType;
     }
 
@@ -528,7 +535,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.geneName;
     }
 
-    public GeneTranscriptType getTranscriptType() {
+    public String getTranscriptType() {
         return baseData.transcriptType;
     }
 
@@ -883,15 +890,18 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
     }
 
+
     /**
      * Biotype / transcript type for the transcript or gene represented in a feature.
      * This is a tag of some biological function associated with a feature.
+     *
+     * The values here are not exhaustive, but should be used as a reference for already used / known types.
      *
      * For more information, see:
      *     https://www.gencodegenes.org/data_format.html
      *     https://en.wikipedia.org/wiki/General_feature_format
      */
-    public enum GeneTranscriptType {
+    public enum KnownGeneBiotype {
         // Immunoglobulin (Ig) variable chain and T-cell receptor (TcR) genes imported or annotated according to the IMGT (http://www.imgt.org/)
         IG_C_GENE("IG_C_gene"),
         IG_D_GENE("IG_D_gene"),
@@ -1007,6 +1017,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         // Long, intervening noncoding (linc) RNA that can be found in evolutionarily conserved, intergenic regions.
         LINCRNA("lincRNA"),
+        LNCRNA("lncRNA"),
 
         // Unspliced lncRNA that is several kb in size.
         MACRO_LNCRNA("macro_lncRNA"),
@@ -1024,12 +1035,12 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         BIDIRECTIONAL_PROMOTER_LNCRNA("bidirectional_promoter_lncRNA");
 
         @SuppressWarnings("unchecked")
-        private static final Map<String, GeneTranscriptType> VALUE_MAP =
+        private static final Map<String, KnownGeneBiotype> VALUE_MAP =
                 Arrays.stream(values()).collect(Collectors.toMap(v -> v.serialized.toLowerCase(), v -> v));
 
         private final String serialized;
 
-        GeneTranscriptType(final String serializedValue) {
+        KnownGeneBiotype(final String serializedValue) {
             serialized = serializedValue;
         }
 
@@ -1040,7 +1051,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         private static final Map<String, String> SPECIAL_CASE_STRING_VALUE_MAP = createSpecialCaseMap();
 
-        public static GeneTranscriptType getEnum(final String s) {
+        public static KnownGeneBiotype getEnum(final String s) {
             String lowerS = s.toLowerCase();
 
             // Handle special cases:
@@ -1053,7 +1064,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         }
 
         /**
-         * Create a special case map for alternate field names for known {@link GeneTranscriptType}s.
+         * Create a special case map for alternate field names for known {@link KnownGeneBiotype}s.
          */
         private static Map<String, String> createSpecialCaseMap() {
             final Map<String, String> map = new HashMap<>();
@@ -1132,6 +1143,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
      * For more information, see:
      *     https://www.gencodegenes.org/data_format.html
      *     https://en.wikipedia.org/wiki/General_feature_format
+     *     https://www.gencodegenes.org/pages/tags.html
      */
     public enum FeatureTag {
         /** 3' end extended based on RNA-seq data. */
@@ -1245,6 +1257,9 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         /** the mRNA start could not be confirmed. */
         MRNA_START_NF("mRNA_start_NF"),
 
+        /** the transcript belongs to the MANE Select data set. The Matched Annotation from NCBI and EMBL-EBI project (MANE) is a collaboration between Ensembl-GENCODE and RefSeq to select a default transcript per human protein coding locus that is representative of biology, well-supported, expressed and conserved. This transcript set matches GRCh38 and is 100% identical between RefSeq and Ensembl-GENCODE for 5' UTR, CDS, splicing and 3' UTR. */
+        MANE_SELECT("MANE_Select"),
+
         /** in-frame type of variation where, at the acceptor site, some variants splice after the first AG and others after the */
         NAGNAG_SPLICE_SITE("NAGNAG_splice_site"),
 
@@ -1340,6 +1355,12 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
         /** Transcript contains at least 1 non-canonical splice junction that is associated with a known or novel genome sequence */
         SEQUENCE_ERROR("sequence_error"),
+
+        /** Transcript whose coding sequence contains an internal stop codon that does not cause the translation termination. */
+        STOP_CODON_READTHROUGH("stop_codon_readthrough"),
+
+        /** Transcript created or extended using assembled RNA-seq long reads. */
+        TAGENE("TAGENE"),
 
         /** an upstream ATG exists when a downstream ATG is better supported. */
         UPSTREAM_ATG("upstream_ATG"),

@@ -1,13 +1,14 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriterFactory;
 import htsjdk.samtools.util.IOUtil;
-import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -21,7 +22,6 @@ import org.broadinstitute.hellbender.tools.readersplitters.SampleNameSplitter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,12 +57,13 @@ import java.util.stream.Collectors;
  *     --split-library-name
  * </pre>
  */
-@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
         oneLineSummary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
         programGroup = ReadDataManipulationProgramGroup.class
 )
+@DocumentedFeature
+@WorkflowProperties
 public final class SplitReads extends ReadWalker {
 
     public static final String SAMPLE_SHORT_NAME = "SM";
@@ -79,7 +80,8 @@ public final class SplitReads extends ReadWalker {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "The directory to output SAM/BAM/CRAM files."
     )
-    public File OUTPUT_DIRECTORY = new File("");
+    @WorkflowOutput
+    public GATKPath OUTPUT_DIRECTORY;
 
     @Argument(
             fullName = SAMPLE_LONG_NAME,
@@ -107,8 +109,8 @@ public final class SplitReads extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        IOUtil.assertDirectoryIsWritable(OUTPUT_DIRECTORY);
-        if ( readArguments.getReadFiles().size() != 1 ) {
+        IOUtil.assertDirectoryIsWritable(OUTPUT_DIRECTORY.toPath());
+        if ( readArguments.getReadPathSpecifiers().size() != 1 ) {
             throw new UserException("This tool only accepts a single SAM/BAM/CRAM as input");
         }
 
@@ -145,20 +147,15 @@ public final class SplitReads extends ReadWalker {
             // attribute for which a given read/group has no value; anything else indicates a coding error
             throw new GATKException.ShouldNeverReachHereException("Unrecognized attribute value found: " + attributeValue);
         }
-        final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
-        final SAMFileHeader samFileHeaderIn = getHeaderForReads();
-
-        return prepareSAMFileWriter(samFileWriterFactory, samFileHeaderIn, attributeValue);
+        return prepareSAMFileWriter(attributeValue);
     }
 
     //  Create a new output file and prepare and return the corresponding SAMFileGATKReadWriter.
-    private SAMFileGATKReadWriter prepareSAMFileWriter(
-            SAMFileWriterFactory samFileWriterFactory,
-            SAMFileHeader samFileHeaderIn,
-            final String keyName) {
-        final String base = FilenameUtils.getBaseName(readArguments.getReadFiles().get(0).getName());
-        final String extension = "." + FilenameUtils.getExtension(readArguments.getReadFiles().get(0).getName());
-        final File outFile = new File(OUTPUT_DIRECTORY, base + keyName + extension);
+    private SAMFileGATKReadWriter prepareSAMFileWriter(final String keyName) {
+        final GATKPath pathSpec = readArguments.getReadPathSpecifiers().get(0);
+        final GATKPath outFile = new GATKPath(
+                OUTPUT_DIRECTORY.toPath().resolve(
+                        pathSpec.getBaseName().orElse("") + keyName + pathSpec.getExtension().get()).toString());
         return createSAMWriter(outFile, true);
     }
 
@@ -170,7 +167,6 @@ public final class SplitReads extends ReadWalker {
     private Map<String, SAMFileGATKReadWriter> createWriters(final List<ReaderSplitter<?>> splitters) {
         final Map<String, SAMFileGATKReadWriter> outs = new LinkedHashMap<>();
 
-        final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
         final SAMFileHeader samFileHeaderIn = getHeaderForReads();
 
         // Build up a list of key options at each level.
@@ -180,7 +176,7 @@ public final class SplitReads extends ReadWalker {
 
         // For every combination of keys, add a SAMFileWriter.
         addKey(splitKeys, 0, "", key -> {
-            outs.put(key, prepareSAMFileWriter(samFileWriterFactory, samFileHeaderIn, key));
+            outs.put(key, prepareSAMFileWriter(key));
         });
 
         return outs;

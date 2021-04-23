@@ -34,6 +34,9 @@ public final class BaseUtils {
     public static final byte[] BASES = {'A', 'C', 'G', 'T'};
     public static final char[] BASE_CHARS = {'A', 'C', 'G', 'T'};
 
+    public static final byte[] BASES_EXTENDED = {'A', 'C', 'G', 'T', 'N', 'D'};
+    public static final char[] BASE_CHARS_EXTENDED = {'A', 'C', 'G', 'T', 'N', 'D'};
+
     private static final int[] baseIndexMap = new int[256];
     static {
         Arrays.fill(baseIndexMap, -1);
@@ -117,11 +120,13 @@ public final class BaseUtils {
         final int start = ignoreConversionOfFirstByte ? 1 : 0;
 
         for ( int i = start; i < length; i++ ) {
-            final int baseIndex = baseIndexWithIupacMap[bases[i]];
+            // we want to make sure we treat the base as an unsigned byte....so that we can access this array with it.
+            final int unsignedBase = ((int)bases[i]) & 0xff;
+            final int baseIndex = baseIndexWithIupacMap[unsignedBase];
             if ( baseIndex == Base.N.ordinal() ) {
                 bases[i] = 'N';
             } else if ( errorOnBadReferenceBase && baseIndex == -1 ) {
-                throw new UserException.BadInput("We encountered a non-standard non-IUPAC base in the provided reference: '" + bases[i] + "'");
+                throw new UserException.BadInput("We encountered a non-standard non-IUPAC base in the provided input sequence: '" + bases[i] + "'");
             }
         }
         return bases;
@@ -134,9 +139,29 @@ public final class BaseUtils {
      * @return 0, 1, 2, 3, or -1 if the base can't be understood
      */
     public static int simpleBaseToBaseIndex(final byte base) {
-        Utils.validateArg( base >= 0 && base < 256,
-                "Non-standard bases were encountered in either the input reference or BAM file(s)");
-        return baseIndexMap[base];
+        // we want to make sure we treat the base as an unsigned byte....so that we can access this array with it.
+        final int unsignedBase = ((int)base) & 0xff;
+        return baseIndexMap[unsignedBase];
+    }
+
+    /**
+     * Converts a base including extended bases (ATCG + D and N bases) to a base index
+     *
+     * @param base [AaCcGgTtDdNn]
+     * @return 0, 1, 2, 3, 4, or -1 if the base can't be understood
+     */
+    static public int extendedBaseToBaseIndex(byte base) {
+        switch (base) {
+            case 'd':
+            case 'D':
+                return Base.D.ordinal();
+            case 'n':
+            case 'N':
+                return Base.N.ordinal();
+
+            default:
+                return simpleBaseToBaseIndex(base);
+        }
     }
 
     /**

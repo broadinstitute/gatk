@@ -38,5 +38,5 @@ public class NRatioFilter extends HardFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.N_COUNT_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.N_COUNT_KEY); }
 }

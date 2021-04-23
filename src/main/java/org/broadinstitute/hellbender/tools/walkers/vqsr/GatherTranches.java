@@ -4,14 +4,16 @@ import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.WorkflowProperties;
+import org.broadinstitute.barclay.argparser.WorkflowInput;
+import org.broadinstitute.barclay.argparser.WorkflowOutput;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
@@ -24,10 +26,12 @@ import java.util.*;
 )
 @BetaFeature
 @DocumentedFeature
+@WorkflowProperties
 public class GatherTranches extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc="List of scattered tranches files")
-    public final List<File> inputReports = new ArrayList<>();
+    @WorkflowInput
+    public final List<GATKPath> inputReports = new ArrayList<>();
 
     /**
      * Add truth sensitivity slices through the call set at the given values. The default values are 100.0, 99.9, 99.0, and 90.0
@@ -48,40 +52,34 @@ public class GatherTranches extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc="File to output the gathered tranches file to")
-    public File outputReport;
-
-    private PrintStream tranchesStream;
+    @WorkflowOutput
+    public GATKPath outputReport;
 
     @Override
     protected Object doWork() {
-        inputReports.forEach(IOUtil::assertFileIsReadable);
+        inputReports.stream().map(GATKPath::toPath).forEach(IOUtil::assertFileIsReadable);
 
-        try {
-            tranchesStream = new PrintStream(outputReport);
-        } catch (FileNotFoundException e) {
-            throw new UserException.CouldNotCreateOutputFile(outputReport, e);
-        }
-
-        //use a data structure to hold the tranches from each scatter shard in a format that's easy to merge
-        final TreeMap<Double, List<VQSLODTranche>> scatteredTranches = new TreeMap<>();
-        for (final File trancheFile : inputReports) {
-            try {
-                for (final VQSLODTranche currentTranche : VQSLODTranche.readTranches(trancheFile)) {
-                    if (scatteredTranches.containsKey(currentTranche.minVQSLod)) {
-                        scatteredTranches.get(currentTranche.minVQSLod).add(currentTranche);
+        try (final PrintStream tranchesStream = new PrintStream(outputReport.getOutputStream())) {
+            //use a data structure to hold the tranches from each scatter shard in a format that's easy to merge
+            final TreeMap<Double, List<VQSLODTranche>> scatteredTranches = new TreeMap<>();
+            for (final GATKPath trancheFile : inputReports) {
+                try {
+                    for (final VQSLODTranche currentTranche : VQSLODTranche.readTranches(trancheFile)) {
+                        if (scatteredTranches.containsKey(currentTranche.minVQSLod)) {
+                            scatteredTranches.get(currentTranche.minVQSLod).add(currentTranche);
+                        } else {
+                            scatteredTranches.put(currentTranche.minVQSLod, new ArrayList<>(Arrays.asList(currentTranche)));
+                        }
                     }
-                    else {
-                        scatteredTranches.put(currentTranche.minVQSLod, new ArrayList<>(Arrays.asList(currentTranche)));
-                    }
+                } catch (IOException e) {
+                    throw new UserException.CouldNotReadInputFile(trancheFile, "Error reading tranch input", e);
                 }
-            } catch (IOException e) {
-                throw new UserException.CouldNotReadInputFile(trancheFile, e);
             }
+
+            tranchesStream.print(TruthSensitivityTranche.printHeader());
+            tranchesStream.print(Tranche.tranchesString(VQSLODTranche.mergeAndConvertTranches(scatteredTranches, TS_TRANCHES, MODE)));
+
+            return 0;
         }
-
-        tranchesStream.print(TruthSensitivityTranche.printHeader());
-        tranchesStream.print(Tranche.tranchesString(VQSLODTranche.mergeAndConvertTranches(scatteredTranches, TS_TRANCHES, MODE)));
-
-        return 0;
     }
 }

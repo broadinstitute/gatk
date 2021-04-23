@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.clustering;
 
+import htsjdk.variant.variantcontext.Allele;
 import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.VariantContext;
 import it.unimi.dsi.fastutil.ints.Int2DoubleArrayMap;
@@ -88,19 +89,33 @@ public class SomaticClusteringModel {
         logClusterWeights = new double[] {Math.log1p(INITIAL_HIGH_AF_WEIGHT), Math.log(INITIAL_HIGH_AF_WEIGHT)};
     }
 
-    public void record(final int[] tumorADs, final double[] tumorLogOdds, final double artifactProbability, final double nonSomaticProbability, final VariantContext vc) {
-        // things that are definitely not somatic don't need to go in the somatic clustering model
-        if (artifactProbability > OBVIOUS_ARTIFACT_PROBABILITY_THRESHOLD) {
-            obviousArtifactCount.increment();
-            return;
-        } else if (nonSomaticProbability > OBVIOUS_ARTIFACT_PROBABILITY_THRESHOLD) {
-            return;
-        }
+    /**
+     * Adds data to the model for every alternate allele
+     * @param tumorADs for all alleles, summed over samples
+     * @param tumorLogOdds for alt alleles only
+     * @param artifactProbabilities by alt allele, specifically technical artifact probabilities not including sequencing error, contamination, or germline variation
+     * @param nonSomaticProbabilities by alt allele, probabilities that the variants are real but not somatic ie germline or contamination
+     * @param vc the variant context the data apply to
+     */
+    public void record(int[] tumorADs, final double[] tumorLogOdds, final List<Double> artifactProbabilities, final List<Double> nonSomaticProbabilities, final VariantContext vc) {
+        // get all alt allele indexes for symbolic alleles
+        List<Integer> symIndexes = new IndexRange(0, vc.getNAlleles()-1).filter(n -> vc.getAlternateAllele(n).isSymbolic());
 
+        // set tumorAD to 0 for symbolic alleles so it won't contribute to overall AD
+        symIndexes.forEach(i -> tumorADs[i] = 0);
         final int totalAD = (int) MathUtils.sum(tumorADs);
-        // split into one-vs-all biallelics for clustering
+
+        // split into separate alt alleles for clustering
         for (int i = 0; i < tumorLogOdds.length; i++) {
-            data.add(new Datum(tumorLogOdds[i], artifactProbability, nonSomaticProbability, tumorADs[i+1], totalAD, indelLength(vc, i)));
+            if (!vc.getAlternateAllele(i).isSymbolic()) {
+                if (artifactProbabilities.get(i) > OBVIOUS_ARTIFACT_PROBABILITY_THRESHOLD) {
+                    obviousArtifactCount.increment();
+                    continue;
+                } else if (nonSomaticProbabilities.get(i) > OBVIOUS_ARTIFACT_PROBABILITY_THRESHOLD) {
+                    continue;
+                }
+                data.add(new Datum(tumorLogOdds[i], artifactProbabilities.get(i), nonSomaticProbabilities.get(i), tumorADs[i + 1], totalAD, indelLength(vc, i)));
+            }
         }
     }
 

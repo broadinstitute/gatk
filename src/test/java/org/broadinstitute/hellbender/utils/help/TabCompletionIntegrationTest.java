@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.ClassFinder;
 import org.broadinstitute.barclay.help.BashTabCompletionDoclet;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.*;
@@ -27,12 +27,19 @@ public class TabCompletionIntegrationTest extends CommandLineProgramTest {
         final ClassFinder classFinder = new ClassFinder();
         classFinder.find("org.broadinstitute.hellbender", CommandLineProgram.class);
         tabCompletionTestPackages = Collections.unmodifiableList(
-                classFinder.getClasses().stream().map(Class::getName).collect(Collectors.toList())
+                classFinder.getClasses()
+                        .stream()
+                        .map(cl -> cl.getPackage().getName())
+                        .collect(Collectors.toSet()) // uniquify
+                        .stream()
+                        .collect(Collectors.toList())
         );
     }
 
+    // suppress deprecation warning on Java 11 since we're using deprecated javadoc APIs
+    @SuppressWarnings({"deprecation","removal"})
     @Test
-    public static void tabCompleteSmokeTest() throws IOException, InterruptedException {
+    public static void tabCompleteSmokeTest() {
         final File tabCompletionTestTarget = createTempDir("tabCompletionTest");
 
         // Setup rote input arguments:
@@ -45,7 +52,6 @@ public class TabCompletionIntegrationTest extends CommandLineProgramTest {
                 "-docletpath", System.getProperty("java.class.path"),
                 "-sourcepath", "src/main/java",
                 "-d", tabCompletionTestTarget.getAbsolutePath(), // directory must exist
-                "-cp", System.getProperty("java.class.path"),
 
                 "-use-default-templates",
 
@@ -76,13 +82,13 @@ public class TabCompletionIntegrationTest extends CommandLineProgramTest {
         // Point the javadoc at our packages:
         final List<String> docArgList = new ArrayList<>();
         docArgList.addAll(argList);
+        docArgList.add("-cp");
+        docArgList.add(System.getProperty("java.class.path"));
         docArgList.addAll(tabCompletionTestPackages);
 
-        // This is  smoke test; we just want to make sure it doesn't blow up
-
-        // Run this as a process, not through Java itself:
-        final ProcessController processController = new ProcessController();
-        runProcess(processController, docArgList.toArray(new String[] {}) );
+        // Run javadoc in the current JVM with the custom doclet, and make sure it succeeds (this is a smoke test;
+        // we just want to make sure it doesn't blow up).
+        Assert.assertEquals(com.sun.tools.javadoc.Main.execute(docArgList.toArray(new String[] {})), 0);
     }
 
 }

@@ -9,6 +9,7 @@ import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeaderLine;
+
 import java.io.File;
 import java.nio.file.Path;
 import java.time.ZonedDateTime;
@@ -37,7 +38,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
@@ -63,9 +63,10 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             shortName = StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME,
             doc = "Use the given sequence dictionary as the master/canonical sequence dictionary.  Must be a .dict file.", optional = true, common = true)
-    private String masterSequenceDictionaryFilename = null;
+    private GATKPath masterSequenceDictionaryFilename = null;
 
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "seconds-between-progress-updates";
+
     @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
@@ -277,7 +278,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Must be overridden in order to add annotation arguments to the engine. If this is set to true the engine will
-     * dynamically discover all {@link Annotation}s in the package defined by {@link org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor#pluginPackageName} and automatically
+     * dynamically discover all {@link Annotation}s in the packages defined by {@link GATKAnnotationPluginDescriptor#getPackageNames()} and automatically
      * generate and add command line arguments allowing the user to specify which annotations or groups of annotations to use.
      *
      * To specify default annotations for a tool simply specify them using {@link #getDefaultVariantAnnotationGroups()} or {@link #getDefaultVariantAnnotations()}
@@ -439,7 +440,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reads data source.
      */
     void initializeReads() {
-        if (! readArguments.getReadFiles().isEmpty()) {
+        if (! readArguments.getReadPathSpecifiers().isEmpty()) {
             SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
             if (hasReference()) { // pass in reference if available, because CRAM files need it
                 factory = factory.referenceSequence(referenceArguments.getReferencePath());
@@ -452,7 +453,7 @@ public abstract class GATKTool extends CommandLineProgram {
                 factory = factory.enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
             }
 
-            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
+            reads = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
                 (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
         }
         else {
@@ -469,7 +470,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
     private boolean hasCramInput() {
-        return readArguments.getReadFiles().stream().anyMatch(IOUtils::isCramFile);
+        return readArguments.getReadPathSpecifiers().stream().anyMatch(GATKPath::isCram);
     }
 
     /**
@@ -603,7 +604,7 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     private void loadMasterSequenceDictionary() {
         if ( (masterSequenceDictionary == null) && (masterSequenceDictionaryFilename != null) ) {
-            masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(new File(masterSequenceDictionaryFilename));
+            masterSequenceDictionary = ReferenceUtils.loadFastaDictionary(masterSequenceDictionaryFilename);
         }
     }
 
@@ -649,7 +650,7 @@ public abstract class GATKTool extends CommandLineProgram {
             return reads.getSequenceDictionary();
         } else if (hasFeatures()){
             final List<SAMSequenceDictionary> dictionaries = features.getVariantSequenceDictionaries();
-            //If there is just one, it clearly is the best. Otherwise, noone is best.
+            //If there is just one, it clearly is the best. Otherwise, none is best.
             if (dictionaries.size() == 1){
                 return dictionaries.get(0);
             }
@@ -713,8 +714,15 @@ public abstract class GATKTool extends CommandLineProgram {
 
         checkToolRequirements();
 
+        initializeProgressMeter(getProgressMeterRecordLabel());
+    }
+
+    /**
+     * Helper method to initialize the progress meter without exposing engine level arguements.
+     */
+    protected final void initializeProgressMeter(final String progressMeterRecordLabel) {
         progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
-        progressMeter.setRecordLabel(getProgressMeterRecordLabel());
+        progressMeter.setRecordLabel(progressMeterRecordLabel);
     }
 
     /**
@@ -772,12 +780,16 @@ public abstract class GATKTool extends CommandLineProgram {
 
         // Check all Feature dictionaries against the reference and/or reads dictionaries
         // TODO: pass file names associated with each sequence dictionary into validateDictionaries(); issue #660
+        final SAMSequenceDictionary bestDict = getBestAvailableSequenceDictionary();
         for ( final SAMSequenceDictionary featureDict : featureDicts ) {
             if (hasReference()){
                 SequenceDictionaryUtils.validateDictionaries("reference", refDict, "features", featureDict);
             }
             if (hasReads()) {
                 SequenceDictionaryUtils.validateDictionaries("reads", readDict, "features", featureDict);
+            }
+            if (bestDict != null) { //VariantWalkers will use DrivingVariants for best dictionary, then check all other FeatureInputs
+                SequenceDictionaryUtils.validateDictionaries("best available", bestDict, "features", featureDict);
             }
         }
 
@@ -801,34 +813,20 @@ public abstract class GATKTool extends CommandLineProgram {
     /*
      * Create a common SAMFileWriter using the reference and read header for this tool.
      *
-     * @param outputFile    - if this file has a .cram extension then a reference is required. Can not be null.
-     * @param preSorted     - if true then the records must already be sorted to match the header sort order
-     *
-     * @throws UserException if outputFile ends with ".cram" and no reference is provided
-     * @return SAMFileWriter
-     */
-    public final SAMFileGATKReadWriter createSAMWriter(final File outputFile, final boolean preSorted) {
-        return createSAMWriter(Utils.nonNull(outputFile).toPath(), preSorted);
-    }
-
-    /*
-     * Create a common SAMFileWriter using the reference and read header for this tool.
-     *
      * @param outputPath    - if this path has a .cram extension then a reference is required. Can not be null.
      * @param preSorted     - if true then the records must already be sorted to match the header sort order
      *
      * @throws UserException if outputFile ends with ".cram" and no reference is provided
      * @return SAMFileWriter
      */
-    public final SAMFileGATKReadWriter createSAMWriter(final Path outputPath, final boolean preSorted) {
-        final boolean isCramFile = IOUtils.isCramFile(outputPath);
-        if (!hasReference() && isCramFile) {
+    public final SAMFileGATKReadWriter createSAMWriter(final GATKPath outputPathSpecifier, final boolean preSorted) {
+        if (!hasReference() && outputPathSpecifier.isCram()) {
             throw UserException.MISSING_REFERENCE_FOR_CRAM;
         }
 
         return new SAMFileGATKReadWriter(
             ReadUtils.createCommonSAMWriter(
-                outputPath,
+                outputPathSpecifier.toPath(),
                 referenceArguments.getReferencePath(),
                 getHeaderForSAMWriter(),
                 preSorted,
@@ -849,6 +847,18 @@ public abstract class GATKTool extends CommandLineProgram {
      * @returns VariantContextWriter must be closed by the caller
      */
     public VariantContextWriter createVCFWriter(final File outFile) {
+        return createVCFWriter(outFile == null ? null : outFile.toPath());
+    }
+
+    /**
+     * Creates a VariantContextWriter whose outputFile type is determined by
+     * the vcfOutput's extension, using the best available sequence dictionary for
+     * this tool, and default index, leniency and md5 generation settings.
+     *
+     * @param outFile output GATKPath for this writer. May not be null.
+     * @returns VariantContextWriter must be closed by the caller
+     */
+    public VariantContextWriter createVCFWriter(final GATKPath outFile) {
         return createVCFWriter(outFile == null ? null : outFile.toPath());
     }
 
@@ -1046,7 +1056,9 @@ public abstract class GATKTool extends CommandLineProgram {
             onTraversalStart();
             progressMeter.start();
             traverse();
-            progressMeter.stop();
+            if (!progressMeter.stopped()) {
+                progressMeter.stop();
+            }
             return onTraversalSuccess();
         } finally {
             closeTool();

@@ -55,10 +55,12 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     private static final double doubleEqualsEpsilon = 0.000001;
 
     private static final FeatureReader<GencodeGtfFeature> gencodeHg19FeatureReader;
+    private static final FeatureReader<GencodeGtfFeature> gencodeHg19TP53FeatureReader;
     private static final FeatureReader<GencodeGtfFeature> gencodeHg38FeatureReader;
     private static final FeatureReader<GencodeGtfFeature> muc16NonBasicFeatureReader;
 
     private static final ReferenceDataSource refDataSourceHg19Ch19;
+    private static final ReferenceDataSource refDataSourceHg19Ch17;
     private static final ReferenceDataSource refDataSourceHg19Ch3;
     private static final ReferenceDataSource refDataSourceHg38;
 
@@ -70,8 +72,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     static {
         muc16NonBasicFeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.MUC16_GENCODE_NON_BASIC_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec());
         gencodeHg19FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG19, new GencodeGtfCodec());
+        gencodeHg19TP53FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.TP53_REVERSE_ORDER_GENCODE_ANNOTATIONS_FILE_NAME, new GencodeGtfCodec());
         gencodeHg38FeatureReader = AbstractFeatureReader.getFeatureReader(FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG38, new GencodeGtfCodec());
         refDataSourceHg19Ch19 = ReferenceDataSource.of(IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref()));
+        refDataSourceHg19Ch17 = ReferenceDataSource.of(IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr17Ref()));
         refDataSourceHg19Ch3 = ReferenceDataSource.of( IOUtils.getPath(FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref()) );
         refDataSourceHg38 = ReferenceDataSource.of( IOUtils.getPath(hg38Reference) );
 
@@ -90,8 +94,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         // Add all to the closeable list:
         autoCloseableList.add( muc16NonBasicFeatureReader );
         autoCloseableList.add( gencodeHg19FeatureReader );
+        autoCloseableList.add( gencodeHg19TP53FeatureReader );
         autoCloseableList.add( gencodeHg38FeatureReader );
         autoCloseableList.add( refDataSourceHg19Ch19 );
+        autoCloseableList.add( refDataSourceHg19Ch17 );
         autoCloseableList.add( refDataSourceHg19Ch3 );
         autoCloseableList.add( refDataSourceHg38 );
         autoCloseableList.add( testMuc16SnpCreateFuncotationsFuncotationFactory );
@@ -187,6 +193,21 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                                                  final String transcriptFastaFile,
                                                                  final String transcriptGtfFile) {
 
+        // unitTestData should include:
+//        final String expectedGeneName,
+//        final int chromosomeNumber,
+//        final int start,
+//        final int end,
+//        final GencodeFuncotation.VariantClassification expectedVariantClassification,
+//        final GencodeFuncotation.VariantType expectedVariantType,
+//        final String ref,
+//        final String alt,
+//        final String expectedGenomeChange,
+//        final String expectedStrand,
+//        final String expectedCDnaChange,
+//        final String expectedCodonChange,
+//        final String expectedProteinChange,
+
         final List<Object[]> outList = new ArrayList<>(unitTestData.size());
 
         for ( final Object[] rawData : unitTestData ) {
@@ -250,10 +271,10 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 GencodeGtfFeature.GenomicPhase.DOT,
                 "TEST-GENE-ID",
                 "TEST-TX-ID",
-                GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
                 GencodeGtfFeature.GeneTranscriptStatus.PUTATIVE,
                 "TEST-GENE",
-                GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
                 GencodeGtfFeature.GeneTranscriptStatus.PUTATIVE,
                 "TEST-TX",
                 1,
@@ -540,6 +561,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         // Trouble variants:
         outList.addAll( addReferenceDataToUnitTestData(DataProviderForTroubleVariants.provideSymbolicAllelesAndMaskedBasesForHg38(), hg38Reference, gencodeHg38FeatureReader, refDataSourceHg38, FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG38, FuncotatorTestConstants.GENCODE_DATA_SOURCE_GTF_PATH_HG38 ) );
+        outList.addAll( addReferenceDataToUnitTestData(DataProviderForTroubleVariants.provideTP53AllelesForOrderTestsHg19(), FuncotatorReferenceTestUtils.retrieveHg19Chr17Ref(), gencodeHg19TP53FeatureReader, refDataSourceHg19Ch17, FuncotatorTestConstants.TP53_REVERSE_ORDER_GENCODE_TRANSCRIPT_FASTA_FILE, FuncotatorTestConstants.TP53_REVERSE_ORDER_GENCODE_TRANSCRIPT_FASTA_FILE ) );
 
         return outList.toArray(new Object[][]{{}});
     }
@@ -547,7 +569,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     @DataProvider
     Object[][] provideForTestGetTranscriptEndPaddingBases() {
 
-                          // Base Position:
+                          // Base Position (read from bottom to top):
                           //
                           //1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
                           //0000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990
@@ -678,15 +700,15 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         GencodeGtfFeatureBaseData data;
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 1, variantInterval.getContig(), GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
-                variantInterval.getStart()-2000, variantInterval.getEnd()+2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                variantInterval.getStart()-2000, variantInterval.getEnd()+2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
                 null, "TEST_GENE", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED, null, null);
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
 
         // ======================
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 2, variantInterval.getContig(), GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
-                variantInterval.getStart()-1000, variantInterval.getEnd()+1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
-                null, "TEST_GENE", GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING, null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                variantInterval.getStart()-1000, variantInterval.getEnd()+1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
                 Collections.emptyList(),
                 null
         );

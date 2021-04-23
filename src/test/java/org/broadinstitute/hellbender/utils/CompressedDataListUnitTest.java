@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.utils.CompressedDataList;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -89,6 +90,21 @@ public class CompressedDataListUnitTest {
         }
 
         Assert.assertEquals(intList1.toString(),intList2.toString());
+    }
+
+    /**
+     * Test to ensure iterator returns sorted keys.  A previous implementation
+     * used HashMap().keySet() without sorting which works when using a small number of
+     * values < 16.
+     */
+    @Test
+    public void testIteratorOrdering(){
+        CompressedDataList<Integer> intList1 = new CompressedDataList<>();
+        intList1.add(1,1);
+        intList1.add(2,1);
+        intList1.add(16,1);
+
+        Assert.assertEquals(StringUtils.join(intList1.iterator(), ","),"1,2,16");
     }
 
 }

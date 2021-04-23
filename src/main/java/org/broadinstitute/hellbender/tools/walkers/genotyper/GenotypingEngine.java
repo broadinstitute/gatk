@@ -7,23 +7,29 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
  * Base class for genotyper engines.
  */
 public abstract class GenotypingEngine<Config extends StandardCallerArgumentCollection> {
+
+    private final static int TOO_LONG_PL = 100000;
 
     protected final AlleleFrequencyCalculator alleleFrequencyCalculator;
 
@@ -32,6 +38,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     protected VariantAnnotatorEngine annotationEngine;
 
     protected Logger logger;
+
+    protected OneShotLogger oneShotLogger;
 
     protected final int numberOfGenomes;
 
@@ -111,7 +119,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @param vc                                 Input variant context to complete.
      * @return                                   VC with assigned genotypes
      */
-    public VariantContext calculateGenotypes(final VariantContext vc, final List<VariantContext> givenAlleles) {
+    public VariantContext calculateGenotypes(final VariantContext vc, final GenotypePriorCalculator gpc, final List<VariantContext> givenAlleles) {
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
         if (hasTooManyAlternativeAlleles(vc) || vc.getNSamples() == 0) {
             return null;
@@ -120,24 +128,28 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final int defaultPloidy = configuration.genotypeArgs.samplePloidy;
         final int maxAltAlleles = configuration.genotypeArgs.MAX_ALTERNATE_ALLELES;
 
-
         VariantContext reducedVC = vc;
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
             final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles);
             final GenotypesContext reducedGenotypes = allelesToKeep.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc, GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
+        //Calculate the expected total length of the PL arrays for this VC to warn the user in the case that they will be exceptionally large
+        final long maxPLLength = GenotypeLikelihoods.numLikelihoods(reducedVC.getNAlleles(), reducedVC.getMaxPloidy(defaultPloidy));
+        if(maxPLLength >= TOO_LONG_PL) {
+            oneShotLogger.warn("Length of PL arrays for this VC(position:" + reducedVC.getStart() + ", alleles:" + reducedVC.getNAlleles()
+                    + ", ploidy:" + reducedVC.getMaxPloidy(defaultPloidy) + ") is likely to reach " + maxPLLength + ", so processing may take a long time.");
+        }
 
         final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy);
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, givenAlleles);
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
-                ! outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
-                        ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0 ;
-
+                    !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
+                            ? AFresult.log10ProbOnlyRefAlleleExists() + 0.0 : AFresult.log10ProbVariantPresent() + 0.0;
 
         // Add 0.0 removes -0.0 occurrences.
         final double phredScaledConfidence = (-10.0 * log10Confidence) + 0.0;
@@ -157,7 +169,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // start constructing the resulting VC
         final List<Allele> outputAlleles = outputAlternativeAlleles.outputAlleles(vc.getReference());
         recordDeletions(vc, outputAlleles);
-        
+
         final VariantContextBuilder builder = new VariantContextBuilder(callSourceString(), vc.getContig(), vc.getStart(), vc.getEnd(), outputAlleles);
 
         builder.log10PError(log10Confidence);
@@ -168,7 +180,16 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // create the genotypes
         //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+
+        if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
+            final double log10NoVariantPosterior = phredNoVariantPosteriorProbability(outputAlleles, genotypes) * -.1;
+            final double qualUpdate = !outputAlternativeAlleles.siteIsMonomorphic || configuration.annotateAllSitesWithPLs
+                    ? log10NoVariantPosterior + 0.0 : MathUtils.log10OneMinusPow10(log10NoVariantPosterior) + 0.0;
+            if (!Double.isNaN(qualUpdate)) {
+                builder.log10PError(qualUpdate);
+            }
+        }
 
         // calculating strand bias involves overwriting data structures, so we do it last
         final Map<String, Object> attributes = composeCallAttributes(vc, outputAlternativeAlleles.alternativeAlleleMLECounts(),
@@ -177,8 +198,47 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return builder.genotypes(genotypes).attributes(attributes).make();
     }
 
+    protected double phredNoVariantPosteriorProbability(final List<Allele> alleles, final GenotypesContext gc) {
+        return gc.stream()
+                .mapToDouble(gt -> extractPNoAlt(alleles, gt))
+                .filter(d -> !Double.isNaN(d))
+                .reduce(Double.NaN, (a, b) -> Double.isNaN(a) ? b : (Double.isNaN(b) ? a : a + b) );
+    }
+
+    private double extractPNoAlt(final List<Allele> alleles, final Genotype gt) {
+        final double[] gpArray = VariantContextGetters.getAttributeAsDoubleArray(gt, VCFConstants.GENOTYPE_POSTERIORS_KEY, () -> new double[]{Double.NaN}, Double.NaN);
+        return extractPNoAlt(alleles, gt, gpArray);
+    }
+
+    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
+
+    private double extractPNoAlt(final List<Allele> alleles, final Genotype gt, final double[] posteriors) {
+        if (!alleles.contains(Allele.SPAN_DEL)) {
+            return posteriors[0] - Math.max(0, QualityUtils.phredSum(posteriors));
+        } else {
+            // here we need to get indices of genotypes composed of REF and * alleles
+            final int ploidy = gt.getPloidy();
+            final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, alleles.size());
+            final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
+            // allele counts are in the GenotypeLikelihoodCalculator format of {ref index, ref count, span del index, span del count}
+            final double[] nonVariantLog10Posteriors = IntStream.rangeClosed(0, ploidy)
+                    .map(n -> glCalc.alleleCountsToIndex(0, ploidy - n, spanDelIndex, n))
+                    .mapToDouble(n -> posteriors[n])
+                    .toArray();
+
+            // when the only alt allele is the spanning deletion the probability that the site is non-variant
+            // may be so close to 1 that finite precision error in log10SumLog10 (called by phredSum) yields a positive value,
+            // which is bogus.  Thus we cap it at 0. See AlleleFrequencyCalculator.
+            return Math.max(0, QualityUtils.phredSum(nonVariantLog10Posteriors)) - Math.max(0, QualityUtils.phredSum(posteriors));
+        }
+    }
+
+    private boolean hasPosteriors(final GenotypesContext gc) {
+        return gc.stream().anyMatch(g -> g.hasExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY));
+    }
+
     public VariantContext calculateGenotypes(final VariantContext vc) {
-        return calculateGenotypes(vc, Collections.emptyList());
+        return calculateGenotypes(vc, null, Collections.emptyList());
     }
 
     @VisibleForTesting

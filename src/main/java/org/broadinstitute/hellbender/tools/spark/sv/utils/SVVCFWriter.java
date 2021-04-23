@@ -68,14 +68,15 @@ public class SVVCFWriter {
     public static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants,
                                                                 final SAMSequenceDictionary referenceSequenceDictionary) {
         return variants.stream().sorted((VariantContext v1, VariantContext v2) -> {
-            final int x = IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary);
-            if (x == 0) {
-                final String s1 = v1.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "");
-                final String s2 = v2.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "");
-                return s1.compareTo(s2);
-            } else {
-                return x;
-            }
+            int x = IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary);
+            if ( x != 0 ) return x;
+
+            final String s1 = v1.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "");
+            final String s2 = v2.getAttributeAsString(GATKSVVCFConstants.INSERTED_SEQUENCE, "");
+            x = s1.compareTo(s2);
+            if ( x != 0 ) return x;
+
+            return v1.getID().compareTo(v2.getID());
         }).collect(SVUtils.arrayListCollector(variants.size()));
     }
 

@@ -13,6 +13,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.PositionalArguments;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -62,7 +63,7 @@ import static org.broadinstitute.hellbender.transformers.BQSRReadTransformer.con
 )
 public final class CompareBaseQualities extends PicardCommandLineProgram {
     @PositionalArguments(minElements = 2, maxElements = 2)
-    public List<File> samFiles;
+    public List<GATKPath> samFiles;
 
     public static final String THROW_ON_DIFF_LONG_NAME = "throw-on-diff";
 
@@ -124,12 +125,12 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
         }
         staticQuantizedMapping = constructStaticQuantizedMapping(staticQuantizationQuals, roundDown);
 
-        IOUtil.assertFileIsReadable(samFiles.get(0));
-        IOUtil.assertFileIsReadable(samFiles.get(1));
+        IOUtil.assertFileIsReadable(samFiles.get(0).toPath());
+        IOUtil.assertFileIsReadable(samFiles.get(1).toPath());
 
         final SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(VALIDATION_STRINGENCY);
-        final SamReader reader1 = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(0));
-        final SamReader reader2 = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(1));
+        final SamReader reader1 = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(0).toPath());
+        final SamReader reader2 = factory.referenceSequence(REFERENCE_SEQUENCE).open(samFiles.get(1).toPath());
 
         final SecondaryOrSupplementarySkippingIterator it1 =
                 new SecondaryOrSupplementarySkippingIterator(reader1.iterator());

@@ -130,7 +130,7 @@ public final class SimpleCountCollection extends AbstractSampleLocatableCollecti
      */
     public static SimpleCountCollection readFromGCS(final String path) {
         IOUtils.assertFileIsReadable(IOUtils.getPath(path));
-        Utils.validate(BucketUtils.isCloudStorageUrl(path), "Read-count path must be a Google Cloud Storage URL.");
+        Utils.validate(BucketUtils.isGcsUrl(path), "Read-count path must be a Google Cloud Storage URL.");
         Utils.validate(new SimpleCountCodec().canDecode(path), String.format(
                 "Read-count file extension must be one of the following: [%s]",
                 String.join(",", SimpleCountCodec.SIMPLE_COUNT_CODEC_EXTENSIONS)));
@@ -149,7 +149,7 @@ public final class SimpleCountCollection extends AbstractSampleLocatableCollecti
     public static SimpleCountCollection readOverlappingSubsetFromGCS(final String path,
                                                                      final List<SimpleInterval> overlapIntervals) {
         IOUtils.assertFileIsReadable(IOUtils.getPath(path));
-        Utils.validate(BucketUtils.isCloudStorageUrl(path), "Read-count path must be a Google Cloud Storage URL.");
+        Utils.validate(BucketUtils.isGcsUrl(path), "Read-count path must be a Google Cloud Storage URL.");
         Utils.validate(new SimpleCountCodec().canDecode(path), String.format(
                 "Read-count file extension must be one of the following: [%s]",
                 String.join(",", SimpleCountCodec.SIMPLE_COUNT_CODEC_EXTENSIONS)));

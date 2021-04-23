@@ -28,5 +28,5 @@ public class ClusteredEventsFilter extends HardFilter {
     }
 
     @Override
-    protected List<String> requiredAnnotations() { return Collections.singletonList(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY); }
+    protected List<String> requiredInfoAnnotations() { return Collections.singletonList(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY); }
 }

@@ -6,7 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
+import org.broadinstitute.hellbender.engine.BasicReference;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.BreakEndVariantType;
@@ -234,7 +234,7 @@ public class NovelAdjacencyAndAltHaplotype {
      *          It is safe, for now, to assume that ({@link SimpleSVType} and {@link BreakEndVariantType} are never mixed)
      */
     @VisibleForTesting
-    public List<SvType> toSimpleOrBNDTypes( final ReferenceMultiSparkSource reference, final SAMSequenceDictionary referenceDictionary) {
+    public List<SvType> toSimpleOrBNDTypes( final BasicReference reference ) {
 
         switch (type) {
             case INTER_CHR_STRAND_SWITCH_55:

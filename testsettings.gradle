@@ -13,27 +13,25 @@ tasks.withType(Test) {
     useTestNG {
         if (TEST_TYPE == "cloud") {
             // run only the cloud tests
-            includeGroups 'cloud', 'bucket'
+            includeGroups "cloud", "bucket"
         } else if (TEST_TYPE == "integration"){
             include "**/*IntegrationTest.class"
-            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "variantcalling", "R"
+            excludeGroups "cloud", "bucket", "python", "R", "funcotatorValidation", "variantcalling"
         } else if (TEST_TYPE == "unit") {
             exclude "**/*IntegrationTest.class"
-            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "variantcalling", "R"
+            excludeGroups "cloud", "bucket", "python", "R", "funcotatorValidation", "variantcalling"
         } else if (TEST_TYPE == "variantcalling") {
             includeGroups "variantcalling"
-            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "R"
+            excludeGroups "cloud", "bucket", "python", "R", "funcotatorValidation"
         } else if (TEST_TYPE == "spark") {
             includeGroups "spark"
-            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "variantcalling", "R"
-        } else if (TEST_TYPE == "python") {
-            includeGroups "python"
-        } else if (TEST_TYPE == "R") {
-            includeGroups "R"
+            excludeGroups "cloud", "bucket", "python", "R", "funcotatorValidation", "variantcalling"
+        } else if (TEST_TYPE == "conda") {
+            includeGroups "python", "R"
         } else if (TEST_TYPE == "all"){
             //include everything
         } else {
-            excludeGroups "cloud", "bucket", "python", "funcotatorValidation", "R"
+            excludeGroups "cloud", "bucket", "python", "R", "funcotatorValidation"
         }
     }
 

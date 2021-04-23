@@ -9,12 +9,12 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,7 +29,7 @@ public class MergeMutect2CallsWithMC3 extends AbstractConcordanceWalker {
     @Argument(doc = "Merged vcf.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
-    protected File outputVcf;
+    protected GATKPath outputVcf;
 
     public static final String CENTERS_KEY = "CENTERS";
     public static final String M2_CENTER_NAME = "M2";

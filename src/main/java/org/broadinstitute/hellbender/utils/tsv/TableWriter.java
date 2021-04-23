@@ -232,6 +232,15 @@ public abstract class TableWriter<R> implements Closeable {
     }
 
     /**
+     * Pushes in-memory buffered content to the output stream.
+     * @throws IOException
+     */
+    public final void flush() throws IOException {
+        writeHeaderIfApplies();
+        writer.flush();
+    }
+
+    /**
      * Writes the header if it has not been written already.
      * <p>
      * The header is written automatically before the first record is written or when the writer is closed

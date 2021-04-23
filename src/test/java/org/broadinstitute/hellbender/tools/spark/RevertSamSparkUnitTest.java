@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark;
 
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -89,10 +90,10 @@ public class RevertSamSparkUnitTest extends CommandLineProgramTest {
 
     @Test
     public static void testGetDefaultExtension() {
-        Assert.assertEquals(RevertSamSpark.getDefaultExtension("this.is.a.sam", RevertSamSpark.FileType.dynamic), ".sam");
-        //Assert.assertEquals(RevertSamSpark.getDefaultExtension("this.is.a.cram", RevertSamSpark.FileType.dynamic), ".cram"); //TODO https://github.com/broadinstitute/gatk/issues/5559
-        Assert.assertEquals(RevertSamSpark.getDefaultExtension("this.is.a.bam", RevertSamSpark.FileType.dynamic), ".bam");
-        Assert.assertEquals(RevertSamSpark.getDefaultExtension("foo", RevertSamSpark.FileType.dynamic), ".bam");
+        Assert.assertEquals(RevertSamSpark.getDefaultExtension(new GATKPath("this.is.a.sam"), RevertSamSpark.FileType.dynamic), ".sam");
+        Assert.assertEquals(RevertSamSpark.getDefaultExtension(new GATKPath("this.is.a.cram"), RevertSamSpark.FileType.dynamic), ".cram"); //TODO https://github.com/broadinstitute/gatk/issues/5559
+        Assert.assertEquals(RevertSamSpark.getDefaultExtension(new GATKPath("this.is.a.bam"), RevertSamSpark.FileType.dynamic), ".bam");
+        Assert.assertEquals(RevertSamSpark.getDefaultExtension(new GATKPath("foo"), RevertSamSpark.FileType.dynamic), ".bam");
     }
 
     @Test

@@ -6,11 +6,13 @@ import htsjdk.samtools.*;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -22,6 +24,7 @@ import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import scala.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
@@ -41,7 +44,7 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
         final int expectedReadCount = 11;
 
         boolean shardIsNotValidBam = false;
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(bamShard.toPath()) ) {
+        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(bamShard.toPath()) ) {
             for ( final GATKRead read : readsSource ) {}
         }
         catch ( SAMFormatException e ) {
@@ -61,7 +64,7 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
         SparkUtils.convertHeaderlessHadoopBamShardToBam(bamShard, header, output);
 
         int actualCount = 0;
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(output.toPath()) ) {
+        try ( final ReadsDataSource readsSource = new ReadsPathDataSource(output.toPath()) ) {
             for ( final GATKRead read : readsSource ) { ++actualCount; }
         }
 
@@ -76,12 +79,12 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
             final Path tempPath = new Path(workingDirectory, "testFileExists.txt");
             final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-            Assert.assertFalse(SparkUtils.pathExists(ctx, tempPath));
+            Assert.assertFalse(SparkUtils.hadoopPathExists(ctx, tempPath.toUri()));
             final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
             final FSDataOutputStream fsOutStream = fs.create(tempPath);
             fsOutStream.close();
             fs.deleteOnExit(tempPath);
-            Assert.assertTrue(SparkUtils.pathExists(ctx, tempPath));
+            Assert.assertTrue(SparkUtils.hadoopPathExists(ctx, tempPath.toUri()));
         });
     }
 
@@ -139,17 +142,33 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
         return reads;
     }
 
-    @Test(expectedExceptions = GATKException.class)
-    public void testReadsPairsSpanningMultiplePartitionsCrash() {
-        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+    @Test
+    public void testReadsPairsSpanningMultiplePartitions() {
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         header.setSortOrder(SAMFileHeader.SortOrder.queryname);
-        List<GATKRead> reads = createPairedReads(header, 40, 2);
-        // Creating one group in the middle that should cause problems
-        reads.addAll(40, createPairedReads(header, 1, 30));
+        final List<GATKRead> reads = createPairedReads(header, 40, 2);
+        reads.addAll(createPairedReads(header, 1, 30));
+        reads.sort(Comparator.comparing(GATKRead::getName));
 
-        JavaRDD<GATKRead> problemReads = ctx.parallelize(reads,5 );
-        SparkUtils.putReadsWithTheSameNameInTheSamePartition(header, problemReads, ctx);
+        final JavaRDD<GATKRead> problemReads = ctx.parallelize(reads,5 );
+        final JavaRDD<GATKRead> fixedReads =
+                SparkUtils.putReadsWithTheSameNameInTheSamePartition(header, problemReads, ctx);
+        final List<Tuple2<String, Iterable<Integer>>> xPartitionPairs = fixedReads
+                .mapPartitionsWithIndex(( idx, itr ) -> {
+                    final Set<Tuple2<String, Integer>> readLocs = new HashSet<>();
+                    while ( itr.hasNext() ) readLocs.add(new Tuple2<>(itr.next().getName(), idx));
+                    return readLocs.iterator();
+                }, false)
+                .mapToPair(t -> t)
+                .groupByKey()
+                .filter(t -> Iterators.size(t._2().iterator()) > 1)
+                .collect();
+        Assert.assertEquals(xPartitionPairs.size(), 0);
+        final List<GATKRead> repartitionedReads = fixedReads.collect();
+        for ( int idx = 0; idx != reads.size(); ++idx ) {
+            Assert.assertEquals(reads.get(idx).getName(), repartitionedReads.get(idx).getName());
+        }
     }
 
     @Test

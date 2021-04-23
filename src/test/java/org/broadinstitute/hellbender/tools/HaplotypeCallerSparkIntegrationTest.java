@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -294,7 +295,7 @@ public class HaplotypeCallerSparkIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testReferenceMultiSourceIsSerializable() {
-        final ReferenceMultiSparkSource args = new ReferenceMultiSparkSource(GATKBaseTest.b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final ReferenceMultiSparkSource args = new ReferenceMultiSparkSource(new GATKPath(GATKBaseTest.b37_reference_20_21), ReferenceWindowFunctions.IDENTITY_FUNCTION);
         SparkTestUtils.roundTripInKryo(args, ReferenceMultiSparkSource.class, SparkContextFactory.getTestSparkContext().getConf());
     }
 

@@ -9,11 +9,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.PrintStream;
 
 /**
@@ -32,18 +29,13 @@ public final class ExampleIntervalWalker extends IntervalWalker {
     private OptionalVariantInputArgumentCollection optionalVariants = new OptionalVariantInputArgumentCollection();
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private File outputFile = null;
+    private GATKPath outputFile = null;
 
     private PrintStream outputStream = null;
 
     @Override
     public void onTraversalStart() {
-        try {
-            outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
-        }
-        catch ( final FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(outputFile, e);
-        }
+        outputStream = outputFile != null ? new PrintStream(outputFile.getOutputStream()) : System.out;
     }
 
     @Override

@@ -1,5 +1,6 @@
 ##fileformat=VCFv4.2
 ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=LowQual,Description="Low quality">
 ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
@@ -9,7 +10,6 @@
 ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
 ##FORMAT=<ID=RGQ,Number=1,Type=Integer,Description="Unconditional reference genotype confidence, encoded as a phred quality -10*log10 p(genotype call is wrong)">
 ##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
-##GATKCommandLine=<ID=GenotypeGVCFs,CommandLine="GenotypeGVCFs  --output /Users/davidben/broad/gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/gvcfExample1.gatk3.7_30_ga4f720357.expected.vcf --variant /Users/davidben/broad/gatk/src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/gvcfExample1.vcf --intervals 20 --reference /Users/davidben/broad/gatk/src/test/resources/large/human_g1k_v37.20.21.fasta --verbosity ERROR  --include-non-variant-sites false --use-new-qual-calculator true --use-old-qual-calculator false --annotate-with-num-discovered-alleles false --heterozygosity 0.001 --indel-heterozygosity 1.25E-4 --heterozygosity-stdev 0.01 --standard-min-confidence-threshold-for-calling 30.0 --max-alternate-alleles 6 --max-genotype-count 1024 --sample-ploidy 2 --num-reference-samples-if-no-call 0 --only-output-calls-starting-in-intervals false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --disable-tool-default-annotations false --enable-all-annotations false",Version=Unavailable,Date="January 27, 2019 1:19:14 AM EST">
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
@@ -116,9 +116,8 @@
 ##contig=<ID=NC_007605,length=171823>
 ##contig=<ID=hs37d5,length=35477943>
 ##reference=file:///Users/ebanks/Sting_unstable/../references/hs37d5.fasta
-##source=GenotypeGVCFs
 ##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA1
-20	69511	.	A	G	2270.03	.	AC=2;AF=1.00;AN=2;BaseQRankSum=1.17;DP=82;ExcessHet=3.0103;FS=3.716;MLEAC=2;MLEAF=1.00;MQ=31.05;MQ0=0;MQRankSum=-8.660e-01;QD=28.38;ReadPosRankSum=1.69;SOR=0.771	GT:AD:DP:GQ:PL	1/1:1,79:80:99:2284,207,0
-20	69635	.	C	T	81.60	.	AC=1;AF=0.500;AN=2;BaseQRankSum=0.937;DP=7;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=34.15;MQ0=0;MQRankSum=1.30;QD=11.66;ReadPosRankSum=1.75;SOR=0.495	GT:AD:DP:GQ:PL	0/1:4,3:7:89:89,0,119
+20	69511	.	A	G	2270.06	.	AC=2;AF=1.00;AN=2;BaseQRankSum=1.17;DP=82;ExcessHet=3.0103;FS=3.716;MLEAC=2;MLEAF=1.00;MQ=31.05;MQ0=0;MQRankSum=-8.660e-01;QD=28.38;ReadPosRankSum=1.69;SOR=0.771	GT:AD:DP:GQ:PL	1/1:1,79:80:99:2284,207,0
+20	69635	.	C	T	81.64	.	AC=1;AF=0.500;AN=2;BaseQRankSum=0.937;DP=7;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=34.15;MQ0=0;MQRankSum=1.30;QD=11.66;ReadPosRankSum=1.75;SOR=0.495	GT:AD:DP:GQ:PL	0/1:4,3:7:89:89,0,119
 20	69772	.	TTATC	T	81.60	.	AC=1;AF=0.500;AN=2;BaseQRankSum=0.937;DP=7;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=34.15;MQ0=0;MQRankSum=1.30;QD=11.66;ReadPosRankSum=1.75;SOR=0.495	GT:AD:DP:GQ:PL	0/1:4,3:7:89:89,0,119

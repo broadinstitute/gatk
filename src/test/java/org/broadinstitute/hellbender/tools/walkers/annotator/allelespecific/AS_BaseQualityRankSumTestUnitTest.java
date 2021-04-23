@@ -90,7 +90,7 @@ public class AS_BaseQualityRankSumTestUnitTest extends ReducibleAnnotationBaseTe
         String secondExpected = String.format("%.1f",Math.round(Math.floor((expectedAlt2.getZ() )/0.1))*0.1);
 
         // Note, when we output the raw annotated RankSum score, we output the MannWhitneyU test Z value as a histogram for each alt allele
-        final String expectedAnnotation = AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM + firstExpected + ",1" + AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM + secondExpected + ",1";
+        final String expectedAnnotation = AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM + firstExpected + ",1" + AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM + secondExpected + ",1";
 
         final MannWhitneyU.Result annotateResult = mannWhitneyU.test(Stream.concat(Arrays.stream(alt1BaseQuals).boxed(), Arrays.stream(alt2BaseQuals).boxed()).mapToDouble(i->(double)i).toArray(), Arrays.stream(refBaseQuals).asDoubleStream().toArray(), MannWhitneyU.TestType.FIRST_DOMINATES);
         final double annotateZScore = annotateResult.getZ();

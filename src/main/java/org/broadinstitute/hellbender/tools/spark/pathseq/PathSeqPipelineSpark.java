@@ -70,7 +70,7 @@ import java.util.List;
  *     <li>Host k-mer file generated using PathSeqBuildKmers</li>
  *     <li>Host BWA-MEM index image generated using BwaMemIndexImageCreator</li>
  *     <li>Microbe BWA-MEM index image generated using BwaMemIndexImageCreator</li>
- *     <li>Indexed microbe reference FASTA file</li>
+ *     <li>Indexed microbe reference dictionary (fasta file NOT required)</li>
  *     <li>Taxonomy file generated using PathSeqBuildReferenceTaxonomy</li>
  * </ul>
  *
@@ -98,7 +98,7 @@ import java.util.List;
  *   --kmer-file host_kmers.bfi \
  *   --filter-bwa-image host_reference.img \
  *   --microbe-bwa-image microbe_reference.img \
- *   --microbe-fasta reference.fa \
+ *   --microbe-dict reference.dict \
  *   --taxonomy-file taxonomy.db \
  *   --min-clipped-read-length 60 \
  *   --min-score-identity 0.90 \
@@ -117,7 +117,7 @@ import java.util.List;
  *   --kmer-file hdfs://my-cluster-m:8020//host_kmers.bfi \
  *   --filter-bwa-image /references/host_reference.img \
  *   --microbe-bwa-image /references/microbe_reference.img \
- *   --microbe-fasta hdfs://my-cluster-m:8020//reference.fa \
+ *   --microbe-dict hdfs://my-cluster-m:8020//reference.dict \
  *   --taxonomy-file hdfs://my-cluster-m:8020//taxonomy.db \
  *   --min-clipped-read-length 60 \
  *   --min-score-identity 0.90 \
@@ -136,11 +136,12 @@ import java.util.List;
  *   --conf spark.executor.memoryOverhead=132000
  * </pre>
  *
- * <p>Note that the host and microbe BWA images must be copied to the same paths on every worker node. The microbe FASTA,
+ * <p>Note that the host and microbe BWA images must be copied to the same paths on every worker node. The microbe dictionary,
  * host k-mer file, and taxonomy file may also be copied to a single path on every worker node or to HDFS.</p>
  *
  * <h3>References</h3>
  * <ol>
+ *     <li>Walker, M. A., Pedamallu, C. S. et al. (2018). GATK PathSeq: a customizable computational tool for the discovery and identification of microbial sequences in libraries from eukaryotic hosts. Bioinformatics. 34, 4287-4289.</li>
  *     <li>Kostic, A. D. et al. (2011). PathSeq: software to identify or discover microbes by deep sequencing of human tissue. Nat. Biotechnol. 29, 393-396.</li>
  * </ol>
  *
@@ -155,7 +156,6 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     public static final String READS_PER_PARTITION_LONG_NAME = "pipeline-reads-per-partition";
-    public static final String READS_PER_PARTITION_SHORT_NAME = READS_PER_PARTITION_LONG_NAME;
 
     @ArgumentCollection
     public PSFilterArgumentCollection filterArgs = new PSFilterArgumentCollection();
@@ -174,7 +174,6 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
     @Argument(doc = "Number of reads per partition to use for alignment and scoring.",
             fullName = READS_PER_PARTITION_LONG_NAME,
-            shortName = READS_PER_PARTITION_SHORT_NAME,
             optional = true,
             minValue = 100)
     public int readsPerPartition = 5000;
@@ -258,7 +257,7 @@ public class PathSeqPipelineSpark extends GATKSparkTool {
 
         //Bwa pathogen alignment
         final PSBwaAlignerSpark aligner = new PSBwaAlignerSpark(ctx, bwaArgs);
-        PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.referencePath, getReferenceWindowFunction());
+        PSBwaUtils.addReferenceSequencesToHeader(header, bwaArgs.microbeDictionary);
         final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
         JavaRDD<GATKRead> alignedPairedReads = aligner.doBwaAlignment(pairedReads, true, headerBroadcast);
         JavaRDD<GATKRead> alignedUnpairedReads = aligner.doBwaAlignment(unpairedReads, false, headerBroadcast);

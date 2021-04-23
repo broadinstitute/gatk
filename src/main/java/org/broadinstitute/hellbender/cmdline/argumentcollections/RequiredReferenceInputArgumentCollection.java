@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.WorkflowInput;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-
-import java.io.File;
+import org.broadinstitute.hellbender.engine.GATKPath;
 
 /**
  * An argument collection for use with tools that require a reference file as input.
@@ -12,10 +12,11 @@ public final class RequiredReferenceInputArgumentCollection extends ReferenceInp
     private static final long serialVersionUID = 1L;
 
     @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file", optional = false)
-    private String referenceFileName;
+    @WorkflowInput(requiredCompanions = { StandardArgumentDefinitions.REFERENCE_INDEX_COMPANION, StandardArgumentDefinitions.REFERENCE_DICTIONARY_COMPANION})
+    private GATKPath referenceInputPathSpecifier;
 
     @Override
-    public String getReferenceFileName() {
-        return referenceFileName;
+    public GATKPath getReferenceSpecifier() {
+        return referenceInputPathSpecifier;
     }
 }

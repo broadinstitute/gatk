@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -57,12 +58,13 @@ public final class PSUtils {
     /**
      * Same as GATKSparkTool's getRecommendedNumReducers(), but can specify input BAM path (for when --input is not used)
      */
+    //TODO: fix this
     public static int pathseqGetRecommendedNumReducers(final String inputPath, final int numReducers,
                                                        final int targetPartitionSize) {
         if (numReducers != 0) {
             return numReducers;
         }
-        return 1 + (int) (BucketUtils.dirSize(inputPath) / targetPartitionSize);
+        return 1 + (int) (BucketUtils.dirSize(new GATKPath(inputPath)) / targetPartitionSize);
     }
 
     /**

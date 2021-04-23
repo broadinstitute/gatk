@@ -6,7 +6,9 @@ import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -138,7 +140,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try ( final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath()) ) {
+        try ( final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath()) ) {
             for ( GATKRead read : outputReads ) {
                 ++totalReads;
 
@@ -239,7 +241,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try (final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath())) {
+        try (final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath())) {
             for (GATKRead read : outputReads) {
                 ++totalReads;
 
@@ -305,7 +307,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try (final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath())) {
+        try (final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath())) {
             for (GATKRead read : outputReads) {
                 ++totalReads;
 
@@ -364,7 +366,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try ( final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath()) ) {
+        try ( final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath()) ) {
             for ( GATKRead read : outputReads ) {
                 ++totalReads;
 
@@ -419,7 +421,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try (final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath())) {
+        try (final ReadsDataSource outputReads = new ReadsPathDataSource(outputFile.toPath())) {
             for (GATKRead read : outputReads) {
                 ++totalReads;
 
@@ -460,7 +462,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         args.addInput(getTestFile("hashCollisionedReads.bam"));
         runCommandLine(args);
 
-        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(output.toPath()) ) {
+        try ( final ReadsDataSource outputReadsSource = new ReadsPathDataSource(output.toPath()) ) {
             final List<GATKRead> actualReads = new ArrayList<>();
             for ( final GATKRead read : outputReadsSource ) {
                 Assert.assertFalse(read.isDuplicate());
@@ -492,6 +494,33 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         args.addInput(new File(TEST_DATA_DIR,"example.chr1.1-1K.unmarkedDups.noDups.bam"));
         args.addFlag(MarkDuplicatesSpark.ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG);
         runCommandLine(args);
+    }
+
+    @Test
+    public void testNullOpticalDuplicates() {
+        final File output = createTempFile("supplementaryReadUnmappedMate", "bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addOutput(output);
+        args.addInput(new File(TEST_DATA_DIR,"optical_dupes.bam"));
+        args.addFlag(MarkDuplicatesSpark.ALLOW_MULTIPLE_SORT_ORDERS_IN_INPUT_ARG);
+        args.add(OpticalDuplicatesArgumentCollection.READ_NAME_REGEX_LONG_NAME, "null");
+        args.addRaw("--"+StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        File metricsFile = createTempFile("markdups_metrics", ".txt");
+        args.addRaw(metricsFile.getAbsolutePath());
+        runCommandLine(args);
+
+        final MetricsFile<GATKDuplicationMetrics, Comparable<?>> metricsOutput = new MetricsFile<>();
+        try {
+            metricsOutput.read(new FileReader(metricsFile));
+        } catch (final FileNotFoundException ex) {
+            System.err.println("Metrics file not found: " + ex);
+        }
+        final List<GATKDuplicationMetrics> nonEmptyMetrics = getGatkDuplicationMetrics(metricsOutput);
+
+        // Assert that optical duplicates were not counted
+        Assert.assertEquals(nonEmptyMetrics.get(0).READ_PAIR_DUPLICATES, 1);
+        Assert.assertEquals(nonEmptyMetrics.get(0).READ_PAIR_OPTICAL_DUPLICATES, 0);
+
     }
 
     @Test

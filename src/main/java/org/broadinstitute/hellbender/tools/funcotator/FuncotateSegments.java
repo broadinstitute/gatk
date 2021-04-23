@@ -16,6 +16,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureWalker;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
@@ -87,7 +88,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
             doc = "Input segment file (tab-separated values).  Must have a call column.",
             fullName = CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME
     )
-    private File segmentFile;
+    private GATKPath segmentFile;
 
     @ArgumentCollection
     private final FuncotatorSegmentArgumentCollection funcotatorArgs = new FuncotatorSegmentArgumentCollection();
@@ -96,7 +97,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
         renderer might further transform the name.*/
     @Argument(doc="(Advanced) Mapping between an alias and key values that are recognized by the backend.  Users should not typically have to specify this.",
             fullName = MAPPING_FULL_NAME)
-    private List<String> aliasToKeyMappingAsString = MAPPING_DEFAULT;
+    private List<String> aliasToKeyMappingAsString = new ArrayList<>(MAPPING_DEFAULT);
 
     private LinkedHashMap<String, String> aliasToKeyMapping;
 
@@ -142,10 +143,13 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
                 funcotatorArgs.transcriptSelectionMode,
                 finalUserTranscriptIdSet,
                 this,
-                funcotatorArgs.lookaheadFeatureCachingInBp, new FlankSettings(0,0), true)
-                .stream()
-                .filter(DataSourceFuncotationFactory::isSupportingSegmentFuncotation)
-                .collect(Collectors.toList());
+                funcotatorArgs.lookaheadFeatureCachingInBp,
+                new FlankSettings(0,0),
+                true,
+                funcotatorArgs.minNumBasesForValidSegment
+        ).stream()
+         .filter(DataSourceFuncotationFactory::isSupportingSegmentFuncotation)
+         .collect(Collectors.toList());
 
         // Log the datasources
         logger.info("The following datasources support funcotation on segments: ");
@@ -201,7 +205,7 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
     }
 
     @Override
-    public File getDrivingFeatureFile() {
+    public GATKPath getDrivingFeaturePath() {
         return segmentFile;
     }
 

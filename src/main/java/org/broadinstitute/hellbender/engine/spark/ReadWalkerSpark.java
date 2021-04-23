@@ -83,7 +83,7 @@ public abstract class ReadWalkerSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(JavaSparkContext ctx) {
-        referenceFileName = addReferenceFilesForSpark(ctx, referenceArguments.getReferenceFileName());
+        referenceFileName = addReferenceFilesForSpark(ctx, referenceArguments.getReferencePath());
         processReads(getReads(ctx), ctx);
     }
 

@@ -9,10 +9,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +31,7 @@ import java.util.List;
 public class ExampleTwoPassVariantWalker extends TwoPassVariantWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "Output vcf", optional = true)
-    private File outputVcf = null;
+    private GATKPath outputVcf = null;
 
     private final List<Double> qualByDepths = new ArrayList<>();
 

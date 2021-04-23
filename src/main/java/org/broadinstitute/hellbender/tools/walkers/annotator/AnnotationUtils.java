@@ -1,11 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+
 import java.util.*;
 
 public final class AnnotationUtils {
-    public static final String ALLELE_SPECIFIC_PRINT_DELIM = "|";
+    public static final String ALLELE_SPECIFIC_RAW_DELIM = "|";
     public static final String ALLELE_SPECIFIC_REDUCED_DELIM = ",";
     public static final String ALLELE_SPECIFIC_SPLIT_REGEX = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String BRACKET_REGEX = "\\[|\\]";
@@ -36,12 +42,21 @@ public final class AnnotationUtils {
     }
 
     /**
-     * Helper function to convert a List of Strings to a pipe-separated String, as for raw annotations
+     * Helper function to convert a List of Strings to a @{value ALLELE_SPECIFIC_RAW_DELIM)-separated String, as for raw annotations
      * @param somethingList the ArrayList with String data
-     * @return a pipe-separated String
+     * @return a delimited String
      */
-    public static String encodeAnyASList( final List<?> somethingList) {
-        return StringUtils.join(somethingList, ALLELE_SPECIFIC_PRINT_DELIM).replaceAll(BRACKET_REGEX, "");  //Who actually wants brackets at the ends of their string?  Who???
+    public static String encodeAnyASListWithRawDelim(final List<?> somethingList) {
+        return StringUtils.join(somethingList, ALLELE_SPECIFIC_RAW_DELIM).replaceAll(BRACKET_REGEX, "");  //Who actually wants brackets at the ends of their string?  Who???
+    }
+
+    /**
+     * Helper method to split a "raw" annotation string delimited with {@value ALLELE_SPECIFIC_RAW_DELIM}
+     * @param somethingList a String, possibly read from a VCF
+     * @return a List of Strings
+     */
+    public static List<String> decodeAnyASListWithRawDelim(final String somethingList) {
+        return Arrays.asList(StringUtils.splitByWholeSeparatorPreserveAllTokens(somethingList.replaceAll(BRACKET_REGEX, ""), ALLELE_SPECIFIC_RAW_DELIM));
     }
 
     /**
@@ -75,5 +90,17 @@ public final class AnnotationUtils {
             rawDataString = rawDataString.substring(1, rawDataString.length() - 1).replaceAll("\\s", "");
         }
         return Arrays.asList(rawDataString.split(ALLELE_SPECIFIC_SPLIT_REGEX));
+    }
+
+    static String generateMissingDataWarning(final VariantContext vc, final Genotype g, final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
+        final StringBuilder outString = new StringBuilder("Annotation will not be calculated at position " + vc.getContig() + ":" + vc.getStart() +
+                " and possibly subsequent");
+        if (!g.isCalled()) {
+            outString.append("; genotype for sample " + g.getSampleName() + " is not called");
+        }
+        if (likelihoods == null) {
+            outString.append("; alleleLikelihoodMap is null");
+        }
+        return outString.toString();
     }
 }

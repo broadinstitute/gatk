@@ -17,7 +17,7 @@ public class MultiIntervalLocalReadShardUnitTest extends GATKBaseTest {
 
     @DataProvider
     public Object[][] shardBoundsTestData() {
-        final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam"));
+        final ReadsDataSource readsSource = new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam"));
 
         return new Object[][] {
                 // Shard, expected shard intervals, expected padded shard intervals
@@ -116,7 +116,7 @@ public class MultiIntervalLocalReadShardUnitTest extends GATKBaseTest {
 
     @DataProvider
     public Object[][] shardIterationTestData() {
-        final ReadsDataSource readsSource = new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam"));
+        final ReadsDataSource readsSource = new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam"));
 
         final ReadFilter keepReadBOnly = new ReadFilter() {
             private static final long serialVersionUID = 1l;

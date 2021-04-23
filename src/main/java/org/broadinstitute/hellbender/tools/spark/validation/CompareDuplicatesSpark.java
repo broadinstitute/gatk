@@ -12,6 +12,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.LibraryIdGenerator;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -134,7 +135,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
             traversalParameters = null;
         }
 
-        JavaRDD<GATKRead> secondReads = removeNonReadGroupAttributes(readsSource2.getParallelReads(input2, null, traversalParameters, bamPartitionSplitSize, useNio));
+        JavaRDD<GATKRead> secondReads = removeNonReadGroupAttributes(readsSource2.getParallelReads(new GATKPath(input2), null, traversalParameters, bamPartitionSplitSize, useNio));
 
         // Start by verifying that we have same number of reads and duplicates in each BAM.
         long firstBamSize = firstReads.count();

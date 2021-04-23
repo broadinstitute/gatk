@@ -314,6 +314,12 @@ public final class DataLine {
         return values[index];
     }
 
+    public String get() {
+        final String result = get(nextIndex);
+        nextIndex++;
+        return result;
+    }
+
     /**
      * Returns the int value in a column by its index.
      *
@@ -334,6 +340,19 @@ public final class DataLine {
     }
 
     /**
+     * Returns the int value in a column at the current column index and advance it.
+     *
+     * @return any int value.
+     * @throws IllegalStateException    if the current column has not been initialized and contains a {@code null}.
+     * @throws RuntimeException         if the value at that target column cannot be transformed into an integer.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link DataLine}.
+     */
+    public int getInt() {
+        return getInt(nextIndex++);
+    }
+
+    /**
      * Returns the long value in a column by its index.
      *
      * @param index the target column index.
@@ -350,6 +369,12 @@ public final class DataLine {
         } catch (final NumberFormatException ex) {
             throw formatErrorFactory.apply(String.format("expected long value for column %s but found %s", columns.nameAt(index), get(index)));
         }
+    }
+
+    public long getLong() {
+        final long result = getLong(nextIndex);
+        nextIndex++;
+        return result;
     }
 
     /**
@@ -814,5 +839,51 @@ public final class DataLine {
      */
     public long getLineNumber() {
         return lineNumber;
+    }
+
+    /**
+     *
+     * @param index
+     * @return
+     */
+    public byte getByte(final int index) {
+        try {
+            return Byte.parseByte(get(index));
+        } catch (final NumberFormatException ex) {
+            throw formatErrorFactory.apply(String.format("expected byte value for column %s but found %s", columns.nameAt(index), get(index)));
+        }
+    }
+
+    /**
+     * Returns the byte value of a column by its name.
+     * <p>
+     * The target column name is resolved as the string returned by {@link Object#toString toString} applied
+     * to the input enum.
+     * </p>
+     *
+     * @param column the enum value that provides the name of the column.
+     * @return any int value.
+     * @throws IllegalArgumentException if {@code column} is {@code null} or it does not point to a
+     *         known column name.
+     * @throws IllegalStateException    if that column values is undefined ({@code null}).
+     * @throws RuntimeException         if the value at that target column cannot be transform into a byte.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link DataLine}.
+     */
+    public byte getByte(final String column) {
+        return getByte(columnIndex(column));
+    }
+
+    /**
+     * Returns the byte value in a column at the current column index and advance it.
+     *
+     * @return any byte value.
+     * @throws IllegalStateException    if the current column has not been initialized and contains a {@code null}.
+     * @throws RuntimeException         if the value at that target column cannot be transformed into a byte.
+     *                                  The exact class of the exception will depend on the exception factory provided when creating this
+     *                                  {@link DataLine}.
+     */
+    public byte getByte() {
+        return getByte(nextIndex++);
     }
 }

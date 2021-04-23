@@ -6,11 +6,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.List;
 
@@ -29,7 +26,7 @@ import java.util.List;
 public class ExampleLocusWalker extends LocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", common = false, optional = true)
-    private File OUTPUT_FILE = null;
+    private GATKPath OUTPUT_FILE = null;
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "One or more VCF files", optional = true)
     private List<FeatureInput<VariantContext>> variants;
@@ -38,12 +35,7 @@ public class ExampleLocusWalker extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
-        try {
-            outputStream = OUTPUT_FILE != null ? new PrintStream(OUTPUT_FILE) : System.out;
-        }
-        catch ( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(OUTPUT_FILE, e);
-        }
+        outputStream = OUTPUT_FILE != null ? new PrintStream(OUTPUT_FILE.getOutputStream()) : System.out;
     }
 
     @Override

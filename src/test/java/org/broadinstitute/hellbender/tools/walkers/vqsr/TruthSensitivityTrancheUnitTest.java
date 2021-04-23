@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -43,7 +44,7 @@ public final class TruthSensitivityTrancheUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = {UserException.MalformedFile.class})
     public final void readBadFormat() throws IOException{
-        TruthSensitivityTranche.readTranches(QUAL_DATA);
+        TruthSensitivityTranche.readTranches(new GATKPath(QUAL_DATA.getAbsolutePath()));
     }
 
     @Test
@@ -57,7 +58,7 @@ public final class TruthSensitivityTrancheUnitTest extends GATKBaseTest {
     }
 
     public final List<TruthSensitivityTranche> read(File f) throws IOException{
-        return TruthSensitivityTranche.readTranches(f);
+        return TruthSensitivityTranche.readTranches(new GATKPath(f.getAbsolutePath()));
     }
 
     private static void assertTranchesAreTheSame(List<TruthSensitivityTranche> newFormat, List<TruthSensitivityTranche> oldFormat) {

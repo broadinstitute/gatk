@@ -129,7 +129,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         for (int i = 0; i< vcAlleles.size(); i++) {
             if (!vcAlleles.get(i).isReference()) {
                 if (i != 0) { //strings will always start with a printDelim because we won't have values for the reference allele, but keep this for consistency with other annotations
-                    annotationString += AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM;
+                    annotationString += AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM;
                 }
                 final Double alleleValue = perAlleleValues.get(vcAlleles.get(i));
                 //can be null if there are no ref reads
@@ -300,7 +300,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
         for (int i = 0; i< vcAlleles.size(); i++) {
             if (!vcAlleles.get(i).isReference()) {
                 if (i != 0) {    //strings will always start with a printDelim because we won't have values for the reference allele, but keep this for consistency with other annotations
-                    annotationString += AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM;
+                    annotationString += AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM;
                 }
                 final Histogram alleleValue = perAlleleValues.get(vcAlleles.get(i));
                 //can be null if there are no ref reads

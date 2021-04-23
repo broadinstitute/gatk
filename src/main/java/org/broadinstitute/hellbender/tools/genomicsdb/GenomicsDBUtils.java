@@ -134,7 +134,8 @@ public class GenomicsDBUtils {
                         .setProduceGTWithMinPLValueForSpanningDeletions(false)
                         .setSitesOnlyQuery(false)
                         .setMaxDiploidAltAllelesThatCanBeGenotyped(genomicsDBOptions.getMaxDiploidAltAllelesThatCanBeGenotyped())
-                        .setMaxGenotypeCount(genomicsDBOptions.getMaxGenotypeCount());
+                        .setMaxGenotypeCount(genomicsDBOptions.getMaxGenotypeCount())
+                        .setEnableSharedPosixfsOptimizations(genomicsDBOptions.sharedPosixFSOptimizations());
 
         final Path arrayFolder = Paths.get(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
 
@@ -266,7 +267,7 @@ public class GenomicsDBUtils {
             infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
             lengthDescriptorComponentBuilder.setVariableLengthDescriptor("var"); //ignored - can set anything here
             infoBuilder.addLength(lengthDescriptorComponentBuilder.build());
-            infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_PRINT_DELIM);
+            infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM);
             infoBuilder.addVcfDelimiter(AnnotationUtils.ALLELE_SPECIFIC_REDUCED_DELIM);
 
             if (newCombineOperation.equals(HISTOGRAM_SUM)) {

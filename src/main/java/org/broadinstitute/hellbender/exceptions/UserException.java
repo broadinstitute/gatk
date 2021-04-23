@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -58,16 +59,16 @@ public class UserException extends RuntimeException {
             super(String.format("Couldn't read file. Error was: %s with exception: %s", message, getMessage(e)), e);
         }
 
-        public CouldNotReadInputFile(File file) {
-            super(String.format("Couldn't read file %s", file.getAbsolutePath()));
+        public CouldNotReadInputFile(final GATKPath file, final String message) {
+            super(String.format("Couldn't read file %s. Error was: %s", file.getRawInputString(), message));
+        }
+
+        public CouldNotReadInputFile(final GATKPath file, final String message, final Throwable cause) {
+            super(String.format("Couldn't read file %s. Error was: %s", file.getRawInputString(), message), cause);
         }
 
         public CouldNotReadInputFile(Path file) {
             super(String.format("Couldn't read file %s", file.toAbsolutePath().toUri()));
-        }
-
-        public CouldNotReadInputFile(File file, String message) {
-            super(String.format("Couldn't read file %s. Error was: %s", file.getAbsolutePath(), message));
         }
 
         public CouldNotReadInputFile(Path file, String message) {
@@ -78,16 +79,12 @@ public class UserException extends RuntimeException {
             super(String.format("Couldn't read file %s. Error was: %s", file.toAbsolutePath().toUri(), message), cause);
         }
 
+        public CouldNotReadInputFile(String source, String message, Throwable cause) {
+            super(String.format("Couldn't read file %s. Error was: %s", source, message), cause);
+        }
+
         public CouldNotReadInputFile(String file, String message) {
             super(String.format("Couldn't read file %s. Error was: %s", file, message));
-        }
-
-        public CouldNotReadInputFile(File file, String message, Exception e) {
-            super(String.format("Couldn't read file %s. Error was: %s with exception: %s", file.getAbsolutePath(), message, getMessage(e)), e);
-        }
-
-        public CouldNotReadInputFile(File file, Exception e) {
-            this(file, getMessage(e), e);
         }
 
         public CouldNotReadInputFile(Path path, Exception e) {
@@ -140,9 +137,12 @@ public class UserException extends RuntimeException {
     public static class CouldNotCreateOutputFile extends UserException {
         private static final long serialVersionUID = 0L;
 
+        public CouldNotCreateOutputFile(final GATKPath file, final String message, final Exception e) {
+            super(String.format("Couldn't write file %s because %s with exception %s", file.getRawInputString(), message, getMessage(e)), e);
+        }
 
-        public CouldNotCreateOutputFile(File file, String message, Exception e) {
-            super(String.format("Couldn't write file %s because %s with exception %s", file.getAbsolutePath(), message, getMessage(e)), e);
+        public CouldNotCreateOutputFile(final GATKPath file, final String message) {
+            super(String.format("Couldn't write file %s because %s", file.getRawInputString(), message));
         }
 
         public CouldNotCreateOutputFile(File file, String message) {
@@ -242,12 +242,12 @@ public class UserException extends RuntimeException {
             super(String.format("Unknown file is malformed: %s", message));
         }
 
-        public MalformedFile(File f, String message) {
-            super(String.format("File %s is malformed: %s", f.getAbsolutePath(), message));
+        public MalformedFile(final GATKPath f, final String message) {
+            super(String.format("File %s is malformed: %s", f.getRawInputString(), message));
         }
 
-        public MalformedFile(File f, String message, Exception e) {
-            super(String.format("File %s is malformed: %s caused by %s", f.getAbsolutePath(), message, getMessage(e)), e);
+        public MalformedFile(final GATKPath f, final String message, final Exception e) {
+            super(String.format("File %s is malformed: %s caused by %s", f.getRawInputString(), message, getMessage(e)), e);
         }
 
         public MalformedFile(Path p, String message) {
@@ -341,9 +341,13 @@ public class UserException extends RuntimeException {
 
     public static class MissingContigInSequenceDictionary extends UserException {
         private static final long serialVersionUID = 1L;
-        public MissingContigInSequenceDictionary(String contigName, SAMSequenceDictionary dict1) {
-            super(String.format("Contig %s not present in the sequence dictionary %s\n",
-                    contigName, ReadUtils.prettyPrintSequenceRecords(dict1)));
+        public MissingContigInSequenceDictionary(String message){
+            super(message);
+        }
+
+        public MissingContigInSequenceDictionary(String contigName, SAMSequenceDictionary dict) {
+            this(String.format("Contig %s not present in the sequence dictionary %s\n",
+                    contigName, ReadUtils.prettyPrintSequenceRecords(dict)));
         }
     }
 
@@ -388,13 +392,6 @@ public class UserException extends RuntimeException {
                             .limit(20)
                             .collect(Collectors.joining(",")));
         }
-    }
-
-    public static final class Require2BitReferenceForBroadcast extends BadInput {
-        private static final long serialVersionUID = 0L;
-        public Require2BitReferenceForBroadcast() {
-            super("Running this tool with BROADCAST strategy requires a 2bit reference. To create a 2bit reference from an existing fasta file, download faToTwoBit from the link on https://genome.ucsc.edu/goldenPath/help/twoBit.html, then run faToTwoBit in.fasta out.2bit");
-	}
     }
 
     public static final class NoSuitableCodecs extends  UserException {

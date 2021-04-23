@@ -102,7 +102,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        if (! BucketUtils.isCloudStorageUrl(inputGCSPath)) {
+        if (! BucketUtils.isGcsUrl(inputGCSPath)) {
             throw new UserException("Input path "+ inputGCSPath + " is not a GCS URI");
         }
 

@@ -1,9 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -47,6 +51,7 @@ public final class AlleleSubsettingUtils {
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
                                                  final List<Allele> originalAlleles,
                                                  final List<Allele> allelesToKeep,
+                                                 final GenotypePriorCalculator gpc,
                                                  final GenotypeAssignmentMethod assignmentMethod,
                                                  final int depth) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
@@ -92,7 +97,7 @@ public final class AlleleSubsettingUtils {
             else {
                 gb.noPL().noGQ();
             }
-            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles());
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles(), gpc);
 
             // restrict SAC to the new allele subset
             if (g.hasExtendedAttribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY)) {
@@ -140,7 +145,7 @@ public final class AlleleSubsettingUtils {
                 }
             }
             gb.alleles(keepGTAlleles);
-            gb.AD(ReferenceConfidenceVariantContextMerger.generateAD(g.getAD(), relevantIndices));
+            gb.AD(generateAD(g.getAD(), relevantIndices));
             Set<String> keys = g.getExtendedAttributes().keySet();
             for (final String key : keys) {
                 final VCFFormatHeaderLine headerLine = outputHeader.getFormatHeaderLine(key);
@@ -383,5 +388,202 @@ public final class AlleleSubsettingUtils {
             }
         }
         return  result;
+    }
+
+    /**
+     * Determines the allele mapping from myAlleles to the targetAlleles, substituting the generic "<NON_REF>" as appropriate.
+     * If the remappedAlleles set does not contain "<NON_REF>" as an allele, it throws an exception.
+     *
+     * @param remappedAlleles   the list of alleles to evaluate
+     * @param targetAlleles     the target list of alleles
+     * @param position          position to output error info
+     * @param g                 genotype from which targetAlleles are derived
+     * @return non-null array of ints representing indexes
+     */
+     public static int[] getIndexesOfRelevantAllelesForGVCF(final List<Allele> remappedAlleles, final List<Allele> targetAlleles, final int position, final Genotype g, final boolean doSomaticMerge) {
+
+        Utils.nonEmpty(remappedAlleles);
+        Utils.nonEmpty(targetAlleles);
+
+        if ( !remappedAlleles.contains(Allele.NON_REF_ALLELE) ) {
+            throw new UserException("The list of input alleles must contain " + Allele.NON_REF_ALLELE + " as an allele but that is not the case at position " + position + "; please use the Haplotype Caller with gVCF output to generate appropriate records");
+        }
+
+        final int indexOfNonRef = remappedAlleles.indexOf(Allele.NON_REF_ALLELE);
+        final int[] indexMapping = new int[targetAlleles.size()];
+
+        // the reference likelihoods should always map to each other (even if the alleles don't)
+        indexMapping[0] = 0;
+
+        // create the index mapping, using the <NON-REF> allele whenever such a mapping doesn't exist
+        for ( int i = 1; i < targetAlleles.size(); i++ ) {
+            // if there's more than 1 spanning deletion (*) allele then we need to use the best one
+            if (targetAlleles.get(i) == Allele.SPAN_DEL && !doSomaticMerge && g.hasPL()) {
+                final int occurrences = Collections.frequency(remappedAlleles, Allele.SPAN_DEL);
+                if (occurrences > 1) {
+                    final int indexOfBestDel = indexOfBestDel(remappedAlleles, g.getPL(), g.getPloidy());
+                    indexMapping[i] = (indexOfBestDel == -1 ? indexOfNonRef : indexOfBestDel);
+                    continue;
+                }
+            }
+
+            final int indexOfRemappedAllele = remappedAlleles.indexOf(targetAlleles.get(i));
+            indexMapping[i] = indexOfRemappedAllele == -1 ? indexOfNonRef : indexOfRemappedAllele;
+        }
+
+        return indexMapping;
+    }
+
+    public static int[] getIndexesOfRelevantAlleles(final List<Allele> remappedAlleles, final List<Allele> targetAlleles, final int position, final Genotype g) {
+        Utils.nonEmpty(remappedAlleles);
+        Utils.nonEmpty(targetAlleles);
+
+        final int[] indexMapping = new int[targetAlleles.size()];
+
+        // the reference likelihoods should always map to each other (even if the alleles don't)
+        indexMapping[0] = 0;
+
+        for ( int i = 1; i < targetAlleles.size(); i++ ) {
+            // if there's more than 1 spanning deletion (*) allele then we need to use the best one
+            if (targetAlleles.get(i) == Allele.SPAN_DEL && g.hasPL()) {
+                final int occurrences = Collections.frequency(remappedAlleles, Allele.SPAN_DEL);
+                if (occurrences > 1) {
+                    final int indexOfBestDel = indexOfBestDel(remappedAlleles, g.getPL(), g.getPloidy());
+                    if (indexOfBestDel == -1) {
+                        throw new IllegalArgumentException("At position " + position + " targetAlleles contains a spanning deletion, but remappedAlleles does not.");
+                    }
+                    indexMapping[i] = indexOfBestDel;
+                    continue;
+                }
+            }
+
+            final int indexOfRemappedAllele = remappedAlleles.indexOf(targetAlleles.get(i));
+            if (indexOfRemappedAllele == -1) {
+                throw new IllegalArgumentException("At position " + position + " targetAlleles contains a " + targetAlleles.get(i) + " allele, but remappedAlleles does not.");
+            }
+            indexMapping[i] = indexOfRemappedAllele;
+        }
+
+        return indexMapping;
+    }
+
+    /**
+     * Returns the index of the best spanning deletion allele based on AD counts
+     *
+     * @param alleles   the list of alleles
+     * @param PLs       the list of corresponding PL values
+     * @param ploidy    the ploidy of the sample
+     * @return the best index or -1 if not found
+     */
+    private static int indexOfBestDel(final List<Allele> alleles, final int[] PLs, final int ploidy) {
+        int bestIndex = -1;
+        int bestPL = Integer.MAX_VALUE;
+
+        for ( int i = 0; i < alleles.size(); i++ ) {
+            if ( alleles.get(i) == Allele.SPAN_DEL ) {
+                final int homAltIndex = findHomIndex(GL_CALCS.getInstance(ploidy, alleles.size()), i, ploidy);
+                final int PL = PLs[homAltIndex];
+                if ( PL < bestPL ) {
+                    bestIndex = i;
+                    bestPL = PL;
+                }
+            }
+        }
+
+        return bestIndex;
+    }
+
+    /** //TODO simplify these methods
+     * Returns the index of the PL that represents the homozygous genotype of the given i'th allele
+     *
+     * @param i           the index of the allele with the list of alleles
+     * @param ploidy      the ploidy of the sample
+     * @return the hom index
+     */
+    private static int findHomIndex(final GenotypeLikelihoodCalculator calculator, final int i, final int ploidy) {
+        // some quick optimizations for the common case
+        if ( ploidy == 2 )
+            return GenotypeLikelihoods.calculatePLindex(i, i);
+        if ( ploidy == 1 )
+            return i;
+
+        final int[] alleleIndexes = new int[ploidy];
+        Arrays.fill(alleleIndexes, i);
+        return calculator.allelesToIndex(alleleIndexes);
+    }
+
+    /**
+     * Generates a new AD array by adding zeros for missing alleles given the set of indexes of the Genotype's current
+     * alleles from the original AD.
+     *
+     * @param originalAD    the original AD to extend
+     * @param indexesOfRelevantAlleles the indexes of the original alleles corresponding to the new alleles
+     * @return non-null array of new AD values
+     */
+    public static int[] generateAD(final int[] originalAD, final int[] indexesOfRelevantAlleles) {
+        final List<Integer> adList = remapRLengthList(Arrays.stream(originalAD).boxed().collect(Collectors.toList()), indexesOfRelevantAlleles, 0);
+        return Ints.toArray(adList);
+    }
+
+    /**
+     * Generates a new AF (allele fraction) array
+     * @param originalAF
+     * @param indexesOfRelevantAlleles
+     * @return non-null array of new AFs
+     */
+    public static double[] generateAF(final double[] originalAF, final int[] indexesOfRelevantAlleles) {
+        final List<Double> afList = remapALengthList(Arrays.stream(originalAF).boxed().collect(Collectors.toList()), indexesOfRelevantAlleles, 0.0);
+        return Doubles.toArray(afList);
+    }
+
+    /**
+     * Given a list of per-allele attributes including the reference allele, subset to relevant alleles
+     * @param originalList
+     * @param indexesOfRelevantAlleles
+     * @return
+     */
+    public static <T> List<T> remapRLengthList(final List<T> originalList, final int[] indexesOfRelevantAlleles, T filler) {
+        Utils.nonNull(originalList);
+        Utils.nonNull(indexesOfRelevantAlleles);
+
+        return remapList(originalList, indexesOfRelevantAlleles, 0, filler);
+    }
+
+    /**
+     * Given a list of per-alt-allele attributes, subset to relevant alt alleles
+     * @param originalList
+     * @param indexesOfRelevantAlleles
+     * @return
+     */
+    public static <T> List<T> remapALengthList(final List<T> originalList, final int[] indexesOfRelevantAlleles, T filler) {
+        Utils.nonNull(originalList);
+        Utils.nonNull(indexesOfRelevantAlleles);
+
+        return remapList(originalList, indexesOfRelevantAlleles, 1, filler);
+    }
+
+    /**
+     * Subset a list of per-allele attributes
+     *
+     * @param originalList  input per-allele attributes
+     * @param indexesOfRelevantAlleles  indexes of alleles to keep, including the reference
+     * @param offset    used to indicate whether to include the ref allele values in the output or not
+     * @param filler default value to use if no value is mapped
+     * @return  a non-null List
+     */
+    private static <T> List<T> remapList(final List<T> originalList, final int[] indexesOfRelevantAlleles,
+                                            final int offset, T filler) {
+        final int numValues = indexesOfRelevantAlleles.length - offset; //since these are log odds, this should just be alts
+        final List<T> newValues = new ArrayList<>();
+
+        for ( int i = offset; i < numValues + offset; i++ ) {
+            final int oldIndex = indexesOfRelevantAlleles[i];
+            if ( oldIndex >= originalList.size() + offset ) {
+                newValues.add(i-offset, filler);
+            } else {
+                newValues.add(i-offset, originalList.get(oldIndex-offset));
+            }
+        }
+        return newValues;
     }
 }

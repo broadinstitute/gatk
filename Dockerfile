@@ -1,12 +1,31 @@
+# stage 1 for constructing the GATK zip
+FROM broadinstitute/gatk:gatkbase-2.3.0 AS gradleBuild
+LABEL stage=gatkIntermediateBuildImage
+ARG RELEASE=false
+
+RUN ls .
+ADD . /gatk
+WORKDIR /gatk
+
+# Get an updated gcloud signing key, in case the one in the base image has expired
+RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+RUN add-apt-repository universe && apt update
+RUN apt-get --assume-yes install git-lfs
+RUN git lfs install
+
+RUN git lfs pull
+
+RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
+RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/
+RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
+
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-2.2.0
-
-# Location of the unzipped gatk bundle files
-ARG ZIPPATH
-
-ADD $ZIPPATH /gatk
+FROM broadinstitute/gatk:gatkbase-2.3.0
 
 WORKDIR /gatk
+
+# Location of the unzipped gatk bundle files
+COPY --from=gradleBuild /gatk/unzippedJar .
 
 #Setup linked jars that may be needed for running gatk
 RUN ln -s $( find /gatk -name "gatk*local.jar" ) gatk.jar
@@ -30,6 +49,7 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export TEST_JAR=\$( find /jars -name \"gatk*test.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export TEST_DEPENDENCY_JAR=\$( find /jars -name \"gatk*testDependencies.jar\" )" >> /root/run_unit_tests.sh && \
     echo "export GATK_JAR=$( find /gatk -name "gatk*local.jar" )" >> /root/run_unit_tests.sh && \
+    echo "export GATK_LAUNCH_SCRIPT=/gatk/gatk" >> /root/run_unit_tests.sh && \
     echo "mkdir /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "cp -rp /gatkCloneMountPoint/src/main/java/* /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export SOURCE_DIR=/gatk/srcdir" >> /root/run_unit_tests.sh && \
@@ -43,25 +63,18 @@ WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
 RUN cp -r gatk.jar /gatk
 ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
-RUN cp -r install_R_packages.R /gatk
 
 # Start GATK Python environment
 
-ENV DOWNLOAD_DIR /downloads
-ENV CONDA_URL https://repo.continuum.io/miniconda/Miniconda3-4.3.30-Linux-x86_64.sh
-ENV CONDA_MD5 = "0b80a152332a4ce5250f3c09589c7a81"
-ENV CONDA_PATH /opt/miniconda
-RUN mkdir $DOWNLOAD_DIR && \
-    wget -nv -O $DOWNLOAD_DIR/miniconda.sh $CONDA_URL && \
-    test "`md5sum $DOWNLOAD_DIR/miniconda.sh | awk -v FS='  ' '{print $1}'` = $CONDA_MD5" && \
-    bash $DOWNLOAD_DIR/miniconda.sh -p $CONDA_PATH -b && \
-    rm $DOWNLOAD_DIR/miniconda.sh
 WORKDIR /gatk
+RUN chmod -R a+rw /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
-    conda clean -y -all && \
+    conda clean -afy && \
+    find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
+    find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
     rm -rf /root/.cache/pip
 
 CMD ["bash", "--init-file", "/gatk/gatkenv.rc"]

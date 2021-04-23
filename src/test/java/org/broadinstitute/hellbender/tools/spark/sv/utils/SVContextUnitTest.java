@@ -10,6 +10,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.tools.spark.sv.integration.SVIntegrationTestDataProvider;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -36,7 +37,7 @@ public class SVContextUnitTest extends GATKBaseTest {
 
     private static final File VALID_VARIANTS_FILE = new File(TEST_SUB_DIR, "SVContext.vcf.gz");
 
-    private static final File REFERENCE_FILE = new File(b38_reference_20_21);
+    private static final GATKPath REFERENCE_FILE = new GATKPath(b38_reference_20_21);
 
     /**
      * Tests {@link SVContext#of}.
@@ -212,7 +213,7 @@ public class SVContextUnitTest extends GATKBaseTest {
 
     @DataProvider(name="validVariantContexts")
     public Object[][] validVariantContexts(){
-        final ReferenceMultiSparkSource reference = referenceMultiSource(REFERENCE_FILE.getAbsolutePath());
+        final ReferenceMultiSparkSource reference = referenceMultiSource(REFERENCE_FILE);
         try (final VCFFileReader reader = new VCFFileReader(VALID_VARIANTS_FILE, false)) {
             return Utils.stream(reader)
                     .map(vc -> new Object[]{vc, reference})
@@ -224,7 +225,7 @@ public class SVContextUnitTest extends GATKBaseTest {
 
     @DataProvider(name="validInsertionsAndDeletions")
     public Object[][] validInsertionsAndDeletions(){
-        final ReferenceMultiSparkSource reference = referenceMultiSource(REFERENCE_FILE.getAbsolutePath());
+        final ReferenceMultiSparkSource reference = referenceMultiSource(REFERENCE_FILE);
         try (final VCFFileReader reader = new VCFFileReader(VALID_VARIANTS_FILE, false)) {
             return Utils.stream(reader)
                     .filter(vc -> {
@@ -251,7 +252,7 @@ public class SVContextUnitTest extends GATKBaseTest {
         for (final Tuple2<String, String> outputAndReference : outputFilesAndReference) {
             final String file = outputAndReference._1();
             final String referenceName = outputAndReference._2();
-            final ReferenceMultiSparkSource reference = referenceMultiSource(referenceName);
+            final ReferenceMultiSparkSource reference = referenceMultiSource(new GATKPath(referenceName));
             try (final VCFFileReader reader = new VCFFileReader(new File(file), false)) {
                 reader.forEach(vc -> result.add(new Object[] {vc, reference, file}));
             } catch (final Throwable ex) {
@@ -261,8 +262,8 @@ public class SVContextUnitTest extends GATKBaseTest {
         return result.toArray(new Object[result.size()][]);
     }
 
-    private static ReferenceMultiSparkSource referenceMultiSource( final String fastaFileName) {
-        return new ReferenceMultiSparkSource(fastaFileName,
+    private static ReferenceMultiSparkSource referenceMultiSource( final GATKPath fastaFileSpec) {
+        return new ReferenceMultiSparkSource(fastaFileSpec,
                                         (r) -> new SimpleInterval(r.getContig(), r.getAssignedStart(), r.getEnd()));
     }
 }

@@ -30,9 +30,14 @@ import java.util.stream.Collectors;
  * Create a panel of normals (PoN) containing germline and artifactual sites for use with Mutect2.
  *
  * <p>
- *     The tool takes multiple normal sample callsets produced by {@link Mutect2}'s tumor-only mode and collates sites present in two or more samples
- *     into a sites-only VCF. The PoN captures common artifactual and germline variant sites.
- *     Mutect2 then uses the PoN to filter variants at the site-level.
+ *     The tool takes multiple normal sample callsets produced by {@link Mutect2}'s tumor-only mode and collates sites present in multiple samples
+ *     (two by default, set by the --min-sample-count argument) into a sites-only VCF. The PoN captures common artifacts.  Mutect2 then
+ *     uses the PoN to filter variants at the site-level.
+ *
+ *     The --max-germline-probability argument sets the threshold for possible germline variants to be included in the PoN.  By default this
+ *     is set to 0.5, so that likely germline events are excluded.  This is usually the correct behavior as germline variants are best handled
+ *     by probabilistic modeling via Mutect2's --germline-resource argument.  A germline resource, such as gnomAD in the case of humans, is a much
+ *     more refined tool for germline filtering than any PoN could be.
  * </p>
  * <p>
  *     This tool is featured in the Somatic Short Mutation calling Best Practice Workflow.
@@ -148,7 +153,11 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
         // note: if at this site some input vcfs had a variant and some had only a spanning deletion from an upstream event,
         // GenomicsDBImport removes the spanning deletion from the ADs and so the altCount logic works and counts only
         // real variants, not spanning deletions.
-        final List<Genotype> variantGenotypes = vc.getGenotypes().stream()
+
+        // TODO: replace this logic where multiallelic sites are excluded from germline analysis with something principled
+        // TODO that calculates germline probabilities by allele.  See GATK issue #6744 https://github.com/broadinstitute/gatk/issues/6744
+        // TODO for some analysis as to why the AD field may not be available barring changes to GenomicsDB
+        final List<Genotype> variantGenotypes = vc.getNAlleles() > 2 ? vc.getGenotypes() : vc.getGenotypes().stream()
                 .filter(g -> hasArtifact(g, germlineAF)).collect(Collectors.toList());
 
         if (variantGenotypes.size() < minSampleCount) {
@@ -158,6 +167,7 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
         final double fraction = (double) variantGenotypes.size() / numSamples;
 
         final List<int[]> altAndRefCounts = variantGenotypes.stream()
+                .filter(Genotype::hasAD)
                 .map(g -> new int[] {altCount(g), g.getAD()[0]})
                 .collect(Collectors.toList());
 

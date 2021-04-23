@@ -15,7 +15,7 @@ import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
-import org.broadinstitute.hellbender.engine.GATKPathSpecifier;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -62,7 +62,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     private static final String DEFAULT_TOOLKIT_SHORT_NAME = "GATK";
 
     @Argument(fullName = StandardArgumentDefinitions.TMP_DIR_NAME, common=true, optional=true, doc = "Temp directory to use.")
-    public GATKPathSpecifier tmpDir;
+    public GATKPath tmpDir;
 
     @ArgumentCollection(doc="Special Arguments that have meaning to the argument parsing system.  " +
             "It is unlikely these will ever need to be accessed by the command line program")
@@ -83,7 +83,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(fullName = StandardArgumentDefinitions.NIO_MAX_REOPENS_LONG_NAME, shortName = StandardArgumentDefinitions.NIO_MAX_REOPENS_SHORT_NAME, doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
     public int NIO_MAX_REOPENS = ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries();
 
-    @Argument(fullName = StandardArgumentDefinitions.NIO_PROJECT_FOR_REQUESTER_PAYS_LONG_NAME, doc = "Project to bill when accessing \"requester pays\" buckets. If unset, these buckets cannot be accessed.", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.NIO_PROJECT_FOR_REQUESTER_PAYS_LONG_NAME, doc = "Project to bill when accessing \"requester pays\" buckets. " +
+            "If unset, these buckets cannot be accessed.  User must have storage.buckets.get permission on the bucket being accessed.", optional = true)
     public String NIO_PROJECT_FOR_REQUESTER_PAYS = ConfigFactory.getInstance().getGATKConfig().gcsProjectForRequesterPays();
 
     // This option is here for documentation completeness.
@@ -146,7 +147,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     public Object instanceMainPostParseArgs() {
         // Provide one temp directory if the caller didn't
         if (tmpDir == null) {
-            tmpDir = new GATKPathSpecifier(System.getProperty("java.io.tmpdir"));
+            tmpDir = new GATKPath(System.getProperty("java.io.tmpdir"));
         }
 
         // Build the default headers
@@ -399,8 +400,10 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 final Attributes manifestAttributes = manifest.getMainAttributes();
                 final String htsjdkVersion = manifestAttributes.getValue("htsjdk-Version");
                 final String picardVersion = manifestAttributes.getValue("Picard-Version");
+                final String sparkVersion = manifestAttributes.getValue("Spark-Version");
                 logger.info("HTSJDK Version: " + (htsjdkVersion != null ? htsjdkVersion : "unknown"));
                 logger.info("Picard Version: " + (picardVersion != null ? picardVersion : "unknown"));
+                logger.info("Built for Spark Version: " + (sparkVersion != null ? sparkVersion : "unknown"));
         }
     }
 
