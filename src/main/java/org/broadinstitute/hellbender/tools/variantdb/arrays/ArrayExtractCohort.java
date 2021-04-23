@@ -37,11 +37,6 @@ public class ArrayExtractCohort extends GATKTool {
     private VariantContextWriter vcfWriter = null;
     private ArrayExtractCohortEngine engine;
 
-    public enum QueryMode {
-        LOCAL_SORT,
-        QUERY
-    }
-
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
