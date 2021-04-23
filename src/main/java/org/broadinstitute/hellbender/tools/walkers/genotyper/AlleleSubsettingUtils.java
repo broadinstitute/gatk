@@ -46,6 +46,7 @@ public final class AlleleSubsettingUtils {
      * @param allelesToKeep            the subset of alleles to use with the new Genotypes
      * @param assignmentMethod         assignment strategy for the (subsetted) PLs
      * @param depth                    the original variant DP or 0 if there was no DP
+     * @param emitEmptyPLs             force the output of a PL array even if there is no data
      * @return                         a new non-null GenotypesContext
      */
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
@@ -53,7 +54,8 @@ public final class AlleleSubsettingUtils {
                                                  final List<Allele> allelesToKeep,
                                                  final GenotypePriorCalculator gpc,
                                                  final GenotypeAssignmentMethod assignmentMethod,
-                                                 final int depth) {
+                                                 final int depth,
+                                                 final boolean emitEmptyPLs) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
         Utils.nonNull(allelesToKeep, "allelesToKeep is null");
         Utils.nonEmpty(allelesToKeep, "must keep at least one allele");
@@ -86,12 +88,20 @@ public final class AlleleSubsettingUtils {
 
             }
 
+            final boolean useNewLikelihoods = emitEmptyPLs ||
+                    (newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods)));
+
             final GenotypeBuilder gb = new GenotypeBuilder(g);
 
-            final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
-            gb.PL(newLikelihoods).log10PError(newLog10GQ);
-            attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
-            gb.noAttributes().attributes(attributes);
+            if (useNewLikelihoods) {
+                final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+                gb.PL(newLikelihoods).log10PError(newLog10GQ);
+                attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+                gb.noAttributes().attributes(attributes);
+            }
+            else {
+                gb.noPL().noGQ();
+            }
 
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles(), gpc);
 
