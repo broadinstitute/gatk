@@ -55,6 +55,10 @@ public class GenomicsDBUtils {
             GATKVCFConstants.INBREEDING_COEFFICIENT_KEY,    // InbreedingCoeff
             GATKVCFConstants.MLE_ALLELE_COUNT_KEY,          // MLEAC
             GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY,      // MLEAF
+            GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY,        // BaseQRankSum
+            GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY,         // MQRankSum
+            GATKVCFConstants.READ_POS_RANK_SUM_KEY,         // ReadPosRankSum
+            GATKVCFConstants.EXCESS_HET_KEY,                // ExcessHet
             GATKVCFConstants.QUAL_BY_DEPTH_KEY,             // QD
             VCFConstants.ALLELE_COUNT_KEY,                  // AC
             VCFConstants.ALLELE_NUMBER_KEY                  // AN
