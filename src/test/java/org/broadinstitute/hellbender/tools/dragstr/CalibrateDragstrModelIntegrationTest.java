@@ -31,7 +31,7 @@ public class CalibrateDragstrModelIntegrationTest extends CommandLineProgramTest
     //TODO with larger propr
     @Test(dataProvider = "threadCountAndBamCramData")
     public void testDragstrModelInferenceForcingEstimation(final int threads, final boolean useCram) throws IOException {
-        final File output = File.createTempFile("test-output", ".dragstr    ");
+        final File output = File.createTempFile("test-output", ".dragstr");
         output.deleteOnExit();
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -45,7 +45,7 @@ public class CalibrateDragstrModelIntegrationTest extends CommandLineProgramTest
         args.addInput(useCram ? NA12878_20_21_WGS_cram : NA12878_20_21_WGS_bam);
         args.addFlag(CalibrateDragstrModel.FORCE_ESTIMATION_FULL_NAME);
         args.addOutput(output);
-        runCommandLine(args);
+        final Object res = runCommandLine(args);
 
         final DragstrParams actual = DragstrParamUtils.parse(new GATKPath(output.toString()));
         final DragstrParams expected = DragstrParamUtils.parse(new GATKPath(EXPECTED_PARAMS_FILE.toString()));
