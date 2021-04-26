@@ -55,13 +55,17 @@ public class GenomicsDBUtils {
             GATKVCFConstants.INBREEDING_COEFFICIENT_KEY,    // InbreedingCoeff
             GATKVCFConstants.MLE_ALLELE_COUNT_KEY,          // MLEAC
             GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY,      // MLEAF
-            GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY,        // BaseQRankSum
-            GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY,         // MQRankSum
-            GATKVCFConstants.READ_POS_RANK_SUM_KEY,         // ReadPosRankSum
-            GATKVCFConstants.EXCESS_HET_KEY,                // ExcessHet
             GATKVCFConstants.QUAL_BY_DEPTH_KEY,             // QD
             VCFConstants.ALLELE_COUNT_KEY,                  // AC
             VCFConstants.ALLELE_NUMBER_KEY                  // AN
+    };
+
+    private static final String MEDIAN_OP = "median";
+    private static final String[] MEDIAN_FIELDS = {
+            GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY,        // BaseQRankSum
+            GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY,         // MQRankSum
+            GATKVCFConstants.READ_POS_RANK_SUM_KEY,         // ReadPosRankSum
+            GATKVCFConstants.EXCESS_HET_KEY                 // ExcessHet
     };
 
     private static final String GDB_TYPE_FLOAT = "float";
@@ -88,16 +92,22 @@ public class GenomicsDBUtils {
         final HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
                 getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
 
+        // Process predefined combinations for the fields first
+        for (String field : NO_COMBINE_FIELDS) {
+            vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, field, NO_COMBINE_OP);
+            assert(vidMapPB != null);
+        }
+
+        for (String field : MEDIAN_FIELDS) {
+            vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, field, MEDIAN_OP);
+            assert(vidMapPB != null);
+        }
+
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, ELEMENT_WISE_SUM);
 
         vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, ELEMENT_WISE_FLOAT_SUM);
-
-        for (String field : NO_COMBINE_FIELDS) {
-            vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, field, NO_COMBINE_OP);
-            assert(vidMapPB != null);
-        }
 
         //Update combine operations for GnarlyGenotyper
         //Note that this MQ format is deprecated, but was used by the prototype version of ReblockGVCF
