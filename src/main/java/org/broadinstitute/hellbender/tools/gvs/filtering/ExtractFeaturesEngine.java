@@ -65,6 +65,7 @@ public class ExtractFeaturesEngine {
     private final int hqGenotypeDepthThreshold;
     private final double hqGenotypeABThreshold;
     private final int excessAllelesThreshold;
+    private final List<String> queryLabels;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
@@ -87,8 +88,9 @@ public class ExtractFeaturesEngine {
                                final int hqGenotypeGQThreshold,
                                final int hqGenotypeDepthThreshold,
                                final double hqGenotypeABThreshold,
-                               final int excessAllelesThreshold) {
-
+                               final int excessAllelesThreshold,
+                               final List<String> queryLabels
+    ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -108,9 +110,9 @@ public class ExtractFeaturesEngine {
         this.hqGenotypeDepthThreshold = hqGenotypeDepthThreshold;
         this.hqGenotypeABThreshold = hqGenotypeABThreshold;
         this.excessAllelesThreshold = excessAllelesThreshold;
+        this.queryLabels = queryLabels;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-
     }
 
     // taken from GnarlyGenotypingEngine
@@ -130,15 +132,30 @@ public class ExtractFeaturesEngine {
 
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
 
+        Map<String, String> labelForQuery = createQueryLabels(queryLabels, projectID);
+
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(
                 featureQueryString,
                 SchemaUtils.FEATURE_EXTRACT_FIELDS,
                 projectID,
                 userDefinedFunctions,
                 useBatchQueries,
-                null);
+                labelForQuery);
 
         createVQSRInputFromTableResult(storageAPIAvroReader);
+    }
+
+    private Map<String, String>  createQueryLabels(List<String> queryLabels, String projectID) {
+        // a hardcoded label is added to the query to make tracking this workflow easier downstream
+        Map<String, String> labelForQuery = new HashMap<String, String>();
+        labelForQuery.put("Variant Store", "Extract Features from "+ projectID);
+        // add additional key value pair labels
+        // TODO pull this out and add an exception (BQ label exceptions?)
+        for (String labelMapString: queryLabels) {
+            String[] labelStrings = labelMapString.split("=");
+            labelForQuery.put(labelStrings[0], labelStrings[1]);
+        }
+        return labelForQuery;
     }
 
     private void createVQSRInputFromTableResult(final GATKAvroReader avroReader) {
