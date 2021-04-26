@@ -109,6 +109,11 @@ public class GenomicsDBUtils {
         vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, ELEMENT_WISE_FLOAT_SUM);
 
+        for (String field : NO_COMBINE_FIELDS) {
+            vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, field, NO_COMBINE_OP);
+            assert(vidMapPB != null);
+        }
+
         //Update combine operations for GnarlyGenotyper
         //Note that this MQ format is deprecated, but was used by the prototype version of ReblockGVCF
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
