@@ -75,7 +75,7 @@ import java.util.*;
  * <p><ul>
  * <li>This tool does not subset to the best alternate alleles and can return highly, highly multialleic variants (>1000 alts for cohorts in the 10s of thousands). Only
  * GenomicsDB instances should be used as input for this tool, because GenomicsDB will drop PLs for such sites to avoid excessive vcf size.</li>
- * <li>To generate all the annotations necessary for VQSR, input variants must include the QUALapprox, VarDP and MQ_DP annotations
+ * <li>To generate all the annotations necessary for VQSR, input variants must include the QUALapprox, VarDP and MQ_DP annotations as applied by the ReblockGVCF tool.
  * </ul></p>
  *
  * <h3>Special note on ploidy</h3>
