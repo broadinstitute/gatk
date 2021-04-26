@@ -79,8 +79,8 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
         FeatureInput<Feature> featureInput = runCommandLineWithTaggedFeatureInput("argName", validFileOnlyFeatureArgumentValue);
 
         Assert.assertEquals(featureInput.getFeaturePath(), validFileOnlyFeatureArgumentValue, "Wrong File in FeatureInput");
-        // Name should default to the absolute path of the File when no name is specified
-        Assert.assertEquals(featureInput.getName(), new File(validFileOnlyFeatureArgumentValue).getAbsolutePath(), "Wrong default name in FeatureInput");
+        // Name should default to the URI of the File when no name is specified
+        Assert.assertEquals(featureInput.getName(), new GATKPath(validFileOnlyFeatureArgumentValue).getURIString(), "Wrong default name in FeatureInput");
     }
 
     @DataProvider(name = "GenDbPathAndNameData")
@@ -122,7 +122,10 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
     public Object[][] hdfsPathAndNameData() {
         return new Object[][] {
                 // input arg name, input value, expected Feature path, expected logical name
-                {"argName", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "hdfs://localhost:8020/user/my.vcf"},
+
+                {"argName", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf"},
+                {"argName", "hdfs://localhost:8020/user/my.vcf", "hdfs://localhost:8020/user/my.vcf", "hdfs://localhost:8020/user/my.vcf"},
+
                 {"argName:myname", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname"},
                 {"argName:myname,key1=value1", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname"},
                 {"argName:myname//", "hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname//"}
@@ -274,8 +277,8 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
         final FeatureInput<Feature> namelessGenomicsDB = runCommandLineWithTaggedFeatureInput("argName", "gendb://file1");
         final FeatureInput<Feature> namedGenomicsDB = runCommandLineWithTaggedFeatureInput("argName:name", "gendb://file1");
 
-        Assert.assertEquals(namelessFeatureInput.toString(), new File("file1").getAbsolutePath(), "String representation of nameless FeatureInput incorrect");
-        Assert.assertEquals(namedFeatureInput.toString(), "name:" + new File("file1").getAbsolutePath(), "String representation of named FeatureInput incorrect");
+        Assert.assertEquals(namelessFeatureInput.toString(), new GATKPath("file1").getURIString(), "String representation of nameless FeatureInput incorrect");
+        Assert.assertEquals(namedFeatureInput.toString(), "name:" + new GATKPath("file1").getURIString(), "String representation of named FeatureInput incorrect");
         Assert.assertEquals(namelessGenomicsDB.toString(), "gendb://" + new File("file1").getAbsolutePath(), "String representation of nameless FeatureInput with genomicsDB path incorrect");
         Assert.assertEquals(namedGenomicsDB.toString(), "name:gendb://" + new File("file1").getAbsolutePath(), "String representation of named FeatureInput with genomicsDB path incorrect");
     }

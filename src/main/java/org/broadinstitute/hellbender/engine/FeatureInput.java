@@ -150,10 +150,8 @@ public final class FeatureInput<T extends Feature> extends GATKPath implements S
     private String makeIntoAbsolutePath() {
         if(IOUtils.isGenomicsDBPath(this)){
             return IOUtils.getAbsolutePathWithGenomicsDBURIScheme(this);
-        } else if (getScheme() != null && !getScheme().equals("file")) { // local files always have a "file" scheme
-            return toPath().toAbsolutePath().toUri().toString();
         } else {
-            return getURI().getPath();
+            return getURIString();
         }
     }
 
