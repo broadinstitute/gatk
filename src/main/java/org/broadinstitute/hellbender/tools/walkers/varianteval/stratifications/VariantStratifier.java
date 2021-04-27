@@ -26,11 +26,6 @@ public abstract class VariantStratifier implements Comparable<VariantStratifier>
         return engine;
     }
 
-    // Subclasses can override to validate arguments
-    public void validateArgs() {
-
-    }
-
     public abstract List<Object> getRelevantStates(VariantEvalContext context, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String familyName);
 
     // -------------------------------------------------------------------------------------

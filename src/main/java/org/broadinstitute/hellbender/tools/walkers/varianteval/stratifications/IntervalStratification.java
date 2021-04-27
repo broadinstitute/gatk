@@ -37,15 +37,12 @@ public class IntervalStratification extends VariantStratifier {
     public IntervalStratification(VariantEvalEngine engine) {
         super(engine);
 
+        if ( getEngine().getVariantEvalArgs().getIntervalsFile() == null )
+            throw new CommandLineException.MissingArgument("stratIntervals", "Must be provided when IntervalStratification is enabled");
+
         intervalsFile = getEngine().getVariantEvalArgs().getIntervalsFile();
 
         states.addAll(Arrays.asList("all", "overlaps.intervals", "outside.intervals"));
-    }
-
-    @Override
-    public void validateArgs() {
-        if ( getEngine().getVariantEvalArgs().getIntervalsFile() == null )
-            throw new CommandLineException.MissingArgument("stratIntervals", "Must be provided when IntervalStratification is enabled");
     }
 
     @Override

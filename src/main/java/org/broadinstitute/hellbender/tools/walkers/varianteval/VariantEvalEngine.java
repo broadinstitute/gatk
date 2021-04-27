@@ -824,10 +824,7 @@ public class VariantEvalEngine {
     }
 
     public VariantStratifier createVariantStratifier(Class<? extends VariantStratifier> clazz) {
-        VariantStratifier vs = createClass(clazz);
-        vs.validateArgs();
-
-        return vs;
+        return createClass(clazz);
     }
 
     public VariantEvaluator createVariantEvaluator(Class<? extends VariantEvaluator> clazz) {
@@ -839,6 +836,10 @@ public class VariantEvalEngine {
             return clazz.getDeclaredConstructor(VariantEvalEngine.class).newInstance(this);
         }
         catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            if (e.getCause() instanceof CommandLineException) {
+                throw (CommandLineException)e.getCause();
+            }
+
             throw new GATKException("Problem making an instance of " + clazz + " Do check that the class has a constructor that accepts VariantEvalEngine", e);
         }
     }
