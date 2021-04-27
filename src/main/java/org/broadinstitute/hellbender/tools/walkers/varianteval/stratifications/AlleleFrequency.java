@@ -15,11 +15,6 @@ import java.util.List;
  * Requires that AF be present in every ROD, otherwise this stratification throws an exception
  */
 public class AlleleFrequency extends VariantStratifier {
-    public enum StratifyingScale {
-        LINEAR,
-        LOGARITHMIC
-    }
-
     private static final int LOGIT_BIN_WIDTH = 1;
 
     private static int logLimit = 30; // go from -30 to 30 using logit function
@@ -27,7 +22,7 @@ public class AlleleFrequency extends VariantStratifier {
     public AlleleFrequency(VariantEvalEngine engine) {
         super(engine);
 
-        switch (getEngine().getAFScale()) {
+        switch (getEngine().getVariantEvalArgs().getAFScale()) {
             case LINEAR:
                 for (double a = 0.000; a <= 1.005; a += 0.005) {
                     states.add(String.format("%.3f", a));
@@ -46,14 +41,14 @@ public class AlleleFrequency extends VariantStratifier {
         if (eval != null) {
             try {
                 double alleleFrequency = Collections.max(eval.getAttributeAsDoubleList("AF", 0.0));
-                if (getEngine().getCompAFStratifier()) {
+                if (getEngine().getVariantEvalArgs().getCompAFStratifier()) {
                     if (comp != null) {
                         alleleFrequency = Collections.max(comp.getAttributeAsDoubleList("AF", 0.0));
                     } else {
                         alleleFrequency = 0.0; // any site that isn't in the comp should be the expected lowest allele fraction
                     }
                 }
-                switch(getEngine().getAFScale()) {
+                switch(getEngine().getVariantEvalArgs().getAFScale()) {
                     case LINEAR:
                         return Collections.singletonList(String.format("%.3f", (5.0 * MathUtils.roundToNDecimalPlaces(alleleFrequency / 5.0, 3))));
                     case LOGARITHMIC:

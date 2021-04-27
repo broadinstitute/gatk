@@ -19,12 +19,14 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.*;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.*;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.IntervalStratification;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.RequiredStratification;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.StandardStratification;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.VariantStratifier;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.manager.StratificationManager;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.EvaluationContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.SortableJexlVCMatchExp;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
-import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -125,9 +127,6 @@ public class VariantEvalEngine {
     private boolean byFilterIsEnabled = false;
     private boolean perSampleIsEnabled = false;
     private boolean perFamilyIsEnabled = false;
-
-    private AlleleFrequency.StratifyingScale AFScale = AlleleFrequency.StratifyingScale.LINEAR;
-    private boolean useCompAFStratifier = false;
 
     // maintain the mapping of source name (from VC) to FeatureInput name
     private Map<String, FeatureInput<VariantContext>> drivingVariantSourceMap;
@@ -459,15 +458,6 @@ public class VariantEvalEngine {
     public Set<String> getFamilyNamesForStratification() { return familyNamesForStratification; }
 
     public Set<SortableJexlVCMatchExp> getJexlExpressions() { return jexlExpressions; }
-
-
-    public AlleleFrequency.StratifyingScale getAFScale() {
-        return AFScale;
-    }
-
-    public boolean getCompAFStratifier() { return
-        useCompAFStratifier;
-    }
 
     public SampleDB getSampleDB() {
         return sampleDB;
@@ -899,14 +889,6 @@ public class VariantEvalEngine {
 
     public VariantEvalArgumentCollection getVariantEvalArgs() {
         return variantEvalArgs;
-    }
-
-    public void setAFScale(AlleleFrequency.StratifyingScale AFScale) {
-        this.AFScale = AFScale;
-    }
-
-    public void setUseCompAFStratifier(boolean useCompAFStratifier) {
-        this.useCompAFStratifier = useCompAFStratifier;
     }
 
     public final <T extends Feature> Object getHeaderForFeatures( final FeatureInput<T> featureDescriptor ) {

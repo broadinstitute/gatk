@@ -5,7 +5,6 @@ import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.metrics.analysis.AlleleFrequencyQCMetric;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.AlleleFrequency.StratifyingScale;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
@@ -54,6 +53,8 @@ public class AlleleFrequencyQC extends VariantEval {
         variantEvalArgs.keepSitesWithAC0 = true;
         variantEvalArgs.noStandardStratifications = true;
         variantEvalArgs.stratificationsToUse = Arrays.asList("AlleleFrequency", "Filter");
+        variantEvalArgs.setAFScale(VariantEvalArgumentCollection.StratifyingScale.LOGARITHMIC);
+        variantEvalArgs.setUseCompAFStratifier(true);
 
         metricOutput = outFile; // output file for summary metrics
 
@@ -69,9 +70,6 @@ public class AlleleFrequencyQC extends VariantEval {
         }
         sample = getHeaderForVariants().getOtherHeaderLine("sampleAlias").getValue();
         super.onTraversalStart();
-
-        engine.setAFScale(StratifyingScale.LOGARITHMIC);
-        engine.setUseCompAFStratifier(true);
     }
 
     @Override

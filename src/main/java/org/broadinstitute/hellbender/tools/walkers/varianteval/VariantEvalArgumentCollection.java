@@ -140,6 +140,15 @@ public class VariantEvalArgumentCollection {
         return ret;
     }
 
+    // Used by AlleleFrequency:
+    public enum StratifyingScale {
+        LINEAR,
+        LOGARITHMIC
+    }
+
+    private StratifyingScale AFScale = StratifyingScale.LINEAR;
+    private boolean useCompAFStratifier = false;
+
     public FeatureInput<Feature> getKnownCNVsFile() {
         return knownCNVsFile;
     }
@@ -178,5 +187,21 @@ public class VariantEvalArgumentCollection {
 
     public double getMendelianViolationQualThreshold() {
         return mendelianViolationQualThreshold;
+    }
+
+    public StratifyingScale getAFScale() {
+        return AFScale;
+    }
+
+    public boolean getCompAFStratifier() { return
+            useCompAFStratifier;
+    }
+
+    public void setAFScale(StratifyingScale AFScale) {
+        this.AFScale = AFScale;
+    }
+
+    public void setUseCompAFStratifier(boolean useCompAFStratifier) {
+        this.useCompAFStratifier = useCompAFStratifier;
     }
 }
