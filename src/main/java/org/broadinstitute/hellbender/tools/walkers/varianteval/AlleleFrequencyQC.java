@@ -55,8 +55,6 @@ public class AlleleFrequencyQC extends VariantEval {
         variantEvalArgs.noStandardStratifications = true;
         variantEvalArgs.stratificationsToUse = Arrays.asList("AlleleFrequency", "Filter");
 
-        engine.setAFScale(StratifyingScale.LOGARITHMIC);
-        engine.setUseCompAFStratifier(true);
         metricOutput = outFile; // output file for summary metrics
 
         // have to set the output file for variant eval; if not given a debug file to return the variant eval results
@@ -71,6 +69,9 @@ public class AlleleFrequencyQC extends VariantEval {
         }
         sample = getHeaderForVariants().getOtherHeaderLine("sampleAlias").getValue();
         super.onTraversalStart();
+
+        engine.setAFScale(StratifyingScale.LOGARITHMIC);
+        engine.setUseCompAFStratifier(true);
     }
 
     @Override

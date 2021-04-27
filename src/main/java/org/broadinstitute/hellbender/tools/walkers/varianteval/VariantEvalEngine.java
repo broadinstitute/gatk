@@ -461,8 +461,13 @@ public class VariantEvalEngine {
     public Set<SortableJexlVCMatchExp> getJexlExpressions() { return jexlExpressions; }
 
 
-    public AlleleFrequency.StratifyingScale getAFScale() { return AFScale; }
-    public boolean getCompAFStratifier() { return useCompAFStratifier; }
+    public AlleleFrequency.StratifyingScale getAFScale() {
+        return AFScale;
+    }
+
+    public boolean getCompAFStratifier() { return
+        useCompAFStratifier;
+    }
 
     public SampleDB getSampleDB() {
         return sampleDB;
