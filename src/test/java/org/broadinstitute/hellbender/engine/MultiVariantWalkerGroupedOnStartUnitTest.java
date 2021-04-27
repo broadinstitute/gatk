@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
