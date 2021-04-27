@@ -655,6 +655,19 @@ public final class IOUtils {
     }
 
     /**
+     * Makes a Writer for a file, gzipping on the fly if the file's name ends with '.gz'.
+     */
+    public static BufferedWriter makeWriterMaybeGzipped(GATKPath filePath) throws IOException {
+        final OutputStream os;
+        if (filePath.hasExtension(".gz")) {
+            os = new GZIPOutputStream(filePath.getOutputStream());
+        } else {
+            os = filePath.getOutputStream();
+        }
+        return new BufferedWriter(new OutputStreamWriter(os));
+    }
+
+    /**
      * Creates a temp file that will be deleted on exit
      *
      * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
