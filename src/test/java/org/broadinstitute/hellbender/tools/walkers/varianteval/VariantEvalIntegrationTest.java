@@ -499,7 +499,7 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
                         " -L " + getTestFilePath(fundamentalTestSNPsVCF) +
                         " -O %s",
                 1,
-                CommandLineException.BadArgumentValue.class
+                CommandLineException.class
         );
         spec.executeTest(name, this);
     }
