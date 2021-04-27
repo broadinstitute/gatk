@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @CommandLineProgramProperties(
