@@ -837,7 +837,8 @@ public class VariantEvalEngine {
         }
         catch (final InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
             if (e.getCause() instanceof CommandLineException) {
-                throw (CommandLineException)e.getCause();
+                // failures due to argument validation should be propagated
+                throw new CommandLineException(e.getCause().getMessage(), e.getCause());
             }
 
             throw new GATKException("Problem making an instance of " + clazz + " Do check that the class has a constructor that accepts VariantEvalEngine", e);
