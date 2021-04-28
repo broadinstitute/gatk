@@ -148,11 +148,11 @@ public class ExtractFeaturesEngine {
     private Map<String, String>  createQueryLabels(List<String> queryLabels, String projectID) {
         // a hardcoded label is added to the query to make tracking this workflow easier downstream
         Map<String, String> labelForQuery = new HashMap<String, String>();
-        labelForQuery.put("Variant Store", "Extract Features from "+ projectID);
+        labelForQuery.put("variant_store", "Extract Features from "+ projectID);
         // add additional key value pair labels
         // TODO pull this out and add an exception (BQ label exceptions?)
         for (String labelMapString: queryLabels) {
-            String[] labelStrings = labelMapString.split("=");
+            String[] labelStrings = labelMapString.split(":");
             labelForQuery.put(labelStrings[0], labelStrings[1]);
         }
         return labelForQuery;

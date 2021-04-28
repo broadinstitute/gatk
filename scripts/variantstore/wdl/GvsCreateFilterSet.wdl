@@ -246,6 +246,7 @@ task ExtractFilterTask {
                 --sample-table ~{fq_sample_table} \
                 --alt-allele-table ~{fq_alt_allele_table} \
                 ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
+                --queryLabels '{"label": "without", "a": "cause"}'
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id}
