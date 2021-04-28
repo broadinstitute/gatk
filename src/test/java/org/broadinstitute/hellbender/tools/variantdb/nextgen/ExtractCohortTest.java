@@ -29,7 +29,6 @@ class ExtractCohortTest extends CommandLineProgramTest {
     args
         .add("mode", "GENOMES")
         .add("ref-version", 38)
-        .add("query-mode", "LOCAL_SORT")
         .add("R", hg38Reference)
         .add("O", outputVCF.getAbsolutePath())
         .add("local-sort-max-records-in-ram", 10000000)
