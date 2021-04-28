@@ -88,7 +88,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
         featureInputs.forEach(
                 featureInput -> featureDataSources.add(
                         new FeatureDataSource<>(featureInput, queryLookaheadBases, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                                reference)));
+                                                reference, true)));
 
         // Ensure that the merged header and sequence dictionary that we use are in sync with each
         // other, and reflect the actual dictionaries used to do validation:
