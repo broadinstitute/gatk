@@ -39,7 +39,6 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 0.0,
                 null,
                 null,
-                null,
                 false);
         List<VariantContext> variantContexts = VariantContextTestUtils.getVariantContexts(ORIGINAL_TEST_FILE); // list variantContexts from VCF file
         VariantContext expectedVC = engine.removeAnnotations(variantContexts.get(0)); // single variantContext -- with annotations removed

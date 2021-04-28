@@ -15,25 +15,18 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 public abstract class ExtractTool extends GATKTool {
     private static final Logger logger = LogManager.getLogger(ExtractTool.class);
     public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
     protected VariantContextWriter vcfWriter = null;
     protected VariantAnnotatorEngine annotationEngine;
-
-    public enum QueryMode {
-        LOCAL_SORT,
-        QUERY
-    }
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -98,13 +91,6 @@ public abstract class ExtractTool extends GATKTool {
             optional = false
     )
     protected CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
-
-    @Argument(
-            fullName = "query-mode",
-            doc = "Source of genomic data. Valid options are one of GROUP_BY, LOCAL_SORT, QUERY",
-            optional = false
-    )
-    protected ExtractTool.QueryMode queryMode = ExtractTool.QueryMode.QUERY;
 
     @Argument(
             fullName = "ref-version",

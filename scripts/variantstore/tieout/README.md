@@ -161,7 +161,7 @@ reference="/Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fas
 dataset="spec-ops-aou.gvs_tieout_acmg_v1"
 
 gatk --java-options "-Xms2g -Xdebug -Xrunjdwp:transport=dt_socket,address=5005,server=y,suspend=n" \
-  ExtractCohort --mode GENOMES --ref-version 38 --query-mode LOCAL_SORT \
+  ExtractCohort --mode GENOMES --ref-version 38 \
   -R $reference \
   -O gvs_tieout_acmg_v1.vcf \
   --local-sort-max-records-in-ram 1000000 \
