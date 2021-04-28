@@ -52,6 +52,7 @@ workflow GvsCreateFilterSet {
         File axiomPoly_resource_vcf_index
         File dbsnp_resource_vcf = dbsnp_vcf
         File dbsnp_resource_vcf_index = dbsnp_vcf_index
+        Int? excess_alleles_threshold
 
         # Runtime attributes
         Int? small_disk_override
@@ -92,6 +93,7 @@ workflow GvsCreateFilterSet {
                 intervals                = SplitIntervals.interval_files[i],
                 excluded_intervals       = excluded_intervals,
                 fq_alt_allele_table      = fq_alt_allele_table,
+                excess_alleles_threshold = excess_alleles_threshold,
                 read_project_id          = query_project,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
                 service_account_json     = service_account_json,
@@ -205,6 +207,7 @@ task ExtractFilterTask {
         String fq_alt_allele_table
         String read_project_id
         String output_file
+        Int? excess_alleles_threshold
 
         # Runtime Options:
         File? gatk_override
@@ -239,6 +242,7 @@ task ExtractFilterTask {
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
                 --sample-table ~{fq_sample_table} \
                 --alt-allele-table ~{fq_alt_allele_table} \
+                ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id}
