@@ -82,7 +82,9 @@ public class SampleList {
                 " FROM `" + fqSampleTableName + "`" + whereClause;
 
         // Execute the query:
+        // TODO should we add hardcoded labels here?
         final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, null);
+
 
         // Show our pretty results:
         if (printDebugInformation) {
