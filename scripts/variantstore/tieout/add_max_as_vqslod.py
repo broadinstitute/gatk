@@ -22,7 +22,7 @@ with gzip.open(sys.argv[1], 'rt') as file1:
         if ("ExcessHet" in parts[6]):
             continue
 
-        if (sys.argv[2] == "loose"):
+        if (len(sys.argv) > 2 and sys.argv[2] == "loose"):
             # undo 
             x = parts[6].replace("EXCESS_ALLELES","").replace("NO_HQ_GENOTYPES","").strip(";")
             if x == "":
