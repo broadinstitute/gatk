@@ -75,11 +75,17 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public File sampleMap;
 
-    @Argument(fullName = "sample-id",
-            shortName = "SID",
+    @Argument(fullName = "gvs-sample-id",
+            shortName = "GVSID",
             doc = "Sample id",
             optional = true)
     public Long sampleIdParam;
+
+    @Argument(fullName = "sample-name",
+            shortName = "SN",
+            doc = "Sample id",
+            optional = true)
+    public String sampleNameParam;
 
     @Argument(fullName = "mode",
             shortName = "MO",
@@ -136,7 +142,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // TODO if you change here, also change in CreateArrayIngestFiles
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
-        sampleName = IngestUtils.getSampleName(inputVCFHeader);
+        sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
             throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
         }

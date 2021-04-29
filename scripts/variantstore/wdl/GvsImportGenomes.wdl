@@ -5,6 +5,7 @@ workflow GvsImportGenomes {
   input {
     Array[File] input_vcfs
     Array[File] input_vcf_indexes
+    Array[String] research_ids
     File interval_list
     String output_directory
     File sample_map
@@ -23,6 +24,9 @@ workflow GvsImportGenomes {
   }
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+
+  # how do i return an error if the lengths are not equal?
+  # if (length(input_vcfs) != length(input_vcf_indexes) != length(research_ids))
 
   call SetLock {
     input:
@@ -86,6 +90,7 @@ workflow GvsImportGenomes {
       input:
         input_vcf = input_vcfs[i],
         input_vcf_index = input_vcf_indexes[i],
+        sample_name = research_ids[i],
         interval_list = interval_list,
         sample_map = sample_map,
         service_account_json = service_account_json,
@@ -305,6 +310,7 @@ task CreateImportTsvs {
   input {
     File input_vcf
     File input_vcf_index
+    String sample_name
     File interval_list
     String output_directory
     File sample_map
@@ -414,6 +420,7 @@ task CreateImportTsvs {
             ~{"-IG " + drop_state} \
             --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
             --mode GENOMES \
+            -SN ~{sample_name} \
             -SNM ~{sample_map} \
             --ref-version 38
 
