@@ -56,7 +56,7 @@ final class PileupBasedAlleles {
     }
 
     private static void incrementAltCount(byte base, Map<Byte, Integer> altCounts){
-        Byte baseObj = new Byte(base);
+        Byte baseObj = Byte.valueOf(base);
             if (!altCounts.containsKey(baseObj)) {
                 altCounts.put(baseObj, 1);
             } else {
