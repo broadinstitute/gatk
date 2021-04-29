@@ -294,6 +294,14 @@ public final class AssemblyBasedCallerUtils {
                 addGivenAlleles(region.getPaddedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
             }
 
+            // AH & BG filter
+            // get haplotypes from assemblyResultSet and kmerize. create a map of unique Map<kmers, Map<Haplotype, Integer>>
+            // get reads from assemblyResultSet.regionForGenotyping.reads[x].samRecord mReadBases and mBaseQualities and kmerize them.
+            // Map<kmer, Integer> # times Kmer in all the reads
+            // for each kmer in reads - find hapotypes that contain it and
+            // filter haplotypes that don't have 10% coverage of read kmers
+
+
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
@@ -319,7 +327,7 @@ public final class AssemblyBasedCallerUtils {
 
         List<Haplotype> assembledAndNewHaplotypes = new ArrayList<>();
         assembledAndNewHaplotypes.addAll(assemblyResultSet.getHaplotypeList());
-        
+
         for (final VariantContext givenVC : givenAlleles) {
             final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
             final int givenVCRefLength = givenVC.getReference().length();
