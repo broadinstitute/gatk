@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.filtering;
 
+import com.google.api.client.util.Lists;
+import com.google.gson.JsonObject;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -91,6 +93,7 @@ public class ExtractFeaturesEngine {
                                final int excessAllelesThreshold,
                                final List<String> queryLabels
     ) {
+
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -132,7 +135,7 @@ public class ExtractFeaturesEngine {
 
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
 
-        Map<String, String> labelForQuery = createQueryLabels(queryLabels, projectID);
+        Map<String, String> labelForQuery = createQueryLabels(queryLabels);
 
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(
                 featureQueryString,
@@ -145,16 +148,47 @@ public class ExtractFeaturesEngine {
         createVQSRInputFromTableResult(storageAPIAvroReader);
     }
 
-    private Map<String, String>  createQueryLabels(List<String> queryLabels, String projectID) {
+    private Map<String, String>  createQueryLabels(String labelString) {
+      //String labelString = "{\"label\": \"without\", \"a\": \"cause\"}";
+      JsonObject jsonObject = new JsonObject();
+        JsonObject object = jsonObject.getAsJsonObject(labelString);
+        Set<String> labelKeys = object.keySet();
+        // Each resource can have multiple labels, up to a maximum of 64. -- labelKeys has to be !>64
+        // The key portion of a label must be unique. However, you can use the same key with multiple resources.
+
+        if ( labelKeys.size() > 63 ) {
+            throw new UserException("Only 63 unique label keys are allowed per resource.");
+            // BQ allows for 64, and we add one below
+        }
+
         // a hardcoded label is added to the query to make tracking this workflow easier downstream
         Map<String, String> labelForQuery = new HashMap<String, String>();
-        labelForQuery.put("variant_store", "Extract Features from "+ projectID);
+        labelForQuery.put("variant_store", "extra_features");
         // add additional key value pair labels
-        // TODO pull this out and add an exception (BQ label exceptions?)
-        for (String labelMapString: queryLabels) {
-            String[] labelStrings = labelMapString.split(":");
-            labelForQuery.put(labelStrings[0], labelStrings[1]);
+
+        for (String labelkey: labelKeys) {
+            // validate the label key and label value according to GCP Requirements for labels
+            // Each label must be a key-value pair.
+            // Keys have a minimum length of 1 character and a maximum length of 63 characters, and cannot be empty.
+            // Values can be empty, and have a maximum length of 63 characters.
+            // Keys and values can contain only lowercase letters, numeric characters, underscores, and dashes.
+            // All characters must use UTF-8 encoding, and international characters are allowed.
+            // Keys must start with a lowercase letter or international character.
+            if ( labelkey.length() > 63 || labelkey.length() < 1 || labelkey.isEmpty()) {
+                throw new UserException("Label key length must be between 1 and 63 characters");
+            }
+            String labelValue = object.get(labelkey).getAsString();
+            if ( labelValue.length() > 63 ) {
+                throw new UserException("Label value length must be less than 63 characters");
+            }
+            String labelRegex = "[a-z0-9_-]+$";
+            if ( !labelkey.matches(labelRegex) || !labelValue.matches(labelRegex)  ) {
+                throw new UserException("Label keys and values can contain only" +
+                    " lowercase letters, numeric characters, underscores, and dashes");
+            }
+            labelForQuery.put(labelkey, labelValue);
         }
+
         return labelForQuery;
     }
 

@@ -83,7 +83,7 @@ public class ExtractFeatures extends ExtractTool {
         doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels '{ \"label1\": 1, \"label2\": \"value2\" }'",
         optional = true)
 
-    protected List<String> queryLabels = new ArrayList<>();
+    protected String queryLabels = "";
 
     @Override
     public boolean requiresIntervals() {
