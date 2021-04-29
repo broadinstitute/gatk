@@ -26,7 +26,8 @@ workflow GvsImportGenomes {
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
 
   # how do i return an error if the lengths are not equal?
-  if (length(input_vcfs) != length(input_vcf_indexes) != length(external_sample_names)) {
+  Int input_length = length(input_vcfs)
+  if (input_length != length(input_vcf_indexes) || input_length != length(external_sample_names)) {
     call TerminateWorkflow {
       input:
         message = 'Input array lengths do not match'
@@ -172,6 +173,10 @@ workflow GvsImportGenomes {
       load_vet_done = LoadVetTable.done,
       service_account_json = service_account_json,
       preemptible_tries = preemptible_tries
+  }
+
+  output {
+    Boolean loaded_in_Gvs = true
   }
 }
 
