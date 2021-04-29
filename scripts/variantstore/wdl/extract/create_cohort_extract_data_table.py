@@ -11,6 +11,8 @@ from google.oauth2 import service_account
 
 import argparse
 
+import json
+
 JOB_IDS = set()
 
 #
@@ -225,6 +227,7 @@ def make_extract_table(fq_pet_vet_dataset,
                max_tables,
                fq_cohort_sample_names,
                query_project,
+               query_labels,
                fq_temp_table_dataset,
                fq_destination_dataset,
                destination_table,
@@ -235,7 +238,21 @@ def make_extract_table(fq_pet_vet_dataset,
               ):
   try:
     global client
-    default_config = QueryJobConfig(labels={ "id" : f"test_cohort_export_{output_table_prefix}"}, priority="INTERACTIVE", use_query_cache=False )
+    # this is where a set of labels are being created for the cohort extract. Do we want the hardcoded one to be different?
+    query_labels_map = {}
+    query_labels_map["id"]= f"test_cohort_export_{output_table_prefix}"
+    # query_labels is string that looks like '{"success": "true", "status": 200, "message": "Hello"}'
+    query_labels_json = json.loads(query_labels)
+
+    # get all the label keys and loop through them, adding them to the map
+    for key in query_labels_json.keys():
+      print(key)
+      query_labels_map[key] = query_labels_json[key]
+
+    #for label in query_labels:
+     # query_labels_map[label.key] = label.value
+
+    default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=False )
 
     if sa_key_path:
       credentials = service_account.Credentials.from_service_account_file(
@@ -296,6 +313,7 @@ if __name__ == '__main__':
              args.max_tables,
              args.fq_cohort_sample_names,
              args.query_project,
+             args.query_labels,
              args.fq_temp_table_dataset,
              args.fq_destination_dataset,
              args.destination_table,
