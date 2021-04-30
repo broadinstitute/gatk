@@ -54,7 +54,6 @@ def parse_args():
     parser.add_argument('--input_tensors', default=[], nargs='*')
     parser.add_argument('--output_tensors', default=[], nargs='*')
     parser.add_argument('--protected_tensors', default=[], nargs='*')
-    parser.add_argument('--sample_weight', default=None, help='TensorMap key for sample weight in training.')
     parser.add_argument('--tensor_maps_in', default=[], help='Do not set this directly. Use input_tensors')
     parser.add_argument('--tensor_maps_out', default=[], help='Do not set this directly. Use output_tensors')
     parser.add_argument('--tensor_maps_protected', default=[], help='Do not set this directly. Use protected_tensors')
@@ -452,9 +451,6 @@ def _process_args(args):
     args.tensor_maps_out.extend([tensormap_lookup(ot, args.tensormap_prefix) for ot in args.output_tensors])
     args.tensor_maps_out = parent_sort(args.tensor_maps_out)
     args.tensor_maps_protected = [tensormap_lookup(it, args.tensormap_prefix) for it in args.protected_tensors]
-    args.sample_weight = tensormap_lookup(args.sample_weight, args.tensormap_prefix) if args.sample_weight else None
-    if args.sample_weight:
-        assert args.sample_weight.shape == (1,)
 
     args.bottleneck_type = BOTTLENECK_STR_TO_ENUM[args.bottleneck_type]
     if args.bottleneck_type == BottleneckType.NoBottleNeck:
