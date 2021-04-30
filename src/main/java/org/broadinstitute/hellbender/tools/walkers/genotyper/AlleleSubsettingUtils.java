@@ -285,9 +285,45 @@ public final class AlleleSubsettingUtils {
      */
     public static List<Allele> calculateMostLikelyAlleles(final VariantContext vc, final int defaultPloidy,
                                                           final int numAltAllelesToKeep) {
+        return calculateMostLikelyAlleles(vc, defaultPloidy, numAltAllelesToKeep, false);
+    }
+
+    /**
+     * Returns the new set of alleles to use based on a likelihood score: alleles' scores are the sum of their counts in
+     * sample genotypes, weighted by the confidence in the genotype calls.
+     *
+     * In the case of ties, the alleles will be chosen from lowest index to highest index.
+     *
+     * @param vc target variant context.
+     * @param numAltAllelesToKeep number of alt alleles to keep.
+     * @return the list of alleles to keep, including the reference and {@link Allele#NON_REF_ALLELE} if present
+     *
+     */
+    public static List<Allele> calculateMostLikelyAllelesForMonomorphicSite(final VariantContext vc, final int defaultPloidy,
+                                                                            final int numAltAllelesToKeep) {
+        return calculateMostLikelyAlleles(vc, defaultPloidy, numAltAllelesToKeep, true);
+    }
+
+    /**
+     * Returns the new set of alleles to use based on a likelihood score: alleles' scores are the sum of their counts in
+     * sample genotypes, weighted by the confidence in the genotype calls.
+     *
+     * In the case of ties, the alleles will be chosen from lowest index to highest index.
+     *
+     * @param vc target variant context.
+     * @param numAltAllelesToKeep number of alt alleles to keep.
+     * @param allHomRefData do likelihood calculations for a monomorphic site
+     * @return the list of alleles to keep, including the reference and {@link Allele#NON_REF_ALLELE} if present
+     *
+     */
+    private static List<Allele> calculateMostLikelyAlleles(final VariantContext vc, final int defaultPloidy,
+                                                          final int numAltAllelesToKeep, boolean allHomRefData) {
         Utils.nonNull(vc, "vc is null");
         Utils.validateArg(defaultPloidy > 0, () -> "default ploidy must be > 0 but defaultPloidy=" + defaultPloidy);
         Utils.validateArg(numAltAllelesToKeep > 0, () -> "numAltAllelesToKeep must be > 0, but numAltAllelesToKeep=" + numAltAllelesToKeep);
+        if (allHomRefData) {
+            Utils.validate(vc.getGenotypes().stream().allMatch(Genotype::isHomRef), "Site contains variant genotypes, but method was called for monorphic site.");
+        }
 
         final boolean hasSymbolicNonRef = vc.hasAllele(Allele.NON_REF_ALLELE);
         final int numberOfAllelesThatArentProperAlts = hasSymbolicNonRef ? 2 : 1; 
@@ -297,7 +333,7 @@ public final class AlleleSubsettingUtils {
             return vc.getAlleles();
         }
 
-        final double[] likelihoodSums = calculateLikelihoodSums(vc, defaultPloidy);
+        final double[] likelihoodSums = calculateLikelihoodSums(vc, defaultPloidy, allHomRefData);
         return filterToMaxNumberOfAltAllelesBasedOnScores(numAltAllelesToKeep, vc.getAlleles(), likelihoodSums);
     }
 
@@ -329,7 +365,7 @@ public final class AlleleSubsettingUtils {
      * SUM_{samples whose likeliest genotype contains this alt allele} log(likelihood alt / likelihood hom ref)
      */
     @VisibleForTesting
-    static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy) {
+    static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy, boolean useHomRefData) {
         final double[] likelihoodSums = new double[vc.getNAlleles()];
         for ( final Genotype genotype : vc.getGenotypes().iterateInSampleNameOrder() ) {
             final GenotypeLikelihoods gls = genotype.getLikelihoods();
@@ -337,17 +373,24 @@ public final class AlleleSubsettingUtils {
                 continue;
             }
             final double[] glsVector = gls.getAsVector();
-            final int indexOfMostLikelyGenotype = MathUtils.maxElementIndex(glsVector);
-            final double GLDiffBetweenRefAndBest = glsVector[indexOfMostLikelyGenotype] - glsVector[PL_INDEX_OF_HOM_REF];
+            final int genotypeCallIndex = MathUtils.maxElementIndex(glsVector);
+            int indexOfMostLikelyVariantGenotype;
+            final double GLDiffBetweenRefAndBestVariantGenotype;
+            if (genotypeCallIndex > 0 || !useHomRefData) {
+                 indexOfMostLikelyVariantGenotype = genotypeCallIndex;
+            } else {
+                indexOfMostLikelyVariantGenotype = MathUtils.maxElementIndex(glsVector, 1, glsVector.length-1);
+            }
+            GLDiffBetweenRefAndBestVariantGenotype = Math.abs(glsVector[indexOfMostLikelyVariantGenotype] - glsVector[PL_INDEX_OF_HOM_REF]);
             final int ploidy = genotype.getPloidy() > 0 ? genotype.getPloidy() : defaultPloidy;
 
             final int[] alleleCounts = new GenotypeLikelihoodCalculators()
-                    .getInstance(ploidy, vc.getNAlleles()).genotypeAlleleCountsAt(indexOfMostLikelyGenotype)
+                    .getInstance(ploidy, vc.getNAlleles()).genotypeAlleleCountsAt(indexOfMostLikelyVariantGenotype)
                     .alleleCountsByIndex(vc.getNAlleles() - 1);
 
             for (int allele = 1; allele < alleleCounts.length; allele++) {
                 if (alleleCounts[allele] > 0) {
-                    likelihoodSums[allele] += GLDiffBetweenRefAndBest;
+                    likelihoodSums[allele] += GLDiffBetweenRefAndBestVariantGenotype;
                 }
             }
         }
