@@ -54,7 +54,7 @@ task PrepareCallsetTask {
         String fq_destination_dataset
 
         File? service_account_json
-        String docker
+        String? docker
     }
 
     String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200414"])
