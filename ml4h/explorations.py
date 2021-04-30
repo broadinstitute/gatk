@@ -800,7 +800,9 @@ class ExploreParallelWrapper():
 def _tensors_to_df(args):
     generators = test_train_valid_tensor_generators(**args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
-    paths = [(path, gen.name.replace('_worker', '')) for gen in generators for worker_paths in gen.path_iters for path in worker_paths.paths]
+    paths = []
+    for gen, name in zip(generators, ["train", "valid", "test"]):
+        paths += [(path, name) for path in gen.paths]  # TODO: relies on leaky abstraction of TensorGenerator
     ExploreParallelWrapper(tmaps, paths, args.num_workers, args.output_folder, args.id).run()
 
     # get columns that should have dtype 'string' instead of dtype 'O'
