@@ -13,6 +13,7 @@ class TensorMapSampleGetter:
             tensor_maps_in: List[TensorMap],
             tensor_maps_out: List[TensorMap],
             augment: bool = False,
+            return_path: bool = False,
     ):
         """
         A SampleGetter that is built from TensorMaps.
@@ -59,6 +60,7 @@ class TensorMapSampleGetter:
         self.tensor_maps_in = tensor_maps_in
         self.tensor_maps_out = tensor_maps_out
         self.augment = augment
+        self.return_path = return_path
 
     def __call__(self, path: str) -> Batch:
         dependents = {}
@@ -75,6 +77,8 @@ class TensorMapSampleGetter:
                     tm.tensor_from_file(tm, hd5, dependents),
                     augment=self.augment, hd5=hd5,
                 )
+        if self.return_path:
+            return in_batch, out_batch, path
         return in_batch, out_batch
 
 
