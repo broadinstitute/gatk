@@ -1638,7 +1638,7 @@ public final class GATKVariantContextUtils {
                         genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL)
                     AlleleSubsettingUtils.addInfoFieldAnnotations(vc, builder, keepOriginalChrCounts);
 
-                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, null, genotypeAssignmentMethodUsed,vc.getAttributeAsInt("DP",0)));
+                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, null, genotypeAssignmentMethodUsed,vc.getAttributeAsInt("DP",0), false));
                 final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
                 biallelics.add(trimmed);
             }

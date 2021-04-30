@@ -1031,7 +1031,7 @@ public final class SelectVariants extends VariantWalker {
         // fix the PL and AD values if sub has fewer alleles than original vc and remove a fraction of the genotypes if needed
         final GenotypesContext oldGs = sub.getGenotypes();
         GenotypesContext newGC = sub.getNAlleles() == vc.getNAlleles() ? oldGs :
-                AlleleSubsettingUtils.subsetAlleles(oldGs, 0, vc.getAlleles(), sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                AlleleSubsettingUtils.subsetAlleles(oldGs, 0, vc.getAlleles(), sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);
 
         if (fractionGenotypes > 0) {
             final List<Genotype> genotypes = newGC.stream().map(genotype -> randomGenotypes.nextDouble() > fractionGenotypes ? genotype :
