@@ -74,7 +74,7 @@ task PrepareCallsetTask {
     >>>
 
     runtime {
-        docker: docker
+        docker: docker_final
         memory: "10 GB"
         disks: "local-disk 100 HDD"
         bootDiskSizeGb: 15
