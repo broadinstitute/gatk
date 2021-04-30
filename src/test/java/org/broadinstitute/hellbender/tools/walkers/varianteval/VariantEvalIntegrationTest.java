@@ -107,6 +107,42 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testContigStratWithUserSuppliedIntervals() throws IOException {
+        String name = "testContigStratWithUserSuppliedIntervals";
+
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -R " + b37Reference +
+                        " --eval " + snpEffVcf +
+                        " -no-ev" +
+                        " -EV CountVariants" +
+                        " -no-st" +
+                        " -ST Contig" +
+                        " -L 1:1-1480226" +
+                        " -O %s",
+                Arrays.asList(getExpectedFile(name))
+        );
+        spec.executeTest(name, this);
+    }
+
+    @Test
+    public void testContigStratWithUserSuppliedIntervals2() throws IOException {
+        String name = "testContigStratWithUserSuppliedIntervals2";
+
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -R " + b37Reference +
+                        " --eval " + snpEffVcf +
+                        " -no-ev" +
+                        " -EV CountVariants" +
+                        " -no-st" +
+                        " -ST Contig" +
+                        " -L 1" +
+                        " -O %s",
+                Arrays.asList(getExpectedFile(name))
+        );
+        spec.executeTest(name, this);
+    }
+
+    @Test
     public void testFundamentalsCountVariantsSNPsAndIndelsWithNoveltyAndFilter() throws IOException {
         String name = "testFundamentalsCountVariantsSNPsAndIndelsWithNoveltyAndFilter";
 
