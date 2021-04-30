@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.tribble.Feature;
@@ -483,6 +484,21 @@ public class VariantEvalEngine {
                     .collect(Collectors.joining(", ")));
         }
         return traversalIntervals.stream().mapToLong(SimpleInterval::size).sum();
+    }
+
+    /**
+     * @return The list of contig names to be traversed, preferentially taking user supplied intervals, but otherwise defaulting to driving variants
+     */
+    public List<String> getContigNames() {
+        final TreeSet<String> contigs = new TreeSet<>();
+        if (traversalIntervals == null) {
+            getSequenceDictionaryForDrivingVariants().getSequences().stream().map(SAMSequenceRecord::getSequenceName).forEach(contigs::add);
+        }
+        else {
+            traversalIntervals.stream().map(SimpleInterval::getContig).forEach(contigs::add);
+        }
+
+        return new ArrayList<>(contigs);
     }
 
     private boolean compHasMatchingEval(final VariantContext comp, final Collection<VariantContext> evals) {

@@ -1,30 +1,22 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
- * Stratifies the evaluation by each contig in the reference sequence
+ * Stratifies the evaluation by each contig in the reference sequence. Note: if the user supplies custom intervals, it will defer to these rather than the full sequence dictionary
  */
 public class Contig extends VariantStratifier {
     public Contig(VariantEvalEngine engine) {
         super(engine);
 
-        states.addAll(getContigNames(getEngine().getSequenceDictionaryForDrivingVariants()));
+        states.addAll(getEngine().getContigNames());
         states.add("all");
-    }
-
-    private Set<String> getContigNames(SAMSequenceDictionary dict) {
-        final TreeSet<String> contigs = new TreeSet<>();
-        for( final SAMSequenceRecord r :  dict.getSequences()) {
-            contigs.add(r.getSequenceName());
-        }
-        return contigs;
     }
 
     @Override
