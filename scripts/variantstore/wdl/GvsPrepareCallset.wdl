@@ -20,7 +20,6 @@ workflow GvsPrepareCallset {
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200414"])
 
     call PrepareCallsetTask {
         input:
@@ -33,7 +32,7 @@ workflow GvsPrepareCallset {
             fq_temp_table_dataset           = fq_temp_table_dataset,
             fq_destination_dataset          = fq_destination_dataset,
 
-            docker                          = docker_final
+            docker                          = docker
     }
 
 }
@@ -57,6 +56,8 @@ task PrepareCallsetTask {
         File? service_account_json
         String docker
     }
+
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200414"])
 
     command <<<
         set -e
