@@ -2,12 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEval;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 import org.broadinstitute.hellbender.utils.samples.MendelianViolation;
 import org.broadinstitute.hellbender.utils.samples.SampleDB;
 
@@ -39,6 +37,11 @@ import org.broadinstitute.hellbender.utils.samples.SampleDB;
  */
 @Analysis(name = "Mendelian Violation Evaluator", description = "Mendelian Violation Evaluator")
 public class MendelianViolationEvaluator extends VariantEvaluator {
+    public MendelianViolationEvaluator(VariantEvalEngine engine) {
+        super(engine);
+
+        mv = new ExtendedMendelianViolation(getEngine().getVariantEvalArgs().getMendelianViolationQualThreshold());
+    }
 
     @DataPoint(description = "Number of variants found with at least one family having genotypes", format = "%d")
     public long nVariants;
@@ -100,13 +103,6 @@ public class MendelianViolationEvaluator extends VariantEvaluator {
     public long HomVarHet_inheritedVar;
 
     ExtendedMendelianViolation mv;
-    SampleDB sampleDB;
-
-    public void initialize(VariantEval walker) {
-        super.initialize(walker);
-        mv = new ExtendedMendelianViolation(walker.getMendelianViolationQualThreshold());
-        sampleDB = walker.getSampleDB();
-    }
 
     public String getName() {
         return "mendelian_violations";
@@ -116,10 +112,11 @@ public class MendelianViolationEvaluator extends VariantEvaluator {
         return 1;   // we only need to see each eval track
     }
 
-    public void update1(VariantContext vc, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
+    @Override
+    public void update1(final VariantContext vc, final VariantEvalContext context) {
         if (vc.isBiallelic() && vc.hasGenotypes()) { // todo -- currently limited to biallelic loci
 
-            if (mv.countFamilyViolations(sampleDB, null, vc) > 0){
+            if (mv.countFamilyViolations(getEngine().getSampleDB(), null, vc) > 0){
                 nLociViolations++;
                 nViolations += mv.getViolationsCount();
                 mvRefRef_Var += mv.getParentsRefRefChildVar();

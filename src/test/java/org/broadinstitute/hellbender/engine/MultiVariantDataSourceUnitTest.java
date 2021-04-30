@@ -394,5 +394,3 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
     }
 
 }
-
-

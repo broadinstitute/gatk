@@ -2,7 +2,7 @@
 #:GATKTable:13:4:%s:%s:%s:%s:%d:%d:%.2f:%d:%d:%.2f:%d:%d:%.2f:;
 #:GATKTable:TiTvVariantEvaluator:Ti/Tv Variant Evaluator
 TiTvVariantEvaluator  CompFeatureInput  EvalFeatureInput  FunctionalClass  nTi  nTv  tiTvRatio  nTiInComp  nTvInComp  TiTvRatioStandard  nTiDerived  nTvDerived  tiTvDerivedRatio
-TiTvVariantEvaluator  dbsnp             eval              all              710  211       3.36        674        159               4.24           0           0              0.00
+TiTvVariantEvaluator  dbsnp             eval              all              710  211       3.36        673        159               4.23           0           0              0.00
 TiTvVariantEvaluator  dbsnp             eval              missense         182   72       2.53        168         51               3.29           0           0              0.00
 TiTvVariantEvaluator  dbsnp             eval              nonsense           1    0       1.00          1          0               1.00           0           0              0.00
 TiTvVariantEvaluator  dbsnp             eval              silent           208   36       5.78        195         27               7.22           0           0              0.00

@@ -4,11 +4,10 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -18,6 +17,10 @@ public class MultiallelicSummary extends VariantEvaluator implements StandardEva
 
     public enum Type {
         SNP, INDEL
+    }
+
+    public MultiallelicSummary(VariantEvalEngine engine) {
+        super(engine);
     }
 
     // basic counts on various rates found
@@ -67,8 +70,9 @@ public class MultiallelicSummary extends VariantEvaluator implements StandardEva
 
     @Override public int getComparisonOrder() { return 2; }
 
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
-        if ( eval == null || (getWalker().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
+    @Override
+    public void update2(final VariantContext eval, final VariantContext comp, final VariantEvalContext context) {
+        if ( eval == null || (getEngine().getVariantEvalArgs().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
             return;
 
         // update counts
@@ -128,8 +132,9 @@ public class MultiallelicSummary extends VariantEvaluator implements StandardEva
         // TODO -- implement me
     }
 
+    @Override
     public void finalizeEvaluation() {
-        nProcessedLoci = getWalker().getnProcessedLoci();
+        nProcessedLoci = getEngine().getnProcessedLoci();
         processedMultiSnpRatio = (double)nMultiSNPs / (double)nProcessedLoci;
         variantMultiSnpRatio = (double)nMultiSNPs / (double)nSNPs;
         processedMultiIndelRatio = (double)nMultiIndels / (double)nProcessedLoci;
