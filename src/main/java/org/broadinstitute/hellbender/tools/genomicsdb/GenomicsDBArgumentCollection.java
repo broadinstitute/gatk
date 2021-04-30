@@ -11,6 +11,7 @@ public class GenomicsDBArgumentCollection implements Serializable {
   public static final String USE_BCF_CODEC_LONG_NAME = "genomicsdb-use-bcf-codec";
   public static final String SHARED_POSIXFS_OPTIMIZATIONS = "genomicsdb-shared-posixfs-optimizations";
 
+  public static final String CALL_GENOTYPES_LONG_NAME = "call-genotypes";
   private static final boolean DEFAULT_CALL_GENOTYPES = false;
   private static final boolean DEFAULT_USE_BCF_CODEC = false;
   private static final boolean DEFAULT_SHARED_POSIXFS_OPTIMIZATIONS = false;
@@ -18,8 +19,10 @@ public class GenomicsDBArgumentCollection implements Serializable {
   /**
    * Not full-fledged arguments for now.
    */
-  public boolean callGenotypes = DEFAULT_CALL_GENOTYPES;
   public int maxDiploidAltAllelesThatCanBeGenotyped = GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED;
+
+  @Argument(fullName = CALL_GENOTYPES_LONG_NAME, doc = "Output called genotypes in final VCF (otherwise no-call)", optional = true)
+  public boolean callGenotypes = DEFAULT_CALL_GENOTYPES;
 
   /**
    * Currently there is no support for 64-bit fields in BCF2Codec. The VCFCodec allows for 64-bit

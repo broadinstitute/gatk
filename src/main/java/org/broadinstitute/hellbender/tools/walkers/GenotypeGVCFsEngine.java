@@ -6,9 +6,12 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
@@ -36,6 +39,7 @@ import java.util.stream.Collectors;
 
 public class GenotypeGVCFsEngine
 {
+    private static final Logger logger = LogManager.getLogger(GenotypeGVCFsEngine.class);
     private static final String GVCF_BLOCK = "GVCFBlock";
 
     //the annotation engine
@@ -363,6 +367,9 @@ public class GenotypeGVCFsEngine
     private StandardCallerArgumentCollection createMinimalArgs(final boolean forceOutput) {
         final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
         args.genotypeArgs = genotypeArgs.clone();
+
+        //keep hom ref calls even if no PLs
+        args.genotypeArgs.genotypeAssignmentMethod = GenotypeAssignmentMethod.PREFER_PLS;
 
         //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to args separately
         //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested

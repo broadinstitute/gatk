@@ -26,6 +26,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -89,6 +90,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     public static final String SOMATIC_INPUT_LONG_NAME = "input-is-somatic";
     public static final String DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME = "drop-somatic-filtering-annotations";
     public static final String ALLELE_FRACTION_DELTA_LONG_NAME = "allele-fraction-error";
+    public static final String CALL_GENOTYPES_LONG_NAME = "call-genotypes";
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -122,6 +124,12 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      */
     @Argument(fullName=DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME, doc = "For input somatic GVCFs (i.e. from Mutect2) drop filtering annotations")
     protected boolean dropSomaticFilteringAnnotations = false;
+
+    /**
+     * By default CombineGVCFs reverts all genotypes to no-calls, but calls can be made if specified
+     */
+    @Argument(fullName = CALL_GENOTYPES_LONG_NAME, doc = "Output called genotypes?", optional = true)
+    protected boolean makeGenotypeCalls = false;
 
     @Override
     public boolean useVariantAnnotations() { return true;}
@@ -266,7 +274,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
         vcfWriter = getVCFWriter();
 
-        referenceConfidenceVariantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, dropSomaticFilteringAnnotations);
+        referenceConfidenceVariantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, dropSomaticFilteringAnnotations, makeGenotypeCalls);
 
         //now that we have all the VCF headers, initialize the annotations (this is particularly important to turn off RankSumTest dithering in integration tests)'
         sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -437,6 +445,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             start = prevPos.getStart() + 1;
             refAllele = Allele.create(refAfterPrevPos, true);
         }
+        final List<Allele> allelesToUse = Arrays.asList(refAllele, Allele.NON_REF_ALLELE);
 
         // attributes
         final Map<String, Object> attrs = new HashMap<>(1);
@@ -448,10 +457,18 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
         final GenotypesContext genotypes = GenotypesContext.create();
         for (final VariantContext vc : vcs) {
             for (final Genotype g : vc.getGenotypes()) {
-                genotypes.add(new GenotypeBuilder(g).alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).make());
+                final GenotypeBuilder gBuilder = new GenotypeBuilder(g);
+                if (makeGenotypeCalls) {
+                    GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
+                            gBuilder, GenotypeAssignmentMethod.PREFER_PLS,
+                            g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null, allelesToUse, g.getAlleles(), null);
+                } else {
+                    gBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy()));
+                }
+                genotypes.add(gBuilder.make());
             }
         }
-        return new VariantContextBuilder("", first.getContig(), start, end, Arrays.asList(refAllele, Allele.NON_REF_ALLELE)).attributes(attrs).genotypes(genotypes).make();
+        return new VariantContextBuilder("", first.getContig(), start, end, allelesToUse).attributes(attrs).genotypes(genotypes).make();
     }
 
     /**

@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -37,6 +38,7 @@ public final class ReferenceConfidenceVariantContextMerger {
     protected final VariantAnnotatorEngine annotatorEngine;
     private final boolean doSomaticMerge;
     protected boolean dropSomaticFilteringAnnotations;
+    protected boolean callGTAlleles;
     protected final OneShotLogger oneShotAnnotationLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger oneShotHeaderLineLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger AS_Warning = new OneShotLogger(this.getClass());
@@ -59,12 +61,17 @@ public final class ReferenceConfidenceVariantContextMerger {
     }
 
     public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine, final VCFHeader inputHeader, boolean somaticInput, boolean dropSomaticFilteringAnnotations) {
+        this(engine, inputHeader, somaticInput, dropSomaticFilteringAnnotations, false);
+    }
+
+    public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine, final VCFHeader inputHeader, boolean somaticInput, boolean dropSomaticFilteringAnnotations, boolean callGTAlleles) {
         Utils.nonNull(inputHeader, "A VCF header must be provided");
 
         annotatorEngine = engine;
         vcfInputHeader = inputHeader;
         doSomaticMerge = somaticInput;
         this.dropSomaticFilteringAnnotations = dropSomaticFilteringAnnotations;
+        this.callGTAlleles = callGTAlleles;
     }
 
     /**
@@ -590,7 +597,14 @@ public final class ReferenceConfidenceVariantContextMerger {
                     }
                 }
             }
-            genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).name(name);
+            genotypeBuilder.name(name);
+            if (callGTAlleles) {
+                GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
+                        genotypeBuilder, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL,
+                        g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null, targetAlleles, g.getAlleles(), null);
+            } else {
+                genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy()));
+            }
             mergedGenotypes.add(genotypeBuilder.make());
         }
 

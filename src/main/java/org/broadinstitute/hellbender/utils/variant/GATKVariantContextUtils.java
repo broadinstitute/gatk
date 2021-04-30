@@ -284,9 +284,18 @@ public final class GATKVariantContextUtils {
         }
         if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL) {
             gb.alleles(noCallAlleles(ploidy)).noGQ();
-        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN) {
+        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN ||
+                    assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
             if ( genotypeLikelihoods == null || !isInformative(genotypeLikelihoods) ) {
-                gb.alleles(noCallAlleles(ploidy)).noGQ();
+                if (assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
+                    if (originalGT == null) {
+                        throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is PREFER_PLS");
+                    } else {
+                        gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
+                    }
+                } else {
+                    gb.alleles(noCallAlleles(ploidy)).noGQ();
+                }
             } else {
                 final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
                 final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
@@ -307,12 +316,7 @@ public final class GATKVariantContextUtils {
         } else if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
             gb.alleles(noCallAlleles(ploidy)).noGQ().noAD().noPL().noAttributes();
         } else if (assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
-            final List<Allele> best = new LinkedList<>();
-            final Allele ref = allelesToUse.get(0);
-            for (final Allele originalAllele : originalGT) {
-                best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
-            }
-            gb.alleles(best);
+            gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
             if (gpc == null) {
                 throw new GATKException("cannot uses posteriors without an genotype prior calculator present");
@@ -338,6 +342,15 @@ public final class GATKVariantContextUtils {
                 gb.alleles(glCalc.genotypeAlleleCountsAt(maxPosteriorIndex).asAlleleList(allelesToUse));
             }
         }
+    }
+
+    private static List<Allele> bestMatchToOriginalGT(final List<Allele> allelesToUse, final List<Allele> originalGT) {
+        final List<Allele> best = new LinkedList<>();
+        final Allele ref = allelesToUse.get(0);
+        for (final Allele originalAllele : originalGT) {
+            best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
+        }
+        return best;
     }
 
     private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] /**/log10Posteriors) {
