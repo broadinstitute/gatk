@@ -57,13 +57,13 @@ BASE_CMD="rtg vcfeval --region chr20 --roc-subset snp,indel  --vcf-score-field=I
 SUFFIX="_roc_filtered"
 
 ${BASE_CMD} -b truth/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_PGandRTGphasetransfer.vcf.gz \
--e truth/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_nosomaticdel_noCENorHET7.bed \
+-e truth/HG001.gvs.evaluation.bed \
 -c NA12878.${SOURCE}.chr20.maxas.vcf.gz -o NA12878_${SOURCE}${SUFFIX}
 
-${BASE_CMD} -b truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e truth/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c BI_HG002.${SOURCE}.chr20.maxas.vcf.gz -o BI_HG002_${SOURCE}${SUFFIX}
-${BASE_CMD} -b truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e truth/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c UW_HG002.${SOURCE}.chr20.maxas.vcf.gz -o UW_HG002_${SOURCE}${SUFFIX}
-${BASE_CMD} -b truth/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e truth/HG003_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed -c BI_HG003.${SOURCE}.chr20.maxas.vcf.gz -o BI_HG003_${SOURCE}${SUFFIX}
-${BASE_CMD} -b truth/CHM.full.38.vcf.gz -e truth/CHM.full.38.bed.gz -c SYNDIP.${SOURCE}.chr20.maxas.vcf.gz -o syndip_${SOURCE}${SUFFIX}
+${BASE_CMD} -b truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e truth/HG002.gvs.evaluation.bed -c BI_HG002.${SOURCE}.chr20.maxas.vcf.gz -o BI_HG002_${SOURCE}${SUFFIX}
+${BASE_CMD} -b truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e truth/HG002.gvs.evaluation.bed -c UW_HG002.${SOURCE}.chr20.maxas.vcf.gz -o UW_HG002_${SOURCE}${SUFFIX}
+${BASE_CMD} -b truth/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e truth/HG003.gvs.evaluation.bed -c BI_HG003.${SOURCE}.chr20.maxas.vcf.gz -o BI_HG003_${SOURCE}${SUFFIX}
+${BASE_CMD} -b truth/CHM.full.38.vcf.gz -e truth/CHM.gvs.evaluation.bed -c SYNDIP.${SOURCE}.chr20.maxas.vcf.gz -o syndip_${SOURCE}${SUFFIX}
 ```
 
 The do the same thing but use all records
