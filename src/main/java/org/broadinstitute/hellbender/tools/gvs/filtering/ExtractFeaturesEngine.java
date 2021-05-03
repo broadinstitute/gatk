@@ -134,8 +134,8 @@ public class ExtractFeaturesEngine {
                                                                                              hqGenotypeABThreshold);
 
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
-
         Map<String, String> labelForQuery = createQueryLabels(queryLabels);
+        labelForQuery.put("variant_store", "extra_features");
 
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(
                 featureQueryString,
@@ -148,25 +148,24 @@ public class ExtractFeaturesEngine {
         createVQSRInputFromTableResult(storageAPIAvroReader);
     }
 
-    private Map<String, String>  createQueryLabels(String labelString) {
-      //String labelString = "{\"label\": \"without\", \"a\": \"cause\"}";
-      JsonObject jsonObject = new JsonObject();
-        JsonObject object = jsonObject.getAsJsonObject(labelString);
-        Set<String> labelKeys = object.keySet();
-        // Each resource can have multiple labels, up to a maximum of 64. -- labelKeys has to be !>64
-        // The key portion of a label must be unique. However, you can use the same key with multiple resources.
-
-        if ( labelKeys.size() > 63 ) {
-            throw new UserException("Only 63 unique label keys are allowed per resource.");
-            // BQ allows for 64, and we add one below
-        }
-
+    private Map<String, String>  createQueryLabels(List<String> labelStringList) {
         // a hardcoded label is added to the query to make tracking this workflow easier downstream
         Map<String, String> labelForQuery = new HashMap<String, String>();
         labelForQuery.put("variant_store", "extra_features");
         // add additional key value pair labels
 
-        for (String labelkey: labelKeys) {
+        // Each resource can have multiple labels, up to a maximum of 64. -- labelKeys has to be !>64
+        // The key portion of a label must be unique. However, you can use the same key with multiple resources.
+
+        if ( labelStringList.size() > 63 ) {
+            throw new UserException("Only 63 unique label keys are allowed per resource.");
+            // BQ allows for 64, and we add one below
+        }
+
+        for (String labelMap: labelStringList) {
+            String[] label = labelMap.split("=");
+            String labelKey = label[0];
+            String labelValue = label[1];
             // validate the label key and label value according to GCP Requirements for labels
             // Each label must be a key-value pair.
             // Keys have a minimum length of 1 character and a maximum length of 63 characters, and cannot be empty.
@@ -174,19 +173,18 @@ public class ExtractFeaturesEngine {
             // Keys and values can contain only lowercase letters, numeric characters, underscores, and dashes.
             // All characters must use UTF-8 encoding, and international characters are allowed.
             // Keys must start with a lowercase letter or international character.
-            if ( labelkey.length() > 63 || labelkey.length() < 1 || labelkey.isEmpty()) {
+            if ( labelKey.length() > 63 || labelKey.length() < 1 || labelKey.isEmpty()) {
                 throw new UserException("Label key length must be between 1 and 63 characters");
             }
-            String labelValue = object.get(labelkey).getAsString();
             if ( labelValue.length() > 63 ) {
                 throw new UserException("Label value length must be less than 63 characters");
             }
             String labelRegex = "[a-z0-9_-]+$";
-            if ( !labelkey.matches(labelRegex) || !labelValue.matches(labelRegex)  ) {
+            if ( !labelKey.matches(labelRegex) || !labelValue.matches(labelRegex)  ) {
                 throw new UserException("Label keys and values can contain only" +
                     " lowercase letters, numeric characters, underscores, and dashes");
             }
-            labelForQuery.put(labelkey, labelValue);
+            labelForQuery.put(labelKey, labelValue);
         }
 
         return labelForQuery;
