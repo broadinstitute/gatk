@@ -114,12 +114,11 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "testContigStratWithUserSuppliedIntervalsData")
     public Object[][] testContigStratWithUserSuppliedIntervalsData() {
-        List<Object[]> tests = new ArrayList<>();
-        tests.add(new Object[]{"1:1-1480226", "testContigStratWithUserSuppliedIntervals"});
-        tests.add(new Object[]{"1", "testContigStratWithUserSuppliedIntervals2"});
-        tests.add(new Object[]{null, "testContigStratWithUserSuppliedIntervals3"});
-
-        return tests.toArray(new Object[][]{});
+        return new Object[][]{
+                new Object[]{"1:1-1480226", "testContigStratWithUserSuppliedIntervals"},
+                new Object[]{"1", "testContigStratWithUserSuppliedIntervals2"},
+                new Object[]{null, "testContigStratWithUserSuppliedIntervals3"}
+        };
     }
 
     @Test(dataProvider = "testContigStratWithUserSuppliedIntervalsData")
