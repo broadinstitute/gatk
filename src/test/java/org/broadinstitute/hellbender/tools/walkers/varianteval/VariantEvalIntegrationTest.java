@@ -141,7 +141,13 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         args.addOutput(output);
 
         runCommandLine(args);
+
+        // The intent of these tests is to ensure that when user supplied intervals are provided, the output report is limited ot only those contigs
         Assert.assertTrue(output.exists());
+        Assert.assertEquals(extractUniqueContigsFromEvalReport(output), expectedContigs);
+    }
+
+    private Set<String> extractUniqueContigsFromEvalReport(File output)  throws IOException {
         Set<String> outputContigs = new TreeSet<>();
         try (BufferedReader reader = new BufferedReader(IOUtil.openFileForBufferedUtf8Reading(output), '\t')) {
             String line;
@@ -158,7 +164,7 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
             }
         }
 
-        Assert.assertEquals(outputContigs, expectedContigs);
+        return outputContigs;
     }
 
     @Test
