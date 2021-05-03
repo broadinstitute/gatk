@@ -59,7 +59,9 @@ def execute_with_retry(label, sql):
   start = time.time()
   while len(retry_delay) > 0:
     try:
-      query = client.query(sql)
+      labelValue = label.replace(" ","-").strip().lower()
+      job_config = bigquery.QueryJobConfig(labels={"gvs_query_name": labelValue})
+      query = client.query(sql, job_config=job_config)
 
       print(f"STARTING - {label}")
       JOB_IDS.add((label, query.job_id))
@@ -144,14 +146,17 @@ def create_position_table(fq_temp_table_dataset, min_variant_samples):
   if min_variant_samples > 0:
       min_sample_clause = f"HAVING count(distinct sample_id) >= {min_variant_samples}"
 
-  create_vet_distinct_pos_query = client.query(
-        f"""
+  sql = f"""
           create or replace table `{dest}` {TEMP_TABLE_TTL}
           as (
             select location from `{fq_temp_table_dataset}.{VET_NEW_TABLE}` WHERE alt != '*' GROUP BY location {min_sample_clause}
           )
         """
-    )
+  job_config = bigquery.QueryJobConfig(labels={"gvs_query_name": "create-position-table"})
+  create_vet_distinct_pos_query = client.query(sql, job_config=job_config)
+
+
+
 
   create_vet_distinct_pos_query.result()
   JOB_IDS.add((f"create positions table {dest}", create_vet_distinct_pos_query.job_id))
@@ -217,7 +222,8 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_dataset, 
             `{fq_sample_mapping_table}` s ON (new_pet.sample_id = s.sample_id))
       """
   print(sql)
-  cohort_extract_final_query_job = client.query(sql)
+  job_config = bigquery.QueryJobConfig(labels={"gvs_query_name": "populate-final-extract-table"})
+  cohort_extract_final_query_job = client.query(sql, job_config=job_config)
 
   cohort_extract_final_query_job.result()
   JOB_IDS.add((f"insert final cohort table {dest}", cohort_extract_final_query_job.job_id))
@@ -241,17 +247,22 @@ def make_extract_table(fq_pet_vet_dataset,
     # this is where a set of labels are being created for the cohort extract. Do we want the hardcoded one to be different?
     query_labels_map = {}
     query_labels_map["id"]= f"test_cohort_export_{output_table_prefix}"
-    # query_labels is string that looks like '{"success": "true", "status": 200, "message": "Hello"}'
-    query_labels_json = json.loads(query_labels)
+    # query_labels is string that looks like 'label1=val1, label2=val2'
+    if query_labels != None:
+        query_labels_list = query_labels.split(",")
+        for query_label in query_labels_list:
+          kv = query_label.split("=", 2)
+          key = kv[0].strip().lower()
+          value = kv[1].strip().lower()
+          query_labels_map[key] = value
 
-    # get all the label keys and loop through them, adding them to the map
-    for key in query_labels_json.keys():
-      print(key)
-      query_labels_map[key] = query_labels_json[key]
 
-    #for label in query_labels:
-     # query_labels_map[label.key] = label.value
+      #import re
+      #if !bool(re.match(r"[a-z0-9_-]+$", key)): !True -- throw an error
+      #    raise ValueError(f"label key did not pass validation")
 
+    #Default QueryJobConfig will be merged into job configs passed into the query method.
+    # TODO I'm worried about how well the labels will be merged....
     default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=False )
 
     if sa_key_path:
@@ -297,6 +308,7 @@ if __name__ == '__main__':
   parser.add_argument('--destination_table',type=str, help='destination table', required=True)
   parser.add_argument('--fq_cohort_sample_names',type=str, help='FQN of cohort table to extract, contains "sample_name" column', required=True)
   parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
+  parser.add_argument('--query_labels',type=str, help='Labels to put on the query that will show up in the billing', required=False)
   parser.add_argument('--min_variant_samples',type=int, help='Minimum variant samples at a site required to be emitted', required=False, default=0)
   parser.add_argument('--fq_sample_mapping_table',type=str, help='Mapping table from sample_id to sample_name', required=True)
   parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
