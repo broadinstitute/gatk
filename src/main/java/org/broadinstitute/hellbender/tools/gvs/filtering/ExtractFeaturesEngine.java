@@ -135,7 +135,6 @@ public class ExtractFeaturesEngine {
 
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
         Map<String, String> labelForQuery = createQueryLabels(queryLabels);
-        labelForQuery.put("variant_store", "extra_features");
 
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(
                 featureQueryString,
@@ -149,9 +148,10 @@ public class ExtractFeaturesEngine {
     }
 
     private Map<String, String>  createQueryLabels(List<String> labelStringList) {
-        // a hardcoded label is added to the query to make tracking this workflow easier downstream
+        // hardcoded labels are added to the query to make tracking this workflow easier downstream
         Map<String, String> labelForQuery = new HashMap<String, String>();
-        labelForQuery.put("variant_store", "extra_features");
+        labelForQuery.put("gvs_tool_name", "extract-features");
+        labelForQuery.put("gvs_query_name", "extract-features");
         // add additional key value pair labels
 
         // Each resource can have multiple labels, up to a maximum of 64. -- labelKeys has to be !>64
