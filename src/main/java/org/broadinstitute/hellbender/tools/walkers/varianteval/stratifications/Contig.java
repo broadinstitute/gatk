@@ -1,30 +1,37 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.*;
 
 /**
- * Stratifies the evaluation by each contig in the reference sequence
+ * Stratifies the evaluation by each contig in the reference sequence. Note: if the user supplies custom intervals, it will defer to these rather than the full sequence dictionary
  */
 public class Contig extends VariantStratifier {
     public Contig(VariantEvalEngine engine) {
         super(engine);
 
-        states.addAll(getContigNames(getEngine().getSequenceDictionaryForDrivingVariants()));
+        states.addAll(getContigNames());
         states.add("all");
     }
 
-    private Set<String> getContigNames(SAMSequenceDictionary dict) {
+    /**
+     * @return The list of contig names to be traversed, preferentially taking user supplied intervals, but otherwise defaulting to driving variants
+     */
+    private List<String> getContigNames() {
         final TreeSet<String> contigs = new TreeSet<>();
-        for( final SAMSequenceRecord r :  dict.getSequences()) {
-            contigs.add(r.getSequenceName());
+        if (getEngine().getTraversalIntervals() == null) {
+            getEngine().getSequenceDictionaryForDrivingVariants().getSequences().stream().map(SAMSequenceRecord::getSequenceName).forEach(contigs::add);
         }
-        return contigs;
+        else {
+            getEngine().getTraversalIntervals().stream().map(SimpleInterval::getContig).forEach(contigs::add);
+        }
+
+        return new ArrayList<>(contigs);
     }
 
     @Override

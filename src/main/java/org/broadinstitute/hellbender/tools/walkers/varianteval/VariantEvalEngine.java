@@ -485,6 +485,10 @@ public class VariantEvalEngine {
         return traversalIntervals.stream().mapToLong(SimpleInterval::size).sum();
     }
 
+    public List<SimpleInterval> getTraversalIntervals() {
+        return Collections.unmodifiableList(traversalIntervals);
+    }
+
     private boolean compHasMatchingEval(final VariantContext comp, final Collection<VariantContext> evals) {
         // find all of the matching comps
         for ( final VariantContext eval : evals ) {

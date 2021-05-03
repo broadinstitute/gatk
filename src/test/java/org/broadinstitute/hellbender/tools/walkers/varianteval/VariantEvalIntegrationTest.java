@@ -1,21 +1,27 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.IOUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class VariantEvalIntegrationTest extends CommandLineProgramTest {
 
@@ -104,6 +110,31 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
                 Arrays.asList(getExpectedFile(name))
         );
         spec.executeTest(name, this);
+    }
+
+    @DataProvider(name = "testContigStratWithUserSuppliedIntervalsData")
+    public Object[][] testContigStratWithUserSuppliedIntervalsData() {
+        return new Object[][]{
+                new Object[]{"1:1-1480226", "testContigStratWithUserSuppliedIntervals"},
+                new Object[]{"1", "testContigStratWithUserSuppliedIntervals2"},
+                new Object[]{null, "testContigStratWithUserSuppliedIntervals3"}
+        };
+    }
+
+    @Test(dataProvider = "testContigStratWithUserSuppliedIntervalsData")
+    public void testContigStratWithUserSuppliedIntervals(String intervalString, String expectedOutputFile) throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                        " -R " + b37Reference +
+                        " --eval " + snpEffVcf +
+                        " -no-ev" +
+                        " -EV CountVariants" +
+                        " -no-st" +
+                        " -ST Contig" +
+                        (intervalString == null ? "" : " -L " + intervalString) +
+                        " -O %s",
+                Arrays.asList(getExpectedFile(expectedOutputFile))
+        );
+        spec.executeTest(expectedOutputFile, this);
     }
 
     @Test
@@ -635,7 +666,6 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         tests.add(new Object[]{"genotypes-genotypes", evalGenotypes, compGenotypes});
         return tests.toArray(new Object[][]{});
     }
-
 
     @Test
     public void testPrintMissingComp() throws IOException {
