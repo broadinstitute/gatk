@@ -114,57 +114,28 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "testContigStratWithUserSuppliedIntervalsData")
     public Object[][] testContigStratWithUserSuppliedIntervalsData() {
-        final SAMSequenceDictionary expectedDictionary = ReferenceUtils.loadFastaDictionary(new File(b37Reference.replace("fasta.gz", "dict")));
-        Set<String> allContigs = new TreeSet<>(expectedDictionary.getSequences().stream().map(SAMSequenceRecord::getSequenceName).collect(Collectors.toSet()));
-
         List<Object[]> tests = new ArrayList<>();
-        tests.add(new Object[]{"1:1-1480226", Collections.singletonList("1")});
-        tests.add(new Object[]{"1", Arrays.asList("1")});
-        tests.add(new Object[]{null, allContigs});
-        tests.add(new Object[]{"2", Collections.singletonList("2")});
+        tests.add(new Object[]{"1:1-1480226", "testContigStratWithUserSuppliedIntervals"});
+        tests.add(new Object[]{"1", "testContigStratWithUserSuppliedIntervals2"});
+        tests.add(new Object[]{null, "testContigStratWithUserSuppliedIntervals3"});
+
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "testContigStratWithUserSuppliedIntervalsData")
-    public void testContigStratWithUserSuppliedIntervals(String intervalString, Collection<String> expectedContigs) throws IOException {
-        final File output = createTempFile("tmp", ".txt");
-        ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addReference(b37Reference);
-        args.add("eval", snpEffVcf);
-        args.addFlag("no-ev");
-        args.add("EV", "CountVariants");
-        args.addFlag("no-st");
-        args.add("ST", "Contig");
-        if (intervalString != null) {
-            args.add("L", intervalString);
-        }
-        args.addOutput(output);
-
-        runCommandLine(args);
-
-        // The intent of these tests is to ensure that when user supplied intervals are provided, the output report is limited ot only those contigs
-        Assert.assertTrue(output.exists());
-        Assert.assertEquals(extractUniqueContigsFromEvalReport(output), expectedContigs);
-    }
-
-    private Set<String> extractUniqueContigsFromEvalReport(File output)  throws IOException {
-        Set<String> outputContigs = new TreeSet<>();
-        try (BufferedReader reader = new BufferedReader(IOUtil.openFileForBufferedUtf8Reading(output), '\t')) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith("#") || StringUtils.isEmpty(line)) {
-                    continue;
-                }
-
-                String[] vals = line.split("[ ]+");
-                String val = vals[2];
-                if (!"all".equals(val) && !"Contig".equals(val)) {
-                    outputContigs.add(val);
-                }
-            }
-        }
-
-        return outputContigs;
+    public void testContigStratWithUserSuppliedIntervals(String intervalString, String expectedOutputFile) throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                        " -R " + b37Reference +
+                        " --eval " + snpEffVcf +
+                        " -no-ev" +
+                        " -EV CountVariants" +
+                        " -no-st" +
+                        " -ST Contig" +
+                        (intervalString == null ? "" : " -L " + intervalString) +
+                        " -O %s",
+                Arrays.asList(getExpectedFile(expectedOutputFile))
+        );
+        spec.executeTest(expectedOutputFile, this);
     }
 
     @Test
