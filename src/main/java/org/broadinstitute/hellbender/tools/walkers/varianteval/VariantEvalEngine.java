@@ -157,7 +157,7 @@ public class VariantEvalEngine {
      * Initialize the stratifications, evaluations, evaluation contexts, and reporting object
      */
     protected void validateAndInitialize(@Nullable Collection<String> samples) {
-        sampleDB = SampleDB.createSampleDBFromPedigreeAndDataSources(variantEvalArgs.pedigreeFile, samples, PedigreeValidationType.STRICT);
+        sampleDB = SampleDB.createSampleDBFromPedigreeAndDataSources(variantEvalArgs.pedigreeFile, samples, variantEvalArgs.pedigreeValidationType);
 
         variantEvalArgs.comps.addAll(variantEvalArgs.compsProvided);
         variantEvalArgs.compsProvided.forEach(comp -> inputToNameMap.put(comp, comp.hasUserSuppliedName() ? comp.getName() : StandardArgumentDefinitions.COMPARISON_SHORT_NAME));
