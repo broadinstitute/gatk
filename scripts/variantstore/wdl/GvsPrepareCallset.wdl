@@ -71,7 +71,13 @@ task PrepareCallsetTask {
             --query_project ~{query_project} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
             ~{"--sa_key_path " + service_account_json}
+
+      echo ~{fq_destination_dataset}.~{destination_cohort_table_name} > fq_cohort_extract_table.txt
     >>>
+
+    output {
+      String fq_cohort_extract_table = read_string("fq_cohort_extract_table.txt")
+    }
 
     runtime {
         docker: docker_final
