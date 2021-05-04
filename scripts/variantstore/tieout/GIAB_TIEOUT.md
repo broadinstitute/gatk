@@ -30,7 +30,8 @@ bcftools view -O z gvs.vcf.gz chr20 > gvs.chr20.vcf.gz
 tabix gvs.chr20.vcf.gz
 
 # extract each of the samples
-INPUT_VCF=gvs.chr20.vcf.gz
+# NOTE: excluding NO_VARIATION just means to drop sites that are reference in the selected sample
+INPUT_VCF="gvs.chr20.vcf.gz"
 
 gatk SelectVariants -V ${INPUT_VCF} --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.gvs.chr20.vcf.gz
 gatk SelectVariants -V ${INPUT_VCF} --sample-name CHMI_CHMI3_WGS1 --select-type-to-exclude NO_VARIATION -O SYNDIP.gvs.chr20.vcf.gz
@@ -126,8 +127,8 @@ Next is to subset to chr20, and the select out the 5 truth samples into their ow
 bcftools view -O z warp_tieout_acmg_cohort_v1.vcf.gz chr20 > warp_tieout_acmg_cohort_v1.chr20.vcf.gz
 tabix warp_tieout_acmg_cohort_v1.chr20.vcf.gz
 
-INPUT_VCF=warp_tieout_acmg_cohort_v1.chr20.vcf.gz
-SOURCE=warp
+INPUT_VCF="warp_tieout_acmg_cohort_v1.chr20.vcf.gz"
+SOURCE="warp"
 ~/gatk SelectVariants -V ${INPUT_VCF} --sample-name SM-G947Y --select-type-to-exclude NO_VARIATION -O NA12878.${SOURCE}.chr20.vcf.gz
 ~/gatk SelectVariants -V ${INPUT_VCF} --sample-name CHMI_CHMI3_WGS1 --select-type-to-exclude NO_VARIATION -O SYNDIP.${SOURCE}.chr20.vcf.gz
 ~/gatk SelectVariants -V ${INPUT_VCF} --sample-name 1202194294 --select-type-to-exclude NO_VARIATION -O BI_HG002.${SOURCE}.chr20.vcf.gz

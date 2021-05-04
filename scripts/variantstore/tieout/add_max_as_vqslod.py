@@ -22,6 +22,9 @@ with gzip.open(sys.argv[1], 'rt') as file1:
         if ("ExcessHet" in parts[6]):
             continue
 
+        # if the "loose" argument is specified, we remove the non Excess Het site-specific filers
+        # of EXCESS_ALLELES and NO_HQ_GENOTYPES.  This is used to measure the effect of these filters
+        # when comparing to WARP (which doesn't employ these filters).
         if (len(sys.argv) > 2 and sys.argv[2] == "loose"):
             # undo 
             x = parts[6].replace("EXCESS_ALLELES","").replace("NO_HQ_GENOTYPES","").strip(";")
