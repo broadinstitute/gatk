@@ -70,6 +70,8 @@ workflow GvsExtractCallset {
                 output_gcs_dir           = output_gcs_dir
         }
     }
+
+    output { }
 }
 
 ################################################################################
