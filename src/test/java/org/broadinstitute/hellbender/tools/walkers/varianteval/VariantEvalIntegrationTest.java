@@ -1,9 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.util.IOUtil;
-import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -12,16 +8,16 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
-import org.testng.Assert;
+import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class VariantEvalIntegrationTest extends CommandLineProgramTest {
 
@@ -316,6 +312,37 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         String name = "testVEMendelianViolationEvaluator";
         IntegrationTestSpec spec = new IntegrationTestSpec(" -R " + b37Reference + " --eval " + vcfFile + " -ped "+ getTestFilePath(pedFile) +" -no-ev -EV MendelianViolationEvaluator -L 1:10109-10315 -O %s -mvq 0 -no-st",
                 Arrays.asList(getExpectedFile(name)));
+
+        spec.executeTest(name, this);
+    }
+
+    @DataProvider(name = "testPedigreeValidationData")
+    private Object[][] testPedigreeValidationData() {
+        return new Object[][] {
+            new Object[]{PedigreeValidationType.SILENT, false},
+            new Object[]{PedigreeValidationType.STRICT, true},
+            new Object[]{null, true}
+        };
+    }
+
+    @Test(dataProvider = "testPedigreeValidationData")
+    public void testPedigreeValidation(PedigreeValidationType pvt, boolean expectFail) throws IOException {
+        String vcfFile = getTestFilePath("PhaseByTransmission.IntegrationTest.TP.vcf");
+        String pedFile = "MendelianViolationEval.ped";
+        String name = "testPedigreeValidation";
+
+        String argString = " -R " + b37Reference + " --eval " + vcfFile + " -ped "+ getTestFilePath(pedFile) +" -no-ev -EV MendelianViolationEvaluator -L 1:10109-10315 -O %s -mvq 0 -no-st ";
+        if (pvt != null) {
+            argString += " -pedValidationType " + pvt.name();
+        }
+
+        IntegrationTestSpec spec;
+        if (expectFail) {
+            spec = new IntegrationTestSpec(argString, 1, UserException.class);
+        }
+        else {
+            spec = new IntegrationTestSpec(argString, Collections.singletonList(getExpectedFile(name)));
+        }
 
         spec.executeTest(name, this);
     }
