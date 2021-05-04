@@ -52,7 +52,9 @@ workflow GvsCreateFilterSet {
         File axiomPoly_resource_vcf_index
         File dbsnp_resource_vcf = dbsnp_vcf
         File dbsnp_resource_vcf_index = dbsnp_vcf_index
-        Int? excess_alleles_threshold
+        
+        # Effectively disable by default
+        Int? excess_alleles_threshold = 1000000
 
         # Runtime attributes
         Int? small_disk_override
