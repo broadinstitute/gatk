@@ -71,7 +71,10 @@ workflow GvsExtractCallset {
         }
     }
 
-    output { }
+    output {
+      Array[File] output_vcfs = ExtractTask.output_vcf
+      Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
+    }
 }
 
 ################################################################################
