@@ -32,6 +32,7 @@ workflow GvsExtractCallset {
         File? service_account_json
 
         String output_file_base_name
+        String? output_gcs_dir
         File? gatk_override
     }
 
@@ -65,7 +66,8 @@ workflow GvsExtractCallset {
                 excluded_intervals       = excluded_intervals,
                 emit_pls                 = emit_pls,
                 service_account_json     = service_account_json,
-                output_file              = "${output_file_base_name}_${i}.vcf.gz"
+                output_file              = "${output_file_base_name}_${i}.vcf.gz",
+                output_gcs_dir           = output_gcs_dir
         }
     }
 }
@@ -91,6 +93,7 @@ task ExtractTask {
         String fq_cohort_extract_table
         String read_project_id
         String output_file
+        String? output_gcs_dir
         String fq_filter_set_info_table
         String fq_filter_set_site_table
         String fq_filter_set_tranches_table
@@ -150,6 +153,12 @@ task ExtractTask {
                 --project-id ~{read_project_id} \
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
+
+        OUTPUT_GCS_DIR= echo ~{output_gcs_dir} | sed 's/\/$//'
+        if [ -n "${OUTPUT_GCS_DIR}" ]; then
+          gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
+          gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
+        fi
     >>>
 
     # ------------------------------------------------
