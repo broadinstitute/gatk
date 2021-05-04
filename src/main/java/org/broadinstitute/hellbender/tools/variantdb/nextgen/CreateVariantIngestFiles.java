@@ -71,15 +71,21 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
-            doc = "Sample name to sample id mapping",
+            doc = "Sample name to sample id mapping. This must be provided if gvs-sample-id is not",
             optional = true)
     public File sampleMap;
 
-    @Argument(fullName = "sample-id",
-            shortName = "SID",
-            doc = "Sample id",
+    @Argument(fullName = "gvs-sample-id",
+            shortName = "GVSID",
+            doc = "GVS identifier for the sample. Can be looked up by external-sample-name in the mapping file if provided.",
             optional = true)
     public Long sampleIdParam;
+
+    @Argument(fullName = "sample-name",
+            shortName = "SN",
+            doc = "The external sample name used for the sample. If this parameter is not provided, the sample name in the gvcf file will be used. If providing a sample-name-mapping file, this is the name that must be mapped to the id.",
+            optional = true)
+    public String sampleNameParam;
 
     @Argument(fullName = "mode",
             shortName = "MO",
@@ -136,7 +142,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // TODO if you change here, also change in CreateArrayIngestFiles
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
-        sampleName = IngestUtils.getSampleName(inputVCFHeader);
+        sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
             throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
         }
