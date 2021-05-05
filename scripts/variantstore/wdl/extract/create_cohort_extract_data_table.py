@@ -65,7 +65,6 @@ def execute_with_retry(label, sql):
       job_labels = existing_labels
       job_labels["gvs_query_name"] = labelValue
       job_config = bigquery.QueryJobConfig(labels=job_labels)
-
       query = client.query(sql, job_config=job_config)
 
       print(f"STARTING - {label}")
@@ -256,7 +255,7 @@ def make_extract_table(fq_pet_vet_dataset,
     query_labels_map = {}
     query_labels_map["id"]= f"test_cohort_export_{output_table_prefix}"
     query_labels_map["gvs_tool_name"]= f"create_cohort_export_{output_table_prefix}"
-    # query_labels is string that looks like 'label1=val1, label2=val2'
+    # query_labels is string that looks like 'key1=val1, key2=val2'
     if query_labels != None:
         query_labels_list = query_labels.split(",")
         for query_label in query_labels_list:
@@ -266,10 +265,11 @@ def make_extract_table(fq_pet_vet_dataset,
           query_labels_map[key] = value
 
     if not (bool(re.match(r"[a-z0-9_-]+$", key)) & bool(re.match(r"[a-z0-9_-]+$", value))):
-      raise ValueError(f"label key did not pass validation")
+      raise ValueError(f"label key or value did not pass validation--format should be 'key1=val1, key2=val2'")
 
-    #Default QueryJobConfig will be merged into job configs passed into the query method.
-    # TODO I'm worried about how well the labels will be merged....
+    #Default QueryJobConfig will be merged into job configs passed in
+    #but if a specific default config is being updated (eg labels), new config must be added
+    #to the client._default_query_job_config that already exists
     default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=False )
 
     if sa_key_path:
@@ -316,10 +316,11 @@ if __name__ == '__main__':
   parser.add_argument('--destination_table',type=str, help='destination table', required=True)
   parser.add_argument('--fq_cohort_sample_names',type=str, help='FQN of cohort table to extract, contains "sample_name" column', required=True)
   parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
-  parser.add_argument('--query_labels',type=str, help='Labels to put on the query that will show up in the billing', required=False)
+  parser.add_argument('--query_labels',type=str, help='Labels to put on the BQ query that will show up in the billing. Ex: --query-labels key1=value1 --query-labels key2=value2', required=False)
   parser.add_argument('--min_variant_samples',type=int, help='Minimum variant samples at a site required to be emitted', required=False, default=0)
   parser.add_argument('--fq_sample_mapping_table',type=str, help='Mapping table from sample_id to sample_name', required=True)
   parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
+
 
   parser.add_argument('--max_tables',type=int, help='Maximum number of PET/VET tables to consider', required=False, default=250)
 
