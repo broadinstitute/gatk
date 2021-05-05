@@ -45,11 +45,6 @@ public class CountNs implements InfoFieldAnnotation {
     }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.N_COUNT_KEY));
-    }
-
-    @Override
     public List<String> getKeyNames() { return Arrays.asList(GATKVCFConstants.N_COUNT_KEY); }
 
     @VisibleForTesting

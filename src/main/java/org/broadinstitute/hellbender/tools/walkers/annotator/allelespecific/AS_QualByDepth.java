@@ -4,6 +4,8 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCompoundHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -67,7 +69,7 @@ public class AS_QualByDepth implements InfoFieldAnnotation, ReducibleAnnotation,
     public List<String> getSecondaryRawKeys() { return Arrays.asList(GATKVCFConstants.AS_QUAL_KEY);}
 
     @Override
-    public List<VCFInfoHeaderLine> getRawDescriptions() {
+    public List<VCFCompoundHeaderLine> getRawDescriptions() {
         //We only have the finalized key name here because the raw key is internal to GenotypeGVCFs and won't get output in any VCF
         return getDescriptions();
     }

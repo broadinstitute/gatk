@@ -65,9 +65,4 @@ public final class AlleleFraction implements GenotypeAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.ALLELE_FRACTION_KEY);}
-
-    @Override
-    public List<VCFFormatHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getFormatLine(getKeyNames().get(0)));
-    }
 }
