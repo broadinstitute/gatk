@@ -492,12 +492,6 @@ task UploadFilterSetToBQ {
 
        tabix ~{output_vcf_name}
 
-
-    #  java -Xms2000m -jar /usr/gitc/picard.jar \
-    #    MergeVcfs \
-    #    INPUT=~{sep=' INPUT=' input_vcfs} \
-    #    OUTPUT=~{output_vcf_name}
-
    }
    runtime {
      docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
