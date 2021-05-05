@@ -3,15 +3,17 @@ version 1.0
 import "GvsPrepareCallset.wdl" as GvsPrepareCallset
 import "GvsExtractCallset.wdl" as GvsExtractCallset
 
-workflow WgsCohortExtract {
+# Workflow used by AoU to extract variants for a given cohort of sample_names
+
+workflow GvsExtractCohort {
 
   input {
-    File participant_ids
+    File cohort_sample_names
     String query_project
-    String wgs_dataset
-    String wgs_extraction_cohorts_dataset
-    String wgs_extraction_destination_dataset
-    String wgs_extraction_temp_tables_dataset
+    String gvs_dataset
+    String gvs_extraction_cohorts_dataset
+    String gvs_extraction_destination_dataset
+    String gvs_extraction_temp_tables_dataset
     String extraction_uuid
     String output_gcs_dir
 
@@ -32,9 +34,9 @@ workflow WgsCohortExtract {
 
   call CreateCohortSampleTable {
     input:
-      participant_ids = participant_ids,
-      wgs_dataset = wgs_dataset,
-      wgs_extraction_cohorts_dataset = wgs_extraction_cohorts_dataset,
+      cohort_sample_names = cohort_sample_names,
+      gvs_dataset = gvs_dataset,
+      gvs_extraction_cohorts_dataset = gvs_extraction_cohorts_dataset,
       query_project = query_project,
       table_name = extraction_uuid
   }
@@ -43,21 +45,21 @@ workflow WgsCohortExtract {
     input:
       destination_cohort_table_name   = extraction_uuid,
       data_project                    = query_project,
-      default_dataset                 = "this can be anything since I supply all the values I need",
-      fq_petvet_dataset               = wgs_dataset,
+      default_dataset                 = "", # unused if fq_* args are given
+      fq_petvet_dataset               = gvs_dataset,
       fq_cohort_sample_table          = CreateCohortSampleTable.fq_cohort_sample_table,
-      fq_sample_mapping_table         = "~{wgs_dataset}.sample_info",
-      fq_temp_table_dataset           = wgs_extraction_temp_tables_dataset,
-      fq_destination_dataset          = wgs_extraction_destination_dataset
+      fq_sample_mapping_table         = "~{gvs_dataset}.sample_info",
+      fq_temp_table_dataset           = gvs_extraction_temp_tables_dataset,
+      fq_destination_dataset          = gvs_extraction_destination_dataset
   }
 
 
   call GvsExtractCallset.GvsExtractCallset {
     input:
-      data_project = query_project, # this is technically not needed if fq_filter_* args are not used or overridden
+      data_project = "", # unused if fq_filter_set_* args are given or filtering is off
       query_project = query_project,
-      default_dataset = "only used in fq_filter_*",
-      filter_set_name = "unused if do_not_filter_override=True",
+      default_dataset = "", # unused if fq_filter_set_* args are given or filtering is off
+      filter_set_name = "", # unused if fq_filter_set_* args are given or filtering is off
 
       wgs_intervals = wgs_intervals,
       scatter_count = scatter_count,
@@ -68,9 +70,9 @@ workflow WgsCohortExtract {
 
       fq_samples_to_extract_table = CreateCohortSampleTable.fq_cohort_sample_table,
       fq_cohort_extract_table = GvsPrepareCallset.fq_cohort_extract_table,
-      fq_filter_set_info_table =  "unused if do_not_filter_override=True",
-      fq_filter_set_site_table =  "unused if do_not_filter_override=True",
-      fq_filter_set_tranches_table =  "unused if do_not_filter_override=True",
+      fq_filter_set_info_table =  "", # unused if filtering is off
+      fq_filter_set_site_table =  "", # unused if filtering is off
+      fq_filter_set_tranches_table =  "", # unused if filtering is off
       do_not_filter_override = true,
 
       output_file_base_name = output_file_base_name,
@@ -87,9 +89,9 @@ workflow WgsCohortExtract {
 task CreateCohortSampleTable {
 
   input {
-    File participant_ids
-    String wgs_dataset
-    String wgs_extraction_cohorts_dataset
+    File cohort_sample_names
+    String gvs_dataset
+    String gvs_extraction_cohorts_dataset
     String query_project
     String table_name
   }
@@ -99,14 +101,14 @@ task CreateCohortSampleTable {
     sample_id,
     sample_name
     FROM
-    \`~{wgs_dataset}.metadata\`
+    \`~{gvs_dataset}.metadata\`
     WHERE
     sample_name IN " > create_cohort.sql
 
-    PARTICIPANT_IDS=$(cat ~{participant_ids} | awk '{print "\""$0"\""}' | paste -sd ",")
+    PARTICIPANT_IDS=$(cat ~{cohort_sample_names} | awk '{print "\""$0"\""}' | paste -sd ",")
     echo "($PARTICIPANT_IDS)" >> create_cohort.sql
 
-    DESTINATION_DATASET=$(echo ~{wgs_extraction_cohorts_dataset} | tr '.' ':')
+    DESTINATION_DATASET=$(echo ~{gvs_extraction_cohorts_dataset} | tr '.' ':')
 
     bq query \
     --project_id ~{query_project} \
@@ -115,7 +117,7 @@ task CreateCohortSampleTable {
     --max_rows=10000000 \
     --allow_large_results < create_cohort.sql
 
-    echo "~{wgs_extraction_cohorts_dataset}.~{table_name}" > fq_cohort_sample_table.txt
+    echo "~{gvs_extraction_cohorts_dataset}.~{table_name}" > fq_cohort_sample_table.txt
   >>>
 
   output {
