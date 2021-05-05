@@ -80,7 +80,7 @@ public class ExtractFeatures extends ExtractTool {
 
     @Argument(
         fullName = "query-labels",
-        doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels label1=value1 --query-labels label2=value2",
+        doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels key1=value1 --query-labels key2=value2",
         optional = true)
 
     protected List<String> queryLabels = new ArrayList<>();
