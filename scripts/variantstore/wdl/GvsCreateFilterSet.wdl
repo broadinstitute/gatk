@@ -490,7 +490,7 @@ task UploadFilterSetToBQ {
             -I ~{sep=' -I ' input_vcfs} \
             --output ~{output_vcf_name}
 
-       /usr/gitc/tabix ~{output_vcf_name}
+       tabix ~{output_vcf_name}
 
 
     #  java -Xms2000m -jar /usr/gitc/picard.jar \
