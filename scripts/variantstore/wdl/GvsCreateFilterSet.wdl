@@ -475,12 +475,12 @@ task UploadFilterSetToBQ {
     #    MergeVcfs \
     #    INPUT=~{sep=' INPUT=' input_vcfs} \
     #    OUTPUT=~{output_vcf_name}
-    
-        gatk --java-options -Xms3g GatherVcfsCloud --ignore-safety-checks --gather-type BLOCK \
+
+        java -Xms3g -jar GatherVcfsCloud --ignore-safety-checks --gather-type BLOCK \
             -I ~{sep=' INPUT=' input_vcfs} \
             --output ~{output_vcf_name}
 
-        tabix ~{output_vcf_name}
+        ./tabix ~{output_vcf_name}
    }
    runtime {
      docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
