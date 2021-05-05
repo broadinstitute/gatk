@@ -487,7 +487,7 @@ task UploadFilterSetToBQ {
 
         java -Xms3g -jar /usr/gitc/GATK36.jar \
             GatherVcfsCloud --ignore-safety-checks --gather-type BLOCK \
-            -I ~{sep=' INPUT=' input_vcfs} \
+            -I ~{sep=' -I ' input_vcfs} \
             --output ~{output_vcf_name}
 
         /usr/gitc/tabix ~{output_vcf_name}
