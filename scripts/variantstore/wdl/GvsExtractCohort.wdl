@@ -101,7 +101,7 @@ task CreateCohortSampleTable {
     sample_id,
     sample_name
     FROM
-    \`~{gvs_dataset}.metadata\`
+    \`~{gvs_dataset}.sample_info\`
     WHERE
     sample_name IN " > create_cohort.sql
 
