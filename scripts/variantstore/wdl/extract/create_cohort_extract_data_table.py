@@ -12,6 +12,7 @@ from google.oauth2 import service_account
 import argparse
 
 import json
+import re
 
 JOB_IDS = set()
 
@@ -55,12 +56,16 @@ def dump_job_stats():
 
 def execute_with_retry(label, sql):
   retry_delay = [30, 60, 90] # 3 retries with incremental backoff
-
   start = time.time()
   while len(retry_delay) > 0:
     try:
       labelValue = label.replace(" ","-").strip().lower()
-      job_config = bigquery.QueryJobConfig(labels={"gvs_query_name": labelValue})
+
+      existing_labels = client._default_query_job_config.labels
+      job_labels = existing_labels
+      job_labels["gvs_query_name"] = labelValue
+      job_config = bigquery.QueryJobConfig(labels=job_labels)
+
       query = client.query(sql, job_config=job_config)
 
       print(f"STARTING - {label}")
@@ -140,7 +145,7 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort):
 def create_position_table(fq_temp_table_dataset, min_variant_samples):
   dest = f"{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}"
 
-  # only create this clause if min_variant_samples > 0, becuase if
+  # only create this clause if min_variant_samples > 0, because if
   # it is == 0 then we don't need to touch the sample_id column (which doubles the cost of this query)
   min_sample_clause = ""
   if min_variant_samples > 0:
@@ -152,11 +157,11 @@ def create_position_table(fq_temp_table_dataset, min_variant_samples):
             select location from `{fq_temp_table_dataset}.{VET_NEW_TABLE}` WHERE alt != '*' GROUP BY location {min_sample_clause}
           )
         """
-  job_config = bigquery.QueryJobConfig(labels={"gvs_query_name": "create-position-table"})
+  existing_labels = client._default_query_job_config.labels
+  job_labels = existing_labels
+  job_labels["gvs_query_name"] = "create-position-table"
+  job_config = bigquery.QueryJobConfig(labels=job_labels)
   create_vet_distinct_pos_query = client.query(sql, job_config=job_config)
-
-
-
 
   create_vet_distinct_pos_query.result()
   JOB_IDS.add((f"create positions table {dest}", create_vet_distinct_pos_query.job_id))
@@ -222,7 +227,10 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_dataset, 
             `{fq_sample_mapping_table}` s ON (new_pet.sample_id = s.sample_id))
       """
   print(sql)
-  job_config = bigquery.QueryJobConfig(labels={"gvs_query_name": "populate-final-extract-table"})
+  existing_labels = client._default_query_job_config.labels
+  job_labels = existing_labels
+  job_labels["gvs_query_name"] = "populate-final-extract-table"
+  job_config = bigquery.QueryJobConfig(labels=job_labels)
   cohort_extract_final_query_job = client.query(sql, job_config=job_config)
 
   cohort_extract_final_query_job.result()
@@ -247,6 +255,7 @@ def make_extract_table(fq_pet_vet_dataset,
     # this is where a set of labels are being created for the cohort extract. Do we want the hardcoded one to be different?
     query_labels_map = {}
     query_labels_map["id"]= f"test_cohort_export_{output_table_prefix}"
+    query_labels_map["gvs_tool_name"]= f"create_cohort_export_{output_table_prefix}"
     # query_labels is string that looks like 'label1=val1, label2=val2'
     if query_labels != None:
         query_labels_list = query_labels.split(",")
@@ -256,10 +265,8 @@ def make_extract_table(fq_pet_vet_dataset,
           value = kv[1].strip().lower()
           query_labels_map[key] = value
 
-
-      #import re
-      #if !bool(re.match(r"[a-z0-9_-]+$", key)): !True -- throw an error
-      #    raise ValueError(f"label key did not pass validation")
+    if not (bool(re.match(r"[a-z0-9_-]+$", key)) & bool(re.match(r"[a-z0-9_-]+$", value))):
+      raise ValueError(f"label key did not pass validation")
 
     #Default QueryJobConfig will be merged into job configs passed into the query method.
     # TODO I'm worried about how well the labels will be merged....
@@ -277,7 +284,8 @@ def make_extract_table(fq_pet_vet_dataset,
       client = bigquery.Client(project=query_project,
                              default_query_job_config=default_config)
 
-    ## TODO -- provide a cmdline arg to override this (so we can simulat smaller datasets)
+    ## TODO -- provide a cmdline arg to override this (so we can simulate smaller datasets)
+
     global PET_VET_TABLE_COUNT
     PET_VET_TABLE_COUNT = max_tables
     
