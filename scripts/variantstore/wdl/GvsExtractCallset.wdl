@@ -159,18 +159,12 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
-        echo "checkpoint 1"
-        echo ~{output_gcs_dir}
-        OUTPUT_GCS_DIR= echo ~{output_gcs_dir} | sed 's/\/$//'
-        echo "checkpoint 2"
-        echo ${OUTPUT_GCS_DIR}
+        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
-          echo "checkpoint 3"
           gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
           gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
         fi
-        echo "checkpoint 4"
     >>>
 
     # ------------------------------------------------
