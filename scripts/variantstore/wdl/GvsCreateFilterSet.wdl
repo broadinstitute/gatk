@@ -470,17 +470,27 @@ task UploadFilterSetToBQ {
 
    Int disk_size = ceil(size(input_vcfs, "GiB") * 2.5) + 10
 
+    parameter_meta {
+         input_vcfs: {
+             localization_optional: true
+         }
+         input_vcfs_indexes: {
+             localization_optional: true
+         }
+      }
+
    command {
     #  java -Xms2000m -jar /usr/gitc/picard.jar \
     #    MergeVcfs \
     #    INPUT=~{sep=' INPUT=' input_vcfs} \
     #    OUTPUT=~{output_vcf_name}
 
-        java -Xms3g -jar GatherVcfsCloud --ignore-safety-checks --gather-type BLOCK \
+        java -Xms3g -jar /usr/gitc/GATK36.jar \
+            GatherVcfsCloud --ignore-safety-checks --gather-type BLOCK \
             -I ~{sep=' INPUT=' input_vcfs} \
             --output ~{output_vcf_name}
 
-        ./tabix ~{output_vcf_name}
+        /usr/gitc/tabix ~{output_vcf_name}
    }
    runtime {
      docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
