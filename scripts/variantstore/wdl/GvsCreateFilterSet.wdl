@@ -470,13 +470,17 @@ task UploadFilterSetToBQ {
 
    Int disk_size = ceil(size(input_vcfs, "GiB") * 2.5) + 10
 
-   # Using MergeVcfs instead of GatherVcfs so we can create indices
-   # See https://github.com/broadinstitute/picard/issues/789 for relevant GatherVcfs ticket
    command {
-     java -Xms2000m -jar /usr/gitc/picard.jar \
-       MergeVcfs \
-       INPUT=~{sep=' INPUT=' input_vcfs} \
-       OUTPUT=~{output_vcf_name}
+    #  java -Xms2000m -jar /usr/gitc/picard.jar \
+    #    MergeVcfs \
+    #    INPUT=~{sep=' INPUT=' input_vcfs} \
+    #    OUTPUT=~{output_vcf_name}
+    
+        gatk --java-options -Xms3g GatherVcfsCloud --ignore-safety-checks --gather-type BLOCK \
+            -I ~{sep=' INPUT=' input_vcfs} \
+            --output ~{output_vcf_name}
+
+        tabix ~{output_vcf_name}
    }
    runtime {
      docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
