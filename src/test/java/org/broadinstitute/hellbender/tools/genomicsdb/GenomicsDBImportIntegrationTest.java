@@ -180,6 +180,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     private static final int SEVERAL_CONTIGS = 7;
     private static final String MANY_CONTIGS_INTERVAL_PICARD_STYLE_EXPECTED =
             toolsTestDir + "GenomicsDBImport/Ptrichocarpa.v3.expected.interval_list";
+    private static String IUPAC_REF = publicTestDir + "/iupacFASTA.fasta";
 
     @Override
     public String getTestedClassName() {
@@ -449,10 +450,33 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testGenomicsDBNoRemapMissingToNonRef() throws IOException {
-        testGenomicsDBAgainstCombineGVCFs(Arrays.asList(COMBINEGVCFS_TEST_DIR+"NA12878.AS.NON_REF_remap_check.chr20snippet.g.vcf", COMBINEGVCFS_TEST_DIR+"NA12892.AS.chr20snippet.g.vcf"),
+        testGenomicsDBAgainstCombineGVCFs(Arrays.asList(COMBINEGVCFS_TEST_DIR+"NA12878.AS.NON_REF_remap_check.chr20snippet.g.vcf", 
+                COMBINEGVCFS_TEST_DIR+"NA12892.AS.chr20snippet.g.vcf"),
                 new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("20", 10433313, 10700000))),
                 b37_reference_20_21,
                 new String[]{"-G", "StandardAnnotation", "-G", "AS_StandardAnnotation"});
+    }
+
+    @Test
+    public void testGenomicsDBSoftMaskedRegion() throws IOException {
+        final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
+        final List<String> vcfInputs = Arrays.asList(GENOMICSDB_TEST_DIR+"iupacTestSoftMasked.1.vcf",
+                GENOMICSDB_TEST_DIR+"iupacTestSoftMasked.2.vcf");
+        final List<SimpleInterval> intervals = Arrays.asList(new SimpleInterval("chr1", 1, 18000));
+
+        writeToGenomicsDB(vcfInputs, intervals, workspace, 0, false, 0, 1);
+        checkNoNAlleleInRef(workspace, IUPAC_REF);
+    }
+
+    private void checkNoNAlleleInRef(final String workspace, final String referenceFile) throws IOException {
+        try(final FeatureReader<VariantContext> reader = getGenomicsDBFeatureReader(workspace, referenceFile)) {
+            final CloseableTribbleIterator<VariantContext> iterator = reader.iterator();
+            Assert.assertTrue(iterator.hasNext(), "expected to see a variant");
+            iterator.forEachRemaining(vc -> {
+                Allele refAllele = vc.getReference();
+                Assert.assertFalse(refAllele.basesMatch("N"), vc.getContig()+":"+Integer.toString(vc.getStart()));
+            });
+        }
     }
 
     /**
