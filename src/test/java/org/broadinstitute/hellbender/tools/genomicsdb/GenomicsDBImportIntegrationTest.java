@@ -447,6 +447,14 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 new String[]{"-G", "StandardAnnotation", "-G", "AS_StandardAnnotation"});
     }
 
+    @Test
+    public void testGenomicsDBNoRemapMissingToNonRef() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(Arrays.asList(COMBINEGVCFS_TEST_DIR+"NA12878.AS.NON_REF_remap_check.chr20snippet.g.vcf", COMBINEGVCFS_TEST_DIR+"NA12892.AS.chr20snippet.g.vcf"),
+                new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("20", 10433313, 10700000))),
+                b37_reference_20_21,
+                new String[]{"-G", "StandardAnnotation", "-G", "AS_StandardAnnotation"});
+    }
+
     /**
      * Converts a list of large file paths into equivalent cloud paths
      * This must be done non-statically because any failure during static initialization results in hard to understand
