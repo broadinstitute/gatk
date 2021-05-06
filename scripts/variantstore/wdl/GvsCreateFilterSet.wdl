@@ -108,7 +108,8 @@ workflow GvsCreateFilterSet {
            input_vcfs = ExtractFilterTask.output_vcf,
            input_vcfs_indexes = ExtractFilterTask.output_vcf_index,
            output_vcf_name = "${output_file_base_name}.vcf.gz",
-           preemptible_tries = 3
+           preemptible_tries = 3,
+           gatk_override = gatk_override
     }
 
     call IndelsVariantRecalibrator {
@@ -465,21 +466,35 @@ task UploadFilterSetToBQ {
      Array[File] input_vcfs
      Array[File] input_vcfs_indexes
      String output_vcf_name
+
+     File? gatk_override
      Int preemptible_tries
    }
 
    Int disk_size = ceil(size(input_vcfs, "GiB") * 2.5) + 10
 
-   # Using MergeVcfs instead of GatherVcfs so we can create indices
-   # See https://github.com/broadinstitute/picard/issues/789 for relevant GatherVcfs ticket
+    parameter_meta {
+         input_vcfs: {
+             localization_optional: true
+         }
+         input_vcfs_indexes: {
+             localization_optional: true
+         }
+      }
+
    command {
-     java -Xms2000m -jar /usr/gitc/picard.jar \
-       MergeVcfs \
-       INPUT=~{sep=' INPUT=' input_vcfs} \
-       OUTPUT=~{output_vcf_name}
+       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+       gatk --java-options -Xms3g GatherVcfsCloud \
+            --ignore-safety-checks --gather-type BLOCK \
+            -I ~{sep=' -I ' input_vcfs} \
+            --output ~{output_vcf_name}
+
+       tabix ~{output_vcf_name}
+
    }
    runtime {
-     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
      preemptible: preemptible_tries
      memory: "3 GiB"
      disks: "local-disk ~{disk_size} HDD"
