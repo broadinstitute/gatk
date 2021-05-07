@@ -64,6 +64,8 @@ task PrepareCallsetTask {
         String docker
     }
 
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
+
     command <<<
         set -e
 
@@ -74,7 +76,7 @@ task PrepareCallsetTask {
             --destination_table ~{destination_cohort_table_name} \
             --fq_cohort_sample_names ~{fq_cohort_sample_table} \
             --query_project ~{query_project} \
-            ~{"--query_labels " + query_labels} \
+            ~{sep=" " query_label_args} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
             --ttl ~{temp_table_ttl_in_hours} \
             ~{"--sa_key_path " + service_account_json}
