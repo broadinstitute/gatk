@@ -8,7 +8,7 @@ workflow GvsPrepareCallset {
 
         # inputs with defaults
         String query_project = data_project
-        String? query_labels
+        Array[String]? query_labels
         String destination_project = data_project
         String destination_dataset = default_dataset
 
@@ -51,7 +51,7 @@ task PrepareCallsetTask {
     input {
         String destination_cohort_table_name
         String query_project
-        String? query_labels
+        Array[String]? query_labels
 
         String fq_petvet_dataset
         String fq_cohort_sample_table
