@@ -148,17 +148,17 @@ public class ExtractFeaturesEngine {
     }
 
     private Map<String, String>  createQueryLabels(List<String> labelStringList) {
-        // hardcoded labels are added to the query to make tracking this workflow easier downstream
+        // static labels are added to the query to make tracking this workflow easier downstream
         Map<String, String> labelForQuery = new HashMap<String, String>();
         labelForQuery.put("gvs_tool_name", "extract-features");
         labelForQuery.put("gvs_query_name", "extract-features");
         // add additional key value pair labels
 
-        // Each resource can have multiple labels, up to a maximum of 64. -- labelKeys has to be !>64
+        // Each resource can have multiple labels, up to a maximum of 64. -- labelStringList cannot be >62
         // The key portion of a label must be unique. However, you can use the same key with multiple resources.
 
-        if ( labelStringList.size() > 63 ) {
-            throw new UserException("Only 63 unique label keys are allowed per resource.");
+        if ( labelStringList.size() > 62 ) {
+            throw new UserException("Only 62 unique label keys are allowed per resource.");
             // BQ allows for 64, and we add one below
         }
 
