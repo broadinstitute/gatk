@@ -13,7 +13,7 @@ workflow GvsCreateFilterSet {
         String default_dataset
 
         String query_project = data_project
-        String? query_labels
+        Array[String] ? query_labels
 
         String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
         String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
@@ -218,7 +218,7 @@ task ExtractFilterTask {
         File? gatk_override
         File? service_account_json
         String query_project
-        String? query_labels
+        Array[String] ? query_labels
 
         Int? local_sort_max_records_in_ram = 1000000
     }
