@@ -81,9 +81,12 @@ public class SampleList {
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
                 " FROM `" + fqSampleTableName + "`" + whereClause;
 
+        Map<String, String> labelForQuery = new HashMap<String, String>();
+        labelForQuery.put("gvs_tool_name", "sample-list-creation");
+        labelForQuery.put("gvs_query_name", "sample-list-creation");
+
         // Execute the query:
-        // TODO should we add hardcoded labels here?
-        final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, null);
+        final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, labelForQuery);
 
 
         // Show our pretty results:
