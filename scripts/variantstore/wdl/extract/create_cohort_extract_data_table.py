@@ -181,7 +181,7 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, cohort):
         "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
         f" (SELECT * FROM q_all)"
 
-  #print(sql)
+  print(sql)
   print(f"PET Query is {utf8len(sql)/(1024*1024)} MB in length")
   results = execute_with_retry("insert pet new table", sql)
   return results
@@ -214,7 +214,7 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_dataset, 
           LEFT OUTER JOIN
             `{fq_sample_mapping_table}` s ON (new_pet.sample_id = s.sample_id))
       """
-  #print(sql)
+  print(sql)
   cohort_extract_final_query_job = client.query(sql)
 
   cohort_extract_final_query_job.result()
@@ -230,7 +230,8 @@ def make_extract_table(fq_pet_vet_dataset,
                destination_table,
                min_variant_samples,
                fq_sample_mapping_table,
-               sa_key_path
+               sa_key_path,
+               temp_table_ttl_hours
               ):
   try:
     global client
@@ -251,6 +252,10 @@ def make_extract_table(fq_pet_vet_dataset,
     ## TODO -- provide a cmdline arg to override this (so we can simulat smaller datasets)
     global PET_VET_TABLE_COUNT
     PET_VET_TABLE_COUNT = max_tables
+    
+    global TEMP_TABLE_TTL
+    TEMP_TABLE_TTL = f" OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL {temp_table_ttl_hours} HOUR)) "
+
     print(f"Using {PET_VET_TABLE_COUNT} PET tables in {fq_pet_vet_dataset}...")
 
     cohort = get_all_samples(fq_cohort_sample_names, fq_sample_mapping_table)
@@ -281,6 +286,8 @@ if __name__ == '__main__':
 
   parser.add_argument('--max_tables',type=int, help='Maximum number of PET/VET tables to consider', required=False, default=250)
 
+  parser.add_argument('--ttl',type=int, help='Temp table TTL in hours', required=False, default=72)
+
 
   # Execute the parse_args() method
   args = parser.parse_args()
@@ -294,4 +301,5 @@ if __name__ == '__main__':
              args.destination_table,
              args.min_variant_samples,
              args.fq_sample_mapping_table,
-             args.sa_key_path)
+             args.sa_key_path,
+             args.ttl)

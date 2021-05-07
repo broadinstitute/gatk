@@ -17,10 +17,12 @@ workflow GvsPrepareCallset {
         String fq_temp_table_dataset = "~{destination_project}.temp_tables"
         String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
+        Int temp_table_ttl_in_hours = 72
+
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200414"])
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210507"])
 
     call PrepareCallsetTask {
         input:
@@ -32,6 +34,7 @@ workflow GvsPrepareCallset {
             fq_sample_mapping_table         = fq_sample_mapping_table,
             fq_temp_table_dataset           = fq_temp_table_dataset,
             fq_destination_dataset          = fq_destination_dataset,
+            temp_table_ttl_in_hours         = temp_table_ttl_in_hours,
 
             docker                          = docker_final
     }
@@ -53,6 +56,7 @@ task PrepareCallsetTask {
         String fq_sample_mapping_table
         String fq_temp_table_dataset
         String fq_destination_dataset
+        Int temp_table_ttl_in_hours
 
         File? service_account_json
         String docker
@@ -69,12 +73,13 @@ task PrepareCallsetTask {
             --fq_cohort_sample_names ~{fq_cohort_sample_table} \
             --query_project ~{query_project} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
+            --ttl ~{temp_table_ttl_in_hours} \
             ~{"--sa_key_path " + service_account_json}
     >>>
 
     runtime {
         docker: docker
-        memory: "10 GB"
+        memory: "3 GB"
         disks: "local-disk 100 HDD"
         bootDiskSizeGb: 15
         preemptible: 0
