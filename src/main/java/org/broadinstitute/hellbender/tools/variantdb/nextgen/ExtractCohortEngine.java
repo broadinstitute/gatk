@@ -497,7 +497,8 @@ public class ExtractCohortEngine {
         final VariantContext genotypedVC = this.disableGnarlyGenotyper ? qualapproxVC : gnarlyGenotyper.finalizeGenotype(qualapproxVC);
 
         // apply VQSLod-based filters
-        VariantContext filteredVC = noVqslodFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) || performGenotypeVQSLODFiltering ? genotypedVC : filterSiteByVQSLOD(genotypedVC, vqsLodMap, yngMap);
+        VariantContext filteredVC =
+                noVqslodFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterSiteByVQSLOD(genotypedVC, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
 
         // apply SiteQC-based filters, if they exist
         if ( siteFilterMap.containsKey(location) ) {
@@ -523,7 +524,7 @@ public class ExtractCohortEngine {
         }
     }
 
-    private VariantContext filterSiteByVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
+    private VariantContext filterSiteByVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean onlyAnnotate) {
         final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
         final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
@@ -537,29 +538,32 @@ public class ExtractCohortEngine {
         builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, relevantVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
-        int refLength = mergedVC.getReference().length();
+        if (!onlyAnnotate) {
+            int refLength = mergedVC.getReference().length();
 
-        // if there are any Yays, the site is PASS
-        if (remappedYngMap.containsValue("Y")) {
-            builder.passFilters();
-        } else if (remappedYngMap.containsValue("N")) {
-            builder.filter(GATKVCFConstants.NAY_FROM_YNG);
-        } else {
-            // if it doesn't trigger any of the filters below, we assume it passes.
-            builder.passFilters();
-            if (remappedYngMap.containsValue("G")) {
-                Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
-                if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
-                    builder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
-                }
-                Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
-                if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
-                    builder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
-                    }
+            // if there are any Yays, the site is PASS
+            if (remappedYngMap.containsValue("Y")) {
+                builder.passFilters();
+            } else if (remappedYngMap.containsValue("N")) {
+                builder.filter(GATKVCFConstants.NAY_FROM_YNG);
             } else {
-                // per-conversation with Laura, if there is no information we let the site pass (ie no data does not imply failure)
+                // if it doesn't trigger any of the filters below, we assume it passes.
+                builder.passFilters();
+                if (remappedYngMap.containsValue("G")) {
+                    Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
+                    if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
+                        builder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
+                    }
+                    Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
+                    if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
+                        builder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
+                    }
+                } else {
+                    // per-conversation with Laura, if there is no information we let the site pass (ie no data does not imply failure)
+                }
             }
         }
+
         // TODO: add in other annotations we need in output (like AF, etc?)
         final VariantContext filteredVC = builder.make();
         return filteredVC;

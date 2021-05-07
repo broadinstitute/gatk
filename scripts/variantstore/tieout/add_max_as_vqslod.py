@@ -46,6 +46,15 @@ with gzip.open(sys.argv[1], 'rt') as file1:
         
         if gt == "0/0" or gt == "./.":
             continue;
+            
+        if 'FT' in sample_data:
+            ft = sample_data['FT']
+
+            if ft != "PASS" or ft != ".":
+                if (parts[6] == "PASS" or parts[6] == "."):
+                    parts[6] = ft
+                else:
+                    parts[6] = parts[6] + "," + ft
         
         if "AS_VQSLOD" not in d:
             sys.exit(f"Cannot find AS_VQSLOD in {line}")
