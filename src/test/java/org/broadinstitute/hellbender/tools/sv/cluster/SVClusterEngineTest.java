@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.TestException;
 import org.testng.annotations.BeforeTest;
@@ -367,7 +368,8 @@ public class SVClusterEngineTest {
         Assert.assertEquals(result.size(), 50);
         for (final SVCallRecord resultRecord : result) {
             Assert.assertTrue(resultRecord.getAttributes().containsKey(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
-            Assert.assertEquals(((List<Integer>) resultRecord.getAttributes().get(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY)).size(), 51);
+            final int numMembers = VariantContextGetters.attributeToList(resultRecord.getAttributes().get(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY)).size();
+            Assert.assertEquals(numMembers, 51);
         }
     }
 
