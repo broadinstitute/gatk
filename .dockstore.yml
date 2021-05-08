@@ -74,7 +74,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_mmem
+         - kc_mem
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
