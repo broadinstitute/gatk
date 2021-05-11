@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
+import htsjdk.io.IOPath;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -61,7 +62,8 @@ public abstract class ReadInputArgumentCollection implements Serializable {
      * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
     public List<GATKPath> getReadPaths(){
-        return getReadIndexPairs().stream().map(GATKReadsBundle::getReads).map(r -> r.getIOPath().get()).collect(Collectors.toList());
+        return getReadIndexPairs().stream()
+                .map(GATKReadsBundle::getReads).map(r -> (GATKPath) r.getIOPath().get()).collect(Collectors.toList());
     }
 
 
@@ -95,7 +97,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
                 final GATKReadsBundle pair;
                 if(GATKReadsBundle.looksLikeAReadsBundle(rawReadPath)){
                     //if it looks like a bundle, load it
-                    pair = GATKReadsBundle.getReadsBundleFromJSON(rawReadPath);
+                    pair = GATKReadsBundle.getGATKReadsBundleFromPath(rawReadPath);
                 } else if (!readIndices.isEmpty()) {
                     //if it isn't a bundle and we have read indexes provided than get it from the list
                     pair = new GATKReadsBundle(rawReadPath, readIndices.get(i));

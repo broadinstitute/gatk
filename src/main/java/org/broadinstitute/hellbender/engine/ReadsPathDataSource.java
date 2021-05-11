@@ -189,7 +189,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
 
         for ( final GATKReadsBundle samAndIndexPath : samPaths ) {
             if (!samAndIndexPath.getReads().getIOPath().isPresent()) {
-                // until we switch to the new HtSJDK plugin framework, we only handle reads and index resources
+                // until we switch to the new HTSJDK plugin framework, we only handle reads and index resources
                 // that are backed by an IOPath (not InputStreamResource, etc.)
                 throw new GATKException(
                         String.format("Unexpected non-IOPath reads resource found in reads bundle: %s",
@@ -201,7 +201,7 @@ public final class ReadsPathDataSource implements ReadsDataSource {
             final Optional<BundleResource> optIndexResource = samAndIndexPath.getIndex();
             if (optIndexResource.isPresent()) {
                 if (!optIndexResource.get().getIOPath().isPresent()) {
-                    // until we switch to the new HtSJDK plugin framework, we only handle reads and index resources
+                    // until we switch to the new HTSJDK plugin framework, we only handle reads and index resources
                     // that are backed by an IOPath (not InputStreamResource, etc.)
                     throw new GATKException(
                             String.format("Unexpected non-IOPath index resource found in reads bundle: %s",

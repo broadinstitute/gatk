@@ -1,1 +1,7 @@
-{"schemaVersion":"0.1.0","INDEX":{"path":"reads.bai"},"schemaName":"htsbundle","READS":{"path":"reads.bam","subtype":"BAM"},"primary":"READS"}
+{
+  "schemaName":"htsbundle",
+  "schemaVersion":"0.1.0",
+  "primary":"READS",
+  "READS_INDEX":{"path":"file:///Users/cnorman/projects/gatk/reads.bai"},
+  "READS":{"path":"file:///Users/cnorman/projects/gatk/reads.bam","subtype":"BAM"}
+}

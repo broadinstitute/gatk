@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.beta.plugin.bundle.BundleJSON;
 import htsjdk.samtools.SamFiles;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -67,8 +68,8 @@ public class CreateReadsBundleJson extends CommandLineProgram {
         //TODO: should the UT8-encoding be a constant that lives somewhere else ?
         try (final OutputStream os = outputBundle.getOutputStream();
              final OutputStreamWriter sw = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
-            final GATKReadsBundle bundle = new GATKReadsBundle(reads, index);
-            sw.write(bundle.toJSON());
+            final GATKReadsBundle readsBundle = new GATKReadsBundle(reads, index);
+            sw.write(BundleJSON.toJSON(readsBundle));
         } catch (final IOException e) {
             throw new UserException(String.format("Failed writing bundle to output %s", outputBundle), e);
         }

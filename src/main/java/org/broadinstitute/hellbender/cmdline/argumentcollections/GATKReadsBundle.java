@@ -40,10 +40,6 @@ public class GATKReadsBundle extends ReadsBundle<GATKPath> implements Serializab
         super(resources);
     }
 
-    public static GATKReadsBundle fromJSON(final String jsonString){
-        return new GATKReadsBundle(ReadsBundle.getReadsBundleFromString(jsonString, GATKPath::new).getResources());
-    }
-
     public static GATKReadsBundle resolveIndex(GATKPath reads){
         final Path index = SamFiles.findIndex(reads.toPath());
         if (index == null) {
@@ -57,7 +53,7 @@ public class GATKReadsBundle extends ReadsBundle<GATKPath> implements Serializab
     }
 
     public static GATKReadsBundle getGATKReadsBundleFromPath(final GATKPath jsonPath) {
-        return new GATKReadsBundle(BundleJSON.toBundle(htsjdk.beta.plugin.IOUtils.getStringFromPath(jsonPath)).getResources());
+        return getGATKReadsBundleFromString(htsjdk.beta.plugin.IOUtils.getStringFromPath(jsonPath));
     }
 
     public static List<GATKReadsBundle> fromPathLists(List<Path> reads, List<Path> indexes) {
