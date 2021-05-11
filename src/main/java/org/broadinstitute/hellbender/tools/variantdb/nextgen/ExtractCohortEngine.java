@@ -125,7 +125,7 @@ public class ExtractCohortEngine {
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
-        this.gnarlyGenotyper = disableGnarlyGenotyper?null:new GnarlyGenotyperEngine(false, 30, false, emitPLs, true);
+        this.gnarlyGenotyper = disableGnarlyGenotyper ? null : new GnarlyGenotyperEngine(false, 30, false, emitPLs, true);
 
     }
 
@@ -473,12 +473,14 @@ public class ExtractCohortEngine {
             }
         }
 
-        // TODO: for easy mode switching, could be a tool parameter if it is useful in the longer term
+        // we only need to retain the NonRefSymbolicAllele if we are using gnarly
+        boolean removeNonRefSymbolicAllele = this.disableGnarlyGenotyper;
+
         final VariantContext mergedVC = variantContextMerger.merge(
                 unmergedCalls,
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
-                this.disableGnarlyGenotyper?true:false,
+                removeNonRefSymbolicAllele,
                 false,
                 true);
 
