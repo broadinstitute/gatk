@@ -23,7 +23,8 @@ class ExtractCohortTest extends CommandLineProgramTest {
     final File expectedVCF = getTestFile("expected.vcf");
 
     // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
-    final File outputVCF = createTempFile("output", "vcf");
+    //final File outputVCF = createTempFile("output", "vcf");
+    final File outputVCF = new File("test.output.vcf");
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -33,7 +34,10 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("O", outputVCF.getAbsolutePath())
         .add("local-sort-max-records-in-ram", 10000000)
         .add("cohort-avro-file-name", cohortAvroFileName)
-        .add("sample-file", sampleFile);
+        .add("sample-file", sampleFile)
+        .add("emit-pls", false)
+        .add("disable-gnarly", false);
+
 
     runCommandLine(args);
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);

@@ -58,6 +58,7 @@ public class ExtractCohortEngine {
     /** List of sample names seen in the variant data from BigQuery. */
     private Set<String> sampleNames;
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
+    private final boolean disableGnarlyGenotyper;
     private final GnarlyGenotyperEngine gnarlyGenotyper;
 
     private int totalNumberOfVariants = 0;
@@ -94,7 +95,9 @@ public class ExtractCohortEngine {
                                final Double vqsLodINDELThreshold,
                                final ProgressMeter progressMeter,
                                final String filterSetName,
-                               final boolean emitPLs) {
+                               final boolean emitPLs,
+                               final boolean disableGnarlyGenotyper
+    ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -103,7 +106,9 @@ public class ExtractCohortEngine {
         this.sampleNames = sampleNames;
         this.mode = mode;
 
-        this.cohortTableRef = cohortTableName == null || "".equals(cohortTableName) ? null : new TableReference(cohortTableName, SchemaUtils.COHORT_FIELDS);
+        this.cohortTableRef = cohortTableName == null || "".equals(cohortTableName) ? null :
+                new TableReference(cohortTableName, emitPLs ? SchemaUtils.COHORT_FIELDS : SchemaUtils.COHORT_FIELDS_NO_PL);
+
         this.cohortAvroFileName = cohortAvroFileName;
         this.traversalIntervals = traversalIntervals;
         this.minLocation = minLocation;
@@ -119,7 +124,8 @@ public class ExtractCohortEngine {
         this.filterSetName = filterSetName;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-        this.gnarlyGenotyper = new GnarlyGenotyperEngine(false, 30, false, emitPLs, true);
+        this.disableGnarlyGenotyper = disableGnarlyGenotyper;
+        this.gnarlyGenotyper = disableGnarlyGenotyper ? null : new GnarlyGenotyperEngine(false, 30, false, emitPLs, true);
 
     }
 
@@ -467,14 +473,14 @@ public class ExtractCohortEngine {
             }
         }
 
-        // TODO: for easy mode switching, could be a tool parameter if it is useful in the longer term
-        boolean disableGnarlyGenotyper = false;
+        // we only need to retain the NonRefSymbolicAllele if we are using gnarly
+        boolean removeNonRefSymbolicAllele = this.disableGnarlyGenotyper;
 
         final VariantContext mergedVC = variantContextMerger.merge(
                 unmergedCalls,
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
-                disableGnarlyGenotyper?true:false,
+                removeNonRefSymbolicAllele,
                 false,
                 true);
 
@@ -484,7 +490,7 @@ public class ExtractCohortEngine {
         final VariantContext qualapproxVC = builder.make();
 
 
-        final VariantContext genotypedVC = disableGnarlyGenotyper ? qualapproxVC : gnarlyGenotyper.finalizeGenotype(qualapproxVC);
+        final VariantContext genotypedVC = this.disableGnarlyGenotyper ? qualapproxVC : gnarlyGenotyper.finalizeGenotype(qualapproxVC);
 
         // apply VQSLod-based filters
         VariantContext filteredVC = noVqslodFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterVariants(genotypedVC, vqsLodMap, yngMap);

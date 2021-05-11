@@ -82,6 +82,12 @@ public class ExtractCohort extends ExtractTool {
     )
     private boolean emitPLs = false;
 
+    @Argument(
+            fullName = "disable-gnarly",
+            doc = "Disable use of GnarlyGenotyper",
+            optional = true
+    )
+    private boolean disableGnarlyGenotyper = true;
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
@@ -189,7 +195,8 @@ public class ExtractCohort extends ExtractTool {
                 vqsLodINDELThreshold,
                 progressMeter,
                 filterSetName,
-                emitPLs);
+                emitPLs,
+                disableGnarlyGenotyper);
         vcfWriter.writeHeader(header);
     }
 
