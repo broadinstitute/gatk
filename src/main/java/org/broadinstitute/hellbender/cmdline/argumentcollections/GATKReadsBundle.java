@@ -1,18 +1,17 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
-import htsjdk.beta.plugin.bundle.BundleResourceType;
+import htsjdk.beta.plugin.bundle.BundleJSON;
 import htsjdk.beta.plugin.bundle.BundleResource;
+import htsjdk.beta.plugin.reads.ReadsBundle;
 import htsjdk.samtools.SamFiles;
 import htsjdk.utils.ValidationUtils;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.Serializable;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -25,7 +24,7 @@ import java.util.stream.IntStream;
 /**
  * A reads bundle may optionally have an index, but its not required.
  */
-public class GATKReadsBundle extends htsjdk.beta.plugin.reads.ReadsBundle<GATKPath> implements Serializable {
+public class GATKReadsBundle extends ReadsBundle<GATKPath> implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public GATKReadsBundle(final GATKPath reads) { super(reads); }
@@ -34,18 +33,15 @@ public class GATKReadsBundle extends htsjdk.beta.plugin.reads.ReadsBundle<GATKPa
         super(reads, index);
     }
 
-    public GATKReadsBundle(final String jsonString){
-        super(jsonString, GATKPath::new);
+    /**
+     * @param resources collection of resources. must have
+     */
+    public GATKReadsBundle(final Collection<BundleResource> resources) {
+        super(resources);
     }
 
-    public Optional<GATKPath> getIndex() {
-        final Supplier<GATKException> ex = () -> new GATKException("Index resource is present with a null path");
-        final Optional<BundleResource> inputResource = get(BundleResourceType.INDEX);
-        // its OK for there to be no index resource, but if there *is* an index resource, it must contain
-        // a non-null path...
-        return inputResource.isPresent() ?
-                Optional.of((GATKPath) inputResource.get().getIOPath().orElseThrow(ex)) :
-                Optional.empty();
+    public static GATKReadsBundle fromJSON(final String jsonString){
+        return new GATKReadsBundle(ReadsBundle.getReadsBundleFromString(jsonString, GATKPath::new).getResources());
     }
 
     public static GATKReadsBundle resolveIndex(GATKPath reads){
@@ -56,8 +52,12 @@ public class GATKReadsBundle extends htsjdk.beta.plugin.reads.ReadsBundle<GATKPa
         return new GATKReadsBundle(reads, IOUtils.toGATKPath(index));
     }
 
-    public static GATKReadsBundle getReadsBundleFromJSON(final GATKPath jsonPath) {
-        return new GATKReadsBundle(htsjdk.beta.plugin.IOUtils.getStringFromPath(jsonPath));
+    public static GATKReadsBundle getGATKReadsBundleFromString(final String jsonString) {
+        return new GATKReadsBundle(BundleJSON.toBundle(jsonString, GATKPath::new).getResources());
+    }
+
+    public static GATKReadsBundle getGATKReadsBundleFromPath(final GATKPath jsonPath) {
+        return new GATKReadsBundle(BundleJSON.toBundle(htsjdk.beta.plugin.IOUtils.getStringFromPath(jsonPath)).getResources());
     }
 
     public static List<GATKReadsBundle> fromPathLists(List<Path> reads, List<Path> indexes) {

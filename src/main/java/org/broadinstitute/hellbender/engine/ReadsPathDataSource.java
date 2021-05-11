@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.beta.plugin.bundle.BundleResource;
+import htsjdk.io.IOPath;
 import htsjdk.samtools.MergingSamRecordIterator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
@@ -186,13 +188,32 @@ public final class ReadsPathDataSource implements ReadsDataSource {
                         customSamReaderFactory;
 
         for ( final GATKReadsBundle samAndIndexPath : samPaths ) {
-            final Path samPath = samAndIndexPath.getReads().toPath();
-            final Optional<GATKPath> indexPath = samAndIndexPath.getIndex();
+            if (!samAndIndexPath.getReads().getIOPath().isPresent()) {
+                // until we switch to the new HtSJDK plugin framework, we only handle reads and index resources
+                // that are backed by an IOPath (not InputStreamResource, etc.)
+                throw new GATKException(
+                        String.format("Unexpected non-IOPath reads resource found in reads bundle: %s",
+                                samAndIndexPath.getReads()));
+            }
+            final Path samPath = samAndIndexPath.getReads().getIOPath().get().toPath();
+
+            // now get the index
+            final Optional<BundleResource> optIndexResource = samAndIndexPath.getIndex();
+            if (optIndexResource.isPresent()) {
+                if (!optIndexResource.get().getIOPath().isPresent()) {
+                    // until we switch to the new HtSJDK plugin framework, we only handle reads and index resources
+                    // that are backed by an IOPath (not InputStreamResource, etc.)
+                    throw new GATKException(
+                            String.format("Unexpected non-IOPath index resource found in reads bundle: %s",
+                                    optIndexResource.get()));
+                }
+            }
+            final Optional<IOPath> optIndexPath = optIndexResource.flatMap(r -> r.getIOPath());
 
             // Ensure each file can be read
             IOUtils.assertFileIsReadable(samPath);
-            if ( indexPath.isPresent() ){
-                IOUtil.assertFileIsReadable(indexPath.get().toPath());
+            if ( optIndexPath.isPresent() ){
+                IOUtil.assertFileIsReadable(optIndexResource.get().getIOPath().get().toPath());
             }
 
             final Function<SeekableByteChannel, SeekableByteChannel> wrapper =
@@ -202,12 +223,12 @@ public final class ReadsPathDataSource implements ReadsDataSource {
 
             final SamInputResource samResource = SamInputResource.of(samPath, wrapper);
 
-            if( indexPath.isPresent()) {
+            if( optIndexPath.isPresent()) {
                 final Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
-                        BucketUtils.isEligibleForPrefetching(indexPath.get().toPath())
+                        BucketUtils.isEligibleForPrefetching(optIndexPath.get().toPath())
                                 ? cloudIndexWrapper
                                 : Function.identity();
-                samResource.index(indexPath.get().toPath(), indexWrapper);
+                samResource.index(optIndexPath.get().toPath(), indexWrapper);
             }
 
             final SamReader reader = samReaderFactory.open(samResource);

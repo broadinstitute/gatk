@@ -61,7 +61,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
      * GATKPath is the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
     public List<GATKPath> getReadPaths(){
-        return getReadIndexPairs().stream().map(GATKReadsBundle::getReads).collect(Collectors.toList());
+        return getReadIndexPairs().stream().map(GATKReadsBundle::getReads).map(r -> r.getIOPath().get()).collect(Collectors.toList());
     }
 
 
