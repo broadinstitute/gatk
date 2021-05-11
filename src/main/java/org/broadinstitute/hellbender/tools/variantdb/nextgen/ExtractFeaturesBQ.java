@@ -19,8 +19,7 @@ public class ExtractFeaturesBQ {
 
     public static String getVQSRFeatureExtractQueryString(final TableReference altAllele, final TableReference sampleList,
                                                           final Long minLocation, final Long maxLocation, final boolean trainingSitesOnly,
-                                                          final int hqGenotypeGQThreshold, final int hqGenotypeDepthThreshold, final double hqGenotypeABThreshold,
-                                                          final double snpQualThreshold, final double indelQualThreshold) {
+                                                          final int hqGenotypeGQThreshold, final int hqGenotypeDepthThreshold, final double hqGenotypeABThreshold) {
 
         String trainingSitesStanza =
             !trainingSitesOnly?"":
@@ -39,8 +38,6 @@ public class ExtractFeaturesBQ {
                 .replaceAll("@trainingSitesStanza", trainingSitesStanza)
                 .replaceAll("@sample", sampleList.getFQTableName())
                 .replaceAll("@altAllele", altAllele.getFQTableName())
-                .replaceAll("@snpQualThreshold", Double.toString(snpQualThreshold))
-                .replaceAll("@indelQualThreshold", Double.toString(indelQualThreshold))
                 .replaceAll("@hqGenotypeGQThreshold", Double.toString(hqGenotypeGQThreshold))
                 .replaceAll("@hqGenotypeDepthThreshold", Double.toString(hqGenotypeDepthThreshold))
                 .replaceAll("@hqGenotypeABThreshold", Double.toString(hqGenotypeABThreshold));

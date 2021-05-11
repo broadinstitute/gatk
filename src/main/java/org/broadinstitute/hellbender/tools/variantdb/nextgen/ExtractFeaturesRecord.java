@@ -31,6 +31,7 @@ public class ExtractFeaturesRecord implements Locatable {
     private final int numHomvarSamples;
     private final int distinctAlleles;
     private final int hqGenotypeSamples;
+    private final Double qualApprox;
 
     // FEATURE_EXTRACT_FIELDS = Arrays.asList(
     //      LOCATION_FIELD_NAME,
@@ -65,6 +66,8 @@ public class ExtractFeaturesRecord implements Locatable {
         this.rawMQ = Double.valueOf(genericRecord.get(SchemaUtils.RAW_MQ).toString());
         this.rawAD = Double.valueOf(genericRecord.get(SchemaUtils.RAW_AD).toString());
         this.rawADGT1 = Double.valueOf(genericRecord.get("RAW_AD_GT_1").toString());
+        this.qualApprox = Double.valueOf(genericRecord.get("sum_qualapprox").toString());
+
         this.sbRefPlus = Double.valueOf(genericRecord.get("SB_REF_PLUS").toString()).intValue();
         this.sbRefMinus = Double.valueOf(genericRecord.get("SB_REF_MINUS").toString()).intValue();
         this.sbAltPlus = Double.valueOf(genericRecord.get("SB_ALT_PLUS").toString()).intValue();
@@ -122,6 +125,8 @@ public class ExtractFeaturesRecord implements Locatable {
     public Double getRawAD() { return this.rawAD; }
 
     public Double getRawADGT1() { return this.rawADGT1; }
+
+    public Double getQualApprox() { return this.qualApprox; }
 
     public int getSbRefPlus() { return this.sbRefPlus; }
 

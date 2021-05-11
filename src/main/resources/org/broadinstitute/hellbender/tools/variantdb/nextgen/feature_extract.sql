@@ -77,6 +77,7 @@ WITH
            SB_ALT_MINUS,
            aasi.num_het_samples,
            aasi.num_homvar_samples,
+           IFNULL(aasi.sum_qualapprox,0) as sum_qualapprox,
            IFNULL(aasai.distinct_alleles,0) distinct_alleles,
            IFNULL(hc_gt.hq_genotype_samples,0) hq_genotype_samples
     FROM (
@@ -109,5 +110,4 @@ WITH
     LEFT JOIN aa_site_info aasi ON (ai.location = aasi.location)
     LEFT JOIN aa_site_allele_info aasai ON (ai.location = aasai.location)
     LEFT JOIN hq_genotype_qc hc_gt ON (ai.location = hc_gt.location)
-    WHERE aasi.sum_qualapprox >= CASE WHEN LENGTH(ai.ref) = LENGTH(ai.allele) THEN @snpQualThreshold ELSE @indelQualThreshold END
 
