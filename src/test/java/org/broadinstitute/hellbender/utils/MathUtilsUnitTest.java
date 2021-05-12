@@ -1145,4 +1145,24 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
             }
         });
     }
+
+    // function, min, max, precision, solution
+    @DataProvider
+    public Object[][] binarySearchCases(){
+        return new Object[][]{
+                {(DoubleUnaryOperator) x -> x, -1.0, 1.0, 0.001, OptionalDouble.of(0.0)},
+                {(DoubleUnaryOperator) x -> x, 1.0, 2.0, 0.001, OptionalDouble.empty()},
+                {(DoubleUnaryOperator) x -> x*x - 2, 0.0, 2.0, 0.001, OptionalDouble.of(Math.sqrt(2.0))},
+                {(DoubleUnaryOperator) x -> x*x + 2, 0.0, 2.0, 0.001, OptionalDouble.empty()},
+                {(DoubleUnaryOperator) x -> Math.pow((x-4),3), 0, 10, 0.001, OptionalDouble.of(4.0)}
+        };
+    }
+
+    @Test(dataProvider = "binarySearchCases")
+    public void testBinarySearchFindZero(final DoubleUnaryOperator func, final double lower,
+                                                      final double upper, final double precision, final OptionalDouble expected) {
+        final OptionalDouble result = MathUtils.binarySearchFindZero(func, lower, upper, precision);
+        Assert.assertEquals(expected.isPresent(), result.isPresent());
+        expected.ifPresent(exp -> Assert.assertEquals(exp, result.getAsDouble(), precision));
+    }
 }

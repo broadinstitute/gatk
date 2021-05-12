@@ -169,4 +169,31 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         Assert.assertFalse(Double.isNaN(calculatedContamination));
         Assert.assertTrue(calculatedContamination < 0.2);
     }
+
+    // pileup summary table, spikein fraction, baseline contamination before spike-in
+    @DataProvider(name = "small_panel_pileups")
+    public Object[][] smallPanelPileups() {
+        return new Object[][]{
+                {new File(CONTAMINATION_TEST_DATA_DIRECTORY, "small-panel-pileups1.tsv")},
+                {new File(CONTAMINATION_TEST_DATA_DIRECTORY, "small-panel-pileups2.tsv")},
+                {new File(CONTAMINATION_TEST_DATA_DIRECTORY, "small-panel-pileups3.tsv")}
+        };
+    }
+
+    @Test(dataProvider = "small_panel_pileups")
+    public void testSmallGenePanelErrorBars(final File pileups) {
+        final File contaminationTable = createTempFile("contamination", ".table");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder().addInput(pileups).addOutput(contaminationTable);
+        runCommandLine(args);
+
+        final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
+        final double calculatedError = ContaminationRecord.readFromFile(contaminationTable).get(0).getError();
+
+        // These samples all have very low contamination.  We verify that the estimate is small and that we get a small but non-zero error
+        Assert.assertFalse(Double.isNaN(calculatedContamination));
+        Assert.assertTrue(calculatedContamination < 0.01);
+        Assert.assertTrue(calculatedError > 0.0);
+        Assert.assertTrue(calculatedError < 0.005);
+    }
 }
