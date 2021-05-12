@@ -184,6 +184,7 @@ workflow MitochondriaPipeline {
     File contamination_metrics = AlignAndCall.contamination_metrics
     File base_level_coverage_metrics = CoverageAtEveryBase.table
     Int mean_coverage = AlignAndCall.mean_coverage
+    Int median_coverage = AlignAndCall.median_coverage
     String major_haplogroup = AlignAndCall.major_haplogroup
     Float contamination = AlignAndCall.contamination
   }
