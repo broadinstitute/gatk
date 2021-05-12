@@ -263,7 +263,7 @@ workflow AlignAndCall {
     File theoretical_sensitivity_metrics = CollectWgsMetrics.theoretical_sensitivity
     File contamination_metrics = GetContamination.contamination_file
     Int mean_coverage = CollectWgsMetrics.mean_coverage
-    Int median_coverage = CollectWgsMetrics.median_coverage
+    Float median_coverage = CollectWgsMetrics.median_coverage
     String major_haplogroup = GetContamination.major_hg
     Float contamination = FilterContamination.contamination
   }
@@ -374,7 +374,7 @@ task CollectWgsMetrics {
     R --vanilla <<CODE
       df = read.table("metrics.txt",skip=6,header=TRUE,stringsAsFactors=FALSE,sep='\t',nrows=1)
       write.table(floor(df[,"MEAN_COVERAGE"]), "mean_coverage.txt", quote=F, col.names=F, row.names=F)
-      write.table(round(df[,"MEDIAN_COVERAGE"]), "median_coverage.txt", quote=F, col.names=F, row.names=F)
+      write.table(df[,"MEDIAN_COVERAGE"], "median_coverage.txt", quote=F, col.names=F, row.names=F)
     CODE
   >>>
   runtime {
@@ -387,7 +387,7 @@ task CollectWgsMetrics {
     File metrics = "metrics.txt"
     File theoretical_sensitivity = "theoretical_sensitivity.txt"
     Int mean_coverage = read_int("mean_coverage.txt")
-    Int median_coverage = read_int("median_coverage.txt")
+    Float median_coverage = read_float("median_coverage.txt")
   }
 }
 
