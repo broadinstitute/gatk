@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -40,13 +41,21 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
-                                                 final FeatureContext features,
-                                                 final VariantContext vc,
-                                                 final AlleleLikelihoods<GATKRead, Allele> likelihoods,
-                                                 final AlleleLikelihoods<Fragment, Allele> fragmentLikelihoods,
-                                                 final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods) {
-
+                                        final FeatureContext features,
+                                        final VariantContext vc,
+                                        final AlleleLikelihoods<GATKRead, Allele> likelihoods,
+                                        final AlleleLikelihoods<Fragment, Allele> fragmentLikelihoods,
+                                        final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods) {
+        final Triple<int[], int[], double[]> annotations = annotate(vc, haplotypeLikelihoods);
         final Map<String, Object> result = new HashMap<>();
+
+        result.put(GATKVCFConstants.HAPLOTYPE_EQUIVALENCE_COUNTS_KEY , annotations.getLeft());
+        result.put(GATKVCFConstants.HAPLOTYPE_COMPLEXITY_KEY , annotations.getMiddle());
+        result.put(GATKVCFConstants.HAPLOTYPE_DOMINANCE_KEY , annotations.getRight());
+        return result;
+    }
+
+    public static Triple<int[], int[], double[]> annotate(final VariantContext vc, final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods) {
 
         // count best-read support for each haplotype
         final Map<Haplotype, MutableInt> haplotypeSupportCounts = haplotypeLikelihoods.alleles().stream()
@@ -68,8 +77,6 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
                 .sorted(Comparator.reverseOrder())
                 .mapToInt(n->n)
                 .toArray();
-
-        result.put(GATKVCFConstants.HAPLOTYPE_EQUIVALENCE_COUNTS_KEY, equivalenceCounts);
 
         // we're going to calculate the complexity of this variant's haplotype (that is, the variant-supporting haplotype
         // with the most reads) versus the closest (in terms of edit distance) germline haplotype.  The haplotype
@@ -95,8 +102,6 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
             return germlineHaplotypes.stream().mapToInt(gh -> editDistance(gh, mostSupportedHaplotypeWithAllele, vc.getStart())).min().getAsInt();
         }).toArray();
 
-        result.put(GATKVCFConstants.HAPLOTYPE_COMPLEXITY_KEY, editDistances);
-
         // measure which proportion of reads supporting each alt allele fit the most-supported haplotype for that allele
         final double[] haplotypeDominance = IntStream.range(0, vc.getNAlleles() - 1).mapToDouble(altAlleleIndex -> {
             final int[] counts = haplotypesByDescendingSupport.stream()
@@ -106,9 +111,7 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
             return MathUtils.arrayMax(counts) / (double) MathUtils.sum(counts);
         }).toArray();
 
-        result.put(GATKVCFConstants.HAPLOTYPE_DOMINANCE_KEY, haplotypeDominance);
-
-        return result;
+        return Triple.of(equivalenceCounts, editDistances, haplotypeDominance);
     }
 
 
@@ -129,9 +132,12 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
         final List<VariantContext> overlapping =  eventMap.getOverlappingEvents(vc.getStart());
         if (overlapping.isEmpty()) {
             return false;
+        } else if (overlapping.get(0).getStart() != vc.getStart()) {
+            return false;
         } else {
             final VariantContext eventMapVC = overlapping.get(0);
             final int excessBases = vc.getReference().length() - eventMapVC.getReference().length();
+
             return equalBasesExcludingSuffix(eventMapVC.getAlternateAllele(0).getBases(),
                     vc.getAlternateAllele(altAlleleIndex).getBases(), excessBases);
         }
@@ -142,6 +148,9 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
     private static boolean equalBasesExcludingSuffix(final byte[] eventMapBases, final byte[] variantContextBases, final int suffixSize) {
         if (eventMapBases.length + suffixSize != variantContextBases.length) {
             return false;
+        } else if (eventMapBases.length > variantContextBases.length) {
+            return false;   // edge case -- event map is longer, though minimal, because it is a MNP
+                            // even if the leading bases match, let's call this not a match
         } else {
             for (int n = 0; n < eventMapBases.length; n++) {
                 if (eventMapBases[n] != variantContextBases[n]) {
