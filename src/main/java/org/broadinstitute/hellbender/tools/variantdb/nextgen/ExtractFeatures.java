@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.HashSet;
 import java.util.List;
@@ -86,12 +87,14 @@ public class ExtractFeatures extends ExtractTool {
         TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
 
-        Set<VCFHeaderLine> excessAllelesHeaderLines = new HashSet<>();
-        excessAllelesHeaderLines.add(
+        Set<VCFHeaderLine> extraHeaders = new HashSet<>();
+        extraHeaders.add(
             FilterSensitivityTools.getExcessAllelesHeader(excessAllelesThreshold, GATKVCFConstants.EXCESS_ALLELES));
 
+        extraHeaders.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
+
         VCFHeader header = CommonCode.generateVcfHeader(
-            new HashSet<>(), reference.getSequenceDictionary(), excessAllelesHeaderLines);
+            new HashSet<>(), reference.getSequenceDictionary(), extraHeaders);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 

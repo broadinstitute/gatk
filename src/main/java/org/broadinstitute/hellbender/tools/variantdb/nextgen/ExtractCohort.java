@@ -151,8 +151,12 @@ public class ExtractCohort extends ExtractTool {
             }
         }
 
+        extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
+
         // TODO: this is part of the VCF Spec... but I don't see it anywhere in the GATK
-        extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
+        if (performGenotypeVQSLODFiltering) {
+            extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
+        }
 
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
         Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());

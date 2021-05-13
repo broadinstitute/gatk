@@ -296,45 +296,6 @@ public class ExtractCohortEngine {
         }
     }
 
-    private double getQUALapproxFromSampleRecord(ExtractCohortRecord sampleRecord) {
-        double qa = 0;
-
-        Object o1 = sampleRecord.getQUALApprox();
-
-        // prefer QUALapprox over allele specific version
-        if (o1 != null) {
-            return Double.parseDouble(o1.toString());
-        }
-
-        // now try with AS version
-        Object o = sampleRecord.getAsQUALApprox();
-
-        // gracefully handle records without a QUALapprox (like the ones generated in the PET from a deletion)
-        if (o==null) {
-            return 0;
-        }
-
-        String s = o.toString();
-
-        // Non-AS QualApprox (used for qualapprox filter) is simply the sum of the AS values (see GnarlyGenotyper)
-        if (s.contains("|")) {
-
-            // take the sum of all non-* alleles
-            // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part
-            String[] alleles = sampleRecord.getAltAllele().split(",");
-            String[] parts = s.split("\\|");
-
-            for (int i=0; i < alleles.length; i++) {
-                if (!"*".equals(alleles[i])) {
-                    qa += (double) Long.parseLong(parts[i]);
-                }
-            }
-        } else {
-            qa = (double) Long.parseLong(s);
-        }
-        return qa;
-    }
-
     private void processSampleRecordsForLocation(final long location,
                                                  final Iterable<ExtractCohortRecord> sampleRecordsAtPosition,
                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
@@ -367,9 +328,6 @@ public class ExtractCohortEngine {
             yngMap = fullYngMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
         }
 
-        double totalAsQualApprox = 0;
-        boolean hasSnpAllele = false;
-
         for ( final ExtractCohortRecord sampleRecord : sampleRecordsAtPosition ) {
             final String sampleName = sampleRecord.getSampleName();
             currentPositionSamplesSeen.add(sampleName);
@@ -384,13 +342,6 @@ public class ExtractCohortEngine {
                     ++totalNumberOfVariants;
                     VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
                     unmergedCalls.add(vc);
-
-                    totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
-
-                    // hasSnpAllele should be set to true if any sample has at least one snp (gnarly definition here)
-                    boolean thisHasSnp = vc.getAlternateAlleles().stream().anyMatch(allele -> allele != Allele.SPAN_DEL && allele.length() == vc.getReference().length());
-//                    logger.info("\t" + contig + ":" + currentPosition + ": calculated thisHasSnp of " + thisHasSnp + " from " + vc.getAlternateAlleles() + " and ref " + vc.getReference());
-                    hasSnpAllele = hasSnpAllele || thisHasSnp;
 
                     currentPositionHasVariant = true;
                     break;
@@ -430,23 +381,11 @@ public class ExtractCohortEngine {
 
         }
 
-
-
         if ( printDebugInformation ) {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        // same qualapprox check as Gnarly
-        final boolean isIndel = !hasSnpAllele;
-        if((isIndel && totalAsQualApprox < INDEL_QUAL_THRESHOLD) || (!isIndel && totalAsQualApprox < SNP_QUAL_THRESHOLD)) {
-            if ( printDebugInformation ) {
-                logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
-            }
-            return;
-        }
-
-
-        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap, totalAsQualApprox);
+        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
     }
 
     private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls,
@@ -459,8 +398,7 @@ public class ExtractCohortEngine {
                                         final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap,
                                         final HashMap<Allele, HashMap<Allele, String>> yngMap,
                                         final boolean noVqslodFilteringRequested,
-                                        final HashMap<Long, List<String>> siteFilterMap,
-                                        final double qualApprox) {
+                                        final HashMap<Long, List<String>> siteFilterMap) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
             return;
@@ -488,13 +426,12 @@ public class ExtractCohortEngine {
                 false,
                 true);
 
-        // need to insert QUALapprox into the variant context
-        final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
-        builder.getAttributes().put("QUALapprox", Integer.toString((int) qualApprox));
-        final VariantContext qualapproxVC = builder.make();
+        final VariantContext genotypedVC = this.disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
 
-
-        final VariantContext genotypedVC = this.disableGnarlyGenotyper ? qualapproxVC : gnarlyGenotyper.finalizeGenotype(qualapproxVC);
+        // Gnarly will indicate dropping a site by returning a null from the finalizeGenotype method
+        if (!this.disableGnarlyGenotyper && genotypedVC == null) {
+            return;
+        }
 
         // apply VQSLod-based filters
         VariantContext filteredVC =
@@ -569,9 +506,9 @@ public class ExtractCohortEngine {
         return filteredVC;
     }
 
-    protected VariantContext removeAnnotations(VariantContext filteredVC) {
+    protected VariantContext removeAnnotations(VariantContext vc) {
 
-        final VariantContextBuilder builder = new VariantContextBuilder(filteredVC);
+        final VariantContextBuilder builder = new VariantContextBuilder(vc);
         List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
                                                                       GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
                                                                       GATKVCFConstants.FISHER_STRAND_KEY));

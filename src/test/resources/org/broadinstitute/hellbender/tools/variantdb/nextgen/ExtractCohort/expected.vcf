@@ -1,6 +1,7 @@
 ##fileformat=VCFv4.2
 ##FILTER=<ID=EXCESS_ALLELES,Description="Site has an excess of alternate alleles based on the input threshold (default is 6)">
 ##FILTER=<ID=ExcessHet,Description="Site has excess het value larger than the threshold">
+##FILTER=<ID=LowQual,Description="Low quality">
 ##FILTER=<ID=NAY,Description="Considered a NAY in the Yay, Nay, Grey table">
 ##FILTER=<ID=NO_HQ_GENOTYPES,Description="Site has no high quality variant genotypes">
 ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">

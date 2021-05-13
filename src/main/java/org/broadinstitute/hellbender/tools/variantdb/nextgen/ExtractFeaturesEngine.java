@@ -263,7 +263,7 @@ public class ExtractFeaturesEngine {
             builder.filter(GATKVCFConstants.NO_HQ_GENOTYPES);
         }
 
-        boolean isSNP = ref.length() == allele.length();
+        boolean isSNP = rec.getNumSnpAlleles() > 0;
         if (qualapprox < (isSNP ? SNP_QUAL_THRESHOLD : INDEL_QUAL_THRESHOLD)) {
             builder.filter(GATKVCFConstants.LOW_QUAL_FILTER_NAME);
         }
