@@ -131,6 +131,8 @@ public final class ReadThreadingAssembler {
                                               final ReadErrorCorrector readErrorCorrector,
                                               final SAMFileHeader header,
                                               final SmithWatermanAligner aligner) {
+        //TODO BG & AH assemblyRegions now has separate reads for pileup - deal with it!!!
+
         Utils.nonNull(assemblyRegion, "Assembly engine cannot be used with a null AssemblyRegion.");
         Utils.nonNull(assemblyRegion.getPaddedSpan(), "Active region must have an extended location.");
         Utils.nonNull(refHaplotype, "Reference haplotype cannot be null.");
