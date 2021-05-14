@@ -372,6 +372,17 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     @Override
+    protected final Object doWork() {
+        try {
+            onTraversalStart();
+            traverse();
+            return onTraversalSuccess();
+        } finally {
+            closeTool();
+        }
+    }
+
+    @Override
     public int getDefaultCloudPrefetchBufferSize() {
         // Empirical testing has shown that this tool performs best at scale with cloud buffering
         // disabled. With cloud buffering on and thousands of concurrent GenomicsDBImport tasks,
@@ -717,8 +728,20 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     private Void logMessageOnBatchCompletion(final BatchCompletionCallbackFunctionArgument arg) {
-        progressMeter.update(null);
         logger.info("Done importing batch " + arg.batchCount + "/" + arg.totalBatchCount);
+        logger.info("List of samples imported in batch " + arg.batchCount + ":");
+        int index = 0;
+        final int sampleCount = sampleNameToVcfPath.size();
+        final int updatedBatchSize = (batchSize == DEFAULT_ZERO_BATCH_SIZE) ? sampleCount : batchSize;
+        final int startBatch = (arg.batchCount - 1) * updatedBatchSize;
+        final int stopBatch = arg.batchCount * updatedBatchSize;
+        for(String key : sampleNameToVcfPath.keySet()) {
+            index++;
+            if (index <= startBatch || index > stopBatch) {
+                continue;
+            }
+            logger.info("\t"+key);
+        }
         this.batchCount = arg.batchCount + 1;
         return null;
     }

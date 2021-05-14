@@ -1051,7 +1051,7 @@ public abstract class GATKTool extends CommandLineProgram {
     public Object onTraversalSuccess() { return null; }
 
     @Override
-    protected final Object doWork() {
+    protected Object doWork() {
         try {
             onTraversalStart();
             progressMeter.start();
