@@ -124,11 +124,15 @@ public final class AssemblyBasedCallerUtils {
         final byte minTailQualityToUse = errorCorrectReads ? HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION : minTailQuality;
 
         final List<GATKRead> readsToUse = new ArrayList<>();
+        final List<GATKRead> hardClippedReadsToUse = new ArrayList<>();
+
+        //TODO BG & AH make this a separate method instead of 2 copies of this code
         for (GATKRead originalRead : region.getReads()) {
             // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
             // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-            GATKRead read = (dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
+            GATKRead read = (dontUseSoftClippedBases || !ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
                     ReadClipper.hardClipSoftClippedBases(originalRead) : ReadClipper.revertSoftClippedBases(originalRead));
+            GATKRead hardClippedRead = ReadClipper.hardClipLowQualEnds(ReadClipper.hardClipSoftClippedBases(originalRead), minTailQualityToUse);
             read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(read, minTailQualityToUse) :
                     ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse));
 
@@ -136,25 +140,47 @@ public final class AssemblyBasedCallerUtils {
                 read = (read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read));
 
                 if (!read.isEmpty() && read.getCigar().getReadLength() > 0) {
-                    read = ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() );
+                    read = ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd());
 
                     if (read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan())) {
                         // NOTE: here we make a defensive copy of the read if it has not been modified by the above operations
                         // which might only make copies in the case that the read is actually clipped
-                        readsToUse.add(read == originalRead? read.copy() : read);
+                        readsToUse.add(read == originalRead ? read.copy() : read);
                     }
                 }
             }
+
+            if (hardClippedRead.getStart() <= hardClippedRead.getEnd()) {
+                hardClippedRead = hardClippedRead.isUnmapped() ? null : ReadClipper.hardClipAdaptorSequence(hardClippedRead);
+
+                if (!hardClippedRead.isEmpty() && hardClippedRead.getCigar().getReadLength() > 0) {
+                    hardClippedRead = ReadClipper.hardClipToRegion(hardClippedRead, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd());
+
+                    if (hardClippedRead.getStart() <= hardClippedRead.getEnd() && hardClippedRead.getLength() > 0 && hardClippedRead.overlaps(region.getPaddedSpan())) {
+                        // NOTE: here we make a defensive copy of the read if it has not been modified by the above operations
+                        // which might only make copies in the case that the read is actually clipped
+                        readsToUse.add(hardClippedRead == originalRead ? hardClippedRead.copy() : hardClippedRead);
+                    }
+                }
+
+            }
         }
         readsToUse.sort(new ReadCoordinateComparator(readsHeader));
+        hardClippedReadsToUse.sort(new ReadCoordinateComparator(readsHeader));
+
 
         // handle overlapping read pairs from the same fragment
         if (correctOverlappingBaseQualities) {
             cleanOverlappingReadPairs(readsToUse, samplesList, readsHeader, true, OptionalInt.empty(), OptionalInt.empty());
         }
 
+        // handle overlapping read pairs from the same fragment
+        if (correctOverlappingBaseQualities) {
+            cleanOverlappingReadPairs(hardClippedReadsToUse, samplesList, readsHeader, true, OptionalInt.empty(), OptionalInt.empty());
+        }
         region.clearReads();
         region.addAll(readsToUse);
+        region.addHardClippedPileupReads(hardClippedReadsToUse);
         region.setFinalized(true);
     }
 

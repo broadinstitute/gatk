@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -49,6 +50,11 @@ public final class AssemblyRegion implements Locatable {
      * as reads are added or removed from this region.
      */
     private final List<GATKRead> reads;
+
+    /**
+     * The reads are specifically used for haplotype generation to kmerize reads to match with haplotype kmers.
+     */
+    private final List<GATKRead> hardClippedPileupReads;
 
     /**
      * The active span in which this AssemblyRegion is responsible for calling variants
@@ -107,6 +113,7 @@ public final class AssemblyRegion implements Locatable {
         Utils.validate(paddedSpan.contains(activeSpan), "Padded span must contain active span.");
 
         reads = new ArrayList<>();
+        hardClippedPileupReads = new ArrayList<>();
         this.isActive = isActive;
     }
 
@@ -191,6 +198,16 @@ public final class AssemblyRegion implements Locatable {
     }
 
     /**
+     * Get an unmodifiable copy of the list of reads currently in this assembly region.
+     *
+     * The reads are sorted by their coordinate position.
+     * @return an unmodifiable and inmutable copy of the reads in the assembly region.
+     */
+    public List<GATKRead> getHardClippedPileupReads(){
+        return Collections.unmodifiableList(new ArrayList<>(hardClippedPileupReads));
+    }
+
+    /**
      * Returns the header for the reads in this region.
      */
     public SAMFileHeader getHeader(){
@@ -266,13 +283,17 @@ public final class AssemblyRegion implements Locatable {
      * @param read a non-null GATKRead
      */
     public void add( final GATKRead read ) {
+        addToReadCollection(read, reads);
+    }
+
+    public void addToReadCollection(final GATKRead read, final List<GATKRead> collection) {
         Utils.nonNull(read, "Read cannot be null");
         final SimpleInterval readLoc = new SimpleInterval( read );
         Utils.validateArg(paddedSpan.overlaps(read), () ->
                 "Read location " + readLoc + " doesn't overlap with active region padded span " + paddedSpan);
 
         if ( ! reads.isEmpty() ) {
-            final GATKRead lastRead = reads.get(size() - 1);
+            final GATKRead lastRead = collection.get(size() - 1);
             Utils.validateArg(Objects.equals(lastRead.getContig(), read.getContig()), () ->
                     "Attempting to add a read to ActiveRegion not on the same contig as other reads: lastRead " + lastRead + " attempting to add " + read);
             Utils.validateArg( read.getStart() >= lastRead.getStart(), () ->
@@ -293,6 +314,7 @@ public final class AssemblyRegion implements Locatable {
      */
     public void clearReads() {
         reads.clear();
+        hardClippedPileupReads.clear();
     }
 
     /**
@@ -310,6 +332,10 @@ public final class AssemblyRegion implements Locatable {
      */
     public void addAll(final Collection<GATKRead> readsToAdd){
         Utils.nonNull(readsToAdd).forEach(r -> add(r));
+    }
+
+    public void addHardClippedPileupReads(final Collection<GATKRead> readsToAdd) {
+        Utils.nonNull(readsToAdd).forEach(r -> addToReadCollection(r, hardClippedPileupReads));
     }
 
     /**
