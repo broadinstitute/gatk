@@ -19,23 +19,10 @@ with gzip.open(sys.argv[1], 'rt') as file1:
 
         parts = line.split("\t")
         
-        if ("ExcessHet" in parts[6]):
+        # strip out hard filtered sites, so vcfeval can use "all-records" to plot the ROC curves
+        if ("ExcessHet" in parts[6] or "LowQual" in parts[6] or "NO_HQ_GENOTYPES" in parts[6]):
             continue
 
-        # if the "loose" argument is specified, we remove the non Excess Het site-specific filers
-        # of EXCESS_ALLELES and NO_HQ_GENOTYPES.  This is used to measure the effect of these filters
-        # when comparing to WARP (which doesn't employ these filters).
-        if (len(sys.argv) > 2 and sys.argv[2] == "loose"):
-            # undo 
-            x = parts[6].replace("EXCESS_ALLELES","").replace("NO_HQ_GENOTYPES","").strip(";")
-            if x == "":
-                parts[6] = "PASS"
-            else:
-                parts[6] = x
-        else:
-            if ("EXCESS_ALLELES" in parts[6] or "NO_HQ_GENOTYPES" in parts[6]):
-                continue;
-            
         info = parts[7]    
         d = dict([ tuple(x.split("=")) for x in info.split(";") if "=" in x]) 
 

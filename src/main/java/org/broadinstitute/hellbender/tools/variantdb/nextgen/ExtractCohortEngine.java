@@ -487,11 +487,21 @@ public class ExtractCohortEngine {
                 // if it doesn't trigger any of the filters below, we assume it passes.
                 builder.passFilters();
                 if (remappedYngMap.containsValue("G")) {
-                    Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
+                    Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream()
+                            .filter(entry -> entry.getKey().length() == refLength)
+                            .map(entry -> entry.getValue())
+                            .filter(d -> !(d.isNaN()||d.isInfinite()))
+                            .max(Double::compareTo);
                     if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
                         builder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
                     }
-                    Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
+
+                    Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream()
+                            .filter(entry -> entry.getKey().length() != refLength)
+                            .map(entry -> entry.getValue())
+                            .filter(d -> !(d.isNaN()||d.isInfinite()))
+                            .max(Double::compareTo);
+
                     if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
                         builder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
                     }
@@ -517,17 +527,19 @@ public class ExtractCohortEngine {
 
         return builder.make();
     }
-    /*
+
+    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
+        return remapAllelesInMap(vc.getReference(), vc.getAlternateAlleles(), vc.getContig(), vc.getStart(), datamap, emptyVal);
+    }
+        /*
      * Alleles from the filtering table need to be remapped to use the same ref allele that the will exist in the joined variant context.
      * This method changes the alleles in the datamap to match the representation that's in the vc.
      */
-    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
-        // get the extended reference
-        Allele ref = vc.getReference();
-
+    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(Allele ref, List<Allele> alternateAlleles, String contig, int start, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
         // create ordered results map
         LinkedHashMap<Allele, T> results = new LinkedHashMap<>();
-        vc.getAlternateAlleles().stream().forEachOrdered(allele -> results.put(allele, emptyVal));
+        alternateAlleles.stream().forEachOrdered(allele -> results.put(allele, emptyVal));
+
 
         datamap.entrySet().stream().forEachOrdered(entry -> {
             if (entry.getKey().equals(ref)) {
@@ -539,7 +551,7 @@ public class ExtractCohortEngine {
                 List<Allele> allAlleles = new ArrayList<>();
                 allAlleles.add(entry.getKey());
                 allAlleles.addAll(entry.getValue().keySet());
-                VariantContextBuilder vcb = new VariantContextBuilder(vc.getSource(), vc.getContig(), vc.getStart(), vc.getStart()+refLength-1, allAlleles);
+                VariantContextBuilder vcb = new VariantContextBuilder("dummy", contig, start, start+refLength-1, allAlleles);
                 VariantContext newvc = vcb.make();
 
                 //If the length of the reference from the filtering table is longer than the reference in the variantContext, then that allele is not present in the extracted samples and we don't need the data
@@ -609,13 +621,23 @@ public class ExtractCohortEngine {
                                 .distinct()
                                 .collect(Collectors.toList());
 
+                final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, vqsLodMap, Double.NaN);
+                final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, yngMap, VCFConstants.EMPTY_INFO_FIELD);
+
+//                final LinkedHashMap<Allele, Double> relevantVqsLodMap = new LinkedHashMap<>();
+//                nonRefAlleles.forEach(key -> Optional.ofNullable(remappedVqsLodMap.get(key)).ifPresent(value -> relevantVqsLodMap.put(key, value)));
+//                final LinkedHashMap<Allele, String> relevantYngMap = new LinkedHashMap<>();
+//                nonRefAlleles.forEach(key -> Optional.ofNullable(remappedYngMap.get(key)).ifPresent(value -> relevantYngMap.put(key, value)));
+
+
+
                 // see https://github.com/broadinstitute/dsp-spec-ops/issues/291 for rationale
                 // take "worst" outcome for yng/vqslod, evaluate each allele separately
                 // if any allele is "N"ay, the genotype is filtered
                 // if any allele is "Y"ay and the rest are "G"rey, the genotype is passed
                 // if all alleles are "G"ray, the VQSLod is evaluated
-                boolean anyNays = nonRefAlleles.stream().map(a -> yngMap.get(ref).get(a)).anyMatch(v -> "N".equals(v));
-                boolean anyYays = nonRefAlleles.stream().map(a -> yngMap.get(ref).get(a)).anyMatch(v -> "Y".equals(v));
+                boolean anyNays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "N".equals(v));
+                boolean anyYays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "Y".equals(v));
 
                 // if there are any "N"s, the genotype is filtered
                 if (anyNays) {
@@ -625,7 +647,7 @@ public class ExtractCohortEngine {
                 } else {
                     // get the minimum (worst) vqslod for all SNP non-Yay sites, and apply the filter
                     Optional<Double> snpMin =
-                            nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> vqsLodMap.get(ref).get(a)).filter(Objects::nonNull).min(Double::compareTo);
+                            nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 
                     if (snpMin.isPresent() && snpMin.get() < vqsLodSNPThreshold) {
                         genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
@@ -633,7 +655,7 @@ public class ExtractCohortEngine {
 
                     // get the minimum (worst) vqslod for all INDEL non-Yay sites
                     Optional<Double> indelMin =
-                            nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> vqsLodMap.get(ref).get(a)).filter(Objects::nonNull).min(Double::compareTo);
+                            nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 
                     if (indelMin.isPresent() && indelMin.get() < vqsLodINDELThreshold) {
                         genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
