@@ -300,6 +300,7 @@ public final class AssemblyBasedCallerUtils {
             // Map<kmer, Integer> # times Kmer in all the reads
             // for each kmer in reads - find hapotypes that contain it and
             // filter haplotypes that don't have 10% coverage of read kmers
+            // check if finalizeRegion methods is already applied and it removes the softclipped bases
 
 
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
