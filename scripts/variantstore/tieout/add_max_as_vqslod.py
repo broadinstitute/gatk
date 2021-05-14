@@ -30,10 +30,11 @@ with gzip.open(sys.argv[1], 'rt') as file1:
         sample_data = dict(zip(format_key, parts[9].split(":")))
 
         gt = sample_data['GT']
-        
+
         if gt == "0/0" or gt == "./.":
             continue;
-            
+
+        # if there is an FT tag on the genotype, move it to the FILTER field (since this is single sample)
         if 'FT' in sample_data:
             ft = sample_data['FT']
 

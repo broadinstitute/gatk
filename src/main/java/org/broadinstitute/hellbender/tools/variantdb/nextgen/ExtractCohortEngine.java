@@ -551,7 +551,7 @@ public class ExtractCohortEngine {
                 List<Allele> allAlleles = new ArrayList<>();
                 allAlleles.add(entry.getKey());
                 allAlleles.addAll(entry.getValue().keySet());
-                VariantContextBuilder vcb = new VariantContextBuilder("dummy", contig, start, start+refLength-1, allAlleles);
+                VariantContextBuilder vcb = new VariantContextBuilder("unused", contig, start, start+refLength-1, allAlleles);
                 VariantContext newvc = vcb.make();
 
                 //If the length of the reference from the filtering table is longer than the reference in the variantContext, then that allele is not present in the extracted samples and we don't need the data
@@ -623,13 +623,6 @@ public class ExtractCohortEngine {
 
                 final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, vqsLodMap, Double.NaN);
                 final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, yngMap, VCFConstants.EMPTY_INFO_FIELD);
-
-//                final LinkedHashMap<Allele, Double> relevantVqsLodMap = new LinkedHashMap<>();
-//                nonRefAlleles.forEach(key -> Optional.ofNullable(remappedVqsLodMap.get(key)).ifPresent(value -> relevantVqsLodMap.put(key, value)));
-//                final LinkedHashMap<Allele, String> relevantYngMap = new LinkedHashMap<>();
-//                nonRefAlleles.forEach(key -> Optional.ofNullable(remappedYngMap.get(key)).ifPresent(value -> relevantYngMap.put(key, value)));
-
-
 
                 // see https://github.com/broadinstitute/dsp-spec-ops/issues/291 for rationale
                 // take "worst" outcome for yng/vqslod, evaluate each allele separately

@@ -87,14 +87,14 @@ public class ExtractFeatures extends ExtractTool {
         TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
 
-        Set<VCFHeaderLine> extraHeaders = new HashSet<>();
-        extraHeaders.add(
+        Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
+        extraHeaderLines.add(
             FilterSensitivityTools.getExcessAllelesHeader(excessAllelesThreshold, GATKVCFConstants.EXCESS_ALLELES));
 
-        extraHeaders.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
+        extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         VCFHeader header = CommonCode.generateVcfHeader(
-            new HashSet<>(), reference.getSequenceDictionary(), extraHeaders);
+            new HashSet<>(), reference.getSequenceDictionary(), extraHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 

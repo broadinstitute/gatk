@@ -19,7 +19,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
-import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.ALLELE_FRACTION_KEY;
 
 
 @CommandLineProgramProperties(
@@ -153,7 +152,6 @@ public class ExtractCohort extends ExtractTool {
 
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
-        // TODO: this is part of the VCF Spec... but I don't see it anywhere in the GATK
         if (performGenotypeVQSLODFiltering) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
