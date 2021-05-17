@@ -8,10 +8,7 @@ from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
 from google.oauth2 import service_account
 
-
 import argparse
-
-import json
 import re
 
 JOB_IDS = set()
@@ -59,11 +56,11 @@ def execute_with_retry(label, sql):
   start = time.time()
   while len(retry_delay) > 0:
     try:
-      labelValue = label.replace(" ","-").strip().lower()
+      query_label = label.replace(" ","-").strip().lower()
 
       existing_labels = client._default_query_job_config.labels
       job_labels = existing_labels
-      job_labels["gvs_query_name"] = labelValue
+      job_labels["gvs_query_name"] = query_label
       job_config = bigquery.QueryJobConfig(labels=job_labels)
       query = client.query(sql, job_config=job_config)
 
@@ -316,7 +313,7 @@ if __name__ == '__main__':
   parser.add_argument('--destination_table',type=str, help='destination table', required=True)
   parser.add_argument('--fq_cohort_sample_names',type=str, help='FQN of cohort table to extract, contains "sample_name" column', required=True)
   parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
-  parser.add_argument('--query_labels',type=str, help='Labels to put on the BQ query that will show up in the billing. Ex: --query-labels key1=value1 --query-labels key2=value2', required=False)
+  parser.add_argument('--query_labels',type=str, help='Labels to put on the BQ query that will show up in the billing. Ex: --query_labels key1=value1 --query_labels key2=value2', required=False)
   parser.add_argument('--min_variant_samples',type=int, help='Minimum variant samples at a site required to be emitted', required=False, default=0)
   parser.add_argument('--fq_sample_mapping_table',type=str, help='Mapping table from sample_id to sample_name', required=True)
   parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
