@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.filtering;
 
-import com.google.api.client.util.Lists;
-import com.google.gson.JsonObject;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -147,7 +145,7 @@ public class ExtractFeaturesEngine {
         createVQSRInputFromTableResult(storageAPIAvroReader);
     }
 
-    private Map<String, String>  createQueryLabels(List<String> labelStringList) {
+    static Map<String, String>  createQueryLabels(List<String> labelStringList) {
         // static labels are added to the query to make tracking this workflow easier downstream
         Map<String, String> labelForQuery = new HashMap<String, String>();
         labelForQuery.put("gvs_tool_name", "extract-features");
@@ -159,11 +157,14 @@ public class ExtractFeaturesEngine {
 
         if ( labelStringList.size() > 62 ) {
             throw new UserException("Only 62 unique label keys are allowed per resource.");
-            // BQ allows for 64, and we add one below
+            // BQ allows for 64, and we add two above
         }
 
-        for (String labelMap: labelStringList) {
-            String[] label = labelMap.split("=");
+        for (String labelMapString: labelStringList) {
+            if ( !labelMapString.contains("=") ) {
+                throw new UserException("All labels must contain a key and value in key=value format");
+            }
+            String[] label = labelMapString.split("=");
             String labelKey = label[0];
             String labelValue = label[1];
             // validate the label key and label value according to GCP Requirements for labels
