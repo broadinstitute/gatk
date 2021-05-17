@@ -124,6 +124,10 @@ public class CalculateContamination extends CommandLineProgram {
     @Argument(fullName = AUXILIARY_INFO, optional = true)
     private final File auxiliaryInfoFile = null;
 
+    public static final String CONTAMINATED_SITES_NAME = "contaminated-sites";
+    @Argument(fullName = CONTAMINATED_SITES_NAME, doc = "contaminated sites", optional = true)
+    private final File contaminatedSitesFile = null;
+
 
     @Override
     public Object doWork() {
@@ -135,12 +139,14 @@ public class CalculateContamination extends CommandLineProgram {
         final List<PileupSummary> genotypingSites = matchedPileupSummariesTable == null ? sites :
                 filterSitesByCoverage(PileupSummary.readFromFile(matchedPileupSummariesTable).getRight());
 
-        final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites, Optional.ofNullable(homSitesFile)); // sato: genotyping sites vs sites?
+        final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites, Optional.ofNullable(homSitesFile),
+                Optional.ofNullable(contaminatedSitesFile)); // sato: genotyping sites vs sites?
 
         // sato: tumorModel is only used for the purpose of outputting the tumor segments.
         // this is not used in calculating contamination, but rather it is used by FilterMutectCalls
         if (outputTumorSegmentation != null) {
-            final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel : new ContaminationModel(sites, Optional.ofNullable(homSitesFile));
+            final ContaminationModel tumorModel = matchedPileupSummariesTable == null ? genotypingModel :
+                    new ContaminationModel(sites, Optional.ofNullable(homSitesFile), Optional.ofNullable(contaminatedSitesFile));
             MinorAlleleFractionRecord.writeToFile(sample, tumorModel.segmentationRecords(), outputTumorSegmentation);
         }
 

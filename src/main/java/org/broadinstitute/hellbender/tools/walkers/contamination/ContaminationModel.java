@@ -9,6 +9,9 @@ import org.apache.commons.math3.optim.univariate.UnivariatePointValuePair;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.SimpleAnnotatedIntervalWriter;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.io.*;
@@ -54,6 +57,8 @@ public class ContaminationModel {
     private static final List<Double> CONTAMINATION_INITIAL_GUESSES = Arrays.asList(0.02, 0.05, 0.1, 0.2);
 
     Optional<File> homSitesOutput;
+    Optional<File> contaminatedSitesOutput;
+
     Strategy strategy;
     double mafThreshold;
     int numHomSites;
@@ -62,7 +67,7 @@ public class ContaminationModel {
     double allowedError;
 
 
-    public ContaminationModel(List<PileupSummary> sites, Optional<File> homSitesOutput) {
+    public ContaminationModel(List<PileupSummary> sites, Optional<File> homSitesOutput, Optional<File> contaminatedSitesOutput) {
         errorRate = Math.max(1e-4, calculateErrorRate(sites)); // sato: protect against the case where error rate is 0.0
 
         // partition genome into minor allele fraction (MAF) segments to better distinguish hom alts from LoH hets.
@@ -81,6 +86,7 @@ public class ContaminationModel {
         contamination = contaminationGuess.doubleValue();
 
         this.homSitesOutput = homSitesOutput;
+        this.contaminatedSitesOutput = contaminatedSitesOutput;
     }
 
     private static Pair<List<List<PileupSummary>>, List<Double>> getNonLOHSegments(final List<List<PileupSummary>> segments, final List<Double> mafs) {
@@ -206,6 +212,33 @@ public class ContaminationModel {
         if (!Double.isNaN(contamination) && stdError < (contamination * MIN_RELATIVE_ERROR + MIN_ABSOLUTE_ERROR)){ // sato: i.e. if this contamination estimate will be outputted
             if (homSitesOutput.isPresent()){
                 PileupSummary.writeToFile("sample", homs, homSitesOutput.get());
+            }
+
+            if (contaminatedSitesOutput.isPresent()){
+                List<PileupSummary> contaminatedSites = homs.stream().filter(ps -> ps.getRefCount() > 0)
+                        .collect(Collectors.toList());
+
+                boolean writeIntervalBeta = false; // Can't write an interval file without a header
+                if (writeIntervalBeta){
+//                    final SimpleAnnotatedIntervalWriter writer = new SimpleAnnotatedIntervalWriter(contaminatedSitesOutput.get());
+//
+//                    // writer.writeHeader(header); sato: usually no file with a header is provided...
+//                    for (PileupSummary contaminatedSite : contaminatedSites){
+//                        final AnnotatedInterval interval = new AnnotatedInterval(new SimpleInterval(contaminatedSite), new TreeMap());
+//                        writer.add(interval);
+//                    }
+//                    writer.close();
+                } else {
+                    try (PrintWriter pw = new PrintWriter(contaminatedSitesOutput.get())){
+                        for (PileupSummary contaminatedSite : contaminatedSites){
+                            pw.println(String.format("%s\t%s\t%s", contaminatedSite.getContig(),
+                                    contaminatedSite.getStart() - 1, contaminatedSite.getStart())); // -1 to convert from 1-based vcf to 0-based bed
+                        }
+                    } catch (IOException e){
+                        throw new UserException("Couldn't write contaminated sites", e);
+                    }
+                    // PileupSummary.writeToFile("sample", contaminatedSites,  contaminatedSitesOutput.get());
+                }
             }
         }
 
