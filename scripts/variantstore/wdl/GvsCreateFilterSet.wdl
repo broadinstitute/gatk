@@ -225,6 +225,7 @@ task ExtractFilterTask {
 
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_first([query_labels])) else []
 
     # ------------------------------------------------
     # Run our command:
@@ -249,7 +250,7 @@ task ExtractFilterTask {
                 --sample-table ~{fq_sample_table} \
                 --alt-allele-table ~{fq_alt_allele_table} \
                 ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
-                ~{"--query-labels " + query_labels} \
+                ~{sep=" " query_label_args} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id}
