@@ -80,13 +80,14 @@ public class StorageAPIAvroReader implements GATKAvroReader {
                     .setFormat(Storage.DataFormat.AVRO);
 
             final Storage.ReadSession session = client.createReadSession(builder.build());
-
             if (session.getStreamsCount() > 0) {
 
                 this.schema = new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema());
 
                 this.datumReader = new GenericDatumReader<>(
                         new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema()));
+
+                logger.info("Storage API Session ID: " + session.getName());
 
                 // Use the first stream to perform reading.
                 Storage.StreamPosition readPosition = Storage.StreamPosition.newBuilder()

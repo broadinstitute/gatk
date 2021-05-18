@@ -638,19 +638,19 @@ public class ExtractCohortEngine {
                 } else if (anyYays) {
                     // the genotype is passed, nothing to do here as non-filtered is the default
                 } else {
-                    // get the minimum (worst) vqslod for all SNP non-Yay sites, and apply the filter
-                    Optional<Double> snpMin =
+                    // get the max (best) vqslod for all SNP non-Yay sites, and apply the filter
+                    Optional<Double> snpMax =
                             nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 
-                    if (snpMin.isPresent() && snpMin.get() < vqsLodSNPThreshold) {
+                    if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
                         genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
                     }
 
-                    // get the minimum (worst) vqslod for all INDEL non-Yay sites
-                    Optional<Double> indelMin =
+                    // get the max (best) vqslod for all INDEL non-Yay sites
+                    Optional<Double> indelMax =
                             nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 
-                    if (indelMin.isPresent() && indelMin.get() < vqsLodINDELThreshold) {
+                    if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
                         genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
                     }
 
