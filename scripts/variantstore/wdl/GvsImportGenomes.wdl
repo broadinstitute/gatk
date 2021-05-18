@@ -176,7 +176,7 @@ workflow GvsImportGenomes {
   }
 
   output {
-    Boolean loaded_in_Gvs = true
+    Boolean loaded_in_gvs = true
   }
 }
 
@@ -653,8 +653,8 @@ task LoadTable {
 
   output {
     String done = "true"
-    File manifest_file = "~{datatype}_du_sets.txt"
-    File final_job_statuses = "bq_final_job_statuses.txt"
+    File? manifest_file = "~{datatype}_du_sets.txt"
+    File? final_job_statuses = "bq_final_job_statuses.txt"
   }
 }
 
