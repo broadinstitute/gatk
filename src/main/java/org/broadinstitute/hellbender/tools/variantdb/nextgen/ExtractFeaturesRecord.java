@@ -30,29 +30,11 @@ public class ExtractFeaturesRecord implements Locatable {
     private final int numHetSamples;
     private final int numHomvarSamples;
     private final int distinctAlleles;
+    private final int numSnpAlleles;
     private final int hqGenotypeSamples;
+    private final Double qualApprox;
 
-    // FEATURE_EXTRACT_FIELDS = Arrays.asList(
-    //      LOCATION_FIELD_NAME,
-    //      REF_ALLELE_FIELD_NAME,
-    //      "allele",
-    //      RAW_QUAL,
-    //      "ref_ad",
-    //      AS_MQRankSum,
-    //      "AS_MQRankSum_ft",
-    //      AS_ReadPosRankSum,
-    //      "AS_ReadPosRankSum_ft",
-    //      RAW_MQ,
-    //      RAW_AD,
-    //      "RAW_AD_GT_1",
-    //      "SB_REF_PLUS",
-    //      "SB_REF_MINUS",
-    //      "SB_ALT_PLUS",
-    //      "SB_ALT_MINUS",
-    //      "num_het_samples",
-    //      "num_homvar_samples");
-
-
+    // See SchemaUtils.FEATURE_EXTRACT_FIELDS for list of fields
     public ExtractFeaturesRecord(GenericRecord genericRecord) {
         this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
         this.contig = SchemaUtils.decodeContig(location);
@@ -65,6 +47,7 @@ public class ExtractFeaturesRecord implements Locatable {
         this.rawMQ = Double.valueOf(genericRecord.get(SchemaUtils.RAW_MQ).toString());
         this.rawAD = Double.valueOf(genericRecord.get(SchemaUtils.RAW_AD).toString());
         this.rawADGT1 = Double.valueOf(genericRecord.get("RAW_AD_GT_1").toString());
+
         this.sbRefPlus = Double.valueOf(genericRecord.get("SB_REF_PLUS").toString()).intValue();
         this.sbRefMinus = Double.valueOf(genericRecord.get("SB_REF_MINUS").toString()).intValue();
         this.sbAltPlus = Double.valueOf(genericRecord.get("SB_ALT_PLUS").toString()).intValue();
@@ -83,6 +66,14 @@ public class ExtractFeaturesRecord implements Locatable {
         Object asReadPosRankSumNullable = genericRecord.get(SchemaUtils.AS_ReadPosRankSum);
         this.asReadPosRankSum = ( asReadPosRankSumNullable == null ) ? null : Float.valueOf(Objects.toString(asReadPosRankSumNullable));
         this.asReadPosRankSumFreqTable = Objects.toString(genericRecord.get(SchemaUtils.AS_ReadPosRankSum + "_ft"));
+
+        // if qualApprox is not defined, set it to zero
+        Object qualApproxNullable = genericRecord.get("sum_qualapprox");
+        this.qualApprox = ( qualApproxNullable == null ) ? 0 : Double.valueOf(Objects.toString(qualApproxNullable));
+
+        // if num_snp_alleles is not defined, set it to zero
+        Object numSnpAllelesNullable = genericRecord.get("num_snp_alleles");
+        this.numSnpAlleles = ( numSnpAllelesNullable == null ) ? 0 : Integer.valueOf(Objects.toString(numSnpAllelesNullable));
 
         // if ref_ad is not defined, set it to zero
         Object refADNullable = genericRecord.get("ref_ad");
@@ -123,6 +114,8 @@ public class ExtractFeaturesRecord implements Locatable {
 
     public Double getRawADGT1() { return this.rawADGT1; }
 
+    public Double getQualApprox() { return this.qualApprox; }
+
     public int getSbRefPlus() { return this.sbRefPlus; }
 
     public int getSbRefMinus() { return this.sbRefMinus; }
@@ -136,6 +129,8 @@ public class ExtractFeaturesRecord implements Locatable {
     public int getNumHomvarSamples() { return this.numHomvarSamples; }
 
     public int getDistinctAlleles() { return this.distinctAlleles; }
+
+    public int getNumSnpAlleles() { return this.numSnpAlleles; }
 
     public int getHqGenotypeSamples() { return this.hqGenotypeSamples; }
     

@@ -36,7 +36,8 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("cohort-avro-file-name", cohortAvroFileName)
         .add("sample-file", sampleFile)
         .add("emit-pls", false)
-        .add("disable-gnarly", false);
+        .add("disable-gnarly", false)
+        .add("vqslod-filter-genotypes", false);
 
 
     runCommandLine(args);

@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
+import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLineType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
@@ -9,13 +11,13 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
 import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
@@ -90,6 +92,13 @@ public class ExtractCohort extends ExtractTool {
     private boolean disableGnarlyGenotyper = true;
 
     @Argument(
+            fullName = "vqslod-filter-genotypes",
+            doc = "Should VQSLOD filtering be applied at the genotype level",
+            optional = true
+    )
+    private boolean performGenotypeVQSLODFiltering = true;
+
+    @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
             doc = "The truth sensitivity level at which to start filtering SNPs",
             optional = true
@@ -126,27 +135,33 @@ public class ExtractCohort extends ExtractTool {
             throw new UserException("--filter-set-name must be specified if any filtering related operations are requested");
         }
 
-        Set<VCFHeaderLine> vqsrHeaderLines = new HashSet<>();
+        Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         if (filterSetInfoTableName != null) {
             FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
             Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
 
             if (vqsLodSNPThreshold != null) { // we already have vqslod thresholds directly
-                vqsrHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP));
-                vqsrHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+                extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodINDELThreshold, GATKVCFConstants.INDEL));
             } else { // using sensitivity threshold inputs; need to convert these to vqslod thresholds
                 vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
                 vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
                 // set headers
-                vqsrHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
-                vqsrHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+                extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
             }
+        }
+
+        extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
+
+        if (performGenotypeVQSLODFiltering) {
+            extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
         Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
 
-        VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary(), vqsrHeaderLines);
+        VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary(), extraHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 
@@ -196,7 +211,8 @@ public class ExtractCohort extends ExtractTool {
                 progressMeter,
                 filterSetName,
                 emitPLs,
-                disableGnarlyGenotyper);
+                disableGnarlyGenotyper,
+                performGenotypeVQSLODFiltering);
         vcfWriter.writeHeader(header);
     }
 

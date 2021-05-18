@@ -50,6 +50,7 @@ public class ExtractCohortEngine {
     private final ReferenceDataSource refSource;
     private Double vqsLodSNPThreshold;
     private Double vqsLodINDELThreshold;
+    private boolean performGenotypeVQSLODFiltering;
 
     private final ProgressMeter progressMeter;
     private final String projectID;
@@ -96,8 +97,8 @@ public class ExtractCohortEngine {
                                final ProgressMeter progressMeter,
                                final String filterSetName,
                                final boolean emitPLs,
-                               final boolean disableGnarlyGenotyper
-    ) {
+                               final boolean disableGnarlyGenotyper,
+                               final boolean performGenotypeVQSLODFiltering) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
@@ -119,6 +120,8 @@ public class ExtractCohortEngine {
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
+        this.performGenotypeVQSLODFiltering = performGenotypeVQSLODFiltering;
+
         this.progressMeter = progressMeter;
 
         this.filterSetName = filterSetName;
@@ -217,9 +220,9 @@ public class ExtractCohortEngine {
     }
 
 
-    private void createVariantsFromUnsortedResult(final GATKAvroReader avroReader, 
-                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, 
-                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap, 
+    private void createVariantsFromUnsortedResult(final GATKAvroReader avroReader,
+                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                                   final HashMap<Long, List<String>> siteFilterMap,
                                                   final boolean noVqslodFilteringRequested) {
 
@@ -258,7 +261,7 @@ public class ExtractCohortEngine {
 
                 if (location != currentLocation && currentLocation != -1) {
                     ++totalNumberOfSites;
-                    processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap);
+                    processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, performGenotypeVQSLODFiltering);
 
                     currentPositionRecords.clear();
                 }
@@ -270,7 +273,7 @@ public class ExtractCohortEngine {
 
         if ( ! currentPositionRecords.isEmpty() ) {
             ++totalNumberOfSites;
-            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap);
+            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, performGenotypeVQSLODFiltering);
         }
     }
 
@@ -293,51 +296,13 @@ public class ExtractCohortEngine {
         }
     }
 
-    private double getQUALapproxFromSampleRecord(ExtractCohortRecord sampleRecord) {
-        double qa = 0;
-
-        Object o1 = sampleRecord.getQUALApprox();
-
-        // prefer QUALapprox over allele specific version
-        if (o1 != null) {
-            return Double.parseDouble(o1.toString());
-        }
-
-        // now try with AS version
-        Object o = sampleRecord.getAsQUALApprox();
-
-        // gracefully handle records without a QUALapprox (like the ones generated in the PET from a deletion)
-        if (o==null) {
-            return 0;
-        }
-
-        String s = o.toString();
-
-        // Non-AS QualApprox (used for qualapprox filter) is simply the sum of the AS values (see GnarlyGenotyper)
-        if (s.contains("|")) {
-
-            // take the sum of all non-* alleles
-            // basically if our alleles are '*,T' or 'G,*' we want to ignore the * part
-            String[] alleles = sampleRecord.getAltAllele().split(",");
-            String[] parts = s.split("\\|");
-
-            for (int i=0; i < alleles.length; i++) {
-                if (!"*".equals(alleles[i])) {
-                    qa += (double) Long.parseLong(parts[i]);
-                }
-            }
-        } else {
-            qa = (double) Long.parseLong(s);
-        }
-        return qa;
-    }
-
-    private void processSampleRecordsForLocation(final long location, 
-                                                 final Iterable<ExtractCohortRecord> sampleRecordsAtPosition, 
-                                                 final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap, 
-                                                 final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,                                                  
+    private void processSampleRecordsForLocation(final long location,
+                                                 final Iterable<ExtractCohortRecord> sampleRecordsAtPosition,
+                                                 final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+                                                 final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                                  final boolean noVqslodFilteringRequested,
-                                                 final HashMap<Long, List<String>> siteFilterMap) {
+                                                 final HashMap<Long, List<String>> siteFilterMap,
+                                                 final boolean performGenotypeVQSLODFiltering) {
 
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final Set<String> currentPositionSamplesSeen = new HashSet<>();
@@ -363,9 +328,6 @@ public class ExtractCohortEngine {
             yngMap = fullYngMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
         }
 
-        double totalAsQualApprox = 0;
-        boolean hasSnpAllele = false;
-
         for ( final ExtractCohortRecord sampleRecord : sampleRecordsAtPosition ) {
             final String sampleName = sampleRecord.getSampleName();
             currentPositionSamplesSeen.add(sampleName);
@@ -378,15 +340,8 @@ public class ExtractCohortEngine {
             switch (sampleRecord.getState()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
-                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap);
+                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
                     unmergedCalls.add(vc);
-
-                    totalAsQualApprox += getQUALapproxFromSampleRecord(sampleRecord);
-
-                    // hasSnpAllele should be set to true if any sample has at least one snp (gnarly definition here)
-                    boolean thisHasSnp = vc.getAlternateAlleles().stream().anyMatch(allele -> allele != Allele.SPAN_DEL && allele.length() == vc.getReference().length());
-//                    logger.info("\t" + contig + ":" + currentPosition + ": calculated thisHasSnp of " + thisHasSnp + " from " + vc.getAlternateAlleles() + " and ref " + vc.getReference());
-                    hasSnpAllele = hasSnpAllele || thisHasSnp;
 
                     currentPositionHasVariant = true;
                     break;
@@ -426,37 +381,24 @@ public class ExtractCohortEngine {
 
         }
 
-
-
         if ( printDebugInformation ) {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        // same qualapprox check as Gnarly
-        final boolean isIndel = !hasSnpAllele;
-        if((isIndel && totalAsQualApprox < INDEL_QUAL_THRESHOLD) || (!isIndel && totalAsQualApprox < SNP_QUAL_THRESHOLD)) {
-            if ( printDebugInformation ) {
-                logger.info(contig + ":" + currentPosition + ": dropped for low QualApprox of  " + totalAsQualApprox);
-            }
-            return;
-        }
-
-
-        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap, totalAsQualApprox);
+        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
     }
 
-    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls, 
-                                        final Set<String> currentVariantSamplesSeen, 
-                                        final boolean currentPositionHasVariant, 
+    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls,
+                                        final Set<String> currentVariantSamplesSeen,
+                                        final boolean currentPositionHasVariant,
                                         final long location,
-                                        final String contig, 
-                                        final long start, 
-                                        final Allele refAllele, 
-                                        final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, 
-                                        final HashMap<Allele, HashMap<Allele, String>> yngMap, 
-                                        final boolean noVqslodFilteringRequested, 
-                                        final HashMap<Long, List<String>> siteFilterMap,
-                                        final double qualApprox) {
+                                        final String contig,
+                                        final long start,
+                                        final Allele refAllele,
+                                        final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap,
+                                        final HashMap<Allele, HashMap<Allele, String>> yngMap,
+                                        final boolean noVqslodFilteringRequested,
+                                        final HashMap<Long, List<String>> siteFilterMap) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
             return;
@@ -484,29 +426,29 @@ public class ExtractCohortEngine {
                 false,
                 true);
 
-        // need to insert QUALapprox into the variant context
-        final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
-        builder.getAttributes().put("QUALapprox", Integer.toString((int) qualApprox));
-        final VariantContext qualapproxVC = builder.make();
+        final VariantContext genotypedVC = this.disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
 
-
-        final VariantContext genotypedVC = this.disableGnarlyGenotyper ? qualapproxVC : gnarlyGenotyper.finalizeGenotype(qualapproxVC);
+        // Gnarly will indicate dropping a site by returning a null from the finalizeGenotype method
+        if (!this.disableGnarlyGenotyper && genotypedVC == null) {
+            return;
+        }
 
         // apply VQSLod-based filters
-        VariantContext filteredVC = noVqslodFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterVariants(genotypedVC, vqsLodMap, yngMap);
+        VariantContext filteredVC =
+                noVqslodFilteringRequested || mode.equals(CommonCode.ModeEnum.ARRAYS) ? genotypedVC : filterSiteByVQSLOD(genotypedVC, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
 
         // apply SiteQC-based filters, if they exist
         if ( siteFilterMap.containsKey(location) ) {
             final VariantContextBuilder sfBuilder = new VariantContextBuilder(filteredVC);
 
-            Set<String> newFilters = new HashSet<>();            
+            Set<String> newFilters = new HashSet<>();
 
             // include existing filters, if any
             if (sfBuilder.getFilters() != null) {
                 newFilters.addAll(sfBuilder.getFilters());
             }
 
-            newFilters.addAll(siteFilterMap.get(location));            
+            newFilters.addAll(siteFilterMap.get(location));
             filteredVC = sfBuilder.filters(newFilters).make();
         }
 
@@ -519,7 +461,7 @@ public class ExtractCohortEngine {
         }
     }
 
-    private VariantContext filterVariants(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
+    private VariantContext filterSiteByVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean onlyAnnotate) {
         final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
         final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
@@ -533,37 +475,50 @@ public class ExtractCohortEngine {
         builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, relevantVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
-        int refLength = mergedVC.getReference().length();
+        if (!onlyAnnotate) {
+            int refLength = mergedVC.getReference().length();
 
-        // if there are any Yays, the site is PASS
-        if (remappedYngMap.containsValue("Y")) {
-            builder.passFilters();
-        } else if (remappedYngMap.containsValue("N")) {
-            builder.filter(GATKVCFConstants.NAY_FROM_YNG);
-        } else {
-            // if it doesn't trigger any of the filters below, we assume it passes.
-            builder.passFilters();
-            if (remappedYngMap.containsValue("G")) {
-                Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() == refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
-                if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
-                    builder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
-                }
-                Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream().filter(entry -> entry.getKey().length() != refLength).map(entry -> entry.getValue().equals(Double.NaN) ? 0.0 : entry.getValue()).max(Double::compareTo);
-                if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
-                    builder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
-                    }
+            // if there are any Yays, the site is PASS
+            if (remappedYngMap.containsValue("Y")) {
+                builder.passFilters();
+            } else if (remappedYngMap.containsValue("N")) {
+                builder.filter(GATKVCFConstants.NAY_FROM_YNG);
             } else {
-                // per-conversation with Laura, if there is no information we let the site pass (ie no data does not imply failure)
+                // if it doesn't trigger any of the filters below, we assume it passes.
+                builder.passFilters();
+                if (remappedYngMap.containsValue("G")) {
+                    Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream()
+                            .filter(entry -> entry.getKey().length() == refLength)
+                            .map(entry -> entry.getValue())
+                            .filter(d -> !(d.isNaN()||d.isInfinite()))
+                            .max(Double::compareTo);
+                    if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
+                        builder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
+                    }
+
+                    Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream()
+                            .filter(entry -> entry.getKey().length() != refLength)
+                            .map(entry -> entry.getValue())
+                            .filter(d -> !(d.isNaN()||d.isInfinite()))
+                            .max(Double::compareTo);
+
+                    if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
+                        builder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
+                    }
+                } else {
+                    // per-conversation with Laura, if there is no information we let the site pass (ie no data does not imply failure)
+                }
             }
         }
+
         // TODO: add in other annotations we need in output (like AF, etc?)
         final VariantContext filteredVC = builder.make();
         return filteredVC;
     }
 
-    protected VariantContext removeAnnotations(VariantContext filteredVC) {
+    protected VariantContext removeAnnotations(VariantContext vc) {
 
-        final VariantContextBuilder builder = new VariantContextBuilder(filteredVC);
+        final VariantContextBuilder builder = new VariantContextBuilder(vc);
         List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
                                                                       GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
                                                                       GATKVCFConstants.FISHER_STRAND_KEY));
@@ -572,17 +527,19 @@ public class ExtractCohortEngine {
 
         return builder.make();
     }
-    /*
+
+    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
+        return remapAllelesInMap(vc.getReference(), vc.getAlternateAlleles(), vc.getContig(), vc.getStart(), datamap, emptyVal);
+    }
+        /*
      * Alleles from the filtering table need to be remapped to use the same ref allele that the will exist in the joined variant context.
      * This method changes the alleles in the datamap to match the representation that's in the vc.
      */
-    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
-        // get the extended reference
-        Allele ref = vc.getReference();
-
+    private <T> LinkedHashMap<Allele, T> remapAllelesInMap(Allele ref, List<Allele> alternateAlleles, String contig, int start, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
         // create ordered results map
         LinkedHashMap<Allele, T> results = new LinkedHashMap<>();
-        vc.getAlternateAlleles().stream().forEachOrdered(allele -> results.put(allele, emptyVal));
+        alternateAlleles.stream().forEachOrdered(allele -> results.put(allele, emptyVal));
+
 
         datamap.entrySet().stream().forEachOrdered(entry -> {
             if (entry.getKey().equals(ref)) {
@@ -594,7 +551,7 @@ public class ExtractCohortEngine {
                 List<Allele> allAlleles = new ArrayList<>();
                 allAlleles.add(entry.getKey());
                 allAlleles.addAll(entry.getValue().keySet());
-                VariantContextBuilder vcb = new VariantContextBuilder(vc.getSource(), vc.getContig(), vc.getStart(), vc.getStart()+refLength-1, allAlleles);
+                VariantContextBuilder vcb = new VariantContextBuilder("unused", contig, start, start+refLength-1, allAlleles);
                 VariantContext newvc = vcb.make();
 
                 //If the length of the reference from the filtering table is longer than the reference in the variantContext, then that allele is not present in the extracted samples and we don't need the data
@@ -609,7 +566,7 @@ public class ExtractCohortEngine {
 
 
     // vqsLogMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
-    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
+    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean performGenotypeVQSLODFiltering) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
 
@@ -656,6 +613,49 @@ public class ExtractCohortEngine {
                             .map(Integer::parseInt)
                             .map(alleleIndex -> alleles.get(alleleIndex))
                             .collect(Collectors.toList());
+
+            if (performGenotypeVQSLODFiltering) {
+                final List<Allele> nonRefAlleles =
+                        genotypeAlleles.stream()
+                                .filter(a -> a.isNonReference())
+                                .distinct()
+                                .collect(Collectors.toList());
+
+                final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, vqsLodMap, Double.NaN);
+                final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, yngMap, VCFConstants.EMPTY_INFO_FIELD);
+
+                // see https://github.com/broadinstitute/dsp-spec-ops/issues/291 for rationale
+                // take "worst" outcome for yng/vqslod, evaluate each allele separately
+                // if any allele is "N"ay, the genotype is filtered
+                // if any allele is "Y"ay and the rest are "G"rey, the genotype is passed
+                // if all alleles are "G"ray, the VQSLod is evaluated
+                boolean anyNays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "N".equals(v));
+                boolean anyYays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "Y".equals(v));
+
+                // if there are any "N"s, the genotype is filtered
+                if (anyNays) {
+                    genotypeBuilder.filter(GATKVCFConstants.NAY_FROM_YNG);
+                } else if (anyYays) {
+                    // the genotype is passed, nothing to do here as non-filtered is the default
+                } else {
+                    // get the max (best) vqslod for all SNP non-Yay sites, and apply the filter
+                    Optional<Double> snpMax =
+                            nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
+
+                    if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
+                        genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
+                    }
+
+                    // get the max (best) vqslod for all INDEL non-Yay sites
+                    Optional<Double> indelMax =
+                            nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
+
+                    if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
+                        genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
+                    }
+
+                }
+            }
             genotypeBuilder.alleles(genotypeAlleles);
         }
 
@@ -673,15 +673,6 @@ public class ExtractCohortEngine {
         if ( callRGQ != null ) {
             genotypeBuilder.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, callRGQ);
         }
-
-        // no depth
-//         if ( genotypeAttributeName.equals(VCFConstants.DEPTH_KEY) ) {
-//            genotypeBuilder.DP(Integer.parseInt(columnValueString));
-
-        // no AD
-//        if ( genotypeAttributeName.equals(VCFConstants.GENOTYPE_ALLELE_DEPTHS) ) {
-//            genotypeBuilder.AD(Arrays.stream(columnValueString.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
-
         builder.genotypes(genotypeBuilder.make());
 
         return builder.make();

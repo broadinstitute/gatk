@@ -126,9 +126,7 @@ public class ExtractFeaturesEngine {
                                                                                              trainingSitesOnly,
                                                                                              hqGenotypeGQThreshold,
                                                                                              hqGenotypeDepthThreshold,
-                                                                                             hqGenotypeABThreshold,
-                                                                                             SNP_QUAL_THRESHOLD,
-                                                                                             INDEL_QUAL_THRESHOLD);
+                                                                                             hqGenotypeABThreshold);
 
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
 
@@ -231,12 +229,15 @@ public class ExtractFeaturesEngine {
 
         double mq = Math.sqrt( raw_mq / raw_ad);
 
+        double qualapprox = rec.getQualApprox();
+
         builder.attribute(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY, String.format("%.2f", as_qd) );
         builder.attribute(GATKVCFConstants.AS_FISHER_STRAND_KEY, String.format("%.3f", fs));
         builder.attribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY, String.format("%.2f", mq) );
         builder.attribute(GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY, AS_MQRankSum==null?".":String.format("%.3f", AS_MQRankSum) );
         builder.attribute(GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY, AS_ReadPosRankSum==null?".":String.format("%.3f", AS_ReadPosRankSum));
         builder.attribute(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY, String.format("%.3f", sor));
+        builder.attribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY, String.format("%.3f", qualapprox));
 
 //        From the warp JointGenotyping pipeline
 //        # ExcessHet is a phred-scaled p-value. We want a cutoff of anything more extreme
@@ -260,6 +261,11 @@ public class ExtractFeaturesEngine {
 
         if (rec.getHqGenotypeSamples() < 1) {
             builder.filter(GATKVCFConstants.NO_HQ_GENOTYPES);
+        }
+
+        boolean isSNP = rec.getNumSnpAlleles() > 0;
+        if (qualapprox < (isSNP ? SNP_QUAL_THRESHOLD : INDEL_QUAL_THRESHOLD)) {
+            builder.filter(GATKVCFConstants.LOW_QUAL_FILTER_NAME);
         }
 
         VariantContext vc = builder.make();
