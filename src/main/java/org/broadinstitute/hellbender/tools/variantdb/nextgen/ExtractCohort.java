@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.variantdb.nextgen;
 
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFFormatHeaderLine;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLineType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
@@ -8,7 +11,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
 import org.broadinstitute.hellbender.tools.variantdb.SampleList;
