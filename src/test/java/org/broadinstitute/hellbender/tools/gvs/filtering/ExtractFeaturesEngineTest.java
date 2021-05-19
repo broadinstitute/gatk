@@ -18,6 +18,7 @@ public class ExtractFeaturesEngineTest extends GATKBaseTest {
         Map<String, String> labelMap = ExtractFeaturesEngine.createQueryLabels(labelStringList);
         Assert.assertEquals(labelMap.get("gvs_tool_name"), "extract-features");
         Assert.assertEquals(labelMap.get("gvs_query_name"), "extract-features");
+        Assert.assertEquals(labelMap.get("labelkey"), "labelvalue");
     }
 
     @Test(expectedExceptions = { UserException.class })
