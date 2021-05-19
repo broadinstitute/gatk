@@ -225,7 +225,7 @@ task ExtractFilterTask {
 
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-    Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_first([query_labels])) else []
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_all(query_labels)) else []
 
     # ------------------------------------------------
     # Run our command:
