@@ -9,10 +9,10 @@ import org.broadinstitute.hellbender.utils.io.Resource;
 
 public class ExtractFeaturesBQ {
     private final static String FEATURE_EXTRACT_QUERY_RESOURCE =
-        "org/broadinstitute/hellbender/tools/variantdb/nextgen/feature_extract.sql";
+        "org/broadinstitute/hellbender/tools/gvs/filtering/feature_extract.sql";
 
     private final static String FEATURE_EXTRACT_USER_DEFINED_FUNCTIONS =
-        "org/broadinstitute/hellbender/tools/variantdb/nextgen/udf_freq_table.sql";
+        "org/broadinstitute/hellbender/tools/gvs/filtering/udf_freq_table.sql";
 
     private final static String VQSR_TRAINING_SITES_TABLE =
         "broad-dsp-spec-ops.joint_genotyping_ref.vqsr_training_sites_*";
