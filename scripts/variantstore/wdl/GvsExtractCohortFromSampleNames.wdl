@@ -5,7 +5,7 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
 
-workflow GvsExtractCohort {
+workflow GvsExtractCohortFromSampleNames {
 
   input {
     File cohort_sample_names

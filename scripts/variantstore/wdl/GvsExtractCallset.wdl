@@ -159,6 +159,7 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
+        # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
