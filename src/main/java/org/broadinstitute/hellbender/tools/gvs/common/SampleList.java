@@ -18,9 +18,9 @@ public class SampleList {
     private Map<Long, String> sampleIdMap = new HashMap<>();
     private Map<String, Long> sampleNameMap = new HashMap<>();
 
-    public SampleList(String sampleTableName, File sampleFile, String executionProjectId, boolean printDebugInformation) {
-        if (sampleTableName != null) {
-            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), executionProjectId, printDebugInformation);
+    public SampleList(String sampleTableName, File sampleFile, String executionProjectId, boolean printDebugInformation, String originTool) {
+        if (sampleTableName != null && originTool != null) {
+            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), executionProjectId, printDebugInformation, Optional.ofNullable(originTool));
         } else if (sampleFile != null) {
             initializeMaps(sampleFile);
         } else {
@@ -48,8 +48,8 @@ public class SampleList {
         return sampleIdMap;
     }
 
-    protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation) {
-        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", executionProjectId, printDebugInformation);
+    protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
+        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "", executionProjectId, printDebugInformation, originTool);
 
         // Add our samples to our map:
         for (final FieldValueList row : queryResults.iterateAll()) {
@@ -75,15 +75,19 @@ public class SampleList {
         }
     }
 
-    private TableResult querySampleTable(String fqSampleTableName, String whereClause, String executionProjectId, boolean printDebugInformation) {
+    private TableResult querySampleTable(
+        String fqSampleTableName, String whereClause, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
         // Get the query string:
         final String sampleListQueryString =
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
                 " FROM `" + fqSampleTableName + "`" + whereClause;
 
         Map<String, String> labelForQuery = new HashMap<String, String>();
-        labelForQuery.put("gvs_tool_name", "sample-list-creation");
-        labelForQuery.put("gvs_query_name", "sample-list-creation");
+        if (originTool.isPresent()) {
+            String originToolName = originTool.get().toLowerCase().strip().replace(" ", "-");
+            labelForQuery.put("gvs_tool_name", originToolName);
+            labelForQuery.put("gvs_query_name", "sample-list-creation");
+        }
 
         // Execute the query:
         final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, labelForQuery);
