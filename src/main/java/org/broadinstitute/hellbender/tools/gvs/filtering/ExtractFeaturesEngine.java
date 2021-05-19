@@ -132,7 +132,7 @@ public class ExtractFeaturesEngine {
                                                                                              hqGenotypeABThreshold);
 
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
-        Map<String, String> labelForQuery = createQueryLabels(queryLabels);
+        Map<String, String> cleanQueryLabels = createQueryLabels(queryLabels);
 
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(
                 featureQueryString,
@@ -140,7 +140,7 @@ public class ExtractFeaturesEngine {
                 projectID,
                 userDefinedFunctions,
                 useBatchQueries,
-                labelForQuery);
+                cleanQueryLabels);
 
         createVQSRInputFromTableResult(storageAPIAvroReader);
     }
