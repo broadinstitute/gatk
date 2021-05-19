@@ -2,10 +2,8 @@ package org.broadinstitute.hellbender.utils.localsort;
 
 import htsjdk.samtools.Defaults;
 import htsjdk.samtools.util.*;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.variantdb.SchemaUtils;
 
 import java.io.File;
 import java.io.IOException;
