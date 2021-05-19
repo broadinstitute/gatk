@@ -160,7 +160,7 @@ public class ExtractCohort extends ExtractTool {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
-        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
+        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
         Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
 
         VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary(), extraHeaderLines);

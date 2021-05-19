@@ -95,7 +95,7 @@ public class ExtractFeatures extends ExtractTool {
         super.onStartup();
 
         TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
-        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
+        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-features");
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         extraHeaderLines.add(
