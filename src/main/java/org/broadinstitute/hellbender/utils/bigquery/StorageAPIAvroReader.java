@@ -27,8 +27,6 @@ public class StorageAPIAvroReader implements GATKAvroReader {
 
     private static final Logger logger = LogManager.getLogger(StorageAPIAvroReader.class);
 
-    private static int rowCount = 0;
-
     private BigQueryReadClient client;
 
     private Iterator<ReadRowsResponse> serverStream;
@@ -73,7 +71,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
                             .addAllSelectedFields(tableRef.fields);
 
             if (rowRestriction != null) {
-                readOptions.  setRowRestriction(rowRestriction);
+                readOptions.setRowRestriction(rowRestriction);
             }
             final TableReadOptions tableReadOptions = readOptions.build();
 
