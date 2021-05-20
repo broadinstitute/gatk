@@ -91,6 +91,17 @@ workflow GvsImportGenomes {
       docker = docker_final
   }
 
+  call CheckForDuplicateData {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      sample_map = sample_map,
+      sample_names = external_sample_names,
+      service_account_json = service_account_json,
+      output_directory = output_directory,
+      run_uuid = SetLock.run_uuid
+  }
+
   scatter (i in range(length(input_vcfs))) {
     call CreateImportTsvs {
       input:
@@ -106,7 +117,8 @@ workflow GvsImportGenomes {
         gatk_override = gatk_override,
         docker = docker_final,
         preemptible_tries = preemptible_tries,
-        run_uuid = SetLock.run_uuid
+        run_uuid = SetLock.run_uuid,
+        duplicate_check_passed = CheckForDuplicateData.done
     }
   }
 
@@ -316,6 +328,80 @@ task GetMaxTableId {
   }
 }
 
+task CheckForDuplicateData {
+    input{
+      String project_id
+      String dataset_name
+      File sample_map
+      Array[String] sample_names
+      File? service_account_json
+      # needed only for lockfile
+      String output_directory
+      String run_uuid
+      # runtime
+      Int? preemptible_tries
+  }
+
+  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+   
+  
+  command <<<
+    set -e
+    set -x
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gcloud auth activate-service-account --key-file='~{service_account_json}'
+      gcloud config set project ~{project_id}
+    fi
+
+    # check for existence of the correct lockfile
+    LOCKFILE="~{output_directory}/LOCKFILE"
+    EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
+    CURRENT_RUN_ID="~{run_uuid}"
+
+    if [ "${EXISTING_LOCK_ID}" != "${CURRENT_RUN_ID}" ]; then
+    echo "ERROR: found mismatched lockfile containing run ${EXISTING_LOCK_ID}, which does not match this run ${CURRENT_RUN_ID}." 1>&2
+    exit 1
+    fi
+
+    # create a pattern with each external sample name preceeded by a comma and divided by a | that will be an or in the grep below
+    sample_name_list=",~{sep='|,' sample_names}"
+    # find lines that contains the external sample names (excluding paths); get the corresponding gvsid; put single quotes around the number; replace the new line with a comma
+    # this results in a quoted, comma separated list of gvs ids that we can use for the bq query
+    id_list=$(grep -E "${sample_name_list}" ~{sample_map}| cut -d, -f1 | sed -e "s/\(.*\)/'\1'/" | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/,/g')
+
+    # query the pet tables
+    INFO_SCHEMA_TABLE="~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS"
+    # Check that the table has been created yet
+    set +e
+    bq show --project_id ~{project_id} $TABLE > /dev/null
+    BQ_SHOW_RC=$?
+    set -e
+    if [ $BQ_SHOW_RC -eq 0 ]; then
+      bq --location=US --project_id=~{project_id} query --use_legacy_sql=false  "SELECT partition_id FROM ${INFO_SCHEMA_TABLE} WHERE table_name like 'pet_%' AND partition_id IN (${id_list})" > results
+    fi
+
+    # true if there is data in results
+    if [ -s results ]; then
+      echo "ERROR: Trying to load samples that have already been loaded"
+      cat results
+      exit 1
+    fi     
+
+  >>>
+  runtime {
+      docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+      memory: "1 GB"
+      disks: "local-disk 10 HDD"
+      preemptible: select_first([preemptible_tries, 5])
+      cpu: 1
+  }
+  output {
+      Boolean done = true
+  }
+}
+
+
 task CreateImportTsvs {
   input {
     File input_vcf
@@ -329,6 +415,7 @@ task CreateImportTsvs {
     Boolean? drop_state_includes_greater_than = false
 
     Boolean call_cache_tsvs = false
+    Boolean duplicate_check_passed
 
     # runtime
     Int? preemptible_tries
