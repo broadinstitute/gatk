@@ -84,7 +84,7 @@ public class SampleList {
 
         Map<String, String> labelForQuery = new HashMap<String, String>();
         if (originTool.isPresent()) {
-            String originToolName = originTool.get().toLowerCase().strip().replace(" ", "-");
+            String originToolName = originTool.get().replaceAll("\\s","-").toLowerCase();
             labelForQuery.put("gvs_tool_name", originToolName);
             labelForQuery.put("gvs_query_name", "sample-list-creation");
         }
