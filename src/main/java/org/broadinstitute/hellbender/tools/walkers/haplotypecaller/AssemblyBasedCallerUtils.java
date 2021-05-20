@@ -153,13 +153,13 @@ public final class AssemblyBasedCallerUtils {
             if (hardClippedRead.getStart() <= hardClippedRead.getEnd()) {
                 hardClippedRead = hardClippedRead.isUnmapped() ? null : ReadClipper.hardClipAdaptorSequence(hardClippedRead);
 
-                if (!hardClippedRead.isEmpty() && hardClippedRead.getCigar().getReadLength() > 0) {
+                if (hardClippedRead != null && !hardClippedRead.isEmpty() && hardClippedRead.getCigar().getReadLength() > 0) {
                     hardClippedRead = ReadClipper.hardClipToRegion(hardClippedRead, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd());
 
                     if (hardClippedRead.getStart() <= hardClippedRead.getEnd() && hardClippedRead.getLength() > 0 && hardClippedRead.overlaps(region.getPaddedSpan())) {
                         // NOTE: here we make a defensive copy of the read if it has not been modified by the above operations
                         // which might only make copies in the case that the read is actually clipped
-                        readsToUse.add(hardClippedRead == originalRead ? hardClippedRead.copy() : hardClippedRead);
+                        hardClippedReadsToUse.add(hardClippedRead == originalRead ? hardClippedRead.copy() : hardClippedRead);
                     }
                 }
 
