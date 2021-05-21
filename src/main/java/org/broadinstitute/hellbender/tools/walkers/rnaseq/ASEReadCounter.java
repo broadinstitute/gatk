@@ -66,7 +66,7 @@ import java.util.List;
  * <ul>
  * <li>This tool will only process biallelic het SNP sites. If your callset contains multiallelic sites, they will be ignored.
  * Optionally, you can subset your callset to just biallelic variants using e.g.
- * <a href="org_broadinstitute_gatk_tools_walkers_variantutils_SelectVariants.php">SelectVariants</a>
+ * SelectVariants
  * with the option "-restrictAllelesTo BIALLELIC".</li>
  * </ul>
  * <p>
