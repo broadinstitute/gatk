@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -77,6 +78,13 @@ public class ExtractFeatures extends ExtractTool {
         optional = true)
     protected int excessAllelesThreshold = CommonCode.EXCESS_ALLELES_THRESHOLD;
 
+    @Argument(
+        fullName = "query-labels",
+        doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels key1=value1 --query-labels key2=value2",
+        optional = true)
+
+    protected List<String> queryLabels = new ArrayList<>();
+
     @Override
     public boolean requiresIntervals() {
         return false;
@@ -87,7 +95,7 @@ public class ExtractFeatures extends ExtractTool {
         super.onStartup();
 
         TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
-        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation);
+        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-features");
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         extraHeaderLines.add(
@@ -130,7 +138,8 @@ public class ExtractFeatures extends ExtractTool {
             hqGenotypeGQThreshold,
             hqGenotypeDepthThreshold,
             hqGenotypeABThreshold,
-            excessAllelesThreshold);
+            excessAllelesThreshold,
+            queryLabels);
 
         vcfWriter.writeHeader(header);
 }

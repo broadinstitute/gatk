@@ -8,6 +8,7 @@ workflow GvsPrepareCallset {
 
         # inputs with defaults
         String query_project = data_project
+        Array[String]? query_labels
         String destination_project = data_project
         String destination_dataset = default_dataset
 
@@ -28,7 +29,7 @@ workflow GvsPrepareCallset {
         input:
             destination_cohort_table_name   = destination_cohort_table_name,
             query_project                   = query_project,
-
+            query_labels                    = query_labels,
             fq_petvet_dataset               = fq_petvet_dataset,
             fq_cohort_sample_table          = fq_cohort_sample_table,
             fq_sample_mapping_table         = fq_sample_mapping_table,
@@ -50,6 +51,7 @@ task PrepareCallsetTask {
     input {
         String destination_cohort_table_name
         String query_project
+        Array[String]? query_labels
 
         String fq_petvet_dataset
         String fq_cohort_sample_table
@@ -61,6 +63,8 @@ task PrepareCallsetTask {
         File? service_account_json
         String docker
     }
+    # Note the coercion of optional query_labels using select_first([expr, default])
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
 
     command <<<
         set -e
@@ -72,6 +76,7 @@ task PrepareCallsetTask {
             --destination_table ~{destination_cohort_table_name} \
             --fq_cohort_sample_names ~{fq_cohort_sample_table} \
             --query_project ~{query_project} \
+            ~{sep=" " query_label_args} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
             --ttl ~{temp_table_ttl_in_hours} \
             ~{"--sa_key_path " + service_account_json}

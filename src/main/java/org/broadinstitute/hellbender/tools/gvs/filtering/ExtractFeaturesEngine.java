@@ -65,6 +65,7 @@ public class ExtractFeaturesEngine {
     private final int hqGenotypeDepthThreshold;
     private final double hqGenotypeABThreshold;
     private final int excessAllelesThreshold;
+    private final List<String> queryLabels;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
@@ -87,7 +88,9 @@ public class ExtractFeaturesEngine {
                                final int hqGenotypeGQThreshold,
                                final int hqGenotypeDepthThreshold,
                                final double hqGenotypeABThreshold,
-                               final int excessAllelesThreshold) {
+                               final int excessAllelesThreshold,
+                               final List<String> queryLabels
+    ) {
 
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
@@ -108,9 +111,9 @@ public class ExtractFeaturesEngine {
         this.hqGenotypeDepthThreshold = hqGenotypeDepthThreshold;
         this.hqGenotypeABThreshold = hqGenotypeABThreshold;
         this.excessAllelesThreshold = excessAllelesThreshold;
+        this.queryLabels = queryLabels;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-
     }
 
     // taken from GnarlyGenotypingEngine
@@ -129,6 +132,7 @@ public class ExtractFeaturesEngine {
                                                                                              hqGenotypeABThreshold);
 
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
+        Map<String, String> cleanQueryLabels = createQueryLabels(queryLabels);
 
         final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(
                 featureQueryString,
@@ -136,9 +140,55 @@ public class ExtractFeaturesEngine {
                 projectID,
                 userDefinedFunctions,
                 useBatchQueries,
-                null);
+                cleanQueryLabels);
 
         createVQSRInputFromTableResult(storageAPIAvroReader);
+    }
+
+    static Map<String, String>  createQueryLabels(List<String> labelStringList) {
+        // static labels are added to the query to make tracking this workflow easier downstream
+        Map<String, String> labelForQuery = new HashMap<String, String>();
+        labelForQuery.put("gvs_tool_name", "extract-features");
+        labelForQuery.put("gvs_query_name", "extract-features");
+        // add additional key value pair labels
+
+        // Each resource can have multiple labels, up to a maximum of 64. -- labelStringList cannot be >62
+        // The key portion of a label must be unique. However, you can use the same key with multiple resources.
+
+        if ( labelStringList.size() > 62 ) {
+            throw new UserException("Only 62 unique label keys are allowed per resource.");
+            // BQ allows for 64, and we add two above
+        }
+
+        for (String labelMapString: labelStringList) {
+            if ( !labelMapString.contains("=") ) {
+                throw new UserException("All labels must contain a key and value in key=value format");
+            }
+            String[] label = labelMapString.split("=");
+            String labelKey = label[0];
+            String labelValue = label[1];
+            // validate the label key and label value according to GCP Requirements for labels
+            // Each label must be a key-value pair.
+            // Keys have a minimum length of 1 character and a maximum length of 63 characters, and cannot be empty.
+            // Values can be empty, and have a maximum length of 63 characters.
+            // Keys and values can contain only lowercase letters, numeric characters, underscores, and dashes.
+            // All characters must use UTF-8 encoding, and international characters are allowed.
+            // Keys must start with a lowercase letter or international character.
+            if ( labelKey.length() > 63 || labelKey.length() < 1 || labelKey.isEmpty()) {
+                throw new UserException("Label key length must be between 1 and 63 characters");
+            }
+            if ( labelValue.length() > 63 ) {
+                throw new UserException("Label value length must be less than 63 characters");
+            }
+            String labelRegex = "[a-z0-9_-]+$";
+            if ( !labelKey.matches(labelRegex) || !labelValue.matches(labelRegex)  ) {
+                throw new UserException("Label keys and values can contain only" +
+                    " lowercase letters, numeric characters, underscores, and dashes");
+            }
+            labelForQuery.put(labelKey, labelValue);
+        }
+
+        return labelForQuery;
     }
 
     private void createVQSRInputFromTableResult(final GATKAvroReader avroReader) {

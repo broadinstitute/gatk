@@ -13,6 +13,7 @@ workflow GvsCreateFilterSet {
         String default_dataset
 
         String query_project = data_project
+        Array[String]? query_labels
 
         String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
         String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
@@ -99,7 +100,8 @@ workflow GvsCreateFilterSet {
                 read_project_id          = query_project,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
                 service_account_json     = service_account_json,
-                query_project            = query_project
+                query_project            = query_project,
+                query_labels             = query_labels
         }
     }
 
@@ -216,12 +218,15 @@ task ExtractFilterTask {
         File? gatk_override
         File? service_account_json
         String query_project
+        Array[String]? query_labels
 
         Int? local_sort_max_records_in_ram = 1000000
     }
 
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    # Note the coercion of optional query_labels using select_first([expr, default])
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_first([query_labels])) else []
 
     # ------------------------------------------------
     # Run our command:
@@ -246,6 +251,7 @@ task ExtractFilterTask {
                 --sample-table ~{fq_sample_table} \
                 --alt-allele-table ~{fq_alt_allele_table} \
                 ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
+                ~{sep=" " query_label_args} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id}
