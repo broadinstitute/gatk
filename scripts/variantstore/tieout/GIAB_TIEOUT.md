@@ -78,7 +78,7 @@ ${BASE_CMD} -b truth/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e truth/HG003.gv
 ${BASE_CMD} -b truth/CHM.full.38.vcf.gz -e truth/CHM.gvs.evaluation.bed -c SYNDIP.${SOURCE}.chr20.maxas.vcf.gz -o syndip_${SOURCE}${SUFFIX}
 ```
 
-The do the same thing but use all records
+Then do the same thing but use all records
 ```
 SOURCE="gvs"
 BASE_CMD="rtg vcfeval --region chr20 --all-records --roc-subset snp,indel  --vcf-score-field=INFO.MAX_AS_VQSLOD -t human_REF_SDF"
