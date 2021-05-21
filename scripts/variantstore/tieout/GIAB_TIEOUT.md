@@ -7,10 +7,21 @@
  - bcftools
  - tabix
  - python 3.7+
-
-## One time tasks
+ - gatk
+ 
+ 
+ We suggest using conda to create a fresh environment to add these new tools to
+ ```
+ conda create --name gvs python=3.8
+ conda activate gvs
+ conda install -c bioconda samtools=1.9 --force-reinstall
+ conda install -c bioconda bcftools
+ conda install -c bioconda rtg-tools
 ```
 
+## One time tasks
+
+```
 # create SDF for reference (used by rtg eval)
 # use local path to GRC38 reference fasta
 REFERENCE="/Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta"
