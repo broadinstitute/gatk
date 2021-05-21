@@ -7,10 +7,21 @@
  - bcftools
  - tabix
  - python 3.7+
-
-## One time tasks
+ - gatk
+ 
+ 
+ We suggest using conda to create a fresh environment to add these new tools to
+ ```
+ conda create --name gvs python=3.8
+ conda activate gvs
+ conda install -c bioconda samtools=1.9 --force-reinstall
+ conda install -c bioconda bcftools
+ conda install -c bioconda rtg-tools
 ```
 
+## One time tasks
+
+```
 # create SDF for reference (used by rtg eval)
 # use local path to GRC38 reference fasta
 REFERENCE="/Users/kcibul/projects/references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -22,7 +33,9 @@ mkdir -p truth && gsutil -m cp gs://broad-dsp-spec-ops/gvs/truth/* truth/
 
 ## Obtain Truth sample VCFs 
 
-First, create a full cohort extract (as described in README.md) using the desired filter_set_name.  Assuming this is in a single gathered VCF of `gvs.vcf.gz`
+Once you have a full cohort extract you want to evaluate, subset to chr20 and the desired samples
+(You can create a full cohort extract as described in the README.md using the desired filter_set_name)  
+Assuming this is in a single gathered VCF of `gvs.vcf.gz`
 
 ```
 # subset to chr20
@@ -67,7 +80,7 @@ ${BASE_CMD} -b truth/HG003_GRCh38_1_22_v4.2.1_benchmark.vcf.gz -e truth/HG003.gv
 ${BASE_CMD} -b truth/CHM.full.38.vcf.gz -e truth/CHM.gvs.evaluation.bed -c SYNDIP.${SOURCE}.chr20.maxas.vcf.gz -o syndip_${SOURCE}${SUFFIX}
 ```
 
-The do the same thing but use all records
+Then do the same thing but use all records
 ```
 SOURCE="gvs"
 BASE_CMD="rtg vcfeval --region chr20 --all-records --roc-subset snp,indel  --vcf-score-field=INFO.MAX_AS_VQSLOD -t human_REF_SDF"
