@@ -4,7 +4,6 @@ workflow GvsExtractCallset {
    input {
         String data_project
         String default_dataset
-        String filter_set_name
 
         File wgs_intervals
         Int scatter_count
@@ -17,10 +16,11 @@ workflow GvsExtractCallset {
         String fq_cohort_extract_table
         String query_project = data_project
 
+        Boolean do_not_filter_override = false
+        String filter_set_name
         String fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
         String fq_filter_set_site_table = "~{data_project}.~{default_dataset}.filter_set_sites"
         String fq_filter_set_tranches_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
-        Boolean do_not_filter_override = false
 
         # if these are unset, default sensitivity levels will be used
         Float? snps_truth_sensitivity_filter_level_override
@@ -99,14 +99,14 @@ task ExtractTask {
         String read_project_id
         String output_file
         String? output_gcs_dir
-        String fq_filter_set_info_table
-        String fq_filter_set_site_table
-        String fq_filter_set_tranches_table
-        String filter_set_name
-        Float? snps_truth_sensitivity_filter_level
-        Float? indels_truth_sensitivity_filter_level
 
         Boolean do_not_filter_override
+        String? fq_filter_set_info_table
+        String? fq_filter_set_site_table
+        String? fq_filter_set_tranches_table
+        String? filter_set_name
+        Float? snps_truth_sensitivity_filter_level
+        Float? indels_truth_sensitivity_filter_level
 
         File? excluded_intervals
         Boolean? emit_pls
