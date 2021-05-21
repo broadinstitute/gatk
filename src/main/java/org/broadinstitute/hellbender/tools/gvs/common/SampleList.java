@@ -19,7 +19,7 @@ public class SampleList {
     private Map<String, Long> sampleNameMap = new HashMap<>();
 
     public SampleList(String sampleTableName, File sampleFile, String executionProjectId, boolean printDebugInformation, String originTool) {
-        if (sampleTableName != null && originTool != null) {
+        if (sampleTableName != null) {
             initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), executionProjectId, printDebugInformation, Optional.ofNullable(originTool));
         } else if (sampleFile != null) {
             initializeMaps(sampleFile);
