@@ -52,9 +52,4 @@ public final class Coverage implements InfoFieldAnnotation, StandardAnnotation, 
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(VCFConstants.DEPTH_KEY); }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
 }

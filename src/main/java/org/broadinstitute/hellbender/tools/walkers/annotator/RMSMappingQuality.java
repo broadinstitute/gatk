@@ -5,9 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -88,13 +86,13 @@ public final class RMSMappingQuality implements InfoFieldAnnotation, StandardAnn
     }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
+    public List<VCFCompoundHeaderLine> getDescriptions() {
         return Arrays.asList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
     }
 
     @Override
-    public List<VCFInfoHeaderLine> getRawDescriptions() {
-        final List<VCFInfoHeaderLine> lines = new ArrayList<>(1);
+    public List<VCFCompoundHeaderLine> getRawDescriptions() {
+        final List<VCFCompoundHeaderLine> lines = new ArrayList<>(1);
         for (final String rawKey : getRawKeyNames()) {
             lines.add(GATKVCFHeaderLines.getInfoLine(rawKey));
         }

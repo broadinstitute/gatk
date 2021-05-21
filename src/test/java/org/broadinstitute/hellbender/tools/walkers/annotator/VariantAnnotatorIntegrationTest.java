@@ -98,7 +98,7 @@ public class VariantAnnotatorIntegrationTest extends CommandLineProgramTest {
         final Set<VariantAnnotation> representativeInfoStringAnnotations = ImmutableSet.of(new ReferenceBases());
         final Set<VariantAnnotation> representativeInfoBooleanAnnotations = ImmutableSet.of(new TandemRepeat());
 
-        final Set<GenotypeAnnotation> representativeGenotypeAnnotations = ImmutableSet.of(new DepthPerAlleleBySample(), new DepthPerSampleHC(), new OrientationBiasReadCounts(), new AlleleFraction());
+        final Set<GenotypeAnnotation> representativeGenotypeAnnotations = ImmutableSet.of(new DepthPerAlleleBySample(), new DepthPerSampleHC(), new AlleleFraction());
 
         // check the header
         final Set<String> infoHeaderKeys = getHeaderFromFile(reannotatedVcf).getInfoHeaderLines().stream().map(VCFInfoHeaderLine::getID).collect(Collectors.toSet());

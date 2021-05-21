@@ -3,12 +3,11 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 import java.util.Collection;
 import java.util.Set;
@@ -47,6 +46,10 @@ public class ValidationReport extends VariantEvaluator implements StandardEval {
 
     // Counts of ValidationSiteStatus x CallSiteStatus
     final int[][] counts = new int[SiteStatus.values().length][SiteStatus.values().length];
+
+    public ValidationReport(VariantEvalEngine engine) {
+        super(engine);
+    }
 
     @Override public int getComparisonOrder() { return 2; }
 
@@ -88,17 +91,17 @@ public class ValidationReport extends VariantEvaluator implements StandardEval {
     }
 
     @Override
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
+    public void update2(final VariantContext eval, final VariantContext comp, final VariantEvalContext context) {
         if ( comp != null ) { // we only need to consider sites in comp
             if ( REQUIRE_IDENTICAL_ALLELES && (eval != null && haveDifferentAltAlleles(eval, comp)))
                 nDifferentAlleleSites++;
             else {
-                SiteStatus evalStatus = calcSiteStatus(eval);
-                final Set<String> evalSamples = getWalker().getSampleNamesForEvaluation();
-                if ( comp.hasGenotypes() && ! evalSamples.isEmpty() && comp.hasGenotypes(evalSamples) )
-                    // if we have genotypes in both eval and comp, subset comp down just the samples in eval
-                    comp = comp.subContextFromSamples(evalSamples, false);
-                SiteStatus compStatus = calcSiteStatus(comp);
+                final SiteStatus evalStatus = calcSiteStatus(eval);
+                final Set<String> evalSamples = context.getSampleNamesForEvaluation();
+
+                // if we have genotypes in both eval and comp, subset comp down just the samples in eval
+                final boolean doSubset = comp.hasGenotypes() && ! evalSamples.isEmpty() && comp.hasGenotypes(evalSamples);
+                final SiteStatus compStatus = calcSiteStatus(doSubset ? comp.subContextFromSamples(evalSamples, false) : comp);
                 counts[compStatus.ordinal()][evalStatus.ordinal()]++;
             }
         }

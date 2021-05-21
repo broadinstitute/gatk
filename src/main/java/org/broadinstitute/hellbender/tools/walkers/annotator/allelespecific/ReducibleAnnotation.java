@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCompoundHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
@@ -83,8 +85,8 @@ public interface ReducibleAnnotation extends Annotation {
      * Returns the descriptions used for the VCF INFO meta field corresponding to the annotations raw key.
      * @return A list of VCFInfoHeaderLines corresponding to the raw keys added by this annotaiton
      */
-    default List<VCFInfoHeaderLine> getRawDescriptions() {
-        final List<VCFInfoHeaderLine> lines = new ArrayList<>(1);
+    default List<VCFCompoundHeaderLine> getRawDescriptions() {
+        final List<VCFCompoundHeaderLine> lines = new ArrayList<>(1);
         for (final String rawKey : getRawKeyNames()) {
             lines.add(GATKVCFHeaderLines.getInfoLine(rawKey));
         }

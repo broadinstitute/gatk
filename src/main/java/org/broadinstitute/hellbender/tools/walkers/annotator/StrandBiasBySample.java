@@ -101,11 +101,6 @@ public final class StrandBiasBySample implements GenotypeAnnotation, StandardMut
         return Collections.singletonList(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
     }
 
-    @Override
-    public List<VCFFormatHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getFormatLine(getKeyNames().get(0)));
-    }
-
     public static int getAltForwardCountFromFlattenedContingencyTable(final int[] contingencyTable) {
         return contingencyTable[ARRAY_DIM];
     }

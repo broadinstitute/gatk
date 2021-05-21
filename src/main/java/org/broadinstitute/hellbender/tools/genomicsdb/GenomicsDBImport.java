@@ -207,6 +207,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final int ARRAY_COLUMN_BOUNDS_END = 1;
 
     public static final String SHARED_POSIXFS_OPTIMIZATIONS = GenomicsDBArgumentCollection.SHARED_POSIXFS_OPTIMIZATIONS;
+    public static final String USE_GCS_HDFS_CONNECTOR = GenomicsDBArgumentCollection.USE_GCS_HDFS_CONNECTOR;
 
     @Argument(fullName = WORKSPACE_ARG_LONG_NAME,
               doc = "Workspace for GenomicsDB. Can be a POSIX file system absolute or relative path or a HDFS/GCS URL. " +
@@ -347,6 +348,11 @@ public final class GenomicsDBImport extends GATKTool {
             optional = true)
     private boolean sharedPosixFSOptimizations = false;
 
+    @Argument(fullName = USE_GCS_HDFS_CONNECTOR,
+            doc = "Use the GCS HDFS Connector instead of the native GCS SDK client with gs:// URLs.",
+            optional = true)
+    public boolean useGcsHdfsConnector = false;
+
     //executor service used when vcfInitializerThreads > 1
     private ExecutorService inputPreloadExecutorService;
 
@@ -449,7 +455,9 @@ public final class GenomicsDBImport extends GATKTool {
                 getIntervalsFromExistingWorkspace = true;
             }
         }
-
+        if (useGcsHdfsConnector) {
+            GenomicsDBUtils.useGcsHdfsConnector(true);
+        }
     }
 
     private void assertOverwriteWorkspaceAndIncrementalImportMutuallyExclusive() {

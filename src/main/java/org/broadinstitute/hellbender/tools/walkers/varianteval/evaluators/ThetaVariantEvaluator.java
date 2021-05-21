@@ -3,11 +3,10 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -28,12 +27,17 @@ public class ThetaVariantEvaluator extends VariantEvaluator {
     //helper variables
     double numSites = 0;
 
+    public ThetaVariantEvaluator(VariantEvalEngine engine) {
+        super(engine);
+    }
+
     public int getComparisonOrder() {
         return 1;
     }
 
-    public void update1(VariantContext vc, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
-        if (vc == null || !vc.isSNP() || (getWalker().ignoreAC0Sites() && vc.isMonomorphicInSamples())) {
+    @Override
+    public void update1(final VariantContext vc, final VariantEvalContext context) {
+        if (vc == null || !vc.isSNP() || (getEngine().getVariantEvalArgs().ignoreAC0Sites() && vc.isMonomorphicInSamples())) {
             return;
         }
 

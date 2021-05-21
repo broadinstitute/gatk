@@ -14,6 +14,7 @@ public final class GenomicsDBOptions {
     final private int maxGenotypeCount;
     final private boolean useBCFCodec;
     final private boolean sharedPosixFSOptimizations;
+    final private boolean useGcsHdfsConnector;
 
     public GenomicsDBOptions() {
         this(null);
@@ -34,6 +35,7 @@ public final class GenomicsDBOptions {
         this.maxGenotypeCount = genotypeCalcArgs.MAX_GENOTYPE_COUNT;
         this.useBCFCodec = genomicsdbArgs.useBCFCodec;
         this.sharedPosixFSOptimizations = genomicsdbArgs.sharedPosixFSOptimizations;
+        this.useGcsHdfsConnector = genomicsdbArgs.useGcsHdfsConnector;
     }
 
     public Path getReference() {
@@ -58,5 +60,9 @@ public final class GenomicsDBOptions {
 
     public boolean sharedPosixFSOptimizations() {
         return sharedPosixFSOptimizations;
+    }
+
+    public boolean useGcsHdfsConnector() {
+        return useGcsHdfsConnector;
     }
 }

@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 import java.util.Collections;
 import java.util.List;
@@ -17,14 +16,16 @@ import java.util.List;
 public class IndelSize extends VariantStratifier {
     static final int MAX_INDEL_SIZE = 100;
 
-    @Override
-    public void initialize() {
-        for( int a=-MAX_INDEL_SIZE; a <=MAX_INDEL_SIZE; a++ ) {
+    public IndelSize(VariantEvalEngine engine) {
+        super(engine);
+
+        for ( int a=-MAX_INDEL_SIZE; a <=MAX_INDEL_SIZE; a++ ) {
             states.add(a);
         }
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    @Override
+    public List<Object> getRelevantStates(final VariantEvalContext context, final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
         if (eval != null && eval.isIndel() && eval.isBiallelic()) {
             try {
                 int eventLength = 0;
@@ -39,7 +40,7 @@ public class IndelSize extends VariantStratifier {
                 else if (eventLength < -MAX_INDEL_SIZE)
                     eventLength = -MAX_INDEL_SIZE;
 
-                return Collections.singletonList((Object)eventLength);
+                return Collections.singletonList(eventLength);
             } catch (Exception e) {
                 return Collections.emptyList();
             }
@@ -47,6 +48,7 @@ public class IndelSize extends VariantStratifier {
 
         return Collections.emptyList();
     }
+
     @Override
     public String getFormat() {
         return "%d";

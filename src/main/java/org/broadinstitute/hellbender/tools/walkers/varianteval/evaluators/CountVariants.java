@@ -2,15 +2,18 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 @Analysis(description = "Counts different classes of variants in the sample")
 public class CountVariants extends VariantEvaluator implements StandardEval {
+    public CountVariants(VariantEvalEngine engine) {
+        super(engine);
+    }
+
     // the following fields are in output order:
 
     // basic counts on various rates found
@@ -85,7 +88,8 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
         return 1;   // we only need to see each eval track
     }
 
-    public void update1(VariantContext vc1, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
+    @Override
+    public void update1(final VariantContext vc, final VariantEvalContext context) {
         nCalledLoci++;
 
         // Note from Eric:
@@ -93,28 +97,28 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
         // So in order to maintain consistency with the previous implementation (and the intention of the original author), I've
         // added in a proxy check for monomorphic status here.
         // Protect against the case when vc only has no-calls too - can happen if we stratify by sample and sample as a single no-call.
-       if ( getWalker().ignoreAC0Sites() && vc1.isMonomorphicInSamples() ) {
+       if ( getEngine().getVariantEvalArgs().ignoreAC0Sites() && vc.isMonomorphicInSamples() ) {
             nRefLoci++;
         } else {
-             switch (vc1.getType()) {
+             switch (vc.getType()) {
                 case NO_VARIATION:
                     // shouldn't get here
                     break;
                 case SNP:
                     nVariantLoci++;
                     nSNPs++;
-                    if (variantWasSingleton(vc1)) nSingletons++;
+                    if (variantWasSingleton(vc)) nSingletons++;
                     break;
                 case MNP:
                     nVariantLoci++;
                     nMNPs++;
-                    if (variantWasSingleton(vc1)) nSingletons++;
+                    if (variantWasSingleton(vc)) nSingletons++;
                     break;
                 case INDEL:
                     nVariantLoci++;
-                    if (vc1.isSimpleInsertion())
+                    if (vc.isSimpleInsertion())
                         nInsertions++;
-                    else if (vc1.isSimpleDeletion())
+                    else if (vc.isSimpleDeletion())
                         nDeletions++;
                     else
                         nComplex++;
@@ -127,13 +131,13 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
                     nSymbolic++;
                     break;
                 default:
-                    throw new GATKException("Unexpected VariantContext type " + vc1.getType());
+                    throw new GATKException("Unexpected VariantContext type " + vc.getType());
             }
         }
 
         // these operations are ordered to ensure that we don't get the base string of the ref unless we need it
-        final String aaStr = vc1.hasAttribute("ANCESTRALALLELE") ? vc1.getAttributeAsString("ANCESTRALALLELE", null).toUpperCase() : null;
-        final String refStr = aaStr != null ? vc1.getReference().getBaseString().toUpperCase() : null;
+        final String aaStr = vc.hasAttribute("ANCESTRALALLELE") ? vc.getAttributeAsString("ANCESTRALALLELE", null).toUpperCase() : null;
+        final String refStr = aaStr != null ? vc.getReference().getBaseString().toUpperCase() : null;
 
         // ref  aa  alt  class
         // A    C   A    der homozygote
@@ -144,8 +148,8 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
         // A    C   A
         // A    C   C
 
-        for (final Genotype g : vc1.getGenotypes()) {
-            final String altStr = vc1.getAlternateAlleles().size() > 0 ? vc1.getAlternateAllele(0).getBaseString().toUpperCase() : null;
+        for (final Genotype g : vc.getGenotypes()) {
+            final String altStr = vc.getAlternateAlleles().size() > 0 ? vc.getAlternateAllele(0).getBaseString().toUpperCase() : null;
 
             switch (g.getType()) {
                 case NO_CALL:
@@ -181,7 +185,7 @@ public class CountVariants extends VariantEvaluator implements StandardEval {
     }
 
     public void finalizeEvaluation() {
-        nProcessedLoci = getWalker().getnProcessedLoci();
+        nProcessedLoci = getEngine().getnProcessedLoci();
         variantRate = perLocusRate(nVariantLoci);
         variantRatePerBp = perLocusRInverseRate(nVariantLoci);
         heterozygosity = perLocusRate(nHets);

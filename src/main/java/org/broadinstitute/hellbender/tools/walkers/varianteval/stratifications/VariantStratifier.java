@@ -1,12 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEval;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantEvaluator;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.manager.Stratifier;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,44 +12,27 @@ import java.util.List;
 import java.util.Set;
 
 public abstract class VariantStratifier implements Comparable<VariantStratifier>, Stratifier<Object> {
-    private VariantEval variantEvalWalker;
     final private String name;
-    final protected ArrayList<Object> states = new ArrayList<Object>();
+    final private VariantEvalEngine engine;
 
-    protected VariantStratifier() {
-        name = this.getClass().getSimpleName();
+    final protected ArrayList<Object> states = new ArrayList<>();
+
+    public VariantStratifier(VariantEvalEngine engine) {
+        this.name = this.getClass().getSimpleName();
+        this.engine = engine;
     }
 
-    // -------------------------------------------------------------------------------------
-    //
-    // to be overloaded
-    //
-    // -------------------------------------------------------------------------------------
+    public VariantEvalEngine getEngine() {
+        return engine;
+    }
 
-    public abstract void initialize();
-
-    public abstract List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String familyName);
+    public abstract List<Object> getRelevantStates(VariantEvalContext context, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String familyName);
 
     // -------------------------------------------------------------------------------------
     //
     // final capabilities
     //
     // -------------------------------------------------------------------------------------
-
-    /**
-     * @return a reference to the parent VariantEvalWalker running this stratification
-     */
-    public final VariantEval getVariantEvalWalker() {
-        return variantEvalWalker;
-    }
-
-    /**
-     * Should only be called by VariantEvalWalker itself
-     * @param variantEvalWalker
-     */
-    public final void setVariantEvalWalker(VariantEval variantEvalWalker) {
-        this.variantEvalWalker = variantEvalWalker;
-    }
 
     public final int compareTo(VariantStratifier o1) {
         return this.getName().compareTo(o1.getName());

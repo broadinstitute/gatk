@@ -96,6 +96,9 @@ public class GenomicsDBUtils {
     public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final String workspace,
                                                                                               final String callsetJson, final String vidmapJson,
                                                                                               final String vcfHeader, final GenomicsDBOptions genomicsDBOptions) {
+        if (genomicsDBOptions.useGcsHdfsConnector()) {
+          org.genomicsdb.GenomicsDBUtils.useGcsHdfsConnector(true);
+        }
         final GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                         .setWorkspace(workspace)
