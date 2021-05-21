@@ -63,8 +63,8 @@ task PrepareCallsetTask {
         File? service_account_json
         String docker
     }
-
-    Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_all(query_labels)) else []
+    # Note the coercion of optional query_labels using select_first([expr, default])
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
 
     command <<<
         set -e

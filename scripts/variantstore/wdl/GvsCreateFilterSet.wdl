@@ -13,7 +13,7 @@ workflow GvsCreateFilterSet {
         String default_dataset
 
         String query_project = data_project
-        Array[String] ? query_labels
+        Array[String]? query_labels
 
         String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
         String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
@@ -218,14 +218,15 @@ task ExtractFilterTask {
         File? gatk_override
         File? service_account_json
         String query_project
-        Array[String] ? query_labels
+        Array[String]? query_labels
 
         Int? local_sort_max_records_in_ram = 1000000
     }
 
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-    Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_all(query_labels)) else []
+    # Note the coercion of optional query_labels using select_first([expr, default])
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_first([query_labels])) else []
 
     # ------------------------------------------------
     # Run our command:
