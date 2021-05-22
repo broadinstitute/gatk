@@ -67,7 +67,6 @@ workflow GvsExtractCohortFromSampleNames {
       data_project = "", # unused if fq_filter_set_* args are given or filtering is off
       query_project = query_project,
       default_dataset = "", # unused if fq_filter_set_* args are given or filtering is off
-      filter_set_name = "", # unused if fq_filter_set_* args are given or filtering is off
 
       wgs_intervals = wgs_intervals,
       scatter_count = scatter_count,
@@ -80,6 +79,7 @@ workflow GvsExtractCohortFromSampleNames {
       fq_cohort_extract_table = GvsPrepareCallset.fq_cohort_extract_table,
 
       do_not_filter_override = do_not_filter_override,
+      filter_set_name = filter_set_name,
       fq_filter_set_info_table =  fq_filter_set_info_table,
       fq_filter_set_site_table =  fq_filter_set_site_table,
       fq_filter_set_tranches_table =  fq_filter_set_tranches_table,
@@ -113,7 +113,7 @@ task CreateCohortSampleTable {
     FQ_COHORT_SAMPLE_NAME_TABLE_COLON=${FQ_COHORT_SAMPLE_DATASET}.cohort_sample_names_~{extraction_uuid}
     FQ_COHORT_SAMPLE_NAME_TABLE_PERIOD=$(echo ${FQ_COHORT_SAMPLE_NAME_TABLE_COLON} | tr ':' '.')
 
-    bq load --format csv ${FQ_COHORT_SAMPLE_NAME_TABLE_COLON} ~{cohort_sample_names} sample_name:STRING
+    bq load --project_id ~{query_project} --format csv ${FQ_COHORT_SAMPLE_NAME_TABLE_COLON} ~{cohort_sample_names} sample_name:STRING
 
     bq query \
     --project_id ~{query_project} \
@@ -121,8 +121,11 @@ task CreateCohortSampleTable {
     --use_legacy_sql=false \
     --max_rows=10000000 \
     --allow_large_results \
-    'SELECT sample_info.sample_name, sample_info.sample_id FROM `~{fq_gvs_dataset}.sample_info` sample_info \
-    JOIN `${FQ_COHORT_SAMPLE_NAME_TABLE_PERIOD}` cohort_sample_names ON sample_info.sample_name = cohort_sample_names.sample_name;'
+    "SELECT sample_info.sample_name,
+            sample_info.sample_id
+     FROM   `~{fq_gvs_dataset}.sample_info` sample_info
+            JOIN `${FQ_COHORT_SAMPLE_NAME_TABLE_PERIOD}` cohort_sample_names
+              ON sample_info.sample_name = cohort_sample_names.sample_name"
 
     echo ${FQ_COHORT_SAMPLE_TABLE} | tr ':' '.' > fq_cohort_sample_table.txt
   >>>

@@ -17,10 +17,10 @@ workflow GvsExtractCallset {
         String query_project = data_project
 
         Boolean do_not_filter_override = false
-        String filter_set_name
-        String fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
-        String fq_filter_set_site_table = "~{data_project}.~{default_dataset}.filter_set_sites"
-        String fq_filter_set_tranches_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
+        String? filter_set_name
+        String? fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
+        String? fq_filter_set_site_table = "~{data_project}.~{default_dataset}.filter_set_sites"
+        String? fq_filter_set_tranches_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
 
         # if these are unset, default sensitivity levels will be used
         Float? snps_truth_sensitivity_filter_level_override
