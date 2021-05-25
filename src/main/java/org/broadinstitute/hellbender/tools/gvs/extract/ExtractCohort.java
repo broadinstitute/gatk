@@ -224,7 +224,8 @@ public class ExtractCohort extends ExtractTool {
                 filterSetName,
                 emitPLs,
                 disableGnarlyGenotyper,
-                performGenotypeVQSLODFiltering);
+                performGenotypeVQSLODFiltering,
+                XLfiltered);
 
         vcfWriter.writeHeader(header);
     }
