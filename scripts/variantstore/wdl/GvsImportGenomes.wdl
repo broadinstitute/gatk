@@ -364,27 +364,35 @@ task CheckForDuplicateData {
     exit 1
     fi
 
-    # create a pattern with each external sample name preceeded by a comma and divided by a | that will be an or in the grep below
-    sample_name_list=",~{sep='|,' sample_names}"
-    # find lines that contains the external sample names (excluding paths); get the corresponding gvsid; put single quotes around the number; replace the new line with a comma
-    # this results in a quoted, comma separated list of gvs ids that we can use for the bq query
-    id_list=$(grep -E "${sample_name_list}" ~{sample_map}| cut -d, -f1 | sed -e "s/\(.*\)/'\1'/" | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/,/g')
+    # # create a pattern with each external sample name preceeded by a comma and divided by a | that will be an or in the grep below
+    # sample_name_list=",~{sep='|,' sample_names}"
+    # echo $sample_name_list > sample_name_list_file
+    # # find lines that contains the external sample names (excluding paths); get the corresponding gvsid; put single quotes around the number; replace the new line with a comma
+    # # this results in a quoted, comma separated list of gvs ids that we can use for the bq query
+    # id_list=$(grep -Ef sample_name_list_file ~{sample_map}| cut -d, -f1 | sed -e "s/\(.*\)/'\1'/" | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/,/g')
 
+    # echo "SELECT partition_id FROM ${INFO_SCHEMA_TABLE} WHERE table_name like 'pet_%' AND partition_id IN (${id_list})" > query
     # query the pet tables
     INFO_SCHEMA_TABLE="~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS"
+    touch duplicates
+    cat ~{write_lines(sample_names)} | sort > sorted_names.txt
+
     # Check that the table has been created yet
     set +e
     bq show --project_id ~{project_id} $TABLE > /dev/null
     BQ_SHOW_RC=$?
     set -e
     if [ $BQ_SHOW_RC -eq 0 ]; then
-      bq --location=US --project_id=~{project_id} query --use_legacy_sql=false  "SELECT partition_id FROM ${INFO_SCHEMA_TABLE} WHERE table_name like 'pet_%' AND partition_id IN (${id_list})" > results
+      bq --location=US --project_id=~{project_id} query --use_legacy_sql=false \
+        "SELECT s.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN ~{dataset_name}.sample_info s ON (p.partition_id = CAST(s.sample_id AS STRING)) WHERE table_name like 'pet_%'" | \
+        sed -e  's/|\(.*\)|/\1/g' -e '/^+/d' -e '/sample_name/d' -e 's/ //g' | sort > bq_sorted_names.txt
+      comm -12 sorted_names.txt bq_sorted_names.txt > duplicates
     fi
 
     # true if there is data in results
-    if [ -s results ]; then
+    if [ -s duplicates ]; then
       echo "ERROR: Trying to load samples that have already been loaded"
-      cat results
+      cat duplicates
       exit 1
     fi     
 
