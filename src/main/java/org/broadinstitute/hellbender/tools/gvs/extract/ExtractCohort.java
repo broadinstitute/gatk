@@ -128,6 +128,16 @@ public class ExtractCohort extends ExtractTool {
             optional = true)
     private Double vqsLodINDELThreshold = null;
 
+    /**
+    * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than `.` or `PASS`
+    * in the FILTER field) will be excluded from the output.
+    */
+    @Argument(
+            fullName="exclude-filtered",
+            doc="Don't include filtered sites in the final jointVCF",
+            optional=true)
+    private boolean XLfiltered = false;
+
 
     @Override
     protected void onStartup() {
@@ -215,6 +225,7 @@ public class ExtractCohort extends ExtractTool {
                 emitPLs,
                 disableGnarlyGenotyper,
                 performGenotypeVQSLODFiltering);
+
         vcfWriter.writeHeader(header);
     }
 
