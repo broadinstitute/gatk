@@ -317,16 +317,8 @@ public final class AssemblyBasedCallerUtils {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
                     paddedReferenceLoc, readErrorCorrector, header, aligner);
             if (!givenAlleles.isEmpty()) {
-                addGivenAlleles(region.getPaddedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
+                addGivenAlleles(region, givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
             }
-
-            // AH & BG filter
-            // get haplotypes from assemblyResultSet and kmerize. create a map of unique Map<kmers, Map<Haplotype, Integer>>
-            // get reads from assemblyResultSet.regionForGenotyping.reads[x].samRecord mReadBases and mBaseQualities and kmerize them.
-            // Map<kmer, Integer> # times Kmer in all the reads
-            // for each kmer in reads - find hapotypes that contain it and
-            // filter haplotypes that don't have 10% coverage of read kmers
-            // check if finalizeRegion methods is already applied and it removes the softclipped bases
 
 
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
@@ -346,8 +338,9 @@ public final class AssemblyBasedCallerUtils {
     }
 
     @VisibleForTesting
-    static void addGivenAlleles(final int assemblyRegionStart, final List<VariantContext> givenAlleles, final int maxMnpDistance,
+    static void addGivenAlleles(final AssemblyRegion region, final List<VariantContext> givenAlleles, final int maxMnpDistance,
                                 final SmithWatermanAligner aligner, final Haplotype refHaplotype, final AssemblyResultSet assemblyResultSet) {
+        final int assemblyRegionStart = region.getPaddedSpan().getStart();
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
         final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
                 .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
@@ -401,7 +394,7 @@ public final class AssemblyBasedCallerUtils {
                         insertedHaplotype.setCigar(cigar);
                         insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
                         insertedHaplotype.setAlignmentStartHapwrtRef(activeRegionStart);
-                        assemblyResultSet.add(insertedHaplotype);
+//                        assemblyResultSet.add(insertedHaplotype);
 
                         // and add to our internal list so we get haplotypes that contain all given alleles
                         // do we want a flag to control this behavior
@@ -410,7 +403,36 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
         }
+        List<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads());
+        filteredPileupHaplotypes.forEach(haplotype -> assemblyResultSet.add(haplotype));
         assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
+    }
+
+
+    static List<Haplotype> filterPileupHaplotypes(final List<Haplotype> originalAssemblyHaplotypes, final List<Haplotype> assembledAndNewHaplotypes, final List<GATKRead> hardClippedPileupReads){
+        // AH & BG filter
+        // get haplotypes from assemblyResultSet and kmerize. for each haplotype create a set of kmers.
+        // get reads from assemblyResultSet.regionForGenotyping.reads[x].samRecord mReadBases and mBaseQualities and kmerize them.
+        // Map<kmer, Integer> # times Kmer in all the reads
+        // for each haplotype, look up the kmers in the read-map and sum thee counts fo the haplotype score
+        // create a Map<Haplytope, Score>
+        // for each kmer in reads - find hapotypes that contain it and
+        // filter haplotypes that don't have 10% coverage of read kmers
+        // check if finalizeRegion methods is already applied and it removes the softclipped bases
+        assembledAndNewHaplotypes.removeAll(originalAssemblyHaplotypes);
+
+
+    }
+
+    static List<Kmer> kmerizeBytes(byte[] sequence, int kmerSize){
+        final Set<Kmer> allKmers = new LinkedHashSet<>();
+        final int stopPosition = sequence.length - kmerSize;
+        for (int i = 0; i <= stopPosition; i++) {
+            final Kmer kmer = new Kmer(sequence, i, kmerSize);
+            if (!allKmers.add(kmer)) {
+                nonUniqueKmers.add(kmer);
+            }
+        }
     }
 
     /**
