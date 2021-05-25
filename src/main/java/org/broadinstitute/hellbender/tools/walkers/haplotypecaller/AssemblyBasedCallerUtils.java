@@ -39,6 +39,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by davidben on 9/8/16.
@@ -348,6 +349,8 @@ public final class AssemblyBasedCallerUtils {
         List<Haplotype> assembledAndNewHaplotypes = new ArrayList<>();
         assembledAndNewHaplotypes.addAll(assemblyResultSet.getHaplotypeList());
 
+        //TODO BG & AH filter out low base and/or mapping quality alleles
+
         for (final VariantContext givenVC : givenAlleles) {
             final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
             final int givenVCRefLength = givenVC.getReference().length();
@@ -403,36 +406,73 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
         }
-        List<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads());
+        Set<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads());
         filteredPileupHaplotypes.forEach(haplotype -> assemblyResultSet.add(haplotype));
         assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
     }
 
 
-    static List<Haplotype> filterPileupHaplotypes(final List<Haplotype> originalAssemblyHaplotypes, final List<Haplotype> assembledAndNewHaplotypes, final List<GATKRead> hardClippedPileupReads){
+    static Set<Haplotype> filterPileupHaplotypes(final List<Haplotype> originalAssemblyHaplotypes,
+                                                  final List<Haplotype> assembledAndNewHaplotypes,
+                                                  final List<GATKRead> hardClippedPileupReads) {
+        int kmerSize = 10;
+        int numPileupHaplotypes = 5;
         // AH & BG filter
-        // get haplotypes from assemblyResultSet and kmerize. for each haplotype create a set of kmers.
         // get reads from assemblyResultSet.regionForGenotyping.reads[x].samRecord mReadBases and mBaseQualities and kmerize them.
         // Map<kmer, Integer> # times Kmer in all the reads
-        // for each haplotype, look up the kmers in the read-map and sum thee counts fo the haplotype score
-        // create a Map<Haplytope, Score>
         // for each kmer in reads - find hapotypes that contain it and
         // filter haplotypes that don't have 10% coverage of read kmers
         // check if finalizeRegion methods is already applied and it removes the softclipped bases
-        assembledAndNewHaplotypes.removeAll(originalAssemblyHaplotypes);
+        Map<Kmer, Integer> kmerReadCounts = new HashMap<>();
+        hardClippedPileupReads.forEach(read -> kmerizeAndCountOccurences(read.getBases(), kmerSize, kmerReadCounts));
 
+        // get haplotypes from assemblyResultSet and kmerize. for each haplotype create a set of kmers.
+        // for each haplotype, look up the kmers in the read-map and sum thee counts fo the haplotype score
+        // create a Map<Haplytope, Score>
+        List<Haplotype> onlyNewHaplotypes = new ArrayList<>();
+        onlyNewHaplotypes.addAll(assembledAndNewHaplotypes);
+        onlyNewHaplotypes.removeAll(originalAssemblyHaplotypes);
+        LinkedHashMap<Haplotype, Integer> haplotypeScores = new LinkedHashMap<>();
+        for (Haplotype haplotype : onlyNewHaplotypes) {
+            Set<Kmer> hapKmers = kmerizeBytes(haplotype.getBases(), kmerSize);
+            int hapKmerCount = 0;
+            for(Kmer kmer : hapKmers) {
+                hapKmerCount += kmerReadCounts.getOrDefault(kmer, 0);
+            }
+            haplotypeScores.put(haplotype, hapKmerCount);
+        }
 
+        Map<Haplotype,Integer> sortedHaplotypeScores =
+                haplotypeScores.entrySet().stream()
+                        .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+                        .limit(numPileupHaplotypes)
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+        return sortedHaplotypeScores.keySet();
     }
 
-    static List<Kmer> kmerizeBytes(byte[] sequence, int kmerSize){
+    static void kmerizeAndCountOccurences(byte[] sequence, int kmerSize, Map<Kmer, Integer> results){
+        final int stopPosition = sequence.length - kmerSize;
+        for (int i = 0; i <= stopPosition; i++) {
+            final Kmer kmer = new Kmer(sequence, i, kmerSize);
+            if (!results.containsKey(kmer)) {
+                results.put(kmer, 1);
+            } else {
+                results.put(kmer, results.get(kmer)+1);
+            }
+        }
+    }
+
+
+    static Set<Kmer> kmerizeBytes(byte[] sequence, int kmerSize){
         final Set<Kmer> allKmers = new LinkedHashSet<>();
         final int stopPosition = sequence.length - kmerSize;
         for (int i = 0; i <= stopPosition; i++) {
             final Kmer kmer = new Kmer(sequence, i, kmerSize);
-            if (!allKmers.add(kmer)) {
-                nonUniqueKmers.add(kmer);
-            }
+            allKmers.add(kmer);
         }
+        return allKmers;
     }
 
     /**
