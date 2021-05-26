@@ -84,7 +84,9 @@ task PrepareCallsetTask {
             ~{"--sa_key_path " + service_account_json}
     >>>
 
-    output {}
+    output {
+      String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_cohort_extract_data_table.py
+    }
 
     runtime {
         docker: docker

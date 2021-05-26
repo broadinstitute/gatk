@@ -12,9 +12,9 @@ workflow GvsExtractCohortFromSampleNames {
     String query_project
     String gvs_project
     String gvs_dataset
-    String gvs_extraction_cohorts_dataset
-    String gvs_extraction_destination_dataset
-    String gvs_extraction_temp_tables_dataset
+    String fq_gvs_extraction_cohorts_dataset
+    String fq_gvs_extraction_destination_dataset
+    String fq_gvs_extraction_temp_tables_dataset
     String extraction_uuid
     String? output_gcs_dir
 
@@ -41,20 +41,17 @@ workflow GvsExtractCohortFromSampleNames {
     File? gatk_override
   }
 
-  String fq_cohort_extract_table_prefix = "~{gvs_project}.~{gvs_dataset}.~{extraction_uuid}"
-
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
-      destination_cohort_table_prefix = fq_cohort_extract_table_prefix,
+      destination_cohort_table_prefix = extraction_uuid,
       sample_names_to_extract         = cohort_sample_names,
       data_project                    = query_project,
       default_dataset                 = gvs_dataset, # unused if fq_* args are given
       fq_petvet_dataset               = "~{gvs_project}.~{gvs_dataset}",
       fq_sample_mapping_table         = "~{gvs_project}.~{gvs_dataset}.sample_info",
-      fq_temp_table_dataset           = gvs_extraction_temp_tables_dataset,
-      fq_destination_dataset          = gvs_extraction_destination_dataset
+      fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset,
+      fq_destination_dataset          = fq_gvs_extraction_destination_dataset
   }
-
 
   call GvsExtractCallset.GvsExtractCallset {
     input:
@@ -69,7 +66,7 @@ workflow GvsExtractCohortFromSampleNames {
       reference_index = reference_index,
       reference_dict = reference_dict,
 
-      fq_cohort_extract_table_prefix = fq_cohort_extract_table_prefix,
+      fq_cohort_extract_table_prefix = GvsPrepareCallset.fq_cohort_extract_table_prefix,
 
       do_not_filter_override = do_not_filter_override,
       filter_set_name = filter_set_name,
