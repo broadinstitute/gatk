@@ -40,7 +40,9 @@ workflow GvsPrepareCallset {
             docker                          = docker_final
     }
 
-    output {}
+    output {
+      String fq_cohort_extract_table_prefix = PrepareCallsetTask.fq_cohort_extract_table_prefix
+    }
 
 }
 
@@ -98,6 +100,4 @@ task PrepareCallsetTask {
     }
 
  }
-
-
 
