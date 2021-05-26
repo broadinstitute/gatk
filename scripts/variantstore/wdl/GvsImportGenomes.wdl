@@ -371,9 +371,9 @@ task CheckForDuplicateData {
     BQ_SHOW_RC=$?
     set -e
     if [ $BQ_SHOW_RC -eq 0 ]; then
-      bq --location=US --project_id=~{project_id} query --use_legacy_sql=false \
+      bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
         "SELECT s.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN ~{dataset_name}.sample_info s ON (p.partition_id = CAST(s.sample_id AS STRING)) WHERE table_name like 'pet_%'" | \
-        sed -e  's/|\(.*\)|/\1/g' -e '/^+/d' -e '/sample_name/d' -e 's/ //g' | sort > bq_sorted_names.txt
+        sed -e '/sample_name/d' | sort > bq_sorted_names.txt
       comm -12 sorted_names.txt bq_sorted_names.txt > duplicates
     fi
 
