@@ -91,7 +91,7 @@ def split_lists(samples, n):
 
 def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
   schema = [ bigquery.SchemaField("sample_name", "STRING", mode="REQUIRED") ]
-  table_id = f"{fq_temp_table_dataset}.{EXTRACT_SAMPLE_TABLE}"
+  fq_sample_table = f"{fq_temp_table_dataset}.{EXTRACT_SAMPLE_TABLE}"
 
   job_labels = client._default_query_job_config.labels
   job_labels["gvs_query_name"] = "load-sample-names"
@@ -99,17 +99,17 @@ def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
   job_config = bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.CSV, skip_leading_rows=0, schema=schema, labels=job_labels)
 
   with open(sample_names_to_extract, "rb") as source_file:
-    job = client.load_table_from_file(source_file, table_id, job_config=job_config)
+    job = client.load_table_from_file(source_file, fq_sample_table, job_config=job_config)
 
   job.result()  # Waits for the job to complete.
 
   # setting the TTL needs to be done as a second API call
-  table = bigquery.Table(table_id, schema=schema)
+  table = bigquery.Table(fq_sample_table, schema=schema)
   expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=TEMP_TABLE_TTL_HOURS)
   table.expires = expiration
   table = client.update_table(table, ["expires"]) 
 
-  return table_id
+  return fq_sample_table
 
 def get_all_sample_ids(fq_destination_table_samples):
   sql = f"select sample_id from `{fq_destination_table_samples}`"
@@ -354,7 +354,7 @@ if __name__ == '__main__':
   parser.add_argument('--fq_petvet_dataset',type=str, help='project.dataset location of pet/vet data', required=True)
   parser.add_argument('--fq_temp_table_dataset',type=str, help='project.dataset location where results should be stored', required=True)
   parser.add_argument('--fq_destination_dataset',type=str, help='project.dataset location where results should be stored', required=True)
-  parser.add_argument('--destination_cohort_table_prefix',type=str, help='prefix for destination tables', required=True)
+  parser.add_argument('--destination_cohort_table_prefix',type=str, help='prefix used for destination cohort extract tables (e.g. my_fantastic_cohort)', required=True)
   parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
   parser.add_argument('--query_labels',type=str, action='append', help='Labels to put on the BQ query that will show up in the billing. Ex: --query_labels key1=value1 --query_labels key2=value2', required=False)
   parser.add_argument('--min_variant_samples',type=int, help='Minimum variant samples at a site required to be emitted', required=False, default=0)
