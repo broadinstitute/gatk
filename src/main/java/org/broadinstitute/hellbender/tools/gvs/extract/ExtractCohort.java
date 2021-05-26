@@ -136,7 +136,7 @@ public class ExtractCohort extends ExtractTool {
             fullName="exclude-filtered",
             doc="Don't include filtered sites in the final jointVCF",
             optional=true)
-    private boolean XLfiltered = false;
+    private boolean excludeFilteredSites = false;
 
 
     @Override
@@ -225,7 +225,7 @@ public class ExtractCohort extends ExtractTool {
                 emitPLs,
                 disableGnarlyGenotyper,
                 performGenotypeVQSLODFiltering,
-                XLfiltered);
+                excludeFilteredSites);
 
         vcfWriter.writeHeader(header);
     }

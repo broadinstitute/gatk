@@ -50,7 +50,7 @@ public class ExtractCohortEngine {
     private Double vqsLodSNPThreshold;
     private Double vqsLodINDELThreshold;
     private boolean performGenotypeVQSLODFiltering;
-    private boolean XLfiltered;
+    private boolean excludeFilteredSites;
 
     private final ProgressMeter progressMeter;
     private final String projectID;
@@ -99,7 +99,7 @@ public class ExtractCohortEngine {
                                final boolean emitPLs,
                                final boolean disableGnarlyGenotyper,
                                final boolean performGenotypeVQSLODFiltering,
-                               final boolean XLfiltered
+                               final boolean excludeFilteredSites
     ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
@@ -123,7 +123,7 @@ public class ExtractCohortEngine {
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
         this.performGenotypeVQSLODFiltering = performGenotypeVQSLODFiltering;
-        this.XLfiltered = XLfiltered;
+        this.excludeFilteredSites = excludeFilteredSites;
 
         this.progressMeter = progressMeter;
 
@@ -433,7 +433,7 @@ public class ExtractCohortEngine {
 
         // apply VQSLod-based filters
         VariantContext filteredVC =
-                noVqslodFilteringRequested ? genotypedVC : filterSiteAlleleByVQSLOD(genotypedVC, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
+                noVqslodFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQSLOD(genotypedVC, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
 
         // apply SiteQC-based filters, if they exist
         if ( siteFilterMap.containsKey(location) ) {
@@ -454,15 +454,15 @@ public class ExtractCohortEngine {
         final VariantContext finalVC = removeAnnotations(filteredVC);
 
         if ( finalVC != null ) {
-            // If XLfiltered is true, than the filtered sites should not be added
-            if (!XLfiltered || finalVC.isNotFiltered()) {
+            // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
+            if (finalVC.isNotFiltered() || !excludeFilteredSites) {
                 vcfWriter.add(finalVC);
             }
             progressMeter.update(finalVC);
         }
     }
 
-    private VariantContext filterSiteAlleleByVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean onlyAnnotate) {
+    private VariantContext filterSiteByAlleleSpecificVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean onlyAnnotate) {
         final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
         final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
