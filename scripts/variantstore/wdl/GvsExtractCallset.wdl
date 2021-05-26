@@ -13,8 +13,7 @@ workflow GvsExtractCallset {
         File reference_index
         File reference_dict
 
-        String fq_samples_to_extract_table
-        String fq_cohort_extract_table
+        String fq_cohort_extract_table_prefix
         String query_project = data_project
 
         String fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
@@ -51,9 +50,9 @@ workflow GvsExtractCallset {
                 reference                = reference,
                 reference_index          = reference_index,
                 reference_dict           = reference_dict,
-                fq_samples_to_extract_table = fq_samples_to_extract_table,
+                fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES",
                 intervals                = SplitIntervals.interval_files[i],
-                fq_cohort_extract_table  = fq_cohort_extract_table,
+                fq_cohort_extract_table  = "~{fq_cohort_extract_table_prefix}__DATA",
                 read_project_id          = query_project,
                 do_not_filter_override   = do_not_filter_override,
                 fq_filter_set_info_table = fq_filter_set_info_table,

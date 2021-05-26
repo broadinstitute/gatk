@@ -4,7 +4,8 @@ workflow GvsPrepareCallset {
    input {
         String data_project
         String default_dataset
-        String destination_cohort_table_name
+        String destination_cohort_table_prefix
+        File sample_names_to_extract
 
         # inputs with defaults
         String query_project = data_project
@@ -13,7 +14,6 @@ workflow GvsPrepareCallset {
         String destination_dataset = default_dataset
 
         String fq_petvet_dataset = "~{data_project}.~{default_dataset}"
-        String fq_cohort_sample_table = "~{data_project}.~{default_dataset}.sample_info"
         String fq_sample_mapping_table = "~{data_project}.~{default_dataset}.sample_info"
         String fq_temp_table_dataset = "~{destination_project}.temp_tables"
         String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
@@ -23,15 +23,15 @@ workflow GvsPrepareCallset {
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210507"])
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210526"])
 
     call PrepareCallsetTask {
         input:
-            destination_cohort_table_name   = destination_cohort_table_name,
+            destination_cohort_table_prefix = destination_cohort_table_prefix,
+            sample_names_to_extract         = sample_names_to_extract,
             query_project                   = query_project,
             query_labels                    = query_labels,
             fq_petvet_dataset               = fq_petvet_dataset,
-            fq_cohort_sample_table          = fq_cohort_sample_table,
             fq_sample_mapping_table         = fq_sample_mapping_table,
             fq_temp_table_dataset           = fq_temp_table_dataset,
             fq_destination_dataset          = fq_destination_dataset,
@@ -49,12 +49,12 @@ task PrepareCallsetTask {
     }
 
     input {
-        String destination_cohort_table_name
+        String destination_cohort_table_prefix
+        File sample_names_to_extract
         String query_project
         Array[String]? query_labels
 
         String fq_petvet_dataset
-        String fq_cohort_sample_table
         String fq_sample_mapping_table
         String fq_temp_table_dataset
         String fq_destination_dataset
@@ -73,8 +73,8 @@ task PrepareCallsetTask {
             --fq_petvet_dataset ~{fq_petvet_dataset} \
             --fq_temp_table_dataset ~{fq_temp_table_dataset} \
             --fq_destination_dataset ~{fq_destination_dataset} \
-            --destination_table ~{destination_cohort_table_name} \
-            --fq_cohort_sample_names ~{fq_cohort_sample_table} \
+            --destination_cohort_table_prefix ~{destination_cohort_table_prefix} \
+            --sample_names_to_extract ~{sample_names_to_extract} \
             --query_project ~{query_project} \
             ~{sep=" " query_label_args} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
