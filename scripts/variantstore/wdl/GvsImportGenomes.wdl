@@ -95,7 +95,6 @@ workflow GvsImportGenomes {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      sample_map = sample_map,
       sample_names = external_sample_names,
       service_account_json = service_account_json,
       output_directory = output_directory,
@@ -332,7 +331,6 @@ task CheckForDuplicateData {
     input{
       String project_id
       String dataset_name
-      File sample_map
       Array[String] sample_names
       File? service_account_json
       # needed only for lockfile
@@ -347,7 +345,6 @@ task CheckForDuplicateData {
   
   command <<<
     set -e
-    set -x
 
     if [ ~{has_service_account_file} = 'true' ]; then
       gcloud auth activate-service-account --key-file='~{service_account_json}'
@@ -364,15 +361,6 @@ task CheckForDuplicateData {
     exit 1
     fi
 
-    # # create a pattern with each external sample name preceeded by a comma and divided by a | that will be an or in the grep below
-    # sample_name_list=",~{sep='|,' sample_names}"
-    # echo $sample_name_list > sample_name_list_file
-    # # find lines that contains the external sample names (excluding paths); get the corresponding gvsid; put single quotes around the number; replace the new line with a comma
-    # # this results in a quoted, comma separated list of gvs ids that we can use for the bq query
-    # id_list=$(grep -Ef sample_name_list_file ~{sample_map}| cut -d, -f1 | sed -e "s/\(.*\)/'\1'/" | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/,/g')
-
-    # echo "SELECT partition_id FROM ${INFO_SCHEMA_TABLE} WHERE table_name like 'pet_%' AND partition_id IN (${id_list})" > query
-    # query the pet tables
     INFO_SCHEMA_TABLE="~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS"
     touch duplicates
     cat ~{write_lines(sample_names)} | sort > sorted_names.txt
