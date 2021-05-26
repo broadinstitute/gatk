@@ -76,7 +76,6 @@ workflows:
          - master
          - gvs
          - ah_var_store
-         - kc_prepare_samples
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -97,7 +96,6 @@ workflows:
          - master
          - gvs
          - ah_var_store
-         - kc_prepare_samples
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
