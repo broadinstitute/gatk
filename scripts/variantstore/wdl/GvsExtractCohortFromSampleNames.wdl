@@ -84,8 +84,4 @@ workflow GvsExtractCohortFromSampleNames {
       gatk_override = gatk_override
   }
 
-  output {
-    String fq_cohort_extract_table = GvsPrepareCallset.fq_cohort_extract_table
-  }
-
 }
