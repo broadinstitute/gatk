@@ -1,10 +1,15 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
-import com.google.api.gax.rpc.ServerStream;
-import com.google.cloud.bigquery.BigQueryOptions;
-import com.google.cloud.bigquery.storage.v1beta1.*;
-import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions.Builder;
-import com.google.common.base.Preconditions;
+import com.google.cloud.bigquery.storage.v1.AvroRows;
+import com.google.cloud.bigquery.storage.v1.BigQueryReadClient;
+import com.google.cloud.bigquery.storage.v1.CreateReadSessionRequest;
+import com.google.cloud.bigquery.storage.v1.DataFormat;
+import com.google.cloud.bigquery.storage.v1.ReadRowsRequest;
+import com.google.cloud.bigquery.storage.v1.ReadSession;
+import com.google.cloud.bigquery.storage.v1.ReadSession.TableReadOptions;
+import com.google.cloud.bigquery.storage.v1.ReadSession.TableReadOptions.Builder;
+
+import com.google.cloud.bigquery.storage.v1.ReadRowsResponse;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryDecoder;
@@ -22,11 +27,9 @@ public class StorageAPIAvroReader implements GATKAvroReader {
 
     private static final Logger logger = LogManager.getLogger(StorageAPIAvroReader.class);
 
-    private static int rowCount = 0;
+    private BigQueryReadClient client;
 
-    private BigQueryStorageClient client;
-
-    private Iterator<Storage.ReadRowsResponse> serverStream;
+    private Iterator<ReadRowsResponse> serverStream;
 
     private org.apache.avro.Schema schema;
 
@@ -36,7 +39,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
     // collection.
     private BinaryDecoder decoder = null;
 
-    private AvroProto.AvroRows currentAvroRows;
+    private AvroRows currentAvroRows;
 
     // GenericRecord object will be reused.
     private GenericRecord nextRow = null;
@@ -54,32 +57,39 @@ public class StorageAPIAvroReader implements GATKAvroReader {
         try {
             logger.info("Using Storage API from " + tableRef.getFQTableName() + " with '" + rowRestriction + "'");
 
-            this.client = BigQueryStorageClient.create();
+            this.client = BigQueryReadClient.create();
 
             final String parent = String.format("projects/%s", parentProjectId == null || parentProjectId.isEmpty() ? tableRef.tableProject : parentProjectId);
 
-            final TableReferenceProto.TableReference tableReference = TableReferenceProto.TableReference.newBuilder()
-                    .setProjectId(tableRef.tableProject)
-                    .setDatasetId(tableRef.tableDataset)
-                    .setTableId(tableRef.tableName)
-                    .build();
+            final String srcTable =
+                    String.format(
+                            "projects/%s/datasets/%s/tables/%s",
+                            tableRef.tableProject, tableRef.tableDataset, tableRef.tableName);
 
-            Builder readOptions = ReadOptions.TableReadOptions.newBuilder()
-                    .addAllSelectedFields(tableRef.fields);
+            Builder readOptions =
+                    ReadSession.TableReadOptions.newBuilder()
+                            .addAllSelectedFields(tableRef.fields);
 
             if (rowRestriction != null) {
                 readOptions.setRowRestriction(rowRestriction);
             }
-            final ReadOptions.TableReadOptions tableReadOptions = readOptions.build();
+            final TableReadOptions tableReadOptions = readOptions.build();
 
-            final Storage.CreateReadSessionRequest.Builder builder = Storage.CreateReadSessionRequest.newBuilder()
-                    .setParent(parent)
-                    .setTableReference(tableReference)
-                    .setReadOptions(tableReadOptions)
-                    .setRequestedStreams(1)
-                    .setFormat(Storage.DataFormat.AVRO);
+            // Start specifying the read session we want created.
+            ReadSession.Builder sessionBuilder =
+                    ReadSession.newBuilder()
+                            .setTable(srcTable)
+                            .setDataFormat(DataFormat.AVRO)
+                            .setReadOptions(tableReadOptions);
 
-            final Storage.ReadSession session = client.createReadSession(builder.build());
+            // Begin building the session creation request.
+            CreateReadSessionRequest.Builder builder =
+                    CreateReadSessionRequest.newBuilder()
+                            .setParent(parent)
+                            .setReadSession(sessionBuilder)
+                            .setMaxStreamCount(1);
+
+            final ReadSession session = client.createReadSession(builder.build());
             if (session.getStreamsCount() > 0) {
 
                 this.schema = new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema());
@@ -90,12 +100,10 @@ public class StorageAPIAvroReader implements GATKAvroReader {
                 logger.info("Storage API Session ID: " + session.getName());
 
                 // Use the first stream to perform reading.
-                Storage.StreamPosition readPosition = Storage.StreamPosition.newBuilder()
-                        .setStream(session.getStreams(0))
-                        .build();
+                String streamName = session.getStreams(0).getName();
 
-                Storage.ReadRowsRequest readRowsRequest = Storage.ReadRowsRequest.newBuilder()
-                        .setReadPosition(readPosition)
+                ReadRowsRequest readRowsRequest = ReadRowsRequest.newBuilder()
+                        .setReadStream(streamName)
                         .build();
 
                 this.serverStream = client.readRowsCallable().call(readRowsRequest).iterator();
