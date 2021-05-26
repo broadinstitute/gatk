@@ -13,6 +13,7 @@ workflow GvsCreateFilterSet {
         String default_dataset
 
         String query_project = data_project
+        Array[String]? query_labels
 
         String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
         String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
@@ -52,7 +53,9 @@ workflow GvsCreateFilterSet {
         File axiomPoly_resource_vcf_index
         File dbsnp_resource_vcf = dbsnp_vcf
         File dbsnp_resource_vcf_index = dbsnp_vcf_index
-        Int? excess_alleles_threshold
+        
+        # Effectively disable by default
+        Int? excess_alleles_threshold = 1000000
 
         # Runtime attributes
         Int? small_disk_override
@@ -97,7 +100,8 @@ workflow GvsCreateFilterSet {
                 read_project_id          = query_project,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
                 service_account_json     = service_account_json,
-                query_project            = query_project
+                query_project            = query_project,
+                query_labels             = query_labels
         }
     }
 
@@ -106,7 +110,8 @@ workflow GvsCreateFilterSet {
            input_vcfs = ExtractFilterTask.output_vcf,
            input_vcfs_indexes = ExtractFilterTask.output_vcf_index,
            output_vcf_name = "${output_file_base_name}.vcf.gz",
-           preemptible_tries = 3
+           preemptible_tries = 3,
+           gatk_override = gatk_override
     }
 
     call IndelsVariantRecalibrator {
@@ -213,12 +218,15 @@ task ExtractFilterTask {
         File? gatk_override
         File? service_account_json
         String query_project
+        Array[String]? query_labels
 
         Int? local_sort_max_records_in_ram = 1000000
     }
 
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    # Note the coercion of optional query_labels using select_first([expr, default])
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_first([query_labels])) else []
 
     # ------------------------------------------------
     # Run our command:
@@ -243,6 +251,7 @@ task ExtractFilterTask {
                 --sample-table ~{fq_sample_table} \
                 --alt-allele-table ~{fq_alt_allele_table} \
                 ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
+                ~{sep=" " query_label_args} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id}
@@ -463,21 +472,35 @@ task UploadFilterSetToBQ {
      Array[File] input_vcfs
      Array[File] input_vcfs_indexes
      String output_vcf_name
+
+     File? gatk_override
      Int preemptible_tries
    }
 
    Int disk_size = ceil(size(input_vcfs, "GiB") * 2.5) + 10
 
-   # Using MergeVcfs instead of GatherVcfs so we can create indices
-   # See https://github.com/broadinstitute/picard/issues/789 for relevant GatherVcfs ticket
+    parameter_meta {
+         input_vcfs: {
+             localization_optional: true
+         }
+         input_vcfs_indexes: {
+             localization_optional: true
+         }
+      }
+
    command {
-     java -Xms2000m -jar /usr/gitc/picard.jar \
-       MergeVcfs \
-       INPUT=~{sep=' INPUT=' input_vcfs} \
-       OUTPUT=~{output_vcf_name}
+       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+       gatk --java-options -Xms3g GatherVcfsCloud \
+            --ignore-safety-checks --gather-type BLOCK \
+            -I ~{sep=' -I ' input_vcfs} \
+            --output ~{output_vcf_name}
+
+       tabix ~{output_vcf_name}
+
    }
    runtime {
-     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.1-1540490856"
+     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
      preemptible: preemptible_tries
      memory: "3 GiB"
      disks: "local-disk ~{disk_size} HDD"

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.vcf.*;
 
-import org.broadinstitute.hellbender.tools.variantdb.CommonCode;
+import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.utils.Utils;
 

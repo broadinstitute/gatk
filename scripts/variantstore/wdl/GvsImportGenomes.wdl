@@ -5,6 +5,7 @@ workflow GvsImportGenomes {
   input {
     Array[File] input_vcfs
     Array[File] input_vcf_indexes
+    Array[String] external_sample_names
     File interval_list
     String output_directory
     File sample_map
@@ -23,6 +24,15 @@ workflow GvsImportGenomes {
   }
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+
+  # how do i return an error if the lengths are not equal?
+  Int input_length = length(input_vcfs)
+  if (input_length != length(input_vcf_indexes) || input_length != length(external_sample_names)) {
+    call TerminateWorkflow {
+      input:
+        message = 'Input array lengths do not match'
+    }
+  }
 
   call SetLock {
     input:
@@ -86,6 +96,7 @@ workflow GvsImportGenomes {
       input:
         input_vcf = input_vcfs[i],
         input_vcf_index = input_vcf_indexes[i],
+        sample_name = external_sample_names[i],
         interval_list = interval_list,
         sample_map = sample_map,
         service_account_json = service_account_json,
@@ -162,6 +173,10 @@ workflow GvsImportGenomes {
       load_vet_done = LoadVetTable.done,
       service_account_json = service_account_json,
       preemptible_tries = preemptible_tries
+  }
+
+  output {
+    Boolean loaded_in_gvs = true
   }
 }
 
@@ -305,6 +320,7 @@ task CreateImportTsvs {
   input {
     File input_vcf
     File input_vcf_index
+    String sample_name
     File interval_list
     String output_directory
     File sample_map
@@ -414,6 +430,7 @@ task CreateImportTsvs {
             ~{"-IG " + drop_state} \
             --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
             --mode GENOMES \
+            -SN ~{sample_name} \
             -SNM ~{sample_map} \
             --ref-version 38
 
@@ -636,8 +653,26 @@ task LoadTable {
 
   output {
     String done = "true"
-    File manifest_file = "~{datatype}_du_sets.txt"
-    File final_job_statuses = "bq_final_job_statuses.txt"
+    File? manifest_file = "~{datatype}_du_sets.txt"
+    File? final_job_statuses = "bq_final_job_statuses.txt"
   }
 }
 
+task TerminateWorkflow {
+  input {
+    String message
+  }
+
+  command <<<
+      set -e
+      echo ~{message}
+      exit 1
+  >>>
+  runtime {
+      docker: "python:3.8-slim-buster"
+      memory: "1 GB"
+      disks: "local-disk 10 HDD"
+      preemptible: 3
+      cpu: 1
+  }
+}

@@ -12,8 +12,7 @@ workflow GvsExtractCallset {
         File reference_index
         File reference_dict
 
-        String fq_samples_to_extract_table
-        String fq_cohort_extract_table
+        String fq_cohort_extract_table_prefix
         String query_project = data_project
 
         Boolean do_not_filter_override = false
@@ -52,9 +51,9 @@ workflow GvsExtractCallset {
                 reference                = reference,
                 reference_index          = reference_index,
                 reference_dict           = reference_dict,
-                fq_samples_to_extract_table = fq_samples_to_extract_table,
+                fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES",
                 intervals                = SplitIntervals.interval_files[i],
-                fq_cohort_extract_table  = fq_cohort_extract_table,
+                fq_cohort_extract_table  = "~{fq_cohort_extract_table_prefix}__DATA",
                 read_project_id          = query_project,
                 do_not_filter_override   = do_not_filter_override,
                 fq_filter_set_info_table = fq_filter_set_info_table,
@@ -172,8 +171,8 @@ task ExtractTask {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
-        memory: "10 GB"
-        disks: "local-disk 100 HDD"
+        memory: "12 GB"
+        disks: "local-disk 250 HDD"
         bootDiskSizeGb: 15
         preemptible: 3
         cpu: 2
