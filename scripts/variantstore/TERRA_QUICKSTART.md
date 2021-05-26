@@ -72,7 +72,9 @@ This is done by running the `GvsPrepareCallset` workflow with the following para
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| destination_cohort_table_name | A unique, descriptive name for the table containing the callset (e.g. `demo_10_wgs_callset`) |
+| destination_cohort_table_prefix | A unique, descriptive name for the tables containing the callset (e.g. `demo_10_wgs_callset`) |
+| sample_names_to_extract | A file of sample names to be extracted in the callset (use `gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvs_quickstart_10_samples.txt`) |
+
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
@@ -88,8 +90,7 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
 | filter_set_name | the name of the filter set identifier created in step #2 |
-| fq_cohort_extract_table | the fully qualified name of the `destination_cohort_table_name` from step #3, of the form `<project>.<dataset>.<yourtablename>` |
-| fq_samples_to_extract_table | Used for sub-cohort extraction, in this quickstart should be of the form `<project>.<dataset>.sample_info` |
+| fq_cohort_extract_table_prefix | the fully qualified name of the `destination_cohort_table_prefix` from step #3, of the form `<project>.<dataset>.<destination_cohort_table_prefix>` |
 | output_file_base_name | Base name for generated VCFs |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
