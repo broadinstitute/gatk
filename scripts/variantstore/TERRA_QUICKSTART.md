@@ -15,7 +15,10 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
 
 1. You will need to have or create a BigQuery dataset (we'll call this `datasetname` later on). 
 2. Grant the "BigQuery Editor" role on that **dataset** to your Terra PROXY group.  Your proxy group name can be found on your Terra Profile page and look something like `PROXY_3298237498237948372@firecloud.org`
-3. Grant the "BigQuery Read Session User" on the Google **project** containing the dataset to your proxy group
+3. Grant the following roles on the Google **project** containing the dataset to your proxy group
+    - BigQuery data editor
+    - BigQuery job user
+    - BigQuery Read Session User
 
 ## 1. Import Data
 
@@ -52,13 +55,13 @@ Execute the script, it should take 30-60 seconds to run resulting in the creatio
 
 This step calculates features from the ALT_ALLELE table, and trains the VQSR filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.  
 
-This is done by running the `GvsCreateFilterSe`t workflow with the following parameters:
+This is done by running the `GvsCreateFilterSet` workflow with the following parameters:
 
 | Parameter      | Description |
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| filter_set_name | A unique name to identify this filter set (e.g. `my_demo_filters` ) |
+| filter_set_name | A unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 4  |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
@@ -72,7 +75,7 @@ This is done by running the `GvsPrepareCallset` workflow with the following para
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| destination_cohort_table_prefix | A unique, descriptive name for the tables containing the callset (e.g. `demo_10_wgs_callset`) |
+| destination_cohort_table_prefix | A unique, descriptive name for the tables containing the callset (e.g. `demo_10_wgs_callset`); you will want to make note of this for use in the next step |
 | sample_names_to_extract | A file of sample names to be extracted in the callset (use `gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvs_quickstart_10_samples.txt`) |
 
 
@@ -98,5 +101,4 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 ## 5. Your VCF is ready!!
 
 The sharded VCF outut files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`
-
 
