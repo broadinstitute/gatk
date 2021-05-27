@@ -14,7 +14,7 @@ The sequencing data in this quickstart came from the [AnVIL 1000G High Coverage 
 This quickstart assumes that you are familiar with Terra workspaces, the data model and providing input parameters and launching workflows.
 
 1. You will need to have or create a BigQuery dataset (we'll call this `datasetname` later on). 
-2. Grant the "BigQuery User" role on that **dataset** to your Terra PROXY group.  Your proxy group name can be found on your Terra Profile page and look something like `PROXY_3298237498237948372@firecloud.org`
+2. Grant the "BigQuery Editor" role on that **dataset** to your Terra PROXY group.  Your proxy group name can be found on your Terra Profile page and look something like `PROXY_3298237498237948372@firecloud.org`
 3. Grant the "BigQuery Read Session User" on the Google **project** containing the dataset to your proxy group
 
 ## 1. Import Data
@@ -98,6 +98,5 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 ## 5. Your VCF is ready!!
 
 The sharded VCF outut files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`
-
 
 
