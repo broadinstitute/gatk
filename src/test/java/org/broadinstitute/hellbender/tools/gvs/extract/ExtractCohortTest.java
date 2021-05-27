@@ -23,8 +23,7 @@ class ExtractCohortTest extends CommandLineProgramTest {
     final File expectedVCF = getTestFile("expected.vcf");
 
     // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
-    //final File outputVCF = createTempFile("output", "vcf");
-    final File outputVCF = new File("test.output.vcf");
+    final File outputVCF = createTempFile("output", "vcf");
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
