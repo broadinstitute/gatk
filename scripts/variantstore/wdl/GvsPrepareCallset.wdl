@@ -1,3 +1,103 @@
 version 1.0
 
+workflow GvsPrepareCallset {
+   input {
+        String data_project
+        String default_dataset
+        String destination_cohort_table_prefix
+        File sample_names_to_extract
+
+        # inputs with defaults
+        String query_project = data_project
+        Array[String]? query_labels
+        String destination_project = data_project
+        String destination_dataset = default_dataset
+
+        String fq_petvet_dataset = "~{data_project}.~{default_dataset}"
+        String fq_sample_mapping_table = "~{data_project}.~{default_dataset}.sample_info"
+        String fq_temp_table_dataset = "~{destination_project}.temp_tables"
+        String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
+
+        Int temp_table_ttl_in_hours = 72
+
+        String? docker
+    }
+
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210526"])
+
+    call PrepareCallsetTask {
+        input:
+            destination_cohort_table_prefix = destination_cohort_table_prefix,
+            sample_names_to_extract         = sample_names_to_extract,
+            query_project                   = query_project,
+            query_labels                    = query_labels,
+            fq_petvet_dataset               = fq_petvet_dataset,
+            fq_sample_mapping_table         = fq_sample_mapping_table,
+            fq_temp_table_dataset           = fq_temp_table_dataset,
+            fq_destination_dataset          = fq_destination_dataset,
+            temp_table_ttl_in_hours         = temp_table_ttl_in_hours,
+
+            docker                          = docker_final
+    }
+
+    output {
+      String fq_cohort_extract_table_prefix = PrepareCallsetTask.fq_cohort_extract_table_prefix
+    }
+
+}
+
+task PrepareCallsetTask {
+    # indicates that this task should NOT be call cached
+    meta {
+       volatile: true
+    }
+
+    input {
+        String destination_cohort_table_prefix
+        File sample_names_to_extract
+        String query_project
+        Array[String]? query_labels
+
+        String fq_petvet_dataset
+        String fq_sample_mapping_table
+        String fq_temp_table_dataset
+        String fq_destination_dataset
+        Int temp_table_ttl_in_hours
+
+        File? service_account_json
+        String docker
+    }
+    # Note the coercion of optional query_labels using select_first([expr, default])
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
+
+    command <<<
+        set -e
+
+        python3 /app/create_cohort_extract_data_table.py \
+            --fq_petvet_dataset ~{fq_petvet_dataset} \
+            --fq_temp_table_dataset ~{fq_temp_table_dataset} \
+            --fq_destination_dataset ~{fq_destination_dataset} \
+            --destination_cohort_table_prefix ~{destination_cohort_table_prefix} \
+            --sample_names_to_extract ~{sample_names_to_extract} \
+            --query_project ~{query_project} \
+            ~{sep=" " query_label_args} \
+            --fq_sample_mapping_table ~{fq_sample_mapping_table} \
+            --ttl ~{temp_table_ttl_in_hours} \
+            ~{"--sa_key_path " + service_account_json}
+    >>>
+
+    output {
+      String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_cohort_extract_data_table.py
+    }
+
+    runtime {
+        docker: docker
+        memory: "3 GB"
+        disks: "local-disk 100 HDD"
+        bootDiskSizeGb: 15
+        preemptible: 0
+        cpu: 1
+    }
+
+ }
 
