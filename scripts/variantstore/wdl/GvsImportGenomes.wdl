@@ -15,7 +15,7 @@ workflow GvsImportGenomes {
     String? vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,QUALapprox:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
     String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING"
     File? service_account_json
-    String? drop_state
+    String? drop_state = "SIXTY"
     Boolean? drop_state_includes_greater_than = false
 
     Int? preemptible_tries
