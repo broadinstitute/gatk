@@ -33,6 +33,8 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static htsjdk.variant.variantcontext.VariantContextUtils.calculateChromosomeCounts;
+
 public class ExtractCohortEngine {
     private static final Logger logger = LogManager.getLogger(ExtractCohortEngine.class);
 
@@ -451,7 +453,8 @@ public class ExtractCohortEngine {
         }
 
         // clean up extra annotations
-        final VariantContext finalVC = removeAnnotations(filteredVC);
+        final VariantContext cleanVC = removeAnnotations(filteredVC);
+        final VariantContext finalVC = addChromosomeCountsAnnotations(cleanVC);
 
         if ( finalVC != null ) {
             // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
@@ -525,6 +528,18 @@ public class ExtractCohortEngine {
                                                                       GATKVCFConstants.FISHER_STRAND_KEY));
 
         builder.rmAttributes(rmAnnotationList);
+        return builder.make();
+    }
+
+    protected VariantContext addChromosomeCountsAnnotations(VariantContext vc) {
+
+        final VariantContextBuilder builder = new VariantContextBuilder(vc);
+
+        // add AC/AF/AD annotations
+        Set<String> founderIds = new HashSet<>();
+        Map<String, Object> attributes = new HashMap<>(vc.getAttributes());
+        Map<String, Object> chromosomeCounts = calculateChromosomeCounts(vc, attributes, true, founderIds);
+        builder.putAttributes(chromosomeCounts);
 
         return builder.make();
     }
@@ -562,6 +577,7 @@ public class ExtractCohortEngine {
                 }
             }
         });
+
         return results;
     }
 
