@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.utils.dragstr.STRTableFile;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.AbsoluteCoordinates;
+import scala.Tuple4;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -95,7 +96,7 @@ public class CalibrateDragstrModel extends GATKTool {
     @Argument(fullName= DEBUG_SITES_OUTPUT_FULL_NAME, doc = "table with information gather on the samples sites. Includes what sites were downsampled, disqualified or accepted for parameter estimation", optional = true)
     private String sitesOutput = null;
 
-    @Argument(fullName= FORCE_ESTIMATION_FULL_NAME, doc = "for testing purpose only; force parameter estimation even with little datapoints available", optional = true)
+    @Argument(fullName= FORCE_ESTIMATION_FULL_NAME, doc = "for testing purpose only; force parameter estimation even with few datapoints available", optional = true)
     private boolean forceEstimation = false;
 
     private SAMSequenceDictionary dictionary;
@@ -117,8 +118,7 @@ public class CalibrateDragstrModel extends GATKTool {
         super.onStartup();
         hyperParameters.validate();
         dictionary = directlyAccessEngineReadsDataSource().getSequenceDictionary();
-        factory = SamReaderFactory.makeDefault();
-        factory.referenceSource(new ReferenceSource(referenceArguments.getReferencePath()));
+        factory = makeSamReaderFactory();
 
         if (runInParallel) {
             if (threads == 1) {
@@ -276,18 +276,31 @@ public class CalibrateDragstrModel extends GATKTool {
      */
     private boolean isThereEnoughCases(final StratifiedDragstrLocusCases allSites) {
         // period 1, repeat length 1 to 9 (inclusive)
-        final int[][] MCBL = MINIMUM_CASES_BY_PERIOD_AND_LENGTH;
-        final int maxP = Math.min(hyperParameters.maxPeriod, MCBL.length - 1);
-        for (int i = 1; i <= maxP; i++) {
-            final int maxL = Math.min(hyperParameters.maxRepeatLength, MCBL[i].length - 1);
-            for (int j = 1; j <= maxL; j++) {
-                if (allSites.get(i, j).size() < MCBL[i][j]) {
-                    logger.warn("not enough cases in (P,L) = (" + i + "," + j + "): " + allSites.get(i, j).size() + " < " + MCBL[i][j]);
-                    return false;
+            final int[][] MCBL = MINIMUM_CASES_BY_PERIOD_AND_LENGTH;
+            final int maxP = Math.min(hyperParameters.maxPeriod, MCBL.length - 1);
+            final List<Tuple4<Integer, Integer, Integer, Integer>> failingCombos = new ArrayList<>(10);
+            for (int i = 1; i <= maxP; i++) {
+                final int maxL = Math.min(hyperParameters.maxRepeatLength, MCBL[i].length - 1);
+                for (int j = 1; j <= maxL; j++) {
+                    if (allSites.get(i, j).size() < MCBL[i][j]) {
+                        failingCombos.add(new Tuple4<>(i, j, allSites.get(i, j).size(), MCBL[i][j]));
+                    }
                 }
             }
-        }
-        return true;
+            if (failingCombos.isEmpty()) {
+                return true;
+            } else if (forceEstimation) {
+                logger.warn("there is not enough data to proceed to parameter empirical estimation " +
+                        "but user requested to force it, so we go ahead");
+                for (final Tuple4<Integer, Integer, Integer, Integer> failingCombo : failingCombos) {
+                    logger.warn(String.format("(P=%d, L=%d) count %d is less than minimum required %d ",
+                            failingCombo._1(), failingCombo._2(), failingCombo._3(), failingCombo._4()));
+                }
+                return true;
+            } else {
+                logger.warn("there is not enough data to proceed to parameter empirical estimation, using defaults instead");
+                return false;
+            }
     }
 
     /**

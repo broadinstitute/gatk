@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Spliterator that splits by segragating even and odd elements as supposed to
+ * Spliterator that splits by segragating even and odd elements as opposed to
  * first and second half which the standard (e.g {@link Collection#stream} delgates onto {@link Spliterators.ArraySpliterator}).
 *
 * This approach makes the load more balanced between threads and the excecution order follows more closelly

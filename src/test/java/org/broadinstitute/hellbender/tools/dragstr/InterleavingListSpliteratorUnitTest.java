@@ -8,6 +8,7 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
 public class InterleavingListSpliteratorUnitTest {
@@ -224,20 +225,7 @@ public class InterleavingListSpliteratorUnitTest {
      * @return never {@code null}.
      */
     private List<Integer> firstNaturalIntegers(final int N) {
-        return new AbstractList<Integer>() {
-            @Override
-            public Integer get(final int index) {
-                if (index < 0 || index >= N) {
-                    throw new IndexOutOfBoundsException("" + index);
-                }
-                return index;
-            }
-
-            @Override
-            public int size() {
-                return N;
-            }
-        };
+        return IntStream.range(0, N).boxed().collect(Collectors.toList());
     }
 
     @DataProvider(name = "lengthAndSplitLevelsData")
