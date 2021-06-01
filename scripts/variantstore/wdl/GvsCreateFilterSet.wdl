@@ -246,7 +246,7 @@ task ExtractFilterTask {
 
         df -h
 
-        gatk --java-options "-Xmx4g" \
+        gatk --java-options "-Xms4g" \
             ExtractFeatures \
                 --ref-version 38  \
                 -R "~{reference}" \
@@ -312,7 +312,7 @@ task ExtractFilterTask {
           export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
           mkdir interval-files
-          gatk --java-options "-Xmx5g" SplitIntervals \
+          gatk --java-options "-Xms5g" SplitIntervals \
               -R ~{ref_fasta} \
               ~{"-L " + intervals} \
               -scatter ~{scatter_count} \
@@ -387,7 +387,7 @@ task UploadFilterSetToBQ {
             gcloud config set project ~{query_project}
         fi
 
-        gatk --java-options "-Xmx1g" \
+        gatk --java-options "-Xms1g" \
             CreateFilteringFiles \
             --ref-version 38 \
             --filter-set-name ~{filter_set_name} \
@@ -395,7 +395,7 @@ task UploadFilterSetToBQ {
             -V ~{snp_recal_file} \
             -O ~{filter_set_name}.snps.recal.tsv
 
-        gatk --java-options "-Xmx1g" \
+        gatk --java-options "-Xms1g" \
             CreateFilteringFiles \
             --ref-version 38 \
             --filter-set-name ~{filter_set_name} \
@@ -403,7 +403,7 @@ task UploadFilterSetToBQ {
             -V ~{indel_recal_file} \
             -O ~{filter_set_name}.indels.recal.tsv
 
-        gatk --java-options "-Xmx1g" \
+        gatk --java-options "-Xms1g" \
             CreateSiteFilteringFiles \
             --ref-version 38 \
             --filter-set-name ~{filter_set_name} \
@@ -631,7 +631,7 @@ task SNPsVariantRecalibrator {
   command <<<
     set -euo pipefail
 
-    gatk --java-options -Xmx~{java_mem}g \
+    gatk --java-options -Xms~{java_mem}g \
       VariantRecalibrator \
       -V ~{sites_only_variant_filtered_vcf} \
       ~{"-XL " + excluded_sites_bed} \
