@@ -726,6 +726,39 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         return tests.toArray(new Object[][]{});
     }
 
+
+    @DataProvider(name = "GQLog10PosteriorsTest")
+    public Object[][] makeGQLog10PosteriorsTest() {
+        List<Object[]> tests = new ArrayList<>();
+
+        // testing the 3 allele case
+        tests.add(new Object[]{0, new double[]{-1.0, -2.0, -2.2}, -1.787});
+        tests.add(new Object[]{1, new double[]{-1.0, -2.0, -2.2}, -0.973});
+        tests.add(new Object[]{2, new double[]{-1.0, -2.0, -2.2}, -0.958});
+
+        // testing in the 3 allele case where the choice between two genotypes is ambiguous
+        tests.add(new Object[]{0, new double[]{0.0, 0.0, -0.2}, 0});
+        tests.add(new Object[]{1, new double[]{0.0, 0.0, -0.2}, 0});
+        tests.add(new Object[]{2, new double[]{0.0, 0.0, -0.2}, 0});
+
+        // testing in the 4+ allele case where the choice between two genotypes is ambiguous (if not careful this might have resulted in a negative GQ)
+        tests.add(new Object[]{0, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{1, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{2, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{3, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{4, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{5, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "GQLog10PosteriorsTest")
+    public void testGetGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] genotypeArray, final double expectedResult)  {
+        final double actualResult = GATKVariantContextUtils.getGQLog10FromPosteriors(bestGenotypeIndex, genotypeArray);
+        assertEqualsDoubleSmart(actualResult, expectedResult);
+    }
+
     // --------------------------------------------------------------------------------
     //
     // Test repeats

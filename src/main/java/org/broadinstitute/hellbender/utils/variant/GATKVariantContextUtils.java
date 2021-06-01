@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.variant;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
@@ -340,7 +341,8 @@ public final class GATKVariantContextUtils {
         }
     }
 
-    private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] /**/log10Posteriors) {
+    @VisibleForTesting
+    static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] /**/log10Posteriors) {
         if (bestGenotypeIndex < 0) {
             return CommonInfo.NO_LOG10_PERROR;
         } else {
@@ -348,14 +350,14 @@ public final class GATKVariantContextUtils {
                 case 0:
                 case 1: return CommonInfo.NO_LOG10_PERROR;
                 case 2: return bestGenotypeIndex == 0 ? log10Posteriors[1] : log10Posteriors[0];
-                case 3: return Math.min(0, MathUtils.log10SumLog10(
+                case 3: return Math.min(0.0, MathUtils.log10SumLog10(
                                  log10Posteriors[ bestGenotypeIndex == 0 ? 2 : bestGenotypeIndex - 1],
                                  log10Posteriors[ bestGenotypeIndex == 2 ? 0 : bestGenotypeIndex + 1]));
                 default:
                     if (bestGenotypeIndex == 0) {
-                        return MathUtils.log10SumLog10(log10Posteriors, 1, log10Posteriors.length);
+                        return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors, 1, log10Posteriors.length));
                     } else if (bestGenotypeIndex == log10Posteriors.length - 1) {
-                        return MathUtils.log10SumLog10(log10Posteriors, 0, bestGenotypeIndex);
+                        return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors, 0, bestGenotypeIndex));
                     } else {
                         return Math.min(0.0, MathUtils.log10SumLog10(
                                 MathUtils.log10sumLog10(log10Posteriors, 0, bestGenotypeIndex),
