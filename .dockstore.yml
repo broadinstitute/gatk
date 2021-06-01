@@ -75,6 +75,7 @@ workflows:
          - master
          - ah_var_store
          - kc_max_retries
+         - ah_fix_timestamp_query
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -93,6 +94,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ah_prepare_localize_option
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

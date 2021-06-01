@@ -12,7 +12,7 @@ workflow GvsExtractCallset {
         File reference_index
         File reference_dict
 
-        String fq_cohort_extract_table_prefix
+        String cohort_extract_table_prefix
         String query_project = data_project
 
         Boolean do_not_filter_override = false
@@ -35,8 +35,8 @@ workflow GvsExtractCallset {
         File? gatk_override
     }
 
-    String fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES"
-    String fq_cohort_extract_table  = "~{fq_cohort_extract_table_prefix}__DATA"
+    String samples_to_extract_table = "~{cohort_extract_table_prefix}__SAMPLES"
+    String cohort_extract_table  = "~{cohort_extract_table_prefix}__DATA"
 
     call SplitIntervals {
       input:
@@ -49,15 +49,17 @@ workflow GvsExtractCallset {
 
     call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
         input:
-            dataset_table = fq_cohort_extract_table,
-            query_project = query_project,
+            data_project = data_project,
+            dataset = default_dataset,
+            dataset_table = cohort_extract_table,
             service_account_json = service_account_json
     }
 
     call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
         input:
-            dataset_table = fq_samples_to_extract_table,
-            query_project = query_project,
+            data_project = data_project,
+            dataset = default_dataset,
+            dataset_table = samples_to_extract_table,
             service_account_json = service_account_json
     }
 
@@ -68,9 +70,9 @@ workflow GvsExtractCallset {
                 reference                = reference,
                 reference_index          = reference_index,
                 reference_dict           = reference_dict,
-                fq_samples_to_extract_table = fq_samples_to_extract_table,
+                fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{samples_to_extract_table}",
                 intervals                = SplitIntervals.interval_files[i],
-                fq_cohort_extract_table  = fq_cohort_extract_table,
+                fq_cohort_extract_table  = "~{data_project}.~{default_dataset}.~{cohort_extract_table}",
                 read_project_id          = query_project,
                 do_not_filter_override   = do_not_filter_override,
                 fq_filter_set_info_table = fq_filter_set_info_table,
@@ -189,7 +191,7 @@ task ExtractTask {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "12 GB"
-        disks: "local-disk 250 HDD"
+        disks: "local-disk 150 HDD"
         bootDiskSizeGb: 15
         preemptible: 3
         maxRetries: 3
@@ -266,8 +268,9 @@ task GetBQTableLastModifiedDatetime {
     }
 
     input {
+        String data_project
+        String dataset
         String dataset_table
-        String query_project
         String? service_account_json
     }
 
@@ -278,16 +281,15 @@ task GetBQTableLastModifiedDatetime {
     # that isn't in the right format (e.g. an error)
     command <<<
         set -e
+        set -x
         if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json} local.service_account.json
             gcloud auth activate-service-account --key-file=local.service_account.json
         fi
 
-        # bq needs the project name to be separate by a colon
-        DATASET_TABLE_COLON=$(echo ~{dataset_table} | sed 's/\./:/')
+        echo "project_id = ~{data_project}" > ~/.bigqueryrc
 
-        LASTMODIFIED=$(bq show  ~{"--project_id " + query_project} --location=US --format=json ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
-
+        LASTMODIFIED=$(bq --location=US --project_id=~{data_project} --format=json show ~{dataset}.~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
         if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
             echo $LASTMODIFIED
         else
