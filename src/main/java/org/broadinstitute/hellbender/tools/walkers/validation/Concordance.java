@@ -12,7 +12,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.SingleSampleConcordanceWalker;
+import org.broadinstitute.hellbender.engine.SingleSampleAlleleConcordanceWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.VariantsToTable;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
         programGroup = VariantEvaluationProgramGroup.class
 )
 @DocumentedFeature
-public class Concordance extends SingleSampleConcordanceWalker {
+public class Concordance extends SingleSampleAlleleConcordanceWalker {
 
     static final String USAGE_ONE_LINE_SUMMARY = "Evaluate concordance of an input VCF against a validated truth VCF";
     static final String USAGE_SUMMARY = "This tool evaluates an input VCF against a VCF that has been validated" +
@@ -186,6 +186,8 @@ public class Concordance extends SingleSampleConcordanceWalker {
             case FILTERED_FALSE_NEGATIVE:
                 writeFilteredFalseNegative(truthVersusEval);
                 break;
+            case TRUE_NEGATIVE:
+                break; //don't write out true negatives
             default:
                 throw new IllegalStateException("Unexpected ConcordanceState: " + concordanceState.toString());
         }

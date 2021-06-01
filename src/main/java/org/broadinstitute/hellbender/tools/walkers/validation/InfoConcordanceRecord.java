@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableReader;
  * Keeps track of concordance between two info fields.
  */
 public class InfoConcordanceRecord {
-    private static final String VARIANT_TYPE_COLUMN_NAME = "type";
+    private static final String VARIANT_TYPE_COLUMN_NAME = "TYPE";
     private static final String EVAL_INFO_KEY = "eval_info_key";
     private static final String TRUE_INFO_KEY = "true_info_key";
     private static final String MEAN_DIFFERENCE = "mean_difference";
@@ -48,7 +48,7 @@ public class InfoConcordanceRecord {
 
     /**
      *
-     * @return Variant type (e.g. SNP or INDEL)
+     * @return Variant TYPE (e.g. SNP or INDEL)
      */
     public VariantContext.Type getVariantType() {
         return this.type;

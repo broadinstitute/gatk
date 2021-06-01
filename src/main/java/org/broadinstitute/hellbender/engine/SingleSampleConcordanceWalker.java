@@ -1,17 +1,11 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 
-import java.util.ArrayDeque;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Queue;
-import java.util.Set;
-import java.util.function.BiFunction;
-
 /**
- * Base class for concordance walkers, which process one variant at a time from one or more sources of variants,
+ * Base class for single sample concordance walkers, which process one variant at a time from one or more sources of variants,
  * with optional contextual information from a reference, sets of reads, and/or supplementary sources of
  * Features.
  *
@@ -31,18 +25,12 @@ public abstract class SingleSampleConcordanceWalker extends AbstractConcordanceW
     // the primary work of the walker.  Must be overridden in implementing classes.
     protected abstract void apply(final SingleSampleTruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext);
 
-    private SingleSampleTruthVersusEval convertToSingleSampleTruthVersusEval(final TruthVersusEval truthVersusEval) {
-        if (!truthVersusEval.hasEval()) {
-            return SingleSampleTruthVersusEval.falseNegative(truthVersusEval.getTruth());
-        } else if (!truthVersusEval.hasTruth()) {
-            final VariantContext eval = truthVersusEval.getEval();
-            return eval.isFiltered() ? SingleSampleTruthVersusEval.filteredTrueNegative(eval) : SingleSampleTruthVersusEval.falsePositive(truthVersusEval.getEval());
-        } else if (truthVersusEval.getEval().isFiltered()) {
-            return SingleSampleTruthVersusEval.filteredFalseNegative(truthVersusEval.getTruth(), truthVersusEval.getEval());
-        } else  {
-            //we only match two variants together if they are concordant
-            return SingleSampleTruthVersusEval.truePositive(truthVersusEval.getTruth(), truthVersusEval.getEval());
-        }
+    protected SingleSampleTruthVersusEval convertToSingleSampleTruthVersusEval(final TruthVersusEval truthVersusEval) {
+        final Genotype truthGenotype = truthVersusEval.hasTruth() ? truthVersusEval.getTruth().getGenotype(0) : null;
+        final Genotype evalGenotype = truthVersusEval.hasEval() ? truthVersusEval.getEval().getGenotype(0) : null;
+        final ConcordanceState concordanceState = getConcordanceState(truthGenotype, evalGenotype, truthVersusEval.hasEval() && truthVersusEval.getEval().isFiltered());
+
+        return new SingleSampleTruthVersusEval(truthVersusEval.getTruth(), truthVersusEval.getEval(), concordanceState);
     }
 
     // override this to customize the degree of agreement required to call a true positive.  Sometimes, for example, we may want
@@ -61,30 +49,10 @@ public abstract class SingleSampleConcordanceWalker extends AbstractConcordanceW
     protected static class SingleSampleTruthVersusEval extends TruthVersusEval {
         private final ConcordanceState concordanceState;
 
-        private SingleSampleTruthVersusEval(final VariantContext truth, final VariantContext eval,
+        public SingleSampleTruthVersusEval(final VariantContext truth, final VariantContext eval,
                                 final ConcordanceState concordanceState) {
             super(truth, eval);
             this.concordanceState = concordanceState;
-        }
-
-        public static SingleSampleTruthVersusEval falseNegative(final VariantContext truth) {
-            return new SingleSampleTruthVersusEval(truth, null, ConcordanceState.FALSE_NEGATIVE);
-        }
-
-        public static SingleSampleTruthVersusEval falsePositive(final VariantContext eval) {
-            return new SingleSampleTruthVersusEval(null, eval, ConcordanceState.FALSE_POSITIVE);
-        }
-
-        public static SingleSampleTruthVersusEval truePositive(final VariantContext truth, final VariantContext eval) {
-            return new SingleSampleTruthVersusEval(truth, eval, ConcordanceState.TRUE_POSITIVE);
-        }
-
-        public static SingleSampleTruthVersusEval filteredFalseNegative(final VariantContext truth, final VariantContext eval) {
-            return new SingleSampleTruthVersusEval(truth, eval, ConcordanceState.FILTERED_FALSE_NEGATIVE);
-        }
-
-        public static SingleSampleTruthVersusEval filteredTrueNegative(final VariantContext eval) {
-            return new SingleSampleTruthVersusEval(null, eval, ConcordanceState.FILTERED_TRUE_NEGATIVE);
         }
 
         public ConcordanceState getConcordance() {

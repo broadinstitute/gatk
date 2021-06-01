@@ -15,7 +15,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.SingleSampleConcordanceWalker;
+import org.broadinstitute.hellbender.engine.SingleSampleAlleleConcordanceWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
@@ -57,7 +57,7 @@ import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
         programGroup=VariantEvaluationProgramGroup.class)
 @DocumentedFeature
 @BetaFeature
-public class EvaluateInfoFieldConcordance extends SingleSampleConcordanceWalker {
+public class EvaluateInfoFieldConcordance extends SingleSampleAlleleConcordanceWalker {
     static final String USAGE_ONE_LINE_SUMMARY = "Evaluate concordance of info fields in an input VCF against a validated truth VCF";
     static final String USAGE_SUMMARY = "This tool evaluates info fields from an input VCF against a VCF that has been validated and is considered to represent ground truth.\n";
     public static final String SUMMARY_LONG_NAME = "summary";

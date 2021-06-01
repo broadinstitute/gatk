@@ -17,7 +17,7 @@ import java.io.IOException;
  */
 
 public class ConcordanceSummaryRecord {
-    private static final String VARIANT_TYPE_COLUMN_NAME = "type";
+    private static final String VARIANT_TYPE_COLUMN_NAME = "TYPE";
     private static final String TRUE_POSITIVE_COLUMN_NAME = "TP";
     private static final String FALSE_POSITIVE_COLUMN_NAME = "FP";
     private static final String FALSE_NEGATIVE_COLUMN_NAME = "FN";

@@ -1,0 +1,555 @@
+package org.broadinstitute.hellbender.tools.walkers.validation;
+
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.util.StringUtil;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFUtils;
+import org.apache.commons.collections4.Predicate;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.VariantFilter;
+import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.VariantIDsVariantFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.tsv.DataLine;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
+import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Evaluate genotyping accuracy against truth.  Both truth and eval vcfs may be single or multi-sample.  Produces two output files:
+ * <ol>
+ *     <li>Pearson correlations as a function of alt allele frequency.  Sites are binned by alt allele fraction.  Pearson's r is calculated between the genotypes (or other specified annotation) in the truth and eval data, for each bin.</li>
+ *     <li>Accuracy metrics.  True positives, false positive, true negatives, and false negatives are counted for each sample, and recall, precision, and accuracy are calculated.  These are not stratified by alt allele frequency.</li>
+ * </ol>
+ * All results are stratified by sample and SNP or INDEL.
+ *
+ */
+@CommandLineProgramProperties(
+        summary = EvaluateGenotypingPerformance.USAGE_SUMMARY,
+        oneLineSummary = EvaluateGenotypingPerformance.USAGE_ONE_LINE_SUMMARY,
+        programGroup = VariantEvaluationProgramGroup.class
+)
+@DocumentedFeature
+public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
+    final static String USAGE_SUMMARY = "Evaluate genotyping in a (potentially multisample) vcf against truth genotypes.  This is intended generally for imputed data, where we are evaluating genotype accuracy, not full variant calling accuracy." +
+            " Outputs are a table of Pearson correlations vs allele frequency, and well as a table of sensitivity, precision, and accuracy.  Note that this tool evaluates only genotyping accuracy.  That is, if a variant is called in the truth" +
+            " but there is no corresponding record in the evaluation vcf, there is no contribution to the result.  If, however, there is a corresponding record in the evaluation vcf, which is genotyped as a hom-ref, while the truth has " +
+            "a het, this site would be counted as a false negative.  This is generally useful for evaluating array or imputed data, where the objective is to genotype known sites, but is generally not desirable for sequencing variant calling.";
+    final static String USAGE_ONE_LINE_SUMMARY = "Evaluate genotyping in a (potentially multisample) vcf against truth genotypes.";
+
+    /**
+     * A resource file from which to extract alt allele frequencies.  If not included, then allele frequencies should be annotated in the vcf being evaluated.
+     */
+    @Argument(fullName= StandardArgumentDefinitions.RESOURCE_LONG_NAME, doc="External resource VCF file containing alt allele frequencies.", optional=true)
+    private FeatureInput<VariantContext> af_resource;
+
+    /**
+     * List of IDs (or a .list file containing ids) to select. The tool will only select variants whose ID
+     * field is present in this list of IDs. The matching is done by exact string matching. If a file, the file
+     * name must end in ".list", and the expected file format is simply plain text with one ID per line.
+     */
+    @Argument(fullName="keep-ids", shortName="ids", doc="List of variant rsIDs to select", optional=true)
+    private Set<String> rsIDsToKeep = new HashSet<>();
+
+    /**
+     * Genotype annotation to use for correlation calculation.  Annotation to use for calculating correlation between truth and eval data, instead of genotype.
+     * If a genotype does not include this annotation, the the genotype call will be converted into a dosage (this is likely to happen if the truth does not include a dosage field).
+     * Usually this will be "DS", if used.
+     */
+    @Argument(fullName="dosage-field", doc="Genotype annotation to use for correlation calculation. Generally this will be 'DS', if used.", optional=true)
+    String dosageField = null;
+
+    @Argument(
+            doc = "Output file for correlation.",
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
+    )
+    private GATKPath outputFile = null;
+
+    @Argument(
+            doc = "Output file for accuracy.",
+            fullName = "output-accuracy",
+            shortName = "OA"
+    )
+    private GATKPath outputAccuracyFile = null;
+
+    /**
+     * List of strings specifying the annotations from which alt allele frequencies for each sample should be read.  Each string should be the sample name, and corresponding annotation, separated by a colon.
+     */
+    @Argument(
+        fullName = "af-annotations",
+        doc="List of mappings from sample name to corresponding annotation storing alt allele frequencies.  Mappings use colon as separator."
+    )
+    private List<String> afAnnotations;
+
+    /**
+     * List of mappings between sample names in the evaluation vcf and in the truth vcf.  Corresponding sample names should be separated by colons.  If no mappings is passed for a particular sample, it is
+     * assumed that the same sample name is also in the truth vcf.
+     */
+    @Argument(
+            fullName = "sample-map",
+            doc = "List of mappings between corresponding eval and truth sample names.  Mappings use colon as separator.",
+            optional = true
+    )
+    private List<String> sampleMappings;
+
+
+    /**
+     * Number of bins to bin sites by alt allele frequency for correlation calculation.  (nBins - 1) bins will be spaced equally in log space between firstBinRightEdge and 1.  The first bin will span 0 to firstBinRightEdge.
+     */
+    @Argument(
+            fullName = "nbins",
+            optional = true,
+            doc = "Number of bins to bin sites by alt allele frequency for correlation calculation."
+    )
+    int nBins = 14;
+
+    @Argument(
+            fullName = "first-bin-right-edge",
+            optional = true,
+            doc = "The right edge of the first bin for binning sites by alt allele frequency for correlation calculation."
+    )
+    double firstBinRightEdge = 0.0005;
+
+    @Argument(
+            optional = true,
+            doc = "Minimum alt allele frequency to include a site in accuracy calculations. Sites with lower alt allele frequency are not included."
+    )
+    double minAfForAccuracyMetrics = 0;
+
+    @Argument(
+            optional = true,
+            doc = "Allow ploidy to differ at a site between truth and eval.  This should generally only occur if chromosome X is being treated differently in males.  If this option is true " +
+                    "and different ploidies are found at a site, the genotypes are considered to agree if the set of observed alleles is the same in both the truth and eval."
+    )
+    boolean allowDifferingPloidy = false;
+
+    final List<List<AFCorrelationAggregator>> aggregators = new ArrayList<>();
+    final List<AccuracyMetrics> snpMetrics = new ArrayList<>();
+    final List<AccuracyMetrics> indelMetrics = new ArrayList<>();
+    final Map<String, String> afAnnotationsMap = new HashMap<>();
+    final Set<String> afAnnotationSet = new HashSet<>();
+    final Map<String, String> sampleMap = new HashMap<>();
+
+    @Override
+    public void onTraversalStart() {
+        final VCFHeader header = getEvalHeader();
+        final List<String> samples = header.getSampleNamesInOrder();
+        loadMapping(afAnnotations, afAnnotationsMap);
+        //create a set of the unique annotations that will need to be extracted for each site
+        afAnnotationSet.addAll(afAnnotationsMap.values());
+
+        if (sampleMappings != null) {
+            loadMapping(sampleMappings, sampleMap);
+        }
+
+        //initialize the pearson correlation aggregators and accuracy metrics for each sample
+        for (final String sample : samples) {
+            final String mappedSample = getMappedSample(sample);
+            if (!afAnnotationsMap.containsKey(sample) && !afAnnotationsMap.containsKey(mappedSample)) {
+                //samples which are not included in the annotations map are ignored.
+                continue;
+            }
+            //each sample has a list of correlation aggregators, one for each af bin
+            final List<AFCorrelationAggregator> theseAggregators = new ArrayList<>();
+            theseAggregators.add(new AFCorrelationAggregator(firstBinRightEdge / 2, sample));
+            for (int i = 1; i < nBins; i++) {
+                //bins are spaced evenly in log space
+                final double log10_bin_width = (-Math.log10(firstBinRightEdge)) / (double) (nBins - 1);
+                final double logBinCenter = Math.log10(firstBinRightEdge) + (i - 0.5) * log10_bin_width;
+                final double binCenter = Math.pow(10, logBinCenter);
+                theseAggregators.add(new AFCorrelationAggregator(binCenter, sample));
+            }
+            aggregators.add(theseAggregators);
+            snpMetrics.add(new AccuracyMetrics(VariantContext.Type.SNP, sample));
+            indelMetrics.add(new AccuracyMetrics(VariantContext.Type.INDEL, sample));
+        }
+    }
+
+    /**
+     * Load mappings in mappingStrings in map
+     * @param mappingStrings list of string which map keys to values
+     * @param map map into which the mappings are placed
+     */
+    private void loadMapping(final List<String> mappingStrings, final Map<String, String> map) {
+        for (final String mappingString : mappingStrings) {
+            String[] tokens = new String[2];
+            StringUtil.split(mappingString, tokens,':');
+            map.put(tokens[0], tokens[1]);
+        }
+    }
+
+    /**
+     * get corresponding truth sample name for a particular eval sample.
+     */
+    private String getMappedSample(final String sample) {
+        return sampleMap.getOrDefault(sample, sample);
+    }
+
+    /**
+     * get the annotation from which to extract alt allele frequency information for a particular sample
+     */
+    private String getAfAnnotation(final String sample) {
+        String afAnnotation = afAnnotationsMap.get(sample);
+        if (afAnnotation == null) {
+            afAnnotation = afAnnotationsMap.get(getMappedSample(sample));
+        }
+
+        return afAnnotation;
+    }
+
+    @Override
+    protected Predicate<VariantContext> makeTruthVariantFilter() {
+        return VariantFilterLibrary.ALLOW_ALL_VARIANTS::test;
+    }
+
+    @Override
+    protected Predicate<VariantContext> makeEvalVariantFilter() {
+        final VariantFilter filter;
+        if (rsIDsToKeep != null && !rsIDsToKeep.isEmpty()) {
+            filter = new VariantFilterLibrary.PassesFiltersVariantFilter().and(new VariantIDsVariantFilter(rsIDsToKeep));
+        } else {
+            filter = new VariantFilterLibrary.PassesFiltersVariantFilter();
+        }
+        return filter::test;
+    }
+
+    @Override
+    protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
+        return truth.getAlleles().containsAll(eval.getAlleles());
+    }
+
+    @Override
+    protected void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
+
+        if (!truthVersusEval.hasEval() || !truthVersusEval.hasTruth()) {
+            //only include sites which have both an eval and truth record
+            return;
+        }
+
+        final VariantContext evalVC = truthVersusEval.getEval();
+
+        final VariantContext truthVC = truthVersusEval.getTruth();
+
+        //since multiple samples are likely to share the same afAnnotation, we build a map to store the values for each afAnnotation, instead of extracting the value for each sample
+        final Map<String, Double> afMap = buildAFMap(evalVC);
+
+        for (int i=0; i<aggregators.size(); i++) {
+            //loop through samples
+            final String sample = snpMetrics.get(i).SAMPLE;
+            final String mappedSample = getMappedSample(sample);
+            final String afAnnotation = getAfAnnotation(sample);
+            final Double af = afMap.get(afAnnotation);
+            if (af == null) {
+                // if we don't have alt allele frac information for this site, skip it
+                continue;
+            }
+            final int bin = getBin(af);
+            final Genotype evalGenotype = evalVC.getGenotype(sample);
+            final Genotype truthGenotype = truthVC.getGenotype(mappedSample);
+            if (truthGenotype.isNoCall()) {
+                //not confident in truth, so skip
+                continue;
+            }
+            final double evalDosageFrac = getDosageFrac(evalGenotype, evalVC.getReference(), dosageField);
+            final double truthDosageFrac = getDosageFrac(truthGenotype, truthVC.getReference(), dosageField);
+            final ConcordanceState concordanceState = getConcordanceState(truthGenotype, evalGenotype, evalVC.isFiltered());
+            if (evalVC.isSNP()) {
+                aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
+                if (af >= minAfForAccuracyMetrics) {
+                    snpMetrics.get(i).incrementMetrics(concordanceState);
+                }
+            } else if (evalVC.isIndel()) {
+                aggregators.get(i).get(bin).indel_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
+                if (af >= minAfForAccuracyMetrics) {
+                    indelMetrics.get(i).incrementMetrics(concordanceState);
+                }
+            }
+        }
+    }
+
+    /**
+     * builds a map storing the alt allele frequency values for all required af annotations for the given eval variant
+     * @param vc eval variant context
+     * @return map from annotation to extracted alt allele context
+     */
+    private Map<String, Double> buildAFMap(final VariantContext vc) {
+        if (features != null) {
+            final FeatureContext featureContext = new FeatureContext(features, new SimpleInterval(vc));
+            final List<VariantContext> resourceFeatures = featureContext.getValues(af_resource, vc.getStart());
+            for (final VariantContext feature : resourceFeatures) {
+                //find the overlapping resource feature which starts at the same position and has the same reference allele as the eval vc
+                if (feature.getReference().equals(vc.getReference())) {
+                    //find the index in the resource feature which corresponds to the first alt allele of the eval vc
+                    final int altAlleleIndex = feature.getAlleleIndex(vc.getAlternateAllele(0));
+                    if (altAlleleIndex > 0) {
+                        return buildAFMapForIndex(feature, afAnnotationSet,altAlleleIndex - 1);
+                    }
+                }
+            }
+            //haven't found a feature to extract afs from, so return empty map
+            return Collections.emptyMap();
+        } else {
+            //if no allele frequency resource has been passed, annotations should be stored in eval vc
+            return buildAFMapForIndex(vc, afAnnotationSet, 0);
+        }
+    }
+
+    /**
+     * build a map storing the alt allele frequency values for all required af annotations from the given variant
+     * @param vc variant context containing af annotations
+     * @param index this index of the alt allele frequency to extract
+     * @return map from annotation to extracted alt allele context
+     */
+    static Map<String, Double> buildAFMapForIndex(final VariantContext vc, final Collection<String> annotations, final int index) {
+        final Map<String, Double> afMap = new HashMap<>();
+        for (final String afAnnotation : annotations) {
+            final List<Double> afList = vc.getAttributeAsDoubleList(afAnnotation, -99);
+            if (afList.size() < index + 1) {
+                continue;
+            }
+            final Double af = afList.get(index);
+            if (af < 0 || af > 1) {
+                throw new GATKException("Invalid AF value " + af + " at " + vc.getContig() + ":" + vc.getStart() + " for allele " + vc.getAlternateAllele(index-1));
+            }
+            afMap.put(afAnnotation, af);
+        }
+
+        return afMap;
+    }
+
+
+    /**
+     * Get the dosage frequency from the given genotype.
+     */
+     private double getDosageFrac(final Genotype geno, final Allele refAllele, final String dosageField) {
+        if (dosageField != null) {
+            final String dosageString = (String)geno.getExtendedAttribute(dosageField);
+            return dosageString != null ? VCFUtils.parseVcfDouble(dosageString)/(double)geno.getPloidy() : getDosageFracFromGenotypeCall(geno, refAllele);
+        }
+
+        return getDosageFracFromGenotypeCall(geno, refAllele);
+    }
+
+    private double getDosageFracFromGenotypeCall(final Genotype geno, final Allele refAllele) {
+        return 1d - (double)geno.countAllele(refAllele)/(double)geno.getPloidy();
+    }
+
+    @Override
+    protected ConcordanceState getConcordanceState(final Genotype truth, final Genotype eval, final boolean evalWasFiltered) {
+        if (truth.getPloidy() != eval.getPloidy()) {
+            //situation could arise from haploid vs diploid on X
+            if (!allowDifferingPloidy) {
+                throw new GATKException("sample " + eval.getSampleName() + " is ploidy " + eval.getPloidy() + " while truth sample " + truth.getSampleName() + " is ploidy " + truth.getPloidy() + "." +
+                        "  This may be due to haploid vs diploid representation on X.  If you would like to allow for this TYPE of data, use the allowDifferingPloidy argument.");
+            }
+
+            //build a set of all alleles in truth and eval genotypes.  If sets are the same, then genotypes "agree", if different, then genotypes "agree".  so 0/0 and 0 agree, 1/1 and 1 agree, but 0/1 and 1 disagree.
+            final Set<Allele> truthAlleles = new HashSet<>(truth.getAlleles());
+            final Set<Allele> evalAlleles = new HashSet<>(eval.getAlleles());
+
+            final boolean isPositiveEval = isPositive(eval);
+            final boolean isPositiveTruth = isPositive(truth);
+            final boolean genotypesAgree = truthAlleles.equals(evalAlleles);
+
+            return evaluateConcordanceState(isPositiveEval, isPositiveTruth, genotypesAgree, evalWasFiltered);
+        }
+
+        //now normal situation, agree on ploidy.
+        return super.getConcordanceState(truth, eval, evalWasFiltered);
+    }
+
+
+
+    @Override
+    public Object onTraversalSuccess() {
+        final MetricsFile<AFCorrelationMetric, Integer> correlationWriter = getMetricsFile();
+        for (final List<AFCorrelationAggregator> theseAggregators : aggregators ) {
+            for (final AFCorrelationAggregator aggregator : theseAggregators) {
+                new AFCorrelationMetric(aggregator);
+                correlationWriter.addMetric(new AFCorrelationMetric(aggregator));
+            }
+        }
+        correlationWriter.write(outputFile.toPath().toFile());
+
+        //write out accuracy results
+        final MetricsFile<AccuracyMetrics, Integer> accuracyWriter = getMetricsFile();
+        accuracyWriter.addAllMetrics(snpMetrics);
+        accuracyWriter.addAllMetrics(indelMetrics);
+        accuracyWriter.write(outputAccuracyFile.toPath().toFile());
+        return null;
+    }
+
+    /**
+     * get the af bin to assign a particular site to based on its allele frequency
+     */
+    int getBin(double af) {
+        if (af < firstBinRightEdge) {
+            return 0;
+        }
+
+        return (int)Math.ceil((1-Math.log10(af)/Math.log10(firstBinRightEdge)) * (nBins - 1));
+    }
+
+    /**
+     * A class for holding Pearson correlation aggregators for a particular sample and af bin.
+     */
+    private static final class AFCorrelationAggregator {
+        final double binCenter;
+        final String sampleName;
+        final PearsonCorrelationAggregator snp_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
+        final PearsonCorrelationAggregator indel_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
+
+        AFCorrelationAggregator(final double binCenter, final String sampleName) {
+            this.binCenter = binCenter;
+            this.sampleName = sampleName;
+        }
+    }
+
+     public static final class AFCorrelationMetric extends MetricBase {
+        public double BIN_CENTER;
+        public String SAMPLE;
+        public double SNP_CORRELATION;
+        public double SNP_SITES;
+        public double INDEL_CORRELATION;
+        public double INDEL_SITES;
+
+        AFCorrelationMetric() {
+            super();
+        }
+
+        AFCorrelationMetric(final AFCorrelationAggregator afCorrelationAggregator) {
+            BIN_CENTER = afCorrelationAggregator.binCenter;
+            SAMPLE = afCorrelationAggregator.sampleName;
+            SNP_CORRELATION = afCorrelationAggregator.snp_pearsonCorrelationAggregator.getCorrelation();
+            SNP_SITES = afCorrelationAggregator.snp_pearsonCorrelationAggregator.n;
+            INDEL_CORRELATION = afCorrelationAggregator.indel_pearsonCorrelationAggregator.getCorrelation();
+            INDEL_SITES = afCorrelationAggregator.indel_pearsonCorrelationAggregator.n;
+        }
+    }
+
+    /**
+     * A class used to calculate Pearson correlation in a single pass with minimal memory usage
+     */
+    static final class PearsonCorrelationAggregator {
+        /*
+        We will calculate r using the formula r = (<xy> - <x><y>)/(sqrt(<x^2> - <x>^2) * sqrt(<y^2> - <y>^2)).  So we need to store
+        1) the sums of:
+            xy
+            x
+            y
+            x^2
+            y^2
+        2) the total number of entries
+
+        From these we can calculate all the required expectation values.
+         */
+        private double sum_xy;
+        private double sum_x;
+        private double sum_y;
+        private double sum_x2;
+        private double sum_y2;
+        private int n;
+
+        void addEntry(final double x, final double y) {
+            sum_xy += x*y;
+            sum_x += x;
+            sum_y += y;
+            sum_x2 += x*x;
+            sum_y2 += y*y;
+            n++;
+        }
+
+        double getCorrelation() {
+            // r = (<xy> - <x><y>)/(sqrt(<x^2> - <x>^2) * sqrt(<y^2> - <y>^2))
+            final double n_d = n;
+            final double e_xy = sum_xy/n_d;
+            final double e_x = sum_x/n_d;
+            final double e_y = sum_y/n_d;
+            final double e_x2 = sum_x2/n_d;
+            final double e_y2 = sum_y2/n_d;
+
+            return (e_xy - e_x * e_y)/(Math.sqrt(e_x2 - e_x*e_x)* Math.sqrt(e_y2 - e_y*e_y));
+        }
+    }
+
+
+    /**
+     * A class to store accuracy metrics
+     */
+    public static final class AccuracyMetrics extends MetricBase {
+        public String SAMPLE;
+        public int TRUE_POSITIVES;
+        public int TRUE_NEGATIVES;
+        public int FALSE_POSITIVES;
+        public int FALSE_NEGATIVES;
+        public VariantContext.Type TYPE;
+
+        AccuracyMetrics() {
+            super();
+        }
+
+        AccuracyMetrics(final VariantContext.Type type, final String sampleName) {
+            this.TYPE = type;
+            this.SAMPLE = sampleName;
+        }
+        double getRecall() {
+            // recall = TP/(TP + FN)
+            return (double) TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_NEGATIVES);
+        }
+
+        double getPrecision() {
+            // precision = TP/(TP + FP)
+            return (double) TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_POSITIVES);
+        }
+
+        double getAccuracy() {
+            // accuracy = (TP + FN) / (TP + FP + TN + FN)
+            // this is the fraction of sites correctly genotyped
+            return (double)(TRUE_POSITIVES + TRUE_NEGATIVES)/(double)(TRUE_POSITIVES + FALSE_POSITIVES + TRUE_NEGATIVES + FALSE_NEGATIVES);
+        }
+
+        void incrementMetrics(final ConcordanceState concordanceState) {
+            switch (concordanceState) {
+                case TRUE_POSITIVE:
+                    TRUE_POSITIVES++;
+                    break;
+                case TRUE_NEGATIVE:
+                case FILTERED_TRUE_NEGATIVE:
+                    TRUE_NEGATIVES++;
+                    break;
+                case FALSE_POSITIVE:
+                    FALSE_POSITIVES++;
+                    break;
+                case FALSE_NEGATIVE:
+                case FILTERED_FALSE_NEGATIVE:
+                    FALSE_NEGATIVES++;
+            }
+        }
+    }
+}

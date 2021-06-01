@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.vcf.VCFHeader;
@@ -10,12 +12,15 @@ import org.apache.commons.collections4.Predicate;
 import org.apache.commons.collections4.iterators.FilterIterator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.File;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -24,7 +29,6 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
-import java.util.function.BiFunction;
 import java.util.stream.StreamSupport;
 
 /**
@@ -32,7 +36,7 @@ import java.util.stream.StreamSupport;
  * with optional contextual information from a reference, sets of reads, and/or supplementary sources of
  * Features.
  *
- * Subclasses must implement the {@link #apply} and {@link #makeMatchVariantsFunction} methods to process each variant
+ * Subclasses must implement the {@link #apply} and {@link #shouldVariantsBeMatched} methods to process each variant
  * and may optionally implement {@link #onTraversalStart} and/or {@link #onTraversalSuccess}.
  *
  * Created by Takuto Sato 1/30/17, abstractified by David Benjamin on 2/22/17.
@@ -69,6 +73,46 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
     protected SAMSequenceDictionary dict;
     private VariantContextComparator variantContextComparator;
 
+    // for indices, false -> 0, true -> 1
+    private ConcordanceState[][][][] concordanceStatesTable =
+            {// isFiltered = false
+                {// genotypedAgree = false
+                    {//truth-
+                        //eval- , eval+
+                        {null, ConcordanceState.FALSE_POSITIVE},
+                     //truth+
+                        //eval - , eval +
+                        {ConcordanceState.FALSE_NEGATIVE, ConcordanceState.FALSE_POSITIVE}
+                    },
+                 // genotypesAgree = true
+                    {//truth-
+                        //eval- , eval+
+                        {ConcordanceState.TRUE_NEGATIVE, null},
+                     //truth+
+                        //eval-, eval+
+                        {null, ConcordanceState.TRUE_POSITIVE}
+                    }
+                },
+             // isFiltered = true
+                {// genotypedAgree = false
+                    {//truth-
+                        //eval- , eval+
+                        {ConcordanceState.TRUE_NEGATIVE, ConcordanceState.FILTERED_TRUE_NEGATIVE},
+                    //truth+
+                        //eval - , eval +
+                        {ConcordanceState.FALSE_NEGATIVE, ConcordanceState.FILTERED_FALSE_NEGATIVE}
+                    },
+                // genotypesAgree = true
+                    {//truth-
+                        //eval- , eval+
+                        {ConcordanceState.TRUE_NEGATIVE, null},
+                     //truth+
+                        //eval-, eval+
+                        {null, ConcordanceState.FILTERED_FALSE_NEGATIVE}
+                    }
+                }
+            };
+
     // Overriding the superclass method to favor the truth variants' dictionary
     @Override
     public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
@@ -94,46 +138,12 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
     // this may often be overridden
     protected Predicate<VariantContext> makeEvalVariantFilter() { return vc -> true; }
 
-    /* this function takes a list of truth variant contexts (the first parameter) and a list of eval variant contexts (the second parameter) at the same positions, and returns a queue of TruthVersusEval objects which
-    has matched the eval records with the truth records they should be compared to.  This comes into play if multiallelics have been split, for example.
-     */
-    protected BiFunction<List<VariantContext>, List<VariantContext>, Queue<TruthVersusEval>> makeMatchVariantsFunction() {
-        return (u,v) -> {
-            //match based onshouldVariantsBeMatched
-            //we expect only a small number of variants in each list, so we loop through, as the overhead of a map removes its speed advantage
-            final Queue<TruthVersusEval> queue = new ArrayDeque<>();
-            Set<VariantContext> unmatchedTruth  = new HashSet<>(u);
-            for (final VariantContext eval : v) {
-                boolean matched = false;
-                for (final VariantContext truth : u) {
-                    if (shouldVariantsBeMatched(truth, eval)) {
-                        if (!matched) {
-                            queue.add(new TruthVersusEval(truth, eval));
-                            matched = true;
-                        }
-                        unmatchedTruth.remove(truth);
-                    }
-                }
-                if (!matched) {
-                    queue.add(TruthVersusEval.evalOnly(eval));
-                }
-            }
-
-            //deal with unmatched truth
-            for (final VariantContext truth : unmatchedTruth) {
-                queue.add(TruthVersusEval.truthOnly(truth));
-            }
-
-            return queue;
-        };
-    }
-
     protected abstract boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval);
 
     private Spliterator<TruthVersusEval> getSpliteratorForDrivingVariants() {
         final Iterator<VariantContext> truthIterator = new FilterIterator<>(truthVariants.iterator(), makeTruthVariantFilter());
         final Iterator<VariantContext> evalIterator = new FilterIterator<>(evalVariants.iterator(), makeEvalVariantFilter());
-        return new ConcordanceIterator(truthIterator, evalIterator, makeMatchVariantsFunction()).spliterator();
+        return new ConcordanceIterator(truthIterator, evalIterator).spliterator();
     }
 
     // ********** The basic traversal structure of GATKTool
@@ -203,6 +213,59 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
         return (VCFHeader)header;
     }
 
+    protected ConcordanceState getConcordanceState(final Genotype truth, final Genotype eval, final boolean evalWasFiltered) {
+        final boolean isTruthPositive = truth != null && isPositive(truth);
+        final boolean isEvalPositive = eval != null && isPositive(eval);
+        final boolean genotypesAgree;
+        if (eval == null) {
+            genotypesAgree = !isTruthPositive;
+        } else if (truth == null) {
+            genotypesAgree = !isEvalPositive;
+        } else {
+            genotypesAgree = genotypesAgree(truth, eval);
+        }
+
+        return evaluateConcordanceState(isEvalPositive, isTruthPositive, genotypesAgree, evalWasFiltered);
+    }
+
+    protected ConcordanceState evaluateConcordanceState(final boolean isPositiveEval, final boolean isPositiveTruth, final boolean genotypesAgree, final boolean evalIsFiltered) {
+        final int isPositiveEvalKey = isPositiveEval ? 1 : 0;
+        final int isPoisitveTruthKey = isPositiveTruth ? 1 : 0;
+        final int genotypesAgreeKey = genotypesAgree ? 1 : 0;
+        final int evalIsFilteredKey = evalIsFiltered ? 1 : 0;
+
+        final ConcordanceState concordanceState = concordanceStatesTable[evalIsFilteredKey][genotypesAgreeKey][isPoisitveTruthKey][isPositiveEvalKey];
+
+        if (concordanceState == null) {
+            throw new GATKException("invalid concordance state table input: isPositiveEval = " + isPositiveEval + ", isPositiveTruth = " + isPositiveTruth + ", genotypesAgree = " + genotypesAgree + ", evalIsFiltered = " + evalIsFiltered);
+        }
+        return concordanceState;
+    }
+
+    private boolean hasNonRefAlleles(final Collection<Allele> alleles) {
+        for (final Allele allele : alleles) {
+            if (allele.isNonReference()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected boolean isPositive(final Genotype genotype) {
+        return hasNonRefAlleles(genotype.getAlleles());
+    }
+
+    protected boolean genotypesAgree(final Genotype geno1, final Genotype geno2) {
+        // we ignore phasing
+        final List<Allele> sortedAlleles1 = new ArrayList<>(geno1.getAlleles());
+        Collections.sort(sortedAlleles1);
+
+        final List<Allele> sortedAlleles2 = new ArrayList<>(geno2.getAlleles());
+        Collections.sort(sortedAlleles2);
+
+        return sortedAlleles1.equals(sortedAlleles2);
+    }
+
     /**
      * encapsulate the iteration over truth and eval.  hasNext() returns true if either the truth or eval iterator have
      * any variants remaining.  next() produces variants in genomic order, along with their concordance state of
@@ -215,14 +278,11 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
     private class ConcordanceIterator implements Iterator<TruthVersusEval> {
         private final PeekableIterator<VariantContext> truthIterator;
         private final PeekableIterator<VariantContext> evalIterator;
-        private final BiFunction<List<VariantContext>, List<VariantContext>, Queue<TruthVersusEval>> matchVariantsFunction;
         private final Queue<TruthVersusEval> truthVersusEvalQueue = new ArrayDeque<>();
 
-        protected ConcordanceIterator(final  Iterator<VariantContext> truthIterator, final Iterator<VariantContext> evalIterator,
-                                      final BiFunction<List<VariantContext>, List<VariantContext>, Queue<TruthVersusEval>> matchVariantsFunction) {
+        protected ConcordanceIterator(final  Iterator<VariantContext> truthIterator, final Iterator<VariantContext> evalIterator) {
             this.truthIterator = new PeekableIterator<>(truthIterator);
             this.evalIterator = new PeekableIterator<>(evalIterator);
-            this.matchVariantsFunction = matchVariantsFunction;
         }
 
         public boolean hasNext() { return truthIterator.hasNext() || evalIterator.hasNext() || !truthVersusEvalQueue.isEmpty(); }
@@ -253,9 +313,16 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
 
                 //if there is only one truth and eval at this location, can just return those, otherwise need to match using matching function
                 if (evalVariants.size() == 1 && truthVariants.size() == 1) {
-                    return new TruthVersusEval(evalVariants.get(0), truthVariants.get(0));
+                    final VariantContext truthVariant = truthVariants.get(0);
+                    final VariantContext evalVariant = evalVariants.get(0);
+                    if (shouldVariantsBeMatched(truthVariant, evalVariant)) {
+                        return new TruthVersusEval(truthVariant, evalVariant);
+                    } else {
+                        truthVersusEvalQueue.add(TruthVersusEval.evalOnly(evalVariant));
+                        return TruthVersusEval.truthOnly(truthVariant);
+                    }
                 } else {
-                    truthVersusEvalQueue.addAll(matchVariantsFunction.apply(evalVariants, truthVariants));
+                    truthVersusEvalQueue.addAll(matchVariants(truthVariants, evalVariants));
                     return truthVersusEvalQueue.poll();
                 }
             }
@@ -271,6 +338,35 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
             }
 
             return variants;
+        }
+
+        protected Queue<TruthVersusEval> matchVariants(final List<VariantContext> truthVariants, final List<VariantContext> evalVariants) {
+                //match based on shouldVariantsBeMatched
+                //we expect only a small number of variants in each list, so we a loop is fine
+            final Queue<TruthVersusEval> queue = new ArrayDeque<>();
+            Set<VariantContext> unmatchedTruth  = new HashSet<>(truthVariants);
+            for (final VariantContext eval : evalVariants) {
+                boolean matched = false;
+                for (final VariantContext truth : truthVariants) {
+                    if (shouldVariantsBeMatched(truth, eval)) {
+                        if (!matched) {
+                            queue.add(new TruthVersusEval(truth, eval));
+                            matched = true;
+                        }
+                        unmatchedTruth.remove(truth);
+                    }
+                }
+                if (!matched) {
+                    queue.add(TruthVersusEval.evalOnly(eval));
+                }
+            }
+
+            //deal with unmatched truth
+            for (final VariantContext truth : unmatchedTruth) {
+                queue.add(TruthVersusEval.truthOnly(truth));
+            }
+
+            return queue;
         }
 
         private Spliterator<TruthVersusEval> spliterator() {
@@ -300,12 +396,10 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
         }
 
         public VariantContext getTruth() {
-            Utils.validateArg(truth != null, () -> "This is variant has no truth VariantContext.");
             return truth;
         }
 
         public VariantContext getEval() {
-            Utils.validateArg(eval != null, () -> "This is variant has no eval VariantContext.");
             return eval;
         }
 
