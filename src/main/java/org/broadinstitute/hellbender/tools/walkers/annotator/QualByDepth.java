@@ -34,7 +34,7 @@ import java.util.Map;
  * <p>QUAL/AD = 4107.13/356 = 11.54 = QD</p>
  *
  * <h3>Caveat</h3>
- * <p>This annotation can only be calculated for sites for which at least one sample was genotyped as carrying a variant allele.</p>
+ * <p>This annotation can only be calculated for sites for which at least one sample was genotyped as carrying a variant allele. Note that for annotations over 35, GATK corrects the annotation by assigning it to a random number around of 30.</p>
  *
  * <h3>Related annotations</h3>
  * <ul>
