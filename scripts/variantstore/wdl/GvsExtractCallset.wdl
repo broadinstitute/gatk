@@ -43,12 +43,20 @@ workflow GvsExtractCallset {
           scatter_count = scatter_count
     }
 
-    call GetLastModifiedDateOrUniqueValue {
+    call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
         input:
            data_project = data_project,
            default_dataset = default_dataset,
            service_account_json = service_account_json,
-           dataset_table = "alt_allele"
+           dataset_table = "fq_cohort_extract_table"
+    }
+
+    call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
+        input:
+           data_project = data_project,
+           default_dataset = default_dataset,
+           service_account_json = service_account_json,
+           dataset_table = "fq_samples_to_extract_table"
     }
 
     scatter(i in range(scatter_count) ) {
@@ -73,7 +81,7 @@ workflow GvsExtractCallset {
                 emit_pls                 = emit_pls,
                 service_account_json     = service_account_json,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
-                last_modified_timestamp  = GetLastModifiedDateOrUniqueValue.last_modified_timestamp
+                last_modified_timestamps = [fq_cohort_extract_table_datetime.last_modified_timestamp, fq_samples_to_extract_table_datetime.last_modified_timestamp]
         }
     }
 }
@@ -112,8 +120,8 @@ task ExtractTask {
 
         Int? local_sort_max_records_in_ram = 10000000
 
-        # for call-caching -- check if DB hasn't been updated since the last run
-        String last_modified_timestamp
+        # for call-caching -- check if DB tables haven't been updated since the last run
+        Array[String] last_modified_timestamps
     }
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
@@ -232,7 +240,7 @@ task ExtractTask {
      }
  }
 
-task GetLastModifiedDateOrUniqueValue {
+task GetBQTableLastModifiedDatetime {
     # because this is being used to determine if the data has changed, never use call cache
     meta {
         volatile: true
@@ -248,9 +256,10 @@ task GetLastModifiedDateOrUniqueValue {
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
     # ------------------------------------------------
-    # try to get the last modified date for the table in question; if something comes back from BigQuwey
-    # that isn't in the right format (e.g. an error), throw it away and generate something unique
+    # try to get the last modified date for the table in question; fail if something comes back from BigQuwey
+    # that isn't in the right format (e.g. an error)
     command {
+        set -e
         if [ ~{has_service_account_file} = 'true' ]; then
             gcloud auth activate-service-account --key-file='~{service_account_json}'
         fi
@@ -260,7 +269,7 @@ task GetLastModifiedDateOrUniqueValue {
         if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
             echo $LASTMODIFIED
         else
-            date +"%s.%N"
+            return 1
         fi
     }
 
