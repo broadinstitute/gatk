@@ -43,6 +43,14 @@ workflow GvsExtractCallset {
           scatter_count = scatter_count
     }
 
+    call GetLastModifiedDateOrUniqueValue {
+        input:
+           data_project = data_project,
+           default_dataset = default_dataset,
+           service_account_json = service_account_json,
+           dataset_table = "alt_allele"
+    }
+
     scatter(i in range(scatter_count) ) {
         call ExtractTask {
             input:
@@ -64,18 +72,14 @@ workflow GvsExtractCallset {
                 excluded_intervals       = excluded_intervals,
                 emit_pls                 = emit_pls,
                 service_account_json     = service_account_json,
-                output_file              = "${output_file_base_name}_${i}.vcf.gz"
+                output_file              = "${output_file_base_name}_${i}.vcf.gz",
+                last_modified_timestamp  = GetLastModifiedDateOrUniqueValue.last_modified_timestamp
         }
     }
 }
 
 ################################################################################
 task ExtractTask {
-    # indicates that this task should NOT be call cached
-    meta {
-       volatile: true
-    }
-
     input {
         # ------------------------------------------------
         # Input args:
@@ -107,6 +111,9 @@ task ExtractTask {
         File? gatk_override
 
         Int? local_sort_max_records_in_ram = 10000000
+
+        # for call-caching -- check if DB hasn't been updated since the last run
+        String last_modified_timestamp
     }
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
@@ -225,5 +232,47 @@ task ExtractTask {
      }
  }
 
+task GetLastModifiedDateOrUniqueValue {
+    # because this is being used to determine if the data has changed, never use call cache
+    meta {
+        volatile: true
+    }
 
+    input {
+        String data_project
+        String default_dataset
+        String dataset_table
+        File? service_account_json
+    }
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
+    # ------------------------------------------------
+    # try to get the last modified date for the table in question; if something comes back from BigQuwey
+    # that isn't in the right format (e.g. an error), throw it away and generate something unique
+    command {
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+        fi
+
+        LASTMODIFIED=$(bq show --location=US --format=json --project_id=~{data_project} ~{default_dataset}.~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+
+        if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
+            echo $LASTMODIFIED
+        else
+            date +"%s.%N"
+        fi
+    }
+
+    output {
+        String last_modified_timestamp = read_string(stdout())
+    }
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+}
