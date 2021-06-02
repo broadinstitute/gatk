@@ -20,10 +20,38 @@ class ExtractCohortTest extends CommandLineProgramTest {
     // SELECT * FROM `spec-ops-aou.anvil_100_for_testing.exported_cohort_all_samples`
     // where location < 20000000200000 and location >= 20000000100000
     // and (sample_name="HG00405" or sample_name="HG00418" or sample_name="HG00408")
-    final File expectedVCF = getTestFile("expected.vcf");
+    final File expectedVCF = getTestFile("expected_extract.vcf");
 
     // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
-    final File outputVCF = createTempFile("output", "vcf");
+    final File outputVCF = createTempFile("extract_output", "vcf");
+
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    args
+        .add("mode", "GENOMES")
+        .add("ref-version", 38)
+        .add("R", hg38Reference)
+        .add("O", outputVCF.getAbsolutePath())
+        .add("local-sort-max-records-in-ram", 10000000)
+        .add("cohort-avro-file-name", cohortAvroFileName)
+        .add("sample-file", sampleFile)
+        .add("emit-pls", false)
+        .add("vqslod-filter-genotypes", false);
+
+    runCommandLine(args);
+    IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
+  }
+
+  @Test
+  public void testFinalVCFfromAvroWGnarly() throws Exception {
+    // To create the expectedVCF file (of expected output) --create a temp table in BQ with the following query
+    // and then export it through the BQ GUI as an avro file into GCS.
+    // SELECT * FROM `spec-ops-aou.anvil_100_for_testing.exported_cohort_all_samples`
+    // where location < 20000000200000 and location >= 20000000100000
+    // and (sample_name="HG00405" or sample_name="HG00418" or sample_name="HG00408")
+    final File expectedVCF = getTestFile("gnarly_expected_extract.vcf");
+
+    // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
+    final File outputVCF = createTempFile("gnarly_extract_output", "vcf");
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -37,7 +65,6 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("emit-pls", false)
         .add("disable-gnarly", false)
         .add("vqslod-filter-genotypes", false);
-
 
     runCommandLine(args);
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
