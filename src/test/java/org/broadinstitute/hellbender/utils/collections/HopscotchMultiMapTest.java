@@ -1,7 +1,7 @@
-package org.broadinstitute.hellbender.tools.spark.utils;
+package org.broadinstitute.hellbender.utils.collections;
 
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMapTest.IntPair;
+import org.broadinstitute.hellbender.utils.collections.HopscotchMapTest.IntPair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;

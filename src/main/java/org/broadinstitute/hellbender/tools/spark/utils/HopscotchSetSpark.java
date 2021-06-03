@@ -14,12 +14,12 @@ import java.util.function.BiPredicate;
  * Implements Set by imposing a unique-element constraint on HopscotchCollection.
  * Also implements equals and hashCode to be consistent with the documented requirements of the java Set interface.
  */
-@DefaultSerializer(HopscotchSet.Serializer.class)
-public class HopscotchSet<T> extends HopscotchCollection<T> implements Set<T> {
-    public HopscotchSet() {}
-    public HopscotchSet( final int capacity ) { super(capacity); }
-    public HopscotchSet( final Collection<? extends T> collection ) { super(collection); }
-    protected HopscotchSet( final Kryo kryo, final Input input ) { super(kryo, input); }
+@DefaultSerializer(HopscotchSetSpark.Serializer.class)
+public class HopscotchSetSpark<T> extends HopscotchCollectionSpark<T> implements Set<T> {
+    public HopscotchSetSpark() {}
+    public HopscotchSetSpark( final int capacity ) { super(capacity); }
+    public HopscotchSetSpark( final Collection<? extends T> collection ) { super(collection); }
+    protected HopscotchSetSpark( final Kryo kryo, final Input input ) { super(kryo, input); }
 
     @Override
     public final boolean equals( final Object obj ) {
@@ -38,15 +38,15 @@ public class HopscotchSet<T> extends HopscotchCollection<T> implements Set<T> {
     protected BiPredicate<T, T> entryCollides() { return Object::equals; }
 
     @SuppressWarnings("rawtypes")
-    public static final class Serializer extends com.esotericsoftware.kryo.Serializer<HopscotchSet> {
+    public static final class Serializer extends com.esotericsoftware.kryo.Serializer<HopscotchSetSpark> {
         @Override
-        public void write( final Kryo kryo, final Output output, final HopscotchSet hopscotchSet ) {
-            hopscotchSet.serialize(kryo, output);
+        public void write( final Kryo kryo, final Output output, final HopscotchSetSpark hopscotchSetSpark ) {
+            hopscotchSetSpark.serialize(kryo, output);
         }
 
         @Override
-        public HopscotchSet read( final Kryo kryo, final Input input, final Class<HopscotchSet> klass ) {
-            return new HopscotchSet(kryo, input);
+        public HopscotchSetSpark read( final Kryo kryo, final Input input, final Class<HopscotchSetSpark> klass ) {
+            return new HopscotchSetSpark(kryo, input);
         }
     }
 }

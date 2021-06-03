@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMapSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
@@ -20,10 +20,10 @@ import java.util.function.Function;
 public final class QNamesForKmersFinder implements Function<GATKRead, Iterator<Tuple2<SVKmer, String>>> {
     private final int kSize;
     private final SVReadFilter filter;
-    private final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap;
+    private final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmerMultiMap;
 
     public QNamesForKmersFinder( final int kSize,
-                                 final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap,
+                                 final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmerMultiMap,
                                  final SVReadFilter filter ) {
         this.kSize = kSize;
         this.kmerMultiMap = kmerMultiMap;

@@ -1,14 +1,11 @@
-package org.broadinstitute.hellbender.tools.spark.utils;
+package org.broadinstitute.hellbender.utils.collections;
 
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -51,7 +48,7 @@ public final class HopscotchCollectionTest extends GATKBaseTest {
     @Test
     void addTest() {
         final HopscotchCollection<Integer> hopscotchCollection = new HopscotchCollection<>(testVals.size());
-        testVals.stream().forEach(hopscotchCollection::add);
+        hopscotchCollection.addAll(testVals);
         Assert.assertEquals(hopscotchCollection.size(), testVals.size());
         Assert.assertTrue(hopscotchCollection.containsAll(testVals));
     }
@@ -145,7 +142,7 @@ public final class HopscotchCollectionTest extends GATKBaseTest {
     void removeEachTest() {
         final HopscotchCollection<Integer> hopscotchCollection = new HopscotchCollection<>(testVals);
         Assert.assertFalse(hopscotchCollection.removeEach(notInTestVals));
-        for ( final Integer value : new HashSet<Integer>(testVals) ) {
+        for ( final Integer value : new HashSet<>(testVals) ) {
             Assert.assertTrue(hopscotchCollection.removeEach(value));
         }
         Assert.assertTrue(hopscotchCollection.isEmpty());
@@ -154,9 +151,9 @@ public final class HopscotchCollectionTest extends GATKBaseTest {
     @Test
     void removeAllTest() {
         final HopscotchCollection<Integer> hopscotchCollection = new HopscotchCollection<>(testVals);
-        Assert.assertFalse(hopscotchCollection.removeAll(Arrays.asList(notInTestVals)));
-        Assert.assertTrue(hopscotchCollection.removeAll(Arrays.asList(testVals.get(0))));
-        Assert.assertTrue(hopscotchCollection.removeAll(new HashSet<Integer>(testVals)));
+        Assert.assertFalse(hopscotchCollection.removeAll(Collections.singletonList(notInTestVals)));
+        Assert.assertTrue(hopscotchCollection.removeAll(Collections.singletonList(testVals.get(0))));
+        Assert.assertTrue(hopscotchCollection.removeAll(new HashSet<>(testVals)));
         Assert.assertTrue(hopscotchCollection.isEmpty());
     }
 
