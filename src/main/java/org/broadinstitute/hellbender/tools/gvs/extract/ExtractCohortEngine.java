@@ -35,8 +35,6 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static htsjdk.variant.variantcontext.VariantContextUtils.calculateChromosomeCounts;
-
 public class ExtractCohortEngine {
     private static final Logger logger = LogManager.getLogger(ExtractCohortEngine.class);
 
