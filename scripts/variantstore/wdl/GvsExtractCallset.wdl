@@ -266,7 +266,7 @@ task GetBQTableLastModifiedDatetime {
         if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
             echo $LASTMODIFIED
         else
-            return 1
+            exit 1
         fi
     }
 
