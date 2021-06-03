@@ -34,6 +34,9 @@ workflow GvsExtractCallset {
         File? gatk_override
     }
 
+    String fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES"
+    String fq_cohort_extract_table  = "~{fq_cohort_extract_table_prefix}__DATA"
+
     call SplitIntervals {
       input:
           intervals = wgs_intervals,
@@ -45,18 +48,14 @@ workflow GvsExtractCallset {
 
     call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
         input:
-           data_project = data_project,
-           default_dataset = default_dataset,
-           service_account_json = service_account_json,
-           dataset_table = "fq_cohort_extract_table"
+            dataset_table = fq_cohort_extract_table,
+            service_account_json = service_account_json
     }
 
     call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
         input:
-           data_project = data_project,
-           default_dataset = default_dataset,
-           service_account_json = service_account_json,
-           dataset_table = "fq_samples_to_extract_table"
+            dataset_table = fq_samples_to_extract_table,
+            service_account_json = service_account_json
     }
 
     scatter(i in range(scatter_count) ) {
@@ -66,9 +65,9 @@ workflow GvsExtractCallset {
                 reference                = reference,
                 reference_index          = reference_index,
                 reference_dict           = reference_dict,
-                fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES",
+                fq_samples_to_extract_table = fq_samples_to_extract_table,
                 intervals                = SplitIntervals.interval_files[i],
-                fq_cohort_extract_table  = "~{fq_cohort_extract_table_prefix}__DATA",
+                fq_cohort_extract_table  = fq_cohort_extract_table,
                 read_project_id          = query_project,
                 do_not_filter_override   = do_not_filter_override,
                 fq_filter_set_info_table = fq_filter_set_info_table,
@@ -81,7 +80,7 @@ workflow GvsExtractCallset {
                 emit_pls                 = emit_pls,
                 service_account_json     = service_account_json,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
-                last_modified_timestamps = [fq_cohort_extract_table_datetime.last_modified_timestamp, fq_samples_to_extract_table_datetime.last_modified_timestamp]
+                last_modified_timestamps = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp]
         }
     }
 }
@@ -247,8 +246,6 @@ task GetBQTableLastModifiedDatetime {
     }
 
     input {
-        String data_project
-        String default_dataset
         String dataset_table
         File? service_account_json
     }
@@ -264,7 +261,7 @@ task GetBQTableLastModifiedDatetime {
             gcloud auth activate-service-account --key-file='~{service_account_json}'
         fi
 
-        LASTMODIFIED=$(bq show --location=US --format=json --project_id=~{data_project} ~{default_dataset}.~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+        LASTMODIFIED=$(bq show --location=US --format=json ~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
 
         if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
             echo $LASTMODIFIED
