@@ -236,7 +236,7 @@ public class ExtractCohort extends ExtractTool {
         progressMeter.setRecordsBetweenTimeChecks(100L);
 
         if ( filterSetInfoTableName == null || filterSetInfoTableName.equals("") ) {
-            logger.warn("--variant-filter-table is not specified, no filtering of cohort! ");
+            logger.warn("--filter-set-info-table is not specified, no filtering of cohort! ");
         }
 
         engine.traverse();
