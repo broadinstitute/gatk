@@ -10,7 +10,7 @@ import java.util.Objects;
 public class ExtractCohortRecord implements Locatable {
 
     private final Long location;
-    private final String sampleName;
+    private final Long sampleId;
     private final String contig;
     private final Integer start;
     private final Integer end;
@@ -28,7 +28,7 @@ public class ExtractCohortRecord implements Locatable {
     // COHORT_FIELDS
 //    public static final ImmutableSet<String> COHORT_FIELDS = ImmutableSet.of(
 //            SchemaUtils.LOCATION_FIELD_NAME,
-//            SchemaUtils.SAMPLE_NAME_FIELD_NAME,
+//            SchemaUtils.SAMPLE_ID_FIELD_NAME,
 //            SchemaUtils.STATE_FIELD_NAME,
 //            SchemaUtils.REF_ALLELE_FIELD_NAME,
 //            SchemaUtils.ALT_ALLELE_FIELD_NAME,
@@ -41,7 +41,7 @@ public class ExtractCohortRecord implements Locatable {
 
     public ExtractCohortRecord(GenericRecord genericRecord) {
         this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-        this.sampleName = genericRecord.get(SchemaUtils.SAMPLE_NAME_FIELD_NAME).toString();
+        this.sampleId = Long.parseLong(genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME).toString());
         this.contig = SchemaUtils.decodeContig(location);
         this.start = SchemaUtils.decodePosition(location);
         this.end = start;
@@ -69,7 +69,7 @@ public class ExtractCohortRecord implements Locatable {
 
     public long getLocation() { return this.location; }
 
-    public String getSampleName() { return this.sampleName; }
+    public Long getSampleId() { return this.sampleId; }
 
     public String getState() { return this.state; }
 

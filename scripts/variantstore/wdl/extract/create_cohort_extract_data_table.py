@@ -223,40 +223,70 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
 
 
 def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_data, fq_sample_mapping_table):
+  # first, create the table structure
   sql = f"""
         CREATE OR REPLACE TABLE `{fq_destination_table_data}` 
-        PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
-        CLUSTER BY location
-        {FINAL_TABLE_TTL}
-        as (SELECT
-            new_pet.location,
-            s.sample_name as sample_name,
-            new_pet.state,
-            new_vet.ref,
-            REPLACE(new_vet.alt,",<NON_REF>","") alt,
-            new_vet.call_GT,
-            new_vet.call_GQ,
-            cast(SPLIT(new_vet.call_pl,",")[OFFSET(0)] as int64) as call_RGQ,
-            new_vet.QUALapprox,
-            new_vet.AS_QUALapprox,
-            new_vet.call_PL
-          FROM
-            `{fq_temp_table_dataset}.{PET_NEW_TABLE}` new_pet
-          LEFT OUTER JOIN
-            `{fq_temp_table_dataset}.{VET_NEW_TABLE}`  new_vet
-          ON (new_pet.location = new_vet.location AND new_pet.sample_id = new_vet.sample_id)
-          LEFT OUTER JOIN
-            `{fq_sample_mapping_table}` s ON (new_pet.sample_id = s.sample_id))
-      """
+        (
+              location      INT64,
+              sample_id	    INT64,
+              state	        STRING,
+              ref	        STRING,
+              alt	        STRING,
+              call_GT	    STRING,
+              call_GQ	    INT64,
+              call_RGQ	    INT64,
+              QUALapprox	STRING,
+              AS_QUALapprox	STRING,
+              call_PL	    STRING	
+        )
+          PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
+          CLUSTER BY location
+          {FINAL_TABLE_TTL}        
+        """
   print(sql)
-  existing_labels = client._default_query_job_config.labels
-  job_labels = existing_labels
-  job_labels["gvs_query_name"] = "populate-final-extract-table"
-  job_config = bigquery.QueryJobConfig(labels=job_labels)
-  cohort_extract_final_query_job = client.query(sql, job_config=job_config)
+  results = execute_with_retry("create final export table", sql)
 
-  cohort_extract_final_query_job.result()
-  JOB_IDS.add((f"insert final cohort table {fq_destination_table_data}", cohort_extract_final_query_job.job_id))
+  sql = f"""
+        INSERT INTO `{fq_destination_table_data}`
+            SELECT
+              location,
+              sample_id,
+              'v',
+              ref,
+              REPLACE(alt,",<NON_REF>","") alt,
+              call_GT,
+              call_GQ,
+              cast(SPLIT(call_pl,",")[OFFSET(0)] as int64) as call_RGQ,
+              QUALapprox,
+              AS_QUALapprox,
+              call_PL
+            FROM
+              `{fq_temp_table_dataset}.{VET_NEW_TABLE}`
+        """
+  print(sql)
+  results = execute_with_retry("populate-final-export-vet", sql)
+
+  # TODO: once this has stabilized, we could filter out 'v' rows when creating PET_NEW
+  sql = f"""
+        INSERT INTO `{fq_destination_table_data}`
+            SELECT
+              location,
+              sample_id,
+              state,
+              NULL as ref,
+              NULL as alt,
+              NULL as call_GT,
+              NULL as call_GQ,
+              NULL as  call_RGQ,
+              NULL as QUALapprox,
+              NULL as AS_QUALapprox,
+              NULL as call_PL
+            FROM
+              `{fq_temp_table_dataset}.{PET_NEW_TABLE}`
+            WHERE state != 'v'
+        """
+  print(sql)
+  results = execute_with_retry("populate-final-export-pet", sql)
   return
 
 def make_extract_table(fq_pet_vet_dataset,
@@ -297,7 +327,7 @@ def make_extract_table(fq_pet_vet_dataset,
     #Default QueryJobConfig will be merged into job configs passed in
     #but if a specific default config is being updated (eg labels), new config must be added
     #to the client._default_query_job_config that already exists
-    default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=False)
+    default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True)
 
     if sa_key_path:
       credentials = service_account.Credentials.from_service_account_file(
