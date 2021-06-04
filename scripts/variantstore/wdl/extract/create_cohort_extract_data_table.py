@@ -230,21 +230,21 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_dat
               location      INT64,
               sample_id	    INT64,
               state	        STRING,
-              ref	        STRING,
-              alt	        STRING,
-              call_GT	    STRING,
-              call_GQ	    INT64,
-              call_RGQ	    INT64,
-              QUALapprox	STRING,
-              AS_QUALapprox	STRING,
-              call_PL	    STRING	
+              ref           STRING,
+              alt           STRING,
+              call_GT       STRING,
+              call_GQ       INT64,
+              call_RGQ      INT64,
+              QUALapprox    STRING,
+              AS_QUALapprox STRING,
+              call_PL       STRING	
         )
           PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
           CLUSTER BY location
           {FINAL_TABLE_TTL}        
         """
   print(sql)
-  results = execute_with_retry("create final export table", sql)
+  results = execute_with_retry("create-final-export-table", sql)
 
   sql = f"""
         INSERT INTO `{fq_destination_table_data}`
@@ -266,7 +266,7 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_dat
   print(sql)
   results = execute_with_retry("populate-final-export-vet", sql)
 
-  # TODO: once this has stabilized, we could filter out 'v' rows when creating PET_NEW
+  # NOTE: once this has stabilized, we could filter out 'v' rows when creating PET_NEW
   sql = f"""
         INSERT INTO `{fq_destination_table_data}`
             SELECT

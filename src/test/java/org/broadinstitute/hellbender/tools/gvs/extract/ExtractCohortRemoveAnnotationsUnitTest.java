@@ -9,6 +9,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
 
 public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
@@ -24,7 +25,7 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 testVCFHeader,
                 null,
                 null,
-                null,
+                new HashMap<Long, String>(),
                 null,
                 "spec-ops-aou.kc_high_cov_ccdg.exported_cohort_100_test",
                 null,
