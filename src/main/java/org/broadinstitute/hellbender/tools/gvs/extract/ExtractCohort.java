@@ -102,6 +102,7 @@ public class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
+            mutex = {"snps-lod-score-cutoff"},
             doc = "The truth sensitivity level at which to start filtering SNPs",
             optional = true
     )
@@ -109,6 +110,7 @@ public class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "indels-truth-sensitivity-filter-level",
+            mutex = {"indels-lod-score-cutoff"},
             doc = "The truth sensitivity level at which to start filtering INDELs",
             optional = true
     )
@@ -117,13 +119,15 @@ public class ExtractCohort extends ExtractTool {
     @Advanced
     @Argument(
             fullName = "snps-lod-score-cutoff",
+            mutex = {"snps-truth-sensitivity-filter-level"},
             doc = "The VQSLOD score below which to start filtering SNPs",
             optional = true)
     private Double vqsLodSNPThreshold = null;
 
-    @Advanced
+  @Advanced
     @Argument(
             fullName = "indels-lod-score-cutoff",
+            mutex = {"indels-truth-sensitivity-filter-level"},
             doc = "The VQSLOD score below which to start filtering INDELs",
             optional = true)
     private Double vqsLodINDELThreshold = null;
@@ -143,25 +147,29 @@ public class ExtractCohort extends ExtractTool {
     protected void onStartup() {
         super.onStartup();
 
-        if ( (filterSetInfoTableName != null || filterSetSiteTableName != null) && (filterSetName == null || filterSetName.equals(""))) {
-            throw new UserException("--filter-set-name must be specified if any filtering related operations are requested");
-        }
-
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
-        if (filterSetInfoTableName != null) {
-            FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
-            Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
 
-            if (vqsLodSNPThreshold != null) { // we already have vqslod thresholds directly
-                extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP));
-                extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodINDELThreshold, GATKVCFConstants.INDEL));
-            } else { // using sensitivity threshold inputs; need to convert these to vqslod thresholds
-                vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
-                vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
-                // set headers
-                extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
-                extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
-            }
+        if (filterSetName == null || filterSetName.equals("")) {
+          // Should the below list be expanded?
+          // Technically if any of the filtering params are not null we may want to throw this error? eg performGenotypeVQSLODFiltering!
+          if (filterSetInfoTableName != null || filterSetSiteTableName != null) {
+            throw new UserException("--filter-set-name must be specified if any filtering related operations are requested");
+          }
+        } else {
+
+          FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
+          Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
+
+          if (vqsLodSNPThreshold != null) { // we already have vqslod thresholds directly
+            extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP));
+            extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+          } else { // using sensitivity threshold inputs; need to convert these to vqslod thresholds
+            vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
+            vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
+            // set headers
+            extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+            extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+          }
         }
 
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
