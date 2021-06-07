@@ -58,6 +58,8 @@ public class ExtractCohortEngine {
 
     /** List of sample names seen in the variant data from BigQuery. */
     private Set<String> sampleNames;
+    private Map<Long, String> sampleIdToName;
+
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
     private final boolean disableGnarlyGenotyper;
     private final GnarlyGenotyperEngine gnarlyGenotyper;
@@ -81,7 +83,7 @@ public class ExtractCohortEngine {
                                final VCFHeader vcfHeader,
                                final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
-                               final Set<String> sampleNames,
+                               final Map<Long, String> sampleIdToName,
                                final CommonCode.ModeEnum mode,
                                final String cohortTableName,
                                final String cohortAvroFileName,
@@ -106,7 +108,8 @@ public class ExtractCohortEngine {
         this.projectID = projectID;
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
-        this.sampleNames = sampleNames;
+        this.sampleIdToName = sampleIdToName;
+        this.sampleNames = new HashSet<>(sampleIdToName.values());
         this.mode = mode;
 
         this.cohortTableRef = cohortTableName == null || "".equals(cohortTableName) ? null :
@@ -222,7 +225,6 @@ public class ExtractCohortEngine {
         return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam, true);
     }
 
-
     private void createVariantsFromUnsortedResult(final GATKAvroReader avroReader,
                                                   final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
                                                   final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
@@ -248,7 +250,7 @@ public class ExtractCohortEngine {
 
         sortingCollection.printTempFileStats();
 
-        final Map<String, ExtractCohortRecord> currentPositionRecords = new HashMap<>(sampleNames.size() * 2);
+        final Map<Long, ExtractCohortRecord> currentPositionRecords = new HashMap<>(sampleIdToName.size() * 2);
 
         long currentLocation = -1;
 
@@ -260,7 +262,6 @@ public class ExtractCohortEngine {
 
             if ( intervalsOverlapDetector.overlapsAny(cohortRow) ) {
                 final long location = cohortRow.getLocation();
-                final String sampleName = cohortRow.getSampleName();
 
                 if (location != currentLocation && currentLocation != -1) {
                     ++totalNumberOfSites;
@@ -269,7 +270,7 @@ public class ExtractCohortEngine {
                     currentPositionRecords.clear();
                 }
 
-                currentPositionRecords.merge(sampleName, cohortRow, this::mergeSampleRecord);
+                currentPositionRecords.merge(cohortRow.getSampleId(), cohortRow, this::mergeSampleRecord);
                 currentLocation = location;
             }
         }
@@ -332,7 +333,11 @@ public class ExtractCohortEngine {
         }
 
         for ( final ExtractCohortRecord sampleRecord : sampleRecordsAtPosition ) {
-            final String sampleName = sampleRecord.getSampleName();
+            final String sampleName = sampleIdToName.get(sampleRecord.getSampleId());
+
+            if (sampleName == null) {
+                throw new GATKException("Unable to translate sample id " + sampleRecord.getSampleId() + " to sample name");
+            }
             currentPositionSamplesSeen.add(sampleName);
             ++numRecordsAtPosition;
 
@@ -573,7 +578,11 @@ public class ExtractCohortEngine {
 
         final String contig = sampleRecord.getContig();
         final long startPosition = sampleRecord.getStart();
-        final String sample = sampleRecord.getSampleName();
+        final String sampleName = sampleIdToName.get(sampleRecord.getSampleId());
+
+        if (sampleName == null) {
+            throw new GATKException("Unable to translate sample id " + sampleRecord.getSampleId() + " to sample name");
+        }
 
         builder.chr(contig);
         builder.start(startPosition);
@@ -592,7 +601,7 @@ public class ExtractCohortEngine {
 
         builder.stop(startPosition + alleles.get(0).length() - 1);
 
-        genotypeBuilder.name(sample);
+        genotypeBuilder.name(sampleName);
         vqsLodMap.putIfAbsent(ref, new HashMap<>());
         yngMap.putIfAbsent(ref, new HashMap<>());
 

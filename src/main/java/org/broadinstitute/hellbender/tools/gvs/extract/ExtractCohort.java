@@ -171,9 +171,9 @@ public class ExtractCohort extends ExtractTool {
         }
 
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
-        Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
+        Map<Long, String> sampleIdToName = sampleList.getMap();
 
-        VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary(), extraHeaderLines);
+        VCFHeader header = CommonCode.generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 
@@ -207,7 +207,7 @@ public class ExtractCohort extends ExtractTool {
                 header,
                 annotationEngine,
                 reference,
-                sampleNames,
+                sampleIdToName,
                 mode,
                 cohortTable,
                 cohortAvroFileName,
