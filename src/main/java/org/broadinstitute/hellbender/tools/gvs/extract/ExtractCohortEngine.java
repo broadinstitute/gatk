@@ -23,7 +23,6 @@ import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
@@ -63,8 +62,6 @@ public class ExtractCohortEngine {
     private Map<Long, String> sampleIdToName;
 
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
-    private final boolean disableGnarlyGenotyper;
-    private final GnarlyGenotyperEngine gnarlyGenotyper;
     private final VariantAnnotatorEngine annotationEngine;
 
     private int totalNumberOfVariants = 0;
@@ -102,7 +99,6 @@ public class ExtractCohortEngine {
                                final ProgressMeter progressMeter,
                                final String filterSetName,
                                final boolean emitPLs,
-                               final boolean disableGnarlyGenotyper,
                                final boolean performGenotypeVQSLODFiltering,
                                final boolean excludeFilteredSites
     ) {
@@ -137,9 +133,6 @@ public class ExtractCohortEngine {
 
         this.annotationEngine = annotationEngine;
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-        this.disableGnarlyGenotyper = disableGnarlyGenotyper;
-        this.gnarlyGenotyper = disableGnarlyGenotyper ? null : new GnarlyGenotyperEngine(false, 30, false, emitPLs, true);
-
     }
 
     private final static double INDEL_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.INDEL_HETEROZYGOSITY);
@@ -422,14 +415,11 @@ public class ExtractCohortEngine {
             unmergedCalls.add(createRefSiteVariantContextWithGQ(missingSample, contig, start, refAllele, MISSING_CONF_THRESHOLD));
         }
 
-        // we only need to retain the NonRefSymbolicAllele if we are using gnarly
-        boolean removeNonRefSymbolicAllele = this.disableGnarlyGenotyper;
-
         final VariantContext mergedVC = variantContextMerger.merge(
                 unmergedCalls,
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
-                removeNonRefSymbolicAllele,
+                true,
                 false,
                 true);
 
@@ -437,12 +427,7 @@ public class ExtractCohortEngine {
 
         VariantContext annotatedVC = annotationEngine.annotateContext(mergedVC, new FeatureContext(), referenceContext, null, a -> true);
 
-        final VariantContext genotypedVC = this.disableGnarlyGenotyper ? annotatedVC : gnarlyGenotyper.finalizeGenotype(annotatedVC);
-
-        // Gnarly will indicate dropping a site by returning a null from the finalizeGenotype method
-        if (!this.disableGnarlyGenotyper && genotypedVC == null) {
-            return;
-        }
+        final VariantContext genotypedVC = annotatedVC;
 
         // apply VQSLod-based filters
         VariantContext filteredVC =
@@ -601,7 +586,7 @@ public class ExtractCohortEngine {
         List<Allele> altAlleles = Arrays.stream(sampleRecord.getAltAllele().split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER))
                 .map(altAllele -> Allele.create(altAllele, false)).collect(Collectors.toList());
 
-        // NOTE: gnarly needs this it seems?
+        // NOTE: gnarly needs this it seems? Should it be dropped now that we wont be using gnarly?
         altAlleles.add(Allele.NON_REF_ALLELE);
 
         alleles.addAll(altAlleles);

@@ -87,13 +87,6 @@ public class ExtractCohort extends ExtractTool {
     private boolean emitPLs = false;
 
     @Argument(
-            fullName = "disable-gnarly",
-            doc = "Disable use of GnarlyGenotyper",
-            optional = true
-    )
-    private boolean disableGnarlyGenotyper = true;
-
-    @Argument(
             fullName = "vqslod-filter-genotypes",
             doc = "Should VQSLOD filtering be applied at the genotype level",
             optional = true
@@ -231,7 +224,6 @@ public class ExtractCohort extends ExtractTool {
                 progressMeter,
                 filterSetName,
                 emitPLs,
-                disableGnarlyGenotyper,
                 performGenotypeVQSLODFiltering,
                 excludeFilteredSites);
 
