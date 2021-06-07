@@ -393,7 +393,7 @@ public final class GenomeLocParser {
      * @return
      */
     public GenomeLoc createGenomeLoc(final Feature feature) {
-        return createGenomeLoc(feature.getContig(), feature.getStart(), feature.getEnd());
+        return createGenomeLoc(feature.getContig(), feature.getStart(), feature.getEnd(), true);
     }
 
     /**
@@ -405,7 +405,7 @@ public final class GenomeLocParser {
      */
     public GenomeLoc createGenomeLoc(final Locatable locatable) {
         Utils.nonNull(locatable, "the input locatable cannot be null");
-        return createGenomeLoc(locatable.getContig(), locatable.getStart(), locatable.getEnd());
+        return createGenomeLoc(locatable.getContig(), locatable.getStart(), locatable.getEnd(), true);
     }
 
     /**

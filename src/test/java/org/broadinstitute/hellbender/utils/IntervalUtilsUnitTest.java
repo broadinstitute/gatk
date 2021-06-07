@@ -608,6 +608,13 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         );
     }
 
+    @Test(expectedExceptions = org.broadinstitute.hellbender.exceptions.UserException.class)
+    public void testReasonableErrorWithInvalidBedFile() throws IOException {
+        File outOfBoundsBedFile = new File(INTERVAL_TEST_DATA + "bad_interval_span.bed"); // this bed file has a bogus interval the extends past the end of the
+        // this should throw a user exception because of the invalid interval
+        IntervalUtils.featureFileToIntervals(hg19GenomeLocParser, outOfBoundsBedFile.getAbsolutePath());
+    }
+
     @Test
     public void testResolveAmbiguousIntervalQueryUsingBEDFormat() throws IOException {
         // For the rare case where an interval query is ambiguous, make sure it can be resolved by using a bed file.
