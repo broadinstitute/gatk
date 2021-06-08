@@ -9,7 +9,6 @@ WITH
                FROM `@altAllele`
                WHERE sample_id IN (SELECT sample_id FROM `@sample`)
                @locationStanza
-               @trainingSitesStanza
                GROUP BY 1,2 HAVING SUM(ad) > 1
         )
         GROUP BY location),
@@ -23,7 +22,6 @@ WITH
                FROM `@altAllele`
                WHERE sample_id IN (SELECT sample_id FROM `@sample`)
                @locationStanza
-               @trainingSitesStanza
         )
         GROUP BY location),
      -- sum of qualapprox, count of het,homvar at the site level
@@ -37,7 +35,6 @@ WITH
                FROM `@altAllele`
                WHERE sample_id IN (SELECT sample_id FROM `@sample`)
                @locationStanza
-               @trainingSitesStanza
         )
         GROUP BY location),
    aa_site_allele_info AS (
@@ -47,14 +44,12 @@ WITH
         FROM `@altAllele`
         WHERE sample_id IN (SELECT sample_id FROM `@sample`)
         @locationStanza
-        @trainingSitesStanza
         GROUP BY location),
    hq_genotype_qc AS (
         SELECT location, COUNT(DISTINCT sample_id) hq_genotype_samples
         FROM `@altAllele`
         WHERE sample_id IN (SELECT sample_id FROM `@sample`)
         @locationStanza
-        @trainingSitesStanza
         AND   call_GQ >= @hqGenotypeGQThreshold
         AND   (SELECT SUM(CAST(x AS INT64)) FROM UNNEST(SPLIT(call_AD,",")) x) >= @hqGenotypeDepthThreshold
         AND   ad / (SELECT SUM(CAST(x AS INT64)) FROM UNNEST(SPLIT(call_AD,",")) x) >= @hqGenotypeABThreshold
@@ -105,7 +100,6 @@ WITH
     WHERE allele != '*'
     AND sample_id in (SELECT sample_id from `@sample` )
     @locationStanza
-    @trainingSitesStanza
     GROUP BY 1,2,3
     ) ai
     LEFT JOIN aa_ref_ad_info aaradi ON (ai.location = aaradi.location)

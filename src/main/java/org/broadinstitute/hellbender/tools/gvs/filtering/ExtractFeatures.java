@@ -42,13 +42,6 @@ public class ExtractFeatures extends ExtractTool {
     protected String fqAltAlleleTable = null;
 
     @Argument(
-            fullName = "training-sites-only",
-            doc = "Whether the extract is for training the model (a limited number of sites) or applying the model. Default is applying the model.",
-            optional = true
-    )
-    protected boolean trainingSitesOnly = false;
-
-    @Argument(
         fullName = "use-batch-queries",
         doc = "If true, use batch (rather than interactive) priority queries in BigQuery",
         optional = true)
@@ -124,7 +117,6 @@ public class ExtractFeatures extends ExtractTool {
             header,
             annotationEngine,
             reference,
-            trainingSitesOnly,
             fqAltAlleleTable,
             sampleTableRef,
             traversalIntervals,

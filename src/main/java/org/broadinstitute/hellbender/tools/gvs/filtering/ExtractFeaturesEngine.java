@@ -46,7 +46,6 @@ public class ExtractFeaturesEngine {
 
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
-    private final boolean trainingSitesOnly;
 
     private final ReferenceDataSource refSource;
 
@@ -74,7 +73,6 @@ public class ExtractFeaturesEngine {
                                final VCFHeader vcfHeader,
                                final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
-                               final boolean trainingSitesOnly,
                                final String fqAltAlleleTable,
                                final TableReference sampleListTable,
                                final List<SimpleInterval> traversalIntervals,
@@ -97,7 +95,6 @@ public class ExtractFeaturesEngine {
         this.projectID = projectID;
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
-        this.trainingSitesOnly = trainingSitesOnly;
         this.altAlleleTable = new TableReference(fqAltAlleleTable, SchemaUtils.ALT_ALLELE_FIELDS);
         this.sampleListTable = sampleListTable;
         this.printDebugInformation = printDebugInformation;
@@ -126,7 +123,6 @@ public class ExtractFeaturesEngine {
                                                                                              sampleListTable,
                                                                                              minLocation,
                                                                                              maxLocation,
-                                                                                             trainingSitesOnly,
                                                                                              hqGenotypeGQThreshold,
                                                                                              hqGenotypeDepthThreshold,
                                                                                              hqGenotypeABThreshold);
