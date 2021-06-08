@@ -274,26 +274,28 @@ task GetBQTableLastModifiedDatetime {
     # ------------------------------------------------
     # try to get the last modified date for the table in question; fail if something comes back from BigQuwey
     # that isn't in the right format (e.g. an error)
-    command {
+    command <<<
         set -e
         if [ ~{has_service_account_file} = 'true' ]; then
             gcloud auth activate-service-account --key-file='~{service_account_json}'
         fi
 
+        DATASET_TABLE_COLON=$(echo ~{dataset_table} | sed 's/\./:/')
+
         echo ~{query_project}
         echo ~{dataset_table}
 
-        echo "bq show ~{"--project_id " + query_project} --location=US --format=json ~{dataset_table}"
-        bq show ~{"--project_id " + query_project} --location=US --format=json ~{dataset_table}
+        echo "bq show ~{"--project_id " + query_project} --location=US --format=json ${DATASET_TABLE_COLON}"
+        bq show ~{"--project_id " + query_project} --location=US --format=json ${DATASET_TABLE_COLON}
 
-        LASTMODIFIED=$(bq show  ~{"--project_id " + query_project} --location=US --format=json ~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+        LASTMODIFIED=$(bq show  ~{"--project_id " + query_project} --location=US --format=json ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
 
         if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
             echo $LASTMODIFIED
         else
             exit 1
         fi
-    }
+    >>>
 
     output {
         String last_modified_timestamp = read_string(stdout())
