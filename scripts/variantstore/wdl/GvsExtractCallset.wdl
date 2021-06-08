@@ -280,6 +280,12 @@ task GetBQTableLastModifiedDatetime {
             gcloud auth activate-service-account --key-file='~{service_account_json}'
         fi
 
+        echo ~{query_project}
+        echo ~{dataset_table}
+
+        echo "bq show ~{"--project_id " + query_project} --location=US --format=json ~{dataset_table}"
+        bq show ~{"--project_id " + query_project} --location=US --format=json ~{dataset_table}
+
         LASTMODIFIED=$(bq show  ~{"--project_id " + query_project} --location=US --format=json ~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
 
         if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
