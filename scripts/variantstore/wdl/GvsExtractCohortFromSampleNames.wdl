@@ -12,7 +12,6 @@ workflow GvsExtractCohortFromSampleNames {
     String query_project
     String gvs_project
     String gvs_dataset
-    String fq_gvs_extraction_cohorts_dataset
     String fq_gvs_extraction_destination_dataset
     String fq_gvs_extraction_temp_tables_dataset
     String extraction_uuid
@@ -55,9 +54,9 @@ workflow GvsExtractCohortFromSampleNames {
 
   call GvsExtractCallset.GvsExtractCallset {
     input:
-      data_project = gvs_project, # unused if fq_filter_set_* args are given or filtering is off
+      data_project = gvs_project,
       query_project = query_project,
-      default_dataset = gvs_dataset, # unused if fq_filter_set_* args are given or filtering is off
+      default_dataset = gvs_dataset,
 
       wgs_intervals = wgs_intervals,
       scatter_count = scatter_count,
@@ -70,9 +69,6 @@ workflow GvsExtractCohortFromSampleNames {
 
       do_not_filter_override = do_not_filter_override,
       filter_set_name = filter_set_name,
-      fq_filter_set_info_table =  fq_filter_set_info_table,
-      fq_filter_set_site_table =  fq_filter_set_site_table,
-      fq_filter_set_tranches_table =  fq_filter_set_tranches_table,
       snps_truth_sensitivity_filter_level_override = snps_truth_sensitivity_filter_level_override,
       indels_truth_sensitivity_filter_level_override = indels_truth_sensitivity_filter_level_override,
 

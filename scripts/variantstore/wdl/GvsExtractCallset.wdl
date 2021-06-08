@@ -111,9 +111,9 @@ task ExtractTask {
         String? output_gcs_dir
 
         Boolean do_not_filter_override
-        String? fq_filter_set_info_table
-        String? fq_filter_set_site_table
-        String? fq_filter_set_tranches_table
+        String fq_filter_set_info_table
+        String fq_filter_set_site_table
+        String fq_filter_set_tranches_table
         String? filter_set_name
         Float? snps_truth_sensitivity_filter_level
         Float? indels_truth_sensitivity_filter_level
