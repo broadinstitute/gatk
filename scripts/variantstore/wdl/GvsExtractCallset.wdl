@@ -50,12 +50,14 @@ workflow GvsExtractCallset {
     call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
         input:
             dataset_table = fq_cohort_extract_table,
+            query_project = query_project,
             service_account_json = service_account_json
     }
 
     call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
         input:
             dataset_table = fq_samples_to_extract_table,
+            query_project = query_project,
             service_account_json = service_account_json
     }
 
@@ -263,6 +265,7 @@ task GetBQTableLastModifiedDatetime {
 
     input {
         String dataset_table
+        String query_project
         File? service_account_json
     }
 
@@ -277,7 +280,7 @@ task GetBQTableLastModifiedDatetime {
             gcloud auth activate-service-account --key-file='~{service_account_json}'
         fi
 
-        LASTMODIFIED=$(bq show --location=US --format=json ~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+        LASTMODIFIED=$(bq show  ~{"--project_id " + query_project} --location=US --format=json ~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
 
         if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
             echo $LASTMODIFIED
