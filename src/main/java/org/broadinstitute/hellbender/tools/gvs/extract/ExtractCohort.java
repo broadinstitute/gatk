@@ -128,6 +128,16 @@ public class ExtractCohort extends ExtractTool {
             optional = true)
     private Double vqsLodINDELThreshold = null;
 
+    /**
+    * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than `.` or `PASS`
+    * in the FILTER field) will be excluded from the output.
+    */
+    @Argument(
+            fullName="exclude-filtered",
+            doc="Don't include filtered sites in the final jointVCF",
+            optional=true)
+    private boolean excludeFilteredSites = false;
+
 
     @Override
     protected void onStartup() {
@@ -161,9 +171,9 @@ public class ExtractCohort extends ExtractTool {
         }
 
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
-        Set<String> sampleNames = new HashSet<>(sampleList.getSampleNames());
+        Map<Long, String> sampleIdToName = sampleList.getMap();
 
-        VCFHeader header = CommonCode.generateVcfHeader(sampleNames, reference.getSequenceDictionary(), extraHeaderLines);
+        VCFHeader header = CommonCode.generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 
@@ -197,7 +207,7 @@ public class ExtractCohort extends ExtractTool {
                 header,
                 annotationEngine,
                 reference,
-                sampleNames,
+                sampleIdToName,
                 mode,
                 cohortTable,
                 cohortAvroFileName,
@@ -214,7 +224,9 @@ public class ExtractCohort extends ExtractTool {
                 filterSetName,
                 emitPLs,
                 disableGnarlyGenotyper,
-                performGenotypeVQSLODFiltering);
+                performGenotypeVQSLODFiltering,
+                excludeFilteredSites);
+
         vcfWriter.writeHeader(header);
     }
 

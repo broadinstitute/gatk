@@ -50,6 +50,7 @@ public class ExtractCohortEngine {
     private Double vqsLodSNPThreshold;
     private Double vqsLodINDELThreshold;
     private boolean performGenotypeVQSLODFiltering;
+    private boolean excludeFilteredSites;
 
     private final ProgressMeter progressMeter;
     private final String projectID;
@@ -57,6 +58,8 @@ public class ExtractCohortEngine {
 
     /** List of sample names seen in the variant data from BigQuery. */
     private Set<String> sampleNames;
+    private Map<Long, String> sampleIdToName;
+
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
     private final boolean disableGnarlyGenotyper;
     private final GnarlyGenotyperEngine gnarlyGenotyper;
@@ -80,7 +83,7 @@ public class ExtractCohortEngine {
                                final VCFHeader vcfHeader,
                                final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
-                               final Set<String> sampleNames,
+                               final Map<Long, String> sampleIdToName,
                                final CommonCode.ModeEnum mode,
                                final String cohortTableName,
                                final String cohortAvroFileName,
@@ -97,13 +100,16 @@ public class ExtractCohortEngine {
                                final String filterSetName,
                                final boolean emitPLs,
                                final boolean disableGnarlyGenotyper,
-                               final boolean performGenotypeVQSLODFiltering) {
+                               final boolean performGenotypeVQSLODFiltering,
+                               final boolean excludeFilteredSites
+    ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
-        this.sampleNames = sampleNames;
+        this.sampleIdToName = sampleIdToName;
+        this.sampleNames = new HashSet<>(sampleIdToName.values());
         this.mode = mode;
 
         this.cohortTableRef = cohortTableName == null || "".equals(cohortTableName) ? null :
@@ -120,6 +126,7 @@ public class ExtractCohortEngine {
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
         this.performGenotypeVQSLODFiltering = performGenotypeVQSLODFiltering;
+        this.excludeFilteredSites = excludeFilteredSites;
 
         this.progressMeter = progressMeter;
 
@@ -218,7 +225,6 @@ public class ExtractCohortEngine {
         return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam, true);
     }
 
-
     private void createVariantsFromUnsortedResult(final GATKAvroReader avroReader,
                                                   final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
                                                   final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
@@ -244,7 +250,7 @@ public class ExtractCohortEngine {
 
         sortingCollection.printTempFileStats();
 
-        final Map<String, ExtractCohortRecord> currentPositionRecords = new HashMap<>(sampleNames.size() * 2);
+        final Map<Long, ExtractCohortRecord> currentPositionRecords = new HashMap<>(sampleIdToName.size() * 2);
 
         long currentLocation = -1;
 
@@ -256,7 +262,6 @@ public class ExtractCohortEngine {
 
             if ( intervalsOverlapDetector.overlapsAny(cohortRow) ) {
                 final long location = cohortRow.getLocation();
-                final String sampleName = cohortRow.getSampleName();
 
                 if (location != currentLocation && currentLocation != -1) {
                     ++totalNumberOfSites;
@@ -265,7 +270,7 @@ public class ExtractCohortEngine {
                     currentPositionRecords.clear();
                 }
 
-                currentPositionRecords.merge(sampleName, cohortRow, this::mergeSampleRecord);
+                currentPositionRecords.merge(cohortRow.getSampleId(), cohortRow, this::mergeSampleRecord);
                 currentLocation = location;
             }
         }
@@ -328,7 +333,11 @@ public class ExtractCohortEngine {
         }
 
         for ( final ExtractCohortRecord sampleRecord : sampleRecordsAtPosition ) {
-            final String sampleName = sampleRecord.getSampleName();
+            final String sampleName = sampleIdToName.get(sampleRecord.getSampleId());
+
+            if (sampleName == null) {
+                throw new GATKException("Unable to translate sample id " + sampleRecord.getSampleId() + " to sample name");
+            }
             currentPositionSamplesSeen.add(sampleName);
             ++numRecordsAtPosition;
 
@@ -429,7 +438,7 @@ public class ExtractCohortEngine {
 
         // apply VQSLod-based filters
         VariantContext filteredVC =
-                noVqslodFilteringRequested ? genotypedVC : filterSiteByVQSLOD(genotypedVC, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
+                noVqslodFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQSLOD(genotypedVC, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
 
         // apply SiteQC-based filters, if they exist
         if ( siteFilterMap.containsKey(location) ) {
@@ -450,12 +459,15 @@ public class ExtractCohortEngine {
         final VariantContext finalVC = removeAnnotations(filteredVC);
 
         if ( finalVC != null ) {
-            vcfWriter.add(finalVC);
+            // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
+            if (finalVC.isNotFiltered() || !excludeFilteredSites) {
+                vcfWriter.add(finalVC);
+            }
             progressMeter.update(finalVC);
         }
     }
 
-    private VariantContext filterSiteByVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean onlyAnnotate) {
+    private VariantContext filterSiteByAlleleSpecificVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean onlyAnnotate) {
         final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
         final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
@@ -566,7 +578,11 @@ public class ExtractCohortEngine {
 
         final String contig = sampleRecord.getContig();
         final long startPosition = sampleRecord.getStart();
-        final String sample = sampleRecord.getSampleName();
+        final String sampleName = sampleIdToName.get(sampleRecord.getSampleId());
+
+        if (sampleName == null) {
+            throw new GATKException("Unable to translate sample id " + sampleRecord.getSampleId() + " to sample name");
+        }
 
         builder.chr(contig);
         builder.start(startPosition);
@@ -585,7 +601,7 @@ public class ExtractCohortEngine {
 
         builder.stop(startPosition + alleles.get(0).length() - 1);
 
-        genotypeBuilder.name(sample);
+        genotypeBuilder.name(sampleName);
         vqsLodMap.putIfAbsent(ref, new HashMap<>());
         yngMap.putIfAbsent(ref, new HashMap<>());
 

@@ -35,6 +35,9 @@ workflow GvsExtractCallset {
         File? gatk_override
     }
 
+    String fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES"
+    String fq_cohort_extract_table  = "~{fq_cohort_extract_table_prefix}__DATA"
+
     call SplitIntervals {
       input:
           intervals = wgs_intervals,
@@ -44,6 +47,18 @@ workflow GvsExtractCallset {
           scatter_count = scatter_count
     }
 
+    call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
+        input:
+            dataset_table = fq_cohort_extract_table,
+            service_account_json = service_account_json
+    }
+
+    call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
+        input:
+            dataset_table = fq_samples_to_extract_table,
+            service_account_json = service_account_json
+    }
+
     scatter(i in range(scatter_count) ) {
         call ExtractTask {
             input:
@@ -51,9 +66,9 @@ workflow GvsExtractCallset {
                 reference                = reference,
                 reference_index          = reference_index,
                 reference_dict           = reference_dict,
-                fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES",
+                fq_samples_to_extract_table = fq_samples_to_extract_table,
                 intervals                = SplitIntervals.interval_files[i],
-                fq_cohort_extract_table  = "~{fq_cohort_extract_table_prefix}__DATA",
+                fq_cohort_extract_table  = fq_cohort_extract_table,
                 read_project_id          = query_project,
                 do_not_filter_override   = do_not_filter_override,
                 fq_filter_set_info_table = fq_filter_set_info_table,
@@ -66,7 +81,8 @@ workflow GvsExtractCallset {
                 emit_pls                 = emit_pls,
                 service_account_json     = service_account_json,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
-                output_gcs_dir           = output_gcs_dir
+                output_gcs_dir           = output_gcs_dir,
+                last_modified_timestamps = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp]
         }
     }
 
@@ -78,11 +94,6 @@ workflow GvsExtractCallset {
 
 ################################################################################
 task ExtractTask {
-    # indicates that this task should NOT be call cached
-    meta {
-       volatile: true
-    }
-
     input {
         # ------------------------------------------------
         # Input args:
@@ -115,6 +126,9 @@ task ExtractTask {
         File? gatk_override
 
         Int? local_sort_max_records_in_ram = 10000000
+
+        # for call-caching -- check if DB tables haven't been updated since the last run
+        Array[String] last_modified_timestamps
     }
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
@@ -241,5 +255,46 @@ task ExtractTask {
      }
  }
 
+task GetBQTableLastModifiedDatetime {
+    # because this is being used to determine if the data has changed, never use call cache
+    meta {
+        volatile: true
+    }
 
+    input {
+        String dataset_table
+        File? service_account_json
+    }
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
+    # ------------------------------------------------
+    # try to get the last modified date for the table in question; fail if something comes back from BigQuwey
+    # that isn't in the right format (e.g. an error)
+    command {
+        set -e
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+        fi
+
+        LASTMODIFIED=$(bq show --location=US --format=json ~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+
+        if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
+            echo $LASTMODIFIED
+        else
+            exit 1
+        fi
+    }
+
+    output {
+        String last_modified_timestamp = read_string(stdout())
+    }
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+}

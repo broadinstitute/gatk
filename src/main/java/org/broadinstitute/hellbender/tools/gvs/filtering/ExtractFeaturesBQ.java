@@ -18,13 +18,7 @@ public class ExtractFeaturesBQ {
         "broad-dsp-spec-ops.joint_genotyping_ref.vqsr_training_sites_*";
 
     public static String getVQSRFeatureExtractQueryString(final TableReference altAllele, final TableReference sampleList,
-                                                          final Long minLocation, final Long maxLocation, final boolean trainingSitesOnly,
-                                                          final int hqGenotypeGQThreshold, final int hqGenotypeDepthThreshold, final double hqGenotypeABThreshold) {
-
-        String trainingSitesStanza =
-            !trainingSitesOnly?"":
-                "AND location IN (SELECT location FROM `" + VQSR_TRAINING_SITES_TABLE + "`)\n";
-
+                                                          final Long minLocation, final Long maxLocation, final int hqGenotypeGQThreshold, final int hqGenotypeDepthThreshold, final double hqGenotypeABThreshold) {
         String locationStanza =
             ((minLocation != null)?"AND location >= " + minLocation + " \n":"") +
             ((maxLocation != null)?"AND location < " + maxLocation + " \n":"");
@@ -35,7 +29,6 @@ public class ExtractFeaturesBQ {
 
             return query
                 .replaceAll("@locationStanza", locationStanza)
-                .replaceAll("@trainingSitesStanza", trainingSitesStanza)
                 .replaceAll("@sample", sampleList.getFQTableName())
                 .replaceAll("@altAllele", altAllele.getFQTableName())
                 .replaceAll("@hqGenotypeGQThreshold", Double.toString(hqGenotypeGQThreshold))

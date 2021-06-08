@@ -9,6 +9,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
 
 public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
@@ -24,7 +25,7 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 testVCFHeader,
                 null,
                 null,
-                null,
+                new HashMap<Long, String>(),
                 null,
                 "spec-ops-aou.kc_high_cov_ccdg.exported_cohort_100_test",
                 null,
@@ -41,7 +42,9 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 null,
                 false,
                 true,
-                false);
+                false,
+                false
+        );
 
         List<VariantContext> variantContexts = VariantContextTestUtils.getVariantContexts(ORIGINAL_TEST_FILE); // list variantContexts from VCF file
         VariantContext expectedVC = engine.removeAnnotations(variantContexts.get(0)); // single variantContext -- with annotations removed

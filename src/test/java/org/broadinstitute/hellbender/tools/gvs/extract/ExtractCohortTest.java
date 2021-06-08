@@ -17,14 +17,15 @@ class ExtractCohortTest extends CommandLineProgramTest {
   public void testFinalVCFfromAvro() throws Exception {
     // To create the expectedVCF file (of expected output) --create a temp table in BQ with the following query
     // and then export it through the BQ GUI as an avro file into GCS.
-    // SELECT * FROM `spec-ops-aou.anvil_100_for_testing.exported_cohort_all_samples`
-    // where location < 20000000200000 and location >= 20000000100000
-    // and (sample_name="HG00405" or sample_name="HG00418" or sample_name="HG00408")
+    //     SELECT location, sample_id, state, ref, alt, call_GT, call_GQ, call_RGQ, QUALapprox, AS_QUALapprox, call_PL
+    //     FROM `spec-ops-aou.anvil_100_for_testing.exported_cohort_all_samples` d
+    //     LEFT JOIN `spec-ops-aou.anvil_100_for_testing.sample_info` s ON (d.sample_name = s.sample_name)
+    //     WHERE location < 20000000200000 and location >= 20000000100000
+    //     WHERE (d.sample_name="HG00405" or d.sample_name="HG00418" or d.sample_name="HG00408")
     final File expectedVCF = getTestFile("expected.vcf");
 
     // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
-    //final File outputVCF = createTempFile("output", "vcf");
-    final File outputVCF = new File("test.output.vcf");
+    final File outputVCF = createTempFile("output", "vcf");
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
