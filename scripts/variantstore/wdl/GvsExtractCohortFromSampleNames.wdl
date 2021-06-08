@@ -12,8 +12,11 @@ workflow GvsExtractCohortFromSampleNames {
     String query_project
     String gvs_project
     String gvs_dataset
+
+    # not using the defaults in GvsPrepareCallset because we're using pre created datasets defined by the caller
     String fq_gvs_extraction_destination_dataset
     String fq_gvs_extraction_temp_tables_dataset
+
     String extraction_uuid
     String? output_gcs_dir
 
