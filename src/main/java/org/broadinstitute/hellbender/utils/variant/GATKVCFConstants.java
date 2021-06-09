@@ -27,12 +27,12 @@ public final class GATKVCFConstants {
     public static final String AS_RAW_RMS_MAPPING_QUALITY_KEY =     "AS_RAW_MQ";
     public static final String AS_CULPRIT_KEY =                     "AS_culprit";
     public static final String AS_VQS_LOD_KEY =                     "AS_VQSLOD";
+    public static final String AS_YNG_STATUS_KEY =                  "AS_YNG";
     public static final String ORIGINAL_AC_KEY =                    "AC_Orig"; //SelectVariants
     public static final String ORIGINAL_AF_KEY =                    "AF_Orig"; //SelectVariants
     public static final String ORIGINAL_AN_KEY =                    "AN_Orig"; //SelectVariants
     public static final String AC_ADJUSTED_KEY =                    "AC_adj"; //GnarlyGenotyper
     public static final String BASE_QUAL_RANK_SUM_KEY =             "BaseQRankSum";
-    public static final String BASE_QUAL_HISTOGRAM_KEY =            "BQHIST";
     public static final String AS_BASE_QUAL_RANK_SUM_KEY =          "AS_BaseQRankSum";
     public static final String AS_RAW_BASE_QUAL_RANK_SUM_KEY =      "AS_RAW_BaseQRankSum";
     public static final String GENOTYPE_AND_VALIDATE_STATUS_KEY =   "callStatus";
@@ -91,28 +91,27 @@ public final class GATKVCFConstants {
     public static final String F2R1_KEY =                           "F2R1";
 
     // Mutect2-specific INFO keys
-    public static final String TUMOR_LOG_10_ODDS_KEY =              "TLOD";
-    public static final String NORMAL_LOG_10_ODDS_KEY =             "NLOD";
-    public static final String IN_PON_KEY =                         "PON";
-    public static final String NORMAL_ARTIFACT_LOG_10_ODDS_KEY =    "NALOD";
-    public static final String POPULATION_AF_KEY =                  "POPAF";
-    public static final String GERMLINE_QUAL_KEY =                  "GERMQ";
-    public static final String SEQUENCING_QUAL_KEY =                "SEQQ";
-    public static final String POLYMERASE_SLIPPAGE_QUAL_KEY =       "STRQ";
-    public static final String STRAND_QUAL_KEY =                    "STRANDQ";
-    public static final String CONTAMINATION_QUAL_KEY =             "CONTQ";
-    public static final String READ_ORIENTATION_QUAL_KEY =          "ROQ";
+    public static final String TUMOR_LOG_10_ODDS_KEY =                      "TLOD";
+    public static final String NORMAL_LOG_10_ODDS_KEY =                     "NLOD";
+    public static final String IN_PON_KEY =               "PON";
+    public static final String NORMAL_ARTIFACT_LOG_10_ODDS_KEY =      "NALOD";
+    public static final String POPULATION_AF_KEY =        "POPAF";
+    public static final String GERMLINE_QUAL_KEY =  "GERMQ";
+    public static final String SEQUENCING_QUAL_KEY =  "SEQQ";
+    public static final String POLYMERASE_SLIPPAGE_QUAL_KEY =  "STRQ";
+    public static final String STRAND_QUAL_KEY =  "STRANDQ";
+    public static final String CONTAMINATION_QUAL_KEY =  "CONTQ";
+    public static final String READ_ORIENTATION_QUAL_KEY =  "ROQ";
     public static final String ORIGINAL_CONTIG_MISMATCH_KEY =       "OCM";
     public static final String N_COUNT_KEY =                        "NCount";
-    public static final String AS_UNIQUE_ALT_READ_SET_COUNT_KEY =   "AS_UNIQ_ALT_READ_COUNT";
-    public static final String MEDIAN_BASE_QUALITY_KEY =            "MBQ";
-    public static final String MEDIAN_MAPPING_QUALITY_KEY =         "MMQ";
-    public static final String MEDIAN_FRAGMENT_LENGTH_KEY =         "MFRL";
-    public static final String MEDIAN_READ_POSITON_KEY =            "MPOS";
-    public static final String UNITIG_SIZES_KEY =                   "UNITIGS";
-    public static final String ALIGNMENT_SCORE_DIFFERENCE_KEY =     "ALIGN_DIFF";
-    public static final String JOINT_ALIGNMENT_COUNT_KEY =          "NALIGNS";
-    public static final String REFERENCE_BASES_KEY =                "REF_BASES";
+    public static final String AS_UNIQUE_ALT_READ_SET_COUNT_KEY = "AS_UNIQ_ALT_READ_COUNT";
+    public static final String MEDIAN_BASE_QUALITY_KEY = "MBQ";
+    public static final String MEDIAN_MAPPING_QUALITY_KEY = "MMQ";
+    public static final String MEDIAN_FRAGMENT_LENGTH_KEY = "MFRL";
+    public static final String MEDIAN_READ_POSITON_KEY = "MPOS";
+    public static final String UNITIG_SIZES_KEY = "UNITIGS";
+    public static final String ALIGNMENT_SCORE_DIFFERENCE_KEY = "ALIGN_DIFF";
+    public static final String JOINT_ALIGNMENT_COUNT_KEY = "NALIGNS";
 
     // Methylation-specific INFO Keys
     public static final String UNCONVERTED_BASE_COVERAGE_KEY =      "UNCONVERTED_BASE_COV";
@@ -134,10 +133,6 @@ public final class GATKVCFConstants {
     public static final String GENOTYPE_QUALITY_BY_ALT_CONFIDENCE = "ALTGQ"; //GnarlyGenotyper
     public static final String STRAND_COUNT_BY_SAMPLE_KEY =         "SAC";
     public static final String STRAND_BIAS_BY_SAMPLE_KEY =          "SB";
-    public static final String FEATURIZED_READ_SETS_KEY =           "FRS";
-    public static final String HAPLOTYPE_EQUIVALENCE_COUNTS_KEY =   "HEC";
-    public static final String HAPLOTYPE_COMPLEXITY_KEY =           "HAPCOMP";
-    public static final String HAPLOTYPE_DOMINANCE_KEY =            "HAPDOM";
     public final static String TRANSMISSION_PROBABILITY_KEY =       "TP"; //PhaseByTransmission
 
     // M2-specific FORMAT keys
@@ -173,6 +168,17 @@ public final class GATKVCFConstants {
     public static final String FAIL =                                           "FAIL";
     public static final String SITE_LEVEL_FILTERS =                             "SITE";
 
+    public static final String SNP = "SNP";
+    public static final String INDEL = "INDEL";
+    public static final String EXCESS_ALLELES = "EXCESS_ALLELES";
+    public static final String NO_HQ_GENOTYPES = "NO_HQ_GENOTYPES";
+
+    public static final String NAY_FROM_YNG = "NAY";
+    public static final String VQSR_FAILURE_PREFIX = "low_VQSLOD_";
+    public static final String VQSR_FAILURE_SNP = VQSR_FAILURE_PREFIX + SNP;
+    public static final String VQSR_FAILURE_INDEL = VQSR_FAILURE_PREFIX + INDEL;
+
+
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(VCFConstants.PASSES_FILTERS_v4, POLYMERASE_SLIPPAGE,
             PON_FILTER_NAME, CLUSTERED_EVENTS_FILTER_NAME, TUMOR_EVIDENCE_FILTER_NAME, GERMLINE_RISK_FILTER_NAME,
@@ -191,6 +197,7 @@ public final class GATKVCFConstants {
     public final static String SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED = "*:DEL";
     public final static Allele SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED = Allele.create("<" + SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED + ">", false); // represents any possible spanning deletion allele at this si
     public static final String ALLELE_SPECIFIC_ANNOTATION_PREFIX = "AS";
+
 
     public static boolean isSpanningDeletion(final Allele allele){
         return allele.equals(Allele.SPAN_DEL) || allele.equals(SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED);

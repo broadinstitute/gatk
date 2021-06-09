@@ -1,0 +1,26 @@
+[
+  {
+    "description": "[DESCRIPTION]",
+    "name": "probe_id",
+    "type": "Integer",
+    "mode": "Required"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "hwe_pval",
+    "type": "Float",
+    "mode": "Required"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "call_rate",
+    "type": "Float",
+    "mode": "Required"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "invariant",
+    "type": "Boolean",
+    "mode": "Required"
+  }
+]

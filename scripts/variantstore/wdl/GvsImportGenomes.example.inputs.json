@@ -1,0 +1,16 @@
+{
+  "GvsImportGenomes.input_vcfs": "${this.samples.reblocked_vcf}",
+  "GvsImportGenomes.input_vcf_indexes": "${this.samples.reblocked_vcf_index}",
+  "GvsImportGenomes.external_samples_names": "${this.samples.research_id}",
+
+  "GvsImportGenomes.interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
+  "GvsImportGenomes.drop_state": "SIXTY",
+
+  "GvsImportGenomes.project_id": "PROJECT_ID",
+  "GvsImportGenomes.dataset_name": "DATASET_NAME",
+  "GvsImportGenomes.output_directory": "GS_BUCKET_OUTPUT_DIR_PATH",
+  "GvsImportGenomes.sample_map": "GS_PATH_TO_SAMPLE_MAP",
+
+  "GvsImportGenomes.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/mmt_SA_support_and_wdl_renaming_20210415/gatk-package-4.2.0.0-345-g8a7821a-SNAPSHOT-local.jar"
+}
+

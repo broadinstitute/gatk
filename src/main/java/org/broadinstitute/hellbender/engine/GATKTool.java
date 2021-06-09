@@ -139,7 +139,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of reference data (null if no reference was provided)
      */
-    ReferenceDataSource reference;
+    protected ReferenceDataSource reference;
 
     /**
      * Our source of reads data (null if no source of reads was provided)
@@ -441,7 +441,17 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     void initializeReads() {
         if (! readArguments.getReadPathSpecifiers().isEmpty()) {
-            final SamReaderFactory factory = makeSamReaderFactory();
+            SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
+            if (hasReference()) { // pass in reference if available, because CRAM files need it
+                factory = factory.referenceSequence(referenceArguments.getReferencePath());
+            }
+            else if (hasCramInput()) {
+                throw UserException.MISSING_REFERENCE_FOR_CRAM;
+            }
+
+            if(bamIndexCachingShouldBeEnabled()) {
+                factory = factory.enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
+            }
 
             reads = new ReadsPathDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
                 (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
@@ -451,23 +461,8 @@ public abstract class GATKTool extends CommandLineProgram {
         }
     }
 
-    protected final SamReaderFactory makeSamReaderFactory() {
-        SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
-        if (hasReference()) { // pass in reference if available, because CRAM files need it
-            factory = factory.referenceSequence(referenceArguments.getReferencePath());
-        }
-        else if (hasCramInput()) {
-            throw UserException.MISSING_REFERENCE_FOR_CRAM;
-        }
 
-        if(bamIndexCachingShouldBeEnabled()) {
-            factory = factory.enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
-        }
-        return factory;
-    }
-
-
-    protected final boolean bamIndexCachingShouldBeEnabled() {
+    private boolean bamIndexCachingShouldBeEnabled() {
         return intervalArgumentCollection.intervalsSpecified() && !disableBamIndexCaching;
     }
 

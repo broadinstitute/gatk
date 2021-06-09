@@ -1,0 +1,27 @@
+[
+  {
+    "description": "[DESCRIPTION]",
+    "name": "sample_name",
+    "type": "String",
+    "mode": "Required"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "sample_id",
+    "type": "Integer",
+    "mode": "Required"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "interval_list_blob",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "inferred_state",
+    "type": "String",
+    "mode": "Required"
+  }
+]
+
