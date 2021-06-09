@@ -79,7 +79,8 @@ public class SomaticSegmentationArgumentCollection implements Serializable {
     @Argument(
             doc = "Factor A for the penalty on the number of changepoints per chromosome for segmentation.  " +
                     "Adds a penalty of the form A * C * [1 + log (N / C)], " +
-                    "where C is the number of changepoints in the chromosome, " +
+                    "where C is the number of changepoints in the chromosome " +
+                    "and N is the number of data points in the chromosome, " +
                     "to the cost function for each chromosome.  " +
                     "Must be non-negative.",
             fullName = NUMBER_OF_CHANGEPOINTS_PENALTY_FACTOR_LONG_NAME,
