@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramIntegrationTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
