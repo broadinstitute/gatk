@@ -1,0 +1,5 @@
+{
+  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcfs": ["gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/Data/anvil_expected.vcf"],
+  "GvsSitesOnlyVCF.output_sites_only_file_name": "hello_did_I_sites_only",
+  "GvsSitesOnlyVCF.output_merged_file_name": "hello_did_I_merge"
+}
