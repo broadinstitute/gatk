@@ -150,7 +150,7 @@ task ExtractTask {
         df -h
 
         if [ ~{do_not_filter_override} = 'true' ]; then
-            FILTERING_ARGS=''
+            FILTERING_ARGS='--vqslod-filter-genotypes false'
         else
             FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
                 --filter-set-site-table ~{fq_filter_set_site_table}
