@@ -72,7 +72,7 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
      */
     @Override
     @VisibleForTesting
-    RangeMap<Integer,Range<Integer>> parsePartitions(final List<Number> gqPartitions) {
+    RangeMap<Integer,Range<Integer>> parsePartitions(final List<? extends Number> gqPartitions) {
         partitionPrecision = calculatePartitionPrecision(gqPartitions);
         Utils.nonEmpty(gqPartitions);
         Utils.containsNoNull(gqPartitions, "The list of TLOD partitions contains a null integer");
@@ -88,7 +88,7 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
         return result;
     }
 
-    private static int calculatePartitionPrecision(final List<Number> gqPartitions) {
+    private static int calculatePartitionPrecision(final List<? extends Number> gqPartitions) {
         double smallestDelta = Double.POSITIVE_INFINITY;
         double lastLOD = Double.NEGATIVE_INFINITY;
         for (final Number num : gqPartitions) {

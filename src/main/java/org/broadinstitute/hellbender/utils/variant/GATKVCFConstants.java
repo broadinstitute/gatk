@@ -191,6 +191,8 @@ public final class GATKVCFConstants {
     public final static String SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED = "*:DEL";
     public final static Allele SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED = Allele.create("<" + SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED + ">", false); // represents any possible spanning deletion allele at this si
     public static final String ALLELE_SPECIFIC_ANNOTATION_PREFIX = "AS";
+    public static final String PSEUDO_DEPTH_KEY = "DD";
+    public static final String PSEUDO_FRACTION_KEY = "DF";
 
     public static boolean isSpanningDeletion(final Allele allele){
         return allele.equals(Allele.SPAN_DEL) || allele.equals(SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED);
