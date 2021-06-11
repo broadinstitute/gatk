@@ -280,13 +280,8 @@ task GetBQTableLastModifiedDatetime {
             gcloud auth activate-service-account --key-file='~{service_account_json}'
         fi
 
+        # bq needs the project name to be separate by a colon
         DATASET_TABLE_COLON=$(echo ~{dataset_table} | sed 's/\./:/')
-
-        echo ~{query_project}
-        echo ~{dataset_table}
-
-        echo "bq show ~{"--project_id " + query_project} --location=US --format=json ${DATASET_TABLE_COLON}"
-        bq show ~{"--project_id " + query_project} --location=US --format=json ${DATASET_TABLE_COLON}
 
         LASTMODIFIED=$(bq show  ~{"--project_id " + query_project} --location=US --format=json ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
 
