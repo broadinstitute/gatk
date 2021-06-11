@@ -68,8 +68,8 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  * configuration. For example, by running
  * <code>THEANO_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk DetermineGermlineContigPloidy ...</code>, users can specify
  * the theano compilation directory (which is set to <code>$HOME/.theano</code> by default).  See theano documentation
- * at <a href="http://deeplearning.net/software/theano/library/config.html">
- *     http://deeplearning.net/software/theano/library/config.html</a>.
+ * at <a href="https://theano-pymc.readthedocs.io/en/latest/library/config.html">
+ *     https://theano-pymc.readthedocs.io/en/latest/library/config.html</a>.
  * </p>
  *
  * <h3>Tool run modes</h3>
