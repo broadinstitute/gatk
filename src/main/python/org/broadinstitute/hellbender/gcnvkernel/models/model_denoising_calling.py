@@ -786,8 +786,7 @@ class DenoisingModel(GeneralizedContinuousModel):
         # the expected number of erroneously mapped reads
         mean_mapping_error_correction_s = eps_mapping * read_depth_s * shared_workspace.average_ploidy_s
 
-        denoised_copy_ratio_st = ((shared_workspace.n_st - mean_mapping_error_correction_s.dimshuffle(0, 'x'))
-                                  / ((1.0 - eps_mapping) * read_depth_s.dimshuffle(0, 'x') * bias_st))
+        denoised_copy_ratio_st = shared_workspace.n_st / (read_depth_s.dimshuffle(0, 'x') * bias_st)
 
         Deterministic(name='denoised_copy_ratio_st', var=denoised_copy_ratio_st)
 
