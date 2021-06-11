@@ -83,8 +83,8 @@ public class EvaluateGenotypingPerfromanceUnitTests extends GATKBaseTest {
         Assert.assertEquals(observedConcordanceState, expectedConcordanceState);
     }
 
-    @DataProvider(name = "getConcordanceStateDifferinPloidyExceptionDataProvider")
-    Object[][] getConcordanceStateDifferinPloidyExceptionDataProvider() {
+    @DataProvider(name = "getConcordanceStateDifferingPloidyExceptionDataProvider")
+    Object[][] getConcordanceStateDifferingPloidyExceptionDataProvider() {
         return new Object[][] {
                 {Arrays.asList(Allele.REF_A, Allele.REF_A), Arrays.asList(Allele.REF_A)},
                 {Arrays.asList(Allele.ALT_A, Allele.ALT_A), Arrays.asList(Allele.REF_A)},
@@ -100,8 +100,8 @@ public class EvaluateGenotypingPerfromanceUnitTests extends GATKBaseTest {
         };
     }
 
-    @Test(dataProvider = "getConcordanceStateDifferinPloidyExceptionDataProvider", expectedExceptions = GATKException.class)
-    void testGetConcordanceStateDifferinPloidyException(final List<Allele> truthAlleles, final List<Allele> evalAlleles) {
+    @Test(dataProvider = "getConcordanceStateDifferingPloidyExceptionDataProvider", expectedExceptions = GATKException.class)
+    void testGetConcordanceStateDifferingPloidyException(final List<Allele> truthAlleles, final List<Allele> evalAlleles) {
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
         final Genotype truthGenotype = genotypeBuilder.alleles(truthAlleles).make();
         final Genotype evalGenotype = genotypeBuilder.alleles(evalAlleles).make();

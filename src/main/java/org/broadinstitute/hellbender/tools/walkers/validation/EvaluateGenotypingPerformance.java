@@ -137,6 +137,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     double firstBinRightEdge = 0.0005;
 
     @Argument(
+            fullName = "min-af-for-accuracy-metrics",
             optional = true,
             doc = "Minimum alt allele frequency to include a site in accuracy calculations. Sites with lower alt allele frequency are not included."
     )
