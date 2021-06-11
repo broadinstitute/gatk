@@ -26,7 +26,11 @@ import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils.streamOfSubsettedAndValidatedReadCounts;

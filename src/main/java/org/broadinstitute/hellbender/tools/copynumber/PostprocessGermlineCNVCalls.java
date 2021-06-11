@@ -7,12 +7,19 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
-import org.broadinstitute.hellbender.tools.copynumber.formats.collections.*;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractLocatableCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractRecordCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.BaselineCopyNumberCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyNumberPosteriorDistributionCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.IntegerCopyNumberSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.LinearCopyRatioCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.NonLocatableDoubleCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.OverlappingIntegerCopyNumberSegmentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
@@ -36,7 +43,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -100,7 +110,7 @@ import java.util.stream.IntStream;
  *
  * <p>The calls or model shards can be specified in arbitrary order.</p>
  *
- * <h3>Usage example</h3>
+ * <h3>Usage examples</h3>
  *
  * <pre>
  *   gatk PostprocessGermlineCNVCalls \
@@ -522,8 +532,8 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
 
     private void concatenateDenoisedCopyRatioFiles() {
         logger.info("Generating denoised copy ratios...");
-        final List<SimpleInterval> concatenatedIntervalList = new ArrayList<>();
-        final List<Double> concatenatedDenoisedCopyRatioRecordsList = new ArrayList<>();
+        final List<SimpleInterval> concatenatedIntervals = new ArrayList<>();
+        final List<Double> concatenatedDenoisedCopyRatioValues = new ArrayList<>();
         /* Read in and concatenate all denoised copy ratio files into one list */
         for (int shardIndex = 0; shardIndex < numShards; shardIndex++) {
             final File shardRootDirectory = sortedCallsShardPaths.get(shardIndex);
@@ -542,20 +552,20 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
                                     "not match the number of entries in the shard interval list (copy ratio list size: %d, " +
                                     "interval list size: %d)",
                             shardIndex, shardDenoisedCopyRatioRecords.size(), shardIntervals.size()));
-            concatenatedIntervalList.addAll(shardIntervals);
-            concatenatedDenoisedCopyRatioRecordsList.addAll(shardDenoisedCopyRatioRecords);
+            concatenatedIntervals.addAll(shardIntervals);
+            concatenatedDenoisedCopyRatioValues.addAll(shardDenoisedCopyRatioRecords);
         }
         /* Attach the corresponding intervals */
-        final List<LinearCopyRatio> linearCopyRatioList =
-                IntStream.range(0, concatenatedIntervalList.size())
+        final List<LinearCopyRatio> linearCopyRatios =
+                IntStream.range(0, concatenatedIntervals.size())
                         .mapToObj(intervalIndex -> new LinearCopyRatio(
-                                concatenatedIntervalList.get(intervalIndex),
-                                concatenatedDenoisedCopyRatioRecordsList.get(intervalIndex)))
+                                concatenatedIntervals.get(intervalIndex),
+                                concatenatedDenoisedCopyRatioValues.get(intervalIndex)))
                         .collect(Collectors.toList());
         final SimpleSampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(sampleName, sequenceDictionary);
         /* Make a locatable collection of denoised copy ratios and write it to file */
         final LinearCopyRatioCollection linearCopyRatioCollection =
-                new LinearCopyRatioCollection(metadata, linearCopyRatioList);
+                new LinearCopyRatioCollection(metadata, linearCopyRatios);
         logger.info(String.format("Writing denoised copy ratios to %s...", outputDenoisedCopyRatioFile.getAbsolutePath()));
         linearCopyRatioCollection.write(outputDenoisedCopyRatioFile);
     }
@@ -614,26 +624,26 @@ public final class PostprocessGermlineCNVCalls extends GATKTool {
 
         /* attach the intervals to make locatable posteriors */
         final List<SimpleInterval> shardIntervals = sortedIntervalCollections.get(shardIndex).getIntervals();
-        final List<CopyNumberPosteriorDistribution> copyNumberPosteriorDistributionList =
+        final List<CopyNumberPosteriorDistribution> copyNumberPosteriorDistributions =
                 copyNumberPosteriorDistributionCollection.getRecords();
-        Utils.validate(shardIntervals.size() == copyNumberPosteriorDistributionList.size(),
+        Utils.validate(shardIntervals.size() == copyNumberPosteriorDistributions.size(),
                 String.format("The number of entries in the copy-number posterior file for shard %d does " +
                                 "not match the number of entries in the shard interval list (posterior list size: %d, " +
-                                "interval list size: %d)", shardIndex, copyNumberPosteriorDistributionList.size(),
+                                "interval list size: %d)", shardIndex, copyNumberPosteriorDistributions.size(),
                         shardIntervals.size()));
 
-        final List<IntegerCopyNumberState> baselineCopyNumberList = baselineCopyNumberCollection.getRecords();
-        Utils.validate(shardIntervals.size() == baselineCopyNumberList.size(),
+        final List<IntegerCopyNumberState> baselineCopyNumbers = baselineCopyNumberCollection.getRecords();
+        Utils.validate(shardIntervals.size() == baselineCopyNumbers.size(),
                 String.format("The number of entries in the baseline copy-number file for shard %d does " +
                                 "not match the number of entries in the shard interval list (baseline copy-number " +
-                                "list size: %d, interval list size: %d)", shardIndex, baselineCopyNumberList.size(),
+                                "list size: %d, interval list size: %d)", shardIndex, baselineCopyNumbers.size(),
                         shardIntervals.size()));
 
         return IntStream.range(0, copyNumberPosteriorDistributionCollection.size())
                         .mapToObj(intervalIndex -> new IntervalCopyNumberGenotypingData(
                                 shardIntervals.get(intervalIndex),
-                                copyNumberPosteriorDistributionList.get(intervalIndex),
-                                baselineCopyNumberList.get(intervalIndex)))
+                                copyNumberPosteriorDistributions.get(intervalIndex),
+                                baselineCopyNumbers.get(intervalIndex)))
                         .collect(Collectors.toList());
     }
 
