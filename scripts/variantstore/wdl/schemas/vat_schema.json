@@ -1,12 +1,12 @@
 [
  {
-   "description": "Variant ID",
+   "description": "Variant ID. Unique string for identifying a variant (as produced by NIRVANA based on a spec from Broad Institute)",
    "name": "vid",
    "type": "String",
    "mode": "Required"
  },
  {
-   "description": "Transcript ID",
+   "description": "Transcript ID. Null indicates that this variant does not overlap any transcripts",
    "name": "transcript",
    "type": "String",
    "mode": "Nullable"
@@ -17,93 +17,238 @@
    "type": "String",
    "mode": "Nullable"
  },
-
-
-
-
-
-
-
-
-
-
-
-  {
-   "description": "[DESCRIPTION]",
-   "name": "alt",
-   "type": "String",
-   "mode": "Required"
- },
- {
-   "description": "[DESCRIPTION]",
-   "name": "AS_RAW_MQ",
-   "type": "String",
-   "mode": "Required"
- },
- {
-   "description": "[DESCRIPTION]",
-   "name": "AS_RAW_MQRankSum",
-   "type": "String",
-   "mode": "Nullable"
- },
- {
-   "description": "[DESCRIPTION]",
-   "name": "AS_QUALapprox",
-   "type": "String",
-   "mode": "Required"
- },
- {
-   "description": "[DESCRIPTION]",
-   "name": "AS_RAW_ReadPosRankSum",
-   "type": "String",
-   "mode": "Nullable"
- },
- {
-   "description": "[DESCRIPTION]",
-   "name": "AS_SB_TABLE",
-   "type": "String",
-   "mode": "Required"
- },
- {
-   "description": "[DESCRIPTION]",
-   "name": "AS_VarDP",
-   "type": "String",
-   "mode": "Required"
- },
- {
-   "description": "[DESCRIPTION]",
-   "name": "call_GT",
-   "type": "String",
-   "mode": "Required"
- },
- {
-   "description": "[DESCRIPTION]",
-   "name": "call_AD",
-   "type": "String",
-   "mode": "Nullable"
- },
- {
-   "description": "[DESCRIPTION]",
-   "name": "call_GQ",
+{
+   "description": "Must be positive. Exact position for a SNP and the position before the alteration in an indel",
+   "name": "position",
    "type": "Integer",
    "mode": "Required"
  },
  {
-   "description": "[DESCRIPTION]",
-   "name": "call_PGT",
+   "description": "base(s). This should always be one base for SNPs and insertions.  More than one base for deletions",
+   "name": "ref_allele",
    "type": "String",
    "mode": "Nullable"
  },
  {
-   "description": "[DESCRIPTION]",
-   "name": "call_PID",
+   "description": "base(s).  This should always be one base for SNPs and deletions.  More than one base for insertions",
+   "name": "alt_allele",
    "type": "String",
    "mode": "Nullable"
  },
  {
-   "description": "[DESCRIPTION]",
-   "name": "call_PL",
+   "description": "Gene symbol.  A variant can have more than one associated gene symbol, since about 3% of genes do overlap",
+   "name": "gene_symbol",
    "type": "String",
-   "mode": "Required"
+   "mode": "Nullable"
+ },
+ {
+   "description": "",
+   "name": "transcript _source",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "HGVS p. nomenclature; Amino acid change",
+   "name": "aa_change",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "Amino acid change type",
+   "name": "consequence",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "HGVS c. nomenclature; DNA change",
+   "name": "dna_change",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "DNA change type (HGVS)",
+   "name": "variant_type",
+   "type": "String",
+   "mode": "Nullable"
+ },
+  {
+    "description": "Exon number",
+    "name": "exon_number",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Intron number",
+    "name": "intron_number",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "HGVS g. nomenclature Variant location",
+    "name": "genomic_location",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Splice site distance for introns  Will be a positive or negative integer",
+    "name": "splice_distance",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "rsID",
+    "name": "dbsnp_rsid",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Entrez/NCBI ID",
+    "name": "entrez_gene_id",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "HGNC ID",
+    "name": "hgnc_gene_id",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "OMIM ID",
+    "name": "gene_omim_id",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Primary Transcript ID",
+    "name": "is_canonical_transcript",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: 'Total' frequency",
+    "name": "gnomad_all_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: 'Total' allele count",
+    "name": "gnomad_all_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: 'Total' allele number",
+    "name": "gnomad_all_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: Max subpopulation frequency",
+    "name": "gnomad_max_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: Max subpopulation count",
+    "name": "gnomad_max_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: Max subpopulation number",
+    "name": "gnomad_max_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: Max subpopulation ethnicity",
+    "name": "gnomad_max_subpop",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "REVEL",
+    "name": "revel",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Slice AI",
+    "name": "splice_ai_acceptor_gain_score",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Slice AI",
+    "name": "splice_ai_acceptor_gain_distance",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Slice AI",
+    "name": "splice_ai_acceptor_loss_score",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Slice AI",
+    "name": "splice_ai_acceptor_loss_distance",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Slice AI",
+    "name": "splice_ai_donor_gain_score",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Slice AI",
+    "name": "splice_ai_donor_gain_distance",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Slice AI",
+    "name": "splice_ai_donor_loss_score",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "Slice AI",
+    "name": "splice_ai_donor_loss_distance",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "OMIM Disease ID",
+    "name": "omim_phenotypes_id",
+    "type": "Integer",
+    "mode": "Repeated"
+  },
+  {
+    "description": "OMIM Disease Name",
+    "name": "omim_phenotypes_name",
+    "type": "String",
+    "mode": "Repeated"
+  },
+  {
+    "description": "ClinVar Classification",
+    "name": "clinvar_classification",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "ClinVar Classification Date",
+    "name": "clinvar_last_updated",
+    "type": "Date",
+    "mode": "Nullable"
+  },
+ {
+   "description": "ClinVar Disease Name",
+   "name": "clinvar_phenotype",
+   "type": "String",
+   "mode": "Repeated"
  }
 ]
