@@ -42,7 +42,7 @@ def run(args):
             model_builder,
             objective='val_loss', #kt.Objective("val_pearson", direction="max"),
             max_trials=args.max_models,
-            max_model_size=args.max_parameters,
+            #max_model_size=args.max_parameters,
             executions_per_trial=args.min_samples,
             directory=args.output_folder,
             project_name=args.id,
