@@ -397,6 +397,16 @@ public final class GenomeLocParser {
     }
 
     /**
+     * Creates a GenomeLoc from a Tribble feature
+     * @param feature
+     * @param skipValidation  true to disable check for features to be on the reference
+     * @return
+     */
+    public GenomeLoc createGenomeLoc(final Feature feature, final boolean skipValidation) {
+        return createGenomeLoc(feature.getContig(), feature.getStart(), feature.getEnd(), !skipValidation);
+    }
+
+    /**
      * Creates a GenomeLoc from a {@link Locatable}.
      *
      * @param locatable the input locatable.
