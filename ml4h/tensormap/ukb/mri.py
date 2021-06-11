@@ -1,21 +1,24 @@
 # MRI-specific tensormaps
+import csv
 import logging
+import os
 from typing import Dict, Tuple, Callable
 
 import h5py
 import numpy as np
+from scipy.signal import convolve2d
+from scipy.ndimage import median_filter
 from tensorflow.keras.utils import to_categorical
-import cv2
-import blosc
 
-from ml4h.metrics import weighted_crossentropy, asymmetric_outlier_mse
-from ml4h.normalizer import ZeroMeanStd1, Standardize, NonZeroNormalize, TopKNormalize, ImagenetNormalizeTorch
+from ml4h.metrics import weighted_crossentropy
+from ml4h.normalizer import ZeroMeanStd1, Standardize
 from ml4h.TensorMap import TensorMap, Interpretation, make_range_validator
 from ml4h.tensormap.ukb.demographics import is_genetic_man, is_genetic_woman
 from ml4h.defines import MRI_TO_SEGMENT, MRI_SEGMENTED, MRI_SEGMENTED_CHANNEL_MAP, MRI_FRAMES, MRI_LVOT_SEGMENTED_CHANNEL_MAP, \
-    MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP
+    MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, LAX_4CH_HEART_LABELS, LAX_4CH_MYOCARDIUM_LABELS, StorageType, LAX_3CH_HEART_LABELS, \
+    LAX_2CH_HEART_LABELS
 from ml4h.tensormap.general import get_tensor_at_first_date, normalized_first_date, pad_or_crop_array_to_shape
-from ml4h.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
+from ml4h.defines import MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP, MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP, MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP, MRI_AO_SEGMENTED_CHANNEL_MAP, MRI_LIVER_SEGMENTED_CHANNEL_MAP
 
 
 def _slice_subset_tensor(
@@ -120,6 +123,31 @@ def _mask_subset_tensor(tensor_key, start, stop, step=1, pad_shape=None):
         return tensor
 
     return mask_subset_from_file
+
+
+sharp_kernel = np.c_[
+    [0, -1, 0],
+    [-1, 5, -1],
+    [0, -1, 0]
+]
+
+
+def _sharpen(img):
+    if np.random.rand() > 0.5:
+        return np.expand_dims(convolve2d(img[..., 0], sharp_kernel, mode="same", boundary="symm"), axis=-1)
+    return img
+
+
+def _median_filter(img):
+    window_size = np.random.randint(1, 15)
+    return np.expand_dims(median_filter(img[..., 0], size=(window_size, window_size)), axis=-1)
+
+
+def _gaussian_noise(img, mean=0, sigma=0.03):
+    img = img.copy()
+    noise = np.random.normal(mean, sigma, img.shape)
+    img += noise
+    return img
 
 
 def _combined_subset_tensor(
@@ -887,24 +915,14 @@ mri_patient_position_cine_segmented_sax_inlinevf = TensorMap(
     tensor_from_file=_make_mri_series_orientation_and_position_from_file(),
 )
 
-lax_4ch_diastole_slice0_3d = TensorMap(
-    'lax_4ch_diastole_slice0_3d',
-    Interpretation.CONTINUOUS,
-    shape=(200, 160, 1),
-    loss='logcosh',
-    normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0,
-    ),
-)
 lax_4ch_diastole_slice0_224_3d = TensorMap(
-    'lax_4ch_diastole_slice0_224_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1), loss='logcosh',
+    'lax_4ch_diastole_slice0_224_3d', Interpretation.CONTINUOUS, shape=(160, 224, 1),
     normalization=ZeroMeanStd1(),
-    tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0),
+    tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
 )
 lax_4ch_diastole_slice0_256_3d = TensorMap(
     'lax_4ch_diastole_slice0_256_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1),
-    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0),
+    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0),
 )
 lax_2ch_diastole_slice0_3d = TensorMap(
     'lax_2ch_diastole_slice0_3d',
@@ -913,7 +931,7 @@ lax_2ch_diastole_slice0_3d = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_lax_2ch/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_lax_2ch/2/instance_0', 0,
     ),
 )
 lax_3ch_diastole_slice0_3d = TensorMap(
@@ -923,7 +941,7 @@ lax_3ch_diastole_slice0_3d = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_lax_3ch/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_lax_3ch/2/instance_0', 0,
     ),
 )
 cine_segmented_ao_dist_slice0_3d = TensorMap(
@@ -933,7 +951,7 @@ cine_segmented_ao_dist_slice0_3d = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_ao_dist/2/instance_0', 0,
     ),
 )
 lax_4ch_diastole_slice0 = TensorMap(
@@ -943,7 +961,7 @@ lax_4ch_diastole_slice0 = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_lax_4ch/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_lax_4ch/2/instance_0', 0,
     ),
 )
 cine_segmented_ao_dist_slice0 = TensorMap(
@@ -953,16 +971,20 @@ cine_segmented_ao_dist_slice0 = TensorMap(
     loss='logcosh',
     normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor(
-        'ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0,
+        'ukb_cardiac_mri/cine_segmented_ao_dist/2/instance_0', 0,
     ),
 )
 aorta_diastole_slice0_3d = TensorMap(
-    'aorta_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1), loss='logcosh',
-    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/instance_0', 0),
+    'aorta_diastole_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 256, 1),
+    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_ao_dist/2/instance_0', 0),
 )
-cine_segmented_lvot_slice0_3d = TensorMap(
-    'cine_segmented_lvot_slice0_3d', Interpretation.CONTINUOUS, shape=(208, 160, 1), loss='logcosh',
-    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lvot/instance_0', 0),
+cine_lvot_slice0_3d = TensorMap(
+    'cine_lvot_slice0_3d', Interpretation.CONTINUOUS, shape=(208, 160, 1),
+    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/cine_segmented_lvot/2/instance_0', 0),
+)
+cine_flow_slice0_3d = TensorMap(
+    'cine_flow_slice0_3d', Interpretation.CONTINUOUS, shape=(192, 192, 1),
+    normalization=ZeroMeanStd1(), tensor_from_file=_slice_tensor('ukb_cardiac_mri/flow_250_tp_aov_bh_epat@c/2/instance_0', 0),
 )
 
 
@@ -1062,52 +1084,52 @@ flow_250_tp_aov_bh_epat_4d = TensorMap(
 )
 cine_lax_2ch_192_16_3 = TensorMap(
     'cine_lax_2ch_192_16_3', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_2ch', 0, 48, 3, pad_shape=(192, 160, 48)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_2ch/2', 0, 48, 3, pad_shape=(192, 160, 48)),
     normalization=ZeroMeanStd1(),
 )
 cine_lax_3ch_192_16_3 = TensorMap(
     'cine_lax_3ch_192_16_3', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_3ch', 0, 48, 3, pad_shape=(192, 160, 48)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_3ch/2', 0, 48, 3, pad_shape=(192, 160, 48)),
     normalization=ZeroMeanStd1(),
 )
-cine_lax_4ch_192_16_3 = TensorMap(
-    'cine_lax_4ch_192_16_3', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch', 0, 48, 3, pad_shape=(192, 160, 48)),
+cine_lax_4ch_224_16_3 = TensorMap(
+    'cine_lax_4ch_224_16_3', Interpretation.CONTINUOUS, shape=(160, 224, 16), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch/2', 0, 48, 3, pad_shape=(192, 160, 48)),
     normalization=ZeroMeanStd1(),
 )
 cine_lax_2ch_192_16_3_4d = TensorMap(
     'cine_lax_2ch_192_16_3_4d', Interpretation.CONTINUOUS, shape=(192, 160, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_2ch', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_2ch/2', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
     normalization=ZeroMeanStd1(),
 )
 cine_lax_3ch_192_16_3_4d = TensorMap(
     'cine_lax_3ch_192_16_3_4d', Interpretation.CONTINUOUS, shape=(192, 160, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_3ch', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_3ch/2', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
     normalization=ZeroMeanStd1(),
 )
 cine_lax_4ch_192_16_3_4d = TensorMap(
     'cine_lax_4ch_192_16_3_4d', Interpretation.CONTINUOUS, shape=(192, 160, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch/2', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
     normalization=ZeroMeanStd1(),
 )
 cine_lax_4ch_224_16_3_4d = TensorMap(
     'cine_lax_4ch_224_16_3_4d', Interpretation.CONTINUOUS, shape=(160, 224, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch', 0, 48, 3, pad_shape=(160, 224, 48, 1)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lax_4ch/2', 0, 48, 3, pad_shape=(160, 224, 48, 1)),
     normalization=ZeroMeanStd1(),
 )
 cine_lvot_208_16_3_4d = TensorMap(
     'cine_lvot_208_16_3_4d', Interpretation.CONTINUOUS, shape=(208, 192, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lvot', 0, 48, 3, pad_shape=(208, 192, 48, 1)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lvot/2', 0, 48, 3, pad_shape=(208, 192, 48, 1)),
     normalization=ZeroMeanStd1(),
 )
 cine_lvot_192_16_3 = TensorMap(
     'cine_lvot_192_16_3', Interpretation.CONTINUOUS, shape=(192, 160, 16), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lvot', 0, 48, 3, pad_shape=(192, 160, 48)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lvot/2', 0, 48, 3, pad_shape=(192, 160, 48)),
     normalization=ZeroMeanStd1(),
 )
 cine_lvot_192_16_3_4d = TensorMap(
     'cine_lvot_192_16_3_4d', Interpretation.CONTINUOUS, shape=(192, 160, 16, 1), path_prefix='ukb_cardiac_mri',
-    tensor_from_file=_slice_subset_tensor('cine_segmented_lvot', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
+    tensor_from_file=_slice_subset_tensor('cine_segmented_lvot/2', 0, 48, 3, pad_shape=(192, 160, 48, 1)),
     normalization=ZeroMeanStd1(),
 )
 
@@ -1170,7 +1192,7 @@ sax_segmented_b6 = TensorMap(
     tensor_from_file=_segmented_dicom_slices(
         'cine_segmented_sax_b6_annotated_',
     ),
-    channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+    channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
 )
 sax_segmented_b6_192 = TensorMap(
     'sax_segmented_b6',
@@ -1179,7 +1201,7 @@ sax_segmented_b6_192 = TensorMap(
     tensor_from_file=_segmented_dicom_slices(
         'cine_segmented_sax_b6_annotated_',
     ),
-    channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+    channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
 )
 
 segmented_aorta_diastole = TensorMap(
@@ -1214,17 +1236,15 @@ liver_shmolli_segmented = TensorMap(
 )
 
 
-def sax_tensor(b_series_prefix):
+def sax_tensor(b_series_prefix, b_series_offset=1):
     def sax_tensor_from_file(tm, hd5, dependents={}):
         missing = 0
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        if tm.dependent_map is not None:
-            dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
         if tm.axes() == 3:
             for b in range(tm.shape[-1]):
                 try:
                     tm_shape = (tm.shape[0], tm.shape[1])
-                    tensor[:, :, b] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}/{(50*b)+1}/instance_0'], dtype=np.float32))
+                    tensor[:, :, b] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}/instance_{(50*b)+b_series_offset}'], dtype=np.float32))
                 except KeyError:
                     missing += 1
                     tensor[:, :, b] = 0
@@ -1232,15 +1252,16 @@ def sax_tensor(b_series_prefix):
             for b in range(tm.shape[-2]):
                 try:
                     tm_shape = (tm.shape[0], tm.shape[1])
-                    tensor[:, :, b, 0] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}/{(50*b)+1}/instance_0'], dtype=np.float32))
-                    if tm.dependent_map is not None:
-                        index_tensor = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}_mask_b{b}/instance_0'], dtype=np.float32))
-                        dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
+                    hd5_array = np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}/instance_{(50*b)+b_series_offset}'], dtype=np.float32)
+                    if tm.is_categorical():
+                        categorical_index_slice = pad_or_crop_array_to_shape(tm_shape, hd5_array)
+                        tensor[:, :, b] = to_categorical(categorical_index_slice, len(tm.channel_map))
+                    else:
+                        tensor[:, :, b, 0] = pad_or_crop_array_to_shape(tm_shape, hd5_array)
                 except KeyError:
                     missing += 1
-                    tensor[:, :, b, 0] = 0
-                    if tm.dependent_map is not None:
-                        dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
+                    if tm.is_categorical():
+                        tensor[:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
             if missing == tm.shape[-2]:
                 raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]} looked at: {tm.path_prefix}/{b_series_prefix}')
         return tensor
@@ -1248,122 +1269,109 @@ def sax_tensor(b_series_prefix):
 
 
 sax_all_diastole_segmented = TensorMap(
-    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf_segmented/2'),
+    path_prefix='ukb_cardiac_mri', channel_map=MRI_SEGMENTED_CHANNEL_MAP,
 )
 sax_all_diastole_segmented_weighted = TensorMap(
-    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy(
-        [1.0, 40.0, 40.0], 'sax_all_diastole_segmented',
-    ),
+    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf_segmented/2'),
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP, path_prefix='ukb_cardiac_mri',
+    loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_diastole_segmented'),
+)
+sax_all_diastole_192_segmented = TensorMap(
+    'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf_segmented/2'),
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP, path_prefix='ukb_cardiac_mri',
 )
 sax_all_diastole_192_segmented_weighted = TensorMap(
-    'sax_all_diastole_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy(
-        [1.0, 40.0, 40.0], 'sax_all_diastole_segmented',
-    ),
+    'sax_all_diastole_192_segmented', Interpretation.CATEGORICAL, shape=(192, 192, 13, len(MRI_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf_segmented/2'),
+    channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_diastole_192_segmented'),
 )
 
 sax_all_diastole = TensorMap(
-    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    path_prefix='ukb_cardiac_mri',
+    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2'),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
 )
-sax_all_diastole_weighted = TensorMap(
-    'sax_all_diastole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented_weighted, path_prefix='ukb_cardiac_mri',
+sax_all_diastole_3d = TensorMap(
+    'sax_all_diastole', shape=(224, 224, 13), tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2'),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
 )
-
-sax_all_diastole_192 = TensorMap(
-    'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented, path_prefix='ukb_cardiac_mri',
-)
-sax_all_diastole_192_weighted = TensorMap(
-    'sax_all_diastole', shape=(192, 192, 13, 1), tensor_from_file=sax_tensor('diastole'),
-    dependent_map=sax_all_diastole_segmented_weighted, path_prefix='ukb_cardiac_mri',
-)
-
-sax_all_systole_segmented = TensorMap(
-    'sax_all_systole_segmented', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-)
-sax_all_systole_segmented_weighted = TensorMap(
-    'sax_all_systole_segmented_weighted', Interpretation.CATEGORICAL, shape=(256, 256, 13, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP,
-    loss=weighted_crossentropy([1.0, 40.0, 40.0], 'sax_all_systole_segmented'),
+sax_all_systole_3d = TensorMap(
+    'sax_all_systole_3d', shape=(224, 224, 13), tensor_from_file=sax_tensor('cine_segmented_sax_inlinevf/2', 18),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
 )
 
 
-sax_all_systole = TensorMap(
-    'sax_all_systole', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
-    dependent_map=sax_all_systole_segmented,
-)
-sax_all_systole_weighted = TensorMap(
-    'sax_all_systole_weighted', shape=(256, 256, 13, 1), tensor_from_file=sax_tensor('systole'),
-    dependent_map=sax_all_systole_segmented_weighted,
-)
+def sax_random_slice_tensor_maker(b_series_prefix, b_segmented_prefix, lv_tsv=None):
+    error = None
+    if lv_tsv:
+        try:
+            with open(lv_tsv, 'r') as f:
+                reader = csv.reader(f, delimiter='\t')
+                next(reader)
+                lv_table = {(row[0], row[1], row[2]): np.array([float(row[3])]) for row in reader}
+        except FileNotFoundError as e:
+            error = e
 
-
-def all_sax_tensor(total_b_slices=13):
-    def sax_tensor_from_file(tm, hd5, dependents={}):
-        missing = 0
+    def sax_slice_from_file(tm, hd5, dependents={}):
+        if error:
+            raise error
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        dependents[tm.dependent_map] = np.zeros(tm.dependent_map.shape, dtype=np.float32)
-        for b in range(total_b_slices):
-            try:
-                tm_shape = (tm.shape[0], tm.shape[1])
-                tensor[:, :, b, 0] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_frame_b{b}/instance_0'], dtype=np.float32))
-                index_tensor = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}diastole_mask_b{b}/instance_0'], dtype=np.float32))
-                dependents[tm.dependent_map][:, :, b, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
-                tensor[:, :, b + total_b_slices, 0] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_frame_b{b}/instance_0'], dtype=np.float32))
-                index_tensor = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.hd5_key_guess()}systole_mask_b{b}/instance_0'], dtype=np.float32))
-                dependents[tm.dependent_map][:, :, b + total_b_slices, :] = to_categorical(index_tensor, tm.dependent_map.shape[-1])
-            except KeyError as e:
-                missing += 1
-                tensor[:, :, b, 0] = 0
-                dependents[tm.dependent_map][:, :, b, MRI_SEGMENTED_CHANNEL_MAP['background']] = 1
-        if missing == tm.shape[-2]:
-            raise ValueError(f'Could not find any slices in {tm.name} was hoping for {tm.shape[-2]}')
+        tm_shape = (tm.shape[0], tm.shape[1])
+        random_key = np.random.choice(list(hd5[f'{tm.path_prefix}/{b_series_prefix}/'].keys()))
+        tensor[:, :, 0] = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_series_prefix}/{random_key}'], dtype=np.float32))
+        if lv_tsv:
+            sample_id = os.path.basename(hd5.filename).replace('.hd5', '',)
+            instance = (int(random_key.replace("instance_", ""))-1) % 50
+            dependents[tm.dependent_map] = tm.dependent_map.normalize(lv_table[sample_id, '2', f'{instance+1}'])
+        else:
+            categorical_index_slice = pad_or_crop_array_to_shape(tm_shape, np.array(hd5[f'{tm.path_prefix}/{b_segmented_prefix}/{random_key}'], dtype=np.float32))
+            dependents[tm.dependent_map] = to_categorical(categorical_index_slice, len(tm.dependent_map.channel_map))
         return tensor
-    return sax_tensor_from_file
+    return sax_slice_from_file
 
 
-sax_all_segmented = TensorMap(
-    'sax_all_segmented', Interpretation.CATEGORICAL, shape=(
-    256, 256, 26, 3,
-    ), channel_map=MRI_SEGMENTED_CHANNEL_MAP,
+sax_lv_pix = TensorMap(
+    'sax_lv_pix', Interpretation.CONTINUOUS, shape=(1,), channel_map={'sax_lv_pix': 0}, normalization=Standardize(mean=100.43, std=38.57)
 )
-sax_all_segmented_weighted = TensorMap(
-    'sax_all_segmented_weighted', Interpretation.CATEGORICAL, shape=(256, 256, 26, 3),
-    channel_map=MRI_SEGMENTED_CHANNEL_MAP, loss=weighted_crossentropy(
-        [1.0, 40.0, 40.0], 'sax_all_segmented',
-    ),
+sax_random_slice_segmented = TensorMap(
+    'sax_random_slice_segmented', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SEGMENTED_CHANNEL_MAP)), channel_map=MRI_SEGMENTED_CHANNEL_MAP,
 )
-
-sax_all = TensorMap(
-    'sax_all', shape=(
-    256, 256, 26, 1,
-    ), tensor_from_file=all_sax_tensor(), dependent_map=sax_all_segmented,
+sax_random_slice = TensorMap(
+    'sax_random_slice', shape=(224, 224, 1), tensor_from_file=sax_random_slice_tensor_maker('cine_segmented_sax_inlinevf/2', 'cine_segmented_sax_inlinevf_segmented/2'),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(), dependent_map=sax_random_slice_segmented,
 )
-sax_all_weighted = TensorMap(
-    'sax_all_weighted', shape=(
-    256, 256, 26, 1,
-    ), tensor_from_file=all_sax_tensor(), dependent_map=sax_all_segmented_weighted,
+sax_random_slice_lv_pix = TensorMap(
+    'sax_random_slice_lv_pix', shape=(224, 224, 1), tensor_from_file=sax_random_slice_tensor_maker('cine_segmented_sax_inlinevf/2', 'cine_segmented_sax_inlinevf_segmented/2', '/home/sam/csvs/summed-lv-pixelcount.tsv'),
+    path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(), dependent_map=sax_lv_pix,
 )
 
 
-def _slice_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=100):
+def _slice_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False):
     def _slice_tensor_from_file(tm, hd5, dependents={}):
-        for i in range(max_slices):
-            if f'/{path_prefix}/{segmentation_key}{i + 1}' in hd5:
-                if tm.shape[-1] == 1:
-                    t = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{tensor_key}'][..., i], dtype=np.float32))
-                    tensor = np.expand_dims(t, axis=-1)
-                else:
-                    tensor = pad_or_crop_array_to_shape(tm.shape, np.array(hd5[f'{path_prefix}/{tensor_key}'][..., i], dtype=np.float32))
-                return tensor
-        raise ValueError(f'No segmented slice found for {tm.name} prefix {segmentation_key}')
+        found_key = ''
+        for i in range(1, 1+max_slices):
+            if sax_series:
+                for b in range(1, 13):
+                    sax_key = segmentation_key.replace('*', str(b))
+                    if f'{path_prefix}/{sax_key}{i}' in hd5:
+                        found_key = tensor_key.replace('*', str(b))
+                        break
+                if len(found_key) > 1:
+                    break
+            elif f'/{path_prefix}/{segmentation_key}{i}' in hd5:
+                found_key = tensor_key
+                break
+        if i == max_slices:
+            raise ValueError(f'No slice with segmentation found for {tm.name} segmentation key {segmentation_key}')
+        if tm.shape[-1] == 1:
+            t = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., i-1], dtype=np.float32))
+            tensor = np.expand_dims(t, axis=-1)
+        else:
+            tensor = pad_or_crop_array_to_shape(tm.shape, np.array(hd5[f'{path_prefix}/{found_key}'][..., i-1], dtype=np.float32))
+        return tensor
     return _slice_tensor_from_file
 
 
@@ -1395,19 +1403,157 @@ lax_4ch_slice_jamesp = TensorMap(
     'lax_4ch_slice_jamesp', shape=(160, 224, 1), normalization=ZeroMeanStd1(),
     tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_lax_4ch/instance_0', 'cine_segmented_lax_4ch_jamesp_annotated_'),
 )
+sax_slice_jamesp = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+sax_slice_jamesp_gauss = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+sax_slice_jamesp_sharpen = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+sax_slice_jamesp_median = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_median_filter],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+sax_slice_jamesp_all = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen, _gaussian_noise, _median_filter],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+sax_slice_jamesp_sharpen_median = TensorMap(
+    'sax_slice_jamesp', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen, _median_filter],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_', sax_series=True),
+)
+sax_slice_vnauffal = TensorMap(
+    'sax_slice_vnauffal', shape=(224, 224, 1), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_vnauffal_annotated_', sax_series=True),
+)
+sax_slice_both = TensorMap(
+    'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
+sax_slice_both_sharpen = TensorMap(
+    'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
+sax_slice_both_median = TensorMap(
+    'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_median_filter],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
+sax_slice_both_gauss = TensorMap(
+    'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
+sax_slice_both_all = TensorMap(
+    'sax_slice_both', shape=(224, 224, 1), normalization=ZeroMeanStd1(), augmentations=[_sharpen, _gaussian_noise, _median_filter],
+    tensor_from_file=_slice_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', sax_series=True),
+)
 
 
-def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=100):
+def _slices_tensor_with_segmentation(tensor_key, segmentation_key, path_prefix='ukb_cardiac_mri', max_slices=50, time_frames=1, time_step=3):
+    def _slice_tensor_from_file(tm, hd5, dependents={}):
+        found_key = ''
+        for i in range(1, 1 + max_slices):
+            for b in range(1, 13):
+                sax_key = segmentation_key.replace('*', str(b))
+                if f'{path_prefix}/{sax_key}{i}' in hd5:
+                    found_key = tensor_key.replace('*', str(b))
+                    break
+            if len(found_key) > 1:
+                break
+        if i == max_slices:
+            raise ValueError(f'No slice with segmentation found for {tm.name} segmentation key {segmentation_key}')
+
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for j in range(tm.shape[2]//time_frames):
+            found_key = tensor_key.replace('*', str(b + (j - tm.shape[-1]//2)))
+            l = 0
+            while found_key not in hd5[path_prefix]:
+                l += 1
+                if b > 4:
+                    found_key = tensor_key.replace('*', str(b + (j - tm.shape[-1] // 2) - l))
+                else:
+                    found_key = tensor_key.replace('*', str(b + (j - tm.shape[-1] // 2) + l))
+                if l > 13:
+                    logging.warning(f'Could not get segmentation for {tm.name} segmentation key {segmentation_key} but {found_key} not present. l is {l}')
+                    break
+            if time_frames == 1:
+                tensor[..., j] = pad_or_crop_array_to_shape(tm.shape[:-1], np.array(hd5[f'{path_prefix}/{found_key}'][..., i-1], dtype=np.float32))
+            else:
+                for k in range(time_frames):
+                    slice_index = ((i - 1) + (k * time_step)) % max_slices
+                    my_slice = np.array(hd5[f'{path_prefix}/{found_key}'][..., slice_index], dtype=np.float32)
+                    tensor[..., (j*time_frames)+k] = pad_or_crop_array_to_shape(tm.shape[:-1], my_slice)
+
+        return tensor
+    return _slice_tensor_from_file
+
+
+sax_slices_jamesp_2b = TensorMap(
+    'sax_slices_jamesp_2b', shape=(224, 224, 2), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
+)
+sax_slices_jamesp_4b = TensorMap(
+    'sax_slices_jamesp_4b', shape=(224, 224, 4), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
+)
+sax_slices_jamesp_7b = TensorMap(
+    'sax_slices_jamesp_7b', shape=(224, 224, 7), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
+)
+sax_slices_jamesp_11b = TensorMap(
+    'sax_slices_jamesp_11b', shape=(224, 224, 11), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_jamesp_annotated_'),
+)
+sax_slices_both_3b_3t = TensorMap(
+    'sax_slices_both_3b_3t', shape=(224, 224, 9), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', time_frames=3),
+)
+sax_slices_both_5b = TensorMap(
+    'sax_slices_both_5b', shape=(224, 224, 5), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
+)
+sax_slices_both_5b_5t = TensorMap(
+    'sax_slices_both_5b_5t', shape=(224, 224, 25), normalization=ZeroMeanStd1(),
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_', time_frames=5),
+)
+sax_slices_both_3b_gauss = TensorMap(
+    'sax_slices_both', shape=(224, 224, 3), normalization=ZeroMeanStd1(), augmentations=[_gaussian_noise],
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
+)
+sax_slices_both_5b_sharpen_median = TensorMap(
+    'sax_slices_both_5b', shape=(224, 224, 5), normalization=ZeroMeanStd1(), augmentations=[_median_filter, _sharpen],
+    tensor_from_file=_slices_tensor_with_segmentation('cine_segmented_sax_b*/2/instance_0', 'cine_segmented_sax_b*_both_annotated_'),
+)
+
+
+def _segmented_dicom_slice(dicom_key_prefix, path_prefix='ukb_cardiac_mri', max_slices=50, sax_series=False, merge_lv_pap=False):
     def _segmented_dicom_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        for i in range(max_slices):
-            slice_key = f'{dicom_key_prefix}{i + 1}'
-            if f'{path_prefix}/{slice_key}' in hd5:
-                categorical_index_slice = get_tensor_at_first_date(hd5, path_prefix, slice_key)
-                categorical_one_hot = to_categorical(categorical_index_slice, len(tm.channel_map))
-                tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
-                return tensor
-        raise ValueError(f'No segmented slice found for {tm.name} prefix {dicom_key_prefix}')
+        for i in range(1, 1+max_slices):
+            slice_key = f'{dicom_key_prefix}{i}'
+            if sax_series:
+                for b in range(1, 13):
+                    sax_key = slice_key.replace('*', str(b))
+                    if f'{path_prefix}/{sax_key}' in hd5:
+                        slice_key = sax_key
+                        break
+                if '*' not in slice_key:
+                    break
+            elif f'{path_prefix}/{slice_key}' in hd5:
+                break
+        if i == max_slices:
+            raise ValueError(f'No segmented slice found for {tm.name} prefix {dicom_key_prefix}')
+        label_slice = get_tensor_at_first_date(hd5, path_prefix, slice_key)
+        if merge_lv_pap:
+            label_slice[label_slice == MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP['LV_pap']] = MRI_SAX_SEGMENTED_CHANNEL_MAP['LV_cavity']
+            label_slice[label_slice > MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP['LV_pap']] -= 1
+        categorical_one_hot = to_categorical(label_slice, len(tm.channel_map))
+        tensor[..., :] = pad_or_crop_array_to_shape(tensor[..., :].shape, categorical_one_hot)
+        return tensor
     return _segmented_dicom_tensor_from_file
 
 
@@ -1439,9 +1585,200 @@ cine_segmented_lax_4ch_jamesp = TensorMap(
     'cine_segmented_lax_4ch_slice', Interpretation.CATEGORICAL, shape=(160, 224, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_4ch_jamesp_annotated_'), channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
 )
+cine_segmented_lax_2ch_diastole = TensorMap(
+    'cine_segmented_lax_2ch_diastole', Interpretation.CATEGORICAL, shape=(200, 160, len(MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_2ch_annotated_'), channel_map=MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_lax_3ch_diastole = TensorMap(
+    'cine_segmented_lax_3ch_diastole', Interpretation.CATEGORICAL, shape=(200, 160, len(MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_3ch_annotated_'), channel_map=MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP,
+)
+
 cine_segmented_lax_4ch_diastole = TensorMap(
     'cine_segmented_lax_4ch_diastole', Interpretation.CATEGORICAL, shape=(160, 224, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
     tensor_from_file=_segmented_dicom_slice('cine_segmented_lax_4ch_annotated_'), channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_lvot_diastole_slice = TensorMap(
+    'cine_segmented_lvot_diastole_slice', Interpretation.CATEGORICAL, shape=(208, 160, len(MRI_LVOT_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slices('cine_segmented_lvot_annotated_'), channel_map=MRI_LVOT_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_sax_no_pap_slice_jamesp = TensorMap(
+    'cine_segmented_sax_slice_jamesp', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True, merge_lv_pap=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_sax_slice_jamespb = TensorMap(
+    'cine_segmented_sax_slice_both', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True, merge_lv_pap=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_sax_slice_vnauffal = TensorMap(
+    'cine_segmented_sax_slice_vnauffal', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_vnauffal_annotated_', sax_series=True, merge_lv_pap=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_sax_slice_both = TensorMap(
+    'cine_segmented_sax_slice_both', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_both_annotated_', sax_series=True, merge_lv_pap=True), channel_map=MRI_SAX_SEGMENTED_CHANNEL_MAP,
+)
+cine_segmented_sax_slice_jamesp = TensorMap(
+    'cine_segmented_sax_slice_jamesp', Interpretation.CATEGORICAL, shape=(224, 224, len(MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP)),
+    tensor_from_file=_segmented_dicom_slice('cine_segmented_sax_b*_jamesp_annotated_', sax_series=True), channel_map=MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP,
+)
+
+
+def _heart_mask_instance(mri_key, segmentation_key, labels, instance_num: int = 50, random_instance: bool = False):
+    def _heart_mask_tensor_from_file(tm, hd5, dependents={}):
+        if random_instance:
+            cycle_index = np.random.randint(1, instance_num)
+        else:
+            cycle_index = instance_num
+        categorical_slice = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{cycle_index}')
+        heart_mask = np.isin(categorical_slice, list(labels.values()))
+        mri = get_tensor_at_first_date(hd5, tm.path_prefix, f'{mri_key}')[..., cycle_index]
+        mri = pad_or_crop_array_to_shape(tm.shape, mri)
+        heart_mask = pad_or_crop_array_to_shape(tm.shape, heart_mask)
+        mri_masked = mri * heart_mask
+        return mri_masked
+    return _heart_mask_tensor_from_file
+
+
+heart_mask_lax_4ch_random_time = TensorMap(
+    'heart_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(160, 224, 1), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
+                                          'cine_segmented_lax_4ch_annotated_',
+                                          LAX_4CH_HEART_LABELS,
+                                          random_instance=True),
+    normalization=ZeroMeanStd1(), cacheable=False,
+)
+myocardium_mask_lax_4ch_random_time = TensorMap(
+    'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
+                                          'cine_segmented_lax_4ch_annotated_',
+                                          LAX_4CH_MYOCARDIUM_LABELS,
+                                          random_instance=True),
+    normalization=ZeroMeanStd1(), cacheable=False,
+)
+myocardium_mask_diastole = TensorMap(
+    'myocardium_mask_diastole', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
+                                          'cine_segmented_lax_4ch_annotated_',
+                                          LAX_4CH_MYOCARDIUM_LABELS,
+                                          1),
+)
+myocardium_mask_diastole_as_random_time = TensorMap(
+    'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
+                                          'cine_segmented_lax_4ch_annotated_',
+                                          LAX_4CH_MYOCARDIUM_LABELS,
+                                          1),
+)
+myocardium_mask_systole_as_random_time = TensorMap(
+    'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
+                                          'cine_segmented_lax_4ch_annotated_',
+                                          LAX_4CH_MYOCARDIUM_LABELS,
+                                          15),
+)
+myocardium_mask_i45_as_random_time = TensorMap(
+    'myocardium_mask_lax_4ch_random_time', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
+                                          'cine_segmented_lax_4ch_annotated_',
+                                          LAX_4CH_MYOCARDIUM_LABELS,
+                                          45),
+)
+myocardium_mask_systole_guess = TensorMap(
+    'myocardium_mask_systole_guess', Interpretation.CONTINUOUS, shape=(120, 180, 1), path_prefix='ukb_cardiac_mri',
+    tensor_from_file=_heart_mask_instance('cine_segmented_lax_4ch/2/',
+                                          'cine_segmented_lax_4ch_annotated_',
+                                          LAX_4CH_MYOCARDIUM_LABELS,
+                                          8),
+    normalization=ZeroMeanStd1(), cacheable=False,
+)
+
+
+def _heart_mask_instances(mri_key, segmentation_key, labels, mask=False):
+    def _heart_mask_tensor_from_file(tm, hd5, dependents={}):
+        diastole_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{1}')
+        heart_mask = np.isin(diastole_categorical, list(labels.values()))
+        i, j = np.where(heart_mask)
+        indices = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), np.arange(50), indexing='ij')
+        mri = get_tensor_at_first_date(hd5, tm.path_prefix, f'{mri_key}')
+        if mask:
+            for frame in range(1, 51):
+                frame_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{frame}')
+                heart_mask = np.isin(frame_categorical, list(labels.values()))
+                mri[..., frame-1] = heart_mask[:mri.shape[0], :mri.shape[1]] * mri[..., frame-1]
+        tensor = pad_or_crop_array_to_shape(tm.shape, mri[tuple(indices)])
+        return tensor
+    return _heart_mask_tensor_from_file
+
+
+lax_4ch_heart_center = TensorMap(
+    'lax_4ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
+)
+lax_3ch_heart_center = TensorMap(
+    'lax_3ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_3ch/2/', 'cine_segmented_lax_3ch_annotated_', LAX_3CH_HEART_LABELS),
+)
+lax_2ch_heart_center = TensorMap(
+    'lax_2ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_2ch/2/', 'cine_segmented_lax_2ch_annotated_', LAX_2CH_HEART_LABELS),
+)
+lax_4ch_heart_center_4d = TensorMap(
+    'lax_4ch_heart_center', Interpretation.CONTINUOUS, shape=(96, 96, 50, 1), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
+)
+myocardium_mask_lax_4ch_50frame = TensorMap(
+    'myocardium_mask_lax_4ch_50frame', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_MYOCARDIUM_LABELS, mask=True),
+)
+heart_mask_lax_4ch_50frame = TensorMap(
+    'heart_mask_lax_4ch_50frame', Interpretation.CONTINUOUS, shape=(96, 96, 50), path_prefix='ukb_cardiac_mri', normalization=ZeroMeanStd1(),
+    tensor_from_file=_heart_mask_instances('cine_segmented_lax_4ch/2/', 'cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, mask=True),
+)
+
+
+def _segmented_heart_mask_instances(segmentation_key, labels, frames=50, one_hot=True):
+    def _heart_mask_tensor_from_file(tm, hd5, dependents={}):
+        diastole_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{1}')
+        heart_mask = np.isin(diastole_categorical, list(labels.values()))
+        i, j = np.where(heart_mask)
+        indices = np.meshgrid(np.arange(min(i), max(i) + 1), np.arange(min(j), max(j) + 1), indexing='ij')
+        tensor = np.zeros(tm.shape, dtype=np.float32)
+        for frame in range(1, frames+1):
+            frame_categorical = get_tensor_at_first_date(hd5, tm.path_prefix, f'{segmentation_key}{frame}')
+            reshape_categorical = pad_or_crop_array_to_shape(tm.shape[:2], frame_categorical[indices])
+            if one_hot:
+                slice_one_hot = to_categorical(reshape_categorical, len(tm.channel_map))
+                tensor[..., frame-1, :] = slice_one_hot
+            else:
+                tensor[..., frame-1] = reshape_categorical
+        return tensor
+    return _heart_mask_tensor_from_file
+
+
+segmented_lax_4ch_50_frame = TensorMap(
+    'segmented_lax_4ch_50_frame', Interpretation.CONTINUOUS,
+    shape=(96, 96, 50),
+    path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, one_hot=False),
+)
+segmented_lax_4ch_48_frame = TensorMap(
+    'segmented_lax_4ch_48_frame', Interpretation.CONTINUOUS,
+    shape=(96, 96, 48),
+    path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48, one_hot=False),
+)
+segmented_lax_4ch_50_frame_4d = TensorMap(
+    'segmented_lax_4ch_50_frame_4d', Interpretation.CATEGORICAL,
+    shape=(96, 96, 50, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
+    path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS),
+)
+segmented_lax_4ch_48_frame_4d = TensorMap(
+    'segmented_lax_4ch_48_frame_4d', Interpretation.CATEGORICAL,
+    shape=(96, 96, 48, len(MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP)),
+    path_prefix='ukb_cardiac_mri', channel_map=MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP,
+    tensor_from_file=_segmented_heart_mask_instances('cine_segmented_lax_4ch_annotated_', LAX_4CH_HEART_LABELS, frames=48),
 )
 
 
@@ -1537,18 +1874,23 @@ def _select_tensor_from_file(selection_predicate: Callable):
     return selected_tensor_from_file
 
 
-def _make_lvh_from_lvm_tensor_from_file(lvm_key, group_key='continuous', male_lvh_threshold=72, female_lvh_threshold=55):
-    def lvh_from_lvm_tensor_from_file(tm, hd5, dependents={}):
+def _make_sex_index_tensor_from_file(value_key, group_key='continuous', index_key='bsa_mosteller', male_threshold=72, female_threshold=55):
+    def _indexed_tensor_from_file(tm, hd5, dependents={}):
         tensor = np.zeros(tm.shape, dtype=np.float32)
-        lvm_indexed = float(hd5[group_key][lvm_key][0])
+        value = float(hd5[group_key][value_key][0])
+        if index_key:
+            bsa = float(hd5[group_key][index_key][0])
+            value_indexed = value / bsa
+        else:
+            value_indexed = value
         index = 0
-        if is_genetic_man(hd5) and lvm_indexed > male_lvh_threshold:
+        if is_genetic_man(hd5) and value_indexed > male_threshold:
             index = 1
-        elif is_genetic_woman(hd5) and lvm_indexed > female_lvh_threshold:
+        elif is_genetic_woman(hd5) and value_indexed > female_threshold:
             index = 1
         tensor[index] = 1
         return tensor
-    return lvh_from_lvm_tensor_from_file
+    return _indexed_tensor_from_file
 
 
 def _make_fallback_tensor_from_file(tensor_keys):
@@ -1611,8 +1953,6 @@ lvm_mosteller_index_sentinel = TensorMap(
     tensor_from_file=_make_index_tensor_from_file('bsa_mosteller'),
     channel_map={'LVM': 0}, normalization={'mean': 89.7, 'std': 24.8},
 )
-
-
 myocardial_mass_noheritable_men_only = TensorMap(
     'inferred_myocardial_mass_noheritable', Interpretation.CONTINUOUS, activation='linear', loss='logcosh',
     tensor_from_file=_select_tensor_from_file(is_genetic_man),
@@ -1627,17 +1967,26 @@ myocardial_mass_noheritable_women_only = TensorMap(
 
 lvh_from_indexed_lvm = TensorMap(
     'lvh_from_indexed_lvm', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
-    tensor_from_file=_make_lvh_from_lvm_tensor_from_file(
-        'adjusted_myocardium_mass_indexed',
+    tensor_from_file=_make_sex_index_tensor_from_file(
+        'adjusted_myocardium_mass',
     ),
 )
 lvh_from_indexed_lvm_weighted = TensorMap(
     'lvh_from_indexed_lvm', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
-    tensor_from_file=_make_lvh_from_lvm_tensor_from_file(
-        'adjusted_myocardium_mass_indexed',
+    tensor_from_file=_make_sex_index_tensor_from_file(
+        'adjusted_myocardium_mass',
     ),
     loss=weighted_crossentropy([1.0, 25.0], 'lvh_from_indexed_lvm'),
 )
+big_rvedv_indexed = TensorMap(
+    'big_rvedv_indexed', Interpretation.CATEGORICAL, channel_map={'no_big_rvedv_indexed': 0, 'big_rvedv_indexed': 1},
+    tensor_from_file=_make_sex_index_tensor_from_file('RVEDV', male_threshold=125, female_threshold=94)
+)
+big_rvedv = TensorMap(
+    'big_rvedv', Interpretation.CATEGORICAL, channel_map={'no_big_rvedv': 0, 'big_rvedv': 1},
+    tensor_from_file=_make_sex_index_tensor_from_file('RVEDV', index_key=None, male_threshold=248, female_threshold=168)
+)
+
 adjusted_myocardium_mass = TensorMap(
     'adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
     loss='logcosh', channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
@@ -1647,14 +1996,9 @@ adjusted_myocardium_mass_indexed = TensorMap(
     loss='logcosh', channel_map={'adjusted_myocardium_mass_indexed': 0}, path_prefix='continuous',
     normalization={'mean': 89.70, 'std': 24.80},
 )
-adjusted_myocardium_mass_asym_outlier = TensorMap(
-    'adjusted_myocardium_mass', Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), path_prefix='continuous',
-    loss=asymmetric_outlier_mse, channel_map={'adjusted_myocardium_mass': 0}, normalization={'mean': 89.70, 'std': 24.80},
-)
-
 lvh_from_indexed_lvm_parented = TensorMap(
     'lvh_from_indexed_lvm', Interpretation.CATEGORICAL, channel_map={'no_lvh': 0, 'left_ventricular_hypertrophy': 1},
-    tensor_from_file=_make_lvh_from_lvm_tensor_from_file(
+    tensor_from_file=_make_sex_index_tensor_from_file(
         'adjusted_myocardium_mass_indexed',
     ),
     loss=weighted_crossentropy([1.0, 25.0], 'lvh_from_indexed_lvm_parented'),
@@ -1663,6 +2007,9 @@ lvh_from_indexed_lvm_parented = TensorMap(
         adjusted_myocardium_mass,
     ],
 )
+
+mri_not_in_sinus = TensorMap('mri_not_in_sinus', Interpretation.CATEGORICAL, path_prefix='categorical', storage_type=StorageType.CATEGORICAL_INDEX,
+                             channel_map={'no_mri_not_in_sinus': 0, 'mri_not_in_sinus': 1}, loss=weighted_crossentropy([0.1, 10.0], 'mri_not_in_sinus'))
 
 shmolli_192i_both = TensorMap(
     'shmolli_192i', Interpretation.CONTINUOUS, shape=(288, 384, 7),
@@ -1703,7 +2050,7 @@ lax_3ch_left_atrium_bbox_slice0 = TensorMap(
 )
 
 aorta_descending_tff = _bounding_box_from_categorical(
-    (192, 224), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['descending_aorta'],
+    (192, 224), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['ao_descending_aorta'],
 )
 cine_segmented_ao_descending_aorta_bbox_slice0 = TensorMap(
     'cine_segmented_ao_descending_aorta_bbox_slice0', Interpretation.MESH, shape=(4,),
@@ -1712,7 +2059,7 @@ cine_segmented_ao_descending_aorta_bbox_slice0 = TensorMap(
     ),
 )
 aorta_ascending_tff = _bounding_box_from_categorical(
-    (192, 224), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aorta'],
+    (192, 224), 'ukb_cardiac_mri/cine_segmented_ao_dist_annotated_1/instance_0', MRI_AO_SEGMENTED_CHANNEL_MAP['ao_ascending_aorta'],
 )
 cine_segmented_ao_ascending_aorta_bbox_slice0 = TensorMap(
     'cine_segmented_ao_ascending_aorta_bbox_slice0', Interpretation.MESH, shape=(4,),
@@ -1731,7 +2078,7 @@ lax_3ch_lv_cavity_bbox = TensorMap(
 )
 
 bbfc = _bounding_box_from_callable(
-    MRI_AO_SEGMENTED_CHANNEL_MAP['descending_aorta'], _segmented_index_slices(
+    MRI_AO_SEGMENTED_CHANNEL_MAP['ao_descending_aorta'], _segmented_index_slices(
     'cine_segmented_ao_dist_annotated_', (192, 224, 100),
     ),
 )
@@ -1741,7 +2088,7 @@ cine_segmented_ao_descending_aorta_bbox = TensorMap(
 )
 
 abbfc = _bounding_box_from_callable(
-    MRI_AO_SEGMENTED_CHANNEL_MAP['ascending_aorta'], _segmented_index_slices(
+    MRI_AO_SEGMENTED_CHANNEL_MAP['ao_ascending_aorta'], _segmented_index_slices(
     'cine_segmented_ao_dist_annotated_', (192, 224, 100),
     ),
 )
@@ -1956,6 +2303,10 @@ RVQC = TensorMap(
     'RVQC',  Interpretation.CONTINUOUS, normalization={'mean': 1.179699842022117, 'std': 0.4648958893626213}, loss='logcosh',
     validator=make_range_validator(0, 200), channel_map={'RVQC': 0}, path_prefix='continuous',
 )
+LVM_as_prediction = TensorMap(
+    'LVM_prediction',  Interpretation.CONTINUOUS, loss='logcosh',
+    validator=make_range_validator(0, 400), channel_map={'LVM': 0}, path_prefix='continuous',
+)
 
 myocardial_mass = TensorMap(
     'myocardium_mass',  Interpretation.CONTINUOUS, validator=make_range_validator(0, 400), loss='logcosh', path_prefix='continuous',
@@ -2107,337 +2458,4 @@ slax_view_detect = TensorMap(
         'cine_segmented_sax_b8': 7, 'cine_segmented_sax_b9': 8,
         'cine_segmented_sax_b10': 9, 'cine_segmented_sax_b11': 10,
     },
-)
-
-
-
-def mri_adiposity_rotate_image(image, angle):
-    image_center = tuple(np.array(image.shape[1::-1]) / 2)
-    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-    result  = cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
-    return result
-
-
-def mri_adiposity_translate_image(image, shape, steps):
-    M = np.float32([[1, 0, steps], [0, 1, steps]])
-    image = cv2.warpAffine(image, M, shape)
-    return image
-
-
-def mri_adiposity_uncompress_data(compressed_data: h5py.Dataset) -> np.ndarray:
-    return np.frombuffer(
-        blosc.decompress(compressed_data[()]), dtype=np.uint16,
-    ).reshape(compressed_data.attrs["shape"]).astype(np.float32)
-
-
-def mdrk_adiposity_mri_2dprojection_view_mixup(data: np.ndarray, alpha: float = 1.0, midpoint: int = 144) -> np.ndarray:
-    """Mixup on the CPU: this special version computes two separate mixup
-    operations on a single input tensor where the sagittal and coronal
-    2D projections are placed side-by-side. Failure to compute mixup this
-    way for side-by-side images does not give the expected results.
-
-    Args:
-        data (np.ndarray): Input tensor
-        alpha (float, optional): Mixing factor: passed as a parameter to the Beta distribution. Defaults to 1.0.
-        midpoint (int, optional): Number of pixels for the image to the left. Defaults to 144.
-
-    Returns:
-        np.ndarray: Side-by-side mixup of input tensor
-    """
-    batch_size = len(data)
-    weights1 = np.random.beta(alpha, alpha, batch_size)
-    weights2 = np.random.beta(alpha, alpha, batch_size)
-    index1   = np.random.permutation(batch_size)
-    index2   = np.random.permutation(batch_size)
-    x2 = np.zeros(data.shape)
-    # Midpoint is scaled and should be 224/1.5546875 = 144
-    for i in range(len(weights1)):
-        x2[i][:, 0:midpoint, :] = data[i][:, 0:midpoint, :] * weights1[i] + data[index1[i]][:, 0:midpoint, :] * (1 - weights1[i])
-        x2[i][:, midpoint:, :]  = data[i][:, midpoint:, :]  * weights2[i] + data[index2[i]][:, midpoint:, :]  * (1 - weights2[i])
-    return x2
-
-
-def mdrk_projection_single(field: str, instance: int = 2, augment: bool = False):
-    def _mdrk_projection_single(tm, hd5, dependents={}):
-        try:
-            compressed_data = hd5["instance"][str(instance)][field]
-        except Exception as e:
-            raise Exception(e)
-        #
-        try:
-            tensor = mri_adiposity_uncompress_data(compressed_data)
-        except Exception as e:
-            raise Exception(e)
-        #
-        tensor = cv2.resize(tensor, (224, 368))
-        if augment:
-            if np.random.random() > 0.5:
-                M = np.float32(
-                    [
-                        [1, 0, np.random.randint(-15, 15)],
-                        [0, 1, np.random.randint(-15, 15)],
-                    ],
-                )
-                tensor = cv2.warpAffine(tensor, M, (224, 368))
-            if np.random.random() > 0.5:
-                tensor = cv2.flip(tensor, 1)
-        tensor = np.expand_dims(tensor, axis=-1)
-        return tensor
-    return _mdrk_projection_single
-
-
-def mdrk_projection_single_both_views_all_stationwide_normalization(
-    instance: int = 2,
-    augment: bool = False,
-    stationwise_normalization=True,
-    normalize_histogram=True,
-    clahe_amount=5,
-    clahe_clip=2.0,
-):
-    """This function wrapper constructs a new image with the coronal and sagittal 2D
-    projections side-by-side and each capture/reconstruciton modality stacked in the
-    channels. Returns a (237, 256, 4) tensor. This function does *NOT* respect the
-    desired shape provided in the TensorMap instance.
-
-    Requirements:
-
-    This subroutine requires that the target HDF5 file has the following datasets:
-    * /instance/{instance}/w_sagittal and /instance/{instance}/w_coronal
-    * /instance/{instance}/f_sagittal and /instance/{instance}/f_coronal
-    * /instance/{instance}/in_sagittal and /instance/{instance}/in_coronal
-    * /instance/{instance}/opp_sagittal and /instance/{instance}/opp_coronal
-
-    that are compressed with blosc as 16-bit unsigned integers. Each dataset must also
-    have the attribute `shape`.
-
-    Example ML4H usage:
-
-    ```python
-    >>> actual_train_tm = ml4h.TensorMap(
-        'mdrk_projection_single_both_views_all_stationwide_normalization',
-        tensor_from_file=mdrk_projection_single_both_views_all_stationwide_normalization(instance = 2, augment=True),
-        shape=(237, 256, 4),
-        normalization=ml4h.ZeroMeanStd1(),
-    )
-    ```
-
-    Args:
-        instance (int, optional): UK Biobank instance numbering. Defaults to 2.
-        augment (bool, optional): Augment data: includes a translation, rotation, and axis flip. Defaults to False.
-        stationwise_normalization (bool, optional): Normalize each station separately before appending as a channel. Defaults to True.
-        normalize_histogram (bool, optional): Normalize intensity histogram using CLAHE. Defaults to True.
-        clahe_amount (int, optional): Size of CLAHE kernel. Defaults to 5.
-        clahe_clip (float, optional): Clip limit for the CLAHE kernel. Defaults to 2.0.
-    """
-    def _mdrk_projection_single_both_views_all_stationwide_normalization(
-        tm, hd5, dependents={},
-    ):
-        # 174 + 224 = 398 -> (368, 398)
-        # map to (237, 256)
-        clahe = cv2.createCLAHE(
-            clipLimit=clahe_clip,
-            tileGridSize=(clahe_amount, clahe_amount),
-        )
-
-        do_augment = False
-        do_flip = False
-        rand_angle = 0.0
-        rand_move = 0.0
-        if augment:
-            do_augment = True
-            if np.random.random() > 0.5:
-                do_flip = True
-            if np.random.random() > 0.5:
-                rand_angle = np.random.randint(-5, 5)
-            if np.random.random() > 0.5:
-                rand_move = np.random.randint(-16, 16)
-
-        prefixes = ["w", "f", "in", "opp"]
-        tensor = np.zeros((368, 174 + 224, len(prefixes)))
-
-        for p, i in zip(prefixes, range(len(prefixes))):
-            # Coronal view
-            compressed_data = hd5["instance"][str(instance)][f"{p}_coronal"]
-            tensor_coronal = mri_adiposity_uncompress_data(compressed_data)
-
-            if stationwise_normalization:
-                tensor_coronal = TopKNormalize(50).normalize(tensor_coronal)
-            if normalize_histogram:
-                tensor_coronal = (
-                    clahe.apply((tensor_coronal * 255.0).astype(np.uint8)).astype(
-                        np.float32,
-                    )
-                    / 255.0
-                )
-
-            tensor_coronal = cv2.resize(tensor_coronal, (224, 368))
-            if do_augment:
-                if do_flip:
-                    tensor_coronal = cv2.flip(tensor_coronal, 1)
-                tensor_coronal = mri_adiposity_translate_image(tensor_coronal, (224, 368), rand_move)
-                tensor_coronal = mri_adiposity_rotate_image(tensor_coronal, rand_angle)
-            tensor[..., 0:224, i] = tensor_coronal
-
-            compressed_data = hd5["instance"][str(instance)][f"{p}_sagittal"]
-            tensor_sagittal = mri_adiposity_uncompress_data(compressed_data)
-
-            if stationwise_normalization:
-                tensor_sagittal = TopKNormalize(50).normalize(tensor_sagittal)
-            if normalize_histogram:
-                tensor_sagittal = (
-                    clahe.apply((tensor_sagittal * 255.0).astype(np.uint8)).astype(
-                        np.float32,
-                    )
-                    / 255.0
-                )
-            #
-            tensor_sagittal = cv2.resize(tensor_sagittal, (174, 368))
-            if do_augment:
-                tensor_sagittal = mri_adiposity_translate_image(
-                    tensor_sagittal, (174, 368), rand_move,
-                )
-                tensor_sagittal = mri_adiposity_rotate_image(tensor_sagittal, rand_angle)
-            tensor[..., 224:, i] = tensor_sagittal
-        tensor = cv2.resize(tensor, (256, 237))
-        return tensor
-    return _mdrk_projection_single_both_views_all_stationwide_normalization
-
-
-def mdrk_projection_both_views_pretrained(
-    instance: int = 2,
-    augment: bool = False,
-    stationwise_normalization=True,
-    normalize_histogram=True,
-    clahe_amount=5,
-    clahe_clip=2.0,
-):
-    """This function wrapper constructs a new image with the coronal and sagittal 2D
-    projections side-by-side for the water/fat reconstructions stacked in the
-    channels followed by an empty channel to fit the expectations of pretrained image
-    models. Returns a (237, 256, 3) tensor. This function does *NOT* respect the
-    desired shape provided in the TensorMap instance.
-
-    Requirements:
-
-    This subroutine requires that the target HDF5 file has the following datasets:
-    * /instance/{instance}/w_sagittal and /instance/{instance}/w_coronal
-    * /instance/{instance}/f_sagittal and /instance/{instance}/f_coronal
-
-    that are compressed with blosc as 16-bit unsigned integers. Each dataset must also
-    have the attribute `shape`.
-
-    Example ML4H usage:
-
-    ```python
-    >>> actual_train_tm = ml4h.TensorMap(
-        'mdrk_projection_both_views_pretrained',
-        tensor_from_file=mdrk_projection_both_views_pretrained(instance = 2, augment=True),
-        shape=(237, 256, 2),
-        normalization=ml4h.ZeroMeanStd1(),
-    )
-    ```
-
-    Args:
-        instance (int, optional): UK Biobank instance numbering. Defaults to 2.
-        augment (bool, optional): Augment data: includes a translation, rotation, and axis flip. Defaults to False.
-        stationwise_normalization (bool, optional): Normalize each station separately before appending as a channel. Defaults to True.
-        normalize_histogram (bool, optional): Normalize intensity histogram using CLAHE. Defaults to True.
-        clahe_amount (int, optional): Size of CLAHE kernel. Defaults to 5.
-        clahe_clip (float, optional): Clip limit for the CLAHE kernel. Defaults to 2.0.
-    """
-    def _mdrk_projection_both_views_pretrained(tm, hd5, dependents={}):
-        do_augment = False
-        do_flip = False
-        rand_angle = 0.0
-        rand_move = 0.0
-        cclip = clahe_clip
-        camount = clahe_amount
-        if augment:
-            do_augment = True
-            if np.random.random() > 0.5:
-                do_flip = True
-            rand_angle = np.random.randint(-5, 5)
-            rand_move = np.random.randint(-16, 16)
-            cclip = np.random.randint(0, 5)
-            camount = np.random.randint(1, 10)
-
-        clahe = cv2.createCLAHE(
-            clipLimit=cclip, tileGridSize=(camount, camount),
-        )
-        prefixes = ["w", "f"]
-        tensor = np.zeros((368, 174 + 224, 3), dtype=np.float32)
-
-        for p, i in zip(prefixes, range(len(prefixes))):
-            # Coronal view
-            compressed_data = hd5["instance"][str(instance)][f"{p}_coronal"]
-            tensor_coronal = mri_adiposity_uncompress_data(compressed_data)
-
-            if stationwise_normalization:
-                tensor_coronal = TopKNormalize(50).normalize(tensor_coronal)
-            if normalize_histogram:
-                tensor_coronal = (
-                    clahe.apply((tensor_coronal * 255.0).astype(np.uint8)).astype(
-                        np.float32,
-                    )
-                    / 255.0
-                )
-
-            tensor_coronal = cv2.resize(tensor_coronal, (224, 368))
-            if do_augment:
-                if do_flip:
-                    tensor_coronal = cv2.flip(tensor_coronal, 1)
-                tensor_coronal = mri_adiposity_translate_image(tensor_coronal, (224, 368), rand_move)
-                tensor_coronal = mri_adiposity_rotate_image(tensor_coronal, rand_angle)
-            tensor[..., 0:224, i] = tensor_coronal
-
-            compressed_data = hd5["instance"][str(instance)][f"{p}_sagittal"]
-            # Sagittal view
-            tensor_sagittal = mri_adiposity_uncompress_data(compressed_data)
-
-            if stationwise_normalization:
-                tensor_sagittal = TopKNormalize(50).normalize(tensor_sagittal)
-            if normalize_histogram:
-                tensor_sagittal = (
-                    clahe.apply((tensor_sagittal * 255.0).astype(np.uint8)).astype(
-                        np.float32,
-                    )
-                    / 255.0
-                )
-
-            tensor_sagittal = cv2.resize(tensor_sagittal, (174, 368))
-            if do_augment:
-                tensor_sagittal = mri_adiposity_translate_image(
-                    tensor_sagittal, (174, 368), rand_move,
-                )
-                tensor_sagittal = mri_adiposity_rotate_image(tensor_sagittal, rand_angle)
-            tensor[..., 224:, i] = tensor_sagittal
-        tensor = cv2.resize(tensor, (256, 237))
-        return tensor
-    return _mdrk_projection_both_views_pretrained
-
-
-mdrk_adiposity_mri_2dprojection_actual_train_tm = TensorMap(
-    "mdrk_projection_single_both_views_all_stationwide_normalization",
-    tensor_from_file=mdrk_projection_both_views_pretrained(
-        instance=2, augment=True,
-    ),
-    # shape=(368,174+224, 3), reshaped to (237, 256, 3)
-    shape=(237, 256, 3),
-    normalization=ZeroMeanStd1(),
-)
-
-mdrk_adiposity_mri_2dprojection_actual_test_tm = TensorMap(
-    "mdrk_projection_single_both_views_all_stationwide_normalization",
-    tensor_from_file=mdrk_projection_both_views_pretrained(instance=2, augment=False),
-    # shape=(368,174+224, 3), reshaped to (237, 256, 3)
-    shape=(237, 256, 3),
-    normalization=ZeroMeanStd1(),
-)
-
-# Fake TMAP for compatibility with ML4H constructor.
-mdrk_adiposity_mri_2dprojection_scalar_output_fake = TensorMap(
-    "mdrk_adiposity_scalar_output_fake",
-    shape=(1,),
-    normalization=None,
-    tensor_from_file=None,
 )
