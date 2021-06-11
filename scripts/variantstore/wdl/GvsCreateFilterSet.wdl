@@ -74,6 +74,9 @@ workflow GvsCreateFilterSet {
 
         Int? SNP_VQSR_machine_mem_gb
         Int? SNP_VQSR_downsampleFactor = 1
+
+        Int? INDEL_VQSR_machine_mem_gb
+
     }
 
     call SplitIntervals {
@@ -131,7 +134,8 @@ workflow GvsCreateFilterSet {
         dbsnp_resource_vcf = dbsnp_resource_vcf,
         dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
         use_allele_specific_annotations = true,
-        disk_size = large_disk
+        disk_size = large_disk,
+        machine_mem_gb = INDEL_VQSR_machine_mem_gb,
     }
 
     call SNPsVariantRecalibrator {
@@ -491,7 +495,7 @@ task UploadFilterSetToBQ {
    command {
        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-       gatk --java-options -Xms3g GatherVcfsCloud \
+       gatk --java-options -Xmx3g GatherVcfsCloud \
             --ignore-safety-checks --gather-type BLOCK \
             -I ~{sep=' -I ' input_vcfs} \
             --output ~{output_vcf_name}
@@ -536,12 +540,17 @@ task IndelsVariantRecalibrator {
 
     Int disk_size
     String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
+    Int? machine_mem_gb
   }
+
+  Int machine_mem = select_first([machine_mem_gb, 30])
+  Int java_mem = machine_mem - 5
+
 
   command <<<
     set -euo pipefail
 
-    gatk --java-options -Xms24g \
+    gatk --java-options -Xmx~{java_mem}g \
       VariantRecalibrator \
       -V ~{sites_only_variant_filtered_vcf} \
       ~{"-XL " + excluded_sites_bed} \
@@ -562,7 +571,7 @@ task IndelsVariantRecalibrator {
   >>>
 
   runtime {
-    memory: "26 GiB"
+    memory: "~{machine_mem} GiB"
     cpu: "2"
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
