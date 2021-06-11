@@ -28,7 +28,7 @@ workflow GvsExtractCallset {
         File? excluded_intervals
         Boolean? emit_pls = false
 
-        File? service_account_json
+        String? service_account_json
 
         String output_file_base_name
         String? output_gcs_dir
@@ -124,7 +124,7 @@ task ExtractTask {
         Boolean? emit_pls
 
         # Runtime Options:
-        File? service_account_json
+        String? service_account_json
         File? gatk_override
 
         Int? local_sort_max_records_in_ram = 10000000
@@ -142,8 +142,9 @@ task ExtractTask {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         if [ ~{has_service_account_file} = 'true' ]; then
-            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gsutil cp ~{service_account_json} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
             gcloud config set project ~{read_project_id}
         fi
 
@@ -191,6 +192,7 @@ task ExtractTask {
         disks: "local-disk 250 HDD"
         bootDiskSizeGb: 15
         preemptible: 3
+        maxRetries: 3
         cpu: 2
     }
 
@@ -266,7 +268,7 @@ task GetBQTableLastModifiedDatetime {
     input {
         String dataset_table
         String query_project
-        File? service_account_json
+        String? service_account_json
     }
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
@@ -277,7 +279,8 @@ task GetBQTableLastModifiedDatetime {
     command <<<
         set -e
         if [ ~{has_service_account_file} = 'true' ]; then
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gsutil cp ~{service_account_json} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
         fi
 
         # bq needs the project name to be separate by a colon
