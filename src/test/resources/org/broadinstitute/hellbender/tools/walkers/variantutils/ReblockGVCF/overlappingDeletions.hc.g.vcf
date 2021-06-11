@@ -1,0 +1,81 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=LowQual,Description="Low quality">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+##GATKCommandLine=<ID=HaplotypeCaller,CommandLine="HaplotypeCaller  --emit-ref-confidence GVCF --gvcf-gq-bands 10 --gvcf-gq-bands 20 --gvcf-gq-bands 30 --gvcf-gq-bands 40 --gvcf-gq-bands 50 --gvcf-gq-bands 60 --gvcf-gq-bands 70 --gvcf-gq-bands 80 --gvcf-gq-bands 90 --use-new-qual-calculator true --contamination-fraction-to-filter 0.01028908 --output 2004700237.g.vcf.gz --intervals /cromwell_root/broad-gotc-prod-cromwell-execution/ExomeGermlineSingleSample/a20bbb01-9239-48b0-9a02-cb8784467038/call-BamToGvcf/BamToGvcf/b60733e1-1199-482f-89de-c84147d20b82/call-ScatterIntervalList/glob-cb4648beeaff920acb03de7603c06f98/6scattered.interval_list --input gs://broad-gotc-prod-cromwell-execution/ExomeGermlineSingleSample/a20bbb01-9239-48b0-9a02-cb8784467038/call-UnmappedBamToAlignedBam/UnmappedBamToAlignedBam/183abd70-8daf-4b84-84e9-16c80c8371e0/call-GatherBamFiles/2004700237.bam --reference /cromwell_root/broad-references/hg38/v0/Homo_sapiens_assembly38.fasta --annotation-group StandardAnnotation --annotation-group StandardHCAnnotation --annotation-group AS_StandardAnnotation  --indel-size-to-eliminate-in-ref-model 10 --use-alleles-trigger false --disable-optimizations false --just-determine-active-regions false --dont-genotype false --max-mnp-distance 0 --dont-trim-active-regions false --max-disc-ar-extension 25 --max-gga-ar-extension 300 --padding-around-indels 150 --padding-around-snps 20 --kmer-size 10 --kmer-size 25 --dont-increase-kmer-sizes-for-cycles false --allow-non-unique-kmers-in-ref false --num-pruning-samples 1 --recover-dangling-heads false --do-not-recover-dangling-branches false --min-dangling-branch-length 4 --consensus false --max-num-haplotypes-in-population 128 --error-correct-kmers false --min-pruning 2 --debug-graph-transformations false --kmer-length-for-read-error-correction 25 --min-observations-for-kmer-to-be-solid 20 --likelihood-calculation-engine PairHMM --base-quality-score-threshold 18 --pair-hmm-gap-continuation-penalty 10 --pair-hmm-implementation FASTEST_AVAILABLE --pcr-indel-model CONSERVATIVE --phred-scaled-global-read-mismapping-rate 45 --native-pair-hmm-threads 4 --native-pair-hmm-use-double-precision false --debug false --use-filtered-reads-for-annotations false --bam-writer-type CALLED_HAPLOTYPES --dont-use-soft-clipped-bases false --capture-assembly-failure-bam false --error-correct-reads false --do-not-run-physical-phasing false --min-base-quality-score 10 --smith-waterman JAVA --annotate-with-num-discovered-alleles false --heterozygosity 0.001 --indel-heterozygosity 1.25E-4 --heterozygosity-stdev 0.01 --standard-min-confidence-threshold-for-calling 10.0 --max-alternate-alleles 6 --max-genotype-count 1024 --sample-ploidy 2 --num-reference-samples-if-no-call 0 --genotyping-mode DISCOVERY --genotype-filtered-alleles false --output-mode EMIT_VARIANTS_ONLY --all-site-pls false --min-assembly-region-size 50 --max-assembly-region-size 300 --assembly-region-padding 100 --max-reads-per-alignment-start 50 --active-probability-threshold 0.002 --max-prob-propagation-distance 50 --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false --minimum-mapping-quality 20 --disable-tool-default-annotations false --enable-all-annotations false",Version=4.0.10.1,Date="January 11, 2019 4:12:01 PM UTC">
+##GATKCommandLine=<ID=SelectVariants,CommandLine="SelectVariants  --output sample2.prod.g.vcf --variant gs://broad-exomes-prod-storage/pipeline/C2151/gvcfs/2004700237.v2.44a9a50b-e1ce-4b6f-9114-01a62f5dfd3d.g.vcf.gz --intervals chr20:49884242 --interval-padding 5  --invertSelect false --exclude-non-variants false --exclude-filtered false --preserve-alleles false --remove-unused-alternates false --restrict-alleles-to ALL --keep-original-ac false --keep-original-dp false --mendelian-violation false --invert-mendelian-violation false --mendelian-violation-qual-threshold 0.0 --select-random-fraction 0.0 --remove-fraction-genotypes 0.0 --fully-decode false --max-indel-size 2147483647 --min-indel-size 0 --max-filtered-genotypes 2147483647 --min-filtered-genotypes 0 --max-fraction-filtered-genotypes 1.0 --min-fraction-filtered-genotypes 0.0 --max-nocall-number 2147483647 --max-nocall-fraction 1.0 --set-filtered-gt-to-nocall false --allow-nonoverlapping-command-line-samples false --suppress-reference-path false --interval-set-rule UNION --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version="4.1.2.0-49-g4af6886-SNAPSHOT",Date="August 1, 2019 3:54:58 PM EDT">
+##GVCFBlock0-10=minGQ=0(inclusive),maxGQ=10(exclusive)
+##GVCFBlock10-20=minGQ=10(inclusive),maxGQ=20(exclusive)
+##GVCFBlock20-30=minGQ=20(inclusive),maxGQ=30(exclusive)
+##GVCFBlock30-40=minGQ=30(inclusive),maxGQ=40(exclusive)
+##GVCFBlock40-50=minGQ=40(inclusive),maxGQ=50(exclusive)
+##GVCFBlock50-60=minGQ=50(inclusive),maxGQ=60(exclusive)
+##GVCFBlock60-70=minGQ=60(inclusive),maxGQ=70(exclusive)
+##GVCFBlock70-80=minGQ=70(inclusive),maxGQ=80(exclusive)
+##GVCFBlock80-90=minGQ=80(inclusive),maxGQ=90(exclusive)
+##GVCFBlock90-100=minGQ=90(inclusive),maxGQ=100(exclusive)
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=AS_InbreedingCoeff,Number=A,Type=Float,Description="allele specific heterozygosity as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation; relate to inbreeding coefficient">
+##INFO=<ID=AS_QD,Number=A,Type=Float,Description="Allele-specific Variant Confidence/Quality by Depth">
+##INFO=<ID=AS_RAW_BaseQRankSum,Number=1,Type=String,Description="raw data for allele specific rank sum test of base qualities">
+##INFO=<ID=AS_RAW_MQ,Number=1,Type=String,Description="Allele-specfic raw data for RMS Mapping Quality">
+##INFO=<ID=AS_RAW_MQRankSum,Number=1,Type=String,Description="Allele-specfic raw data for Mapping Quality Rank Sum">
+##INFO=<ID=AS_RAW_ReadPosRankSum,Number=1,Type=String,Description="allele specific raw data for rank sum test of read position bias">
+##INFO=<ID=AS_SB_TABLE,Number=1,Type=String,Description="Allele-specific forward/reverse read counts for strand bias tests">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MLEAC,Number=A,Type=Integer,Description="Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed">
+##INFO=<ID=MLEAF,Number=A,Type=Float,Description="Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=RAW_MQandDP,Number=2,Type=Integer,Description="Raw data (sum of squared MQ and total depth) for improved RMS Mapping Quality calculation. Incompatible with deprecated RAW_MQ formulation.">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##contig=<ID=chr1,length=248956422>
+##contig=<ID=chr2,length=242193529>
+##contig=<ID=chr3,length=198295559>
+##contig=<ID=chr4,length=190214555>
+##contig=<ID=chr5,length=181538259>
+##contig=<ID=chr6,length=170805979>
+##contig=<ID=chr7,length=159345973>
+##contig=<ID=chr8,length=145138636>
+##contig=<ID=chr9,length=138394717>
+##contig=<ID=chr10,length=133797422>
+##contig=<ID=chr11,length=135086622>
+##contig=<ID=chr12,length=133275309>
+##contig=<ID=chr13,length=114364328>
+##contig=<ID=chr14,length=107043718>
+##contig=<ID=chr15,length=101991189>
+##contig=<ID=chr16,length=90338345>
+##contig=<ID=chr17,length=83257441>
+##contig=<ID=chr18,length=80373285>
+##contig=<ID=chr19,length=58617616>
+##contig=<ID=chr20,length=64444167>
+##contig=<ID=chr21,length=46709983>
+##contig=<ID=chr22,length=50818468>
+##contig=<ID=chrX,length=156040895>
+##contig=<ID=chrY,length=57227415>
+##contig=<ID=chrM,length=16569>
+##source=HaplotypeCaller
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	2004700237
+chr20	49884219	.	CACACACACACACACACACACACG	C,<NON_REF>	0	.	AS_RAW_BaseQRankSum=|NaN|NaN;AS_RAW_MQ=72000.00|0.00|0.00;AS_RAW_MQRankSum=|NaN|NaN;AS_RAW_ReadPosRankSum=|NaN|NaN;AS_SB_TABLE=1,19|0,0|0,0;DP=58;ExcessHet=3.0103;MLEAC=0,0;MLEAF=0.00,0.00;RAW_MQandDP=204651,58	GT:AD:DP:GQ:PL:SB	0/0:20,0,0:20:59:0,59,750,60,751,753:1,19,0,0
+chr20	49884221	.	CACACACACACACACACACACG	*,C,<NON_REF>	0	.	AS_RAW_BaseQRankSum=|NaN|NaN|NaN;AS_RAW_MQ=46800.00|0.00|0.00|0.00;AS_RAW_MQRankSum=|NaN|NaN|NaN;AS_RAW_ReadPosRankSum=|NaN|NaN|NaN;AS_SB_TABLE=1,12|0,0|0,0|0,0;DP=55;ExcessHet=3.0103;MLEAC=0,0,0;MLEAF=0.00,0.00,0.00;RAW_MQandDP=193851,55	GT:AD:DP:GQ:PL:SB	0/0:13,0,0,0:13:41:0,53,736,41,574,659,65,675,635,706:1,12,0,0
+chr20	49884235	.	CACACACG	*,C,CGACACACG,<NON_REF>	0	.	AS_RAW_BaseQRankSum=|NaN|NaN|NaN|NaN;AS_RAW_MQ=21600.00|0.00|0.00|0.00|0.00;AS_RAW_MQRankSum=|NaN|NaN|NaN|NaN;AS_RAW_ReadPosRankSum=|NaN|NaN|NaN|NaN;AS_SB_TABLE=0,6|0,0|0,0|0,0|0,0;DP=30;ExcessHet=3.0103;MLEAC=0,0,0,0;MLEAF=0.00,0.00,0.00,0.00;RAW_MQandDP=105426,30	GT:AD:DP:GQ:PL:SB	0/0:6,0,0,0,0:6:8:0,8,513,71,388,891,24,360,471,522,60,483,615,540,680:0,6,0,0
+chr20	49884237	.	CACACG	*,C,CGACACG,<NON_REF>	0	.	AS_RAW_BaseQRankSum=|NaN|NaN|NaN|NaN;AS_RAW_MQ=18000.00|0.00|0.00|0.00|0.00;AS_RAW_MQRankSum=|NaN|NaN|NaN|NaN;AS_RAW_ReadPosRankSum=|NaN|NaN|NaN|NaN;AS_SB_TABLE=1,4|0,0|0,0|0,0|0,0;DP=25;ExcessHet=3.0103;MLEAC=0,0,0,0;MLEAF=0.00,0.00,0.00,0.00;RAW_MQandDP=88425,25	GT:AD:DP:GQ:PL:SB	0/0:5,0,0,0,0:5:23:0,23,353,60,322,704,51,308,545,673,51,361,581,581,618:1,4,0,0
+chr20	49884239	.	CACG	*,C,<NON_REF>	0	.	AS_RAW_BaseQRankSum=|NaN|NaN|NaN;AS_RAW_MQ=18000.00|0.00|0.00|0.00;AS_RAW_MQRankSum=|NaN|NaN|NaN;AS_RAW_ReadPosRankSum=|NaN|NaN|NaN;AS_SB_TABLE=1,4|0,0|0,0|0,0;DP=25;ExcessHet=3.0103;MLEAC=0,0,0;MLEAF=0.00,0.00,0.00;RAW_MQandDP=88425,25	GT:AD:DP:GQ:PL:SB	0/0:5,0,0,0:5:17:0,17,272,51,255,673,56,284,487,477:1,4,0,0
+chr20	49884241	.	CG	*,C,<NON_REF>	0	.	AS_RAW_BaseQRankSum=|NaN|NaN|NaN;AS_RAW_MQ=14400.00|0.00|0.00|0.00;AS_RAW_MQRankSum=|NaN|NaN|NaN;AS_RAW_ReadPosRankSum=|NaN|NaN|NaN;AS_SB_TABLE=0,4|0,0|0,0|0,0;DP=25;ExcessHet=3.0103;MLEAC=1,0,0;MLEAF=0.500,0.00,0.00;RAW_MQandDP=88425,25	GT:AD:DP:GQ:PL:SB	0/1:4,0,0,0:4:17:17,0,196,47,202,692,63,225,477,463:0,4,0,0
+chr20	49884242	.	GAC	*,GACAC,G,<NON_REF>	174.05	.	AS_RAW_BaseQRankSum=||||;AS_RAW_MQ=0.00|3600.00|0.00|3600.00|0.00;AS_RAW_MQRankSum=||||;AS_RAW_ReadPosRankSum=||||;AS_SB_TABLE=0,0|0,0|0,0|0,0|0,0;DP=25;ExcessHet=3.0103;MLEAC=1,0,1,0;MLEAF=0.500,0.00,0.500,0.00;RAW_MQandDP=88425,25	GT:AD:DP:GQ:PL:SB	1/3:0,1,0,1,0:2:20:727,184,153,592,84,818,77,0,77,20,666,179,585,71,658:0,0,0,2
+chr20	49884245	.	A	<NON_REF>	.	.	END=49884249	GT:DP:GQ:MIN_DP:PL	0/0:25:42:25:0,42,630

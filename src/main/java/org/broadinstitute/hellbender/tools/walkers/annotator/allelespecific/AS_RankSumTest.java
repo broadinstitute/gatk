@@ -27,6 +27,11 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     public static final String RAW_DELIM = ",";
 
     @Override
+    public String getEmptyRawValue() {
+        return "NaN";
+    }
+
+    @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final AlleleLikelihoods<GATKRead, Allele> likelihoods) {

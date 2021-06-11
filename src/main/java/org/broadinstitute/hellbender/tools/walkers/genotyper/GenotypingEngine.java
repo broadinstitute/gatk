@@ -60,13 +60,14 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      *                    sample set will be used instead.
      * @param doAlleleSpecificCalcs Whether the AS_QUAL key should be calculated and added to newly genotyped variants.
      *
-     * @throws IllegalArgumentException if any of {@code samples}, {@code configuration} is {@code null}.
+     * @throws IllegalArgumentException if any of {@code samples}, {@code configuration} is {@code null} or if {@code samples} is empty.
      */
     protected GenotypingEngine(final Config configuration,
                                final SampleList samples,
                                final boolean doAlleleSpecificCalcs) {
         this.configuration = Utils.nonNull(configuration, "the configuration cannot be null");
-        this.samples = Utils.nonNull(samples, "the sample list cannot be null");
+        Utils.validate(!samples.asListOfSamples().isEmpty(), "the sample list cannot be null or empty");
+        this.samples = samples;
         this.doAlleleSpecificCalcs = doAlleleSpecificCalcs;
         logger = LogManager.getLogger(getClass());
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
@@ -233,6 +234,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
     }
 
+    //TODO: update for DRAGEN GP tag
     private boolean hasPosteriors(final GenotypesContext gc) {
         return gc.stream().anyMatch(g -> g.hasExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY));
     }

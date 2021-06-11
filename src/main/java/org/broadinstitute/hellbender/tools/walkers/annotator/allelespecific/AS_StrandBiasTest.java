@@ -48,6 +48,11 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         return null;
     }
 
+    @Override
+    public String getEmptyRawValue() {
+        return "0,0";
+    }
+
     /**
      * Method which determines how the Strand Bias read direction allele data must be combined into a final annotation
      * Must be overridden by client methods.
