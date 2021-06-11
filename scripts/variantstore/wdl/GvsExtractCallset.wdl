@@ -4,7 +4,6 @@ workflow GvsExtractCallset {
    input {
         String data_project
         String default_dataset
-        String filter_set_name
 
         File wgs_intervals
         Int scatter_count
@@ -16,10 +15,11 @@ workflow GvsExtractCallset {
         String fq_cohort_extract_table_prefix
         String query_project = data_project
 
+        Boolean do_not_filter_override = false
+        String? filter_set_name
         String fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
         String fq_filter_set_site_table = "~{data_project}.~{default_dataset}.filter_set_sites"
         String fq_filter_set_tranches_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
-        Boolean do_not_filter_override = false
 
         # if these are unset, default sensitivity levels will be used
         Float? snps_truth_sensitivity_filter_level_override
@@ -31,6 +31,7 @@ workflow GvsExtractCallset {
         File? service_account_json
 
         String output_file_base_name
+        String? output_gcs_dir
         File? gatk_override
     }
 
@@ -49,12 +50,14 @@ workflow GvsExtractCallset {
     call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
         input:
             dataset_table = fq_cohort_extract_table,
+            query_project = query_project,
             service_account_json = service_account_json
     }
 
     call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
         input:
             dataset_table = fq_samples_to_extract_table,
+            query_project = query_project,
             service_account_json = service_account_json
     }
 
@@ -80,8 +83,14 @@ workflow GvsExtractCallset {
                 emit_pls                 = emit_pls,
                 service_account_json     = service_account_json,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
+                output_gcs_dir           = output_gcs_dir,
                 last_modified_timestamps = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp]
         }
+    }
+
+    output {
+      Array[File] output_vcfs = ExtractTask.output_vcf
+      Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
     }
 }
 
@@ -101,14 +110,15 @@ task ExtractTask {
         String fq_cohort_extract_table
         String read_project_id
         String output_file
+        String? output_gcs_dir
+
+        Boolean do_not_filter_override
         String fq_filter_set_info_table
         String fq_filter_set_site_table
         String fq_filter_set_tranches_table
-        String filter_set_name
+        String? filter_set_name
         Float? snps_truth_sensitivity_filter_level
         Float? indels_truth_sensitivity_filter_level
-
-        Boolean do_not_filter_override
 
         File? excluded_intervals
         Boolean? emit_pls
@@ -140,7 +150,7 @@ task ExtractTask {
         df -h
 
         if [ ~{do_not_filter_override} = 'true' ]; then
-            FILTERING_ARGS=''
+            FILTERING_ARGS='--vqslod-filter-genotypes false'
         else
             FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
                 --filter-set-site-table ~{fq_filter_set_site_table}
@@ -163,6 +173,14 @@ task ExtractTask {
                 --project-id ~{read_project_id} \
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
+
+        # Drop trailing slash if one exists
+        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+        if [ -n "${OUTPUT_GCS_DIR}" ]; then
+          gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
+          gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
+        fi
     >>>
 
     # ------------------------------------------------
@@ -247,6 +265,7 @@ task GetBQTableLastModifiedDatetime {
 
     input {
         String dataset_table
+        String query_project
         File? service_account_json
     }
 
@@ -255,20 +274,23 @@ task GetBQTableLastModifiedDatetime {
     # ------------------------------------------------
     # try to get the last modified date for the table in question; fail if something comes back from BigQuwey
     # that isn't in the right format (e.g. an error)
-    command {
+    command <<<
         set -e
         if [ ~{has_service_account_file} = 'true' ]; then
             gcloud auth activate-service-account --key-file='~{service_account_json}'
         fi
 
-        LASTMODIFIED=$(bq show --location=US --format=json ~{dataset_table} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+        # bq needs the project name to be separate by a colon
+        DATASET_TABLE_COLON=$(echo ~{dataset_table} | sed 's/\./:/')
+
+        LASTMODIFIED=$(bq show  ~{"--project_id " + query_project} --location=US --format=json ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
 
         if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
             echo $LASTMODIFIED
         else
             exit 1
         fi
-    }
+    >>>
 
     output {
         String last_modified_timestamp = read_string(stdout())

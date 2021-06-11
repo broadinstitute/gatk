@@ -50,6 +50,10 @@ workflow GvsPrepareCallset {
             docker                          = docker_final
     }
 
+    output {
+      String fq_cohort_extract_table_prefix = PrepareCallsetTask.fq_cohort_extract_table_prefix
+    }
+
 }
 
 task PrepareCallsetTask {
@@ -92,6 +96,10 @@ task PrepareCallsetTask {
             ~{"--sa_key_path " + service_account_json}
     >>>
 
+    output {
+      String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_cohort_extract_data_table.py
+    }
+
     runtime {
         docker: docker
         memory: "3 GB"
@@ -127,5 +135,3 @@ task LocalizeFile {
     disks: "local-disk 50 HDD"
   }
 }
-
-

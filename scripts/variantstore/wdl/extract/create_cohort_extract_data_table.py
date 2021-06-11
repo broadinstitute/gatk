@@ -193,7 +193,7 @@ def create_position_table(fq_temp_table_dataset, min_variant_samples):
 def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids):
   def get_pet_subselect(fq_pet_table, samples, id):
     sample_stanza = ','.join([str(s) for s in samples])
-    sql = f"    q_{id} AS (SELECT p.location, p.sample_id, p.state from {fq_pet_table} p " \
+    sql = f"    q_{id} AS (SELECT p.location, p.sample_id, p.state from `{fq_pet_table}` p " \
           f"    join `{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}` v on (p.location = v.location) WHERE p.sample_id IN ({sample_stanza})), "
     return sql
 
