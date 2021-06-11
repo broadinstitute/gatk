@@ -12,7 +12,9 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -63,6 +65,7 @@ public class ExtractCohortEngine {
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
     private final boolean disableGnarlyGenotyper;
     private final GnarlyGenotyperEngine gnarlyGenotyper;
+    private final VariantAnnotatorEngine annotationEngine;
 
     private int totalNumberOfVariants = 0;
     private int totalNumberOfSites = 0;
@@ -132,6 +135,7 @@ public class ExtractCohortEngine {
 
         this.filterSetName = filterSetName;
 
+        this.annotationEngine = annotationEngine;
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
         this.disableGnarlyGenotyper = disableGnarlyGenotyper;
         this.gnarlyGenotyper = disableGnarlyGenotyper ? null : new GnarlyGenotyperEngine(false, 30, false, emitPLs, true);
@@ -429,7 +433,11 @@ public class ExtractCohortEngine {
                 false,
                 true);
 
-        final VariantContext genotypedVC = this.disableGnarlyGenotyper ? mergedVC : gnarlyGenotyper.finalizeGenotype(mergedVC);
+        ReferenceContext referenceContext = new ReferenceContext(refSource, new SimpleInterval(mergedVC));
+
+        VariantContext annotatedVC = annotationEngine.annotateContext(mergedVC, new FeatureContext(), referenceContext, null, a -> true);
+
+        final VariantContext genotypedVC = this.disableGnarlyGenotyper ? annotatedVC : gnarlyGenotyper.finalizeGenotype(annotatedVC);
 
         // Gnarly will indicate dropping a site by returning a null from the finalizeGenotype method
         if (!this.disableGnarlyGenotyper && genotypedVC == null) {
@@ -530,7 +538,6 @@ public class ExtractCohortEngine {
                                                                       GATKVCFConstants.FISHER_STRAND_KEY));
 
         builder.rmAttributes(rmAnnotationList);
-
         return builder.make();
     }
 
@@ -567,6 +574,7 @@ public class ExtractCohortEngine {
                 }
             }
         });
+
         return results;
     }
 
