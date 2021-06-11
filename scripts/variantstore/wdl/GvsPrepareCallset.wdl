@@ -6,6 +6,7 @@ workflow GvsPrepareCallset {
         String default_dataset
         String destination_cohort_table_prefix
         File sample_names_to_extract
+        Boolean localize_sample_names_with_service_account = false
 
         # inputs with defaults
         String query_project = data_project
@@ -19,16 +20,24 @@ workflow GvsPrepareCallset {
         String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
         Int temp_table_ttl_in_hours = 72
-
+        File? service_account_json
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210526"])
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210604"])
+
+    if (localize_sample_names_with_service_account && defined(service_account_json)) {
+        call LocalizeFile {
+            input:
+              file = "~{sample_names_to_extract}",
+              service_account_json = select_first([service_account_json])
+        }
+    }
 
     call PrepareCallsetTask {
         input:
             destination_cohort_table_prefix = destination_cohort_table_prefix,
-            sample_names_to_extract         = sample_names_to_extract,
+            sample_names_to_extract         = select_first([LocalizeFile.localized_file, sample_names_to_extract]),
             query_project                   = query_project,
             query_labels                    = query_labels,
             fq_petvet_dataset               = fq_petvet_dataset,
@@ -36,6 +45,7 @@ workflow GvsPrepareCallset {
             fq_temp_table_dataset           = fq_temp_table_dataset,
             fq_destination_dataset          = fq_destination_dataset,
             temp_table_ttl_in_hours         = temp_table_ttl_in_hours,
+            service_account_json            = service_account_json,
 
             docker                          = docker_final
     }
@@ -93,5 +103,29 @@ task PrepareCallsetTask {
 
  }
 
+task LocalizeFile {
+  input {
+    String file
+    File service_account_json
+  }
+
+  command {
+    set -euo pipefail
+
+    gcloud auth activate-service-account --key-file='~{service_account_json}'
+    gsutil cp '~{file}' .
+  }
+
+  output {
+    File localized_file = basename(file)
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3.75 GiB"
+    cpu: "1"
+    disks: "local-disk 50 HDD"
+  }
+}
 
 
