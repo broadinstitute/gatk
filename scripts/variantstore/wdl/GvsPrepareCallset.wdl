@@ -110,3 +110,28 @@ task PrepareCallsetTask {
     }
 
  }
+
+task LocalizeFile {
+  input {
+    String file
+    File service_account_json
+  }
+
+  command {
+    set -euo pipefail
+
+    gcloud auth activate-service-account --key-file='~{service_account_json}'
+    gsutil cp '~{file}' .
+  }
+
+  output {
+    File localized_file = basename(file)
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3.75 GiB"
+    cpu: "1"
+    disks: "local-disk 50 HDD"
+  }
+}
