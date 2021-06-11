@@ -20,6 +20,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
         self.paths = paths
         self.input_maps = input_maps
         self.output_maps = output_maps
+        self.keep_paths = keep_paths
         self.sample_getter = TensorMapSampleGetter(
             input_maps, output_maps, augment,
             return_path=keep_paths,
@@ -33,7 +34,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
             collate_fn=self._collate_fn,
         )
         self.iter_loader = iter(self.data_loader)
-        self.keep_paths = keep_paths
+
 
     def _collate_fn(self, batches):
         if self.keep_paths:
