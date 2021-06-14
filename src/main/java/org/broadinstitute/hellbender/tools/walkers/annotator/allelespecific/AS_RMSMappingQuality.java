@@ -39,8 +39,8 @@ import java.util.*;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_RMSMappingQuality.php">RMSMappingQuality</a></b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_MappingQualityRankSumTest.php">MappingQualityRankSumTest</a></b> compares the mapping quality of reads supporting the REF and ALT alleles.</li>
+ *     <li><b>RMSMappingQuality</b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
+ *     <li><b>MappingQualityRankSumTest</b> compares the mapping quality of reads supporting the REF and ALT alleles.</li>
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific root-mean-square of the mapping quality of reads across all samples (AS_MQ)")

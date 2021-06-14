@@ -43,9 +43,9 @@ import java.util.stream.Collectors;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_AS_QualByDepth.php">AS_QualByDepth</a></b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_Coverage.php">Coverage</a></b> gives the filtered depth of coverage for each sample and the unfiltered depth across all samples.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_DepthPerAlleleBySample.php">DepthPerAlleleBySample</a></b> calculates depth of coverage for each allele per sample (AD).</li>
+ *     <li><b>AS_QualByDepth</b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
+ *     <li><b>Coverage</b> gives the filtered depth of coverage for each sample and the unfiltered depth across all samples.</li>
+ *     <li><b>DepthPerAlleleBySample</b> calculates depth of coverage for each allele per sample (AD).</li>
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific call confidence normalized by depth of sample reads supporting the allele (AS_QD)")

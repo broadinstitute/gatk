@@ -64,12 +64,9 @@ import java.util.Map;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_walkers_annotator_allelespecific_AS_FisherStrand.php">AS_FisherStrand</a></b>
- *     uses Fisher's Exact Test to evaluate strand bias.</li>
- *     <li><b><a href="https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_walkers_annotator_StrandOddsRatio.php">StrandOddsRatio</a></b>
- *     outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
- *     <li><b><a href="https://software.broadinstitute.org/gatk/documentation/tooldocs/current/org_broadinstitute_hellbender_tools_walkers_annotator_StrandBiasBySample.php">StrandBiasBySample</a></b>
- *     outputs counts of read depth per allele for each strand orientation.</li>
+ *     <li><b>AS_FisherStrand</b> uses Fisher's Exact Test to evaluate strand bias.</li>
+ *     <li><b>StrandOddsRatio</b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
+ *     <li><b>StrandBiasBySample</b> outputs counts of read depth per allele for each strand orientation.</li>
  *
  * </ul>
  *
