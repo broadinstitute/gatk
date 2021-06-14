@@ -415,7 +415,7 @@ public final class GenomeLocParser {
      */
     public GenomeLoc createGenomeLoc(final Locatable locatable) {
         Utils.nonNull(locatable, "the input locatable cannot be null");
-        return createGenomeLoc(locatable.getContig(), locatable.getStart(), locatable.getEnd(), true);
+        return createGenomeLoc(locatable.getContig(), locatable.getStart(), locatable.getEnd(), false);
     }
 
     /**
