@@ -1,0 +1,6 @@
+## METRICS CLASS	org.broadinstitute.hellbender.tools.walkers.validation.EvaluateGenotypingPerformance$AccuracyMetrics
+SAMPLE	TRUE_POSITIVES	TRUE_NEGATIVES	FALSE_POSITIVES	FALSE_NEGATIVES	TYPE
+SAMPLE1	1	1	0	0	SNP
+SAMPLE2	1	0	0	1	SNP
+SAMPLE1	0	0	0	0	INDEL
+SAMPLE2	0	0	0	0	INDEL

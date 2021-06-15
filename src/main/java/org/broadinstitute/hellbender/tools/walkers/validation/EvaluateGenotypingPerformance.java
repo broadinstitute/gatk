@@ -144,6 +144,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     double minAfForAccuracyMetrics = 0;
 
     @Argument(
+            fullName = "allow-differing-ploidies",
             optional = true,
             doc = "Allow ploidy to differ at a site between truth and eval.  This should generally only occur if chromosome X is being treated differently in males.  If this option is true " +
                     "and different ploidies are found at a site, the genotypes are considered to agree if the set of observed alleles is the same in both the truth and eval."
@@ -160,7 +161,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     @Override
     public void onTraversalStart() {
         final VCFHeader header = getEvalHeader();
+        final VCFHeader truthHeader = getTruthHeader();
         final List<String> samples = header.getSampleNamesInOrder();
+        final Set<String> truthSamples = new HashSet<>(truthHeader.getSampleNamesInOrder());
         loadMapping(afAnnotations, afAnnotationsMap);
         //create a set of the unique annotations that will need to be extracted for each site
         afAnnotationSet.addAll(afAnnotationsMap.values());
@@ -172,8 +175,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         //initialize the pearson correlation aggregators and accuracy metrics for each sample
         for (final String sample : samples) {
             final String mappedSample = getMappedSample(sample);
-            if (!afAnnotationsMap.containsKey(sample) && !afAnnotationsMap.containsKey(mappedSample)) {
+            if ((!afAnnotationsMap.containsKey(sample) && !afAnnotationsMap.containsKey(mappedSample)) || !truthSamples.contains(mappedSample)) {
                 //samples which are not included in the annotations map are ignored.
+
                 continue;
             }
             //each sample has a list of correlation aggregators, one for each af bin
@@ -248,8 +252,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     @Override
     protected void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
 
-        if (!truthVersusEval.hasEval() || !truthVersusEval.hasTruth()) {
-            //only include sites which have both an eval and truth record
+        if (!truthVersusEval.hasEval()) {
+            //only include sites which have both an eval record
             return;
         }
 
@@ -272,13 +276,13 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             }
             final int bin = getBin(af);
             final Genotype evalGenotype = evalVC.getGenotype(sample);
-            final Genotype truthGenotype = truthVC.getGenotype(mappedSample);
-            if (truthGenotype.isNoCall()) {
+            final Genotype truthGenotype = truthVC != null? truthVC.getGenotype(mappedSample) : null;
+            if (truthGenotype != null && truthGenotype.isNoCall()) {
                 //not confident in truth, so skip
                 continue;
             }
             final double evalDosageFrac = getDosageFrac(evalGenotype, evalVC.getReference(), dosageField);
-            final double truthDosageFrac = getDosageFrac(truthGenotype, truthVC.getReference(), dosageField);
+            final double truthDosageFrac = getDosageFrac(truthGenotype, truthVC != null ? truthVC.getReference() : null, dosageField);
             final ConcordanceState concordanceState = getConcordanceState(truthGenotype, evalGenotype, evalVC.isFiltered());
             if (evalVC.isSNP()) {
                 aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
@@ -349,12 +353,15 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
      * Get the dosage frequency from the given genotype.
      */
      private double getDosageFrac(final Genotype geno, final Allele refAllele, final String dosageField) {
-        if (dosageField != null) {
-            final String dosageString = (String)geno.getExtendedAttribute(dosageField);
-            return dosageString != null ? VCFUtils.parseVcfDouble(dosageString)/(double)geno.getPloidy() : getDosageFracFromGenotypeCall(geno, refAllele);
-        }
+         if (geno == null) {
+             return 0;
+         }
+         if (dosageField != null) {
+             final String dosageString = (String)geno.getExtendedAttribute(dosageField);
+             return dosageString != null ? VCFUtils.parseVcfDouble(dosageString)/(double)geno.getPloidy() : getDosageFracFromGenotypeCall(geno, refAllele);
+         }
 
-        return getDosageFracFromGenotypeCall(geno, refAllele);
+         return getDosageFracFromGenotypeCall(geno, refAllele);
     }
 
     private double getDosageFracFromGenotypeCall(final Genotype geno, final Allele refAllele) {
@@ -363,7 +370,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
 
     @Override
     protected ConcordanceState getConcordanceState(final Genotype truth, final Genotype eval, final boolean evalWasFiltered) {
-        if (truth.getPloidy() != eval.getPloidy()) {
+        if (truth != null && truth.getPloidy() != eval.getPloidy()) {
             //situation could arise from haploid vs diploid on X
             if (!allowDifferingPloidy) {
                 throw new GATKException("sample " + eval.getSampleName() + " is ploidy " + eval.getPloidy() + " while truth sample " + truth.getSampleName() + " is ploidy " + truth.getPloidy() + "." +
