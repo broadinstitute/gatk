@@ -32,8 +32,8 @@ public final class MathUtils {
     public static final double LOG10_ONE_THIRD = -Math.log10(3.0);
     public static final double LOG_ONE_THIRD = -Math.log(3.0);
     public static final double INV_LOG_2 = 1.0 / Math.log(2.0);
-    private static final double LOG_10 = Math.log(10);
-    private static final double INV_LOG_10 = 1.0 / LOG_10;
+    public static final double LOG_10 = Math.log(10);
+    public static final double INV_LOG_10 = 1.0 / LOG_10;
     public static final double LOG10_E = Math.log10(Math.E);
 
     private static final double ROOT_TWO_PI = Math.sqrt(2.0 * Math.PI);

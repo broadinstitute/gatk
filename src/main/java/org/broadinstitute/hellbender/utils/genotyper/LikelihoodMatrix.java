@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.ojalgo.access.Access2D;
+import org.ojalgo.commons.math3.linear.Access2DWrapper;
 
 import java.util.List;
 
@@ -113,4 +116,35 @@ public interface LikelihoodMatrix<EVIDENCE,A extends Allele> extends AlleleList<
      * @param offset the copy offset within the destination allele
      */
     void copyAlleleLikelihoods(final int alleleIndex, final double[] dest, final int offset);
+
+    /**
+     * Returns this matrix as a {@link RealMatrix}.
+     * <p>
+     *     Changes in the return matrix may affect the content of this likelihoods matrix.
+     * </p>
+     * @return never {@code null}.
+     */
+    default RealMatrix asRealMatrix() {
+        return Access2DWrapper.of(new Access2D<Number>() {
+            @Override
+            public double doubleValue(long row, long col) {
+                return LikelihoodMatrix.this.get((int) row, (int) col);
+            }
+
+            @Override
+            public Number get(long row, long col) {
+                return LikelihoodMatrix.this.get((int) row, (int) col);
+            }
+
+            @Override
+            public long countColumns() {
+                return evidenceCount();
+            }
+
+            @Override
+            public long countRows() {
+                return numberOfAlleles();
+            }
+        });
+    }
 }
