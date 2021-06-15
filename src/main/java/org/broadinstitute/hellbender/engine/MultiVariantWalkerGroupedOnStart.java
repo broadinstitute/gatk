@@ -50,7 +50,7 @@ public abstract class MultiVariantWalkerGroupedOnStart extends MultiVariantWalke
     @Argument(fullName = IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL,
             doc = "Restrict variant output to sites that start within provided intervals (only applies when an interval is specified)",
             optional = true)
-    private boolean ignoreIntervalsOutsideStart = false;
+    protected boolean ignoreIntervalsOutsideStart = false;
 
     @Advanced
     @Argument(fullName = COMBINE_VARIANTS_DISTANCE, doc = "Maximum distance for variants to be grouped together", optional = true)
