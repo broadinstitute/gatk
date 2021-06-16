@@ -7,379 +7,260 @@ from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
 from google.oauth2 import service_account
 
-import argparse
-import re
+import csv
+import json
+
 
 JOB_IDS = set()
 
 #
 # CONSTANTS
 #
-PET_TABLE_PREFIX = "pet_"
-VET_TABLE_PREFIX = "vet_"
+VAT_TABLE_PREFIX = "vat_"
 SAMPLES_PER_PARTITION = 4000
 
-FINAL_TABLE_TTL = ""
-#FINAL_TABLE_TTL = " OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 72 HOUR)) "
+vat_nirvana_positions_dictionary = {
+  "position": "position", # required  TODO pull this out! check how nirvana handles "when the vcf position is not just the preceeding base for the variant"
+}
 
-# temp-table-uuid
-output_table_prefix = str(uuid.uuid4()).split("-")[0]
-print(f"running with prefix {output_table_prefix}")
+vat_nirvana_variants_dictionary = {
+  "vid": "vid", # required
+  "contig": "chromosome", # required
+  "ref_allele": "refAllele", # required
+  "alt_allele": "altAllele", # required
+  "variant_type": "variantType", # required
+  "genomic_location": "hgvsg", # required
+  "dbsnp_rsid": "dbsnp",  # nullable  -- TODO is this always a single val array?
+}
 
-PET_VET_TABLE_COUNT = -1
-client = None
+vat_nirvana_transcripts_dictionary = {
+  "transcript": "transcript", # nullable
+  "gene_symbol": "hgnc", # nullable
+  "transcript_source": "source", # nullable
+  "aa_change": "hgvsp", # nullable
+  "consequence": "consequence", # nullable -- TODO check on this one. May want this to be "[]"
+  "dna_change": "hgvsc", # nullable
+  "exon_number": "exons", # nullable
+  "intron_number": "introns", # nullable
+  "splice_distance": "hgvsc", # nullable -- TODO Additional processing:  Extract the splice distance from the hgvsc field
+  "entrez_gene_id": "geneId", # nullable
+  # "hgnc_gene_id": "hgncid", # nullable -- TODO ignore for now Lees notes dont match up here: genes.hgncid?
+  "is_canonical_transcript": "isCanonical" # nullable -- (and lets make the nulls false)
+}
 
-VET_DISTINCT_POS_TABLE = f"{output_table_prefix}_vet_distinct_pos"
-PET_NEW_TABLE = f"{output_table_prefix}_pet_new"
-VET_NEW_TABLE = f"{output_table_prefix}_vet_new"
-EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
+vat_nirvana_gvs_alleles_dictionary = {
+  "gvs_all_ac": "x", # required
+  "gvs_all_an": "x", # required
+  "gvs_all_af": "x" # required
+}
 
-def utf8len(s):
-    return len(s.encode('utf-8'))
+vat_nirvana_revel_dictionary = {
+  "revel": "score" # nullable
+}
 
-def dump_job_stats():
-  total = 0
+vat_nirvana_splice_ai_dictionary = {
+  "splice_ai_acceptor_gain_score": "acceptorGainScore", # nullable
+  "splice_ai_acceptor_gain_distance": "acceptorGainDistance", # nullable
+  "splice_ai_acceptor_loss_score": "acceptorLossScore", # nullable
+  "splice_ai_acceptor_loss_distance": "acceptorLossDistance", # nullable
+  "splice_ai_donor_gain_score": "donorGainScore", # nullable
+  "splice_ai_donor_gain_distance": "donorGainDistance", # nullable
+  "splice_ai_donor_loss_score": "donorLossScore", # nullable
+  "splice_ai_donor_loss_distance": "donorLossDistance" # nullable
+}
 
-  for jobid in JOB_IDS:
-    job = client.get_job(jobid[1])
+vat_nirvana_clinvar_dictionary = {
+  "clinvar_classification": "significance", # nullable
+  "clinvar_last_updated": "lastUpdatedDate", # nullable
+  "clinvar_phenotype": "phenotypes" # nullable -- currently here: "phenotypes":["not specified"] <-- lets talk arrays!
+}
 
-    bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
-    total = total + bytes_billed
+vat_nirvana_gnomad_dictionary = {
+  "gnomad_all_af": "allAf", # nullable
+  "gnomad_all_ac": "allAc", # nullable
+  "gnomad_all_an": "allAn", # nullable
+  "gnomad_max_af": "afrAf", # nullable
+  "gnomad_max_ac": "afrAc", # nullable
+  "gnomad_max_an": "afrAn", # nullable
+  "gnomad_max_subpop": "x" #TODO need to choose the correct mapping. Lee says maybe drop for now
+}
 
-    print(jobid[0], " <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
+vat_nirvana_omim_dictionary = { # TODO or should this be vat_nirvana_genes_dictionary ?
+  "gene_omim_id": "mimNumber", # nullable
+  "omim_phenotypes_id": "phenotype", # nullable <-- lets talk arrays!
+  "omim_phenotypes_name": "x" #TODO where is the omim stuff?????? <-- lets talk arrays!
+}
 
-  print(" Total GBs billed ", total/(1024 * 1024 * 1024), " GBs")
+def make_fieldnames():
+    positions_fieldnames = list(vat_nirvana_positions_dictionary.keys())
+    variants_fieldnames = list(vat_nirvana_variants_dictionary.keys())
+    transcripts_fieldnames = list(vat_nirvana_transcripts_dictionary.keys())
+    gvs_alleles_fieldnames = list(vat_nirvana_gvs_alleles_dictionary.keys())
+    revel_fieldnames = list(vat_nirvana_revel_dictionary)
+    splice_ai_fieldnames = list(vat_nirvana_splice_ai_dictionary.keys())
+    clinvar_fieldnames = list(vat_nirvana_clinvar_dictionary.keys())
+    gnomad_fieldnames = list(vat_nirvana_gnomad_dictionary.keys())
+    omim_fieldnames = list(vat_nirvana_omim_dictionary.keys())
 
-def execute_with_retry(label, sql):
-  retry_delay = [30, 60, 90] # 3 retries with incremental backoff
-  start = time.time()
-  while len(retry_delay) > 0:
-    try:
-      query_label = label.replace(" ","-").strip().lower()
-
-      existing_labels = client._default_query_job_config.labels
-      job_labels = existing_labels
-      job_labels["gvs_query_name"] = query_label
-      job_config = bigquery.QueryJobConfig(labels=job_labels)
-      query = client.query(sql, job_config=job_config)
-
-      print(f"STARTING - {label}")
-      JOB_IDS.add((label, query.job_id))
-      results = query.result()
-      print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label}")
-      return results
-    except Exception as err:
-      # if there are no retries left... raise
-      if (len(retry_delay) == 0):
-        raise err
-      else:
-        t = retry_delay.pop(0)
-        print(f"Error {err} running query {label}, sleeping for {t}")
-        time.sleep(t)
-
-def get_partition_range(i):
-  if i < 1 or i > PET_VET_TABLE_COUNT:
-    raise ValueError(f"out of partition range")
-
-  return { 'start': (i-1)*SAMPLES_PER_PARTITION + 1, 'end': i*SAMPLES_PER_PARTITION }
-
-def get_samples_for_partition(sample_ids, i):
-  return [ s for s in sample_ids if s >= get_partition_range(i)['start'] and s <= get_partition_range(i)['end'] ]
-
-def split_lists(samples, n):
-  return [samples[i * n:(i + 1) * n] for i in range((len(samples) + n - 1) // n )]
-
-def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
-  schema = [ bigquery.SchemaField("sample_name", "STRING", mode="REQUIRED") ]
-  fq_sample_table = f"{fq_temp_table_dataset}.{EXTRACT_SAMPLE_TABLE}"
-
-  job_labels = client._default_query_job_config.labels
-  job_labels["gvs_query_name"] = "load-sample-names"
-
-  job_config = bigquery.LoadJobConfig(source_format=bigquery.SourceFormat.CSV, skip_leading_rows=0, schema=schema, labels=job_labels)
-
-  with open(sample_names_to_extract, "rb") as source_file:
-    job = client.load_table_from_file(source_file, fq_sample_table, job_config=job_config)
-
-  job.result()  # Waits for the job to complete.
-
-  # setting the TTL needs to be done as a second API call
-  table = bigquery.Table(fq_sample_table, schema=schema)
-  expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=TEMP_TABLE_TTL_HOURS)
-  table.expires = expiration
-  table = client.update_table(table, ["expires"]) 
-
-  return fq_sample_table
-
-def get_all_sample_ids(fq_destination_table_samples):
-  sql = f"select sample_id from `{fq_destination_table_samples}`"
-
-  results = execute_with_retry("read cohort sample table", sql)
-  sample_ids = [row.sample_id for row in list(results)]
-  sample_ids.sort()
-  return sample_ids
-
-def create_extract_samples_table(fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table):
-  sql = f"CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (" \
-        f"SELECT m.sample_id, m.sample_name FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) )"
-
-  results = execute_with_retry("create extract sample table", sql)
-  return results
-
-def get_table_count(fq_pet_vet_dataset):
-  sql = f"SELECT MAX(CAST(SPLIT(table_name, '_')[OFFSET(1)] AS INT64)) max_table_number " \
-        f"FROM `{fq_pet_vet_dataset}.INFORMATION_SCHEMA.TABLES` " \
-        f"WHERE REGEXP_CONTAINS(lower(table_name), r'^(pet_[0-9]+)$') "
-  results = execute_with_retry("get max table", sql)
-  return int([row.max_table_number for row in list(results)][0])
-
-def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids):
-  def get_subselect(fq_vet_table, samples, id):
-    sample_stanza = ','.join([str(s) for s in samples])
-    sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_pl, QUALapprox, AS_QUALapprox from `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
-    return sql
-
-  subs = {}
-  for i in range(1, PET_VET_TABLE_COUNT+1):
-    partition_samples = get_samples_for_partition(sample_ids, i)
-
-      # KCIBUL -- grr, should be fixed width
-    fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
-    if len(partition_samples) > 0:
-      j = 1
-      for samples in split_lists(partition_samples, 1000):
-        id = f"{i}_{j}"
-        subs[id] = get_subselect(fq_vet_table, samples, id)
-        j = j + 1
-
-  sql = f"create or replace table `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n" + \
-        "with\n" + \
-        ("\n".join(subs.values())) + "\n" \
-        "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
-        f" (SELECT * FROM q_all)"
-
-  print(sql)
-  print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")
-  results = execute_with_retry("insert vet new table", sql)
-  return results
+    return positions_fieldnames, variants_fieldnames, transcripts_fieldnames, gvs_alleles_fieldnames, revel_fieldnames, splice_ai_fieldnames, clinvar_fieldnames, gnomad_fieldnames, omim_fieldnames
 
 
 
-def create_position_table(fq_temp_table_dataset, min_variant_samples):
-  dest = f"{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}"
+def make_annotated_row(row_position, variant_line, transcript_line): # would it be better to not pass the transcript_line since its dupe data?
+    positions_fieldnames, variants_fieldnames, transcripts_fieldnames, gvs_alleles_fieldnames, revel_fieldnames, splice_ai_fieldnames, clinvar_fieldnames, gnomad_fieldnames, omim_fieldnames = make_fieldnames()
+    row = {}
+    row["position"] = row_position # this is a required field -- do we want validation? (what about validation for all the variants_fieldnames?)
 
-  # only create this clause if min_variant_samples > 0, because if
-  # it is == 0 then we don't need to touch the sample_id column (which doubles the cost of this query)
-  min_sample_clause = ""
-  if min_variant_samples > 0:
-      min_sample_clause = f"HAVING count(distinct sample_id) >= {min_variant_samples}"
+    for vat_variants_fieldname in variants_fieldnames:  # like "contig"
+      nirvana_variants_fieldname = vat_nirvana_variants_dictionary.get(vat_variants_fieldname)
+      variant_fieldvalue = variant_line.get(nirvana_variants_fieldname)
+      row[vat_variants_fieldname] = variant_fieldvalue
 
-  sql = f"""
-          create or replace table `{dest}` {TEMP_TABLE_TTL}
-          as (
-            select location from `{fq_temp_table_dataset}.{VET_NEW_TABLE}` WHERE alt != '*' GROUP BY location {min_sample_clause}
-          )
-        """
-  existing_labels = client._default_query_job_config.labels
-  job_labels = existing_labels
-  job_labels["gvs_query_name"] = "create-position-table"
-  job_config = bigquery.QueryJobConfig(labels=job_labels)
-  create_vet_distinct_pos_query = client.query(sql, job_config=job_config)
+    if transcript_line != None:
+      for vat_transcripts_fieldname in transcripts_fieldnames:  # like "transcript"
+        nirvana_transcripts_fieldname = vat_nirvana_transcripts_dictionary.get(vat_transcripts_fieldname)
+        transcript_fieldvalue = transcript_line.get(nirvana_transcripts_fieldname)
+        if nirvana_transcripts_fieldname = "isCanonical" & transcript_fieldvalue != True: # oooof this is ugly
+          transcript_fieldvalue = False
+        row[vat_transcripts_fieldname] = transcript_fieldvalue
 
-  create_vet_distinct_pos_query.result()
-  JOB_IDS.add((f"create positions table {dest}", create_vet_distinct_pos_query.job_id))
-  return
+    for vat_gvs_alleles_fieldname in gvs_alleles_fieldnames:  # like "gvs_all_ac"
+      nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
+      gvs_alleles_fieldvalue = variant_line.get(nirvana_gvs_alleles_fieldname)
+      row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
 
-def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids):
-  def get_pet_subselect(fq_pet_table, samples, id):
-    sample_stanza = ','.join([str(s) for s in samples])
-    sql = f"    q_{id} AS (SELECT p.location, p.sample_id, p.state from {fq_pet_table} p " \
-          f"    join `{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}` v on (p.location = v.location) WHERE p.sample_id IN ({sample_stanza})), "
-    return sql
+    if variant_line.get("gnomad") != None:
+      for vat_gnomad_fieldname in gnomad_fieldnames:  # like "gnomad_all_af"
+        nirvana_gnomad_fieldname = vat_nirvana_gnomad_dictionary.get(vat_gnomad_fieldname)
+        gnomad_fieldvalue = variant_line.get("gnomad").get(nirvana_gnomad_fieldname) # not a list like the others
+        row[vat_gnomad_fieldname] = gnomad_fieldvalue
 
-  subs = {}
-  for i in range(1, PET_VET_TABLE_COUNT+1):
-    partition_samples = get_samples_for_partition(sample_ids, i)
+    if variant_line.get("spliceAI") != None:
+      splice_ai_line = variant_line["spliceAI"][0] # TODO I am making the huge assumption that we are only grabbing 1
+      for vat_splice_ai_fieldname in splice_ai_fieldnames:  # like "splice_ai_acceptor_gain_score"
+        nirvana_splice_ai_fieldname = vat_nirvana_splice_ai_dictionary.get(vat_splice_ai_fieldname)
+        splice_ai_fieldvalue = splice_ai_line.get(nirvana_splice_ai_fieldname)
+        row[vat_splice_ai_fieldname] = splice_ai_fieldvalue
 
-      # KCIBUL -- grr, should be fixed width
-    fq_pet_table = f"{fq_pet_vet_dataset}.{PET_TABLE_PREFIX}{i:03}"
-    if len(partition_samples) > 0:
-      j = 1
-      for samples in split_lists(partition_samples, 1000):
-        id = f"{i}_{j}"
-        subs[id] = get_pet_subselect(fq_pet_table, samples, id)
-        j = j + 1
+    if variant_line.get("clinvar") != None:
+      clinvar_line = variant_line["clinvar"][0] # TODO I am making the huge assumption that we are only grabbing 1
+      for vat_clinvar_fieldname in clinvar_fieldnames:  # like "clinvar_classification"
+        nirvana_clinvar_fieldname = vat_nirvana_clinvar_dictionary.get(vat_clinvar_fieldname)
+        clinvar_fieldvalue = clinvar_line.get(nirvana_clinvar_fieldname)
+        row[vat_clinvar_fieldname] = clinvar_fieldvalue
 
-  sql = f"create or replace table `{fq_temp_table_dataset}.{PET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n" + \
-        "with\n" + \
-        ("\n".join(subs.values())) + "\n" \
-        "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
-        f" (SELECT * FROM q_all)"
+    if variant_line.get("genes") != None:
+      omim_line = variant_line["genes"][0] # TODO I am making the huge assumption that we are only grabbing 1
+      for vat_omim_fieldname in omim_fieldnames:  # like "clinvar_classification"
+        nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)
+        omim_fieldvalue = omim_line.get(nirvana_omim_fieldname)
+        row[vat_omim_fieldname] = omim_fieldvalue
 
-  print(sql)
-  print(f"PET Query is {utf8len(sql)/(1024*1024)} MB in length")
-  results = execute_with_retry("insert pet new table", sql)
-  return results
+    if variant_line.get("revel") != None:
+      row["revel"] = variant_line.get("revel").get("score")
+
+    return row
+
+def make_annotation_table(annotated_json, output_csv):
+    with open(output_csv, 'w', newline='') as csvfile:
+        positions_fieldnames, variants_fieldnames, transcripts_fieldnames, gvs_alleles_fieldnames, revel_fieldnames, splice_ai_fieldnames, clinvar_fieldnames, gnomad_fieldnames, omim_fieldnames = make_fieldnames()
+        fieldnames = positions_fieldnames
+        fieldnames.extend(variants_fieldnames)
+        fieldnames.extend(transcripts_fieldnames)
+        fieldnames.extend(gvs_alleles_fieldnames)
+        fieldnames.extend(revel_fieldnames)
+        fieldnames.extend(splice_ai_fieldnames)
+        fieldnames.extend(clinvar_fieldnames)
+        fieldnames.extend(gnomad_fieldnames)
+        fieldnames.extend(omim_fieldnames)
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        # in the future can we simplify this pre-processing?
+        json_data = open(annotated_json)
+        data = json.load(json_data)
+        annotated_json_lines = data["positions"]
+        for annotated_json_line in annotated_json_lines:
+          row_position = annotated_json_line.get("position") # this is a required field -- do we want validation?
+          # want to write a csv row for each variant - transcript
+          # so let's start with each variant
+          variant_lines = annotated_json_line.get("variants")  # this is a required field -- do we want validation?
+          for variant_line in variant_lines:
+            if variant_line.get("transcripts") == None:
+              # then we make a special row
+              print("can I handle this?")
+              row = make_annotated_row(row_position, variant_line, None)
+              print("could I handle this?")
+              print(row)
+              writer.writerow(row)
+            else:
+              transcript_lines = variant_line.get("transcripts")
+              for transcript_line in transcript_lines:
+                row = make_annotated_row(row_position, variant_line, transcript_line)
+                print(row)
+                writer.writerow(row)
+
+"""               row = {}
+              row["position"] = annotated_json_line.get("position") # this is a required field -- do we want validation? (what about validation for all the variants_fieldnames?)
+
+              for vat_variants_fieldname in variants_fieldnames:  # like "contig"
+                nirvana_variants_fieldname = vat_nirvana_variants_dictionary.get(vat_variants_fieldname)
+                variant_fieldvalue = variant_line.get(nirvana_variants_fieldname)
+                row[vat_variants_fieldname] = variant_fieldvalue
+
+              for vat_transcripts_fieldname in transcripts_fieldnames:  # like "transcript"
+                nirvana_transcripts_fieldname = vat_nirvana_transcripts_dictionary.get(vat_transcripts_fieldname)
+                transcript_fieldvalue = transcript_line.get(nirvana_transcripts_fieldname)
+                row[vat_transcripts_fieldname] = transcript_fieldvalue
+
+              for vat_gvs_alleles_fieldname in gvs_alleles_fieldnames:  # like "gvs_all_ac"
+                nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
+                gvs_alleles_fieldvalue = variant_line.get(nirvana_gvs_alleles_fieldname)
+                row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
+
+              if variant_line.get("gnomad") != None:
+                for vat_gnomad_fieldname in gnomad_fieldnames:  # like "gnomad_all_af"
+                   nirvana_gnomad_fieldname = vat_nirvana_gnomad_dictionary.get(vat_gnomad_fieldname)
+                   gnomad_fieldvalue = variant_line.get("gnomad").get(nirvana_gnomad_fieldname) # not a list like the others
+                   row[vat_gnomad_fieldname] = gnomad_fieldvalue
+
+              if variant_line.get("spliceAI") != None:
+                splice_ai_line = variant_line["spliceAI"][0] # TODO I am making the huge assumption that we are only grabbing 1
+                for vat_splice_ai_fieldname in splice_ai_fieldnames:  # like "splice_ai_acceptor_gain_score"
+                  nirvana_splice_ai_fieldname = vat_nirvana_splice_ai_dictionary.get(vat_splice_ai_fieldname)
+                  splice_ai_fieldvalue = splice_ai_line.get(nirvana_splice_ai_fieldname)
+                  row[vat_splice_ai_fieldname] = splice_ai_fieldvalue
+
+              if variant_line.get("clinvar") != None:
+                clinvar_line = variant_line["clinvar"][0] # TODO I am making the huge assumption that we are only grabbing 1
+                for vat_clinvar_fieldname in clinvar_fieldnames:  # like "clinvar_classification"
+                  nirvana_clinvar_fieldname = vat_nirvana_clinvar_dictionary.get(vat_clinvar_fieldname)
+                  clinvar_fieldvalue = clinvar_line.get(nirvana_clinvar_fieldname)
+                  row[vat_clinvar_fieldname] = clinvar_fieldvalue
+
+              if variant_line.get("genes") != None:
+                omim_line = variant_line["genes"][0] # TODO I am making the huge assumption that we are only grabbing 1
+                for vat_omim_fieldname in omim_fieldnames:  # like "clinvar_classification"
+                  nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)
+                  omim_fieldvalue = omim_line.get(nirvana_omim_fieldname)
+                  row[vat_omim_fieldname] = omim_fieldvalue
+
+              if variant_line.get("revel") != None:
+                row["revel"] = variant_line.get("revel").get("score")
 
 
-def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_data, fq_sample_mapping_table):
-  sql = f"""
-        CREATE OR REPLACE TABLE `{fq_destination_table_data}` 
-        PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
-        CLUSTER BY location
-        {FINAL_TABLE_TTL}
-        as (SELECT
-            new_pet.location,
-            s.sample_name as sample_name,
-            new_pet.state,
-            new_vet.ref,
-            REPLACE(new_vet.alt,",<NON_REF>","") alt,
-            new_vet.call_GT,
-            new_vet.call_GQ,
-            cast(SPLIT(new_vet.call_pl,",")[OFFSET(0)] as int64) as call_RGQ,
-            new_vet.QUALapprox,
-            new_vet.AS_QUALapprox,
-            new_vet.call_PL
-          FROM
-            `{fq_temp_table_dataset}.{PET_NEW_TABLE}` new_pet
-          LEFT OUTER JOIN
-            `{fq_temp_table_dataset}.{VET_NEW_TABLE}`  new_vet
-          ON (new_pet.location = new_vet.location AND new_pet.sample_id = new_vet.sample_id)
-          LEFT OUTER JOIN
-            `{fq_sample_mapping_table}` s ON (new_pet.sample_id = s.sample_id))
-      """
-  print(sql)
-  existing_labels = client._default_query_job_config.labels
-  job_labels = existing_labels
-  job_labels["gvs_query_name"] = "populate-final-extract-table"
-  job_config = bigquery.QueryJobConfig(labels=job_labels)
-  cohort_extract_final_query_job = client.query(sql, job_config=job_config)
+                print(row)
+                writer.writerow(row)"""
 
-  cohort_extract_final_query_job.result()
-  JOB_IDS.add((f"insert final cohort table {fq_destination_table_data}", cohort_extract_final_query_job.job_id))
-  return
 
-def make_extract_table(fq_pet_vet_dataset,
-               max_tables,
-               sample_names_to_extract,
-               fq_cohort_sample_names,
-               query_project,
-               query_labels,
-               fq_temp_table_dataset,
-               fq_destination_dataset,
-               destination_table_prefix,
-               min_variant_samples,
-               fq_sample_mapping_table,
-               sa_key_path,
-               temp_table_ttl_hours
-              ):
-  try:
-    fq_destination_table_data = f"{fq_destination_dataset}.{destination_table_prefix}__DATA"
-    fq_destination_table_samples = f"{fq_destination_dataset}.{destination_table_prefix}__SAMPLES"
-    
-    global client
-    # this is where a set of labels are being created for the cohort extract
-    query_labels_map = {}
-    query_labels_map["id"]= output_table_prefix
-    query_labels_map["gvs_tool_name"]= "gvs_prepare_callset"
-
-    # query_labels is string that looks like 'key1=val1, key2=val2'
-    if query_labels is not None and len(query_labels) != 0:
-        for query_label in query_labels:
-          kv = query_label.split("=", 2)
-          key = kv[0].strip().lower()
-          value = kv[1].strip().lower()
-          query_labels_map[key] = value
-
-          if not (bool(re.match(r"[a-z0-9_-]+$", key)) & bool(re.match(r"[a-z0-9_-]+$", value))):
-            raise ValueError(f"label key or value did not pass validation--format should be 'key1=val1, key2=val2'")
-        
-    #Default QueryJobConfig will be merged into job configs passed in
-    #but if a specific default config is being updated (eg labels), new config must be added
-    #to the client._default_query_job_config that already exists
-    default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=False)
-
-    if sa_key_path:
-      credentials = service_account.Credentials.from_service_account_file(
-        sa_key_path, scopes=["https://www.googleapis.com/auth/cloud-platform"],
-      )
-
-      client = bigquery.Client(credentials=credentials,
-                               project=query_project,
-                               default_query_job_config=default_config)
-    else:
-      client = bigquery.Client(project=query_project,
-                             default_query_job_config=default_config)
-
-    ## TODO -- provide a cmdline arg to override this (so we can simulate smaller datasets)
-
-    global PET_VET_TABLE_COUNT
-    PET_VET_TABLE_COUNT = max_tables
-    
-    global TEMP_TABLE_TTL_HOURS
-    TEMP_TABLE_TTL_HOURS = temp_table_ttl_hours
-    
-    global TEMP_TABLE_TTL
-    TEMP_TABLE_TTL = f" OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL {TEMP_TABLE_TTL_HOURS} HOUR)) "
-
-    print(f"Using {PET_VET_TABLE_COUNT} PET tables in {fq_pet_vet_dataset}...")
-
-    # if we have a file of sample names, load it into a temporary table
-    if (sample_names_to_extract):
-        fq_sample_name_table = load_sample_names(sample_names_to_extract, fq_temp_table_dataset)
-    else:
-        fq_sample_name_table = fq_cohort_sample_names
-
-    # At this point one way or the other we have a table of sample names in BQ,
-    # join it to the sample_info table to drive the extract
-    create_extract_samples_table(fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table)
-
-    # pull the sample ids back down
-    sample_ids = get_all_sample_ids(fq_destination_table_samples)
-    print(f"Discovered {len(sample_ids)} samples in {fq_destination_table_samples}...")
-           
-    make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids)
-
-    create_position_table(fq_temp_table_dataset, min_variant_samples)
-    make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids)
-    populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_data, fq_destination_table_samples)
-  finally:
-    dump_job_stats()
-
-  print(f"\nFinal cohort extract data written to {fq_destination_table_data}\n")
-
-if __name__ == '__main__':
+""" if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')
-
   parser.add_argument('--fq_petvet_dataset',type=str, help='project.dataset location of pet/vet data', required=True)
-  parser.add_argument('--fq_temp_table_dataset',type=str, help='project.dataset location where results should be stored', required=True)
-  parser.add_argument('--fq_destination_dataset',type=str, help='project.dataset location where results should be stored', required=True)
-  parser.add_argument('--destination_cohort_table_prefix',type=str, help='prefix used for destination cohort extract tables (e.g. my_fantastic_cohort)', required=True)
-  parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
-  parser.add_argument('--query_labels',type=str, action='append', help='Labels to put on the BQ query that will show up in the billing. Ex: --query_labels key1=value1 --query_labels key2=value2', required=False)
-  parser.add_argument('--min_variant_samples',type=int, help='Minimum variant samples at a site required to be emitted', required=False, default=0)
-  parser.add_argument('--fq_sample_mapping_table',type=str, help='Mapping table from sample_id to sample_name', required=True)
-  parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
-  parser.add_argument('--max_tables',type=int, help='Maximum number of PET/VET tables to consider', required=False, default=250)
-  parser.add_argument('--ttl',type=int, help='Temp table TTL in hours', required=False, default=72)
-  sample_args = parser.add_mutually_exclusive_group(required=True)
-  sample_args.add_argument('--sample_names_to_extract',type=str, help='File containing list of samples to extract, 1 per line')
-  sample_args.add_argument('--fq_cohort_sample_names',type=str, help='FQN of cohort table to extract, contains "sample_name" column')
 
 
   # Execute the parse_args() method
   args = parser.parse_args()
 
-  make_extract_table(args.fq_petvet_dataset,
-             args.max_tables,
-             args.sample_names_to_extract,
-             args.fq_cohort_sample_names,
-             args.query_project,
-             args.query_labels,
-             args.fq_temp_table_dataset,
-             args.fq_destination_dataset,
-             args.destination_cohort_table_prefix,
-             args.min_variant_samples,
-             args.fq_sample_mapping_table,
-             args.sa_key_path,
-             args.ttl)
+  make_annotation_table(annotated_json) """
+
+make_annotation_table("hello_did_I_annotate.json", "vat_annotations.csv")
