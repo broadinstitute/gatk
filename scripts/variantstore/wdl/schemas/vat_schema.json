@@ -198,10 +198,10 @@
     "mode": "Nullable"
   },
  {
-   "description": "ClinVar Disease Name TODO -- this needs to be swapped to Repeated not nullable",
+   "description": "ClinVar Disease Name",
    "name": "clinvar_phenotype",
    "type": "String",
-   "mode": "Nullable"
+   "mode": "Repeated"
  },
   {
     "description": "gnomAD: 'Total' frequency",
