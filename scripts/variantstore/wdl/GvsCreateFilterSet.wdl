@@ -75,7 +75,7 @@ workflow GvsCreateFilterSet {
         File? service_account_json
 
         Int? SNP_VQSR_machine_mem_gb
-        Int? SNP_VQSR_downsampleFactor = 1
+        Int SNP_VQSR_downsampleFactor = 1
 
         Int? INDEL_VQSR_machine_mem_gb
 
@@ -149,7 +149,7 @@ workflow GvsCreateFilterSet {
         machine_mem_gb = INDEL_VQSR_machine_mem_gb,
     }
 
-    if (GetNumSamples.num_samnples > snps_variant_recalibration_threshold) {
+    if (GetNumSamples.num_samples > snps_variant_recalibration_threshold) {
         call Tasks.SNPsVariantRecalibratorCreateModel {
             input:
                 sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
@@ -176,7 +176,7 @@ workflow GvsCreateFilterSet {
             call SNPsVariantRecalibrator as SNPsVariantRecalibratorScattered {
                 input:
                     sites_only_variant_filtered_vcf = ExtractFilterTask.output_vcf[idx],
-                    sites_only_variant_filtered_vcf_index = ExtractFilterTask.sites_only_vcf_index[idx],
+                    sites_only_variant_filtered_vcf_index = ExtractFilterTask.output_vcf_index[idx],
                     recalibration_filename = filter_set_name + ".snps." + idx + ".recal",
                     tranches_filename = filter_set_name + ".snps." + idx + ".tranches",
                     recalibration_tranche_values = snp_recalibration_tranche_values,
@@ -204,7 +204,7 @@ workflow GvsCreateFilterSet {
         }
     }
 
-    if (GetNumSamples.num_samnples <= snps_variant_recalibration_threshold) {
+    if (GetNumSamples.num_samples <= snps_variant_recalibration_threshold) {
         call SNPsVariantRecalibrator as SNPsVariantRecalibratorClassic {
             input:
                 sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
@@ -254,11 +254,11 @@ workflow GvsCreateFilterSet {
                 service_account_json = service_account_json,
                 query_project = query_project
         }
+    }
 
-        output {
-            File output_vcf = MergeVCFs.output_vcf
-            File output_vcf_idx = MergeVCFs.output_vcf_index
-        }
+    output {
+        File output_vcf = MergeVCFs.output_vcf
+        File output_vcf_idx = MergeVCFs.output_vcf_index
     }
 }
 
