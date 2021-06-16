@@ -282,7 +282,7 @@ task GetNumSamples {
             echo "project_id = ~{project_id}" > ~/.bigqueryrc
         fi
 
-        bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
         "SELECT COUNT(*) as num_rows FROM ~{dataset_name}.~{fq_sample_table}" > num_rows.csv
 
         python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);" > num_rows.txt
