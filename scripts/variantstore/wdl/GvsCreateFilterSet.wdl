@@ -285,11 +285,18 @@ task GetNumSamples {
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
         "SELECT COUNT(*) as num_rows FROM ~{dataset_name}.~{fq_sample_table}" > num_rows.csv
 
-        python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);" > num_rows.txt
+        NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+
+        if [[ $NUMROWS =~ ^[0-9]+$ ]]; then
+            echo $NUMROWS
+        else
+            exit 1
+        fi
+
     >>>
 
     output {
-        Int num_samples = read_int("num_rows.txt")
+        Int num_samples = read_int(stdout())
     }
 
     runtime {
