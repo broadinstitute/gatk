@@ -12,5 +12,7 @@
   "GvsExtractCallset.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
   "GvsExtractCallset.scatter_count": 50,
 
-  "GvsExtractCallset.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/mmt_SA_support_and_wdl_renaming_20210415/gatk-package-4.2.0.0-345-g8a7821a-SNAPSHOT-local.jar"
+  "GvsExtractCallset.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/mmt_SA_support_and_wdl_renaming_20210415/gatk-package-4.2.0.0-345-g8a7821a-SNAPSHOT-local.jar",
+
+  "GvsExtractCallset.snps_variant_recalibration_threshold": 100
 }
