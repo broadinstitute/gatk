@@ -3,5 +3,6 @@
   "GvsSitesOnlyVCF.output_sites_only_file_name": "hello_did_I_sites_only",
   "GvsSitesOnlyVCF.output_merged_file_name": "hello_did_I_merge",
   "GvsSitesOnlyVCF.output_annotated_file_name": "hello_did_I_annotate",
-  "GvsSitesOnlyVCF.nirvana_data_directory": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz"
+  "GvsSitesOnlyVCF.nirvana_data_directory": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz",
+  "GvsSitesOnlyVCF.project_id": "spec-ops-aou"
 }
