@@ -608,18 +608,26 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         );
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = UserException.MalformedGenomeLoc.class)
     public void testReasonableErrorWithInvalidBedFile() throws IOException {
         File outOfBoundsBedFile = new File(INTERVAL_TEST_DATA + "bad_hg19_interval_span.bed"); // this bed file has a bogus interval the extends past the end chr1 and should throw an exception
         // this should throw a user exception because of the invalid interval
-        IntervalUtils.featureFileToIntervals(hg19GenomeLocParser, outOfBoundsBedFile.getAbsolutePath());
+        IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, outOfBoundsBedFile.getAbsolutePath());
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = UserException.MalformedGenomeLoc.class)
     public void testReasonableErrorWithInvalidListFile() throws IOException {
-        File outOfBoundsBedFile = new File(INTERVAL_TEST_DATA + "bad_hg19_example_intervals.list"); // this list file has a bogus interval the extends past the end chr1 and should throw an exception
+        File outOfBoundListFile = new File(INTERVAL_TEST_DATA + "bad_hg19_example_intervals.list"); // this list file has a bogus interval the extends past the end chr1 and should throw an exception
         // this should throw a user exception because of the invalid interval
-        IntervalUtils.featureFileToIntervals(hg19GenomeLocParser, outOfBoundsBedFile.getAbsolutePath());
+        IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, outOfBoundListFile.getAbsolutePath());
+    }
+
+    //NOTE the .interval_list style argument input gets handled differently from the other -L inputs but we still get a reasonable exception in this case
+    @Test(expectedExceptions = UserException.MalformedFile.class)
+    public void testReasonableErrorWithInvalidPicardListFile() throws IOException {
+        File outOfBoundsIntervalListFile = new File(INTERVAL_TEST_DATA + "bad_hg19.interval_list"); // this list file has a bogus interval the extends past the end chr1 and should throw an exception
+        // this should throw a user exception because of the invalid interval
+        IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, outOfBoundsIntervalListFile.getAbsolutePath());
     }
 
 

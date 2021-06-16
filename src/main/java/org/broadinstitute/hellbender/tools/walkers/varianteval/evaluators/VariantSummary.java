@@ -167,9 +167,9 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         if ( knownCNVs != null ) {
             List<Feature> overlaps = context.queryFeaturesIncludingOverlapping(knownCNVs, new SimpleInterval(cnv.getContig(), cnv.getStart(), cnv.getEnd()));
             GenomeLocParser parser = new GenomeLocParser(context.getSequenceDictionaryForDrivingVariants());
-            GenomeLoc loc1 = parser.createGenomeLoc(cnv, true);
+            GenomeLoc loc1 = parser.createGenomeLoc(cnv, false);
             for (Feature vc : overlaps) {
-                GenomeLoc loc2 = parser.createGenomeLoc(vc, true);
+                GenomeLoc loc2 = parser.createGenomeLoc(vc, false);
                 final double overlapP = loc1.reciprocialOverlapFraction(loc2);
                 if ( overlapP > MIN_CNV_OVERLAP )
                     return true;
