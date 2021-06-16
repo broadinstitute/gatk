@@ -33,6 +33,7 @@ workflow GvsExtractCallset {
         String output_file_base_name
         String? output_gcs_dir
         File? gatk_override
+        Int local_disk_for_extract = 150
     }
 
     String samples_to_extract_table = "~{cohort_extract_table_prefix}__SAMPLES"
@@ -86,6 +87,7 @@ workflow GvsExtractCallset {
                 service_account_json     = service_account_json,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
                 output_gcs_dir           = output_gcs_dir,
+                local_disk               = local_disk_for_extract,
                 last_modified_timestamps = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp]
         }
     }
@@ -130,6 +132,7 @@ task ExtractTask {
         File? gatk_override
 
         Int? local_sort_max_records_in_ram = 10000000
+        Int local_disk
 
         # for call-caching -- check if DB tables haven't been updated since the last run
         Array[String] last_modified_timestamps
@@ -191,7 +194,7 @@ task ExtractTask {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "12 GB"
-        disks: "local-disk 150 HDD"
+        disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
         preemptible: 3
         maxRetries: 3
@@ -281,7 +284,6 @@ task GetBQTableLastModifiedDatetime {
     # that isn't in the right format (e.g. an error)
     command <<<
         set -e
-        set -x
         if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json} local.service_account.json
             gcloud auth activate-service-account --key-file=local.service_account.json
