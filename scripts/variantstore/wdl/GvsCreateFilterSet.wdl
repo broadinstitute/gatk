@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsWarpTasks.wdl" as Tasks
+
 workflow GvsCreateFilterSet {
    input {
         File wgs_intervals
@@ -53,7 +55,7 @@ workflow GvsCreateFilterSet {
         File axiomPoly_resource_vcf_index
         File dbsnp_resource_vcf = dbsnp_vcf
         File dbsnp_resource_vcf_index = dbsnp_vcf_index
-        
+
         # Effectively disable by default
         Int? excess_alleles_threshold = 1000000
 
@@ -77,6 +79,15 @@ workflow GvsCreateFilterSet {
 
         Int? INDEL_VQSR_machine_mem_gb
 
+        Int snps_variant_recalibration_threshold = 20000
+    }
+
+    call GetNumSamples {
+        input:
+            fq_sample_table = fq_sample_table,
+            service_account_json = service_account_json,
+            project_id = query_project,
+            dataset_name = default_dataset
     }
 
     call SplitIntervals {
@@ -138,61 +149,158 @@ workflow GvsCreateFilterSet {
         machine_mem_gb = INDEL_VQSR_machine_mem_gb,
     }
 
-    call SNPsVariantRecalibrator {
-      input:
-          sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-          sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
-          model_report = snps_model,
-          recalibration_filename = filter_set_name + ".snps.recal",
-          tranches_filename = filter_set_name + ".snps.tranches",
-          recalibration_tranche_values = snp_recalibration_tranche_values,
-          recalibration_annotation_values = snp_recalibration_annotation_values,
-          excluded_sites_bed = excluded_sites_bed,
-          hapmap_resource_vcf = hapmap_resource_vcf,
-          hapmap_resource_vcf_index = hapmap_resource_vcf_index,
-          omni_resource_vcf = omni_resource_vcf,
-          omni_resource_vcf_index = omni_resource_vcf_index,
-          one_thousand_genomes_resource_vcf = one_thousand_genomes_resource_vcf,
-          one_thousand_genomes_resource_vcf_index = one_thousand_genomes_resource_vcf_index,
-          dbsnp_resource_vcf = dbsnp_resource_vcf,
-          dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
-          use_allele_specific_annotations = true,
-          disk_size = large_disk,
-          machine_mem_gb = SNP_VQSR_machine_mem_gb,
-          downsampleFactor= SNP_VQSR_downsampleFactor
+    if (GetNumSamples.num_samnples > snps_variant_recalibration_threshold) {
+        call Tasks.SNPsVariantRecalibratorCreateModel {
+            input:
+                sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+                sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+                recalibration_filename = filter_set_name + ".snps.recal",
+                tranches_filename = filter_set_name + ".snps.tranches",
+                recalibration_tranche_values = snp_recalibration_tranche_values,
+                recalibration_annotation_values = snp_recalibration_annotation_values,
+                downsampleFactor = SNP_VQSR_downsampleFactor,
+                model_report_filename = filter_set_name + ".snps.model.report",
+                hapmap_resource_vcf = hapmap_resource_vcf,
+                hapmap_resource_vcf_index = hapmap_resource_vcf_index,
+                omni_resource_vcf = omni_resource_vcf,
+                omni_resource_vcf_index = omni_resource_vcf_index,
+                one_thousand_genomes_resource_vcf = one_thousand_genomes_resource_vcf,
+                one_thousand_genomes_resource_vcf_index = one_thousand_genomes_resource_vcf_index,
+                dbsnp_resource_vcf = dbsnp_resource_vcf,
+                dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
+                use_allele_specific_annotations = true,
+                disk_size = small_disk
+        }
+
+        scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
+            call SNPsVariantRecalibrator as SNPsVariantRecalibratorScattered {
+                input:
+                    sites_only_variant_filtered_vcf = ExtractFilterTask.output_vcf[idx],
+                    sites_only_variant_filtered_vcf_index = ExtractFilterTask.sites_only_vcf_index[idx],
+                    recalibration_filename = filter_set_name + ".snps." + idx + ".recal",
+                    tranches_filename = filter_set_name + ".snps." + idx + ".tranches",
+                    recalibration_tranche_values = snp_recalibration_tranche_values,
+                    recalibration_annotation_values = snp_recalibration_annotation_values,
+                    model_report = SNPsVariantRecalibratorCreateModel.model_report,
+                    hapmap_resource_vcf = hapmap_resource_vcf,
+                    hapmap_resource_vcf_index = hapmap_resource_vcf_index,
+                    omni_resource_vcf = omni_resource_vcf,
+                    omni_resource_vcf_index = omni_resource_vcf_index,
+                    one_thousand_genomes_resource_vcf = one_thousand_genomes_resource_vcf,
+                    one_thousand_genomes_resource_vcf_index = one_thousand_genomes_resource_vcf_index,
+                    dbsnp_resource_vcf = dbsnp_resource_vcf,
+                    dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
+                    use_allele_specific_annotations = true,
+                    disk_size = small_disk
+            }
+        }
+
+        call Tasks.GatherTranches as SNPGatherTranches {
+            input:
+                tranches = SNPsVariantRecalibratorScattered.tranches,
+                output_filename = filter_set_name + ".snps.gathered.tranches",
+                mode = "SNP",
+                disk_size = small_disk
+        }
     }
 
-   call UploadFilterSetToBQ {
-     input:
-        gatk_override = gatk_override,
-        filter_set_name = filter_set_name,
+    if (GetNumSamples.num_samnples <= snps_variant_recalibration_threshold) {
+        call SNPsVariantRecalibrator as SNPsVariantRecalibratorClassic {
+            input:
+                sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+                sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+                model_report = snps_model,
+                recalibration_filename = filter_set_name + ".snps.recal",
+                tranches_filename = filter_set_name + ".snps.tranches",
+                recalibration_tranche_values = snp_recalibration_tranche_values,
+                recalibration_annotation_values = snp_recalibration_annotation_values,
+                excluded_sites_bed = excluded_sites_bed,
+                hapmap_resource_vcf = hapmap_resource_vcf,
+                hapmap_resource_vcf_index = hapmap_resource_vcf_index,
+                omni_resource_vcf = omni_resource_vcf,
+                omni_resource_vcf_index = omni_resource_vcf_index,
+                one_thousand_genomes_resource_vcf = one_thousand_genomes_resource_vcf,
+                one_thousand_genomes_resource_vcf_index = one_thousand_genomes_resource_vcf_index,
+                dbsnp_resource_vcf = dbsnp_resource_vcf,
+                dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
+                use_allele_specific_annotations = true,
+                disk_size = large_disk,
+                machine_mem_gb = SNP_VQSR_machine_mem_gb,
+                downsampleFactor= SNP_VQSR_downsampleFactor
+        }
+    }
 
-        sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-        sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+    scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
+        call UploadFilterSetToBQ {
+             input:
+                gatk_override = gatk_override,
+                filter_set_name = filter_set_name,
 
-        snp_recal_file = SNPsVariantRecalibrator.recalibration,
-        snp_recal_file_index = SNPsVariantRecalibrator.recalibration_index,
-        snp_recal_tranches = SNPsVariantRecalibrator.tranches,
+                sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+                sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
 
-        indel_recal_file = IndelsVariantRecalibrator.recalibration,
-        indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
-        indel_recal_tranches = IndelsVariantRecalibrator.tranches,
+                snp_recal_file = if defined(SNPsVariantRecalibratorScattered.recalibration) then select_first([SNPsVariantRecalibratorScattered.recalibration])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration]),
+                snp_recal_file_index = if defined(SNPsVariantRecalibratorScattered.recalibration_index) then select_first([SNPsVariantRecalibratorScattered.recalibration_index])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration_index]),
+                snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
 
-        fq_info_destination_table = fq_info_destination_table,
-        fq_tranches_destination_table = fq_tranches_destination_table,
-        fq_filter_sites_destination_table = fq_filter_sites_destination_table,
+                indel_recal_file = IndelsVariantRecalibrator.recalibration,
+                indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
+                indel_recal_tranches = IndelsVariantRecalibrator.tranches,
 
-        service_account_json = service_account_json,
-        query_project = query_project
-   }
+                fq_info_destination_table = fq_info_destination_table,
+                fq_tranches_destination_table = fq_tranches_destination_table,
+                fq_filter_sites_destination_table = fq_filter_sites_destination_table,
 
-    output {
-        File output_vcf = MergeVCFs.output_vcf
-        File output_vcf_idx = MergeVCFs.output_vcf_index
+                service_account_json = service_account_json,
+                query_project = query_project
+        }
+
+        output {
+            File output_vcf = MergeVCFs.output_vcf
+            File output_vcf_idx = MergeVCFs.output_vcf_index
+        }
     }
 }
 
 ################################################################################
+task GetNumSamples {
+    input {
+        String fq_sample_table
+        File? service_account_json
+        String project_id
+        String dataset_name
+    }
+
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
+    command <<<
+        set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{project_id}
+            echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        fi
+
+        bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+        "SELECT COUNT(*) as num_rows FROM ~{dataset_name}.~{fq_sample_table}" > num_rows.csv
+
+        python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);" > num_rows.txt
+    >>>
+
+    output {
+        Int num_samples = read_int("num_rows.txt")
+    }
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+}
+
 task ExtractFilterTask {
     # indicates that this task should NOT be call cached
 
