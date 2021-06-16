@@ -287,11 +287,7 @@ task GetNumSamples {
 
         NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
-        if [[ $NUMROWS =~ ^[0-9]+$ ]]; then
-            echo $NUMROWS
-        else
-            exit 1
-        fi
+        [[ $NUMROWS =~ ^[0-9]+$ ]] && echo $NUMROWS || exit 1
 
     >>>
 
