@@ -34,8 +34,7 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("local-sort-max-records-in-ram", 10000000)
         .add("cohort-avro-file-name", cohortAvroFileName)
         .add("sample-file", sampleFile)
-        .add("emit-pls", false)
-        .add("vqslod-filter-genotypes", false);
+        .add("emit-pls", false);
 
     runCommandLine(args);
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
