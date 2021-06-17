@@ -1,6 +1,6 @@
 version 1.0
 
-import "GvsPrepareCallset.wdl" as GvsPrepareCallset
+import "GvsPrepareCallset.wdl"
 import "GvsExtractCallset.wdl" as GvsExtractCallset
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
