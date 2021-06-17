@@ -47,7 +47,7 @@ workflow GvsExtractCohortFromSampleNames {
     input:
       destination_cohort_table_prefix = extraction_uuid,
       sample_names_to_extract         = cohort_sample_names,
-      data_project                    = query_project,
+      data_project                    = gvs_project,
       default_dataset                 = gvs_dataset, # unused if fq_* args are given
       fq_petvet_dataset               = "~{gvs_project}.~{gvs_dataset}",
       fq_sample_mapping_table         = "~{gvs_project}.~{gvs_dataset}.sample_info",

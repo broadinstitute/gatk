@@ -91,6 +91,7 @@ workflow GvsExtractCallset {
     output {
       Array[File] output_vcfs = ExtractTask.output_vcf
       Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
+      Int total_vcfs_size = size(ExtractTask.output_vcf) + size(ExtractTask.output_vcf_index)
     }
 }
 
@@ -182,6 +183,8 @@ task ExtractTask {
           gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
           gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
         fi
+
+        du -b ~{output_file}* | awk '{sum += $0} END {print sum}' > bytes.txt
     >>>
 
     # ------------------------------------------------
@@ -201,6 +204,7 @@ task ExtractTask {
     output {
         File output_vcf = "~{output_file}"
         File output_vcf_index = "~{output_file}.tbi"
+        Int payload_bytes = read_int("bytes.txt")
     }
  }
 
