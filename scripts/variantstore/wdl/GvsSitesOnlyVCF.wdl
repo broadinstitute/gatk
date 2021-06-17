@@ -8,7 +8,7 @@ workflow GvsSitesOnlyVCF {
         String project_id
         String dataset_name
         File nirvana_data_directory
-        String nirvana_schema = "position:INTEGER,vid:String,contig:STRING,ref_allele:STRING,alt_allele:STRING,variant_type:STRING,genomic_location:STRING,dbsnp_rsid:STRING,transcript:STRING,gene_symbol:STRING,transcript_source:STRING,aa_change:STRING,consequence:STRING,dna_change:String,exon_number:STRING,intron_number:STRING,splice_distance:STRING,entrez_gene_id:STRING,is_canonical_transcript:STRING,gvs_all_ac:STRING,gvs_all_an:STRING,gvs_all_af:STRING,revel:STRING,splice_ai_acceptor_gain_score:STRING,splice_ai_acceptor_gain_distance:STRING,splice_ai_acceptor_loss_score:STRING,splice_ai_acceptor_loss_distance:STRING,splice_ai_donor_gain_score:STRING,splice_ai_donor_gain_distance:STRING,splice_ai_donor_loss_score:STRING,splice_ai_donor_loss_distance:STRING,clinvar_classification:STRING,clinvar_last_updated:STRING,clinvar_phenotype:STRING,gnomad_all_af:STRING,gnomad_all_ac:STRING,gnomad_all_an:STRING,gnomad_max_af:STRING,gnomad_max_ac:STRING,gnomad_max_an:STRING,gnomad_max_subpop:STRING,gene_omim_id:STRING,omim_phenotypes_id:STRING,omim_phenotypes_name:STRING"
+        String nirvana_schema = "position:INTEGER,vid:String,contig:STRING,ref_allele:STRING,alt_allele:STRING,variant_type:STRING,genomic_location:STRING,dbsnp_rsid:STRING,transcript:STRING,gene_symbol:STRING,transcript_source:STRING,aa_change:STRING,consequence:STRING,dna_change:String,exon_number:STRING,intron_number:STRING,splice_distance:STRING,entrez_gene_id:STRING,is_canonical_transcript:STRING,gvs_all_ac:INTEGER,gvs_all_an:INTEGER,gvs_all_af:INTEGER,revel:FLOAT,splice_ai_acceptor_gain_score:INTEGER,splice_ai_acceptor_gain_distance:INTEGER,splice_ai_acceptor_loss_score:INTEGER,splice_ai_acceptor_loss_distance:INTEGER,splice_ai_donor_gain_score:INTEGER,splice_ai_donor_gain_distance:INTEGER,splice_ai_donor_loss_score:INTEGER,splice_ai_donor_loss_distance:INTEGER,clinvar_classification:STRING,clinvar_last_updated:DATE,clinvar_phenotype:STRING,gnomad_all_af:STRING,gnomad_all_ac:STRING,gnomad_all_an:STRING,gnomad_max_af:STRING,gnomad_max_ac:STRING,gnomad_max_an:STRING,gnomad_max_subpop:STRING,gene_omim_id:STRING,omim_phenotypes_id:STRING,omim_phenotypes_name:STRING"
         File? gatk_override
     }
 
@@ -35,14 +35,19 @@ workflow GvsSitesOnlyVCF {
           nirvana_data_tar = nirvana_data_directory
     }
 
-    call BigQueryLoadJson {
+    call PrepAnnotationJson {
       input:
           annotation_json = AnnotateVCF.annotation_json,
-          annotation_json_jsi = AnnotateVCF.annotation_json_jsi,
+          annotation_json_jsi = AnnotateVCF.annotation_json_jsi
+
+    }
+
+    call BigQueryLoadJson {
+      input:
+          annotation_json = PrepAnnotationJson.annotations_edited_file,
           nirvana_schema = nirvana_schema,
           project_id = project_id,
           dataset_name = dataset_name
-
     }
 }
 
@@ -160,104 +165,27 @@ task AnnotateVCF {
     }
 }
 
-task BigQueryLoadJson {
+task PrepAnnotationJson {
     input {
         File annotation_json
         File annotation_json_jsi
-        String nirvana_schema
-        String project_id
-        String dataset_name
     }
+
+    String unzipped_json = "unzipped.json"
+    String newline_delimited_json = "load_into_bq.json"
+
     command <<<
         set -e
 
         # prepare the json file for loading into BQ by making it a new line delimited json
-        jq -c  '.positions | .[]' ~{annotation_json} > load_into_bq.json
+        gunzip -c ~{annotation_json} >> ~{unzipped_json}
+        jq -rc '.positions | .[]' ~{unzipped_json} >> ~{newline_delimited_json}
 
-        # load this json in as a temp interim BQ vat table
-        $TEMP_TABLE="~{dataset_name}.pre-vat"
-        bq --location=US load   --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON --autodetect $TEMP_TABLE load_into_bq.json
-
-
-        # make the BQ vat table (this will help with validation)
-        PARTITION_FIELD="position"
-        CLUSTERING_FIELD="vid"
-        PARTITION_STRING="--range_partitioning=$PARTITION_FIELD,0,4000,4000"
-        CLUSTERING_STRING="--clustering_fields=$CLUSTERING_FIELD"
-        TABLE="~{dataset_name}.vatter"
-        SCHEMA="~{nirvana_schema}"
-        PROJECT="~{project_id}"
-
-        # bq --location=US mk --project_id="spec-ops-aou" "anvil_100_for_testing.vat" "scripts/variantstore/wdl/schemas/vat_schema.json"
-        bq --location=US mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE $SCHEMA > status_bq_submission
-
-        # now run some giant query in BQ to get this all in the right table
-        bq query --destination_table=$TABLE  \
-          'SELECT
-           v.position,
-           v.vid,
-           v.chromosome AS contig,
-           v.refAllele AS ref_allele,
-           v.altAllele AS alt_allele,
-           v.variantType AS variant_type,
-           v.hgvsg AS genomic_location,
-           v.dbsnp AS dbsnp_rsid,
-           t.transcript,
-           t.hgnc AS gene_symbol,
-           t.source AS transcript_source,
-           t.hgvsp AS aa_change,
-           t.consequence as consequence, # gross,
-           t.hgvsc AS dna_change,
-           t.exons AS exon_number,
-           t.introns AS intron_number,
-           t.hgvsc AS splice_distance,
-           t.geneId AS entrez_gene_id,
-           CASE WHEN ( v.transcript is not null and t.isCanonical is not True) THEN False WHEN ( v.transcript is not null and t.isCanonical is True) THEN True END AS is_canonical_transcript,
-           null AS gvs_all_ac, # what is this mapping?
-           null AS gvs_all_an,
-           null AS gvs_all_af,
-           v.revel.score AS revel,
-           # we just grab the first value in spliceAI (need to validate that there will only ever be one)
-           CASE WHEN (select array_length(v.spliceAI)) > 0
-                  THEN v.spliceAI[offset(0)].acceptorGainScore END AS splice_ai_acceptor_gain_score,
-           CASE WHEN (select array_length(v.spliceAI)) > 0
-                  THEN v.spliceAI[offset(0)].acceptorGainDistance END AS splice_ai_acceptor_gain_distance,
-           CASE WHEN (select array_length(v.spliceAI)) > 0
-                  THEN v.spliceAI[offset(0)].acceptorLossScore END AS splice_ai_acceptor_loss_score,
-           CASE WHEN (select array_length(v.spliceAI)) > 0
-                  THEN v.spliceAI[offset(0)].acceptorLossDistance END AS splice_ai_acceptor_loss_distance,
-           CASE WHEN (select array_length(v.spliceAI)) > 0
-                  THEN v.spliceAI[offset(0)].donorGainScore END AS splice_ai_donor_gain_score,
-           CASE WHEN (select array_length(v.spliceAI)) > 0
-                  THEN v.spliceAI[offset(0)].donorGainDistance END AS splice_ai_donor_gain_distance,
-           CASE WHEN (select array_length(v.spliceAI)) > 0
-                  THEN v.spliceAI[offset(0)].donorLossScore END AS splice_ai_donor_loss_score,
-           CASE WHEN (select array_length(v.spliceAI)) > 0
-                  THEN v.spliceAI[offset(0)].donorLossDistance END AS splice_ai_donor_loss_distance,
-           (SELECT significance[offset(0)] FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_classification,
-           (SELECT lastUpdatedDate FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_last_updated,
-           (SELECT phenotypes FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_phenotype,
-           v.gnomad.allAf AS gnomad_all_af,
-           v.gnomad.allAc AS gnomad_all_ac,
-           v.gnomad.allAn AS gnomad_all_an,
-           v.gnomad.afrAf AS gnomad_max_af,
-           v.gnomad.afrAc AS gnomad_max_ac,
-           v.gnomad.afrAn AS gnomad_max_an,
-           null AS gnomad_max_subpop, # what is this mapping?
-           null AS gene_omim_id,
-           null AS omim_phenotypes_id,
-           null AS omim_phenotypes_name,
-           from (SELECT position, variantline.* FROM $PROJECT.$TABLE, UNNEST(variants) as variantline) as a left join
-           (SELECT position, variantline.vid, transcriptline.* FROM $PROJECT.$TABLE, UNNEST(variants) as variantline, UNNEST(variantline.transcripts) as transcriptline) as b on a.vid = b.vid)'
-
-        cat status_bq_submission | tail -n 1 > status_bq_submission_last_line
-        bq_job_id=$(sed 's/.*://' status_bq_submission_last_line)
-        echo $bq_job_id
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "broadinstitute/gatk:4.2.0.0"
+        docker: "stedolan/jq:latest"
         memory: "3 GB"
         cpu: "1"
         disks: "local-disk 100 HDD"
@@ -265,7 +193,112 @@ task BigQueryLoadJson {
     # ------------------------------------------------
     # Outputs:
     output {
-      Boolean done = true
+        File annotations_edited_file = newline_delimited_json
+    }
+}
+
+task BigQueryLoadJson {
+    input {
+        File annotation_json
+        String nirvana_schema
+        String project_id
+        String dataset_name
+    }
+
+    command <<<
+        set -e
+
+        # load the annotation json in as a temp interim BQ vat table
+        TEMP_TABLE="~{dataset_name}.pre-vat"
+        bq --location=US load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON --autodetect $TEMP_TABLE ~{annotation_json}
+
+        # create the final vat table with the correct fields
+        # TODO this is a hacky set of fields---would ideally use the vat_schema.json
+        PARTITION_FIELD="position"
+        CLUSTERING_FIELD="vid"
+        PARTITION_STRING="" #--range_partitioning=$PARTITION_FIELD,0,4000,4000"
+        CLUSTERING_STRING="" #--clustering_fields=$CLUSTERING_FIELD"
+        TABLE="~{dataset_name}.vatter"
+        SCHEMA="~{nirvana_schema}"
+        PROJECT="~{project_id}"
+        echo "Creating a vat table..."
+        bq --location=US mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE $SCHEMA > status_bq_submission
+        echo "And putting data into it"
+
+        # now run some giant query in BQ to get this all in the right table
+        bq query --destination_table="anvil_100_for_testing.vatter" --project_id="spec-ops-aou" 'SELECT
+              v.position,
+              v.vid,
+              v.chromosome AS contig,
+              v.refAllele AS ref_allele,
+              v.altAllele AS alt_allele,
+              v.variantType AS variant_type,
+              v.hgvsg AS genomic_location,
+              ARRAY_TO_STRING(v.dbsnp, ",") AS dbsnp_rsid,
+              t.transcript,
+              t.hgnc AS gene_symbol,
+              t.source AS transcript_source,
+              t.hgvsp AS aa_change,
+              ARRAY_TO_STRING(t.consequence, ",") AS consequence,
+              t.hgvsc AS dna_change,
+              t.exons AS exon_number,
+              t.introns AS intron_number,
+              t.hgvsc AS splice_distance,
+              t.geneId AS entrez_gene_id,
+        CASE WHEN ( t.transcript is not null and t.isCanonical is not True) THEN "false" WHEN ( t.transcript is not null and t.isCanonical is True) THEN "true" END AS is_canonical_transcript,
+        null AS gvs_all_ac,
+        null AS gvs_all_an,
+        null AS  gvs_all_af,
+        v.revel.score  AS revel,
+              # we just grab the first value in spliceAI (need to validate that there will only ever be one)
+              CASE WHEN (select array_length(v.spliceAI)) > 0
+                 THEN v.spliceAI[offset(0)].acceptorGainScore END AS splice_ai_acceptor_gain_score,
+              CASE WHEN (select array_length(v.spliceAI)) > 0
+                 THEN v.spliceAI[offset(0)].acceptorGainDistance END AS splice_ai_acceptor_gain_distance,
+              CASE WHEN (select array_length(v.spliceAI)) > 0
+                 THEN v.spliceAI[offset(0)].acceptorLossScore END AS splice_ai_acceptor_loss_score,
+              CASE WHEN (select array_length(v.spliceAI)) > 0
+                 THEN v.spliceAI[offset(0)].acceptorLossDistance END AS splice_ai_acceptor_loss_distance,
+              CASE WHEN (select array_length(v.spliceAI)) > 0
+                 THEN v.spliceAI[offset(0)].donorGainScore END AS splice_ai_donor_gain_score,
+              CASE WHEN (select array_length(v.spliceAI)) > 0
+                 THEN v.spliceAI[offset(0)].donorGainDistance END AS splice_ai_donor_gain_distance,
+              CASE WHEN (select array_length(v.spliceAI)) > 0
+                 THEN v.spliceAI[offset(0)].donorLossScore END AS splice_ai_donor_loss_score,
+              CASE WHEN (select array_length(v.spliceAI)) > 0
+                 THEN v.spliceAI[offset(0)].donorLossDistance END AS splice_ai_donor_loss_distance,
+              (SELECT ARRAY_TO_STRING(significance, ",") FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_classification,
+              (SELECT lastUpdatedDate FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_last_updated,
+              (SELECT ARRAY_TO_STRING(phenotypes, ",") FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_phenotype,
+              v.gnomad.allAf AS gnomad_all_af,
+              v.gnomad.allAc AS gnomad_all_ac,
+              v.gnomad.allAn AS gnomad_all_an,
+              v.gnomad.afrAf AS gnomad_max_af,
+              v.gnomad.afrAc AS gnomad_max_ac,
+              v.gnomad.afrAn AS gnomad_max_an,
+              null AS gnomad_max_subpop, # what is this mapping?
+              null AS gene_omim_id,
+              null AS omim_phenotypes_id,
+              null AS omim_phenotypes_name,
+              from (SELECT position, variantline.* FROM `spec-ops-aou.anvil_100_for_testing.pre-vat`, UNNEST(variants) as variantline) as v left join
+              (SELECT position, variantline.vid, transcriptline.* FROM `spec-ops-aou.anvil_100_for_testing.pre-vat`, UNNEST(variants) as variantline, UNNEST(variantline.transcripts) as transcriptline) as t on v.vid = t.vid'
+       # cat status_bq_submission | tail -n 1 > status_bq_submission_last_line
+       # bq_job_id=$(sed 's/.*://' status_bq_submission_last_line)
+        #echo $bq_job_id
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "openbridge/ob_google-bigquery:latest"
+        memory: "3 GB"
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        Boolean done = true
     }
 }
 
