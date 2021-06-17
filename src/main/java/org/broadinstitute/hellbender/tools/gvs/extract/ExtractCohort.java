@@ -132,7 +132,7 @@ public class ExtractCohort extends ExtractTool {
             optional = true)
     private Double vqsLodSNPThreshold = null;
 
-  @Advanced
+    @Advanced
     @Argument(
             fullName = "indels-lod-score-cutoff",
             mutex = {"indels-truth-sensitivity-filter-level"},
