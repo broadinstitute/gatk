@@ -35,7 +35,20 @@ public class ExtractCohort extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
     private ExtractCohortEngine engine;
 
-    public enum FilteringType { NONE, GENOTYPE, SITES};
+    public enum FilteringType {
+      GENOTYPE("genotype"),
+      SITES("sites"),
+      NONE("");
+
+      String value;
+
+      FilteringType(String value) {
+      this.value = value;
+    }
+      public String getValue() {
+      return value;
+    }
+  }
 
   @Argument(
             fullName = "filter-set-info-table",
@@ -89,8 +102,8 @@ public class ExtractCohort extends ExtractTool {
     private boolean emitPLs = false;
 
     @Argument(
-            fullName = "vqslod-filter-genotypes",
-            doc = "Should VQSLOD filtering be applied at the genotype level",
+            fullName = "filter-type",
+            doc = "What type of filtering should be applied / at what level",
             optional = true
     )
     private FilteringType filteringType = FilteringType.NONE; // TODO do we want to make sure this is always / required?
