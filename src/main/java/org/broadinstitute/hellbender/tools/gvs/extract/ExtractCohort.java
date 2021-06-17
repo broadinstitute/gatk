@@ -47,10 +47,10 @@ public class ExtractCohort extends ExtractTool {
     }
       public String getValue() {
       return value;
+      }
     }
-  }
 
-  @Argument(
+    @Argument(
             fullName = "filter-set-info-table",
             doc = "Fully qualified name of the filtering set info table to use for cohort extraction",
             optional = true
@@ -103,10 +103,10 @@ public class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "filter-type",
-            doc = "What type of filtering should be applied / at what level",
+            doc = "What type of filtering should be applied. Valid options are one of NONE, SITES, GENOTYPE. Default is NONE",
             optional = true
     )
-    private FilteringType filteringType = FilteringType.NONE; // TODO do we want to make sure this is always / required?
+    private FilteringType filteringType = FilteringType.NONE;
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
@@ -157,12 +157,14 @@ public class ExtractCohort extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
 
-        if (filterSetName == null || filterSetName.equals("")) {
-          // Should the below list be expanded?
-          if (filterSetInfoTableName != null || filterSetSiteTableName != null || !filteringType.equals(FilteringType.NONE)) {
-            throw new UserException("--filter-set-name must be specified if any filtering related operations are requested"); // do we care about this still? should there be more validation around the enum?
+        if (filteringType.equals(FilteringType.NONE)) {
+          if (filterSetInfoTableName != null || filterSetSiteTableName != null || filterSetName != null) {
+             throw new UserException("--filter-type must be specified for any filtering related operations");
           }
         } else {
+          if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
+             throw new UserException("--filter-set-name, --filter-set-info-table and --filter-set-site-table for any filtering related operations");
+          }
 
           FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
           Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
@@ -248,6 +250,10 @@ public class ExtractCohort extends ExtractTool {
     // maybe think about creating a BigQuery Row walker?
     public void traverse() {
         progressMeter.setRecordsBetweenTimeChecks(100L);
+
+        if ( filteringType.equals(FilteringType.NONE) ) {
+            logger.warn("--filter-type is not specified, no filtering of cohort! ");
+        }
 
         if ( filterSetInfoTableName == null || filterSetInfoTableName.equals("") ) {
             logger.warn("--filter-set-info-table is not specified, no filtering of cohort! ");
