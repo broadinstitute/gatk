@@ -284,6 +284,8 @@ task GetNumSamples {
 
         echo "bq query: bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \"SELECT COUNT(*) as num_rows FROM ~{dataset_name}.~{fq_sample_table}\""
 
+        bq query: bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT COUNT(*) as num_rows FROM ~{dataset_name}.~{fq_sample_table}"
+
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
         "SELECT COUNT(*) as num_rows FROM ~{dataset_name}.~{fq_sample_table}" > num_rows.csv
 
