@@ -282,20 +282,10 @@ task GetNumSamples {
             echo "project_id = ~{project_id}" > ~/.bigqueryrc
         fi
 
-        echo "bq query: bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \"SELECT COUNT(*) as num_rows FROM ~{dataset_name}.~{fq_sample_table}\""
-
-        bq query: bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT COUNT(*) as num_rows FROM ~{dataset_name}.~{fq_sample_table}"
-
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-        "SELECT COUNT(*) as num_rows FROM ~{dataset_name}.~{fq_sample_table}" > num_rows.csv
-
-        echo "contents of num_rows.csv"
-        cat num_rows.csv
+        "SELECT COUNT(*) as num_rows FROM ~{fq_sample_table}" > num_rows.csv
 
         NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
-
-        echo "contents of NUMROWS:"
-        echo $NUMROWS
 
         [[ $NUMROWS =~ ^[0-9]+$ ]] && echo $NUMROWS || exit 1
 
