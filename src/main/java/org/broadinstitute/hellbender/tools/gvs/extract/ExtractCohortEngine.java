@@ -50,7 +50,7 @@ public class ExtractCohortEngine {
     private final ReferenceDataSource refSource;
     private Double vqsLodSNPThreshold;
     private Double vqsLodINDELThreshold;
-    private boolean performGenotypeVQSLODFiltering;
+    private ExtractCohort.FilteringType filteringType;
     private boolean excludeFilteredSites;
 
     private final ProgressMeter progressMeter;
@@ -99,7 +99,7 @@ public class ExtractCohortEngine {
                                final ProgressMeter progressMeter,
                                final String filterSetName,
                                final boolean emitPLs,
-                               final boolean performGenotypeVQSLODFiltering,
+                               final ExtractCohort.FilteringType filteringType,
                                final boolean excludeFilteredSites
     ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
@@ -124,7 +124,7 @@ public class ExtractCohortEngine {
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
-        this.performGenotypeVQSLODFiltering = performGenotypeVQSLODFiltering;
+        this.filteringType = filteringType;
         this.excludeFilteredSites = excludeFilteredSites;
 
         this.progressMeter = progressMeter;
@@ -262,7 +262,7 @@ public class ExtractCohortEngine {
 
                 if (location != currentLocation && currentLocation != -1) {
                     ++totalNumberOfSites;
-                    processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, performGenotypeVQSLODFiltering);
+                    processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, filteringType);
 
                     currentPositionRecords.clear();
                 }
@@ -274,7 +274,7 @@ public class ExtractCohortEngine {
 
         if ( ! currentPositionRecords.isEmpty() ) {
             ++totalNumberOfSites;
-            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, performGenotypeVQSLODFiltering);
+            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, filteringType);
         }
     }
 
@@ -303,7 +303,7 @@ public class ExtractCohortEngine {
                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                                  final boolean noVqslodFilteringRequested,
                                                  final HashMap<Long, List<String>> siteFilterMap,
-                                                 final boolean performGenotypeVQSLODFiltering) {
+                                                 final ExtractCohort.FilteringType filteringType) {
 
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final Set<String> currentPositionSamplesSeen = new HashSet<>();
@@ -345,7 +345,7 @@ public class ExtractCohortEngine {
             switch (sampleRecord.getState()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
-                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
+                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap, filteringType);
                     unmergedCalls.add(vc);
 
                     currentPositionHasVariant = true;
@@ -431,7 +431,7 @@ public class ExtractCohortEngine {
 
         // apply VQSLod-based filters
         VariantContext filteredVC =
-                noVqslodFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQSLOD(genotypedVC, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
+                noVqslodFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQSLOD(genotypedVC, vqsLodMap, yngMap, filteringType);
 
         // apply SiteQC-based filters, if they exist
         if ( siteFilterMap.containsKey(location) ) {
@@ -460,7 +460,7 @@ public class ExtractCohortEngine {
         }
     }
 
-    private VariantContext filterSiteByAlleleSpecificVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean onlyAnnotate) {
+    private VariantContext filterSiteByAlleleSpecificVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohort.FilteringType onlyAnnotate) {
         final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
         final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
@@ -474,7 +474,7 @@ public class ExtractCohortEngine {
         builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, relevantVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
-        if (!onlyAnnotate) {
+        if (filteringType.equals(ExtractCohort.FilteringType.SITES)) {
             int refLength = mergedVC.getReference().length();
 
             // if there are any Yays, the site is PASS
@@ -565,7 +565,7 @@ public class ExtractCohortEngine {
 
 
     // vqsLogMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
-    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean performGenotypeVQSLODFiltering) {
+    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohort.FilteringType filteringType) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
 
@@ -617,7 +617,7 @@ public class ExtractCohortEngine {
                             .map(alleleIndex -> alleles.get(alleleIndex))
                             .collect(Collectors.toList());
 
-            if (performGenotypeVQSLODFiltering) {
+            if (filteringType.equals(ExtractCohort.FilteringType.GENOTYPE)) {
                 final List<Allele> nonRefAlleles =
                         genotypeAlleles.stream()
                                 .filter(a -> a.isNonReference())

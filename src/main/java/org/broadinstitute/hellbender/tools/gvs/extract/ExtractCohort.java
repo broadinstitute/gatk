@@ -35,7 +35,9 @@ public class ExtractCohort extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
     private ExtractCohortEngine engine;
 
-   @Argument(
+    public enum FilteringType { NONE, GENOTYPE, SITES};
+
+  @Argument(
             fullName = "filter-set-info-table",
             doc = "Fully qualified name of the filtering set info table to use for cohort extraction",
             optional = true
@@ -91,7 +93,7 @@ public class ExtractCohort extends ExtractTool {
             doc = "Should VQSLOD filtering be applied at the genotype level",
             optional = true
     )
-    private boolean performGenotypeVQSLODFiltering = true;
+    private FilteringType filteringType = FilteringType.NONE; // TODO do we want to make sure this is always / required?
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
@@ -144,9 +146,8 @@ public class ExtractCohort extends ExtractTool {
 
         if (filterSetName == null || filterSetName.equals("")) {
           // Should the below list be expanded?
-          // Technically if any of the filtering params are not null we may want to throw this error? eg performGenotypeVQSLODFiltering!
-          if (filterSetInfoTableName != null || filterSetSiteTableName != null) {
-            throw new UserException("--filter-set-name must be specified if any filtering related operations are requested");
+          if (filterSetInfoTableName != null || filterSetSiteTableName != null || !filteringType.equals(FilteringType.NONE)) {
+            throw new UserException("--filter-set-name must be specified if any filtering related operations are requested"); // do we care about this still? should there be more validation around the enum?
           }
         } else {
 
@@ -167,7 +168,7 @@ public class ExtractCohort extends ExtractTool {
 
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
-        if (performGenotypeVQSLODFiltering) {
+        if (filteringType.equals(ExtractCohort.FilteringType.GENOTYPE)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
@@ -224,7 +225,7 @@ public class ExtractCohort extends ExtractTool {
                 progressMeter,
                 filterSetName,
                 emitPLs,
-                performGenotypeVQSLODFiltering,
+                filteringType,
                 excludeFilteredSites);
 
         vcfWriter.writeHeader(header);
