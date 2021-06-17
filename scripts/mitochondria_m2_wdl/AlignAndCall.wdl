@@ -11,7 +11,6 @@ workflow AlignAndCall {
 
   input {
     File unmapped_bam
-    Float? autosomal_coverage
     String base_name
 
     File mt_dict
@@ -218,45 +217,13 @@ workflow AlignAndCall {
       preemptible_tries = preemptible_tries
  }
 
-  if ( defined(autosomal_coverage) ) {
-    call FilterNuMTs {
-      input:
-        filtered_vcf = FilterContamination.filtered_vcf,
-        ref_fasta = mt_fasta,
-        ref_fai = mt_fasta_index,
-        ref_dict = mt_dict,
-        autosomal_coverage = autosomal_coverage,
-        gatk_override = gatk_override,
-        gatk_docker_override = gatk_docker_override,
-        compress = compress_output_vcf,
-        preemptible_tries = preemptible_tries
-    }
-  }
-
-  File low_het_vcf = select_first([FilterNuMTs.numt_filtered_vcf, FilterContamination.filtered_vcf])
-
-  call FilterLowHetSites {
-    input:
-      filtered_vcf = low_het_vcf,
-      ref_fasta = mt_fasta,
-      ref_fai = mt_fasta_index,
-      ref_dict = mt_dict,
-      max_low_het_sites = max_low_het_sites,
-      gatk_override = gatk_override,
-      gatk_docker_override = gatk_docker_override,
-      compress = compress_output_vcf,
-      base_name = base_name,
-      preemptible_tries = preemptible_tries
-  }
-
-
   output {
     File mt_aligned_bam = AlignToMt.mt_aligned_bam
     File mt_aligned_bai = AlignToMt.mt_aligned_bai
     File mt_aligned_shifted_bam = AlignToShiftedMt.mt_aligned_bam
     File mt_aligned_shifted_bai = AlignToShiftedMt.mt_aligned_bai
-    File out_vcf = FilterLowHetSites.final_filtered_vcf
-    File out_vcf_index = FilterLowHetSites.final_filtered_vcf_idx
+    File out_vcf = FilterContamination.filtered_vcf
+    File out_vcf_index = FilterContamination.filtered_vcf_idx
     File input_vcf_for_haplochecker = SplitMultiAllelicsAndRemoveNonPassSites.vcf_for_haplochecker
     File duplicate_metrics = AlignToMt.duplicate_metrics
     File coverage_metrics = CollectWgsMetrics.metrics
@@ -661,89 +628,6 @@ task SplitMultiAllelicsAndRemoveNonPassSites {
   }
   output {
     File vcf_for_haplochecker = "splitAndPassOnly.vcf"
-  }
-  runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
-      memory: "3 MB"
-      disks: "local-disk 20 HDD"
-      preemptible: select_first([preemptible_tries, 5])
-  } 
-}
-
-task FilterNuMTs {
-  input {
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File filtered_vcf
-    Float? autosomal_coverage
-    Int? preemptible_tries
-    File? gatk_override
-    String? gatk_docker_override
-    Boolean compress
-  }
-  
-  String basename = basename(filtered_vcf, ".vcf")
-  String output_vcf = basename + ".numt" + if compress then ".vcf.gz" else ".vcf"
-  String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
-  
-  parameter_meta {
-    autosomal_coverage: "Median coverage of the autosomes for filtering potential polymorphic NuMT variants"
-  }
-
-  command {
-    set -e
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-    gatk NuMTFilterTool \
-      -R ~{ref_fasta} \
-      -V ~{filtered_vcf} \
-      -O ~{output_vcf} \
-      --autosomal-coverage ~{autosomal_coverage}
-  
-  }
-  output {
-    File numt_filtered_vcf = "~{output_vcf}"
-    File numt_filtered_vcf_idx = "~{output_vcf_index}"
-  }
-  runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
-      memory: "3 MB"
-      disks: "local-disk 20 HDD"
-      preemptible: select_first([preemptible_tries, 5])
-  } 
-}
-
-task FilterLowHetSites {
-  input {
-    File ref_fasta
-    File ref_fai
-    File ref_dict
-    File filtered_vcf
-    String base_name
-    Int? max_low_het_sites
-    Int? preemptible_tries
-    File? gatk_override
-    String? gatk_docker_override
-    Boolean compress
-  }
-
-  String output_vcf = base_name + ".final" + if compress then ".vcf.gz" else ".vcf"
-  String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
-  Int max_sites = select_first([max_low_het_sites, 3])
-  
-  command {
-    set -e
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-    gatk MTLowHeteroplasmyFilterTool \
-      -R ~{ref_fasta} \
-      -V ~{filtered_vcf} \
-      -O ~{output_vcf} \
-      --max-allowed-low-hets ~{max_sites}
-  
-  }
-  output {
-    File final_filtered_vcf = "~{output_vcf}"
-    File final_filtered_vcf_idx = "~{output_vcf_index}"
   }
   runtime {
       docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
