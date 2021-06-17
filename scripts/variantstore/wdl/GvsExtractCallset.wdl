@@ -17,6 +17,7 @@ workflow GvsExtractCallset {
 
         Boolean do_not_filter_override = false
         String? filter_set_name
+        String? filter-type
         String fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
         String fq_filter_set_site_table = "~{data_project}.~{default_dataset}.filter_set_sites"
         String fq_filter_set_tranches_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
@@ -77,6 +78,7 @@ workflow GvsExtractCallset {
                 fq_filter_set_site_table = fq_filter_set_site_table,
                 fq_filter_set_tranches_table = fq_filter_set_tranches_table,
                 filter_set_name          = filter_set_name,
+                filter-type              = filter-type,
                 snps_truth_sensitivity_filter_level = snps_truth_sensitivity_filter_level_override,
                 indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level_override,
                 excluded_intervals       = excluded_intervals,
@@ -112,11 +114,12 @@ task ExtractTask {
         String output_file
         String? output_gcs_dir
 
-        Boolean do_not_filter_override
+        Boolean do_not_filter_override # do we want to keep this in? seems like a breaking change and this might be a nice to have?
         String fq_filter_set_info_table
         String fq_filter_set_site_table
         String fq_filter_set_tranches_table
         String? filter_set_name
+        String? filter_type
         Float? snps_truth_sensitivity_filter_level
         Float? indels_truth_sensitivity_filter_level
 
@@ -151,12 +154,13 @@ task ExtractTask {
         df -h
 
         if [ ~{do_not_filter_override} = 'true' ]; then
-            FILTERING_ARGS='--vqslod-filter-genotypes false'
+            FILTERING_ARGS=''
         else
             FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
                 --filter-set-site-table ~{fq_filter_set_site_table}
                 --tranches-table ~{fq_filter_set_tranches_table}
                 --filter-set-name ~{filter_set_name}
+                --filter-type ~{filter-type}
                 ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level}
                 ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
