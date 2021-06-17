@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
@@ -40,4 +42,51 @@ class ExtractCohortTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
   }
 
+  @Test(expectedExceptions = CommandLineException.class)
+  public void testThrowFilterError() throws Exception {
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    args
+        .add("mode", "GENOMES")
+        .add("ref-version", 38)
+        .add("R", hg38Reference)
+        .add("O", "anything")
+        .add("local-sort-max-records-in-ram", 10000000)
+        .add("cohort-avro-file-name", cohortAvroFileName)
+        .add("sample-file", sampleFile)
+        .add("emit-pls", false)
+        .add("filter-type", "foo");
+    runCommandLine(args);
+  }
+
+  @Test(expectedExceptions = CommandLineException.class)
+  public void testLowerCaseFilterError() throws Exception {
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    args
+        .add("mode", "GENOMES")
+        .add("ref-version", 38)
+        .add("R", hg38Reference)
+        .add("O", "anything")
+        .add("local-sort-max-records-in-ram", 10000000)
+        .add("cohort-avro-file-name", cohortAvroFileName)
+        .add("sample-file", sampleFile)
+        .add("emit-pls", false)
+        .add("filter-type", "sites");
+    runCommandLine(args);
+  }
+
+  @Test(expectedExceptions = UserException.class)
+  public void testNoFilteringSetNameError() throws Exception {
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    args
+        .add("mode", "GENOMES")
+        .add("ref-version", 38)
+        .add("R", hg38Reference)
+        .add("O", "anything")
+        .add("local-sort-max-records-in-ram", 10000000)
+        .add("cohort-avro-file-name", cohortAvroFileName)
+        .add("sample-file", sampleFile)
+        .add("emit-pls", false)
+        .add("filter-type", "SITES");
+    runCommandLine(args);
+  }
 }
