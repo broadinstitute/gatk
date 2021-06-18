@@ -41,7 +41,7 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 null,
                 null,
                 false,
-                ExtractCohort.FilteringType.SITES, // "sites"
+                ExtractCohort.VQSLODFilteringType.SITES, // "sites"
                 false
         );
 
