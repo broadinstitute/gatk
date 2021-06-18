@@ -35,14 +35,14 @@ public class ExtractCohort extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
     private ExtractCohortEngine engine;
 
-    public enum FilteringType {
+    public enum VQSLODFilteringType {
       GENOTYPE("genotype"),
       SITES("sites"),
       NONE("");
 
       String value;
 
-      FilteringType(String value) {
+      VQSLODFilteringType(String value) {
       this.value = value;
     }
       public String getValue() {
@@ -101,12 +101,15 @@ public class ExtractCohort extends ExtractTool {
     )
     private boolean emitPLs = false;
 
+    // what if this was a flag input only?
+
     @Argument(
-            fullName = "filter-type",
-            doc = "What type of filtering should be applied. Valid options are one of NONE, SITES, GENOTYPE. Default is NONE",
+            fullName = "VQSLOD-filter-by-site",
+            doc = "If VQSLOD filtering is applied, it should be at a site level. Default is false",
             optional = true
     )
-    private FilteringType filteringType = FilteringType.NONE;
+    private boolean performSiteSpecificVQSLODFiltering = false;
+    private VQSLODFilteringType vqslodfilteringType = VQSLODFilteringType.NONE;
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
@@ -157,15 +160,25 @@ public class ExtractCohort extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
 
-        if (filteringType.equals(FilteringType.NONE)) {
-          if (filterSetInfoTableName != null || filterSetSiteTableName != null || filterSetName != null) {
-             throw new UserException("--filter-type must be specified for any filtering related operations");
+        if (filterSetInfoTableName != null) { // filter using vqslod-- default to GENOTYPE unless SITES specifically selected
+          if (performSiteSpecificVQSLODFiltering) {
+            vqslodfilteringType = VQSLODFilteringType.SITES;
+          } else {
+            vqslodfilteringType = VQSLODFilteringType.GENOTYPE;
           }
-        } else {
-          if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
-             throw new UserException("--filter-set-name, --filter-set-info-table and --filter-set-site-table for any filtering related operations");
-          }
+        }
 
+        // filter at a site level (but not necesarily use vqslod)
+        if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
+           throw new UserException("--filter-set-name and --filter-set-site-table are both necessary for any filtering related operations");
+        }
+        if (!vqslodfilteringType.equals(VQSLODFilteringType.NONE)) {
+          if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
+            throw new UserException(" --filter-set-site-table, --filter-set-name and --filter-set-site-table are all necessary for any vqslod filtering operations");
+          }
+        }
+
+        if (!vqslodfilteringType.equals(VQSLODFilteringType.NONE)) {
           FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
           Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
 
@@ -183,7 +196,7 @@ public class ExtractCohort extends ExtractTool {
 
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
-        if (filteringType.equals(ExtractCohort.FilteringType.GENOTYPE)) {
+        if (vqslodfilteringType.equals(VQSLODFilteringType.GENOTYPE)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
@@ -240,7 +253,7 @@ public class ExtractCohort extends ExtractTool {
                 progressMeter,
                 filterSetName,
                 emitPLs,
-                filteringType,
+                vqslodfilteringType,
                 excludeFilteredSites);
 
         vcfWriter.writeHeader(header);
@@ -250,10 +263,6 @@ public class ExtractCohort extends ExtractTool {
     // maybe think about creating a BigQuery Row walker?
     public void traverse() {
         progressMeter.setRecordsBetweenTimeChecks(100L);
-
-        if ( filteringType.equals(FilteringType.NONE) ) {
-            logger.warn("--filter-type is not specified, no filtering of cohort! ");
-        }
 
         if ( filterSetInfoTableName == null || filterSetInfoTableName.equals("") ) {
             logger.warn("--filter-set-info-table is not specified, no filtering of cohort! ");
