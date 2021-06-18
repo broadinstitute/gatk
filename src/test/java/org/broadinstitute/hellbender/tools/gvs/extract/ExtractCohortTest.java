@@ -42,7 +42,7 @@ class ExtractCohortTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
   }
 
-  @Test(expectedExceptions = CommandLineException.class)
+  @Test(expectedExceptions = UserException.class)
   public void testThrowFilterError() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -53,13 +53,14 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("local-sort-max-records-in-ram", 10000000)
         .add("cohort-avro-file-name", cohortAvroFileName)
         .add("sample-file", sampleFile)
-        .add("emit-pls", false)
-        .add("filter-type", "foo");
+        .add("filter-set-info-table", "something")
+        .add("filter-set-name", "something")
+        .add("emit-pls", false);
     runCommandLine(args);
   }
 
   @Test(expectedExceptions = CommandLineException.class)
-  public void testLowerCaseFilterError() throws Exception {
+  public void testNoFilteringThresholdsError() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
         .add("mode", "GENOMES")
@@ -70,23 +71,7 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("cohort-avro-file-name", cohortAvroFileName)
         .add("sample-file", sampleFile)
         .add("emit-pls", false)
-        .add("filter-type", "sites");
-    runCommandLine(args);
-  }
-
-  @Test(expectedExceptions = UserException.class)
-  public void testNoFilteringSetNameError() throws Exception {
-    final ArgumentsBuilder args = new ArgumentsBuilder();
-    args
-        .add("mode", "GENOMES")
-        .add("ref-version", 38)
-        .add("R", hg38Reference)
-        .add("O", "anything")
-        .add("local-sort-max-records-in-ram", 10000000)
-        .add("cohort-avro-file-name", cohortAvroFileName)
-        .add("sample-file", sampleFile)
-        .add("emit-pls", false)
-        .add("filter-type", "SITES");
+        .add("filter-type", "GENOTYPE");
     runCommandLine(args);
   }
 }
