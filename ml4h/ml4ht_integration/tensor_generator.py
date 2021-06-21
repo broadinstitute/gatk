@@ -70,7 +70,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
             return next(self.iter_loader)
 
     def __call__(self):
-        #self.iter_loader = iter(self.data_loader)
+        self.iter_loader = iter(self.data_loader)
         return self
 
     def kill_workers(self):
