@@ -72,7 +72,7 @@ task GatherTranches {
         String output_filename
         String mode
         Int disk_size
-        String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.8.0"
+        File? gatk_override
     }
 
     parameter_meta {
@@ -84,6 +84,7 @@ task GatherTranches {
     command <<<
         set -euo pipefail
 
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
         tranches_fofn=~{write_lines(tranches)}
 
         # Jose says:
@@ -121,7 +122,7 @@ task GatherTranches {
         bootDiskSizeGb: 15
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 1
-        docker: gatk_docker
+        docker: us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe
     }
 
     output {

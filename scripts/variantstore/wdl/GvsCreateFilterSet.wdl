@@ -201,7 +201,7 @@ workflow GvsCreateFilterSet {
                 output_filename = filter_set_name + ".snps.gathered.tranches",
                 mode = "SNP",
                 disk_size = small_disk,
-                gatk_docker = gatk_override
+                gatk_override = gatk_override
         }
     }
 
