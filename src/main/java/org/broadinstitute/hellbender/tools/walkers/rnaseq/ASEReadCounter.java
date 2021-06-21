@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
@@ -173,6 +174,11 @@ public class ASEReadCounter extends LocusWalker {
         }
         final String header = "contig" + separator + "position" + separator + "variantID" + separator + "refAllele" + separator + "altAllele" + separator + "refCount" + separator + "altCount" + separator + "totalCount" + separator + "lowMAPQDepth" + separator + "lowBaseQDepth" + separator + "rawDepth" + separator + "otherBases" + separator + "improperPairs";
         outputStream.println(header);
+
+        variants.stream()
+                .filter(vFeature -> ((VCFHeader)getHeaderForFeatures(vFeature)).getGenotypeSamples().isEmpty())
+                .forEach(vFeature -> logger.warn("Variant input file "+vFeature.getName()+" lacks genotype fields. Variants from this file will produce no results in the output."));
+
     }
 
     @Override
