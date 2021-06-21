@@ -24,6 +24,7 @@ from multiprocessing import Process, Queue
 from itertools import chain
 from typing import List, Dict, Tuple, Set, Optional, Iterator, Callable, Any, Union, Type
 
+import tensorflow as tf
 from ml4h.defines import TENSOR_EXT, TensorGeneratorABC
 from ml4h.ml4ht_integration.tensor_generator import TensorMapDataLoader
 from ml4h.TensorMap import TensorMap
@@ -77,7 +78,7 @@ class _WeightedPaths(Iterator):
 def pick_generator(paths, weights, mixup, siamese) -> Type[TensorGeneratorABC]:
     try:
         TensorMapDataLoader.can_apply(paths, weights, mixup, siamese)
-        return TensorMapDataLoader
+        return tf.data.Dataset.from_generator(TensorMapDataLoader)
     except NotImplementedError as e:
         logging.warning(f"Could not use new data loader because: {repr(e)}. Defaulting to legacy TensorGenerator.")
         return TensorGenerator
