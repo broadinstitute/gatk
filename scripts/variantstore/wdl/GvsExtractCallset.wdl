@@ -33,6 +33,7 @@ workflow GvsExtractCallset {
         String output_file_base_name
         String? output_gcs_dir
         File? gatk_override
+        Int local_disk_for_extract = 150
     }
 
     String fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES"
@@ -49,15 +50,15 @@ workflow GvsExtractCallset {
 
     call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
         input:
-            dataset_table = fq_cohort_extract_table,
             query_project = query_project,
+            fq_table = fq_cohort_extract_table,
             service_account_json = service_account_json
     }
 
     call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
         input:
-            dataset_table = fq_samples_to_extract_table,
             query_project = query_project,
+            fq_table = fq_samples_to_extract_table,
             service_account_json = service_account_json
     }
 
@@ -84,6 +85,7 @@ workflow GvsExtractCallset {
                 service_account_json     = service_account_json,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
                 output_gcs_dir           = output_gcs_dir,
+                local_disk               = local_disk_for_extract,
                 last_modified_timestamps = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp]
         }
     }
@@ -128,6 +130,7 @@ task ExtractTask {
         File? gatk_override
 
         Int? local_sort_max_records_in_ram = 10000000
+        Int local_disk
 
         # for call-caching -- check if DB tables haven't been updated since the last run
         Array[String] last_modified_timestamps
@@ -189,7 +192,7 @@ task ExtractTask {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "12 GB"
-        disks: "local-disk 250 HDD"
+        disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
         preemptible: 3
         maxRetries: 3
@@ -266,8 +269,8 @@ task GetBQTableLastModifiedDatetime {
     }
 
     input {
-        String dataset_table
         String query_project
+        String fq_table
         String? service_account_json
     }
 
@@ -283,11 +286,12 @@ task GetBQTableLastModifiedDatetime {
             gcloud auth activate-service-account --key-file=local.service_account.json
         fi
 
+        echo "project_id = ~{query_project}" > ~/.bigqueryrc
+
         # bq needs the project name to be separate by a colon
-        DATASET_TABLE_COLON=$(echo ~{dataset_table} | sed 's/\./:/')
+        DATASET_TABLE_COLON=$(echo ~{fq_table} | sed 's/\./:/')
 
-        LASTMODIFIED=$(bq show  ~{"--project_id " + query_project} --location=US --format=json ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
-
+        LASTMODIFIED=$(bq --location=US --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
         if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
             echo $LASTMODIFIED
         else
