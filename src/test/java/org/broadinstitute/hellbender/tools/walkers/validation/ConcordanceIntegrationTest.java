@@ -233,6 +233,7 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
             // Some token validation:
             Assert.assertEquals(snpRecord.getSensitivity(), 1, 0.005);
+            Assert.assertEquals(indelRecord.getSensitivity(), 0, 0.005);
             Assert.assertEquals(snpRecord.getTruePositives() + snpRecord.getFalseNegatives(), 1);
             Assert.assertEquals(indelRecord.getTruePositives() + indelRecord.getFalseNegatives(), 2);
         }
