@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -125,21 +126,26 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     @Argument(
             fullName = "nbins",
             optional = true,
-            doc = "Number of bins to bin sites by alt allele frequency for correlation calculation."
+            doc = "Number of bins to bin sites by alt allele frequency for correlation calculation.",
+            minValue = 1
     )
     int nBins = 14;
 
     @Argument(
             fullName = "first-bin-right-edge",
             optional = true,
-            doc = "The right edge of the first bin for binning sites by alt allele frequency for correlation calculation."
+            doc = "The right edge of the first bin for binning sites by alt allele frequency for correlation calculation.",
+            minValue = 0,
+            maxValue = 1
     )
     double firstBinRightEdge = 0.0005;
 
     @Argument(
             fullName = "min-af-for-accuracy-metrics",
             optional = true,
-            doc = "Minimum alt allele frequency to include a site in accuracy calculations. Sites with lower alt allele frequency are not included."
+            doc = "Minimum alt allele frequency to include a site in accuracy calculations. Sites with lower alt allele frequency are not included.",
+            minValue = 0,
+            maxValue = 1
     )
     double minAfForAccuracyMetrics = 0;
 
@@ -151,6 +157,14 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     )
     boolean allowDifferingPloidy = false;
 
+    @Argument(
+            fullName = "force-compare-single-sample",
+            optional = true,
+            doc = "Compare single samples in truth and eval vcfs, regardless of sample names.  Both vcfs must contain only one sample, or else error will be thrown.  " +
+                    "Cannot be used with --sample-map argument."
+    )
+    boolean forceCompareSingleSample = false;
+
     final List<List<AFCorrelationAggregator>> aggregators = new ArrayList<>();
     final List<AccuracyMetrics> snpMetrics = new ArrayList<>();
     final List<AccuracyMetrics> indelMetrics = new ArrayList<>();
@@ -160,6 +174,10 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
 
     @Override
     public void onTraversalStart() {
+        if (forceCompareSingleSample && sampleMappings.size() > 0) {
+            throw new GATKException("Cannot use --force-compare-single-sample and --sample-mappings arguments together");
+        }
+
         final VCFHeader header = getEvalHeader();
         final VCFHeader truthHeader = getTruthHeader();
         final List<String> samples = header.getSampleNamesInOrder();
@@ -168,16 +186,30 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         //create a set of the unique annotations that will need to be extracted for each site
         afAnnotationSet.addAll(afAnnotationsMap.values());
 
-        if (sampleMappings != null) {
+        if (sampleMappings.size() > 0) {
             loadMapping(sampleMappings, sampleMap);
+        }
+
+        if (forceCompareSingleSample) {
+            if (samples.size() != 1 || truthSamples.size() != 1) {
+                throw new GATKException("When using --force-compare-single-sample buth eval and truth must contain only one sample.  Eval contains " + samples.size() + " samples" +
+                        " and truth contains " + truthSamples.size() + " samples");
+            }
+            sampleMap.put(samples.get(0), truthSamples.iterator().next());
         }
 
         //initialize the pearson correlation aggregators and accuracy metrics for each sample
         for (final String sample : samples) {
             final String mappedSample = getMappedSample(sample);
-            if ((!afAnnotationsMap.containsKey(sample) && !afAnnotationsMap.containsKey(mappedSample)) || !truthSamples.contains(mappedSample)) {
+            if ((!afAnnotationsMap.containsKey(sample) && !afAnnotationsMap.containsKey(mappedSample))) {
                 //samples which are not included in the annotations map are ignored.
+                logger.warn("Sample " + sample + " which maps to " + mappedSample + " does not have corresponding afAnnotation given.  " + sample + " will not be included in results.");
+                continue;
+            }
 
+            if (!truthSamples.contains(mappedSample)) {
+                //samples which are not matched to a sample in the truth vcf are ignored
+                logger.warn("Sample " + sample + " maps to " + mappedSample + ", but " + mappedSample + " is not found in truth vcf.  " + sample + " will not be included in results.");
                 continue;
             }
             //each sample has a list of correlation aggregators, one for each af bin
@@ -193,6 +225,10 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             aggregators.add(theseAggregators);
             snpMetrics.add(new AccuracyMetrics(VariantContext.Type.SNP, sample));
             indelMetrics.add(new AccuracyMetrics(VariantContext.Type.INDEL, sample));
+        }
+
+        if (aggregators.size() == 0) {
+            throw new GATKException("There are no valid comparisons to preform, there is likely a mistake in sample or af annotation mappings.");
         }
     }
 
@@ -407,6 +443,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
 
         //write out accuracy results
         final MetricsFile<AccuracyMetrics, Integer> accuracyWriter = getMetricsFile();
+        snpMetrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+        indelMetrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
         accuracyWriter.addAllMetrics(snpMetrics);
         accuracyWriter.addAllMetrics(indelMetrics);
         accuracyWriter.write(outputAccuracyFile.toPath().toFile());
@@ -446,10 +484,6 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         public double SNP_SITES;
         public double INDEL_CORRELATION;
         public double INDEL_SITES;
-
-        AFCorrelationMetric() {
-            super();
-        }
 
         AFCorrelationMetric(final AFCorrelationAggregator afCorrelationAggregator) {
             BIN_CENTER = afCorrelationAggregator.binCenter;
@@ -512,34 +546,19 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
      */
     public static final class AccuracyMetrics extends MetricBase {
         public String SAMPLE;
+        public VariantContext.Type TYPE;
         public int TRUE_POSITIVES;
         public int TRUE_NEGATIVES;
         public int FALSE_POSITIVES;
         public int FALSE_NEGATIVES;
-        public VariantContext.Type TYPE;
+        public double RECALL;
+        public double PRECISION;
+        public double ACCURACY;
 
-        AccuracyMetrics() {
-            super();
-        }
 
         AccuracyMetrics(final VariantContext.Type type, final String sampleName) {
             this.TYPE = type;
             this.SAMPLE = sampleName;
-        }
-        double getRecall() {
-            // recall = TP/(TP + FN)
-            return (double) TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_NEGATIVES);
-        }
-
-        double getPrecision() {
-            // precision = TP/(TP + FP)
-            return (double) TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_POSITIVES);
-        }
-
-        double getAccuracy() {
-            // accuracy = (TP + FN) / (TP + FP + TN + FN)
-            // this is the fraction of sites correctly genotyped
-            return (double)(TRUE_POSITIVES + TRUE_NEGATIVES)/(double)(TRUE_POSITIVES + FALSE_POSITIVES + TRUE_NEGATIVES + FALSE_NEGATIVES);
         }
 
         void incrementMetrics(final ConcordanceState concordanceState) {
@@ -558,6 +577,18 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 case FILTERED_FALSE_NEGATIVE:
                     FALSE_NEGATIVES++;
             }
+        }
+
+        void calculateDerivedMetrics() {
+            // recall = TP/(TP + FN)
+            RECALL = TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_NEGATIVES);
+
+            // precision = TP/(TP + FP)
+            PRECISION = TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_POSITIVES);
+
+            // accuracy = (TP + FN) / (TP + FP + TN + FN)
+            // this is the fraction of sites correctly genotyped
+            ACCURACY = (TRUE_POSITIVES + TRUE_NEGATIVES)/(double)(TRUE_POSITIVES + FALSE_POSITIVES + TRUE_NEGATIVES + FALSE_NEGATIVES);
         }
     }
 }

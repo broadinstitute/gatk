@@ -110,8 +110,8 @@ public class EvaluateGenotypingPerfromanceUnitTests extends GATKBaseTest {
         evaluateGenotypingPerformance.getConcordanceState(truthGenotype, evalGenotype, false);
     }
 
-    @DataProvider(name = "buildAFMapForIndexDataProvider")
-    Object[][] buildAFMapForIndexDataProvider() {
+    @DataProvider(name = "buildAFMapDataProvider")
+    Object[][] buildAFMapDataProvider() {
         return new Object[][]{
                 {
                         ImmutableMap.builder().
@@ -138,8 +138,8 @@ public class EvaluateGenotypingPerfromanceUnitTests extends GATKBaseTest {
         };
     }
 
-    @Test(dataProvider = "buildAFMapForIndexDataProvider")
-    void testBuildAFMapForIndex(final Map<String, List<Double>> annotationsMap, final int altAlleleIndex, final Map<String, Double> expectedMap) {
+    @Test(dataProvider = "buildAFMapDataProvider")
+    void testBuildAFMap(final Map<String, List<Double>> annotationsMap, final int altAlleleIndex, final Map<String, Double> expectedMap) {
         final VariantContextBuilder vb = new VariantContextBuilder("snp1", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_G, Allele.ALT_C));
         for(final Map.Entry<String, List<Double>> entry : annotationsMap.entrySet()) {
             vb.attribute(entry.getKey(), entry.getValue());

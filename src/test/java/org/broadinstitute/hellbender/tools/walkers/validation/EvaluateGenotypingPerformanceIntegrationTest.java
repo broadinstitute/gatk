@@ -36,12 +36,13 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
                         Arrays.asList("--resource", TEST_DIR + "af_resource.vcf")},
                 {TEST_DIR + "eval.vcf", TEST_DIR + "truth_new_sample_names.vcf", new File(TEST_DIR + "expected_correlations_basic.tsv"), new File(TEST_DIR + "expected_accuracy_basic.tsv"),
                         Arrays.asList("--sample-map", "SAMPLE1:SAMPLE3", "--sample-map", "SAMPLE2:SAMPLE4")},
-
+                {TEST_DIR + "eval_single_sample.vcf", TEST_DIR + "truth_single_sample.vcf", new File(TEST_DIR + "expected_correlations_single_sample.tsv"), new File(TEST_DIR + "expected_accuracy_single_sample.tsv"),
+                        Arrays.asList("--force-compare-single-sample")}
         };
     }
 
     @Test(dataProvider = "integrationTestDataProvider")
-    void integrationTest(final String eval, final String truth, final File expectedCorrelation, final File expectedAccuracy, final List<String> additionalArgs) throws IOException {
+    void integrationTests(final String eval, final String truth, final File expectedCorrelation, final File expectedAccuracy, final List<String> additionalArgs) throws IOException {
         final File outputCorrelation = createTempFile("correlation", ".tsv");
         final File outputAccuracy = createTempFile("accuracy", ".tsv");
 
@@ -51,11 +52,23 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
         IntegrationTestSpec.assertEqualTextFiles(outputAccuracy, expectedAccuracy, "#");
     }
 
-    @Test(expectedExceptions = GATKException.class)
-    void differingPloidyTest() {
-        runCommandLine(buildArgs(TEST_DIR + "eval_X.vcf", TEST_DIR + "truth_X.vcf",
+
+    @DataProvider(name = "exceptionProducingDataProvider")
+    Object[][] exceptionProductionDataProvider() {
+        return new Object[][] {
+                {TEST_DIR + "eval_X.vcf", TEST_DIR + "truth_X.vcf", Collections.emptyList()}, //differing ploidy without argument to allow
+                {TEST_DIR + "eval_single_sample.vcf", TEST_DIR + "truth_single_sample.vcf", Collections.emptyList()}, //single sample differing samples without argument to allow
+                {TEST_DIR + "eval_single_sample.vcf", TEST_DIR + "truth.vcf", Arrays.asList("--force-compare-single-sample")}, //single sample argument with multi-sample truth
+                {TEST_DIR + "eval.vcf", TEST_DIR + "truth_single_sample.vcf", Arrays.asList("--force-compare-single-sample")}, //single sample argument with multi-sample eval
+                {TEST_DIR + "eval_single_sample.vcf", TEST_DIR + "truth_single_sample.vcf", Arrays.asList("--force-compare-single-sample", "--sample-map", "SAMPLE1:SAMPLE3")}, //single sample argument with sample mapping
+                {TEST_DIR + "eval.vcf", TEST_DIR + "truth_single_sample.vcf", Collections.emptyList()} //no comparisons to be run
+        };
+    }
+    @Test(dataProvider = "exceptionProducingDataProvider", expectedExceptions = GATKException.class)
+    void exceptionProducingTests(final String eval, final String truth, final List<String> additionalArgs) {
+        runCommandLine(buildArgs(eval, truth,
                 createTempFile("correlation", ".tsv").getAbsolutePath(), createTempFile("accuracy", ".tsv").getAbsolutePath(),
-                Collections.emptyList()));
+                additionalArgs));
     }
 
     List<String> buildArgs(final String evalPath, final String truthPath, final String outputCorrelationPath, final String outputAccuracyPath, final List<String> additionalArgs) {
