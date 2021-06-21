@@ -61,7 +61,6 @@ workflow MitochondriaPipeline {
     Float? f_score_beta
     Float? verifyBamID
     Boolean compress_output_vcf = false
-    Int? max_low_het_sites
 
     #Optional runtime arguments
     Int? preemptible_tries
@@ -130,7 +129,6 @@ workflow MitochondriaPipeline {
       verifyBamID = verifyBamID,
       compress_output_vcf = compress_output_vcf,
       max_read_length = max_read_length,
-      max_low_het_sites = max_low_het_sites,
       preemptible_tries = preemptible_tries
   }
 

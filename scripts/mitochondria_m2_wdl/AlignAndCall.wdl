@@ -45,7 +45,6 @@ workflow AlignAndCall {
     Float? f_score_beta
     Boolean compress_output_vcf
     Float? verifyBamID
-    Int? max_low_het_sites
 
     # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
     # affected by this number. Default is 151.
