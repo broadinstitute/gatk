@@ -67,6 +67,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
         except StopIteration:
             self.iter_loader = iter(self.data_loader)
             logging.info("Completed one epoch.")
+            return next(self.iter_loader)
 
     def __call__(self):
         #self.iter_loader = iter(self.data_loader)
