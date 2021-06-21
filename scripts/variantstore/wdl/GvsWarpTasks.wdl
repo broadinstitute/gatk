@@ -26,11 +26,12 @@ task SNPsVariantRecalibratorCreateModel {
         Int max_gaussians = 6
 
         Int disk_size
-        String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.8.0"
+        File? gatk_override
     }
 
     command <<<
         set -euo pipefail
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         gatk --java-options -Xms100g \
         VariantRecalibrator \
@@ -57,7 +58,7 @@ task SNPsVariantRecalibratorCreateModel {
         bootDiskSizeGb: 15
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 1
-        docker: gatk_docker
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
     }
 
     output {
@@ -122,7 +123,7 @@ task GatherTranches {
         bootDiskSizeGb: 15
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 1
-        docker: us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
     }
 
     output {
