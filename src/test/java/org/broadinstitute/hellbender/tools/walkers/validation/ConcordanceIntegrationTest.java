@@ -219,7 +219,6 @@ public class ConcordanceIntegrationTest extends CommandLineProgramTest{
 
         final String[] args = {
                 "--" + AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcf.toString(),
-
                 "--" + AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcf.toString(),
                 "--" + Concordance.SUMMARY_LONG_NAME, summary.toString(),
         };
