@@ -48,7 +48,7 @@ public class InfoConcordanceRecord {
 
     /**
      *
-     * @return Variant TYPE (e.g. SNP or INDEL)
+     * @return Variant type (e.g. SNP or INDEL)
      */
     public VariantContext.Type getVariantType() {
         return this.type;
