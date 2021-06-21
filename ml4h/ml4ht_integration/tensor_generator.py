@@ -68,6 +68,10 @@ class TensorMapDataLoader(TensorGeneratorABC):
             self.iter_loader = iter(self.data_loader)
             logging.info("Completed one epoch.")
 
+    def __call__(self):
+        self.iter_loader = iter(self.data_loader)
+        return self
+    
     def kill_workers(self):
         """necessary for legacy compatibility"""
         pass
