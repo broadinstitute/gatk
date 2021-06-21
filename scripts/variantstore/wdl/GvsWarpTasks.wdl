@@ -111,6 +111,7 @@ task GatherTranches {
         cat $tranches_fofn | rev | cut -d '/' -f 1 | rev | awk '{print "tranches/" $1}' > inputs.list
 
         gatk --java-options -Xms6g \
+        --java-options '-DGATK_STACKTRACE_ON_USER_EXCEPTION=true' \
         GatherTranches \
         --input inputs.list \
         --mode ~{mode} \
