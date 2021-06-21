@@ -78,7 +78,7 @@ class _WeightedPaths(Iterator):
 def pick_generator(paths, weights, mixup, siamese) -> Type[TensorGeneratorABC]:
     try:
         TensorMapDataLoader.can_apply(paths, weights, mixup, siamese)
-        return tf.data.Dataset.from_generator(TensorMapDataLoader)
+        return TensorMapDataLoader
     except NotImplementedError as e:
         logging.warning(f"Could not use new data loader because: {repr(e)}. Defaulting to legacy TensorGenerator.")
         return TensorGenerator
@@ -824,7 +824,22 @@ def test_train_valid_tensor_generators(
         paths=train_paths, num_workers=num_train_workers, cache_size=0, weights=weights,
         keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=False,
     )
-    return generate_train, generate_valid, generate_test
+    in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
+    out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
+    train_dataset = tf.data.Dataset.from_generator(
+        generate_train,
+        output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
+        output_shapes=(in_shapes, out_shapes))
+    valid_dataset = tf.data.Dataset.from_generator(
+        generate_valid,
+        output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
+        output_shapes=(in_shapes, out_shapes))
+    test_dataset = tf.data.Dataset.from_generator(
+        generate_test,
+        output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
+        output_shapes=(in_shapes, out_shapes))
+    return train_dataset, valid_dataset, test_dataset
+    #return generate_train, generate_valid, generate_test
 
 
 def _log_first_error(stats: Counter, tensor_path: str):
