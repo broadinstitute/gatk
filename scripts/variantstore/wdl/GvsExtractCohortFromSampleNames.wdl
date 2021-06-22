@@ -80,9 +80,9 @@ workflow GvsExtractCohortFromSampleNames {
       output_gcs_dir = output_gcs_dir,
       gatk_override = gatk_override
   }
-
-  output {
-    Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
-  }
+#
+#  output {
+#    Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
+#  }
 
 }
