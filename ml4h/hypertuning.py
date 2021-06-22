@@ -84,7 +84,7 @@ def make_model_builder(args):
         args.__dict__['pool_type'] = 'max' if hp.Boolean('pool_type_is_max') else 'average'
         model, _, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
         nonlocal model_count
-        logging.info(f'Hyper-tuner is {100.0*(model_count / (args.max_models*args.min_samples))}% complete. '
+        logging.info(f'Hyper-tuner is {100.0*(model_count / (args.max_models*args.min_samples)):0.1f}% complete. '
                      f'Built model #{model_count} with {model.count_params()} parameters of a maximum of {args.max_models*args.min_samples}.')
         model_count += 1
         return model
