@@ -357,7 +357,7 @@ public final class IntervalUtils {
             final List<GenomeLoc> featureIntervals = new ArrayList<>();
 
             for ( final Feature feature : dataSource ) {
-                featureIntervals.add(parser.createGenomeLoc(feature));
+                featureIntervals.add(parser.createGenomeLoc(feature, true));
             }
             return featureIntervals;
         }
