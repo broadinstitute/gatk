@@ -177,7 +177,7 @@ public class ASEReadCounter extends LocusWalker {
 
         variants.stream()
                 .filter(vFeature -> ((VCFHeader)getHeaderForFeatures(vFeature)).getGenotypeSamples().isEmpty())
-                .forEach(vFeature -> logger.warn("Variant input file "+vFeature.getName()+" lacks genotype fields. Variants from this file will produce no results in the output."));
+                .forEach(vFeature -> logger.warn("\n#####################################################################################################\nVariant input file "+vFeature.getName()+" lacks genotype fields. Variants from this file will produce no results in the output.\n#####################################################################################################"));
 
     }
 
