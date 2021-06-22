@@ -740,9 +740,12 @@ task SNPsVariantRecalibrator {
                      "GiB"))
   Int machine_mem = select_first([machine_mem_gb, if auto_mem < 7 then 7 else auto_mem])
   Int java_mem = machine_mem - 5
+  String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT --output-tranches-for-scatter" else ""
 
   command <<<
     set -euo pipefail
+
+    MODEL_REPORT=~{model_report}
 
     gatk --java-options -Xmx~{java_mem}g \
       VariantRecalibrator \
@@ -758,7 +761,7 @@ task SNPsVariantRecalibrator {
       ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
       -mode SNP \
       --sample-every-Nth-variant ~{downsampleFactor} \
-      ~{"--input-model " + model_report} \
+      ~{model_report_arg} \
       --max-gaussians ~{max_gaussians} \
       -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
       -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
