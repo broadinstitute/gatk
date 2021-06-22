@@ -172,13 +172,6 @@ public class EvaluateInfoFieldConcordance extends SingleSampleAlleleConcordanceW
     }
 
     @Override
-    protected boolean areVariantsAtSameLocusConcordant(VariantContext truth, VariantContext eval) {
-        final boolean sameRefAllele = truth.getReference().equals(eval.getReference());
-        final boolean containsAltAllele = eval.getAlternateAlleles().contains(truth.getAlternateAllele(0));
-        return sameRefAllele && containsAltAllele;
-    }
-
-    @Override
     protected Predicate<VariantContext> makeTruthVariantFilter() {
         return vc -> !vc.isFiltered() && !vc.isSymbolicOrSV();
     }

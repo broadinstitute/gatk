@@ -24,20 +24,14 @@ import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.VariantIDsVariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -49,6 +43,63 @@ import java.util.Set;
  * </ol>
  * All results are stratified by sample and SNP or INDEL.
  *
+ * <h3>Usage examples</h3>
+ *
+ * <h4>Sub-population allele frequencies for sample1 are given by --af-annotation.</h4>
+ * <pre>
+ *     gatk EvaluateGenotypingPerformance
+ *          -eval eval.vcf
+ *          -truth truth.vcf
+ *          --af-annotation sample1:af1
+ *          -O output.correlations.tsv
+ *          -OA output.accuracy.tsv
+ * </pre>
+ *
+ * <h4>Individuals from different subpopulations should have different annotations containing the sub-population allele frequencies for their ethnicity.</h4>
+ * <pre>
+ *     gatk EvaluateGenotypingPerformance
+ *          -eval eval.vcf
+ *          -truth truth.vcf
+ *          --af-annotation sample1:af1
+ *          --af-annotation sample2:af2
+ *          -O output.correlations.tsv
+ *          -OA output.accuracy.tsv
+ * </pre>
+ *
+ * <h4>If sample names in eval and truth differ, they can be mapped to one another using --sample-map.</h4>
+ * <pre>
+ *     gatk EvaluateGenotypingPerformance
+ *          -eval eval.vcf
+ *          -truth truth.vcf
+ *          --af-annotation sample1_eval:af1
+ *          --af-annotation sample2_eval:af2
+ *          --sample-map sample1_eval:sample1_truth
+ *          --sample-map sample2_eval:sample2_truth
+ *          -O output.correlations.tsv
+ *          -OA output.accuracy.tsv
+ * </pre>
+ *
+ * <h4>If sample names differ, and both truth and eval contain only a single sample, comparison can be forced between the individual samples regardless of name using --force-compare-single-sample</h4>
+ *  <pre>
+ *     gatk EvaluateGenotypingPerformance
+ *          -eval eval.vcf
+ *          -truth truth.vcf
+ *          --af-annotation sample1:af1
+ *          --force-compare-single-sample
+ *          -O output.correlations.tsv
+ *          -OA output.accuracy.tsv
+ * </pre>
+ *
+ * <h4>Allele fractions can be given in a resource vcf instead of the eval vcf using --resource.</h4>
+ *  <pre>
+ *     gatk EvaluateGenotypingPerformance
+ *          -eval eval.vcf
+ *          -truth truth.vcf
+ *          --af-annotation sample1:af1
+ *          --resource af_resource.vcf
+ *          -O output.correlations.tsv
+ *          -OA output.accuracy.tsv
+ * </pre>
  */
 @CommandLineProgramProperties(
         summary = EvaluateGenotypingPerformance.USAGE_SUMMARY,

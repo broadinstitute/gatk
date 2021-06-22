@@ -9,11 +9,8 @@ import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
  * with optional contextual information from a reference, sets of reads, and/or supplementary sources of
  * Features.
  *
- * Subclasses must implement the {@link #apply} and {@link #areVariantsAtSameLocusConcordant} methods to process each variant
+ * Subclasses must implement the {@link #apply} and {@link #shouldVariantsBeMatched}} methods to process each variant
  * and may optionally implement {@link #onTraversalStart} and/or {@link #onTraversalSuccess}.
- *
- * Created by Takuto Sato 1/30/17, abstractified by David Benjamin on 2/22/17.
- * {@link #onTraversalStart}, {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
 public abstract class SingleSampleConcordanceWalker extends AbstractConcordanceWalker {
 
@@ -33,15 +30,6 @@ public abstract class SingleSampleConcordanceWalker extends AbstractConcordanceW
         return new SingleSampleTruthVersusEval(truthVersusEval.getTruth(), truthVersusEval.getEval(), concordanceState);
     }
 
-    // override this to customize the degree of agreement required to call a true positive.  Sometimes, for example, we may want
-    // just a single alt allele to agree and sometime we may require all alt alleles to match
-    protected abstract boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval);
-
-    //match variant contexts based on areVariantsAtSameLocusConcordant.  This way we will only match up two variants if they are concordant
-    @Override
-    protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
-        return areVariantsAtSameLocusConcordant(truth, eval);
-    }
     /**
      * store a truth vc in case of a false negative, an eval vc in case of a false positive, or a concordance pair of
      * truth and eval in case of a true positive.

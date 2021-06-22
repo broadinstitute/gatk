@@ -52,15 +52,6 @@ public class MergeMutect2CallsWithMC3 extends SingleSampleAlleleConcordanceWalke
     protected Predicate<VariantContext> makeEvalVariantFilter() { return vc -> true; }
 
     @Override
-    protected boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval) {
-        final boolean sameRefAllele = truth.getReference().equals(eval.getReference());
-        // we assume that the truth has a single alternate allele
-        final boolean containsAltAllele = eval.getAlternateAlleles().contains(truth.getAlternateAllele(0));
-
-        return sameRefAllele && containsAltAllele;
-    }
-
-    @Override
     public void onTraversalStart() {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(getTruthHeader().getMetaDataInSortedOrder());
 

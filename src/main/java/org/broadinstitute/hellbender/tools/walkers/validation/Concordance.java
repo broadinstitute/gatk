@@ -288,20 +288,6 @@ public class Concordance extends SingleSampleAlleleConcordanceWalker {
     }
 
     @Override
-    protected boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval) {
-        final boolean sameRefAllele = truth.getReference().equals(eval.getReference());
-
-        // We make sure that the truth has at least one alt allele.
-        // If it does, we pick the first for comparison:
-        final boolean containsAltAllele =
-                (truth.getAlternateAlleles().size() == eval.getAlternateAlleles().size()) &&
-                ((truth.getAlternateAlleles().size() > 0) &&
-                        eval.getAlternateAlleles().contains(truth.getAlternateAllele(0)));
-
-        return sameRefAllele && containsAltAllele;
-    }
-
-    @Override
     protected Predicate<VariantContext> makeTruthVariantFilter() {
         return vc -> !vc.isFiltered() && ! vc.isSymbolicOrSV();
     }
