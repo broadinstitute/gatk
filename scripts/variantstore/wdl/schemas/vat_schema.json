@@ -114,9 +114,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "AC TODO -- this needs to be added back and swapped to required",
+    "description": "AC TODO -- this needs to be added back and swapped to required -- Lee said this was a string?",
     "name": "gvs_all_ac",
-    "type": "String",
+    "type": "Integer",
     "mode": "Nullable"
   },
   {
@@ -126,21 +126,21 @@
     "mode": "Nullable"
   },
   {
-    "description": "AF TODO -- this needs to be added back and swapped to required",
+    "description": "AF TODO -- this needs to be added back and swapped to required  -- Lee said this was a Float?",
     "name": "gvs_all_af",
-    "type": "Float",
+    "type": "INTEGER",
     "mode": "Nullable"
   },
   {
-    "description": "REVEL",
+    "description": "REVEL  -- Lee said this was a string?",
     "name": "revel",
-    "type": "String",
+    "type": "FLOAT",
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Slice AI  -- Lee said this was a Float?",
     "name": "splice_ai_acceptor_gain_score",
-    "type": "Float",
+    "type": "Integer",
     "mode": "Nullable"
   },
   {
@@ -150,9 +150,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Slice AI -- Lee said this was a Float?",
     "name": "splice_ai_acceptor_loss_score",
-    "type": "Float",
+    "type": "Integer",
     "mode": "Nullable"
   },
   {
@@ -162,9 +162,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Slice AI -- Lee said this was a Float?",
     "name": "splice_ai_donor_gain_score",
-    "type": "Float",
+    "type": "Integer",
     "mode": "Nullable"
   },
   {
@@ -174,9 +174,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI",
+    "description": "Slice AI  -- Lee said this was a Float?",
     "name": "splice_ai_donor_loss_score",
-    "type": "Float",
+    "type": "Integer",
     "mode": "Nullable"
   },
   {
@@ -198,10 +198,10 @@
     "mode": "Nullable"
   },
  {
-   "description": "ClinVar Disease Name",
+   "description": "ClinVar Disease Name TODO Repeated",
    "name": "clinvar_phenotype",
    "type": "String",
-   "mode": "Repeated"
+   "mode": "Nullable"
  },
   {
     "description": "gnomAD: 'Total' frequency",
@@ -240,9 +240,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "gnomAD: Max subpopulation ethnicity",
+    "description": "gnomAD: Max subpopulation ethnicity -- TODO this should be a string but I need a value first. Hey Lee, I need a mapping!",
     "name": "gnomad_max_subpop",
-    "type": "String",
+    "type": "INTEGER",
     "mode": "Nullable"
   },
   {
@@ -258,9 +258,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "OMIM Disease Name TODO -- this needs to be swapped to Repeated not nullable",
+    "description": "OMIM Disease Name TODO -- this needs to be swapped to Repeated not nullable and String not Integer?",
     "name": "omim_phenotypes_name",
-    "type": "String",
+    "type": "Integer",
     "mode": "Nullable"
   }
 ]
