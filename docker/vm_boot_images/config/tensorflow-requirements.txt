@@ -1,6 +1,5 @@
 #numpy==1.18.5
 #protobuf==3.13.0
-h5py==2.10.0
 pydot==1.2.4
 nibabel==2.5.0
 pydicom==1.2.2
