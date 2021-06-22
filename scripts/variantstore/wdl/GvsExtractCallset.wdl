@@ -91,7 +91,7 @@ workflow GvsExtractCallset {
     output {
       Array[File] output_vcfs = ExtractTask.output_vcf
       Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
-#      Float total_vcfs_size_mb = size(ExtractTask.output_vcf, "MB") + size(ExtractTask.output_vcf_index, "MB")
+      Float total_vcfs_size_mb = size(ExtractTask.output_vcf, "MB") + size(ExtractTask.output_vcf_index, "MB")
     }
 }
 
