@@ -46,7 +46,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,9 +66,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.genomicsDBGetAbsolutePath;
+import static org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.genomicsDBApppendPaths;
 
 /**
  * Import single-sample GVCFs into GenomicsDB before joint genotyping.
@@ -668,10 +668,10 @@ public final class GenomicsDBImport extends GATKTool {
      */
     @Override
     public void onTraversalStart() {
-        String workspaceDir = BucketUtils.makeFilePathAbsolute(overwriteCreateOrCheckWorkspace());
-        vidMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
-        callsetMapJSONFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
-        vcfHeaderFile = IOUtils.appendPathToDir(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
+        String workspaceDir = overwriteCreateOrCheckWorkspace();
+        vidMapJSONFile = genomicsDBApppendPaths(workspaceDir, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+        callsetMapJSONFile = genomicsDBApppendPaths(workspaceDir, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        vcfHeaderFile = genomicsDBApppendPaths(workspaceDir, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
         if (getIntervalsFromExistingWorkspace) {
             // intervals may be null if merge-contigs-into-num-partitions was used to create the workspace
             // if so, we need to wait for vid to be generated before writing out the interval list
@@ -1006,8 +1006,8 @@ public final class GenomicsDBImport extends GATKTool {
      * @return  The workspace directory
      */
     private String overwriteCreateOrCheckWorkspace() {
-        String workspaceDir = BucketUtils.makeFilePathAbsolute(workspace);
-        // From JavaDoc for GenomicsDBUtils.createTileDBWorkspace
+        String workspaceDir = genomicsDBGetAbsolutePath(workspace);
+        // From JavaDoc for GenomicsDBUtils.createTileDBWorkspacevid
         //   returnCode = 0 : OK. If overwriteExistingWorkspace is true and the workspace exists, it is deleted first.
         //   returnCode = -1 : path was not a directory
         //   returnCode = -2 : failed to create workspace
