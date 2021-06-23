@@ -138,9 +138,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI  -- Lee said this was a Float?",
+    "description": "Slice AI",
     "name": "splice_ai_acceptor_gain_score",
-    "type": "Integer",
+    "type": "Float",
     "mode": "Nullable"
   },
   {
@@ -150,9 +150,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI -- Lee said this was a Float?",
+    "description": "Slice AI",
     "name": "splice_ai_acceptor_loss_score",
-    "type": "Integer",
+    "type": "Float",
     "mode": "Nullable"
   },
   {
@@ -162,9 +162,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI -- Lee said this was a Float?",
+    "description": "Slice AI",
     "name": "splice_ai_donor_gain_score",
-    "type": "Integer",
+    "type": "Float",
     "mode": "Nullable"
   },
   {
@@ -174,9 +174,9 @@
     "mode": "Nullable"
   },
   {
-    "description": "Slice AI  -- Lee said this was a Float?",
+    "description": "Slice AI",
     "name": "splice_ai_donor_loss_score",
-    "type": "Integer",
+    "type": "Float",
     "mode": "Nullable"
   },
   {
