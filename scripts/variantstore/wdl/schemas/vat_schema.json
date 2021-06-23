@@ -132,7 +132,7 @@
     "mode": "Nullable"
   },
   {
-    "description": "REVEL  -- Lee said this was a string?",
+    "description": "REVEL",
     "name": "revel",
     "type": "FLOAT",
     "mode": "Nullable"
