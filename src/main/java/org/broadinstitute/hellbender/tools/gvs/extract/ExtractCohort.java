@@ -104,7 +104,7 @@ public class ExtractCohort extends ExtractTool {
     // what if this was a flag input only?
 
     @Argument(
-            fullName = "VQSLOD-filter-by-site",
+            fullName = "vqslod-filter-by-site",
             doc = "If VQSLOD filtering is applied, it should be at a site level. Default is false",
             optional = true
     )
