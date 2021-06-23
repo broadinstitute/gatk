@@ -1,4 +1,10 @@
 [
+  {
+    "description": "gene name",
+    "name": "gene_symbol",
+    "type": "String",
+    "mode": "Nullable"
+  },
 {
 "description": "OMIM ID",
 "name": "gene_omim_id",
