@@ -1,22 +1,25 @@
 version 1.0
-workflow GvsSitesOnlyVCF {
+workflow GvsSitesOnlyVCF { # tested with "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/Data/anvil_expected.vcf"
    input {
-        Array[File] gvs_extract_cohort_filtered_vcfs
+        Array[File] gvs_extract_cohort_filtered_vcfs # gonna try this one next: gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz,
+        Array[File] gvs_extract_cohort_filtered_vcf_indices # gonna try this one next: gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz,
         String output_sites_only_file_name
         String output_merged_file_name
         String output_annotated_file_name
         String project_id
         String dataset_name
         File nirvana_data_directory
-        String nirvana_schema = "position:INTEGER,vid:String,contig:STRING,ref_allele:STRING,alt_allele:STRING,variant_type:STRING,genomic_location:STRING,dbsnp_rsid:STRING,transcript:STRING,gene_symbol:STRING,transcript_source:STRING,aa_change:STRING,consequence:STRING,dna_change:String,exon_number:STRING,intron_number:STRING,splice_distance:STRING,entrez_gene_id:STRING,is_canonical_transcript:STRING,gvs_all_ac:INTEGER,gvs_all_an:INTEGER,gvs_all_af:INTEGER,revel:FLOAT,splice_ai_acceptor_gain_score:INTEGER,splice_ai_acceptor_gain_distance:INTEGER,splice_ai_acceptor_loss_score:INTEGER,splice_ai_acceptor_loss_distance:INTEGER,splice_ai_donor_gain_score:INTEGER,splice_ai_donor_gain_distance:INTEGER,splice_ai_donor_loss_score:INTEGER,splice_ai_donor_loss_distance:INTEGER,clinvar_classification:STRING,clinvar_last_updated:DATE,clinvar_phenotype:STRING,gnomad_all_af:STRING,gnomad_all_ac:STRING,gnomad_all_an:STRING,gnomad_max_af:STRING,gnomad_max_ac:STRING,gnomad_max_an:STRING,gnomad_max_subpop:STRING,gene_omim_id:STRING,omim_phenotypes_id:STRING,omim_phenotypes_name:STRING"
+        File nirvana_schema_json_file
+        String? genes_vat_schema = "gene_symbol:STRING,gene_omim_id:INTEGER,omim_phenotypes_id:INTEGER,omim_phenotypes_name:STRING"
         File? gatk_override
     }
 
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
         call SitesOnlyVcf {
                     input:
-                        vcf_bgz_gts                 = gvs_extract_cohort_filtered_vcfs[i],
-                        output_filename             = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz",
+                        vcf_bgz_gts = gvs_extract_cohort_filtered_vcfs[i],
+                        vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+                        output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz",
                 }
     }
 
@@ -34,21 +37,26 @@ workflow GvsSitesOnlyVCF {
           output_annotated_file_name = output_annotated_file_name,
           nirvana_data_tar = nirvana_data_directory
     }
+    #call AnnotateShardedVCF {
+    #    input:
+    #       input_vcfs = SitesOnlyVcf.output_vcf,
+    #       output_annotated_file_name = output_annotated_file_name,
+    #       nirvana_data_tar = nirvana_data_directory
+    #}
 
-    call PrepAnnotationJson {
-      input:
-          annotation_json = AnnotateVCF.annotation_json,
-          annotation_json_jsi = AnnotateVCF.annotation_json_jsi
+  #  call PrepAnnotationJson { # prep w a python script-- we are assuming BQ docker has python?
+  #    input:
+  #        annotation_json = AnnotateVCF.annotation_json,
+   # }
 
-    }
-
-    call BigQueryLoadJson {
-      input:
-          annotation_json = PrepAnnotationJson.annotations_edited_file,
-          nirvana_schema = nirvana_schema,
-          project_id = project_id,
-          dataset_name = dataset_name
-    }
+   # call BigQueryLoadJson {
+    #  input:
+     #     annotation_json = AnnotateVCF.annotation_json,
+       #   #annotation_json_jsi = AnnotateVCF.annotation_json_jsi
+      #    nirvana_schema = nirvana_schema_json_file,
+       #   project_id = project_id,
+        #  dataset_name = dataset_name
+   # }
 }
 
 
@@ -57,9 +65,10 @@ workflow GvsSitesOnlyVCF {
 task SitesOnlyVcf {
     input {
         File vcf_bgz_gts
+        File vcf_index
         String output_filename
     }
-    String output_vcf_idx = basename(output_filename) + ".tbi" # or will this be .idx if from .vcf.gz?
+    String output_vcf_idx = basename(output_filename) + ".tbi" # or will this be .idx if from .vcf.gz? or ".tbi" if a .vcf
     command <<<
         set -e
         gatk --java-options "-Xmx2048m" \
@@ -91,6 +100,9 @@ task MergeVCFs {
         Array[File] input_vcf_indices
         String output_merged_file_name
     }
+    # TODO Ideally we wouldn't merge the vcfs at all, but keep them separated by position
+    # and then annotate them separately and then load each of the annotation.jsons into BQ (may involve multiple temp tables that each get mapped to the final vat)
+
     String output_vcf = basename(output_merged_file_name) + ".vcf.gz"
     String output_vcf_idx = basename(output_vcf) + ".tbi"
     command <<<
@@ -115,7 +127,63 @@ task MergeVCFs {
     }
 }
 
-task AnnotateVCF {
+task AnnotateShardedVCF {
+    input {
+        Array[File] input_vcfs
+        String output_annotated_file_name
+        File nirvana_data_tar
+    }
+    String annotation_json_name = basename(output_annotated_file_name) + ".json.gz"
+    String annotation_json_name_jsi = annotation_json_name + ".jsi"
+
+    String nirvana_location = "/opt/nirvana/Nirvana.dll"
+    String path = "/Cache/GRCh38/Both"
+    String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
+    String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
+
+    command <<<
+        set -e
+
+        # =======================================
+        # Handle our data sources:
+
+        # Extract the tar.gz:
+        echo "Extracting annotation data sources tar/gzip file..."
+        mkdir datasources_dir
+        tar zxvf ~{nirvana_data_tar} -C datasources_dir  --strip-components 2
+        DATA_SOURCES_FOLDER="$PWD/datasources_dir"
+
+        # do a bash loop here to single thread annotate each of the files in the array
+
+        for input_vcf in input_vcfs
+        do
+          dotnet ~{nirvana_location} \
+             -c $DATA_SOURCES_FOLDER~{path} \
+             --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
+             -r $DATA_SOURCES_FOLDER~{path_reference} \
+             -i ~{input_vcfs} \
+             -o ~{output_annotated_file_name+"input_vcf letter or Ii or somethinig?"}
+        done
+
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "annotation/nirvana:3.14" # this download is too slow---can we beef this up?
+        memory: "3 GB"
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File annotation_json = "~{annotation_json_name}"
+        File annotation_json_jsi = "~{annotation_json_name_jsi}"
+    }
+}
+
+task AnnotateVCF { # can we add the tar to the docker container?
     input {
         File input_vcf
         String output_annotated_file_name
@@ -152,7 +220,7 @@ task AnnotateVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "annotation/nirvana:3.14"
+        docker: "annotation/nirvana:3.14" # this download is too slow---can we beef this up?
         memory: "3 GB"
         cpu: "1"
         disks: "local-disk 100 HDD"
@@ -165,68 +233,49 @@ task AnnotateVCF {
     }
 }
 
-task PrepAnnotationJson {
-    input {
-        File annotation_json
-        File annotation_json_jsi
-    }
-
-    String unzipped_json = "unzipped.json"
-    String newline_delimited_json = "load_into_bq.json"
-
-    command <<<
-        set -e
-
-        # prepare the json file for loading into BQ by making it a new line delimited json
-        gunzip -c ~{annotation_json} >> ~{unzipped_json}
-        jq -rc '.positions | .[]' ~{unzipped_json} >> ~{newline_delimited_json}
-
-    >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "stedolan/jq:latest"
-        memory: "3 GB"
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        File annotations_edited_file = newline_delimited_json
-    }
-}
-
 task BigQueryLoadJson {
     input {
         File annotation_json
-        String nirvana_schema
+        File nirvana_schema
         String project_id
         String dataset_name
     }
+
+    # I am going to want to have two pre-vat tables. A variant table and a genes table
+
+    String temp_table = "pre-vat"
+    String vat_table = "vatter"
 
     command <<<
         set -e
 
         # load the annotation json in as a temp interim BQ vat table
-        TEMP_TABLE="~{dataset_name}.pre-vat"
-        bq --location=US load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON --autodetect $TEMP_TABLE ~{annotation_json}
+        # TODO make sure when you load---if you split in some way, that you dont drop "header lines" from secondary shards that have no headers
+
+        echo "Creating the pre-vat table ~{dataset_name}.~{temp_table}"
+        bq --location=US load --replace=true --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON --autodetect ~{dataset_name}.~{temp_table} ~{annotation_json}
+        # bq --location=US load --replace=true --project_id="spec-ops-aou" --source_format=NEWLINE_DELIMITED_JSON --autodetect "anvil_100_for_testing.temp" /Users/aurora/Desktop/repositories/gatk/hello_did_I_annotate.json
 
         # create the final vat table with the correct fields
-        # TODO this is a hacky set of fields---would ideally use the vat_schema.json
         PARTITION_FIELD="position"
         CLUSTERING_FIELD="vid"
         PARTITION_STRING="" #--range_partitioning=$PARTITION_FIELD,0,4000,4000"
         CLUSTERING_STRING="" #--clustering_fields=$CLUSTERING_FIELD"
-        TABLE="~{dataset_name}.vatter"
-        SCHEMA="~{nirvana_schema}"
-        PROJECT="~{project_id}"
-        echo "Creating a vat table..."
-        bq --location=US mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE $SCHEMA > status_bq_submission
+
+        set +e
+        bq show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
+        BQ_SHOW_RC=$?
+        set -e
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+          echo "Creating the vat table ~{dataset_name}.~{vat_table}"
+          bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+        fi
+
         echo "And putting data into it"
 
         # now run some giant query in BQ to get this all in the right table
-        bq query --destination_table="anvil_100_for_testing.vatter" --project_id="spec-ops-aou" 'SELECT
+        bq query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --project_id=~{project_id} \
+        'SELECT
               v.position,
               v.vid,
               v.chromosome AS contig,
@@ -245,31 +294,31 @@ task BigQueryLoadJson {
               t.introns AS intron_number,
               t.hgvsc AS splice_distance,
               t.geneId AS entrez_gene_id,
-        CASE WHEN ( t.transcript is not null and t.isCanonical is not True) THEN "false" WHEN ( t.transcript is not null and t.isCanonical is True) THEN "true" END AS is_canonical_transcript,
-        null AS gvs_all_ac,
-        null AS gvs_all_an,
-        null AS  gvs_all_af,
-        v.revel.score  AS revel,
+              CASE WHEN ( t.transcript is not null and t.isCanonical is not True) THEN "false" WHEN ( t.transcript is not null and t.isCanonical is True) THEN "true" END AS is_canonical_transcript,
+              null AS gvs_all_ac,
+              null AS gvs_all_an,
+              null AS  gvs_all_af,
+              v.revel.score AS revel,
               # we just grab the first value in spliceAI (need to validate that there will only ever be one)
-              CASE WHEN (select array_length(v.spliceAI)) > 0
+              CASE WHEN (array_length(v.spliceAI)) > 0
                  THEN v.spliceAI[offset(0)].acceptorGainScore END AS splice_ai_acceptor_gain_score,
-              CASE WHEN (select array_length(v.spliceAI)) > 0
+              CASE WHEN (array_length(v.spliceAI)) > 0
                  THEN v.spliceAI[offset(0)].acceptorGainDistance END AS splice_ai_acceptor_gain_distance,
-              CASE WHEN (select array_length(v.spliceAI)) > 0
+              CASE WHEN (array_length(v.spliceAI)) > 0
                  THEN v.spliceAI[offset(0)].acceptorLossScore END AS splice_ai_acceptor_loss_score,
-              CASE WHEN (select array_length(v.spliceAI)) > 0
+              CASE WHEN (array_length(v.spliceAI)) > 0
                  THEN v.spliceAI[offset(0)].acceptorLossDistance END AS splice_ai_acceptor_loss_distance,
-              CASE WHEN (select array_length(v.spliceAI)) > 0
+              CASE WHEN (array_length(v.spliceAI)) > 0
                  THEN v.spliceAI[offset(0)].donorGainScore END AS splice_ai_donor_gain_score,
-              CASE WHEN (select array_length(v.spliceAI)) > 0
+              CASE WHEN (array_length(v.spliceAI)) > 0
                  THEN v.spliceAI[offset(0)].donorGainDistance END AS splice_ai_donor_gain_distance,
-              CASE WHEN (select array_length(v.spliceAI)) > 0
+              CASE WHEN (array_length(v.spliceAI)) > 0
                  THEN v.spliceAI[offset(0)].donorLossScore END AS splice_ai_donor_loss_score,
-              CASE WHEN (select array_length(v.spliceAI)) > 0
+              CASE WHEN (array_length(v.spliceAI)) > 0
                  THEN v.spliceAI[offset(0)].donorLossDistance END AS splice_ai_donor_loss_distance,
               (SELECT ARRAY_TO_STRING(significance, ",") FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_classification,
               (SELECT lastUpdatedDate FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_last_updated,
-              (SELECT ARRAY_TO_STRING(phenotypes, ",") FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_phenotype,
+              (SELECT phenotypes FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_phenotype,
               v.gnomad.allAf AS gnomad_all_af,
               v.gnomad.allAc AS gnomad_all_ac,
               v.gnomad.allAn AS gnomad_all_an,
@@ -280,11 +329,13 @@ task BigQueryLoadJson {
               null AS gene_omim_id,
               null AS omim_phenotypes_id,
               null AS omim_phenotypes_name,
-              from (SELECT position, variantline.* FROM `spec-ops-aou.anvil_100_for_testing.pre-vat`, UNNEST(variants) as variantline) as v left join
-              (SELECT position, variantline.vid, transcriptline.* FROM `spec-ops-aou.anvil_100_for_testing.pre-vat`, UNNEST(variants) as variantline, UNNEST(variantline.transcripts) as transcriptline) as t on v.vid = t.vid'
+              from (SELECT position, variantline.* FROM `~{dataset_name}.~{temp_table}`, UNNEST(variants) as variantline) as v
+              left join (SELECT position, variantline.vid, transcriptline.* FROM `~{dataset_name}.~{temp_table}`, UNNEST(variants) as variantline, UNNEST(variantline.transcripts) as transcriptline) as t on v.vid = t.vid'
+
+
        # cat status_bq_submission | tail -n 1 > status_bq_submission_last_line
        # bq_job_id=$(sed 's/.*://' status_bq_submission_last_line)
-        #echo $bq_job_id
+       #echo $bq_job_id
 
     >>>
     # ------------------------------------------------
