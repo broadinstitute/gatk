@@ -1,10 +1,11 @@
 {
-  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcfs": ["gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/Data/anvil_expected.vcf"],
+  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcfs": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz", "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/Data/gvs_features_0.vcf.gz"],
+  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcf_indices": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz.tbi", "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/Data/gvs_features_0.vcf.gz.tbi"],
   "GvsSitesOnlyVCF.output_sites_only_file_name": "hello_did_I_sites_only",
   "GvsSitesOnlyVCF.output_merged_file_name": "hello_did_I_merge",
   "GvsSitesOnlyVCF.output_annotated_file_name": "hello_did_I_annotate",
   "GvsSitesOnlyVCF.nirvana_data_directory": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz",
+  "GvsSitesOnlyVCF.nirvana_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json",
   "GvsSitesOnlyVCF.project_id": "spec-ops-aou",
   "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing"
-
 }
