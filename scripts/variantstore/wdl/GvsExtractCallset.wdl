@@ -181,8 +181,8 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
-        du -b ~{output_file} > vcf_bytes.txt
-        du -b ~{output_file}.tbi > vcf_index_bytes.txt
+        du -b ~{output_file} | cut -f1 > vcf_bytes.txt
+        du -b ~{output_file}.tbi | cut -f1 > vcf_index_bytes.txt
 
         # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
