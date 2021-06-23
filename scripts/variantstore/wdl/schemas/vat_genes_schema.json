@@ -1,0 +1,20 @@
+[
+{
+"description": "OMIM ID",
+"name": "gene_omim_id",
+"type": "Integer",
+"mode": "Nullable"
+},
+{
+"description": "OMIM Disease ID TODO -- this needs to be swapped to Repeated not nullable",
+"name": "omim_phenotypes_id",
+"type": "Integer",
+"mode": "Nullable"
+},
+{
+"description": "OMIM Disease Name TODO -- this needs to be swapped to Repeated not nullable and String not Integer?",
+"name": "omim_phenotypes_name",
+"type": "Integer",
+"mode": "Nullable"
+}
+]
