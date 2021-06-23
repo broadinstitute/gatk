@@ -531,7 +531,7 @@ task UploadFilterSetToBQ {
         bq_info_table=$(echo ~{fq_info_destination_table} | sed s/\\./:/)
 
         echo "Loading Filter Set into BQ"
-        bq load --skip_leading_rows 0 -F "tab" \
+        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
         ${bq_info_table} \
         filter_set_load.tsv \
         "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string"
@@ -543,7 +543,7 @@ task UploadFilterSetToBQ {
         bq_tranches_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
 
         echo "Loading Tranches into BQ"
-        bq load --skip_leading_rows 0 -F "," \
+        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
         ${bq_tranches_table} \
         tranches_load.csv \
         "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float"
@@ -553,7 +553,7 @@ task UploadFilterSetToBQ {
 
         # Creating site
         echo "Loading Filter Set Sites into BQ"
-        bq load --skip_leading_rows 1 -F "tab" \
+        bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
         ${bq_filter_sites_table} \
         filter_sites_load.tsv \
         "filter_set_name:string,location:integer,filters:string"
