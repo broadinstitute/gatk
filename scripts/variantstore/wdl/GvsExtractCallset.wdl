@@ -90,7 +90,7 @@ workflow GvsExtractCallset {
 
     call SumBytes {
       input:
-        file_sizes_bytes = [ExtractTask.output_vcf_bytes, ExtractTask.output_vcf_index_bytes]
+        file_sizes_bytes = flatten([ExtractTask.output_vcf_bytes, ExtractTask.output_vcf_index_bytes])
     }
 
     output {
