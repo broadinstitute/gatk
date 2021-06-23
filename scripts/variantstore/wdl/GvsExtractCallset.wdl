@@ -88,10 +88,15 @@ workflow GvsExtractCallset {
         }
     }
 
+    call SumBytes {
+      input:
+        file_sizes_bytes = [ExtractTask.output_vcf_bytes, ExtractTask.output_vcf_index_bytes]
+    }
+
     output {
       Array[File] output_vcfs = ExtractTask.output_vcf
       Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
-      Float total_vcfs_size_mb = size(ExtractTask.output_vcf, "MB") + size(ExtractTask.output_vcf_index, "MB")
+      Float total_vcfs_size_mb = SumBytes.total_mb
     }
 }
 
@@ -176,6 +181,9 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
+        du -b ~{output_file} > vcf_bytes.txt
+        du -b ~{output_file}.tbi > vcf_index_bytes.txt
+
         # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
@@ -201,7 +209,9 @@ task ExtractTask {
     # Outputs:
     output {
         File output_vcf = "~{output_file}"
+        Int output_vcf_bytes = read_int("vcf_bytes.txt")
         File output_vcf_index = "~{output_file}.tbi"
+        Int output_vcf_index_bytes = read_int("vcf_index_bytes.txt")
     }
  }
 
@@ -307,4 +317,32 @@ task GetBQTableLastModifiedDatetime {
         preemptible: 3
         cpu: 1
     }
+}
+
+task SumBytes {
+
+  input {
+    Array[Int] file_sizes_bytes
+  }
+
+  command <<<
+    set -e
+    echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python -c "
+    import sys;
+    total_bytes = sum(int(i.strip()) for i in sys.stdin);
+    total_mb = total_bytes/10**6;
+    print(total_mb);"
+  >>>
+
+  output {
+    Float total_mb = read_float(stdout())
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
 }
