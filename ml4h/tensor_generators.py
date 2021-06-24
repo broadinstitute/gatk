@@ -471,7 +471,7 @@ class _MultiModalMultiTaskWorker:
         return out
 
 
-def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int, keep_paths: bool = True):
+def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int, keep_paths: bool = False):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
