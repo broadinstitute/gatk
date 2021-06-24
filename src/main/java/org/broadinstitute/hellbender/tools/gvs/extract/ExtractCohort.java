@@ -35,20 +35,7 @@ public class ExtractCohort extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
     private ExtractCohortEngine engine;
 
-    public enum VQSLODFilteringType {
-      GENOTYPE("genotype"),
-      SITES("sites"),
-      NONE("");
-
-      String value;
-
-      VQSLODFilteringType(String value) {
-      this.value = value;
-    }
-      public String getValue() {
-      return value;
-      }
-    }
+    public enum VQSLODFilteringType { GENOTYPE, SITES, NONE }
 
     @Argument(
             fullName = "filter-set-info-table",
@@ -160,13 +147,8 @@ public class ExtractCohort extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
 
-        if (filterSetInfoTableName != null) { // filter using vqslod-- default to GENOTYPE unless SITES specifically selected
-          if (performSiteSpecificVQSLODFiltering) {
-            vqslodfilteringType = VQSLODFilteringType.SITES;
-          } else {
-            vqslodfilteringType = VQSLODFilteringType.GENOTYPE;
-          }
-        }
+        // filter using vqslod-- default to GENOTYPE unless SITES specifically selected
+        vqslodfilteringType = performSiteSpecificVQSLODFiltering ? VQSLODFilteringType.SITES : VQSLODFilteringType.GENOTYPE;
 
         // filter at a site level (but not necesarily use vqslod)
         if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
