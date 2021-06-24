@@ -140,7 +140,6 @@ class BayesianSearchEdit(BayesianOptimization):
     def _build_and_fit_model(self, trial, fit_args, fit_kwargs):
         model = self.hypermodel.build(trial.hyperparameters)
         model_size = self.maybe_compute_model_size(model)
-        self.oracle.update_space(trial.hyperparameters)
         print("Considering model with size: {}".format(model_size))
 
         if model_size > MAX_MODEL_SIZE:
