@@ -118,14 +118,15 @@ public class ExtractCohortEngine {
         this.traversalIntervals = traversalIntervals;
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
-        this.filterSetInfoTableRef = (filterSetInfoTableName == null || "".equals(filterSetInfoTableName)) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.YNG_FIELDS);
-        this.filterSetSiteTableRef = (filterSetSiteTableName == null || "".equals(filterSetSiteTableName)) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
 
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
         this.VQSLODFilteringType = VQSLODFilteringType;
         this.excludeFilteredSites = excludeFilteredSites;
+
+        this.filterSetInfoTableRef = VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.YNG_FIELDS);
+        this.filterSetSiteTableRef = VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
 
         this.progressMeter = progressMeter;
 
@@ -134,7 +135,7 @@ public class ExtractCohortEngine {
         this.annotationEngine = annotationEngine;
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
     }
-
+    // TODO note that these defaults are never used.
     private final static double INDEL_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.INDEL_HETEROZYGOSITY);
     private final static double SNP_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.SNP_HETEROZYGOSITY);
 
