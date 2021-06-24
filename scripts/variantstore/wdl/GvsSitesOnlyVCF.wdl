@@ -242,6 +242,8 @@ task BigQueryLoadJson {
     }
 
     # I am going to want to have two pre-vat tables. A variant table and a genes table
+    # See if
+     we can grab the annotations json directly from the gcp bucket (so pull it in as a string so it wont)
 
     String temp_table = "pre-vat"
     String vat_table = "vatter"
