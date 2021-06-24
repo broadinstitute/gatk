@@ -50,7 +50,7 @@ def run(args):
             directory=args.output_folder,
             project_name=args.id,
             seed=args.random_seed,
-            beta=5.2,  # Explore exploit tradeoff, higher value mean more exploration
+            beta=2.3,  # Explore exploit tradeoff, higher value mean more exploration
         )
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     stop_early = EarlyStopping(monitor='val_loss', patience=args.patience)
