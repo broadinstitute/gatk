@@ -372,14 +372,8 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     @Override
-    protected final Object doWork() {
-        try {
-            onTraversalStart();
-            traverse();
-            return onTraversalSuccess();
-        } finally {
-            closeTool();
-        }
+    public boolean disableProgressMeter() {
+        return true;
     }
 
     @Override
@@ -729,7 +723,7 @@ public final class GenomicsDBImport extends GATKTool {
 
     private Void logMessageOnBatchCompletion(final BatchCompletionCallbackFunctionArgument arg) {
         logger.info("Done importing batch " + arg.batchCount + "/" + arg.totalBatchCount);
-        logger.info("List of samples imported in batch " + arg.batchCount + ":");
+        logger.debug("List of samples imported in batch " + arg.batchCount + ":");
         int index = 0;
         final int sampleCount = sampleNameToVcfPath.size();
         final int updatedBatchSize = (batchSize == DEFAULT_ZERO_BATCH_SIZE) ? sampleCount : batchSize;
@@ -740,7 +734,7 @@ public final class GenomicsDBImport extends GATKTool {
             if (index <= startBatch || index > stopBatch) {
                 continue;
             }
-            logger.info("\t"+key);
+            logger.debug("\t"+key);
         }
         this.batchCount = arg.batchCount + 1;
         return null;
