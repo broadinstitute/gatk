@@ -1,5 +1,5 @@
-from enum import Enum, auto
 from typing import List, Iterator, Dict
+from enum import Enum, auto
 from abc import ABC, abstractmethod
 
 
@@ -57,19 +57,39 @@ MRI_LAX_2CH_SEGMENTED_CHANNEL_MAP = {
     'LA_appendage': 4, 'LA_free_wall': 5, 'LV_posterior_wall': 6, 'LV_anterior_wall': 7, 'posterior_papillary': 8,
     'anterior_papillary': 9, 'LV_cavity': 10, 'LA_cavity': 11, 'body': 12,
 }
+LAX_2CH_HEART_LABELS = {'aortic_arch': 1, 'left_pulmonary_artery_wall': 2, 'left_pulmonary_artery': 3,
+                        'LA_appendage': 4, 'LA_free_wall': 5, 'LV_posterior_wall': 6, 'LV_anterior_wall': 7, 'posterior_papillary': 8,
+                        'anterior_papillary': 9, 'LV_cavity': 10, 'LA_cavity': 11}
 MRI_LAX_3CH_SEGMENTED_CHANNEL_MAP = {'background': 0, 'LV_anteroseptum': 1, 'left_atrium': 2, 'LV_inferior_wall': 3, 'LV_Papillary': 4, 'LV_Cavity': 5}
+LAX_3CH_HEART_LABELS = {'LV_anteroseptum': 1, 'left_atrium': 2, 'LV_inferior_wall': 3, 'LV_Papillary': 4, 'LV_Cavity': 5}
 MRI_LAX_4CH_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
     'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8, 'RV_cavity': 9,
     'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'thoracic_cavity': 13, 'ascending_aorta': 14, 'breast_prosthesis': 15,
 }
-MRI_SAX_SEGMENTED_CHANNEL_MAP = {
+LAX_4CH_HEART_LABELS = {'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
+                        'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7, 'RA_cavity': 8, 'RV_cavity': 9,
+                        'LA_cavity': 10, 'LV_cavity': 11, 'descending_aorta': 12, 'ascending_aorta': 14}
+LAX_4CH_MYOCARDIUM_LABELS = {'RV_free_wall': 1, 'RA_free_wall': 2, 'LA_free_wall': 3, 'LV_anterolateral_wall': 4,
+                             'interventricular_septum': 5, 'interatrial_septum': 6, 'crista_terminalis': 7}
+MRI_SAX_PAP_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_pap': 4, 'LV_cavity': 5,
-    'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10,
+    'RV_cavity': 6, 'thoracic_cavity': 7, 'liver': 8, 'stomach': 9, 'spleen': 10, 'kidney': 12, 'body': 11,
+    'left_atrium': 13, 'right_atrium': 14, 'aorta': 15, 'pulmonary_artery': 16,
+}
+MRI_SAX_SEGMENTED_CHANNEL_MAP = {
+    'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_cavity': 4,
+    'RV_cavity': 5, 'thoracic_cavity': 6, 'liver': 7, 'stomach': 8, 'spleen': 9, 'kidney': 11, 'body': 10,
+    'left_atrium': 12, 'right_atrium': 13, 'aorta': 14, 'pulmonary_artery': 15,
+}
+MRI_SAX_SEGMENTED_CHANNEL_MAP = {
+    'background': 0, 'RV_free_wall': 1, 'interventricular_septum': 2, 'LV_free_wall': 3, 'LV_cavity': 4,
+    'RV_cavity': 5, 'thoracic_cavity': 6, 'liver': 7, 'stomach': 8, 'spleen': 9, 'kidney': 11, 'body': 10,
+    'left_atrium': 12, 'right_atrium': 13, 'aorta': 14, 'pulmonary_artery': 15,
 }
 MRI_AO_SEGMENTED_CHANNEL_MAP = {
-    'background': 0, 'svc': 1, 'pulmonary_artery': 2, 'ascending_aortic_wall': 3, 'ascending_aorta': 4,
-    'descending_aortic_wall': 5, 'descending_aorta': 6, 'thorax': 7, 'body': 8, 'breast_implant': 9,
+    'ao_background': 0, 'ao_superior_vena_cava': 1, 'ao_pulmonary_artery': 2, 'ao_ascending_aortic_wall': 3, 'ao_ascending_aorta': 4,
+    'ao_descending_aortic_wall': 5, 'ao_descending_aorta': 6, 'ao_thorax': 7, 'ao_body': 8, 'ao_breast_implant': 9,
 }
 MRI_LVOT_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'body': 1, 'lungs': 2, 'RV_wall': 3, 'RV_cavity': 4, 'LV_wall': 5, 'LV_cavity': 6,
@@ -77,10 +97,6 @@ MRI_LVOT_SEGMENTED_CHANNEL_MAP = {
 }
 MRI_LIVER_SEGMENTED_CHANNEL_MAP = {'background': 0, 'liver': 1, 'inferior_vena_cava': 2, 'abdominal_aorta': 3, 'body': 4}
 
-CAD_ICDS = [
-    'K401', 'K402', 'K403', 'K404', 'K411', 'K412', 'K413', 'K414', 'K451', 'K452', 'K453', 'K454', 'K455',
-    'K491', 'K492', 'K498', 'K499', 'K502', 'K751', 'K752', 'K753', 'K754', 'K758', 'K759',
-]
 
 # TODO: These values should ultimately come from the coding table
 CODING_VALUES_LESS_THAN_ONE = [-10, -1001]
@@ -100,6 +116,10 @@ ECG_REST_AMP_LEADS = {
 }
 ECG_REST_UKB_LEADS = {
     'I': 0, 'II': 1, 'III': 2, 'V1': 3, 'V2': 4, 'V3': 5, 'V4': 6, 'V5': 7, 'V6': 8, 'aVR': 9, 'aVL': 10, 'aVF': 11,
+}
+ECG_REST_MGB_LEADS = {
+    'strip_I': 0, 'strip_II': 1, 'strip_III': 2, 'strip_V1': 3, 'strip_V2': 4, 'strip_V3': 5,
+    'strip_V4': 6, 'strip_V5': 7, 'strip_V6': 8, 'strip_aVF': 11, 'strip_aVL': 10, 'strip_aVR': 9,
 }
 ECG_SEGMENTED_CHANNEL_MAP = {'unknown': 0, 'TP_segment': 1, 'P_wave': 2, 'PQ_segment': 3, 'QRS_complex': 4, 'ST_segment': 5, 'T_wave': 6, 'U_wave': 7}
 
@@ -163,10 +183,7 @@ def dataset_name_from_meaning(group: str, fields: List[str]) -> str:
         return joined
     return group + HD5_GROUP_CHAR + joined
 
-
 class TensorGeneratorABC(ABC):
     @abstractmethod
     def __iter__(self) -> Iterator:
         pass
-
-
