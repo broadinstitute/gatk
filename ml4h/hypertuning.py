@@ -144,7 +144,7 @@ class BayesianSearchEdit(BayesianOptimization):
         print("Considering model with size: {}".format(model_size))
 
         if model_size > MAX_MODEL_SIZE:
-            self.oracle.end_trial(trial.trial_id, trial_module.TrialStatus.INVALID)
+            #self.oracle.end_trial(trial.trial_id, trial_module.TrialStatus.INVALID)
 
             dummy_history_obj = tf.keras.callbacks.History()
             dummy_history_obj.on_train_begin()
