@@ -14,6 +14,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
         self, batch_size: int, input_maps: List[TensorMap], output_maps: List[TensorMap],
         paths: List[str], num_workers: int,
         keep_paths: bool = False,
+        drop_last: bool = True,
         augment: bool = False,
         **kwargs,
     ):
@@ -31,7 +32,7 @@ class TensorMapDataLoader(TensorGeneratorABC):
         )
         self.data_loader = DataLoader(
             self.dset, batch_size=batch_size, num_workers=num_workers,
-            collate_fn=self._collate_fn,
+            collate_fn=self._collate_fn, drop_last=drop_last,
         )
         self.iter_loader = iter(self.data_loader)
 
