@@ -42,10 +42,10 @@
     "mode": "Required"
   },
   {
-    "description": "rsID",
+    "description": "rsID TODO check with Lee about why this json thinks its Repeated not nullable",
     "name": "dbsnp_rsid",
     "type": "String",
-    "mode": "Nullable"
+    "mode": "Repeated"
   },
   {
     "description": "Transcript ID. Null indicates that this variant does not overlap any transcripts",
@@ -72,10 +72,10 @@
    "mode": "Nullable"
  },
  {
-   "description": "Amino acid change type",
+   "description": "Amino acid change type TODO check with Lee about why this json thinks its Repeated not nullable",
    "name": "consequence",
    "type": "String",
-   "mode": "Nullable"
+   "mode": "Repeated"
  },
  {
    "description": "HGVS c. nomenclature; DNA change",
@@ -110,7 +110,7 @@
   {
     "description": "Primary Transcript ID",
     "name": "is_canonical_transcript",
-    "type": "String",
+    "type": "Boolean",
     "mode": "Nullable"
   },
   {
