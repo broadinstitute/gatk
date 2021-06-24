@@ -699,7 +699,7 @@ import java.util.*;
  *
  * <h3>Notes</h3>
  * <ul>
- *     <li>This tool is the spiritual successor to <a href="http://portals.broadinstitute.org/oncotator/">Oncotator</a>, with better support for germline data, numerous fixes for correctness, and many other features.</li>
+ *     <li>This tool is the spiritual successor to <a href="https://github.com/broadinstitute/oncotator">Oncotator</a>, with better support for germline data, numerous fixes for correctness, and many other features.</li>
  *     <li>REMEMBER: <strong>Funcotator is NOT Oncotator.</strong></li>
  * </ul>
  *

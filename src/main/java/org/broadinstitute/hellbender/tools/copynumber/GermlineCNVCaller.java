@@ -11,7 +11,11 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.arguments.*;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineCNVHybridADVIArgumentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineCallingArgumentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineDenoisingModelArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -85,8 +89,8 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  * configuration. For example, by running
  * <code>THEANO_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk GermlineCNVCaller ...</code>, users can specify
  * the theano compilation directory (which is set to <code>$HOME/.theano</code> by default).  See theano documentation
- * at <a href="http://deeplearning.net/software/theano/library/config.html">
- *     http://deeplearning.net/software/theano/library/config.html</a>.
+ * at <a href="https://theano-pymc.readthedocs.io/en/latest/library/config.html">
+ *     https://theano-pymc.readthedocs.io/en/latest/library/config.html</a>.
  * </p>
  *
  * <h3>Tool run modes</h3>
@@ -399,7 +403,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             }
         }
 
-        if (runMode.equals(RunMode.COHORT)) {
+        if (runMode == RunMode.COHORT) {
             logger.info("Running the tool in COHORT mode...");
             Utils.validateArg(inputReadCountPaths.size() > 1, "At least two samples must be provided in " +
                     "COHORT mode.");

@@ -119,7 +119,7 @@ import java.util.*;
  * <h3>Notes</h3>
  * <ol>
  *     <li>This Spark tool requires a significant amount of disk operations. Run with both the input data and outputs on high throughput SSDs when possible. When pipelining this tool on Google Compute Engine instances, for best performance requisition machines with LOCAL SSDs.  </li>
- *     <li>Furthermore, we recommend explicitly setting the Spark temp directory to an available SSD when running this in local mode by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'. See <a href="https://gatkforums.broadinstitute.org/gatk/discussion/comment/56337">this forum discussion</a> for details.</li>
+ *     <li>Furthermore, we recommend explicitly setting the Spark temp directory to an available SSD when running this in local mode by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'. See <a href="https://sites.google.com/a/broadinstitute.org/legacy-gatk-forum-discussions/2019-02-11-2018-08-12/23441-MarkDuplicateSpark-is-slower-than-normal-MarkDuplicates">this forum discussion</a> for details.</li>
  * </ol>
  */
 @DocumentedFeature

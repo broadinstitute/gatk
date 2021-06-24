@@ -3,12 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.AbstractFeatureReader;
-import htsjdk.tribble.CloseableTribbleIterator;
-import htsjdk.tribble.Feature;
-import htsjdk.tribble.FeatureCodec;
-import htsjdk.tribble.FeatureReader;
-import htsjdk.tribble.TribbleException;
+import htsjdk.tribble.*;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
@@ -238,7 +233,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
         this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-             new GenomicsDBOptions());
+             new GenomicsDBOptions(), false);
     }
 
     /**
@@ -256,7 +251,26 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
         this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                new GenomicsDBOptions(reference));
+                new GenomicsDBOptions(reference), false);
+    }
+
+    /**
+     * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
+     * during queries that produce cache misses.
+     *
+     * @param featureInput             a FeatureInput specifying a source of Features
+     * @param queryLookaheadBases      look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType        When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                                 that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer      MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param reference                 the reference genome corresponding to the data to be read
+     * @param setNameOnCodec            If true, and if this FeatureDataSource uses a NameAwareCodec, the name of the FeatureInput will be used to set the codec's name. This exists as a mechanism to store the FeatureInput name in the source field of VariantContexts
+     */
+    public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference, final boolean setNameOnCodec) {
+        this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                new GenomicsDBOptions(reference), setNameOnCodec);
     }
 
     /**
@@ -273,6 +287,25 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
                              final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final GenomicsDBOptions genomicsDBOptions) {
+        this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                genomicsDBOptions, false);
+    }
+
+    /**
+     * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
+     * during queries that produce cache misses.
+     *
+     * @param featureInput             a FeatureInput specifying a source of Features
+     * @param queryLookaheadBases      look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType        When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                                 that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer      MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param genomicsDBOptions         options and info for reading from a GenomicsDB; may be null
+     * @param setNameOnCodec            If true, and if this FeatureDataSource uses a NameAwareCodec, the name of the FeatureInput will be used to set the codec's name. This exists as a mechanism to store the FeatureInput name in the source field of VariantContexts
+     */
+    public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final GenomicsDBOptions genomicsDBOptions, final boolean setNameOnCodec) {
         Utils.validateArg(queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         this.featureInput = Utils.nonNull(featureInput, "featureInput must not be null");
         if (IOUtils.isGenomicsDBPath(featureInput)) {
@@ -284,7 +317,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         this.featureReader = getFeatureReader(featureInput, targetFeatureType,
                 BucketUtils.getPrefetchingWrapper(cloudPrefetchBuffer),
                 BucketUtils.getPrefetchingWrapper(cloudIndexPrefetchBuffer),
-                genomicsDBOptions);
+                genomicsDBOptions, setNameOnCodec);
 
         if (IOUtils.isGenomicsDBPath(featureInput)) {
             //genomics db uri's have no associated index file to read from, but they do support random access
@@ -316,7 +349,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     private static <T extends Feature> FeatureReader<T> getFeatureReader(final FeatureInput<T> featureInput, final Class<? extends Feature> targetFeatureType,
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
                                                                          final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper,
-                                                                         final GenomicsDBOptions genomicsDBOptions) {
+                                                                         final GenomicsDBOptions genomicsDBOptions, final boolean setNameOnCodec) {
         if (IOUtils.isGenomicsDBPath(featureInput.getFeaturePath())) {
             Utils.nonNull(genomicsDBOptions);
             try {
@@ -333,7 +366,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                 throw new UserException("GenomicsDB inputs can only be used to provide VariantContexts.", e);
             }
         } else {
-            final FeatureCodec<T, ?> codec = getCodecForFeatureInput(featureInput, targetFeatureType);
+            final FeatureCodec<T, ?> codec = getCodecForFeatureInput(featureInput, targetFeatureType, setNameOnCodec);
             return getTribbleFeatureReader(featureInput, codec, cloudWrapper, cloudIndexWrapper);
         }
     }
@@ -347,7 +380,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      */
     @SuppressWarnings("unchecked")
     private static <T extends Feature> FeatureCodec<T, ?> getCodecForFeatureInput(final FeatureInput<T> featureInput,
-                                                                                  final Class<? extends Feature> targetFeatureType) {
+                                                                                  final Class<? extends Feature> targetFeatureType, final boolean setNameOnCodec) {
         final FeatureCodec<T, ?> codec;
         final Class<FeatureCodec<T, ?>> codecClass = featureInput.getFeatureCodecClass();
         if (codecClass == null) {
@@ -362,6 +395,12 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                 throw new GATKException("Unable to automatically instantiate codec " + codecClass.getName());
             }
         }
+
+        if (setNameOnCodec && codec instanceof NameAwareCodec) {
+            final NameAwareCodec namedCodec = (NameAwareCodec) codec;
+            namedCodec.setName(featureInput.getName());
+        }
+
         return codec;
     }
 

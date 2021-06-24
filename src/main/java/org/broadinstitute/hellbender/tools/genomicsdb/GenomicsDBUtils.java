@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.genomicsdb;
 import com.googlecode.protobuf.format.JsonFormat;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.genomicsdb.importer.GenomicsDBImporter;
@@ -10,12 +12,11 @@ import org.genomicsdb.model.GenomicsDBExportConfiguration;
 import org.genomicsdb.model.GenomicsDBVidMapProto;
 
 import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.genomicsdb.GenomicsDBUtils.isGenomicsDBArray;
+import static org.genomicsdb.GenomicsDBUtils.readEntireFile;
 
 /**
  * Utility class containing various methods for working with GenomicsDB
@@ -46,7 +47,7 @@ public class GenomicsDBUtils {
      * Note that the recommendation is to perform this operation during the import phase
      * as only a limited set of mappings can be changed during export.
      *
-     * @param importer
+     * @param importer that imports bcf/vcf streams into GenomicsDB
      */
     public static void updateImportProtobufVidMapping(GenomicsDBImporter importer) {
         //Get the in-memory Protobuf structure representing the vid information.
@@ -116,8 +117,6 @@ public class GenomicsDBUtils {
                         .setMaxGenotypeCount(genomicsDBOptions.getMaxGenotypeCount())
                         .setEnableSharedPosixfsOptimizations(genomicsDBOptions.sharedPosixFSOptimizations());
 
-        final Path arrayFolder = Paths.get(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
-
         // For the multi-interval support, we create multiple arrays (directories) in a single workspace -
         // one per interval. So, if you wish to import intervals ("chr1", [ 1, 100M ]) and ("chr2", [ 1, 100M ]),
         // you end up with 2 directories named chr1$1$100M and chr2$1$100M. So, the array names depend on the
@@ -131,13 +130,11 @@ public class GenomicsDBUtils {
         // will be backward compatible with respect to reads. Hence, if a directory named genomicsdb_array is found,
         // the array name is passed to the GenomicsDBFeatureReader otherwise the array names are generated from the
         // directory entries.
-        if (Files.exists(arrayFolder)) {
+        if (isGenomicsDBArray(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME)) {
             exportConfigurationBuilder.setArrayName(GenomicsDBConstants.DEFAULT_ARRAY_NAME);
         } else {
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
         }
-
-
 
         return exportConfigurationBuilder.build();
     }
@@ -158,9 +155,7 @@ public class GenomicsDBUtils {
     public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final String vidmapJson)
             throws IOException {
         final GenomicsDBVidMapProto.VidMappingPB.Builder vidMapBuilder = GenomicsDBVidMapProto.VidMappingPB.newBuilder();
-        try (final Reader reader = Files.newBufferedReader(IOUtils.getPath(vidmapJson))) {
-            JsonFormat.merge(reader, vidMapBuilder);
-        }
+        JsonFormat.merge(readEntireFile(vidmapJson), vidMapBuilder);
         return vidMapBuilder.build();
     }
 
@@ -298,4 +293,38 @@ public class GenomicsDBUtils {
         }
         return vidMapPB;
     }
+
+    /*
+     * Changes relative local file paths to be absolute file paths. Cloud Datastore paths are left unchanged
+     * @param path to the resource
+     * @return an absolute file path if the original path was a relative file path, otherwise the original path
+     */
+    public static String genomicsDBGetAbsolutePath(String path) {
+        Utils.nonNull(path);
+        if (path.contains("://")) {
+            return path;
+        } else {
+            return BucketUtils.makeFilePathAbsolute(path);
+        }
+    }
+
+    /**
+     * Appends path to the given parent path. The parent path could be a URI or a File.
+     * @param parentPath the folder to append the path
+     * @param path the path relative to dir
+     * @return the appended path as String
+     */
+    public static String genomicsDBApppendPaths(String parentPath, String path) {
+        if (parentPath != null && parentPath.contains("://")) {
+            if (parentPath.endsWith("/")) {
+                return parentPath + path;
+            } else {
+                return parentPath + "/" + path;
+            }
+        } else {
+            return IOUtils.appendPathToDir(parentPath, path);
+        }
+    }
+
+
 }

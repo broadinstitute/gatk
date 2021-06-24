@@ -6,15 +6,14 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEval;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -32,7 +31,21 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         SNP, INDEL, CNV
     }
 
-    FeatureInput<Feature> knownCNVs = null;
+    public VariantSummary(VariantEvalEngine engine) {
+        super(engine);
+
+        this.knownCNVs = getEngine().getVariantEvalArgs().getKnownCNVsFile();
+
+        nSamples = getEngine().getSampleNamesForEvaluation().size();
+        countsPerSample = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
+        transitionsPerSample = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
+        transversionsPerSample = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
+        allVariantCounts = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
+        knownVariantCounts = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
+        depthPerSample = new TypeSampleMap(getEngine().getSampleNamesForEvaluation());
+    }
+
+    private FeatureInput<Feature> knownCNVs = null;
 
     // basic counts on various rates found
     @DataPoint(description = "Number of samples", format = "%d")
@@ -70,10 +83,10 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
     @DataPoint(description = "Mean number of SVs per individual", format = "%d")
     public long nSVsPerSample = 0;
 
-    TypeSampleMap allVariantCounts, knownVariantCounts;
-    TypeSampleMap countsPerSample;
-    TypeSampleMap transitionsPerSample, transversionsPerSample;
-    TypeSampleMap depthPerSample;
+    private TypeSampleMap allVariantCounts, knownVariantCounts;
+    private TypeSampleMap countsPerSample;
+    private TypeSampleMap transitionsPerSample, transversionsPerSample;
+    private TypeSampleMap depthPerSample;
 
     private final static String ALL = "ALL";
 
@@ -129,21 +142,6 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         }
     }
 
-
-    public void initialize(VariantEval walker) {
-        super.initialize(walker);
-
-        this.knownCNVs = walker.getKnownCNVsFile();
-
-        nSamples = walker.getSampleNamesForEvaluation().size();
-        countsPerSample = new TypeSampleMap(walker.getSampleNamesForEvaluation());
-        transitionsPerSample = new TypeSampleMap(walker.getSampleNamesForEvaluation());
-        transversionsPerSample = new TypeSampleMap(walker.getSampleNamesForEvaluation());
-        allVariantCounts = new TypeSampleMap(walker.getSampleNamesForEvaluation());
-        knownVariantCounts = new TypeSampleMap(walker.getSampleNamesForEvaluation());
-        depthPerSample = new TypeSampleMap(walker.getSampleNamesForEvaluation());
-    }
-
     public int getComparisonOrder() {
         return 2;   // we only need to see each eval track
     }
@@ -165,13 +163,14 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         }
     }
 
-    private boolean overlapsKnownCNV(VariantContext cnv, FeatureContext featureContext) {
+    private boolean overlapsKnownCNV(VariantContext cnv, VariantEvalContext context) {
         if ( knownCNVs != null ) {
-            List<Feature> overlaps = featureContext.getValues(knownCNVs);
-            GenomeLocParser parser = new GenomeLocParser(getWalker().getReferenceDictionary());
-            GenomeLoc loc1 = parser.createGenomeLoc(cnv);
+            List<Feature> overlaps = context.queryFeaturesIncludingOverlapping(knownCNVs, new SimpleInterval(cnv.getContig(), cnv.getStart(), cnv.getEnd()));
+            GenomeLocParser parser = new GenomeLocParser(context.getSequenceDictionaryForDrivingVariants());
+            // NOTE: by using this overload we are explicitly allowing variants that don't correctly overlap the reference intervals
+            GenomeLoc loc1 = parser.createGenomeLoc(cnv, false);
             for (Feature vc : overlaps) {
-                GenomeLoc loc2 = parser.createGenomeLoc(vc);
+                GenomeLoc loc2 = parser.createGenomeLoc(vc, false);
                 final double overlapP = loc1.reciprocialOverlapFraction(loc2);
                 if ( overlapP > MIN_CNV_OVERLAP )
                     return true;
@@ -181,8 +180,9 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         return false;
     }
 
-    public void update2(VariantContext eval, VariantContext comp, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
-        if ( eval == null || (getWalker().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
+    @Override
+    public void update2(final VariantContext eval, final VariantContext comp, final VariantEvalContext context) {
+        if ( eval == null || (getEngine().getVariantEvalArgs().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
             return;
 
         final Type type = getType(eval);
@@ -205,7 +205,7 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         }
 
         // novelty calculation
-        if ( comp != null || (type == Type.CNV && overlapsKnownCNV(eval, featureContext)))
+        if ( comp != null || (type == Type.CNV && overlapsKnownCNV(eval, context)))
             knownVariantCounts.inc(type, ALL);
 
         // per sample metrics
@@ -228,8 +228,9 @@ public class VariantSummary extends VariantEvaluator implements StandardEval {
         return Utils.formattedPercent(all - known, all);
     }
 
+    @Override
     public void finalizeEvaluation() {
-        nProcessedLoci = getWalker().getnProcessedLoci();
+        nProcessedLoci = getEngine().getnProcessedLoci();
         nSNPs = allVariantCounts.all(Type.SNP);
         nIndels = allVariantCounts.all(Type.INDEL);
         nSVs = allVariantCounts.all(Type.CNV);

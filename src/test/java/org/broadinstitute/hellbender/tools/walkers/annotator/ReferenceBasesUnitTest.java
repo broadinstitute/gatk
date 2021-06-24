@@ -10,10 +10,10 @@ import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.util.Collections;
 
 /**
@@ -28,7 +28,7 @@ public class ReferenceBasesUnitTest extends GATKBaseTest {
         final ReferenceContext ref = new ReferenceContext(refDataSource, new SimpleInterval("20", 10_000_000, 10_000_200));
         final VariantContext vc = new VariantContextBuilder("source", "20", 10_000_100, 10_000_100, Collections.singleton(Allele.create((byte) 'A', true))).make();
         final String refBases = (String) new ReferenceBases().annotate(ref, vc, null)
-                .get(ReferenceBases.REFERENCE_BASES_KEY);
+                .get(GATKVCFConstants.REFERENCE_BASES_KEY);
         Assert.assertEquals(refBases, "ACTGCATCCCTTGCATTTCCA");
     }
 
@@ -37,7 +37,7 @@ public class ReferenceBasesUnitTest extends GATKBaseTest {
     public void testNoReferenceBehavior() {
         final VariantContext vc = new VariantContextBuilder("source", "20", 10_000_100, 10_000_100, Collections.singleton(Allele.create((byte) 'A', true))).make();
         final String refBases = (String) new ReferenceBases().annotate(null, vc, null)
-                .get(ReferenceBases.REFERENCE_BASES_KEY);
+                .get(GATKVCFConstants.REFERENCE_BASES_KEY);
         Assert.assertNull(refBases);
     }
 
@@ -49,7 +49,7 @@ public class ReferenceBasesUnitTest extends GATKBaseTest {
         final ReferenceContext ref = new ReferenceContext(refDataSource, new SimpleInterval("17", 1_000_000 - 300, 1_000_000));
         final VariantContext vc = new VariantContextBuilder("source", "17", 1_000_000 - 5, 1_000_000 - 5, Collections.singleton(Allele.create((byte) 'A', true))).make();
         final String refBases = (String) new ReferenceBases().annotate(ref, vc, null)
-                .get(ReferenceBases.REFERENCE_BASES_KEY);
+                .get(GATKVCFConstants.REFERENCE_BASES_KEY);
         Assert.assertEquals(refBases, "AGCTGGGGAAGGGGGGNNNNN");
     }
 

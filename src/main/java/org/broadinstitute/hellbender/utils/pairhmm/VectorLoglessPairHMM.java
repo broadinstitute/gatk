@@ -35,10 +35,6 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
          * OpenMP multi-threaded AVX-accelerated version of PairHMM
          */
         OMP,
-        /**
-         * FPGA-accelerated version of PairHMM
-         */
-        FPGA
     }
 
     private static final Logger logger = LogManager.getLogger(VectorLoglessPairHMM.class);
@@ -75,14 +71,6 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
                 isSupported = pairHmm.load(null);
                 if (!isSupported) {
                     throw new UserException.HardwareFeatureException("Machine does not support OpenMP AVX PairHMM.");
-                }
-                break;
-
-            case FPGA:
-                pairHmm = new IntelPairHmmFpga();
-                isSupported = pairHmm.load(null);
-                if (!isSupported) {
-                    throw new UserException.HardwareFeatureException("Machine does not support FPGA PairHMM.");
                 }
                 break;
 

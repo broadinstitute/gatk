@@ -72,7 +72,7 @@ before_install:
       travis_terminate 0;
     fi;
   fi;
-- if [[ $TRAVIS_SECURE_ENV_VARS == true && $TEST_DOCKER == true ]]; then
+- if [[ $TRAVIS_SECURE_ENV_VARS == true ]]; then
     echo "Logging in to dockerhub";
     docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
   fi
@@ -179,7 +179,6 @@ script:
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
 # This also constructs the Docker image and uploads it to https://cloud.docker.com/u/broadinstitute/repository/docker/broadinstitute/gatk-nightly/
 - if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true ]]; then
-  docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
   $GCLOUD_HOME/gcloud components -q update gsutil;
   gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
   ./gradlew bundle;

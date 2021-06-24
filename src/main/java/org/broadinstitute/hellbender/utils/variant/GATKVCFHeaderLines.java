@@ -14,18 +14,34 @@ import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.*;
  */
 public class GATKVCFHeaderLines {
 
-    public static VCFInfoHeaderLine getInfoLine(final String id) {
-        if (!infoLines.containsKey(id)) {
+    public static VCFInfoHeaderLine getInfoLine(final String id, final boolean lookInVCFStandardLines) {
+        if (infoLines.containsKey(id)) {
+            return infoLines.get(id);
+        } else if (lookInVCFStandardLines) {
+            return VCFStandardHeaderLines.getInfoLine(id);
+        } else {
             throw new IllegalStateException("No VCF INFO header line found for key " + id);
         }
-        return infoLines.get(id);
     }
-    public static VCFFormatHeaderLine getFormatLine(final String id) {
-        if (!formatLines.containsKey(id)) {
-            throw new IllegalStateException("No VCF FORMAT header line found for key " + id);
+
+    public static VCFInfoHeaderLine getInfoLine(final String id) {
+        return getInfoLine(id, false);
+    }
+
+    public static VCFFormatHeaderLine getFormatLine(final String id, final boolean lookInVCFStandardLines) {
+        if (formatLines.containsKey(id)) {
+            return formatLines.get(id);
+        } else if (lookInVCFStandardLines) {
+            return VCFStandardHeaderLines.getFormatLine(id);
+        } else {
+            throw new IllegalStateException("No VCF INFO header line found for key " + id);
         }
-        return formatLines.get(id);
     }
+
+    public static VCFFormatHeaderLine getFormatLine(final String id) {
+        return getFormatLine(id, false);
+    }
+
     public static VCFFilterHeaderLine getFilterLine(final String id) {
         if (!filterLines.containsKey(id)) {
             throw new IllegalStateException("No VCF FILTER header line found for key " + id);
@@ -120,6 +136,7 @@ public class GATKVCFHeaderLines {
         addFormatLine(new VCFFormatHeaderLine(ALLELE_FRACTION_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele fractions of alternate alleles in the tumor"));
         addFormatLine(new VCFFormatHeaderLine(F1R2_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of reads in F1R2 pair orientation supporting each allele"));
         addFormatLine(new VCFFormatHeaderLine(F2R1_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of reads in F2R1 pair orientation supporting each allele"));
+        addFormatLine(new VCFFormatHeaderLine(FEATURIZED_READ_SETS_KEY, 1, VCFHeaderLineType.Integer, "Featurized read sets by allele for Mutect3 training"));
 
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed"));
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_FREQUENCY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed"));
@@ -187,6 +204,9 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(GENOTYPE_AND_VALIDATE_STATUS_KEY, 1, VCFHeaderLineType.String, "Value from the validation VCF"));
         addInfoLine(new VCFInfoHeaderLine(INTERVAL_GC_CONTENT_KEY, 1, VCFHeaderLineType.Float, "GC Content of the interval"));
         addInfoLine(new VCFInfoHeaderLine(GENOTYPE_PRIOR_KEY, VCFHeaderLineCount.G, VCFHeaderLineType.Integer, "Genotype Likelihood Prior"));
+        addInfoLine(new VCFInfoHeaderLine(BASE_QUAL_HISTOGRAM_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer,
+                "Base quality counts for each allele represented sparsely as alternating entries of qualities and counts for each allele." +
+                        "For example [10,1,0,20,0,1] means one ref base with quality 10 and one alt base with quality 20."));
 
         // M2-related info lines
         addInfoLine(new VCFInfoHeaderLine(EVENT_COUNT_IN_HAPLOTYPE_KEY, 1, VCFHeaderLineType.Integer, "Number of events in this haplotype"));
@@ -205,13 +225,18 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(ORIGINAL_CONTIG_MISMATCH_KEY, 1, VCFHeaderLineType.Integer, "Number of alt reads whose original alignment doesn't match the current contig."));
         addInfoLine(new VCFInfoHeaderLine(N_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Count of N bases in the pileup"));
         addInfoLine(new VCFInfoHeaderLine(AS_UNIQUE_ALT_READ_SET_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of reads with unique start and mate end positions for each alt at a variant site"));
-        addInfoLine(new BaseQuality().getDescriptions().get(0));
-        addInfoLine(new FragmentLength().getDescriptions().get(0));
-        addInfoLine(new MappingQuality().getDescriptions().get(0));
-        addInfoLine(new ReadPosition().getDescriptions().get(0));
-        addInfoLine(new AS_StrandBiasMutectAnnotation().getDescriptions().get(0));
+        addInfoLine(new VCFInfoHeaderLine(MEDIAN_BASE_QUALITY_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "median base quality by allele"));
+        addInfoLine(new VCFInfoHeaderLine(MEDIAN_FRAGMENT_LENGTH_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "median fragment length by allele"));
+        addInfoLine(new VCFInfoHeaderLine(MEDIAN_MAPPING_QUALITY_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "median mapping quality by allele"));
+        addInfoLine(new VCFInfoHeaderLine(MEDIAN_READ_POSITON_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "median distance from end of read"));
+        addInfoLine(new VCFInfoHeaderLine(AS_SB_TABLE_KEY, 1, VCFHeaderLineType.String, "Allele-specific forward/reverse read counts for strand bias tests. Includes the reference and alleles separated by |."));
         addInfoLine(new VCFInfoHeaderLine(UNITIG_SIZES_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Sizes of reassembled unitigs"));
         addInfoLine(new VCFInfoHeaderLine(JOINT_ALIGNMENT_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of joint alignments"));
         addInfoLine(new VCFInfoHeaderLine(ALIGNMENT_SCORE_DIFFERENCE_KEY, 1, VCFHeaderLineType.Integer, "Difference in alignment score between best and next-best alignment"));
+        addInfoLine(new VCFInfoHeaderLine(REFERENCE_BASES_KEY, 1, VCFHeaderLineType.String, "local reference bases."));
+        addInfoLine(new VCFInfoHeaderLine(HAPLOTYPE_EQUIVALENCE_COUNTS_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Counts of support for haplotype groups excluding difference at the site in question."));
+        addInfoLine(new VCFInfoHeaderLine(HAPLOTYPE_COMPLEXITY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Edit distances of each alt allele's most common supporting haplotype from closest germline haplotype, excluding differences at the site in question."));
+        addInfoLine(new VCFInfoHeaderLine(HAPLOTYPE_DOMINANCE_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "For each alt allele, fraction of read support that best fits the most-supported haplotype containing the allele"));
+
     }
 }

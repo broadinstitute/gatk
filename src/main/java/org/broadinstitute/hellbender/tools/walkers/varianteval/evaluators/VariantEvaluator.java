@@ -1,30 +1,27 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEval;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 public abstract class VariantEvaluator implements Comparable<VariantEvaluator> {
-    private VariantEval walker;
     private final String simpleName;
+    private final VariantEvalEngine engine;
 
-    protected VariantEvaluator(String simpleName) {
-        this.simpleName = simpleName;
-    }
-
-    protected VariantEvaluator() {
+    public VariantEvaluator(VariantEvalEngine engine) {
+        this.engine = engine;
         this.simpleName = getClass().getSimpleName();
     }
 
-    public void initialize(VariantEval walker) {
-        this.walker = walker;
+    //Note: this is used by DISCVR-seq / VariantQC
+    public VariantEvaluator(VariantEvalEngine engine, final String simpleName) {
+        this.engine = engine;
+        this.simpleName = simpleName;
     }
 
-    public VariantEval getWalker() {
-        return walker;
+    protected VariantEvalEngine getEngine() {
+        return engine;
     }
 
     // Should return the number of VariantContexts expected as inputs to update.  Can be 1 or 2
@@ -32,10 +29,10 @@ public abstract class VariantEvaluator implements Comparable<VariantEvaluator> {
 
     // called at all sites, regardless of eval context itself; useful for counting processed bases
     // No longer available.  The processed bp is kept in VEW itself for performance reasons
-    public void update1(VariantContext eval, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
+    public void update1(final VariantContext vc, final VariantEvalContext context) {
     }
 
-    public void update2(VariantContext eval, VariantContext comp, ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext) {
+    public void update2(final VariantContext eval, final VariantContext comp, final VariantEvalContext context) {
     }
 
     public void finalizeEvaluation() {}
@@ -59,7 +56,7 @@ public abstract class VariantEvaluator implements Comparable<VariantEvaluator> {
      * @return true if eval was originally a singleton site
      */
     protected static boolean variantWasSingleton(final VariantContext eval) {
-        return eval.getAttributeAsBoolean(VariantEval.IS_SINGLETON_KEY, false);
+        return eval.getAttributeAsBoolean(VariantEvalEngine.IS_SINGLETON_KEY, false);
     }
 
     public final String getSimpleName() {

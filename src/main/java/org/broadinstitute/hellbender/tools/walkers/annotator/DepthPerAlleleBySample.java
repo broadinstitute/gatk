@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  *
  * <p>Also known as the allele depth, this annotation gives the unfiltered count of reads that support a given allele for an individual sample. The values in the field are ordered to match the order of alleles specified in the REF and ALT fields: REF, ALT1, ALT2 and so on if there are multiple ALT alleles.</p>
  *
- * <p>See the method documentation on <a href="http://www.broadinstitute.org/gatk/guide/article?id=4721">using coverage information</a> for important interpretation details.</p>
+ * <p>See the method documentation on <a href="https://gatk.broadinstitute.org/hc/en-us/articles/360035532112-Coverage-Read-depth-metrics">using coverage information</a> for important interpretation details.</p>
  *
  * <h3>Caveats</h3>
  * <ul>
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_Coverage.php">Coverage</a></b> gives the filtered depth of coverage for each sample and the unfiltered depth across all samples.</li>
+ *     <li><b>Coverage</b> gives the filtered depth of coverage for each sample and the unfiltered depth across all samples.</li>
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of coverage of each allele per sample (AD)")
@@ -81,9 +81,4 @@ public final class DepthPerAlleleBySample implements GenotypeAnnotation, Standar
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(VCFConstants.GENOTYPE_ALLELE_DEPTHS); }
-
-    @Override
-    public List<VCFFormatHeaderLine> getDescriptions() {
-        return Collections.singletonList(VCFStandardHeaderLines.getFormatLine(getKeyNames().get(0)));
-    }
 }

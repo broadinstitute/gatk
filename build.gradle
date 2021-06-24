@@ -62,7 +62,7 @@ repositories {
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.24.1')
-final picardVersion = System.getProperty('picard.version','2.25.0')
+final picardVersion = System.getProperty('picard.version','2.25.4')
 final barclayVersion = System.getProperty('barclay.version','4.0.1')
 final sparkVersion = System.getProperty('spark.version', '2.4.5')
 final scalaVersion = System.getProperty('scala.version', '2.11')
@@ -71,6 +71,7 @@ final disqVersion = System.getProperty('disq.version','0.3.6')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.1')
 final bigQueryVersion = System.getProperty('bigQuery.version', '1.117.1')
 final guavaVersion = System.getProperty('guava.version', '27.1-jre')
+final log4j2Version = System.getProperty('log4j2Version', '2.13.1')
 final testNGVersion = '7.0.0'
 
 // Using the shaded version to avoid conflicts between its protobuf dependency
@@ -281,12 +282,12 @@ dependencies {
     // should we want to)
     compile 'com.google.cloud.bigdataoss:gcs-connector:1.9.4-hadoop3'
 
-    compile 'org.apache.logging.log4j:log4j-api:2.3'
-    compile 'org.apache.logging.log4j:log4j-core:2.3'
+    compile 'org.apache.logging.log4j:log4j-api:' + log4j2Version
+    compile 'org.apache.logging.log4j:log4j-core:' + log4j2Version
     // include the apache commons-logging bridge that matches the log4j version we use so
     // messages that originate with dependencies that use commons-logging (such as jexl)
     // are routed to log4j
-    compile 'org.apache.logging.log4j:log4j-jcl:2.3'
+    compile 'org.apache.logging.log4j:log4j-jcl:' + log4j2Version
 
     compile 'org.apache.commons:commons-lang3:3.5'
     compile 'org.apache.commons:commons-math3:3.5'
@@ -355,7 +356,7 @@ dependencies {
         transitive = false
     }
 
-    compile('com.intel.gkl:gkl:0.8.6') {
+    compile('com.intel.gkl:gkl:0.8.8') {
         exclude module: 'htsjdk'
     }
 

@@ -46,8 +46,8 @@ import java.util.List;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_FisherStrand.php">FisherStrand</a></b> uses Fisher's Exact Test to evaluate strand bias.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_StrandOddsRatio.php">StrandOddsRatio</a></b> is an updated form of FisherStrand that uses a symmetric odds ratio calculation.</li>
+ *     <li><b>FisherStrand</b> uses Fisher's Exact Test to evaluate strand bias.</li>
+ *     <li><b>StrandOddsRatio</b> is an updated form of FisherStrand that uses a symmetric odds ratio calculation.</li>
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of forward and reverse reads that support REF and ALT alleles (SB)")
@@ -99,11 +99,6 @@ public final class StrandBiasBySample implements GenotypeAnnotation, StandardMut
     @Override
     public List<String> getKeyNames() {
         return Collections.singletonList(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY);
-    }
-
-    @Override
-    public List<VCFFormatHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getFormatLine(getKeyNames().get(0)));
     }
 
     public static int getAltForwardCountFromFlattenedContingencyTable(final int[] contingencyTable) {

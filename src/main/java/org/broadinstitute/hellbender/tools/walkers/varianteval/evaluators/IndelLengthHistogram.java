@@ -2,12 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Molten;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,7 +32,8 @@ public class IndelLengthHistogram extends VariantEvaluator implements StandardEv
     public final static int MAX_SIZE_FOR_HISTOGRAM = 10;
     private final static boolean INCLUDE_LONG_EVENTS_AT_MAX_SIZE = false;
 
-    public IndelLengthHistogram() {
+    public IndelLengthHistogram(VariantEvalEngine engine) {
+        super(engine);
         initializeCounts(MAX_SIZE_FOR_HISTOGRAM);
     }
 
@@ -62,9 +62,9 @@ public class IndelLengthHistogram extends VariantEvaluator implements StandardEv
     }
 
     @Override
-    public void update1(final VariantContext eval, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
+    public void update1(final VariantContext eval, final VariantEvalContext context) {
         if ( eval.isIndel() && ! eval.isComplexIndel() ) {
-            if ( ! ( getWalker().ignoreAC0Sites() && eval.isMonomorphicInSamples() )) {
+            if ( ! ( getEngine().getVariantEvalArgs().ignoreAC0Sites() && eval.isMonomorphicInSamples() )) {
                 // only if we are actually polymorphic in the subsetted samples should we count the allele
                 for ( Allele alt : eval.getAlternateAlleles() ) {
                     final int alleleSize = alt.length() - eval.getReference().length();

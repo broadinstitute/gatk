@@ -4,7 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSetSpark;
 import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -138,7 +138,7 @@ public final class SVUtils {
         Utils.nonNull(coll1, "first collection of kmers is null");
         Utils.nonNull(coll2, "second collection of kmers is null");
 
-        final HopscotchSet<SVKmer> kmers = new HopscotchSet<>(coll1.size() + coll2.size());
+        final HopscotchSetSpark<SVKmer> kmers = new HopscotchSetSpark<>(coll1.size() + coll2.size());
         kmers.addAll(coll1);
         kmers.addAll(coll2);
         return kmers;

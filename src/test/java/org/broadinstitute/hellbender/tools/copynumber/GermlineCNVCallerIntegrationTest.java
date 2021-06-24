@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumen
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
