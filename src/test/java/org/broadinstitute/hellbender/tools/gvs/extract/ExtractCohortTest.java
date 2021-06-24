@@ -59,7 +59,7 @@ class ExtractCohortTest extends CommandLineProgramTest {
     runCommandLine(args);
   }
 
-  @Test(expectedExceptions = CommandLineException.class)
+  @Test(expectedExceptions = UserException.class)
   public void testNoFilteringThresholdsError() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
@@ -71,7 +71,26 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("cohort-avro-file-name", cohortAvroFileName)
         .add("sample-file", sampleFile)
         .add("emit-pls", false)
-        .add("filter-type", "GENOTYPE");
+        .add("filter-set-info-table", "foo")
+        .add("vqslod-filter-by-site", true);
+    runCommandLine(args);
+  }
+
+  @Test(expectedExceptions = UserException.class)
+  public void testFakeFilteringError() throws Exception {
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    // No filterSetInfoTableName included, so should throw a user error with the performSiteSpecificVQSLODFiltering flag
+    args
+        .add("mode", "GENOMES")
+        .add("ref-version", 38)
+        .add("R", hg38Reference)
+        .add("O", "anything")
+        .add("local-sort-max-records-in-ram", 10000000)
+        .add("cohort-avro-file-name", cohortAvroFileName)
+        .add("sample-file", sampleFile)
+        .add("emit-pls", false)
+        .add("filter-set-name", "foo")
+        .add("vqslod-filter-by-site", true);
     runCommandLine(args);
   }
 }
