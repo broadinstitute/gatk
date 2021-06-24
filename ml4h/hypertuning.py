@@ -17,7 +17,7 @@ from ml4h.models.model_factory import block_make_multimodal_multitask_model
 from ml4h.tensor_generators import test_train_valid_tensor_generators
 
 tuner_type = 'bayes'
-
+MAX_MODEL_SIZE = 15000000
 
 def run(args):
     start_time = timer()
@@ -45,7 +45,7 @@ def run(args):
             model_builder,
             objective='val_loss', #kt.Objective("val_pearson", direction="max"),
             max_trials=args.max_models,
-            max_model_size=args.max_parameters,
+            #max_model_size=args.max_parameters,
             executions_per_trial=args.min_samples,
             directory=args.output_folder,
             project_name=args.id,
@@ -142,7 +142,7 @@ class BayesianSearchEdit(BayesianOptimization):
         model_size = self.maybe_compute_model_size(model)
         print("Considering model with size: {}".format(model_size))
 
-        if model_size > self.max_model_size:
+        if model_size > MAX_MODEL_SIZE:
             self.oracle.end_trial(trial.trial_id, trial_module.TrialStatus.INVALID)
 
             dummy_history_obj = tf.keras.callbacks.History()
