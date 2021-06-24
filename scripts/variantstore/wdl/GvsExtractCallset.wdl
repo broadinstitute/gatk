@@ -119,7 +119,7 @@ task ExtractTask {
         String fq_filter_set_site_table
         String fq_filter_set_tranches_table
         String? filter_set_name
-        String? filter_type
+        Boolean? vqslod_filter_by_site
         Float? snps_truth_sensitivity_filter_level
         Float? indels_truth_sensitivity_filter_level
 
