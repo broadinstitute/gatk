@@ -44,12 +44,12 @@ workflow GvsSitesOnlyVCF { # tested with "gs://broad-dsp-spec-ops/scratch/rcreme
     #       nirvana_data_tar = nirvana_data_directory
     #}
 
-  #  call PrepAnnotationJson { # prep w a python script-- we are assuming BQ docker has python?
+  #  call PrepAnnotationJson { # TODO should this be it's own step? We need to run a python script to prep the jsons for bq
   #    input:
   #        annotation_json = AnnotateVCF.annotation_json,
    # }
 
-   # call BigQueryLoadJson {
+   # call BigQueryLoadJson { # If we dont use the above step to prep w a python script-- we are assuming BQ docker has python
     #  input:
      #     annotation_json = AnnotateVCF.annotation_json,
        #   #annotation_json_jsi = AnnotateVCF.annotation_json_jsi
@@ -241,12 +241,18 @@ task BigQueryLoadJson {
         String dataset_name
     }
 
-    # I am going to want to have two pre-vat tables. A variant table and a genes table
-    # See if
-     we can grab the annotations json directly from the gcp bucket (so pull it in as a string so it wont)
+    # I am going to want to have two pre-vat tables. A variant table and a genes table. They will be joined together for the vat table
+    # See if we can grab the annotations json directly from the gcp bucket (so pull it in as a string so it wont)
 
-    String temp_table = "pre-vat"
     String vat_table = "vatter"
+    String variant_transcript_table = "vat_vt"
+    String genes_table = "vat_genes"
+
+    # instead of the annotation_json we now need two jsons which are created from the annotation_json with a python script
+    # TODO run that python script on the annotation_json
+    # we will also want specific schemas for each of these tables---right now we are over-using one. Let's get Lee's sign off on the final one
+    File variant_transcript_bq_load.json = annotation_json
+    File genes_bq_load.json = annotation_json
 
     command <<<
         set -e
@@ -254,9 +260,23 @@ task BigQueryLoadJson {
         # load the annotation json in as a temp interim BQ vat table
         # TODO make sure when you load---if you split in some way, that you dont drop "header lines" from secondary shards that have no headers
 
-        echo "Creating the pre-vat table ~{dataset_name}.~{temp_table}"
-        bq --location=US load --replace=true --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON --autodetect ~{dataset_name}.~{temp_table} ~{annotation_json}
+        # since we expect to add to these tables, --replace=true is not a flag we want. Verify that this will not be loaded with a bq *
+        echo "Creating a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        bq --location=US load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON --autodetect ~{dataset_name}.~{variant_transcript_table} ~{variant_transcript_bq_load.json}
         # bq --location=US load --replace=true --project_id="spec-ops-aou" --source_format=NEWLINE_DELIMITED_JSON --autodetect "anvil_100_for_testing.temp" /Users/aurora/Desktop/repositories/gatk/hello_did_I_annotate.json
+
+        echo "Creating a pre-vat table ~{dataset_name}.~{genes_table}"
+        bq --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON --autodetect ~{dataset_name}.~{genes_table} ~{genes_bq_load.json}
+
+        set +e
+        bq show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
+        BQ_SHOW_RC=$?
+        set -e
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+          echo "Creating the vat table ~{dataset_name}.~{vat_table}"
+          bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+        fi
+
 
         # create the final vat table with the correct fields
         PARTITION_FIELD="position"
@@ -278,62 +298,55 @@ task BigQueryLoadJson {
         # now run some giant query in BQ to get this all in the right table
         bq query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --project_id=~{project_id} \
         'SELECT
-              v.position,
               v.vid,
-              v.chromosome AS contig,
-              v.refAllele AS ref_allele,
-              v.altAllele AS alt_allele,
-              v.variantType AS variant_type,
-              v.hgvsg AS genomic_location,
-              ARRAY_TO_STRING(v.dbsnp, ",") AS dbsnp_rsid,
-              t.transcript,
-              t.hgnc AS gene_symbol,
-              t.source AS transcript_source,
-              t.hgvsp AS aa_change,
-              ARRAY_TO_STRING(t.consequence, ",") AS consequence,
-              t.hgvsc AS dna_change,
-              t.exons AS exon_number,
-              t.introns AS intron_number,
-              t.hgvsc AS splice_distance,
-              t.geneId AS entrez_gene_id,
-              CASE WHEN ( t.transcript is not null and t.isCanonical is not True) THEN "false" WHEN ( t.transcript is not null and t.isCanonical is True) THEN "true" END AS is_canonical_transcript,
+              v.transcript,
+              v.contig,
+              v.position,
+              v.ref_allele,
+              v.alt_allele,
               null AS gvs_all_ac,
               null AS gvs_all_an,
               null AS  gvs_all_af,
-              v.revel.score AS revel,
-              # we just grab the first value in spliceAI (need to validate that there will only ever be one)
-              CASE WHEN (array_length(v.spliceAI)) > 0
-                 THEN v.spliceAI[offset(0)].acceptorGainScore END AS splice_ai_acceptor_gain_score,
-              CASE WHEN (array_length(v.spliceAI)) > 0
-                 THEN v.spliceAI[offset(0)].acceptorGainDistance END AS splice_ai_acceptor_gain_distance,
-              CASE WHEN (array_length(v.spliceAI)) > 0
-                 THEN v.spliceAI[offset(0)].acceptorLossScore END AS splice_ai_acceptor_loss_score,
-              CASE WHEN (array_length(v.spliceAI)) > 0
-                 THEN v.spliceAI[offset(0)].acceptorLossDistance END AS splice_ai_acceptor_loss_distance,
-              CASE WHEN (array_length(v.spliceAI)) > 0
-                 THEN v.spliceAI[offset(0)].donorGainScore END AS splice_ai_donor_gain_score,
-              CASE WHEN (array_length(v.spliceAI)) > 0
-                 THEN v.spliceAI[offset(0)].donorGainDistance END AS splice_ai_donor_gain_distance,
-              CASE WHEN (array_length(v.spliceAI)) > 0
-                 THEN v.spliceAI[offset(0)].donorLossScore END AS splice_ai_donor_loss_score,
-              CASE WHEN (array_length(v.spliceAI)) > 0
-                 THEN v.spliceAI[offset(0)].donorLossDistance END AS splice_ai_donor_loss_distance,
-              (SELECT ARRAY_TO_STRING(significance, ",") FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_classification,
-              (SELECT lastUpdatedDate FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_last_updated,
-              (SELECT phenotypes FROM v.clinvar WHERE id LIKE "RCV%") AS clinvar_phenotype,
-              v.gnomad.allAf AS gnomad_all_af,
-              v.gnomad.allAc AS gnomad_all_ac,
-              v.gnomad.allAn AS gnomad_all_an,
-              v.gnomad.afrAf AS gnomad_max_af,
-              v.gnomad.afrAc AS gnomad_max_ac,
-              v.gnomad.afrAn AS gnomad_max_an,
+              v.gene_symbol,
+              v.transcript_source,
+              v.aa_change,
+              ARRAY_TO_STRING(v.consequence, ",") AS consequence,
+              v.dna_change,
+              v.variant_type,
+              v.exon_number,
+              v.intron_number,
+              v.genomic_location,
+              #v.hgvsc AS splice_distance has not yet been designed
+              ARRAY_TO_STRING(v.dbsnp_rsid, ",") AS dbsnp_rsid,
+              v.entrez_gene_id,
+              #g.hgnc_gene_id is not produced by Nirvana annotations
+              g.gene_omim_id,
+              CASE WHEN ( v.transcript is not null and v.is_canonical_transcript is not True)
+                THEN "false" WHEN ( v.transcript is not null and v.is_canonical_transcript is True) THEN "true" END AS is_canonical_transcript,
+              v.gnomad_all_af,
+              v.gnomad_all_ac,
+              v.gnomad_all_an,
+              v.gnomad_max_af, # this still needs to be designed
+              v.gnomad_max_ac, # this still needs to be designed
+              v.gnomad_max_an, # this still needs to be designed
               null AS gnomad_max_subpop, # what is this mapping?
-              null AS gene_omim_id,
-              null AS omim_phenotypes_id,
-              null AS omim_phenotypes_name,
-              from (SELECT position, variantline.* FROM `~{dataset_name}.~{temp_table}`, UNNEST(variants) as variantline) as v
-              left join (SELECT position, variantline.vid, transcriptline.* FROM `~{dataset_name}.~{temp_table}`, UNNEST(variants) as variantline, UNNEST(variantline.transcripts) as transcriptline) as t on v.vid = t.vid'
-
+              v.revel,
+              # this is the first value in spliceAI (need to validate that there will only ever be one)
+              v.splice_ai_acceptor_gain_score,
+              v.splice_ai_acceptor_gain_distance,
+              v.splice_ai_acceptor_loss_score,
+              v.splice_ai_acceptor_loss_distance,
+              v.splice_ai_donor_gain_score,
+              v.splice_ai_donor_gain_distance,
+              v.splice_ai_donor_loss_score,
+              v.splice_ai_donor_loss_distance,
+              g.omim_phenotypes_id,
+              g.omim_phenotypes_name,
+              v.clinvar_classification, # validate that we only grab lines WHERE id LIKE "RCV%"
+              v.clinvar_last_updated,
+              v.clinvar_phenotype,
+              from `~{dataset_name}.~{variant_transcript_table}` as v
+              left join `~{dataset_name}.~{genes_table}` as g on v.gene_symbol = g.gene_symbol'
 
        # cat status_bq_submission | tail -n 1 > status_bq_submission_last_line
        # bq_job_id=$(sed 's/.*://' status_bq_submission_last_line)
