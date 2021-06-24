@@ -27,6 +27,7 @@ def train_model_from_generators(
     run_id: str,
     inspect_model: bool,
     inspect_show_labels: bool,
+    output_tensor_maps = [],
     return_history: bool = False,
     plot: bool = True,
     save_last_model: bool = False,
@@ -67,11 +68,11 @@ def train_model_from_generators(
         validation_steps=validation_steps, validation_data=generate_valid,
         callbacks=_get_callbacks(patience, model_file, save_last_model),
     )
-    #generate_train.kill_workers()
-    #generate_valid.kill_workers()
+    # generate_train.kill_workers()
+    # generate_valid.kill_workers()
 
     logging.info('Model weights saved at: %s' % model_file)
-    custom_dict = _get_custom_objects(generate_train.output_maps)
+    custom_dict = _get_custom_objects(output_tensor_maps)
     model = load_model(model_file, custom_objects=custom_dict, compile=False)
     model.compile(optimizer='adam', loss=custom_dict['loss'])
     if plot:

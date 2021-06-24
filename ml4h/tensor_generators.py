@@ -471,7 +471,7 @@ class _MultiModalMultiTaskWorker:
         return out
 
 
-def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int):
+def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: int, keep_paths: bool = False):
     """Collect minibatches into bigger batches
 
     Returns a dicts of numpy arrays like the same kind as generator but with more examples.
@@ -483,7 +483,8 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
-    first_batch = next(generator)
+    iterator = generator.as_numpy_iterator()
+    first_batch = next(iterator)
     saved_tensors = {}
     batch_size = None
     for key, batch_array in chain(first_batch[BATCH_INPUT_INDEX].items(), first_batch[BATCH_OUTPUT_INDEX].items()):
@@ -492,14 +493,13 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
         batch_size = batch_array.shape[0]
         saved_tensors[key][:batch_size] = batch_array
 
-    keep_paths = generator.keep_paths
     if keep_paths:
         paths = first_batch[BATCH_PATHS_INDEX]
 
     input_tensors, output_tensors = list(first_batch[BATCH_INPUT_INDEX]), list(first_batch[BATCH_OUTPUT_INDEX])
     for i in range(1, minibatches):
         logging.debug(f'big_batch_from_minibatch {100 * i / minibatches:.2f}% done.')
-        next_batch = next(generator)
+        next_batch = next(iterator)
         s, t = i * batch_size, (i + 1) * batch_size
         for key in input_tensors:
             saved_tensors[key][s:t] = next_batch[BATCH_INPUT_INDEX][key]
@@ -746,7 +746,7 @@ def test_train_valid_tensor_generators(
     cache_size: float,
     balance_csvs: List[str],
     keep_paths: bool = False,
-    keep_paths_test: bool = True,
+    keep_paths_test: bool = False,
     mixup_alpha: float = -1.0,
     sample_csv: str = None,
     valid_ratio: float = None,
@@ -839,7 +839,6 @@ def test_train_valid_tensor_generators(
         output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
         output_shapes=(in_shapes, out_shapes))
     return train_dataset, valid_dataset, test_dataset
-    #return generate_train, generate_valid, generate_test
 
 
 def _log_first_error(stats: Counter, tensor_path: str):

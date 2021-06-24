@@ -29,8 +29,8 @@ from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSamp
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
-#from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
-# import tensorflow_probability as tfp
+from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
+import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
 from ml4h.plots import plot_metric_history
@@ -40,7 +40,7 @@ from ml4h.defines import JOIN_CHAR, IMAGE_EXT, MODEL_EXT, ECG_CHAR_2_IDX, PARTNE
 
 CHANNEL_AXIS = -1  # Set to 1 for Theano backend
 LANGUAGE_MODEL_SUFFIX = '_next_character'
-# tfd = tfp.distributions
+tfd = tfp.distributions
 
 
 class BottleneckType(Enum):
