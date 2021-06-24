@@ -23,7 +23,6 @@ import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper.GnarlyGenotyperEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
@@ -51,7 +50,7 @@ public class ExtractCohortEngine {
     private final ReferenceDataSource refSource;
     private Double vqsLodSNPThreshold;
     private Double vqsLodINDELThreshold;
-    private boolean performGenotypeVQSLODFiltering;
+    private ExtractCohort.VQSLODFilteringType VQSLODFilteringType;
     private boolean excludeFilteredSites;
 
     private final ProgressMeter progressMeter;
@@ -63,8 +62,6 @@ public class ExtractCohortEngine {
     private Map<Long, String> sampleIdToName;
 
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
-    private final boolean disableGnarlyGenotyper;
-    private final GnarlyGenotyperEngine gnarlyGenotyper;
     private final VariantAnnotatorEngine annotationEngine;
 
     private int totalNumberOfVariants = 0;
@@ -102,8 +99,7 @@ public class ExtractCohortEngine {
                                final ProgressMeter progressMeter,
                                final String filterSetName,
                                final boolean emitPLs,
-                               final boolean disableGnarlyGenotyper,
-                               final boolean performGenotypeVQSLODFiltering,
+                               final ExtractCohort.VQSLODFilteringType VQSLODFilteringType,
                                final boolean excludeFilteredSites
     ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
@@ -122,14 +118,15 @@ public class ExtractCohortEngine {
         this.traversalIntervals = traversalIntervals;
         this.minLocation = minLocation;
         this.maxLocation = maxLocation;
-        this.filterSetInfoTableRef = filterSetInfoTableName == null || "".equals(filterSetInfoTableName) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.YNG_FIELDS);
-        this.filterSetSiteTableRef = filterSetSiteTableName == null || "".equals(filterSetSiteTableName) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
 
         this.printDebugInformation = printDebugInformation;
         this.vqsLodSNPThreshold = vqsLodSNPThreshold;
         this.vqsLodINDELThreshold = vqsLodINDELThreshold;
-        this.performGenotypeVQSLODFiltering = performGenotypeVQSLODFiltering;
+        this.VQSLODFilteringType = VQSLODFilteringType;
         this.excludeFilteredSites = excludeFilteredSites;
+
+        this.filterSetInfoTableRef = VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.YNG_FIELDS);
+        this.filterSetSiteTableRef = VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
 
         this.progressMeter = progressMeter;
 
@@ -137,11 +134,8 @@ public class ExtractCohortEngine {
 
         this.annotationEngine = annotationEngine;
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
-        this.disableGnarlyGenotyper = disableGnarlyGenotyper;
-        this.gnarlyGenotyper = disableGnarlyGenotyper ? null : new GnarlyGenotyperEngine(false, 30, false, emitPLs, true);
-
     }
-
+    // TODO note that these defaults are never used.
     private final static double INDEL_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.INDEL_HETEROZYGOSITY);
     private final static double SNP_QUAL_THRESHOLD = GenotypeCalculationArgumentCollection.DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING - 10 * Math.log10(HomoSapiensConstants.SNP_HETEROZYGOSITY);
 
@@ -160,7 +154,7 @@ public class ExtractCohortEngine {
         }
         final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
 
-        boolean noVqslodFilteringRequested = (filterSetInfoTableRef == null);
+        boolean noVqslodFilteringRequested = VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.NONE);
         if (!noVqslodFilteringRequested) {
             // ensure vqslod filters are defined. this really shouldn't ever happen, said the engineer.
             if (vqsLodSNPThreshold == null || vqsLodINDELThreshold == null) {
@@ -269,7 +263,7 @@ public class ExtractCohortEngine {
 
                 if (location != currentLocation && currentLocation != -1) {
                     ++totalNumberOfSites;
-                    processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, performGenotypeVQSLODFiltering);
+                    processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
 
                     currentPositionRecords.clear();
                 }
@@ -281,7 +275,7 @@ public class ExtractCohortEngine {
 
         if ( ! currentPositionRecords.isEmpty() ) {
             ++totalNumberOfSites;
-            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, performGenotypeVQSLODFiltering);
+            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
         }
     }
 
@@ -310,7 +304,7 @@ public class ExtractCohortEngine {
                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                                  final boolean noVqslodFilteringRequested,
                                                  final HashMap<Long, List<String>> siteFilterMap,
-                                                 final boolean performGenotypeVQSLODFiltering) {
+                                                 final ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
 
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final Set<String> currentPositionSamplesSeen = new HashSet<>();
@@ -352,7 +346,7 @@ public class ExtractCohortEngine {
             switch (sampleRecord.getState()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
-                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
+                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap, VQSLODFilteringType);
                     unmergedCalls.add(vc);
 
                     currentPositionHasVariant = true;
@@ -422,31 +416,21 @@ public class ExtractCohortEngine {
             unmergedCalls.add(createRefSiteVariantContextWithGQ(missingSample, contig, start, refAllele, MISSING_CONF_THRESHOLD));
         }
 
-        // we only need to retain the NonRefSymbolicAllele if we are using gnarly
-        boolean removeNonRefSymbolicAllele = this.disableGnarlyGenotyper;
-
         final VariantContext mergedVC = variantContextMerger.merge(
                 unmergedCalls,
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
-                removeNonRefSymbolicAllele,
+                true,
                 false,
                 true);
 
         ReferenceContext referenceContext = new ReferenceContext(refSource, new SimpleInterval(mergedVC));
 
-        VariantContext annotatedVC = annotationEngine.annotateContext(mergedVC, new FeatureContext(), referenceContext, null, a -> true);
-
-        final VariantContext genotypedVC = this.disableGnarlyGenotyper ? annotatedVC : gnarlyGenotyper.finalizeGenotype(annotatedVC);
-
-        // Gnarly will indicate dropping a site by returning a null from the finalizeGenotype method
-        if (!this.disableGnarlyGenotyper && genotypedVC == null) {
-            return;
-        }
+        VariantContext genotypedVC = annotationEngine.annotateContext(mergedVC, new FeatureContext(), referenceContext, null, a -> true);
 
         // apply VQSLod-based filters
         VariantContext filteredVC =
-                noVqslodFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQSLOD(genotypedVC, vqsLodMap, yngMap, performGenotypeVQSLODFiltering);
+                noVqslodFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQSLOD(genotypedVC, vqsLodMap, yngMap, VQSLODFilteringType);
 
         // apply SiteQC-based filters, if they exist
         if ( siteFilterMap.containsKey(location) ) {
@@ -475,7 +459,7 @@ public class ExtractCohortEngine {
         }
     }
 
-    private VariantContext filterSiteByAlleleSpecificVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean onlyAnnotate) {
+    private VariantContext filterSiteByAlleleSpecificVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
         final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
         final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
@@ -489,7 +473,7 @@ public class ExtractCohortEngine {
         builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, relevantVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
-        if (!onlyAnnotate) {
+        if (VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.SITES)) { // Note that these filters are not used with Genotype VQSLOD Filtering
             int refLength = mergedVC.getReference().length();
 
             // if there are any Yays, the site is PASS
@@ -580,7 +564,7 @@ public class ExtractCohortEngine {
 
 
     // vqsLogMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
-    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean performGenotypeVQSLODFiltering) {
+    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
 
@@ -601,7 +585,7 @@ public class ExtractCohortEngine {
         List<Allele> altAlleles = Arrays.stream(sampleRecord.getAltAllele().split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER))
                 .map(altAllele -> Allele.create(altAllele, false)).collect(Collectors.toList());
 
-        // NOTE: gnarly needs this it seems?
+        // NOTE: gnarly needs this it seems? Should it be dropped now that we wont be using gnarly?
         altAlleles.add(Allele.NON_REF_ALLELE);
 
         alleles.addAll(altAlleles);
@@ -632,7 +616,7 @@ public class ExtractCohortEngine {
                             .map(alleleIndex -> alleles.get(alleleIndex))
                             .collect(Collectors.toList());
 
-            if (performGenotypeVQSLODFiltering) {
+            if (VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.GENOTYPE)) {
                 final List<Allele> nonRefAlleles =
                         genotypeAlleles.stream()
                                 .filter(a -> a.isNonReference())

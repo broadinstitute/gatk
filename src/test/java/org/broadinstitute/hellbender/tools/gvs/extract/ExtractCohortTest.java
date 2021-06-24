@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
@@ -34,11 +36,61 @@ class ExtractCohortTest extends CommandLineProgramTest {
         .add("local-sort-max-records-in-ram", 10000000)
         .add("cohort-avro-file-name", cohortAvroFileName)
         .add("sample-file", sampleFile)
-        .add("emit-pls", false)
-        .add("vqslod-filter-genotypes", false);
+        .add("emit-pls", false);
 
     runCommandLine(args);
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
   }
 
+  @Test(expectedExceptions = UserException.class)
+  public void testThrowFilterError() throws Exception {
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    args
+        .add("mode", "GENOMES")
+        .add("ref-version", 38)
+        .add("R", hg38Reference)
+        .add("O", "anything")
+        .add("local-sort-max-records-in-ram", 10000000)
+        .add("cohort-avro-file-name", cohortAvroFileName)
+        .add("sample-file", sampleFile)
+        .add("filter-set-info-table", "something")
+        .add("filter-set-name", "something")
+        .add("emit-pls", false);
+    runCommandLine(args);
+  }
+
+  @Test(expectedExceptions = UserException.class)
+  public void testNoFilteringThresholdsError() throws Exception {
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    args
+        .add("mode", "GENOMES")
+        .add("ref-version", 38)
+        .add("R", hg38Reference)
+        .add("O", "anything")
+        .add("local-sort-max-records-in-ram", 10000000)
+        .add("cohort-avro-file-name", cohortAvroFileName)
+        .add("sample-file", sampleFile)
+        .add("emit-pls", false)
+        .add("filter-set-info-table", "foo")
+        .add("vqslod-filter-by-site", true);
+    runCommandLine(args);
+  }
+
+  @Test(expectedExceptions = UserException.class)
+  public void testFakeFilteringError() throws Exception {
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    // No filterSetInfoTableName included, so should throw a user error with the performSiteSpecificVQSLODFiltering flag
+    args
+        .add("mode", "GENOMES")
+        .add("ref-version", 38)
+        .add("R", hg38Reference)
+        .add("O", "anything")
+        .add("local-sort-max-records-in-ram", 10000000)
+        .add("cohort-avro-file-name", cohortAvroFileName)
+        .add("sample-file", sampleFile)
+        .add("emit-pls", false)
+        .add("filter-set-name", "foo")
+        .add("vqslod-filter-by-site", true);
+    runCommandLine(args);
+  }
 }
