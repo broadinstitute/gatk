@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple
 
 import tensorflow as tf
 import tensorflow.keras.backend as K
-# import tensorflow_probability as tfp
+import tensorflow_probability as tfp
 from tensorflow.keras.layers import concatenate, Flatten, Average, Layer
 
 from ml4h.models.Block import Block
@@ -11,7 +11,7 @@ from ml4h.models.basic_blocks import DenseBlock
 from ml4h.models.layer_wrappers import global_average_pool
 
 Tensor = tf.Tensor
-# tfd = tfp.distributions
+tfd = tfp.distributions
 
 
 class FlatConcatBlock(Block):
