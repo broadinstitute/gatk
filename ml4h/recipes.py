@@ -144,7 +144,8 @@ def train_multimodal_multitask(args):
     model = make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, save_last_model=args.save_last_model
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model
     )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
@@ -160,7 +161,8 @@ def train_block(args):
     model, encoders, decoders, merger = block_make_multimodal_multitask_model(**args.__dict__)
     model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, save_last_model=args.save_last_model
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -447,10 +449,10 @@ def train_siamese_model(args):
 def train_paired_model(args):
     full_model, encoders, decoders = make_paired_autoencoder_model(**args.__dict__)
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
-    train_model_from_generators(
-        full_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size,
-        args.epochs, args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels,
-        save_last_model=args.save_last_model,
+    full_model = train_model_from_generators(
+        full_model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
+        save_last_model=args.save_last_model
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
