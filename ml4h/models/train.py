@@ -67,8 +67,8 @@ def train_model_from_generators(
         validation_steps=validation_steps, validation_data=generate_valid,
         callbacks=_get_callbacks(patience, model_file, save_last_model),
     )
-    generate_train.kill_workers()
-    generate_valid.kill_workers()
+    #generate_train.kill_workers()
+    #generate_valid.kill_workers()
 
     logging.info('Model weights saved at: %s' % model_file)
     custom_dict = _get_custom_objects(generate_train.output_maps)
