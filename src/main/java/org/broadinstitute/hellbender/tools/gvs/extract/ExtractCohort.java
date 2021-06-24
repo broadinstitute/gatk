@@ -147,8 +147,9 @@ public class ExtractCohort extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
 
-        // filter using vqslod-- default to GENOTYPE unless SITES specifically selected
-        vqslodfilteringType = performSiteSpecificVQSLODFiltering ? VQSLODFilteringType.SITES : VQSLODFilteringType.GENOTYPE;
+        if (filterSetInfoTableName != null) { // filter using vqslod-- default to GENOTYPE unless SITES specifically selected
+            vqslodfilteringType = performSiteSpecificVQSLODFiltering ? VQSLODFilteringType.SITES : VQSLODFilteringType.GENOTYPE;
+        }
 
         // filter at a site level (but not necesarily use vqslod)
         if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
