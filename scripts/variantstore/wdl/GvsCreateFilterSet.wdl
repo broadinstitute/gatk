@@ -255,6 +255,9 @@ workflow GvsCreateFilterSet {
     call UploadFilterSetFilesToBQ {
         input:
             filter_set_name = filter_set_name,
+            filter_sites_load = CreateFilterSetFiles.filter_sites_load,
+            filter_set_load = CreateFilterSetFiles.filter_set_load,
+            tranches_load = CreateFilterSetFiles.tranches_load,
             output_directory = tmp_output_directory,
             fq_info_destination_table = fq_info_destination_table,
             fq_tranches_destination_table = fq_tranches_destination_table,
@@ -574,6 +577,10 @@ task UploadFilterSetFilesToBQ {
 
         String filter_set_name
         String output_directory
+
+        Array[String] filter_sites_load
+        Array[String] filter_set_load
+        Array[String] tranches_load
 
         String fq_info_destination_table
         String fq_tranches_destination_table
