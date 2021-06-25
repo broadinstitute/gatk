@@ -204,6 +204,26 @@ workflow GvsCreateFilterSet {
                 disk_size = small_disk,
                 gatk_override = gatk_override
         }
+
+        scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
+            call CreateFilterSetFiles as CreateFilterSetFilesScattered {
+                input:
+                    gatk_override = gatk_override,
+                    filter_set_name = filter_set_name,
+                    output_directory = tmp_output_directory,
+                    sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+                    sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+                    snp_recal_file = SNPsVariantRecalibratorScattered.recalibration[idx],
+                    snp_recal_file_index = SNPsVariantRecalibratorScattered.recalibration_index[idx],
+                    snp_recal_tranches = SNPGatherTranches.tranches_file,
+                    indel_recal_file = IndelsVariantRecalibrator.recalibration,
+                    indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
+                    indel_recal_tranches = IndelsVariantRecalibrator.tranches,
+                    index = idx,
+                    service_account_json = service_account_json,
+                    query_project = query_project
+            }
+        }
     }
 
     if (GetNumSamples.num_samples <= snps_variant_recalibration_threshold) {
@@ -230,23 +250,21 @@ workflow GvsCreateFilterSet {
                 machine_mem_gb = SNP_VQSR_machine_mem_gb,
                 downsampleFactor= SNP_VQSR_downsampleFactor
         }
-    }
 
-    scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
-        call CreateFilterSetFiles {
+        call CreateFilterSetFiles as CreateFilterSetFilesClassic {
             input:
                 gatk_override = gatk_override,
                 filter_set_name = filter_set_name,
                 output_directory = tmp_output_directory,
                 sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
                 sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
-                snp_recal_file = if defined(SNPsVariantRecalibratorScattered.recalibration) then select_first([SNPsVariantRecalibratorScattered.recalibration])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration]),
-                snp_recal_file_index = if defined(SNPsVariantRecalibratorScattered.recalibration_index) then select_first([SNPsVariantRecalibratorScattered.recalibration_index])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration_index]),
-                snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
+                snp_recal_file = SNPsVariantRecalibratorClassic.recalibration,
+                snp_recal_file_index = SNPsVariantRecalibratorClassic.recalibration_index,
+                snp_recal_tranches = SNPsVariantRecalibratorClassic.tranches,
                 indel_recal_file = IndelsVariantRecalibrator.recalibration,
                 indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
                 indel_recal_tranches = IndelsVariantRecalibrator.tranches,
-                index = idx,
+                index = 1,
                 service_account_json = service_account_json,
                 query_project = query_project
         }
@@ -255,9 +273,7 @@ workflow GvsCreateFilterSet {
     call UploadFilterSetFilesToBQ {
         input:
             filter_set_name = filter_set_name,
-            filter_sites_load = CreateFilterSetFiles.filter_sites_load,
-            filter_set_load = CreateFilterSetFiles.filter_set_load,
-            tranches_load = CreateFilterSetFiles.tranches_load,
+            file_creation_done = select_first([CreateFilterSetFilesScattered.done, CreateFilterSetFilesClassic.done]),
             output_directory = tmp_output_directory,
             fq_info_destination_table = fq_info_destination_table,
             fq_tranches_destination_table = fq_tranches_destination_table,
@@ -557,9 +573,7 @@ task CreateFilterSetFiles {
     # ------------------------------------------------
     # Outputs:
     output {
-        String filter_sites_load = "~{output_directory}/filter_sites_load.~{index}.tsv"
-        String filter_set_load = "~{output_directory}/filter_set_load.~{index}.tsv"
-        String tranches_load = "~{output_directory}/tranches_load.~{index}.tsv"
+        String done = "done"
     }
 }
 
@@ -578,9 +592,7 @@ task UploadFilterSetFilesToBQ {
         String filter_set_name
         String output_directory
 
-        Array[String] filter_sites_load
-        Array[String] filter_set_load
-        Array[String] tranches_load
+        String file_creation_done
 
         String fq_info_destination_table
         String fq_tranches_destination_table
