@@ -556,9 +556,9 @@ task CreateFilterSetFiles {
     # ------------------------------------------------
     # Outputs:
     output {
-        File filter_sites_load = "filter_sites_load.~{index}.tsv"
-        File filter_set_load = "filter_set_load.~{index}.tsv"
-        File tranches_load = "tranches_load.~{index}.tsv"
+        File filter_sites_load = "~{output_directory}/filter_sites_load.~{index}.tsv"
+        File filter_set_load = "~{output_directory}/filter_set_load.~{index}.tsv"
+        File tranches_load = "~{output_directory}/tranches_load.~{index}.tsv"
     }
 }
 
