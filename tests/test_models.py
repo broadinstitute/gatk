@@ -29,6 +29,7 @@ DEFAULT_PARAMS = {
     'conv_type': 'conv',
     'conv_layers': [6, 5, 3],
     'conv_width': [71]*5,
+    'conv_dilate': False,
     'conv_x': [3]*5,
     'conv_y': [3]*5,
     'conv_z': [2]*5,
