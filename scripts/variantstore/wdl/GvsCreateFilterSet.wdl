@@ -13,6 +13,7 @@ workflow GvsCreateFilterSet {
 
         String data_project
         String default_dataset
+        String tmp_output_directory
 
         String query_project = data_project
         Array[String]? query_labels
@@ -232,26 +233,27 @@ workflow GvsCreateFilterSet {
     }
 
     scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
-        call UploadFilterSetToBQ {
-             input:
+        call CreateFilterSetFiles {
+            input:
                 gatk_override = gatk_override,
                 filter_set_name = filter_set_name,
-
+                output_directory = tmp_output_directory,
                 sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-                sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
-
                 snp_recal_file = if defined(SNPsVariantRecalibratorScattered.recalibration) then select_first([SNPsVariantRecalibratorScattered.recalibration])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration]),
-                snp_recal_file_index = if defined(SNPsVariantRecalibratorScattered.recalibration_index) then select_first([SNPsVariantRecalibratorScattered.recalibration_index])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration_index]),
                 snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
-
                 indel_recal_file = IndelsVariantRecalibrator.recalibration,
-                indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
                 indel_recal_tranches = IndelsVariantRecalibrator.tranches,
+                service_account_json = service_account_json,
+                query_project = query_project
+        }
 
+        call UploadFilterSetToBQ {
+             input:
+                filter_set_name = filter_set_name,
+                output_directory = tmp_output_directory,
                 fq_info_destination_table = fq_info_destination_table,
                 fq_tranches_destination_table = fq_tranches_destination_table,
                 fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-
                 service_account_json = service_account_json,
                 query_project = query_project
         }
@@ -447,7 +449,7 @@ task ExtractFilterTask {
       }
   }
 
-task UploadFilterSetToBQ {
+task CreateFilterSetFiles {
     # indicates that this task should NOT be call cached
 
     # TODO: should this be marked as volatile???
@@ -463,21 +465,15 @@ task UploadFilterSetToBQ {
         File? gatk_override
 
         String filter_set_name
+        String output_directory
 
         File sites_only_variant_filtered_vcf
-        File sites_only_variant_filtered_vcf_index
 
         File snp_recal_file
-        File snp_recal_file_index
         File snp_recal_tranches
 
         File indel_recal_file
-        File indel_recal_file_index
         File indel_recal_tranches
-
-        String fq_info_destination_table
-        String fq_tranches_destination_table
-        String fq_filter_sites_destination_table
 
         File? service_account_json
         String query_project
@@ -488,16 +484,15 @@ task UploadFilterSetToBQ {
     # ------------------------------------------------
     # Run our command:
     command <<<
-        set -e
-        set -o pipefail
-
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        set -eo pipefail
 
         if [ ~{has_service_account_file} = 'true' ]; then
             export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
             gcloud auth activate-service-account --key-file='~{service_account_json}'
             gcloud config set project ~{query_project}
         fi
+
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         gatk --java-options "-Xmx1g" \
             CreateFilteringFiles \
@@ -526,36 +521,14 @@ task UploadFilterSetToBQ {
         echo "Merging SNP + INDELs"
         cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > filter_set_load.tsv
 
-        # BQ load likes a : instead of a . after the project
-        bq_info_table=$(echo ~{fq_info_destination_table} | sed s/\\./:/)
-
-        echo "Loading Filter Set into BQ"
-        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
-        ${bq_info_table} \
-        filter_set_load.tsv \
-        "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string"
-
         echo "Merging Tranches"
         cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > tranches_load.csv
 
-        # BQ load likes a : instead of a . after the project
-        bq_tranches_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
-
-        echo "Loading Tranches into BQ"
-        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
-        ${bq_tranches_table} \
-        tranches_load.csv \
-        "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float"
-
-        # BQ load likes a : instead of a . after the project
-        bq_filter_sites_table=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
-
-        # Creating site
-        echo "Loading Filter Set Sites into BQ"
-        bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
-        ${bq_filter_sites_table} \
-        filter_sites_load.tsv \
-        "filter_set_name:string,location:integer,filters:string"
+        if [ -n "${output_directory}" ]; then
+            gsutil cp filter_sites_load.tsv ${output_directory}/
+            gsutil cp filter_set_load.tsv ${output_directory}/
+            gsutil cp tranches_load.csv ${output_directory}/
+        fi
     >>>
 
     # ------------------------------------------------
@@ -572,9 +545,94 @@ task UploadFilterSetToBQ {
     # ------------------------------------------------
     # Outputs:
     output {
-        File filter_set_load_tsv = "filter_set_load.tsv"
-        File filter_tranche_load_tsv = "tranches_load.csv"
-        File filter_sites_load_tsv = "filter_sites_load.tsv"
+        File filter_sites_load = "$(output_directory)/filter_sites_load.tsv"
+        File filter_set_load = "$(output_directory)/filter_set_load.tsv"
+        File tranches_load = "$(output_directory)/tranches_load.tsv"
+    }
+}
+
+task UploadFilterSetToBQ {
+    # indicates that this task should NOT be call cached
+
+    # TODO: should this be marked as volatile???
+    #meta {
+    #   volatile: true
+    #}
+
+    input {
+        # ------------------------------------------------
+        # Input args:
+
+        String filter_set_name
+        String output_directory
+
+        String fq_info_destination_table
+        String fq_tranches_destination_table
+        String fq_filter_sites_destination_table
+
+        File? service_account_json
+        String query_project
+    }
+
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
+    # ------------------------------------------------
+    # Run our command:
+    command <<<
+        set -eo pipefail
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{query_project}
+        fi
+
+        # BQ load likes a : instead of a . after the project
+        bq_info_table=$(echo ~{fq_info_destination_table} | sed s/\\./:/)
+
+        echo "Loading Filter Set into BQ"
+        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
+        ${bq_info_table} \
+        ${output_directory}/filter_set_load.tsv \
+        "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" > status_bq_load_info_table
+
+        # BQ load likes a : instead of a . after the project
+        bq_tranches_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
+
+        echo "Loading Tranches into BQ"
+        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
+        ${bq_tranches_table} \
+        ${output_directory}/tranches_load.csv \
+        "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float"  > status_bq_load_tranches_table
+
+        # BQ load likes a : instead of a . after the project
+        bq_filter_sites_table=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
+
+        # Creating site
+        echo "Loading Filter Set Sites into BQ"
+        bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
+        ${bq_filter_sites_table} \
+        ${output_directory}/filter_sites_load.tsv \
+        "filter_set_name:string,location:integer,filters:string"  > status_bq_load_filter_sites_table
+    >>>
+
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+        memory: "3500 MB"
+        disks: "local-disk 200 HDD"
+        bootDiskSizeGb: 15
+        preemptible: 0
+        cpu: 1
+    }
+
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File status_bq_load_info_table = "status_bq_load_info_table"
+        File status_bq_load_tranches_table = "status_bq_load_tranches_table"
+        File status_bq_load_filter_sites_table = "status_bq_load_filter_sites_table"
     }
  }
 
