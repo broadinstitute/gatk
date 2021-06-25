@@ -62,7 +62,7 @@ def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMa
         (
             {tm.input_name(): tf.random.normal((2,) + tm.shape) for tm in input_tmaps},
             {tm.output_name(): tf.zeros((2,) + tm.shape) for tm in output_tmaps},
-            [None] * len(output_tmaps),
+            #[None] * len(output_tmaps),
         ), ])
 
 
