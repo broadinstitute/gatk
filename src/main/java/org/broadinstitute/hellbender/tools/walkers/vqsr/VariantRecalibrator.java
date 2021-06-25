@@ -66,9 +66,8 @@ import java.util.*;
  * assigned a score and filter status.</p>
  *
  * <p>VQSR is probably the hardest part of the Best Practices to get right, so be sure to read the
- * <a href='https://software.broadinstitute.org/gatk/guide/article?id=39'>method documentation</a>,
- * <a href='https://software.broadinstitute.org/gatk/guide/article?id=1259'>parameter recommendations</a> and
- * <a href='https://software.broadinstitute.org/gatk/guide/article?id=2805'>tutorial</a> to really understand what these
+ * <a href='https://gatk.broadinstitute.org/hc/en-us/articles/360035531612-Variant-Quality-Score-Recalibration-VQSR-'>method documentation</a> and
+ * <a href='https://gatk.broadinstitute.org/hc/en-us/articles/360035531112--How-to-Filter-variants-either-with-VQSR-or-by-hard-filtering'>tutorial</a> to really understand what these
  * tools do and how to use them for best results on your own data.</p>
  *
  * <h3>Inputs</h3>

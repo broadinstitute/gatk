@@ -38,7 +38,7 @@ dependencies:
                                     #   if you wish to update, note that versions of conda-forge::keras after 2.2.5
                                     #   undesirably set the environment variable KERAS_BACKEND = theano by default
 - defaults::intel-openmp=2019.4
-- conda-forge::scikit-learn=0.22.2
+- conda-forge::scikit-learn=0.23.1
 - conda-forge::matplotlib=3.2.1
 - conda-forge::pandas=1.0.3
 

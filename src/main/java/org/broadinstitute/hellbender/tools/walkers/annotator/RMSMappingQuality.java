@@ -37,7 +37,7 @@ import java.util.*;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_MappingQualityRankSumTest.php">MappingQualityRankSumTest</a></b> compares the mapping quality of reads supporting the REF and ALT alleles.</li>
+ *     <li><b>MappingQualityRankSumTest</b> compares the mapping quality of reads supporting the REF and ALT alleles.</li>
  * </ul>
  *
  */

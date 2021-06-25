@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.formats.collections;
 
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -11,12 +12,12 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
- * Represents a collection of {@link SimpleInterval} associated to a sample.
+ * Represents a collection of {@link SimpleInterval}.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class SimpleIntervalCollection extends AbstractLocatableCollection<LocatableMetadata, SimpleInterval> {
+public final class SimpleIntervalCollection extends AbstractLocatableCollection<SimpleLocatableMetadata, SimpleInterval> {
     //note to developers: repeat the column headers in Javadoc so that they are viewable when linked
     /**
      * CONTIG, START, END
@@ -47,6 +48,6 @@ public final class SimpleIntervalCollection extends AbstractLocatableCollection<
 
     public SimpleIntervalCollection(final LocatableMetadata metadata,
                                     final List<SimpleInterval> simpleIntervals) {
-        super(metadata, simpleIntervals, SimpleIntervalTableColumn.COLUMNS, SIMPLE_INTERVAL_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_INTERVAL_RECORD_TO_DATA_LINE_ENCODER);
+        super(new SimpleLocatableMetadata(metadata), simpleIntervals, SimpleIntervalTableColumn.COLUMNS, SIMPLE_INTERVAL_RECORD_FROM_DATA_LINE_DECODER, SIMPLE_INTERVAL_RECORD_TO_DATA_LINE_ENCODER);
     }
 }
