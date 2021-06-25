@@ -344,7 +344,7 @@ class TestMakeMultimodalMultitaskModel:
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
         params['u_connect'] = {tm: [] for tm in pair_list}
         params['merge_blocks'] = ['pair']
-        m, encoders, decoders = block_make_multimodal_multitask_model(
+        m, encoders, decoders, merger = block_make_multimodal_multitask_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
             tensor_maps_out=pair_list,
@@ -382,7 +382,7 @@ class TestMakeMultimodalMultitaskModel:
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
         params['u_connect'] = {tm: [] for tm in pair_list}
         params['merge_blocks'] = ['pair']
-        m, encoders, decoders = block_make_multimodal_multitask_model(
+        m, encoders, decoders, merger = block_make_multimodal_multitask_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
             tensor_maps_out=pair_list+output_tmaps,
