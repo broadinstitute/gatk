@@ -755,6 +755,7 @@ def test_train_valid_tensor_generators(
     valid_csv: str = None,
     test_csv: str = None,
     siamese: bool = False,
+    wrap_with_tf_dataset: bool = True,
     **kwargs
 ) -> Tuple[TensorGeneratorABC, TensorGeneratorABC, TensorGeneratorABC]:
     """ Get 3 tensor generator functions for training, validation and testing data.
@@ -824,21 +825,24 @@ def test_train_valid_tensor_generators(
         paths=train_paths, num_workers=num_train_workers, cache_size=0, weights=weights,
         keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=False,
     )
-    in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
-    out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
-    train_dataset = tf.data.Dataset.from_generator(
-        generate_train,
-        output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-        output_shapes=(in_shapes, out_shapes))
-    valid_dataset = tf.data.Dataset.from_generator(
-        generate_valid,
-        output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-        output_shapes=(in_shapes, out_shapes))
-    test_dataset = tf.data.Dataset.from_generator(
-        generate_test,
-        output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
-        output_shapes=(in_shapes, out_shapes))
-    return train_dataset, valid_dataset, test_dataset
+    if wrap_with_tf_dataset:
+        in_shapes = {tm.input_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_in}
+        out_shapes = {tm.output_name(): (batch_size,) + tm.static_shape() for tm in tensor_maps_out}
+        train_dataset = tf.data.Dataset.from_generator(
+            generate_train,
+            output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
+            output_shapes=(in_shapes, out_shapes))
+        valid_dataset = tf.data.Dataset.from_generator(
+            generate_valid,
+            output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
+            output_shapes=(in_shapes, out_shapes))
+        test_dataset = tf.data.Dataset.from_generator(
+            generate_test,
+            output_types=({k: tf.float32 for k in in_shapes}, {k: tf.float32 for k in out_shapes}),
+            output_shapes=(in_shapes, out_shapes))
+        return train_dataset, valid_dataset, test_dataset
+    else:
+        return generate_train, generate_valid, generate_test
 
 
 def _log_first_error(stats: Counter, tensor_path: str):
