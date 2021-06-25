@@ -185,14 +185,15 @@ def train_block(args):
 
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
-        plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
+        if etm.output_name() in predictions_dict:
+            plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
             logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
             my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
             os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
             if dtm.axes() > 1:
-                plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
+                plot_reconstruction(dtm, test_labels[dtm.output_name()], reconstruction, my_out_path, test_paths, samples)
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
