@@ -472,21 +472,19 @@ class TestModelPerformance:
             validation_steps=18,
             test_modulo=0,
         )
-        try:
-            m = train_model_from_generators(
-                model=m,
-                generate_train=generate_train, generate_valid=generate_valid,
-                training_steps=64, validation_steps=18, epochs=24, patience=22, batch_size=batch_size,
-                output_folder=str(tmpdir), run_id='brain_seg_test',
-                inspect_model=True, inspect_show_labels=True,
-            )
-            test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
-                generate_test, 12,
-            )
-        finally:
-            generate_train.kill_workers()
-            generate_test.kill_workers()
-            generate_valid.kill_workers()
+
+        m = train_model_from_generators(
+            model=m,
+            generate_train=generate_train, generate_valid=generate_valid,
+            training_steps=64, validation_steps=18, epochs=24, patience=22, batch_size=batch_size,
+            output_folder=str(tmpdir), run_id='brain_seg_test',
+            inspect_model=True, inspect_show_labels=True,
+        )
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
+            generate_test, 12,
+        )
+
+
         y_prediction = m.predict(test_data, batch_size=batch_size)
         y_truth = np.array(test_labels[tmaps_out[0].output_name()])
         expected_precisions = {
