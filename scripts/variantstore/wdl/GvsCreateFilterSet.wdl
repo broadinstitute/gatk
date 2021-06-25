@@ -239,9 +239,12 @@ workflow GvsCreateFilterSet {
                 filter_set_name = filter_set_name,
                 output_directory = tmp_output_directory,
                 sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+                sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
                 snp_recal_file = if defined(SNPsVariantRecalibratorScattered.recalibration) then select_first([SNPsVariantRecalibratorScattered.recalibration])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration]),
+                snp_recal_file_index = if defined(SNPsVariantRecalibratorScattered.recalibration_index) then select_first([SNPsVariantRecalibratorScattered.recalibration_index])[idx] else select_first([SNPsVariantRecalibratorClassic.recalibration_index]),
                 snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
                 indel_recal_file = IndelsVariantRecalibrator.recalibration,
+                indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
                 indel_recal_tranches = IndelsVariantRecalibrator.tranches,
                 index = idx,
                 service_account_json = service_account_json,
@@ -471,11 +474,14 @@ task CreateFilterSetFiles {
         String output_directory
 
         File sites_only_variant_filtered_vcf
+        File sites_only_variant_filtered_vcf_index
 
         File snp_recal_file
+        File snp_recal_file_index
         File snp_recal_tranches
 
         File indel_recal_file
+        File indel_recal_file_index
         File indel_recal_tranches
 
         String index
