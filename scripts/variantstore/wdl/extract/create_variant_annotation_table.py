@@ -3,13 +3,9 @@ import uuid
 import time
 import datetime
 
-from google.cloud import bigquery
-from google.cloud.bigquery.job import QueryJobConfig
-from google.oauth2 import service_account
-
 import csv
 import json
-
+import argparse
 
 JOB_IDS = set()
 
@@ -98,43 +94,43 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
     row = {}
     row["position"] = row_position # this is a required field -- do we want validation? (what about validation for all the variants_fieldnames?)
 
-    for vat_variants_fieldname in variants_fieldnames:  # like "contig"
+    for vat_variants_fieldname in vat_nirvana_variants_dictionary.keys():  # like "contig"
       nirvana_variants_fieldname = vat_nirvana_variants_dictionary.get(vat_variants_fieldname)
       variant_fieldvalue = variant_line.get(nirvana_variants_fieldname)
       row[vat_variants_fieldname] = variant_fieldvalue
 
     if transcript_line != None:
-      for vat_transcripts_fieldname in transcripts_fieldnames:  # like "transcript"
+      for vat_transcripts_fieldname in vat_nirvana_transcripts_dictionary.keys():  # like "transcript"
         nirvana_transcripts_fieldname = vat_nirvana_transcripts_dictionary.get(vat_transcripts_fieldname)
         transcript_fieldvalue = transcript_line.get(nirvana_transcripts_fieldname)
         if nirvana_transcripts_fieldname == "isCanonical" and transcript_fieldvalue != True: # oooof this is ugly
           transcript_fieldvalue = False
         row[vat_transcripts_fieldname] = transcript_fieldvalue
 
-    for vat_gvs_alleles_fieldname in gvs_alleles_fieldnames:  # like "gvs_all_ac"
+    for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
       nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
       gvs_alleles_fieldvalue = variant_line.get(nirvana_gvs_alleles_fieldname)
       row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
 
-    if variant_line.get("gnomad") != None:
-      for vat_gnomad_fieldname in gnomad_fieldnames:  # like "gnomad_all_af"
-        nirvana_gnomad_fieldname = vat_nirvana_gnomad_dictionary.get(vat_gnomad_fieldname)
-        gnomad_fieldvalue = variant_line.get("gnomad").get(nirvana_gnomad_fieldname) # not a list like the others
-        row[vat_gnomad_fieldname] = gnomad_fieldvalue
-
     if variant_line.get("spliceAI") != None:
       splice_ai_line = variant_line["spliceAI"][0] # TODO I am making the huge assumption that we are only grabbing 1
-      for vat_splice_ai_fieldname in splice_ai_fieldnames:  # like "splice_ai_acceptor_gain_score"
+      for vat_splice_ai_fieldname in vat_nirvana_splice_ai_dictionary.keys():  # like "splice_ai_acceptor_gain_score"
         nirvana_splice_ai_fieldname = vat_nirvana_splice_ai_dictionary.get(vat_splice_ai_fieldname)
         splice_ai_fieldvalue = splice_ai_line.get(nirvana_splice_ai_fieldname)
         row[vat_splice_ai_fieldname] = splice_ai_fieldvalue
+
+    if variant_line.get("gnomad") != None:
+      for vat_gnomad_fieldname in vat_nirvana_gnomad_dictionary.keys():  # like "gnomad_all_af"
+        nirvana_gnomad_fieldname = vat_nirvana_gnomad_dictionary.get(vat_gnomad_fieldname)
+        gnomad_fieldvalue = variant_line.get("gnomad").get(nirvana_gnomad_fieldname) # not a list like the others
+        row[vat_gnomad_fieldname] = gnomad_fieldvalue
 
     if variant_line.get("clinvar") != None:
       clinvar_lines = variant_line["clinvar"] # TODO I am making the huge assumption that this is correctly pulling the RCV one
       for clinvar_correct_line in clinvar_lines:
         # get the clinvar line with the id that starts with RCV
         if clinvar_correct_line.get("id")[:2] == "RCV": # TODO, does this need to be 3, am I being a dummy here?
-              for vat_clinvar_fieldname in clinvar_fieldnames:  # like "clinvar_classification"
+              for vat_clinvar_fieldname in vat_nirvana_clinvar_dictionary.keys():  # like "clinvar_classification"
                 nirvana_clinvar_fieldname = vat_nirvana_clinvar_dictionary.get(vat_clinvar_fieldname)
                 clinvar_fieldvalue = clinvar_correct_line.get(nirvana_clinvar_fieldname)
                 row[vat_clinvar_fieldname] = clinvar_fieldvalue
@@ -187,17 +183,22 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
           row[vat_omim_fieldname] = omim_fieldvalue
       back_json=json.dumps(row)
       output_genes_file.write(back_json)
-      aou_shard_223_vatteroutput_genes_file.write("\n")
+      output_genes_file.write("\n")
   output_genes_file.close()
 
-""" if __name__ == '__main__':
-  parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')
+if __name__ == '__main__':
+  parser = argparse.ArgumentParser(allow_abbrev=False, description='Create BQ load friendly jsons for VAT creation')
   parser.add_argument('--annotated_json',type=str, help='nirvana created annotation json', required=True)
-
+  parser.add_argument('--output_vt_json',type=str, help='name of the vt json', required=True)
+  parser.add_argument('--output_genes_json',type=str, help='name of the genes json', required=True)
 
   # Execute the parse_args() method
   args = parser.parse_args()
 
-  make_annotation_jsons(annotated_json, json_prefix) """
+  make_annotation_jsons(args.annotated_json,
+                        args.output_vt_json,
+                        args.output_genes_json)
 
-make_annotation_jsons("ralpha1.json", "aou_alpha1_shard_annotations_bq_load.json", "aou_alpha1_shard_genes_bq_load.json")
+#make_annotation_jsons("ralpha1.json", "aou_alpha1_shard_annotations_bq_load.json", "aou_alpha1_shard_genes_bq_load.json")
+# TODO add this to the ah_var_store docker!!!
+# TODO do I want to gsutil cp up the files into a bucket here?
