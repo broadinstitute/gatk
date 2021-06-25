@@ -21,6 +21,9 @@ DEFAULT_PARAMS = {
     'dense_layers': [4, 2],
     'dense_blocks': [5, 3],
     'block_size': 3,
+    'encoder_blocks': ['conv_encode', 'dense_encode'],
+    'merge_blocks': ['concat'],
+    'decoder_blocks': ['conv_decode', 'dense_decode'],
     'learning_rate': 1e-3,
     'optimizer': 'adam',
     'conv_type': 'conv',
@@ -339,6 +342,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
         params['u_connect'] = {tm: [] for tm in pair_list}
+        params['merge_blocks'] = ['pair']
         m, encoders, decoders = block_make_multimodal_multitask_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
@@ -376,6 +380,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
         params['u_connect'] = {tm: [] for tm in pair_list}
+        params['merge_blocks'] = ['pair']
         m, encoders, decoders = block_make_multimodal_multitask_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
