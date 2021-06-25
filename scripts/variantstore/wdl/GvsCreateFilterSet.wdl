@@ -250,19 +250,17 @@ workflow GvsCreateFilterSet {
                 service_account_json = service_account_json,
                 query_project = query_project
         }
+    }
 
-        call UploadFilterSetToBQ {
-             input:
-                filter_set_name = filter_set_name,
-                filter_sites_load = CreateFilterSetFiles.filter_sites_load,
-                filter_set_load = CreateFilterSetFiles.filter_set_load,
-                tranches_load = CreateFilterSetFiles.tranches_load,
-                fq_info_destination_table = fq_info_destination_table,
-                fq_tranches_destination_table = fq_tranches_destination_table,
-                fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-                service_account_json = service_account_json,
-                query_project = query_project
-        }
+    call UploadFilterSetFilesToBQ {
+        input:
+            filter_set_name = filter_set_name,
+            output_directory = tmp_output_directory,
+            fq_info_destination_table = fq_info_destination_table,
+            fq_tranches_destination_table = fq_tranches_destination_table,
+            fq_filter_sites_destination_table = fq_filter_sites_destination_table,
+            service_account_json = service_account_json,
+            query_project = query_project
     }
 
     output {
@@ -556,13 +554,13 @@ task CreateFilterSetFiles {
     # ------------------------------------------------
     # Outputs:
     output {
-        File filter_sites_load = "~{output_directory}/filter_sites_load.~{index}.tsv"
-        File filter_set_load = "~{output_directory}/filter_set_load.~{index}.tsv"
-        File tranches_load = "~{output_directory}/tranches_load.~{index}.tsv"
+        String filter_sites_load = "~{output_directory}/filter_sites_load.~{index}.tsv"
+        String filter_set_load = "~{output_directory}/filter_set_load.~{index}.tsv"
+        String tranches_load = "~{output_directory}/tranches_load.~{index}.tsv"
     }
 }
 
-task UploadFilterSetToBQ {
+task UploadFilterSetFilesToBQ {
     # indicates that this task should NOT be call cached
 
     # TODO: should this be marked as volatile???
@@ -575,10 +573,7 @@ task UploadFilterSetToBQ {
         # Input args:
 
         String filter_set_name
-
-        File filter_sites_load
-        File filter_set_load
-        File tranches_load
+        String output_directory
 
         String fq_info_destination_table
         String fq_tranches_destination_table
@@ -607,7 +602,7 @@ task UploadFilterSetToBQ {
         echo "Loading Filter Set into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
         ${bq_info_table} \
-        ~{filter_set_load} \
+        ~{output_directory}/filter_set_load.*.tsv \
         "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" > status_bq_load_info_table
 
         # BQ load likes a : instead of a . after the project
@@ -616,7 +611,7 @@ task UploadFilterSetToBQ {
         echo "Loading Tranches into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
         ${bq_tranches_table} \
-        ~{tranches_load} \
+        ~{output_directory}/tranches_load.*.tsv \
         "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float"  > status_bq_load_tranches_table
 
         # BQ load likes a : instead of a . after the project
@@ -626,7 +621,7 @@ task UploadFilterSetToBQ {
         echo "Loading Filter Set Sites into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
         ${bq_filter_sites_table} \
-        ~{filter_sites_load} \
+        ~{output_directory}/filter_sites_load.*.tsv \
         "filter_set_name:string,location:integer,filters:string"  > status_bq_load_filter_sites_table
     >>>
 
@@ -644,9 +639,9 @@ task UploadFilterSetToBQ {
     # ------------------------------------------------
     # Outputs:
     output {
-        File status_bq_load_info_table = "status_bq_load_info_table"
-        File status_bq_load_tranches_table = "status_bq_load_tranches_table"
-        File status_bq_load_filter_sites_table = "status_bq_load_filter_sites_table"
+        String status_bq_load_info_table = read_string("status_bq_load_info_table")
+        String status_bq_load_tranches_table = read_string("status_bq_load_tranches_table")
+        String status_bq_load_filter_sites_table = read_string("status_bq_load_filter_sites_table")
     }
  }
 
