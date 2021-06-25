@@ -618,7 +618,7 @@ task UploadFilterSetFilesToBQ {
         echo "Loading Tranches into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
         ${bq_tranches_table} \
-        ~{output_directory}/tranches_load.*.tsv \
+        ~{output_directory}/tranches_load.*.csv \
         "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float"  > status_bq_load_tranches_table
 
         # BQ load likes a : instead of a . after the project
