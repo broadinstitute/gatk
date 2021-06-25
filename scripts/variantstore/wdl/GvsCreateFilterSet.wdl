@@ -526,19 +526,19 @@ task CreateFilterSetFiles {
             --ref-version 38 \
             --filter-set-name ~{filter_set_name} \
             -V ~{sites_only_variant_filtered_vcf} \
-            -O filter_sites_load.${index}.tsv
+            -O filter_sites_load.~{index}.tsv
 
         # merge into a single file
         echo "Merging SNP + INDELs"
-        cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > filter_set_load.${index}.tsv
+        cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > filter_set_load.~{index}.tsv
 
         echo "Merging Tranches"
-        cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > tranches_load.${index}.csv
+        cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > tranches_load.~{index}.csv
 
         if [ -n "${output_directory}" ]; then
-            gsutil cp filter_sites_load.${index}.tsv ${output_directory}/
-            gsutil cp filter_set_load.${index}.tsv ${output_directory}/
-            gsutil cp tranches_load.${index}.csv ${output_directory}/
+            gsutil cp filter_sites_load.~{index}.tsv ~{output_directory}/
+            gsutil cp filter_set_load.~{index}.tsv ~{output_directory}/
+            gsutil cp tranches_load.~{index}.csv ~{output_directory}/
         fi
     >>>
 
@@ -556,9 +556,9 @@ task CreateFilterSetFiles {
     # ------------------------------------------------
     # Outputs:
     output {
-        File filter_sites_load = "$(output_directory)/filter_sites_load.${index}.tsv"
-        File filter_set_load = "$(output_directory)/filter_set_load.${index}.tsv"
-        File tranches_load = "$(output_directory)/tranches_load.${index}.tsv"
+        File filter_sites_load = "$(output_directory)/filter_sites_load.$(index).tsv"
+        File filter_set_load = "$(output_directory)/filter_set_load.$(index).tsv"
+        File tranches_load = "$(output_directory)/tranches_load.$(index).tsv"
     }
 }
 
