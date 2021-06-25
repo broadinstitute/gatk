@@ -535,7 +535,7 @@ task CreateFilterSetFiles {
         echo "Merging Tranches"
         cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > tranches_load.~{index}.csv
 
-        if [ -n "${output_directory}" ]; then
+        if [ -n "~{output_directory}" ]; then
             gsutil cp filter_sites_load.~{index}.tsv ~{output_directory}/
             gsutil cp filter_set_load.~{index}.tsv ~{output_directory}/
             gsutil cp tranches_load.~{index}.csv ~{output_directory}/
