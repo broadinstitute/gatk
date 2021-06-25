@@ -243,6 +243,7 @@ workflow GvsCreateFilterSet {
                 snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
                 indel_recal_file = IndelsVariantRecalibrator.recalibration,
                 indel_recal_tranches = IndelsVariantRecalibrator.tranches,
+                index = idx,
                 service_account_json = service_account_json,
                 query_project = query_project
         }
@@ -250,7 +251,9 @@ workflow GvsCreateFilterSet {
         call UploadFilterSetToBQ {
              input:
                 filter_set_name = filter_set_name,
-                output_directory = tmp_output_directory,
+                filter_sites_load = CreateFilterSetFiles.filter_sites_load,
+                filter_set_load = CreateFilterSetFiles.filter_set_load,
+                tranches_load = CreateFilterSetFiles.tranches_load,
                 fq_info_destination_table = fq_info_destination_table,
                 fq_tranches_destination_table = fq_tranches_destination_table,
                 fq_filter_sites_destination_table = fq_filter_sites_destination_table,
@@ -475,6 +478,8 @@ task CreateFilterSetFiles {
         File indel_recal_file
         File indel_recal_tranches
 
+        String index
+
         File? service_account_json
         String query_project
     }
@@ -515,19 +520,19 @@ task CreateFilterSetFiles {
             --ref-version 38 \
             --filter-set-name ~{filter_set_name} \
             -V ~{sites_only_variant_filtered_vcf} \
-            -O filter_sites_load.tsv
+            -O filter_sites_load.${index}.tsv
 
         # merge into a single file
         echo "Merging SNP + INDELs"
-        cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > filter_set_load.tsv
+        cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > filter_set_load.${index}.tsv
 
         echo "Merging Tranches"
-        cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > tranches_load.csv
+        cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > tranches_load.${index}.csv
 
         if [ -n "${output_directory}" ]; then
-            gsutil cp filter_sites_load.tsv ${output_directory}/
-            gsutil cp filter_set_load.tsv ${output_directory}/
-            gsutil cp tranches_load.csv ${output_directory}/
+            gsutil cp filter_sites_load.${index}.tsv ${output_directory}/
+            gsutil cp filter_set_load.${index}.tsv ${output_directory}/
+            gsutil cp tranches_load.${index}.csv ${output_directory}/
         fi
     >>>
 
@@ -545,9 +550,9 @@ task CreateFilterSetFiles {
     # ------------------------------------------------
     # Outputs:
     output {
-        File filter_sites_load = "$(output_directory)/filter_sites_load.tsv"
-        File filter_set_load = "$(output_directory)/filter_set_load.tsv"
-        File tranches_load = "$(output_directory)/tranches_load.tsv"
+        File filter_sites_load = "$(output_directory)/filter_sites_load.${index}.tsv"
+        File filter_set_load = "$(output_directory)/filter_set_load.${index}.tsv"
+        File tranches_load = "$(output_directory)/tranches_load.${index}.tsv"
     }
 }
 
@@ -564,7 +569,10 @@ task UploadFilterSetToBQ {
         # Input args:
 
         String filter_set_name
-        String output_directory
+
+        File filter_sites_load
+        File filter_set_load
+        File tranches_load
 
         String fq_info_destination_table
         String fq_tranches_destination_table
@@ -593,7 +601,7 @@ task UploadFilterSetToBQ {
         echo "Loading Filter Set into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
         ${bq_info_table} \
-        ${output_directory}/filter_set_load.tsv \
+        ~{filter_set_load} \
         "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" > status_bq_load_info_table
 
         # BQ load likes a : instead of a . after the project
@@ -602,7 +610,7 @@ task UploadFilterSetToBQ {
         echo "Loading Tranches into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
         ${bq_tranches_table} \
-        ${output_directory}/tranches_load.csv \
+        ~{tranches_load} \
         "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float"  > status_bq_load_tranches_table
 
         # BQ load likes a : instead of a . after the project
@@ -612,7 +620,7 @@ task UploadFilterSetToBQ {
         echo "Loading Filter Set Sites into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
         ${bq_filter_sites_table} \
-        ${output_directory}/filter_sites_load.tsv \
+        ~{filter_sites_load} \
         "filter_set_name:string,location:integer,filters:string"  > status_bq_load_filter_sites_table
     >>>
 
