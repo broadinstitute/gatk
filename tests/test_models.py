@@ -342,7 +342,7 @@ class TestMakeMultimodalMultitaskModel:
             **params
         )
         assert_model_trains(pair_list, pair_list, m, skip_shape_check=True)
-        m.save(os.path.join(tmpdir, 'paired_ae.h5'))
+        m.save(os.path.join(tmpdir, 'paired_ae1.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         make_paired_autoencoder_model(
@@ -379,7 +379,7 @@ class TestMakeMultimodalMultitaskModel:
             **params
         )
         assert_model_trains(pair_list, pair_list+output_tmaps, m, skip_shape_check=True)
-        m.save(os.path.join(tmpdir, 'paired_ae.h5'))
+        m.save(os.path.join(tmpdir, 'paired_ae2.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         make_paired_autoencoder_model(
