@@ -7,6 +7,7 @@ from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4h.TensorMap import TensorMap
+from ml4h.models.model_factory import block_make_multimodal_multitask_model
 from ml4h.models.train import train_model_from_generators
 from ml4h.models.legacy_models import make_multimodal_multitask_model, parent_sort, BottleneckType
 from ml4h.models.legacy_models import ACTIVATION_FUNCTIONS, MODEL_EXT, check_no_bottleneck, make_paired_autoencoder_model
@@ -41,7 +42,9 @@ DEFAULT_PARAMS = {
     'dense_regularize_rate': .1,
     'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
-    'pair_loss': 'cosine',
+    'pair_loss': 'contrastive',
+    'pair_loss_weight': 0.1,
+    'pair_merge': 'dropout',
     'training_steps': 12,
     'learning_rate': 0.00001,
     'epochs': 6,
@@ -51,6 +54,7 @@ DEFAULT_PARAMS = {
     'model_file': None,
     'hidden_layer': 'embed',
     'u_connect': defaultdict(dict),
+
 }
 
 
@@ -335,7 +339,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
         params['u_connect'] = {tm: [] for tm in pair_list}
-        m, encoders, decoders = make_paired_autoencoder_model(
+        m, encoders, decoders = block_make_multimodal_multitask_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
             tensor_maps_out=pair_list,
@@ -372,7 +376,7 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
         params['u_connect'] = {tm: [] for tm in pair_list}
-        m, encoders, decoders = make_paired_autoencoder_model(
+        m, encoders, decoders = block_make_multimodal_multitask_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
             tensor_maps_out=pair_list+output_tmaps,
