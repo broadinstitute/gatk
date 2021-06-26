@@ -273,7 +273,7 @@ workflow GvsCreateFilterSet {
     call UploadFilterSetFilesToBQ {
         input:
             filter_set_name = filter_set_name,
-            file_creation_done = select_first([select_first([CreateFilterSetFilesScattered.done]), CreateFilterSetFilesClassic.done]),
+            file_creation_done = select_first([defined(CreateFilterSetFilesScattered.done), defined(CreateFilterSetFilesClassic.done)]),
             output_directory = tmp_output_directory,
             fq_info_destination_table = fq_info_destination_table,
             fq_tranches_destination_table = fq_tranches_destination_table,
@@ -592,7 +592,7 @@ task UploadFilterSetFilesToBQ {
         String filter_set_name
         String output_directory
 
-        String file_creation_done
+        Boolean file_creation_done
 
         String fq_info_destination_table
         String fq_tranches_destination_table
