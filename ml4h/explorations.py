@@ -798,7 +798,7 @@ class ExploreParallelWrapper():
 
 
 def _tensors_to_df(args):
-    generators = test_train_valid_tensor_generators(**args.__dict__)
+    generators = test_train_valid_tensor_generators(wrap_with_tf_dataset=False, **args.__dict__)
     tmaps = [tm for tm in args.tensor_maps_in]
     paths = []
     for gen, name in zip(generators, ["train", "valid", "test"]):

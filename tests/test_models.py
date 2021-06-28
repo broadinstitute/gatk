@@ -7,6 +7,7 @@ from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Iterator
 
 from ml4h.TensorMap import TensorMap
+from ml4h.models.model_factory import block_make_multimodal_multitask_model
 from ml4h.models.train import train_model_from_generators
 from ml4h.models.legacy_models import make_multimodal_multitask_model, parent_sort, BottleneckType
 from ml4h.models.legacy_models import ACTIVATION_FUNCTIONS, MODEL_EXT, check_no_bottleneck, make_paired_autoencoder_model
@@ -20,11 +21,15 @@ DEFAULT_PARAMS = {
     'dense_layers': [4, 2],
     'dense_blocks': [5, 3],
     'block_size': 3,
+    'encoder_blocks': ['conv_encode', 'dense_encode'],
+    'merge_blocks': ['concat'],
+    'decoder_blocks': ['conv_decode', 'dense_decode'],
     'learning_rate': 1e-3,
     'optimizer': 'adam',
     'conv_type': 'conv',
     'conv_layers': [6, 5, 3],
     'conv_width': [71]*5,
+    'conv_dilate': False,
     'conv_x': [3]*5,
     'conv_y': [3]*5,
     'conv_z': [2]*5,
@@ -41,7 +46,9 @@ DEFAULT_PARAMS = {
     'dense_regularize_rate': .1,
     'dense_normalize': 'batch_norm',
     'bottleneck_type': BottleneckType.FlattenRestructure,
-    'pair_loss': 'cosine',
+    'pair_loss': 'euclid',
+    'pair_loss_weight': 0.1,
+    #'pair_merge': 'dropout',
     'training_steps': 12,
     'learning_rate': 0.00001,
     'epochs': 6,
@@ -51,6 +58,7 @@ DEFAULT_PARAMS = {
     'model_file': None,
     'hidden_layer': 'embed',
     'u_connect': defaultdict(dict),
+
 }
 
 
@@ -62,7 +70,7 @@ def make_training_data(input_tmaps: List[TensorMap], output_tmaps: List[TensorMa
         (
             {tm.input_name(): tf.random.normal((2,) + tm.shape) for tm in input_tmaps},
             {tm.output_name(): tf.zeros((2,) + tm.shape) for tm in output_tmaps},
-            [None] * len(output_tmaps),
+            #[None] * len(output_tmaps),
         ), ])
 
 
@@ -335,14 +343,15 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
         params['u_connect'] = {tm: [] for tm in pair_list}
-        m, encoders, decoders = make_paired_autoencoder_model(
+        params['merge_blocks'] = ['pair']
+        m, encoders, decoders, merger = block_make_multimodal_multitask_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
             tensor_maps_out=pair_list,
             **params
         )
         assert_model_trains(pair_list, pair_list, m, skip_shape_check=True)
-        m.save(os.path.join(tmpdir, 'paired_ae.h5'))
+        m.save(os.path.join(tmpdir, 'paired_ae1.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         make_paired_autoencoder_model(
@@ -372,14 +381,15 @@ class TestMakeMultimodalMultitaskModel:
         params = DEFAULT_PARAMS.copy()
         pair_list = list(set([p[0] for p in pairs] + [p[1] for p in pairs]))
         params['u_connect'] = {tm: [] for tm in pair_list}
-        m, encoders, decoders = make_paired_autoencoder_model(
+        params['merge_blocks'] = ['pair']
+        m, encoders, decoders, merger = block_make_multimodal_multitask_model(
             pairs=pairs,
             tensor_maps_in=pair_list,
             tensor_maps_out=pair_list+output_tmaps,
             **params
         )
         assert_model_trains(pair_list, pair_list+output_tmaps, m, skip_shape_check=True)
-        m.save(os.path.join(tmpdir, 'paired_ae.h5'))
+        m.save(os.path.join(tmpdir, 'paired_ae2.h5'))
         path = os.path.join(tmpdir, f'm{MODEL_EXT}')
         m.save(path)
         make_paired_autoencoder_model(
@@ -472,21 +482,19 @@ class TestModelPerformance:
             validation_steps=18,
             test_modulo=0,
         )
-        try:
-            m = train_model_from_generators(
-                model=m,
-                generate_train=generate_train, generate_valid=generate_valid,
-                training_steps=64, validation_steps=18, epochs=24, patience=22, batch_size=batch_size,
-                output_folder=str(tmpdir), run_id='brain_seg_test',
-                inspect_model=True, inspect_show_labels=True,
-            )
-            test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
-                generate_test, 12,
-            )
-        finally:
-            generate_train.kill_workers()
-            generate_test.kill_workers()
-            generate_valid.kill_workers()
+
+        m = train_model_from_generators(
+            model=m,
+            generate_train=generate_train, generate_valid=generate_valid,
+            training_steps=64, validation_steps=18, epochs=24, patience=22, batch_size=batch_size,
+            output_folder=str(tmpdir), run_id='brain_seg_test',
+            inspect_model=True, inspect_show_labels=True,
+        )
+        test_data, test_labels, test_paths = big_batch_from_minibatch_generator(
+            generate_test, 12,
+        )
+
+
         y_prediction = m.predict(test_data, batch_size=batch_size)
         y_truth = np.array(test_labels[tmaps_out[0].output_name()])
         expected_precisions = {

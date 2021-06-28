@@ -131,10 +131,7 @@ def _find_learning_rate(args) -> float:
     args.learning_rate_schedule = None  # learning rate schedule interferes with setting lr done by find_learning_rate
     generate_train, _, _ = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
-    try:
-        lr = find_learning_rate(model, generate_train, args.training_steps, os.path.join(args.output_folder, args.id))
-    finally:
-        generate_train.kill_workers()
+    lr = find_learning_rate(model, generate_train, args.training_steps, os.path.join(args.output_folder, args.id))
     args.learning_rate_schedule = schedule
     return lr
 
@@ -188,24 +185,28 @@ def train_block(args):
 
     for i, etm in enumerate(encoders):
         embed = encoders[etm].predict(test_data[etm.input_name()])
-        plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
+        if etm.output_name() in predictions_dict:
+            plot_reconstruction(etm, test_data[etm.input_name()], predictions_dict[etm.output_name()], out_path, test_paths, samples)
         for dtm in decoders:
             reconstruction = decoders[dtm].predict(embed)
             logging.info(f'{dtm.name} has prediction shape: {reconstruction.shape} from embed shape: {embed.shape}')
             my_out_path = os.path.join(out_path, f'decoding_{dtm.name}_from_{etm.name}/')
             os.makedirs(os.path.dirname(my_out_path), exist_ok=True)
             if dtm.axes() > 1:
-                plot_reconstruction(dtm, test_data[dtm.input_name()], reconstruction, my_out_path, test_paths, samples)
+                plot_reconstruction(dtm, test_labels[dtm.output_name()], reconstruction, my_out_path, test_paths, samples)
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
+
+
 
 
 def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
-    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    paths = None
+    data, labels = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(
         model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
         args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha,
@@ -603,12 +604,12 @@ def _predict_scalars_and_evaluate_from_generator(
     logging.info(f"Scalar predictions {model_predictions} names: {scalar_predictions.keys()} test labels: {test_labels.keys()}")
     embeddings = []
     test_paths = []
-
+    iterator = generate_test.as_numpy_iterator()
     for i in range(steps):
-        batch = next(generate_test)
-        input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
+        batch = next(iterator)
+        input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX]
         y_predictions = model.predict(input_data)
-        test_paths.extend(tensor_paths)
+        #test_paths.extend(tensor_paths)
         if hidden_layer in layer_names:
             x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))

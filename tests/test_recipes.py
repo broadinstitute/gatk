@@ -20,9 +20,8 @@ class TestRecipes:
     def test_train(self, default_arguments):
         train_multimodal_multitask(default_arguments)
 
-# TODO: make this work!
-#     def test_train_block(self, default_arguments):
-#         train_block(default_arguments)
+    def test_train_block(self, default_arguments):
+        train_block(default_arguments)
 
     def test_test(self, default_arguments):
         tst_multimodal_multitask(default_arguments)

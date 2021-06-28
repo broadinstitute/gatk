@@ -64,8 +64,8 @@ class TensorGeneratorFactory(GeneratorFactory):
             cache_size=0, paths=self.paths,
         )
         yield gen
-        gen.kill_workers()
-        del gen
+        #gen.kill_workers()
+        #del gen
 
 
 FACTORIES = [
