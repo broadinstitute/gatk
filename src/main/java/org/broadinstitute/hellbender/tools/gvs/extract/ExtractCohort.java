@@ -35,7 +35,9 @@ public class ExtractCohort extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
     private ExtractCohortEngine engine;
 
-   @Argument(
+    public enum VQSLODFilteringType { GENOTYPE, SITES, NONE }
+
+    @Argument(
             fullName = "filter-set-info-table",
             doc = "Fully qualified name of the filtering set info table to use for cohort extraction",
             optional = true
@@ -86,22 +88,19 @@ public class ExtractCohort extends ExtractTool {
     )
     private boolean emitPLs = false;
 
-    @Argument(
-            fullName = "disable-gnarly",
-            doc = "Disable use of GnarlyGenotyper",
-            optional = true
-    )
-    private boolean disableGnarlyGenotyper = true;
+    // what if this was a flag input only?
 
     @Argument(
-            fullName = "vqslod-filter-genotypes",
-            doc = "Should VQSLOD filtering be applied at the genotype level",
+            fullName = "vqslod-filter-by-site",
+            doc = "If VQSLOD filtering is applied, it should be at a site level. Default is false",
             optional = true
     )
-    private boolean performGenotypeVQSLODFiltering = true;
+    private boolean performSiteSpecificVQSLODFiltering = false;
+    private VQSLODFilteringType vqslodfilteringType = VQSLODFilteringType.NONE;
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
+            mutex = {"snps-lod-score-cutoff"},
             doc = "The truth sensitivity level at which to start filtering SNPs",
             optional = true
     )
@@ -109,6 +108,7 @@ public class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "indels-truth-sensitivity-filter-level",
+            mutex = {"indels-lod-score-cutoff"},
             doc = "The truth sensitivity level at which to start filtering INDELs",
             optional = true
     )
@@ -117,6 +117,7 @@ public class ExtractCohort extends ExtractTool {
     @Advanced
     @Argument(
             fullName = "snps-lod-score-cutoff",
+            mutex = {"snps-truth-sensitivity-filter-level"},
             doc = "The VQSLOD score below which to start filtering SNPs",
             optional = true)
     private Double vqsLodSNPThreshold = null;
@@ -124,6 +125,7 @@ public class ExtractCohort extends ExtractTool {
     @Advanced
     @Argument(
             fullName = "indels-lod-score-cutoff",
+            mutex = {"indels-truth-sensitivity-filter-level"},
             doc = "The VQSLOD score below which to start filtering INDELs",
             optional = true)
     private Double vqsLodINDELThreshold = null;
@@ -143,30 +145,41 @@ public class ExtractCohort extends ExtractTool {
     protected void onStartup() {
         super.onStartup();
 
-        if ( (filterSetInfoTableName != null || filterSetSiteTableName != null) && (filterSetName == null || filterSetName.equals(""))) {
-            throw new UserException("--filter-set-name must be specified if any filtering related operations are requested");
+        Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
+
+        if (filterSetInfoTableName != null) { // filter using vqslod-- default to GENOTYPE unless SITES specifically selected
+            vqslodfilteringType = performSiteSpecificVQSLODFiltering ? VQSLODFilteringType.SITES : VQSLODFilteringType.GENOTYPE;
         }
 
-        Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
-        if (filterSetInfoTableName != null) {
-            FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
-            Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
+        // filter at a site level (but not necesarily use vqslod)
+        if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
+           throw new UserException("--filter-set-name and --filter-set-site-table are both necessary for any filtering related operations");
+        }
+        if (!vqslodfilteringType.equals(VQSLODFilteringType.NONE)) {
+          if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
+            throw new UserException(" --filter-set-site-table, --filter-set-name and --filter-set-site-table are all necessary for any vqslod filtering operations");
+          }
+        }
 
-            if (vqsLodSNPThreshold != null) { // we already have vqslod thresholds directly
-                extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP));
-                extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodINDELThreshold, GATKVCFConstants.INDEL));
-            } else { // using sensitivity threshold inputs; need to convert these to vqslod thresholds
-                vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
-                vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
-                // set headers
-                extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
-                extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
-            }
+        if (!vqslodfilteringType.equals(VQSLODFilteringType.NONE)) {
+          FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
+          Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
+
+          if (vqsLodSNPThreshold != null) { // we already have vqslod thresholds directly
+            extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP));
+            extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+          } else { // using sensitivity threshold inputs; need to convert these to vqslod thresholds
+            vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
+            vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
+            // set headers
+            extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+            extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+          }
         }
 
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
-        if (performGenotypeVQSLODFiltering) {
+        if (vqslodfilteringType.equals(VQSLODFilteringType.GENOTYPE)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
@@ -223,8 +236,7 @@ public class ExtractCohort extends ExtractTool {
                 progressMeter,
                 filterSetName,
                 emitPLs,
-                disableGnarlyGenotyper,
-                performGenotypeVQSLODFiltering,
+                vqslodfilteringType,
                 excludeFilteredSites);
 
         vcfWriter.writeHeader(header);
@@ -236,7 +248,7 @@ public class ExtractCohort extends ExtractTool {
         progressMeter.setRecordsBetweenTimeChecks(100L);
 
         if ( filterSetInfoTableName == null || filterSetInfoTableName.equals("") ) {
-            logger.warn("--variant-filter-table is not specified, no filtering of cohort! ");
+            logger.warn("--filter-set-info-table is not specified, no filtering of cohort! ");
         }
 
         engine.traverse();

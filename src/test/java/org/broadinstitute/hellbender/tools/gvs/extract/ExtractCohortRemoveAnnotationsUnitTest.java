@@ -41,8 +41,7 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 null,
                 null,
                 false,
-                true,
-                false,
+                ExtractCohort.VQSLODFilteringType.NONE,
                 false
         );
 

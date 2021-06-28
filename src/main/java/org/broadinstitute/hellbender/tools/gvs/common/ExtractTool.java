@@ -62,18 +62,6 @@ public abstract class ExtractTool extends GATKTool {
     protected boolean printDebugInformation = false;
 
     @Argument(
-            fullName = "vqslog-SNP-threshold",
-            doc = "The minimum value required for a SNP to pass.",
-            optional = true)
-    protected double vqsLodSNPThreshold = 0;
-
-    @Argument(
-            fullName = "vqslog-INDEL-threshold",
-            doc = "The minimum value required for an INDEL to pass.",
-            optional = true)
-    protected double vqsLodINDELThreshold = 0;
-
-    @Argument(
             fullName = "local-sort-max-records-in-ram",
             doc = "When doing local sort, store at most this many records in memory at once",
             optional = true
