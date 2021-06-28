@@ -88,8 +88,8 @@ MRI_SAX_SEGMENTED_CHANNEL_MAP = {
     'left_atrium': 12, 'right_atrium': 13, 'aorta': 14, 'pulmonary_artery': 15,
 }
 MRI_AO_SEGMENTED_CHANNEL_MAP = {
-    'ao_background': 0, 'ao_superior_vena_cava': 1, 'ao_pulmonary_artery': 2, 'ao_ascending_aortic_wall': 3, 'ao_ascending_aorta': 4,
-    'ao_descending_aortic_wall': 5, 'ao_descending_aorta': 6, 'ao_thorax': 7, 'ao_body': 8, 'ao_breast_implant': 9,
+    'background': 0, 'svc': 1, 'pulmonary_artery': 2, 'ascending_aortic_wall': 3, 'ascending_aorta': 4,
+    'descending_aortic_wall': 5, 'descending_aorta': 6, 'thorax': 7, 'body': 8, 'breast_implant': 9,
 }
 MRI_LVOT_SEGMENTED_CHANNEL_MAP = {
     'background': 0, 'body': 1, 'lungs': 2, 'RV_wall': 3, 'RV_cavity': 4, 'LV_wall': 5, 'LV_cavity': 6,
