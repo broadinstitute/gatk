@@ -62,6 +62,8 @@ def run(args):
             infer_hidden_layer_multimodal_multitask(args)
         elif 'infer_pixels' == args.mode:
             infer_with_pixels(args)
+        elif 'infer_encoders' == args.mode:
+            infer_encoders_block_multimodal_multitask(args)
         elif 'test_scalar' == args.mode:
             test_multimodal_scalar_tasks(args)
         elif 'train_block' == args.mode:
@@ -496,6 +498,57 @@ def train_paired_model(args):
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
+
+
+def infer_encoders_block_multimodal_multitask(args):
+    args.num_workers = 0
+    tsv_style_is_genetics = 'genetics' in args.tsv_style
+    sample_set = None
+    if args.sample_csv is not None:
+        with open(args.sample_csv, 'r') as csv_file:
+            sample_ids = [row[0] for row in csv.reader(csv_file)]
+            sample_set = set(sample_ids[1:])
+    _, encoders, _, _ = block_make_multimodal_multitask_model(**args.__dict__)
+    latent_dimensions = args.dense_layers[-1]
+    for e in encoders:
+        stats = Counter()
+        inference_tsv = _hidden_file_name(args.output_folder, e.name, args.id, '.tsv')
+        logging.info(f'Will write encodings from {e.name} to: {inference_tsv}')
+        # hard code batch size to 1 so we can iterate over file names and generated tensors together in the tensor_paths for loop
+        tensor_paths = [
+            os.path.join(args.tensors, tp) for tp in sorted(os.listdir(args.tensors))
+            if os.path.splitext(tp)[-1].lower() == TENSOR_EXT and (sample_set is None or os.path.splitext(tp)[0] in sample_set)
+        ]
+        generate_test = TensorGenerator(
+            1, [e], [], tensor_paths, num_workers=0,
+            cache_size=args.cache_size, keep_paths=True, mixup=args.mixup_alpha,
+        )
+        generate_test.set_worker_paths(tensor_paths)
+        with open(inference_tsv, mode='w') as inference_file:
+            inference_writer = csv.writer(inference_file, delimiter='\t', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            header = ['FID', 'IID'] if tsv_style_is_genetics else ['sample_id']
+            header += [f'latent_{i}' for i in range(latent_dimensions)]
+            inference_writer.writerow(header)
+
+            while True:
+                batch = next(generate_test)
+                input_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_PATHS_INDEX]
+                if tensor_paths[0] in stats:
+                    next(generate_test)  # this prints end of epoch info
+                    logging.info(f"Latent space inference on {stats['count']} tensors finished. Inference TSV file at: {inference_tsv}")
+                    del stats
+                    break
+
+                sample_id = os.path.basename(tensor_paths[0]).replace(TENSOR_EXT, '')
+                prediction = encoders[e].predict(input_data)
+                prediction = np.reshape(prediction, (latent_dimensions,))
+                csv_row = [sample_id, sample_id] if tsv_style_is_genetics else [sample_id]
+                csv_row += [f'{prediction[i]}' for i in range(latent_dimensions)]
+                inference_writer.writerow(csv_row)
+                stats[tensor_paths[0]] += 1
+                stats['count'] += 1
+                if stats['count'] % 500 == 0:
+                    logging.info(f"Wrote:{stats['count']} rows of latent space inference.  Last tensor:{tensor_paths[0]}")
 
 
 def inspect_paired_model(args):
