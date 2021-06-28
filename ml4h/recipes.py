@@ -168,8 +168,8 @@ def train_block(args):
         decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
     if merger:
         merger.save(f'{args.output_folder}{args.id}/merger.h5')
-    test_paths = None
-    test_data, test_labels = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    #test_paths = None
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     performance_metrics = _predict_and_evaluate(
         model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
         args.batch_size, args.hidden_layer, os.path.join(args.output_folder, args.id + '/'), test_paths, args.embed_visualization, args.alpha,

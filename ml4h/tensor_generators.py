@@ -483,7 +483,7 @@ def big_batch_from_minibatch_generator(generator: TensorGenerator, minibatches: 
     Returns:
         A tuple of dicts mapping tensor names to big batches of numpy arrays mapping.
     """
-    iterator = generator.as_numpy_iterator()
+    iterator = generator#.as_numpy_iterator()
     first_batch = next(iterator)
     saved_tensors = {}
     batch_size = None
