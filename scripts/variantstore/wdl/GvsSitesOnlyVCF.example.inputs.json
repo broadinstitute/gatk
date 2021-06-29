@@ -1,11 +1,14 @@
 {
-  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcfs": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz", "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/Data/gvs_features_0.vcf.gz"],
-  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcf_indices": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz.tbi", "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/Data/gvs_features_0.vcf.gz.tbi"],
+  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcfs": ["gs://fc-secure-daa074a0-884f-4b67-a79b-cb5cd1556c9f/e73809fa-9ef2-4f3b-965c-846eff4b905e/GvsExtractCallset/48c56780-2520-444f-b1b3-83091a74bb08/call-ExtractTask/shard-223/alpha1_1000_223.vcf.gz", "gs://fc-secure-daa074a0-884f-4b67-a79b-cb5cd1556c9f/e73809fa-9ef2-4f3b-965c-846eff4b905e/GvsExtractCallset/48c56780-2520-444f-b1b3-83091a74bb08/call-ExtractTask/shard-0/alpha1_1000_0.vcf.gz"],
+  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcf_indices": ["gs://fc-secure-daa074a0-884f-4b67-a79b-cb5cd1556c9f/e73809fa-9ef2-4f3b-965c-846eff4b905e/GvsExtractCallset/48c56780-2520-444f-b1b3-83091a74bb08/call-ExtractTask/shard-223/alpha1_1000_223.vcf.gz.tbi", "gs://fc-secure-daa074a0-884f-4b67-a79b-cb5cd1556c9f/e73809fa-9ef2-4f3b-965c-846eff4b905e/GvsExtractCallset/48c56780-2520-444f-b1b3-83091a74bb08/call-ExtractTask/shard-0/alpha1_1000_0.vcf.gz.tbi"],
   "GvsSitesOnlyVCF.output_sites_only_file_name": "hello_did_I_sites_only",
   "GvsSitesOnlyVCF.output_merged_file_name": "hello_did_I_merge",
   "GvsSitesOnlyVCF.output_annotated_file_name": "hello_did_I_annotate",
   "GvsSitesOnlyVCF.nirvana_data_directory": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz",
   "GvsSitesOnlyVCF.nirvana_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json",
+  "GvsSitesOnlyVCF.vat_vt_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json",
+  "GvsSitesOnlyVCF.nirvana_override_json": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/hello_did_I_annotate.json",
+  "GvsSitesOnlyVCF.create_vat_jsons_python_script": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/create_vat_jsons_python_script.py",
   "GvsSitesOnlyVCF.project_id": "spec-ops-aou",
   "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing"
 }
