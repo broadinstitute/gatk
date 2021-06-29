@@ -5,6 +5,8 @@ import datetime
 
 import csv
 import json
+import ijson
+import gzip
 import argparse
 
 JOB_IDS = set()
@@ -143,13 +145,18 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
 def make_annotation_jsons(annotated_json, output_json, output_genes_json):
   output_file=open(output_json, 'w')
   output_genes_file=open(output_genes_json, 'w')
-  json_data = open(annotated_json, 'r')
-  data = json.load(json_data)
-  annotated_position_lines = data['positions']
-  annotated_gene_lines = data['genes'] # Is there any reason to split up the genes and positions json creation into two helper scripts?
-  for annotated_json_line in annotated_position_lines:
-    position=annotated_json_line.get('position')  # this is a required field -- do we want validation?
-    variants=annotated_json_line.get('variants')
+  #json_data = open(annotated_json, 'r')
+
+  if annotated_json.endswith(".gz"):
+      json_data = gzip.open(annotated_json, 'rb')
+  else:
+      json_data = open(annotated_json, 'rb')
+
+  positions = ijson.items(json_data, 'positions.item', use_float=True)
+
+  for p in positions:
+    position=p['position']  # this is a required field -- do we want validation?
+    variants=p['variants']
     # row for each variant - transcript
     # so let's start with each variant
     for variant in variants:
@@ -168,8 +175,18 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
           output_file.write(back_json)
           output_file.write("\n")
   output_file.close()
+
+  # we've already read the whole file once so we have to open it again
+  # TODO: cleanup closing of file handles
+  if annotated_json.endswith(".gz"):
+      json_data = gzip.open(annotated_json, 'rb')
+  else:
+      json_data = open(annotated_json, 'rb')
+
+  genes = ijson.items(json_data, 'genes.item', use_float=True)
+
   omim_fieldnames = list(vat_nirvana_omim_dictionary.keys())
-  for gene_line in annotated_gene_lines:
+  for gene_line in genes:
     if gene_line.get("omim") != None:
       row = {}
       row["gene_symbol"] = gene_line.get("name") # TODO throw an error if it's None? We dont care if there's no omim tho, right? right! cuz nothin would be there to add in the join
