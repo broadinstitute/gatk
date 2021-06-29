@@ -143,9 +143,9 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
     return row
 
 def make_annotation_jsons(annotated_json, output_json, output_genes_json):
-  output_file=open(output_json, 'w')
-  output_genes_file=open(output_genes_json, 'w')
-  #json_data = open(annotated_json, 'r')
+  # TODO split this into two methods---positions and genes
+  output_file=gzip.open(output_json, 'w')
+  output_genes_file=gzip.open(output_genes_json, 'w')
 
   if annotated_json.endswith(".gz"):
       json_data = gzip.open(annotated_json, 'rb')
@@ -164,16 +164,16 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
       if variant.get("transcripts") == None:
         # then we make a special row
         row = make_annotated_json_row(position, variant, None)
-        back_json=json.dumps(row)
-        output_file.write(back_json)
-        output_file.write("\n")
+        json_str = json.dumps(row) + "\n"
+        json_bytes = json_str.encode('utf-8')
+        output_file.write(json_bytes)
       else:
         transcript_lines = variant.get("transcripts")
         for transcript in transcript_lines:
           row = make_annotated_json_row(position, variant, transcript)
-          back_json=json.dumps(row)
-          output_file.write(back_json)
-          output_file.write("\n")
+          json_str = json.dumps(row) + "\n"
+          json_bytes = json_str.encode('utf-8')
+          output_file.write(json_bytes)
   output_file.close()
 
   # we've already read the whole file once so we have to open it again
@@ -198,9 +198,9 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
           nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)
           omim_fieldvalue = phenotypes_line.get(nirvana_omim_fieldname)
           row[vat_omim_fieldname] = omim_fieldvalue
-      back_json=json.dumps(row)
-      output_genes_file.write(back_json)
-      output_genes_file.write("\n")
+      json_str = json.dumps(row) + "\n"
+      json_bytes = json_str.encode('utf-8')
+      output_genes_file.write(json_bytes)
   output_genes_file.close()
 
 if __name__ == '__main__':
