@@ -209,6 +209,7 @@ workflow GvsCreateFilterSet {
             input:
                 input_vcfs = SNPsVariantRecalibratorScattered.recalibration,
                 input_vcfs_indexes = SNPsVariantRecalibratorScattered.recalibration_index,
+                gather_type = "CONVENTIONAL",
                 output_vcf_name = "${filter_set_name}.vrecalibration.gz",
                 preemptible_tries = 3,
                 gatk_override = gatk_override
@@ -677,6 +678,7 @@ task UploadFilterSetFilesToBQ {
    input {
      Array[File] input_vcfs
      Array[File] input_vcfs_indexes
+     String gather_type = "BLOCK"
      String output_vcf_name
 
      File? gatk_override
@@ -698,7 +700,7 @@ task UploadFilterSetFilesToBQ {
        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
        gatk --java-options -Xmx3g GatherVcfsCloud \
-            --ignore-safety-checks --gather-type BLOCK \
+            --ignore-safety-checks --gather-type ~{gather_type} \
             -I ~{sep=' -I ' input_vcfs} \
             --output ~{output_vcf_name}
 
