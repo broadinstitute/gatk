@@ -701,7 +701,7 @@ task UploadFilterSetFilesToBQ {
 
        gatk --java-options -Xmx3g GatherVcfsCloud \
             --ignore-safety-checks --gather-type ~{gather_type} \
-            --create-output-variant-index=false \
+            --create-output-variant-index false \
             -I ~{sep=' -I ' input_vcfs} \
             --output ~{output_vcf_name}
 
