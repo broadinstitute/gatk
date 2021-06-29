@@ -13,7 +13,7 @@ workflow GvsCreateFilterSet {
 
         String data_project
         String default_dataset
-        String tmp_output_directory
+        String output_directory
 
         String query_project = data_project
         Array[String]? query_labels
@@ -87,8 +87,7 @@ workflow GvsCreateFilterSet {
         input:
             fq_sample_table = fq_sample_table,
             service_account_json = service_account_json,
-            project_id = query_project,
-            dataset_name = default_dataset
+            project_id = query_project
     }
 
     call SplitIntervals {
@@ -129,7 +128,7 @@ workflow GvsCreateFilterSet {
            gatk_override = gatk_override
     }
 
-    call IndelsVariantRecalibrator {
+    call Tasks.IndelsVariantRecalibrator {
         input:
         sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
         sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
@@ -174,7 +173,7 @@ workflow GvsCreateFilterSet {
         }
 
         scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
-            call SNPsVariantRecalibrator as SNPsVariantRecalibratorScattered {
+            call Tasks.SNPsVariantRecalibrator as SNPsVariantRecalibratorScattered {
                 input:
                     sites_only_variant_filtered_vcf = ExtractFilterTask.output_vcf[idx],
                     sites_only_variant_filtered_vcf_index = ExtractFilterTask.output_vcf_index[idx],
@@ -205,29 +204,37 @@ workflow GvsCreateFilterSet {
                 gatk_override = gatk_override
         }
 
-        scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
-            call CreateFilterSetFiles as CreateFilterSetFilesScattered {
-                input:
-                    gatk_override = gatk_override,
-                    filter_set_name = filter_set_name,
-                    output_directory = tmp_output_directory,
-                    sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-                    sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
-                    snp_recal_file = SNPsVariantRecalibratorScattered.recalibration[idx],
-                    snp_recal_file_index = SNPsVariantRecalibratorScattered.recalibration_index[idx],
-                    snp_recal_tranches = SNPGatherTranches.tranches_file,
-                    indel_recal_file = IndelsVariantRecalibrator.recalibration,
-                    indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
-                    indel_recal_tranches = IndelsVariantRecalibrator.tranches,
-                    index = idx,
-                    service_account_json = service_account_json,
-                    query_project = query_project
-            }
+
+        call MergeVCFs as MergeRecalibrationFiles {
+            input:
+                input_vcfs = SNPsVariantRecalibratorScattered.recalibration,
+                input_vcfs_indexes = SNPsVariantRecalibratorScattered.recalibration_index,
+                output_vcf_name = "${filter_set_name}.vrecalibration.gz",
+                preemptible_tries = 3,
+                gatk_override = gatk_override
+        }
+
+
+        call CreateFilterSetFiles as CreateFilterSetFilesScattered {
+            input:
+                gatk_override = gatk_override,
+                filter_set_name = filter_set_name,
+                output_directory = output_directory,
+                sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+                sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+                snp_recal_file = MergeRecalibrationFiles.output_vcf,
+                snp_recal_file_index = MergeRecalibrationFiles.output_vcf_index,
+                snp_recal_tranches = SNPGatherTranches.tranches_file,
+                indel_recal_file = IndelsVariantRecalibrator.recalibration,
+                indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
+                indel_recal_tranches = IndelsVariantRecalibrator.tranches,
+                service_account_json = service_account_json,
+                query_project = query_project
         }
     }
 
     if (GetNumSamples.num_samples <= snps_variant_recalibration_threshold) {
-        call SNPsVariantRecalibrator as SNPsVariantRecalibratorClassic {
+        call Tasks.SNPsVariantRecalibrator as SNPsVariantRecalibratorClassic {
             input:
                 sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
                 sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
@@ -255,7 +262,7 @@ workflow GvsCreateFilterSet {
             input:
                 gatk_override = gatk_override,
                 filter_set_name = filter_set_name,
-                output_directory = tmp_output_directory,
+                output_directory = output_directory,
                 sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
                 sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
                 snp_recal_file = SNPsVariantRecalibratorClassic.recalibration,
@@ -264,7 +271,6 @@ workflow GvsCreateFilterSet {
                 indel_recal_file = IndelsVariantRecalibrator.recalibration,
                 indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
                 indel_recal_tranches = IndelsVariantRecalibrator.tranches,
-                index = 1,
                 service_account_json = service_account_json,
                 query_project = query_project
         }
@@ -273,8 +279,9 @@ workflow GvsCreateFilterSet {
     call UploadFilterSetFilesToBQ {
         input:
             filter_set_name = filter_set_name,
+            # get the "done" output from either the scattered call or the unscattered call to CreateFilterSetFiles
             file_creation_done = if defined(CreateFilterSetFilesScattered.done) then defined(CreateFilterSetFilesScattered.done) else defined(CreateFilterSetFilesClassic.done),
-            output_directory = tmp_output_directory,
+            output_directory = output_directory,
             fq_info_destination_table = fq_info_destination_table,
             fq_tranches_destination_table = fq_tranches_destination_table,
             fq_filter_sites_destination_table = fq_filter_sites_destination_table,
@@ -294,7 +301,6 @@ task GetNumSamples {
         String fq_sample_table
         File? service_account_json
         String project_id
-        String dataset_name
     }
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
@@ -501,8 +507,6 @@ task CreateFilterSetFiles {
         File indel_recal_file_index
         File indel_recal_tranches
 
-        String index
-
         File? service_account_json
         String query_project
     }
@@ -543,19 +547,19 @@ task CreateFilterSetFiles {
             --ref-version 38 \
             --filter-set-name ~{filter_set_name} \
             -V ~{sites_only_variant_filtered_vcf} \
-            -O ~{filter_set_name}.filter_sites_load.~{index}.tsv
+            -O ~{filter_set_name}.filter_sites_load.tsv
 
         # merge into a single file
         echo "Merging SNP + INDELs"
-        cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > ~{filter_set_name}.filter_set_load.~{index}.tsv
+        cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > ~{filter_set_name}.filter_set_load.tsv
 
         echo "Merging Tranches"
-        cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > ~{filter_set_name}.tranches_load.~{index}.csv
+        cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > ~{filter_set_name}.tranches_load.csv
 
         if [ -n "~{output_directory}" ]; then
-            gsutil cp ~{filter_set_name}.filter_sites_load.~{index}.tsv ~{output_directory}/
-            gsutil cp ~{filter_set_name}.filter_set_load.~{index}.tsv ~{output_directory}/
-            gsutil cp ~{filter_set_name}.tranches_load.~{index}.csv ~{output_directory}/
+            gsutil cp ~{filter_set_name}.filter_sites_load.tsv ~{output_directory}/
+            gsutil cp ~{filter_set_name}.filter_set_load.tsv ~{output_directory}/
+            gsutil cp ~{filter_set_name}.tranches_load.csv ~{output_directory}/
         fi
     >>>
 
@@ -621,7 +625,7 @@ task UploadFilterSetFilesToBQ {
         echo "Loading Filter Set into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
         ${bq_info_table} \
-        ~{output_directory}/~{filter_set_name}.filter_set_load.*.tsv \
+        ~{output_directory}/~{filter_set_name}.filter_set_load.tsv \
         "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" > status_bq_load_info_table
 
         # BQ load likes a : instead of a . after the project
@@ -630,7 +634,7 @@ task UploadFilterSetFilesToBQ {
         echo "Loading Tranches into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
         ${bq_tranches_table} \
-        ~{output_directory}/~{filter_set_name}.tranches_load.*.csv \
+        ~{output_directory}/~{filter_set_name}.tranches_load.csv \
         "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float"  > status_bq_load_tranches_table
 
         # BQ load likes a : instead of a . after the project
@@ -640,7 +644,7 @@ task UploadFilterSetFilesToBQ {
         echo "Loading Filter Set Sites into BQ"
         bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
         ${bq_filter_sites_table} \
-        ~{output_directory}/~{filter_set_name}.filter_sites_load.*.tsv \
+        ~{output_directory}/~{filter_set_name}.filter_sites_load.tsv \
         "filter_set_name:string,location:integer,filters:string"  > status_bq_load_filter_sites_table
     >>>
 
@@ -712,164 +716,6 @@ task UploadFilterSetFilesToBQ {
      File output_vcf_index = "~{output_vcf_name}.tbi"
    }
  }
-
-task IndelsVariantRecalibrator {
-
-  input {
-    String recalibration_filename
-    String tranches_filename
-    File? model_report
-
-    Array[String] recalibration_tranche_values
-    Array[String] recalibration_annotation_values
-
-    File sites_only_variant_filtered_vcf
-    File sites_only_variant_filtered_vcf_index
-
-    File? excluded_sites_bed
-    File mills_resource_vcf
-    File axiomPoly_resource_vcf
-    File dbsnp_resource_vcf
-    File mills_resource_vcf_index
-    File axiomPoly_resource_vcf_index
-    File dbsnp_resource_vcf_index
-    Boolean use_allele_specific_annotations
-    Int max_gaussians = 4
-
-    Int disk_size
-    String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
-    Int? machine_mem_gb
-  }
-
-  Int machine_mem = select_first([machine_mem_gb, 30])
-  Int java_mem = machine_mem - 5
-
-
-  command <<<
-    set -euo pipefail
-
-    gatk --java-options -Xmx~{java_mem}g \
-      VariantRecalibrator \
-      -V ~{sites_only_variant_filtered_vcf} \
-      ~{"-XL " + excluded_sites_bed} \
-      -O ~{recalibration_filename} \
-      --output-model indels.model \
-      --rscript-file indels.Rscript \
-      --tranches-file ~{tranches_filename} \
-      --trust-all-polymorphic \
-      -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
-      -an ~{sep=' -an ' recalibration_annotation_values} \
-      ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
-      -mode INDEL \
-      ~{"--input-model " + model_report} \
-      --max-gaussians ~{max_gaussians} \
-      -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
-      -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
-      -resource:dbsnp,known=true,training=false,truth=false,prior=2 ~{dbsnp_resource_vcf}
-  >>>
-
-  runtime {
-    memory: "~{machine_mem} GiB"
-    cpu: "2"
-    disks: "local-disk " + disk_size + " HDD"
-    preemptible: 1
-    docker: gatk_docker
-  }
-
-  output {
-    File recalibration = "~{recalibration_filename}"
-    File recalibration_index = "~{recalibration_filename}.idx"
-    File tranches = "~{tranches_filename}"
-    File model = "indels.model"
-    File rscript = "indels.Rscript"
-  }
-}
-
-task SNPsVariantRecalibrator {
-
-  input {
-    String recalibration_filename
-    String tranches_filename
-    File? model_report
-
-    Array[String] recalibration_tranche_values
-    Array[String] recalibration_annotation_values
-
-    File sites_only_variant_filtered_vcf
-    File sites_only_variant_filtered_vcf_index
-
-    File? excluded_sites_bed
-    File hapmap_resource_vcf
-    File omni_resource_vcf
-    File one_thousand_genomes_resource_vcf
-    File dbsnp_resource_vcf
-    File hapmap_resource_vcf_index
-    File omni_resource_vcf_index
-    File one_thousand_genomes_resource_vcf_index
-    File dbsnp_resource_vcf_index
-    Boolean use_allele_specific_annotations
-    Int max_gaussians = 6
-    Int? downsampleFactor = 1
-
-    Int disk_size
-    String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
-    Int? machine_mem_gb
-
-  }
-
-  Int auto_mem = ceil(2 * size([sites_only_variant_filtered_vcf,
-                                hapmap_resource_vcf,
-                                omni_resource_vcf,
-                                one_thousand_genomes_resource_vcf,
-                                dbsnp_resource_vcf],
-                     "GiB"))
-  Int machine_mem = select_first([machine_mem_gb, if auto_mem < 7 then 7 else auto_mem])
-  Int java_mem = machine_mem - 5
-  String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT --output-tranches-for-scatter" else ""
-
-  command <<<
-    set -euo pipefail
-
-    MODEL_REPORT=~{model_report}
-
-    gatk --java-options -Xmx~{java_mem}g \
-      VariantRecalibrator \
-      -V ~{sites_only_variant_filtered_vcf} \
-      ~{"-XL " + excluded_sites_bed} \
-      -O ~{recalibration_filename} \
-      --output-model snps.model \
-      --rscript-file snps.Rscript \
-      --tranches-file ~{tranches_filename} \
-      --trust-all-polymorphic \
-      -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
-      -an ~{sep=' -an ' recalibration_annotation_values} \
-      ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
-      -mode SNP \
-      --sample-every-Nth-variant ~{downsampleFactor} \
-      ~{model_report_arg} \
-      --max-gaussians ~{max_gaussians} \
-      -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
-      -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
-      -resource:1000G,known=false,training=true,truth=false,prior=10 ~{one_thousand_genomes_resource_vcf} \
-      -resource:dbsnp,known=true,training=false,truth=false,prior=7 ~{dbsnp_resource_vcf}
-  >>>
-
-  runtime {
-    memory: "~{machine_mem} GiB"
-    cpu: 2
-    disks: "local-disk " + disk_size + " HDD"
-    preemptible: 0
-    docker: gatk_docker
-  }
-
-  output {
-    File recalibration = "~{recalibration_filename}"
-    File recalibration_index = "~{recalibration_filename}.idx"
-    File tranches = "~{tranches_filename}"
-    File model = "snps.model"
-    File rscript = "snps.Rscript"
-  }
-}
 
 
 
