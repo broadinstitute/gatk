@@ -20,7 +20,7 @@
 {
 "description": "OMIM Disease Name TODO -- this needs to be swapped to Repeated not nullable and String not Integer?",
 "name": "omim_phenotypes_name",
-"type": "Integer",
+"type": "String",
 "mode": "Nullable"
 }
 ]
