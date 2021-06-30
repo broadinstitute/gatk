@@ -312,9 +312,9 @@ task GetNumSamples {
         if [ ~{has_service_account_file} = 'true' ]; then
             gcloud auth activate-service-account --key-file='~{service_account_json}'
             gcloud config set project ~{project_id}
-            echo "project_id = ~{project_id}" > ~/.bigqueryrc
         fi
 
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
         "SELECT COUNT(*) as num_rows FROM ~{fq_sample_table}" > num_rows.csv
 
