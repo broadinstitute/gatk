@@ -38,13 +38,13 @@ vat_nirvana_transcripts_dictionary = {
   "gene_symbol": "hgnc", # nullable
   "transcript_source": "source", # nullable
   "aa_change": "hgvsp", # nullable
-  "consequence": "consequence", # nullable -- TODO check on this one. May want this to be "[]"
+  "consequence": "consequence", # nullable -- this is now an array
   "dna_change": "hgvsc", # nullable
   "exon_number": "exons", # nullable
   "intron_number": "introns", # nullable
-  "splice_distance": "hgvsc", # nullable -- TODO Additional processing:  Extract the splice distance from the hgvsc field
+  # "splice_distance": "hgvsc", # nullable -- Lee has pushed this out of p0 for now
   "entrez_gene_id": "geneId", # nullable
-  # "hgnc_gene_id": "hgncid", # nullable -- TODO ignore for now Lees notes dont match up here: genes.hgncid?
+  # "hgnc_gene_id": "hgncid", # nullable --  Lee has pushed this out of p0 for now
   "is_canonical_transcript": "isCanonical" # nullable -- (and lets make the nulls false)
 }
 
@@ -86,10 +86,10 @@ vat_nirvana_gnomad_dictionary = {
 }
 
 vat_nirvana_omim_dictionary = { # TODO or should this be vat_nirvana_genes_dictionary ?
-  #"hgnc_gene_id": "hgncid", # nullable genes.hgncid NOT HERE?!??!?
+  # "hgnc_gene_id": "hgncid", # nullable genes.hgncid NOT HERE -- Lee has pushed this out of p0 for now
   # "gene_omim_id": "mimNumber", # nullable genes.omim.mimNumber HARD CODED FOR NOW
   "omim_phenotypes_id": "mimNumber", # nullable <-- lets talk arrays! genes.omim.phenotypes.mimNumber
-  "omim_phenotypes_name": "phenotype" #TODO where is the omim stuff?????? <-- lets talk arrays! genes.omim.phenotypes.phenotype
+  "omim_phenotypes_name": "phenotype" # nullable
 }
 
 def make_annotated_json_row(row_position, variant_line, transcript_line): # would it be better to not pass the transcript_line since its dupe data?
@@ -193,11 +193,12 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
       omim_line = gene_line["omim"][0] # TODO I am making the huge assumption that we are only grabbing 1
       row["gene_omim_id"] = omim_line.get("mimNumber")
       if omim_line.get("phenotypes") != None:
-        phenotypes_line = omim_line["phenotypes"][0] # TODO I am making the huge assumption that we are only grabbing 1
-        for vat_omim_fieldname in omim_fieldnames:  # like "mimNumber", "phenotype"
-          nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)
-          omim_fieldvalue = phenotypes_line.get(nirvana_omim_fieldname)
-          row[vat_omim_fieldname] = omim_fieldvalue
+        phenotypes = omim_line["phenotypes"]
+        for phenotype in phenotypes:
+          for vat_omim_fieldname in omim_fieldnames:  # like "mimNumber", "phenotype"
+            nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)
+            omim_fieldvalue = phenotype.get(nirvana_omim_fieldname)
+            row[vat_omim_fieldname] = omim_fieldvalue
       json_str = json.dumps(row) + "\n"
       json_bytes = json_str.encode('utf-8')
       output_genes_file.write(json_bytes)
