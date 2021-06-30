@@ -93,7 +93,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-318-sites-only-filtered-vcf-then-annotate-wdl
    - name: GvsSitesOnlyVCF
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsSitesOnlyVCF.wdl
