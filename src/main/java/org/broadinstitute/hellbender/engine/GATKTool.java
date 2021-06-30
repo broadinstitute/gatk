@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Stream;
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -43,6 +44,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.writers.ShardingVCFWriter;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -92,6 +94,10 @@ public abstract class GATKTool extends CommandLineProgram {
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_SHORT_NAME,
             doc = "If true, create a a MD5 digest any VCF file created.", optional=true, common = true)
     public boolean createOutputVariantMD5 = false;
+
+    @Argument(fullName = StandardArgumentDefinitions.MAX_VARIANTS_PER_SHARD_LONG_NAME, optional = true, minValue = 0, common = true,
+            doc = "If non-zero, partitions VCF output into shards, each containing up to the given number of records.")
+    private int maxVariantsPerShard = 0;
 
     @Argument(fullName= StandardArgumentDefinitions.LENIENT_LONG_NAME,
             shortName = StandardArgumentDefinitions.LENIENT_SHORT_NAME,
@@ -898,6 +904,14 @@ public abstract class GATKTool extends CommandLineProgram {
             options.add(Options.DO_NOT_WRITE_GENOTYPES);
         }
 
+        if (maxVariantsPerShard > 0) {
+            return new ShardingVCFWriter(
+                    outPath,
+                    maxVariantsPerShard,
+                    sequenceDictionary,
+                    createOutputVariantMD5,
+                    options.toArray(new Options[options.size()]));
+        }
         return GATKVariantContextUtils.createVCFWriter(
                 outPath,
                 sequenceDictionary,
