@@ -94,7 +94,7 @@ import java.util.stream.IntStream;
  *   -V input.vcf \
  *   -O output.vcf \
  *   --split-multi-allelics \
- *   --dont-trim-alleles
+ *   --dont-trim-alleles \
  *   --keep-original-ac
  * </pre>
  * <h4> Left align variants up to 2000 bases to the left (default is at most left aligning 1000 bases to left)</h4>
