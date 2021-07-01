@@ -1,35 +1,41 @@
 [
   {
+   "description": "Variant ID. Unique string for identifying a variant (as produced by NIRVANA based on a spec from Broad Institute)",
+   "name": "vid",
+   "type": "String",
+   "mode": "Required"
+  },
+  {
+    "description": "Transcript ID. Null indicates that this variant does not overlap any transcripts",
+    "name": "transcript",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+   "description": "Contig names match the hg38 reference",
+   "name": "contig",
+   "type": "String",
+   "mode": "Required"
+  },
+  {
     "description": "Must be positive. Exact position for a SNP and the position before the alteration in an indel",
     "name": "position",
     "type": "Integer",
     "mode": "Required"
   },
- {
-   "description": "Variant ID. Unique string for identifying a variant (as produced by NIRVANA based on a spec from Broad Institute)",
-   "name": "vid",
-   "type": "String",
-   "mode": "Required"
- },
- {
-   "description": "Contig names match the hg38 reference",
-   "name": "contig",
-   "type": "String",
-   "mode": "Required"
- },
- {
+  {
    "description": "base(s). This should always be one base for SNPs and insertions.  More than one base for deletions",
    "name": "ref_allele",
    "type": "String",
    "mode": "Required"
- },
- {
+  },
+  {
    "description": "base(s).  This should always be one base for SNPs and deletions.  More than one base for insertions",
    "name": "alt_allele",
    "type": "String",
    "mode": "Required"
- },
- {
+  },
+  {
     "description": "DNA change type (HGVS)",
     "name": "variant_type",
     "type": "String",
@@ -42,16 +48,10 @@
     "mode": "Required"
   },
   {
-    "description": "rsID TODO check with Lee about why this json thinks its Repeated not nullable",
+    "description": "rsID",
     "name": "dbsnp_rsid",
     "type": "String",
     "mode": "Repeated"
-  },
-  {
-    "description": "Transcript ID. Null indicates that this variant does not overlap any transcripts",
-    "name": "transcript",
-    "type": "String",
-    "mode": "Nullable"
   },
   {
    "description": "Gene symbol.  A variant can have more than one associated gene symbol, since about 3% of genes do overlap",
@@ -72,14 +72,14 @@
    "mode": "Nullable"
  },
  {
-   "description": "Amino acid change type TODO check with Lee about why this json thinks its Repeated not nullable",
+   "description": "Amino acid change type",
    "name": "consequence",
    "type": "String",
    "mode": "Repeated"
  },
  {
-   "description": "HGVS c. nomenclature; DNA change",
-   "name": "dna_change",
+   "description": "HGVS c. nomenclature; DNA change in transcript space",
+   "name": "dna_change_in_transcript",
    "type": "String",
    "mode": "Nullable"
  },
@@ -96,14 +96,8 @@
     "mode": "Nullable"
   },
   {
-    "description": "Splice site distance for introns  Will be a positive or negative integer",
-    "name": "splice_distance",
-    "type": "String",
-    "mode": "Nullable"
-  },
-  {
-    "description": "Entrez/NCBI ID",
-    "name": "entrez_gene_id",
+    "description": "Gene ID for the transcript",
+    "name": "gene_id",
     "type": "String",
     "mode": "Nullable"
   },
@@ -198,10 +192,10 @@
     "mode": "Nullable"
   },
  {
-   "description": "ClinVar Disease Name TODO Repeated",
+   "description": "ClinVar Disease Name",
    "name": "clinvar_phenotype",
    "type": "String",
-   "mode": "Nullable"
+   "mode": "Repeated"
  },
   {
     "description": "gnomAD: 'Total' frequency",
@@ -252,15 +246,15 @@
     "mode": "Nullable"
   },
   {
-    "description": "OMIM Disease ID TODO -- this needs to be swapped to Repeated not nullable",
+    "description": "OMIM Disease ID",
     "name": "omim_phenotypes_id",
     "type": "Integer",
-    "mode": "Nullable"
+    "mode": "Repeated"
   },
   {
-    "description": "OMIM Disease Name TODO -- this needs to be swapped to Repeated not nullable?",
+    "description": "OMIM Disease Name",
     "name": "omim_phenotypes_name",
     "type": "String",
-    "mode": "Nullable"
+    "mode": "Repeated"
   }
 ]
