@@ -43,7 +43,8 @@ vat_nirvana_transcripts_dictionary = {
   "exon_number": "exons", # nullable
   "intron_number": "introns", # nullable
   # "splice_distance": "hgvsc", # nullable -- Lee has pushed this out of p0 for now
-  "entrez_gene_id": "geneId", # nullable
+  "gene_id": "geneId", # nullable
+  # "entrez_gene_id": "geneId", # nullable
   # "hgnc_gene_id": "hgncid", # nullable --  Lee has pushed this out of p0 for now
   "is_canonical_transcript": "isCanonical" # nullable -- (and lets make the nulls false)
 }
@@ -105,21 +106,22 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
       for vat_transcripts_fieldname in vat_nirvana_transcripts_dictionary.keys():  # like "transcript"
         nirvana_transcripts_fieldname = vat_nirvana_transcripts_dictionary.get(vat_transcripts_fieldname)
         transcript_fieldvalue = transcript_line.get(nirvana_transcripts_fieldname)
-        if nirvana_transcripts_fieldname == "isCanonical" and transcript_fieldvalue != True: # oooof this is ugly
-          transcript_fieldvalue = False
         row[vat_transcripts_fieldname] = transcript_fieldvalue
+
+      if variant_line.get("spliceAI") != None & transcript_line.get("hgnc") != None:
+        splice_ai_list = variant_line["spliceAI"]
+        for splice_ai_obj in splice_ai_list:
+          # get the splice AI value that matches to the transcript_line transcripts.hgnc to "spliceAI.hgnc"
+          if splice_ai_obj.get("hgnc") == transcript_line["hgnc"]:
+            for vat_splice_ai_fieldname in vat_nirvana_splice_ai_dictionary.keys():  # like "splice_ai_acceptor_gain_score"
+              nirvana_splice_ai_fieldname = vat_nirvana_splice_ai_dictionary.get(vat_splice_ai_fieldname)
+              splice_ai_fieldvalue = splice_ai_obj.get(nirvana_splice_ai_fieldname)
+              row[vat_splice_ai_fieldname] = splice_ai_fieldvalue
 
     for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
       nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
       gvs_alleles_fieldvalue = variant_line.get(nirvana_gvs_alleles_fieldname)
       row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
-
-    if variant_line.get("spliceAI") != None:
-      splice_ai_line = variant_line["spliceAI"][0] # TODO I am making the huge assumption that we are only grabbing 1
-      for vat_splice_ai_fieldname in vat_nirvana_splice_ai_dictionary.keys():  # like "splice_ai_acceptor_gain_score"
-        nirvana_splice_ai_fieldname = vat_nirvana_splice_ai_dictionary.get(vat_splice_ai_fieldname)
-        splice_ai_fieldvalue = splice_ai_line.get(nirvana_splice_ai_fieldname)
-        row[vat_splice_ai_fieldname] = splice_ai_fieldvalue
 
     if variant_line.get("gnomad") != None:
       for vat_gnomad_fieldname in vat_nirvana_gnomad_dictionary.keys():  # like "gnomad_all_af"
@@ -128,24 +130,24 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
         row[vat_gnomad_fieldname] = gnomad_fieldvalue
 
     if variant_line.get("clinvar") != None:
-      clinvar_lines = variant_line["clinvar"] # TODO I am making the huge assumption that this is correctly pulling the RCV one
+      clinvar_lines = variant_line["clinvar"]
       for clinvar_correct_line in clinvar_lines:
         # get the clinvar line with the id that starts with RCV
-        if clinvar_correct_line.get("id")[:2] == "RCV": # TODO, does this need to be 3, am I being a dummy here?
-              for vat_clinvar_fieldname in vat_nirvana_clinvar_dictionary.keys():  # like "clinvar_classification"
-                nirvana_clinvar_fieldname = vat_nirvana_clinvar_dictionary.get(vat_clinvar_fieldname)
-                clinvar_fieldvalue = clinvar_correct_line.get(nirvana_clinvar_fieldname)
-                row[vat_clinvar_fieldname] = clinvar_fieldvalue
+        if clinvar_correct_line.get("id")[:3] == "RCV":
+          row["clinvar_id"] = clinvar_correct_line.get("id") # For easy validation downstream
+          for vat_clinvar_fieldname in vat_nirvana_clinvar_dictionary.keys():  # like "clinvar_classification"
+            nirvana_clinvar_fieldname = vat_nirvana_clinvar_dictionary.get(vat_clinvar_fieldname)
+            clinvar_fieldvalue = clinvar_correct_line.get(nirvana_clinvar_fieldname)
+            row[vat_clinvar_fieldname] = clinvar_fieldvalue
 
     if variant_line.get("revel") != None:
       row["revel"] = variant_line.get("revel").get("score")
 
     return row
 
-def make_annotation_jsons(annotated_json, output_json, output_genes_json):
-  # TODO split this into two methods---positions and genes
+
+def make_positions_json(annotated_json, output_json):
   output_file=gzip.open(output_json, 'w')
-  output_genes_file=gzip.open(output_genes_json, 'w')
 
   if annotated_json.endswith(".gz"):
       json_data = gzip.open(annotated_json, 'rb')
@@ -153,6 +155,10 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
       json_data = open(annotated_json, 'rb')
 
   positions = ijson.items(json_data, 'positions.item', use_float=True)
+
+  #TODO: filter down to Ensembl transcripts only.
+  # so we can no longer just check if the transcripts exist or not---need to see if they exist and then if they have transcript_source of "Ensembl"
+  # TODO is it better to do the transcript_source filtering here in the python, or in BQ? MAYBE BQ is cleaner?
 
   for p in positions:
     position=p['position']  # this is a required field -- do we want validation?
@@ -169,15 +175,26 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
         output_file.write(json_bytes)
       else:
         transcript_lines = variant.get("transcripts")
-        for transcript in transcript_lines:
-          row = make_annotated_json_row(position, variant, transcript)
+        # Collect all the transcript sources and check for if they contain Ensembl <-- this might be a good place for optimization
+        sources = [transcript.get('source') for transcript in transcript_lines]
+        if "Ensembl" not in sources:
+          for transcript in transcript_lines:
+            if transcript.get('source') == "Ensembl":
+              row = make_annotated_json_row(position, variant, transcript)
+              json_str = json.dumps(row) + "\n"
+              json_bytes = json_str.encode('utf-8')
+              output_file.write(json_bytes)
+        else:
+          # if there are transcripts, but they are not Ensembl, we now only want one row in the VAT, not one row per transcript
+          row = make_annotated_json_row(position, variant, None)
           json_str = json.dumps(row) + "\n"
           json_bytes = json_str.encode('utf-8')
           output_file.write(json_bytes)
   output_file.close()
 
-  # we've already read the whole file once so we have to open it again
-  # TODO: cleanup closing of file handles
+def make_genes_json(annotated_json, output_genes_json):
+  output_genes_file=gzip.open(output_genes_json, 'w')
+
   if annotated_json.endswith(".gz"):
       json_data = gzip.open(annotated_json, 'rb')
   else:
@@ -189,20 +206,31 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
   for gene_line in genes:
     if gene_line.get("omim") != None:
       row = {}
-      row["gene_symbol"] = gene_line.get("name") # TODO throw an error if it's None? We dont care if there's no omim tho, right? right! cuz nothin would be there to add in the join
+      row["gene_symbol"] = gene_line.get("name")
       omim_line = gene_line["omim"][0] # TODO I am making the huge assumption that we are only grabbing 1
       row["gene_omim_id"] = omim_line.get("mimNumber")
       if omim_line.get("phenotypes") != None:
         phenotypes = omim_line["phenotypes"]
-        for phenotype in phenotypes:
-          for vat_omim_fieldname in omim_fieldnames:  # like "mimNumber", "phenotype"
+        for vat_omim_fieldname in omim_fieldnames:  # like "mimNumber", "phenotype"
+          # both of these are arrays -- TODO would it be clearer if this was just hard coded?
+          omim_field_array=[]
+          for phenotype in phenotypes:
             nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)
             omim_fieldvalue = phenotype.get(nirvana_omim_fieldname)
-            row[vat_omim_fieldname] = omim_fieldvalue
+            omim_field_array.append(omim_fieldvalue)
+          row[vat_omim_fieldname] = omim_field_array
       json_str = json.dumps(row) + "\n"
       json_bytes = json_str.encode('utf-8')
       output_genes_file.write(json_bytes)
   output_genes_file.close()
+
+def make_annotation_jsons(annotated_json, output_json, output_genes_json):
+  make_positions_json(annotated_json, output_json)
+  # we've already read the whole file once so we have to open it again
+  # TODO: cleanup closing of file handles
+  make_genes_json(annotated_json, output_genes_json)
+  # TODO: should we be taking on the ".json.gz" to all the file names?
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Create BQ load friendly jsons for VAT creation')
@@ -217,6 +245,4 @@ if __name__ == '__main__':
                         args.output_vt_json,
                         args.output_genes_json)
 
-#make_annotation_jsons("ralpha1.json", "aou_alpha1_shard_annotations_bq_load.json", "aou_alpha1_shard_genes_bq_load.json")
-# TODO add this to the ah_var_store docker!!!
 # TODO do I want to gsutil cp up the files into a bucket here?
