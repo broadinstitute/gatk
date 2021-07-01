@@ -99,8 +99,8 @@ import java.util.Optional;
  *   -I input.bam \
  *   -O output.g.vcf.gz \
  *   -ERC GVCF \
- *   -G Standard \
- *   -G AS_Standard
+ *   -G StandardAnnotation \
+ *   -G AS_StandardAnnotation
  * </pre>
  *
  * <h4>Variant calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=5484'>bamout</a> to show realigned reads</h4>
