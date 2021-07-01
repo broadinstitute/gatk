@@ -4,16 +4,19 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.PositionalOutputStream;
+import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexCreator;
+import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.index.tabix.TabixIndexCreator;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.codecs.FeatureSink;
+import org.broadinstitute.hellbender.utils.codecs.FeaturesHeader;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.function.Function;
@@ -22,38 +25,39 @@ import java.util.function.Function;
  * Class for output streams that encode Tribble {@link Feature}s. Supports block-compressed output, which is
  * detected by the output file path extension, in which case a Tabix index is also generated.
  */
-public class FeatureOutputStream<F extends Feature> implements Closeable {
+public class FeatureOutputStream <F extends Feature> implements FeatureSink<F> {
 
     private static final String NEWLINE_CHARACTER = "\n";
 
+    private final Function<F, String> encoder;
     private final PositionalOutputStream outputStream;
     private final IndexCreator indexCreator;
-    private final Function<F, String> encoder;
     private final Path featurePath;
 
     /**
      * @param file file to write to
-     * @param codec feature codec
-     * @param encoder encoding function mapping a feature to its text record (whithout a newline character)
-     * @param dictionary sequence dictionary
-     * @param compressionLevel block compression level (ignored if file path does not have a block-compressed extension)
+     * @param tabixFormat column descriptions for the tabix index
+     * @param header metaData for the features
      */
-    public FeatureOutputStream(final GATKPath file, final FeatureCodec<? extends Feature, ?> codec,
-                               final Function<F, String> encoder, final SAMSequenceDictionary dictionary,
-                               final int compressionLevel) {
+    public FeatureOutputStream( final GATKPath file,
+                                final TabixFormat tabixFormat,
+                                final Function<F, String> encoder,
+                                final SAMSequenceDictionary dict,
+                                final int compressionLevel ) {
         Utils.nonNull(file);
-        Utils.nonNull(codec);
+        Utils.nonNull(tabixFormat);
         Utils.nonNull(encoder);
-        Utils.nonNull(dictionary);
+        Utils.nonNull(dict);
+        this.encoder = encoder;
         if (IOUtil.hasBlockCompressedExtension(file.toPath())) {
-            outputStream = new PositionalOutputStream(new BlockCompressedOutputStream(file.toString(), compressionLevel));
-            indexCreator = new TabixIndexCreator(dictionary, codec.getTabixFormat());
+            outputStream = new PositionalOutputStream(
+                            new BlockCompressedOutputStream(file.toString(), compressionLevel));
+            indexCreator = new TabixIndexCreator(dict, tabixFormat);
         } else {
             outputStream = new PositionalOutputStream(file.getOutputStream());
             indexCreator = null;
         }
         featurePath = file.toPath();
-        this.encoder = encoder;
     }
 
     /**
@@ -75,7 +79,8 @@ public class FeatureOutputStream<F extends Feature> implements Closeable {
      *
      * @param feature feature to write, cannot be null
      */
-    public void add(final F feature) {
+    @Override
+    public void write(final F feature) {
         Utils.nonNull(feature);
         if (indexCreator != null) {
             indexCreator.addFeature(feature, outputStream.getPosition());

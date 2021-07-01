@@ -4,25 +4,29 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.engine.ReadWalker;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
+import org.broadinstitute.hellbender.tools.sv.LocusDepth;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
-import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
-import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
-import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
+import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.codecs.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
 import java.util.function.Predicate;
+
+import static org.broadinstitute.hellbender.utils.read.ReadUtils.isBaseInsideAdaptor;
 
 /**
  * Creates discordant read pair and split read evidence files for use in the GATK-SV pipeline.
@@ -69,6 +73,10 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     public static final String PAIRED_END_FILE_ARGUMENT_LONG_NAME = "pe-file";
     public static final String SPLIT_READ_FILE_ARGUMENT_SHORT_NAME = "SR";
     public static final String SPLIT_READ_FILE_ARGUMENT_LONG_NAME = "sr-file";
+    public static final String ALLELE_COUNT_OUTPUT_ARGUMENT_SHORT_NAME = "AC";
+    public static final String ALLELE_COUNT_OUTPUT_ARGUMENT_LONG_NAME = "allele-count-file";
+    public static final String ALLELE_COUNT_INPUT_ARGUMENT_SHORT_NAME = "F";
+    public static final String ALLELE_COUNT_INPUT_ARGUMENT_LONG_NAME = "allele-count-vcf";
     public static final String SAMPLE_NAME_ARGUMENT_LONG_NAME = "sample-name";
     public static final String COMPRESSION_LEVEL_ARGUMENT_LONG_NAME = "compression-level";
 
@@ -77,6 +85,28 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     @Argument(shortName = SPLIT_READ_FILE_ARGUMENT_SHORT_NAME, fullName = SPLIT_READ_FILE_ARGUMENT_LONG_NAME, doc = "Output file for split read evidence", optional=false)
     public GATKPath srFile;
+
+    @Argument(shortName = ALLELE_COUNT_OUTPUT_ARGUMENT_SHORT_NAME,
+            fullName = ALLELE_COUNT_OUTPUT_ARGUMENT_LONG_NAME,
+            doc = "Output file for allele counts",
+            optional = true)
+    public GATKPath alleleCountOutputFilename;
+
+    @Argument(shortName = ALLELE_COUNT_INPUT_ARGUMENT_SHORT_NAME,
+            fullName = ALLELE_COUNT_INPUT_ARGUMENT_LONG_NAME,
+            doc = "Input VCF of SNPs marking loci for allele counts",
+            optional = true)
+    public GATKPath alleleCountInputFilename;
+
+    @Argument(fullName = "allele-count-min-mapq",
+            doc = "minimum mapping quality for read to be allele-counted",
+            optional = true)
+    public int minMapQ = 30;
+
+    @Argument(fullName = "allele-count-min-baseq",
+            doc = "minimum base call quality for SNP to be allele-counted",
+            optional = true)
+    public int minQ = 20;
 
     @Argument(fullName = SAMPLE_NAME_ARGUMENT_LONG_NAME, doc = "Sample name")
     String sampleName = null;
@@ -91,8 +121,9 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     int currentDiscordantPosition = -1;
     String currentChrom = null;
 
-    private FeatureOutputStream<DiscordantPairEvidence> peWriter;
-    private FeatureOutputStream<SplitReadEvidence> srWriter;
+    private FeatureSink<DiscordantPairEvidence> peWriter;
+    private FeatureSink<SplitReadEvidence> srWriter;
+    private AlleleCounter alleleCounter;
 
     private SAMSequenceDictionary sequenceDictionary;
 
@@ -101,34 +132,76 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         return true;
     }
 
-
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
+
         sequenceDictionary = getBestAvailableSequenceDictionary();
-        peWriter = new FeatureOutputStream<>(peFile, new DiscordantPairEvidenceCodec(), DiscordantPairEvidenceCodec::encode, sequenceDictionary, compressionLevel);
-        srWriter = new FeatureOutputStream<>(srFile, new SplitReadEvidenceCodec(), SplitReadEvidenceCodec::encode, sequenceDictionary, compressionLevel);
+        final List<String> sampleNames = Collections.singletonList(sampleName);
+        peWriter = createPEWriter();
+        srWriter = createSRWriter();
+        if ( alleleCountInputFilename != null && alleleCountOutputFilename != null ) {
+            alleleCounter = new AlleleCounter(sequenceDictionary, sampleNames, compressionLevel,
+                                                alleleCountInputFilename, alleleCountOutputFilename,
+                                                minMapQ, minQ);
+        }
     }
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> readFilters = new ArrayList<>(super.getDefaultReadFilters());
-        readFilters.add(ReadFilterLibrary.MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER);
+        readFilters.add(ReadFilterLibrary.MAPPED);
         readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        readFilters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
-        readFilters.add(ReadFilterLibrary.NOT_SUPPLEMENTARY_ALIGNMENT);
         return readFilters;
     }
 
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        if (isSoftClipped(read)) {
-            countSplitRead(read, splitPosBuffer, srWriter);
+        if ( !(read.isPaired() && read.mateIsUnmapped()) &&
+                !read.isSupplementaryAlignment() &&
+                !read.isSecondaryAlignment() ) {
+            if ( isSoftClipped(read) ) {
+                countSplitRead(read, splitPosBuffer, srWriter);
+            }
+
+            if ( !read.isProperlyPaired() ) {
+                reportDiscordantReadPair(read);
+            }
         }
 
-        if (! read.isProperlyPaired()) {
-            reportDiscordantReadPair(read);
+        if ( alleleCounter != null ) {
+            alleleCounter.apply(read);
         }
+    }
+
+    private FeatureSink<DiscordantPairEvidence> createPEWriter() {
+        final String peFilename = peFile.toPath().toString();
+        final List<String> sampleNames = Collections.singletonList(sampleName);
+        final DiscordantPairEvidenceCodec peCodec = new DiscordantPairEvidenceCodec();
+        final DiscordantPairEvidenceBCICodec peBCICodec = new DiscordantPairEvidenceBCICodec();
+        if ( peBCICodec.canDecode(peFilename) ) {
+            return peBCICodec.makeSink(peFile, sequenceDictionary, sampleNames, compressionLevel);
+        }
+        if ( !peCodec.canDecode(peFilename) ) {
+            logger.warn("Writing discordant pair evidence to a file that can't be read as " +
+                    "discordant pair evidence: " + peFilename);
+        }
+        return peCodec.makeSink(peFile, sequenceDictionary, sampleNames, compressionLevel);
+    }
+
+    private FeatureSink<SplitReadEvidence> createSRWriter() {
+        final String srFilename = srFile.toPath().toString();
+        final List<String> sampleNames = Collections.singletonList(sampleName);
+        final SplitReadEvidenceCodec srCodec = new SplitReadEvidenceCodec();
+        final SplitReadEvidenceBCICodec srBCICodec = new SplitReadEvidenceBCICodec();
+        if ( srBCICodec.canDecode(srFilename) ) {
+            return srBCICodec.makeSink(srFile, sequenceDictionary, sampleNames, compressionLevel);
+        }
+        if ( !srCodec.canDecode(srFilename) ) {
+            logger.warn("Writing split read evidence to a file that can't be read as " +
+                    "split read evidence: " + srFilename);
+        }
+        return srCodec.makeSink(srFile, sequenceDictionary, sampleNames, compressionLevel);
     }
 
     private void reportDiscordantReadPair(final GATKRead read) {
@@ -176,11 +249,9 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
     }
 
     private void writeDiscordantPair(final DiscordantRead r) {
-        final boolean strandA = !r.isReadReverseStrand();
-        final boolean strandB = !r.isMateReverseStrand();
-
-        final DiscordantPairEvidence discordantPair = new DiscordantPairEvidence(sampleName, r.getContig(), r.getStart(), strandA, r.getMateContig(), r.getMateStart(), strandB);
-        peWriter.add(discordantPair);
+        peWriter.write(new DiscordantPairEvidence(sampleName,
+                            r.getContig(), r.getStart(), !r.isReadReverseStrand(),
+                            r.getMateContig(), r.getMateStart(), !r.isMateReverseStrand()));
     }
 
     /**
@@ -188,7 +259,9 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
      * srWriter if necessary.
      */
     @VisibleForTesting
-    public void countSplitRead(final GATKRead read, final PriorityQueue<SplitPos> splitCounts, final FeatureOutputStream<SplitReadEvidence> srWriter) {
+    public void countSplitRead(final GATKRead read,
+                               final PriorityQueue<SplitPos> splitCounts,
+                               final FeatureSink<SplitReadEvidence> srWriter ) {
         final SplitPos splitPosition = getSplitPosition(read);
         final int readStart = read.getStart();
         if (splitPosition.direction == POSITION.MIDDLE) {
@@ -197,16 +270,18 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         if (currentChrom == null) {
             currentChrom = read.getContig();
         } else if (!currentChrom.equals(read.getContig())) {
-            flushSplitCounts(splitPos -> true, srWriter, splitCounts);
+            flushSplitCounts(splitPos -> true, splitCounts, srWriter);
             currentChrom = read.getContig();
         } else {
-            flushSplitCounts(sp -> (sp.pos < readStart - 1), srWriter, splitCounts);
+            flushSplitCounts(sp -> (sp.pos < readStart - 1), splitCounts, srWriter);
         }
 
         splitCounts.add(splitPosition);
     }
 
-    private void flushSplitCounts(final Predicate<SplitPos> flushablePosition, final FeatureOutputStream<SplitReadEvidence> srWriter, final PriorityQueue<SplitPos> splitCounts) {
+    private void flushSplitCounts(final Predicate<SplitPos> flushablePosition,
+                                  final PriorityQueue<SplitPos> splitCounts,
+                                  final FeatureSink<SplitReadEvidence> srWriter) {
 
         while (splitCounts.size() > 0 && flushablePosition.test(splitCounts.peek())) {
             SplitPos pos = splitCounts.poll();
@@ -216,7 +291,7 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
                 splitCounts.poll();
             }
             final SplitReadEvidence splitRead = new SplitReadEvidence(sampleName, currentChrom, pos.pos, countAtPos, pos.direction.equals(POSITION.RIGHT));
-            srWriter.add(splitRead);
+            srWriter.write(splitRead);
         }
     }
 
@@ -240,18 +315,21 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        flushSplitCounts(splitPos -> true, srWriter, splitPosBuffer);
+        flushSplitCounts(splitPos -> true, splitPosBuffer, srWriter);
         flushDiscordantReadPairs();
+        if ( alleleCounter != null ) {
+            alleleCounter.close();
+        }
         return null;
     }
 
     @Override
     public void closeTool() {
         super.closeTool();
-        if (peWriter != null) {
+        if ( peWriter != null ) {
             peWriter.close();
         }
-        if (srWriter != null) {
+        if ( srWriter != null ) {
             srWriter.close();
         }
     }
@@ -432,6 +510,167 @@ public class PairedEndAndSplitReadEvidenceCollection extends ReadWalker {
         @Override
         public int compare(final DiscordantRead o1, final DiscordantRead o2) {
             return internalComparator.compare(o1, o2);
+        }
+    }
+
+    @VisibleForTesting
+    final static class AlleleCounter {
+        private final SAMSequenceDictionary dict;
+        private final FeatureSink<LocusDepth> writer;
+        private final int minMapQ;
+        private final int minQ;
+        private final Iterator<VariantContext> snpSourceItr;
+        private final Deque<LocusDepth> locusDepthQueue;
+
+        public AlleleCounter( final SAMSequenceDictionary dict,
+                              final List<String> sampleNames,
+                              final int compressionLevel,
+                              final GATKPath inputPath,
+                              final GATKPath outputPath,
+                              final int minMapQ,
+                              final int minQ ) {
+            this.dict = dict;
+            final String outputFilename = outputPath.toPath().toString();
+            final LocusDepthBCICodec bciCodec = new LocusDepthBCICodec();
+            if ( bciCodec.canDecode(outputFilename) ) {
+                this.writer = bciCodec.makeSink(outputPath, dict, sampleNames, compressionLevel);
+            } else {
+                final LocusDepthCodec codec = new LocusDepthCodec();
+                if ( !codec.canDecode(outputFilename) ) {
+                    LogManager.getLogger(AlleleCounter.class)
+                            .warn("Writing locus depth evidence to a file that can't be read as " +
+                                    "locus depth evidence: " + outputFilename);
+                }
+                this.writer = codec.makeSink(outputPath, dict, sampleNames, compressionLevel);
+            }
+            this.minMapQ = minMapQ;
+            this.minQ = minQ;
+            final FeatureDataSource<VariantContext> snpSource =
+                    new FeatureDataSource<>(inputPath.toPath().toString());
+            dict.assertSameDictionary(snpSource.getSequenceDictionary());
+            this.snpSourceItr = snpSource.iterator();
+            this.locusDepthQueue = new ArrayDeque<>(100);
+            readNextLocus();
+        }
+
+        public void apply( final GATKRead read ) {
+            if ( read.getMappingQuality() < minMapQ || locusDepthQueue.isEmpty() ) {
+                return;
+            }
+
+            // clean queue of LocusCounts that precede the current read
+            final SimpleInterval readLoc =
+                    new SimpleInterval(read.getContig(), read.getStart(), read.getEnd());
+            while ( true ) {
+                final LocusDepth locusDepth = locusDepthQueue.getFirst();
+                if ( compareLocus(locusDepth.getContig(), locusDepth.getStart(), readLoc) >= 0 ) {
+                    break;
+                }
+                writer.write(locusDepthQueue.removeFirst());
+                if ( locusDepthQueue.isEmpty() ) {
+                    if ( !readNextLocus() ) {
+                        return;
+                    }
+                }
+            }
+
+            // make sure that the last LocusCount in the queue occurs after the current read
+            //  if such a LocusCount is available
+            while ( true ) {
+                final LocusDepth locusDepth = locusDepthQueue.getLast();
+                if ( compareLocus(locusDepth.getContig(), locusDepth.getStart(), readLoc) > 0 ||
+                        !readNextLocus() ) {
+                    break;
+                }
+            }
+
+            walkReadMatches(read);
+        }
+
+        public void walkReadMatches( final GATKRead read ) {
+            int opStart = read.getStart();
+            int readIdx = 0;
+            final byte[] calls = read.getBasesNoCopy();
+            final byte[] quals = read.getBaseQualitiesNoCopy();
+            for ( final CigarElement cigEle : read.getCigar().getCigarElements() ) {
+                final int eleLen = cigEle.getLength();
+                final CigarOperator cigOp = cigEle.getOperator();
+                if ( cigOp.isAlignment() ) {
+                    final int opEnd = opStart + eleLen - 1;
+                    final SimpleInterval opLoc =
+                            new SimpleInterval(read.getContig(), opStart, opEnd);
+                    for ( final LocusDepth locusDepth : locusDepthQueue ) {
+                        final int cmp =
+                                compareLocus(locusDepth.getContig(), locusDepth.getStart(), opLoc);
+                        if ( cmp > 0 ) {
+                            break;
+                        }
+                        if ( cmp == 0 && !isBaseInsideAdaptor(read, locusDepth.getStart()) ) {
+                            final int callIdx = readIdx + locusDepth.getStart() - opStart;
+                            if ( quals[callIdx] < minQ ) {
+                                continue;
+                            }
+                            final Nucleotide call = Nucleotide.decode(calls[callIdx]);
+                            if ( call.isStandard() ) {
+                                locusDepth.observe(call.ordinal());
+                            }
+                        }
+                    }
+                }
+                if ( cigOp.consumesReadBases() ) {
+                    readIdx += eleLen;
+                }
+                if ( cigOp.consumesReferenceBases() ) {
+                    opStart += eleLen;
+                }
+            }
+        }
+
+        public void close() {
+            while ( !locusDepthQueue.isEmpty() ) {
+                writer.write(locusDepthQueue.removeFirst());
+            }
+            writer.close();
+        }
+
+        private int compareLocus( final String contig, final int position, final Locatable loc ) {
+            int cmp = Integer.compare(dict.getSequenceIndex(contig), dict.getSequenceIndex(loc.getContig()));
+            if ( cmp == 0 ) {
+                if ( position < loc.getStart() ) {
+                    cmp = -1;
+                } else if ( position > loc.getEnd() ) {
+                    cmp = 1;
+                }
+            }
+            return cmp;
+        }
+
+        private boolean readNextLocus() {
+            if ( !snpSourceItr.hasNext() ) {
+                return false;
+            }
+            VariantContext snp = snpSourceItr.next();
+            while ( !snp.isSNP() ) {
+                if ( !snpSourceItr.hasNext() ) {
+                    return false;
+                }
+                snp = snpSourceItr.next();
+            }
+            final byte[] refSeq = snp.getReference().getBases();
+            final Nucleotide refCall = Nucleotide.decode(refSeq[0]);
+            if ( !refCall.isStandard() ) {
+                throw new UserException("vcf contains a SNP with a non-standard reference base " +
+                        refCall + " at locus " + snp.getContig() + ":" + snp.getStart());
+            }
+            final byte[] altSeq = snp.getAlternateAllele(0).getBases();
+            final Nucleotide altCall = Nucleotide.decode(altSeq[0]);
+            if ( !altCall.isStandard() ) {
+                throw new UserException("vcf contains a SNP with a non-standard alt base" +
+                        altCall + " at locus " + snp.getContig() + ":" + snp.getStart());
+            }
+            final LocusDepth locusDepth = new LocusDepth(snp, refCall.ordinal(), altCall.ordinal());
+            locusDepthQueue.add(locusDepth);
+            return true;
         }
     }
 }

@@ -1,16 +1,20 @@
 package org.broadinstitute.hellbender.utils.codecs;
 
 import com.google.common.base.Splitter;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence> {
+public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence>
+        implements FeatureOutputCodec<SplitReadEvidence, FeatureOutputStream<SplitReadEvidence>> {
 
     public static final String FORMAT_SUFFIX = ".sr.txt";
     public static final String COL_DELIMITER = "\t";
@@ -46,17 +50,33 @@ public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence>
 
     @Override
     public boolean canDecode(final String path) {
-        final String toDecode;
-        if (IOUtil.hasBlockCompressedExtension(path)) {
-            toDecode = path.substring(0, path.lastIndexOf("."));
-        } else {
-            toDecode = path;
+        String toDecode = path.toLowerCase();
+        if ( IOUtil.hasBlockCompressedExtension(toDecode) ) {
+            toDecode = toDecode.substring(0, toDecode.lastIndexOf('.'));
         }
-        return toDecode.toLowerCase().endsWith(FORMAT_SUFFIX);
+        return toDecode.endsWith(FORMAT_SUFFIX);
     }
 
     @Override
     public Object readActualHeader(final LineIterator reader) { return null; }
+
+    @Override
+    public FeatureOutputStream<SplitReadEvidence> makeSink( final GATKPath path,
+                                                            final SAMSequenceDictionary dict,
+                                                            final List<String> sampleNames,
+                                                            final int compressionLevel ) {
+        return new FeatureOutputStream<>(path,
+                                        getTabixFormat(),
+                                        SplitReadEvidenceCodec::encode,
+                                        dict,
+                                        compressionLevel);
+    }
+
+    @Override
+    public void encode( final SplitReadEvidence ev,
+                        final FeatureOutputStream<SplitReadEvidence> os ) {
+        os.write(ev);
+    }
 
     public static String encode(final SplitReadEvidence ev) {
         final List<String> columns = Arrays.asList(

@@ -13,6 +13,8 @@ public final class SplitReadEvidence implements Feature {
     final int count;
     final boolean strand;
 
+    public final static String BCI_VERSION = "1.0";
+
     public SplitReadEvidence(final String sample, final String contig, final int position, final int count, final boolean strand) {
         Utils.nonNull(sample);
         Utils.nonNull(contig);

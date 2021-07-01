@@ -6,11 +6,12 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.Objects;
 
 public final class BafEvidence implements Feature {
-
     final String sample;
     final String contig;
     final int position;
     final double value;
+
+    public final static String BCI_VERSION = "1.0";
 
     public BafEvidence(final String sample, final String contig, final int position, final double value) {
         Utils.nonNull(sample);

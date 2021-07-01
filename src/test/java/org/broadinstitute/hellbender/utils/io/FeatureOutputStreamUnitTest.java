@@ -71,9 +71,9 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
                                          final String expectedHeader) throws IOException {
         final File tempDir = IOUtils.createTempDir(FeatureOutputStream.class.getSimpleName());
         final Path outFilePath = Paths.get(tempDir.toString(), getClass().getSimpleName() + extension);
-        final FeatureOutputStream<T> stream = new FeatureOutputStream<T>(
+        final FeatureOutputStream<T> stream = new FeatureOutputStream<>(
                 new GATKPath(outFilePath.toString()),
-                codec,
+                codec.getTabixFormat(),
                 FeatureOutputStreamUnitTest::encodeSVEvidenceFeature,
                 dictionary,
                 4
@@ -81,9 +81,9 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
         testWithStream(stream, featureList, outFilePath, codec, expectedHeader, false);
 
         final Path outFilePathGz = Paths.get(outFilePath + ".gz");
-        final FeatureOutputStream<T> streamGz = new FeatureOutputStream<T>(
+        final FeatureOutputStream<T> streamGz = new FeatureOutputStream<>(
                 new GATKPath(outFilePathGz.toString()),
-                codec,
+                codec.getTabixFormat(),
                 FeatureOutputStreamUnitTest::encodeSVEvidenceFeature,
                 dictionary,
                 4
@@ -98,7 +98,7 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
         if (expectedHeader != null) {
             stream.writeHeader(expectedHeader);
         }
-        featureList.stream().forEachOrdered(s -> stream.add(s));
+        featureList.stream().forEachOrdered(s -> stream.write(s));
         stream.close();
         if (indexed) {
             Assert.assertTrue(Files.exists(outIndexPath), "Index does not exist");
