@@ -65,7 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_add_warp_filtering
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -75,7 +74,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_max_retries
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
