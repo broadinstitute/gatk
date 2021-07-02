@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import uuid
 import time
-import datetime
+from datetime import datetime
 
 import csv
 import json
@@ -93,6 +93,24 @@ vat_nirvana_omim_dictionary = { # TODO or should this be vat_nirvana_genes_dicti
   "omim_phenotypes_name": "phenotype" # nullable
 }
 
+significance_ordering = [
+  "Benign",
+  "Likely Benign",
+  "Uncertain significance",
+  "Likely pathogenic",
+  "Pathogenic",
+  "drug response",
+  "association",
+  "risk factor",
+  "protective",
+  "Affects",
+  "conflicting data from submitters",
+  "other",
+  "not provided",
+  "'-'"
+ ]
+
+
 def make_annotated_json_row(row_position, variant_line, transcript_line): # would it be better to not pass the transcript_line since its dupe data?
     row = {}
     row["position"] = row_position # this is a required field -- do we want validation? (what about validation for all the variants_fieldnames?)
@@ -131,14 +149,30 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
 
     if variant_line.get("clinvar") != None:
       clinvar_lines = variant_line["clinvar"]
-      for clinvar_correct_line in clinvar_lines:
-        # get the clinvar line with the id that starts with RCV
-        if clinvar_correct_line.get("id")[:3] == "RCV":
-          row["clinvar_id"] = clinvar_correct_line.get("id") # For easy validation downstream
-          for vat_clinvar_fieldname in vat_nirvana_clinvar_dictionary.keys():  # like "clinvar_classification"
-            nirvana_clinvar_fieldname = vat_nirvana_clinvar_dictionary.get(vat_clinvar_fieldname)
-            clinvar_fieldvalue = clinvar_correct_line.get(nirvana_clinvar_fieldname)
-            row[vat_clinvar_fieldname] = clinvar_fieldvalue
+      significance_values = [] # ordered by Benign, Likely Benign, Uncertain significance, Likely pathogenic, Pathogenic # https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/
+      updated_dates = [] # grab the most recent
+      phenotypes = [] # ordered alphabetically
+      clinvar_ids = [] # For easy validation downstream
+      for clinvar_RCV_line in clinvar_lines:
+        # get the clinvar lines with the id that starts with RCV
+        if clinvar_RCV_line.get("id")[:3] == "RCV":
+          clinvar_ids.append(clinvar_RCV_line.get("id"))
+          significance_values.extend(clinvar_RCV_line.get("significance"))
+          updated_dates.append(clinvar_RCV_line.get("lastUpdatedDate"))
+          phenotypes.extend(clinvar_RCV_line.get("phenotypes"))
+      # We want to collect all the significance values and order them by the significance_ordering list
+      # So I will loop through the significance_ordering values and check for matching values in the significance_values list and put them in a new list
+      ordered_significance_values = []
+      for value in significance_ordering:
+        if value in significance_values:
+          ordered_significance_values.append(value) # this adds the id to the end of the list
+      values_not_accounted_for = list(set(ordered_significance_values).difference(significance_values))
+      ordered_significance_values.extend(values_not_accounted_for) # add any values that aren't in significance_ordering to the end
+      row["clinvar_id"] = clinvar_ids # array
+      row["clinvar_classification"] = ordered_significance_values # special sorted array
+      updated_dates.sort(key=lambda date: datetime.strptime(date, "%Y-%m-%d")) # note: method is in-place, and returns None
+      row["clinvar_last_updated"] = updated_dates[-1] # most recent date
+      row["clinvar_phenotype"] = sorted(phenotypes) # union of all phenotypes
 
     if variant_line.get("revel") != None:
       row["revel"] = variant_line.get("revel").get("score")
@@ -208,6 +242,9 @@ def make_genes_json(annotated_json, output_genes_json):
       row = {}
       row["gene_symbol"] = gene_line.get("name")
       omim_line = gene_line["omim"][0] # TODO I am making the huge assumption that we are only grabbing 1
+      if len(gene_line.get("omim")) > 1:
+        print(gene_line.get("name"),len(gene_line.get("omim")))
+        raise ValueError("An assumption about the possible count of omim values is incorrect.")
       row["gene_omim_id"] = omim_line.get("mimNumber")
       if omim_line.get("phenotypes") != None:
         phenotypes = omim_line["phenotypes"]
@@ -216,7 +253,7 @@ def make_genes_json(annotated_json, output_genes_json):
           omim_field_array=[]
           for phenotype in phenotypes:
             nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)
-            omim_fieldvalue = phenotype.get(nirvana_omim_fieldname)
+            omim_fieldvalue = phenotype.get(nirvana_omim_fieldname, "")
             omim_field_array.append(omim_fieldvalue)
           row[vat_omim_fieldname] = omim_field_array
       json_str = json.dumps(row) + "\n"
