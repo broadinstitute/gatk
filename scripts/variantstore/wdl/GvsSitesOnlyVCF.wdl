@@ -174,7 +174,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200701"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200703"
         memory: "10 GB"
         cpu: "2"
         disks: "local-disk 100 HDD"
