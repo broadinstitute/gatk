@@ -8,10 +8,10 @@ workflow GvsSitesOnlyVCF {
         String project_id
         String dataset_name
         File nirvana_data_directory
-        File nirvana_override_json
         File nirvana_schema_json_file
         File vat_vt_schema_json_file
         File vat_genes_schema_json_file
+        String output_path # TODO Is there a Path wdl type?
         File? gatk_override
     }
 
@@ -37,18 +37,18 @@ workflow GvsSitesOnlyVCF {
          input:
            annotation_json = AnnotateShardedVCF.annotation_json,
            output_name = "${i}.json.gz",
-           output_path = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/output/jun30/"
+           output_path = output_path
        }
     }
-
-     call BigQueryLoadJson {
+     # WHY IS THIS GETTING CALLED FIRST!!?!?! (maybe because it thinks we dont need any outputs? Time to add something to pass thru)
+     call BigQueryLoadJson { # TODO Note that sometimes this seems to be cached even when it hasn't been run with the correct data--prob because nothing seems to have changed
          input:
              nirvana_schema = nirvana_schema_json_file,
              vt_schema = vat_vt_schema_json_file,
              genes_schema = vat_genes_schema_json_file,
              project_id = project_id,
              dataset_name = dataset_name,
-             output_path = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/output/jun30/"
+             output_path = output_path
          }
 
      call BigQuerySmokeTest {
@@ -56,7 +56,6 @@ workflow GvsSitesOnlyVCF {
              project_id = project_id,
              dataset_name = dataset_name,
              annotation_jsons = AnnotateShardedVCF.annotation_json
-             # annotation_json = nirvana_override_json
          }
 }
 
@@ -157,6 +156,7 @@ task PrepAnnotationJson {
     String output_genes_json = "vat_genes_bq_load" + output_name
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
+    String output_ant_gcp_path = output_path + 'annotations/'
 
     command <<<
         set -e
@@ -166,6 +166,7 @@ task PrepAnnotationJson {
           --output_vt_json ~{output_vt_json} \
           --output_genes_json ~{output_genes_json}
 
+        gsutil cp ~{annotation_json} '~{output_ant_gcp_path}'
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
@@ -221,7 +222,7 @@ task BigQueryLoadJson {
        echo "Loading data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
        echo ~{vt_path}
        echo ~{genes_path}
-       # bq --location=US load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
+       bq --location=US load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
 
        set +e
 
@@ -236,7 +237,7 @@ task BigQueryLoadJson {
        fi
 
        echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
-       # bq --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
+       bq --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
 
        # create the final vat table with the correct fields
        PARTITION_FIELD="position"
@@ -318,7 +319,7 @@ task BigQueryLoadJson {
               left join `~{dataset_name}.~{genes_table}` as g on v.gene_symbol = g.gene_symbol'
               # the genes table may need to be a distinct * or something to avoid the duplicates that get created from genes that span shards
 
- # TODO why do I sometimes hit an error above, but still make it to the smoke test?!?!??!
+ # TODO why do I sometimes hit an error above, but still make it to the smoke test?!?!??! Seems like the auth errors dont fail the workflow
   >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -359,6 +360,7 @@ task BigQuerySmokeTest {
         # VALIDATION #1
         # The number of passing variants in GVS matches the number of variants in the VAT.
         # TODO this tests the python---what other qs should we ask here?
+        # TODO sometimes when there's an error msg, this is stripping out the #s and doing math with that like a dummy
         echo  "VALIDATION #1"
         # The pipeline completed without an error message
         # The VAT has data in it
@@ -371,7 +373,7 @@ task BigQuerySmokeTest {
         then
           echo "The VAT has no data in it"
           echo  "Validation has failed"
-          exit 1
+          # exit 1  <-- collect the errors? or fail the pipeline?
         else
           echo "The VAT has been updated"
         fi
@@ -393,7 +395,7 @@ task BigQuerySmokeTest {
         then
           echo "The number of variants is incorrect"
           echo  "Validation has failed"
-          # exit 1  <-- great! This worked! But need to get by it with my sloppy test data for now!
+          # exit 1  <-- collect the errors? or fail the pipeline?
         else
           echo "The number of passing variants in GVS matches the number of variants in the VAT"
         fi
@@ -415,7 +417,7 @@ task BigQuerySmokeTest {
         if [[ $PERCENT -gt 5 ]]
           then echo "There are too many genes"
           echo  "Validation has failed"
-          # exit 1 <-- great! This worked! But need to get by it with my sloppy test data for now!
+          # exit 1  <-- collect the errors? or fail the pipeline?
         else
           echo "Less than 5% of the variants have a non-null value in the gene field"
         fi
@@ -452,7 +454,7 @@ task BigQuerySmokeTest {
         then
           echo "The number of rows for variants with no transcripts is incorrect"
           echo  "Validation has failed"
-          # exit 1 <-- great! This worked! But need to get by it with my sloppy test data for now!
+          # exit 1  <-- collect the errors? or fail the pipeline?
         else
           echo "If a vid has a null transcript, then the vid is only in one row of the VAT"
         fi
@@ -489,17 +491,22 @@ task BigQuerySmokeTest {
         # VALIDATION #9
         # Each key combination is unique.
         echo  "VALIDATION #9"
-        # bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (*) FROM `~{dataset_name}.~{vat_table}`'
-        # BQ_VAT_ROW_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (*) FROM `~{dataset_name}.~{vat_table}`')
-        # bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid, DISTINCT transcript) FROM `~{dataset_name}.~{vat_table}`'
-        # BQ_VAT_KEY_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid, DISTINCT transcript) FROM `~{dataset_name}.~{vat_table}`')
+        # get the sum of all the distinct vids where transcript is null and all the distinct transcript where transcript is not null
+        BQ_VAT_DISTINCT_VID_NO_TRANSCRIPT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL')
+        BQ_VAT_DISTINCT_TRANSCRIPT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT transcript) FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NOT NULL')
+        BQ_VAT_NO_TRANSCRIPT_ROW_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (*) FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL')
+        BQ_VAT_WITH_TRANSCRIPT_ROW_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (*) FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NOT NULL')
 
-        # if [ $BQ_VAT_ROW_COUNT -ne $BQ_VAT_KEY_COUNT ];
-          # then echo "The number of rows and keys is different"
-          # exit 1
-        # else:
-          # echo "Each key combination is unique"
+        if [ $BQ_VAT_DISTINCT_VID_NO_TRANSCRIPT -ne $BQ_VAT_NO_TRANSCRIPT_ROW_COUNT ];
+           then echo "There are duplicate VID rows without transcripts"
+          # exit 1  <-- collect the errors? or fail the pipeline?
         # fi
+        # if [ $BQ_VAT_DISTINCT_TRANSCRIPT -ne $BQ_VAT_WITH_TRANSCRIPT_ROW_COUNT ]; # TODO double check this transcripts bit!
+          # then echo "The number of rows and keys is different"
+          # exit 1  <-- collect the errors? or fail the pipeline?
+        else:
+          echo "Each key combination is unique"
+        fi
 
         # ------------------------------------------------
         # FURTHER VALIDATION ?!??!
