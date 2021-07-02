@@ -199,6 +199,7 @@ workflow GvsCreateFilterSet {
             input:
                 tranches = SNPsVariantRecalibratorScattered.tranches,
                 output_filename = filter_set_name + ".snps.gathered.tranches",
+                output_tranche_values = snp_recalibration_tranche_values,
                 mode = "SNP",
                 disk_size = small_disk,
                 gatk_override = gatk_override

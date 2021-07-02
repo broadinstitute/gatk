@@ -68,6 +68,7 @@ task GatherTranches {
 
     input {
         Array[File] tranches
+        Array[String] output_tranche_values
         String output_filename
         String mode
         Int disk_size
@@ -112,6 +113,7 @@ task GatherTranches {
         GatherTranches \
         --input inputs.list \
         --mode ~{mode} \
+        -tranche ~{sep=' -tranche ' output_tranche_values} \
         --output ~{output_filename}
     >>>
 
