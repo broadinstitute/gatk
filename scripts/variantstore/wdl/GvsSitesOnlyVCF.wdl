@@ -56,7 +56,7 @@ workflow GvsSitesOnlyVCF {
          input:
              project_id = project_id,
              dataset_name = dataset_name,
-             annotation_jsons = AnnotateShardedVCF.annotation_json
+             annotation_jsons = AnnotateShardedVCF.annotation_json,
              load_jsons_done = BigQueryLoadJson.done
          }
 }

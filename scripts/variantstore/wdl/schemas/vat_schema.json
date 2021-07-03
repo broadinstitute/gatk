@@ -183,7 +183,7 @@
     "description": "ClinVar Classification",
     "name": "clinvar_classification",
     "type": "String",
-    "mode": "Nullable"
+    "mode": "Repeated"
   },
   {
     "description": "ClinVar Classification Date",
