@@ -48,7 +48,8 @@ workflow GvsSitesOnlyVCF {
              genes_schema = vat_genes_schema_json_file,
              project_id = project_id,
              dataset_name = dataset_name,
-             output_path = output_path
+             output_path = output_path,
+             prep_jsons_done = PrepAnnotationJson.done
          }
 
      call BigQuerySmokeTest {
@@ -56,6 +57,7 @@ workflow GvsSitesOnlyVCF {
              project_id = project_id,
              dataset_name = dataset_name,
              annotation_jsons = AnnotateShardedVCF.annotation_json
+             load_jsons_done = BigQueryLoadJson.done
          }
 }
 
@@ -166,7 +168,6 @@ task PrepAnnotationJson {
           --output_vt_json ~{output_vt_json} \
           --output_genes_json ~{output_genes_json}
 
-        gsutil cp ~{annotation_json} '~{output_ant_gcp_path}'
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
@@ -184,6 +185,7 @@ task PrepAnnotationJson {
     output {
         File vat_vt_json="~{output_vt_json}"
         File vat_genes_json="~{output_genes_json}"
+        Boolean done = true
     }
 }
 
@@ -195,6 +197,7 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
+        Array[String] prep_jsons_done
     }
 
     # I am going to want to have two pre-vat tables. A variant table and a genes table. They will be joined together for the vat table
@@ -341,6 +344,7 @@ task BigQuerySmokeTest {
         String project_id
         String dataset_name
         Array[File] annotation_jsons
+        Boolean load_jsons_done
     }
 
     # What I want to do here is query the final table for my expected results
