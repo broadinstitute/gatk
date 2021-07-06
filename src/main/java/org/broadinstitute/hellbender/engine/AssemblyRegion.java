@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -126,10 +125,6 @@ public final class AssemblyRegion implements Locatable {
 
     public List<AlignmentData> getAlignmentData() {
         return alignmentData;
-    }
-
-    public void addAlignmentData(AlignmentData alignmentData) {
-        this.alignmentData.add(alignmentData);
     }
 
     public void addAllAlignmentData(List<AlignmentData> alignmentData) {
@@ -286,7 +281,7 @@ public final class AssemblyRegion implements Locatable {
         addToReadCollection(read, reads);
     }
 
-    public void addToReadCollection(final GATKRead read, final List<GATKRead> collection) {
+    private void addToReadCollection(final GATKRead read, final List<GATKRead> collection) {
         Utils.nonNull(read, "Read cannot be null");
         final SimpleInterval readLoc = new SimpleInterval( read );
         Utils.validateArg(paddedSpan.overlaps(read), () ->
