@@ -93,17 +93,17 @@ vat_nirvana_omim_dictionary = { # TODO or should this be vat_nirvana_genes_dicti
   "omim_phenotypes_name": "phenotype" # nullable
 }
 
-significance_ordering = [
-  "Benign",
-  "Likely Benign",
-  "Uncertain significance",
-  "Likely pathogenic",
-  "Pathogenic",
+significance_ordering = [ # TODO I have lowercased this---check that this is okay. Nirvana seems to have diff cases :P
+  "benign",
+  "likely benign",
+  "uncertain significance",
+  "aikely pathogenic",
+  "aathogenic",
   "drug response",
   "association",
   "risk factor",
   "protective",
-  "Affects",
+  "affects",
   "conflicting data from submitters",
   "other",
   "not provided",
@@ -162,7 +162,7 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
           phenotypes.extend(clinvar_RCV_line.get("phenotypes"))
       # We want to collect all the significance values and order them by the significance_ordering list
       # So I will loop through the significance_ordering values and check for matching values in the significance_values list and put them in a new list
-      ordered_significance_values = []
+      ordered_significance_values = [] # how do we deal with cases issues?
       for value in significance_ordering:
         if value in significance_values:
           ordered_significance_values.append(value) # this adds the id to the end of the list
@@ -211,7 +211,7 @@ def make_positions_json(annotated_json, output_json):
         transcript_lines = variant.get("transcripts")
         # Collect all the transcript sources and check for if they contain Ensembl <-- this might be a good place for optimization
         sources = [transcript.get('source') for transcript in transcript_lines]
-        if "Ensembl" not in sources:
+        if "Ensembl" in sources:
           for transcript in transcript_lines:
             if transcript.get('source') == "Ensembl":
               row = make_annotated_json_row(position, variant, transcript)
