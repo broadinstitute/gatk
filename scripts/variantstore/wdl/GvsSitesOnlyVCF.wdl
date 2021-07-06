@@ -12,6 +12,7 @@ workflow GvsSitesOnlyVCF {
         File vat_vt_schema_json_file
         File vat_genes_schema_json_file
         String output_path # TODO Is there a Path wdl type?
+        String output_prefix
         File? gatk_override
     }
 
@@ -197,15 +198,16 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
+        String output_prefix
         Array[String] prep_jsons_done
     }
 
     # I am going to want to have two pre-vat tables. A variant table and a genes table. They will be joined together for the vat table
     # See if we can grab the annotations json directly from the gcp bucket (so pull it in as a string so it wont)
 
-    String vat_table = "vat_jun30"
-    String variant_transcript_table = "vat_vt_jun30"
-    String genes_table = "vat_genes_jun30"
+    String vat_table = "vat_" + output_prefix
+    String variant_transcript_table = "vat_vt_"  + output_prefix
+    String genes_table = "vat_genes_" + output_prefix
     String vt_path = output_path + 'vt/*'
     String genes_path = output_path + 'genes/*'
 
@@ -345,12 +347,13 @@ task BigQuerySmokeTest {
         String dataset_name
         Array[File] annotation_jsons
         Boolean load_jsons_done
+        String output_prefix
     }
 
     # What I want to do here is query the final table for my expected results
     # This will be hardcoded for now, but in the future I may want to pull a line out of the annotations json and use thats
 
-    String vat_table = "vat_jun30" # TODO seems dangerous to specify this twice
+    String vat_table = "vat_" + output_prefix
 
     command <<<
         set +e
@@ -390,10 +393,8 @@ task BigQuerySmokeTest {
         # Please note that we are counting the number of variants in GVS, not the number of sites, which may add a difficulty to this task.
         # TODO should these get broken down more so as not to test my sloppy bash over testing the data?
         # TODO should I write this test in python instead?!?!? YES! I think I should!!!!
-        # grep -o -i '"vid":' ~{sep=" " annotation_jsons} | wc -l
-        ANNOTATE_JSON_VARIANT_COUNT=$(grep -o -i '"vid":' ~{sep=" " annotation_jsons} | wc -l)
+        ANNOTATE_JSON_VARIANT_COUNT=$(gunzip -dc ~{sep=" " annotation_jsons} | grep -o -i '"vid":' | wc -l)
         echo $ANNOTATE_JSON_VARIANT_COUNT
-
 
         if [[ $ANNOTATE_JSON_VARIANT_COUNT -ne $BQ_VAT_VARIANT_COUNT ]]
         then
@@ -431,7 +432,7 @@ task BigQuerySmokeTest {
         # All variants in the TESK2 gene region (chr1:45,343,883-45,491,163) list multiple genes and those genes are always TESK2 and AL451136.1.
         echo  "VALIDATION #4"
         # TODO ask Lee for help here. I'm not sure how to do this one?
-        # 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig="chr1"'
+        # 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163'
         echo  "Still need to validate chr1"
 
         # TODO this is not done!
