@@ -12,7 +12,7 @@ workflow GvsSitesOnlyVCF {
         File vat_vt_schema_json_file
         File vat_genes_schema_json_file
         String output_path # TODO Is there a Path wdl type?
-        String output_prefix
+        String table_id
         File? gatk_override
     }
 
@@ -41,8 +41,7 @@ workflow GvsSitesOnlyVCF {
            output_path = output_path
        }
     }
-     # WHY IS THIS GETTING CALLED FIRST!!?!?! (maybe because it thinks we dont need any outputs? Time to add something to pass thru)
-     call BigQueryLoadJson { # TODO Note that sometimes this seems to be cached even when it hasn't been run with the correct data--prob because nothing seems to have changed
+     call BigQueryLoadJson {
          input:
              nirvana_schema = nirvana_schema_json_file,
              vt_schema = vat_vt_schema_json_file,
@@ -50,6 +49,7 @@ workflow GvsSitesOnlyVCF {
              project_id = project_id,
              dataset_name = dataset_name,
              output_path = output_path,
+             table_id = table_id,
              prep_jsons_done = PrepAnnotationJson.done
          }
 
@@ -57,6 +57,7 @@ workflow GvsSitesOnlyVCF {
          input:
              project_id = project_id,
              dataset_name = dataset_name,
+             table_id = table_id,
              annotation_jsons = AnnotateShardedVCF.annotation_json,
              load_jsons_done = BigQueryLoadJson.done
          }
@@ -198,16 +199,16 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-        String output_prefix
+        String table_id
         Array[String] prep_jsons_done
     }
 
     # I am going to want to have two pre-vat tables. A variant table and a genes table. They will be joined together for the vat table
     # See if we can grab the annotations json directly from the gcp bucket (so pull it in as a string so it wont)
 
-    String vat_table = "vat_" + output_prefix
-    String variant_transcript_table = "vat_vt_"  + output_prefix
-    String genes_table = "vat_genes_" + output_prefix
+    String vat_table = "vat_" + table_id
+    String variant_transcript_table = "vat_vt_"  + table_id
+    String genes_table = "vat_genes_" + table_id
     String vt_path = output_path + 'vt/*'
     String genes_path = output_path + 'genes/*'
 
@@ -347,13 +348,13 @@ task BigQuerySmokeTest {
         String dataset_name
         Array[File] annotation_jsons
         Boolean load_jsons_done
-        String output_prefix
+        String table_id
     }
 
     # What I want to do here is query the final table for my expected results
     # This will be hardcoded for now, but in the future I may want to pull a line out of the annotations json and use thats
 
-    String vat_table = "vat_" + output_prefix
+    String vat_table = "vat_" + table_id
 
     command <<<
         set +e

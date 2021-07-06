@@ -8,7 +8,7 @@
   "GvsSitesOnlyVCF.vat_vt_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json",
   "GvsSitesOnlyVCF.vat_genes_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json",
   "GvsSitesOnlyVCF.output_path": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/output/jul6/",
-  "GvsSitesOnlyVCF.output_prefix": "jul6",
+  "GvsSitesOnlyVCF.table_id": "jul6",
   "GvsSitesOnlyVCF.project_id": "spec-ops-aou",
   "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing"
 }
