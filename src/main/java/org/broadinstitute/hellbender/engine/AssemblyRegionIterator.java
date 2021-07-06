@@ -52,7 +52,6 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
     private final LocusIteratorByState libs;
     private final ActivityProfile activityProfile;
     private Queue<AlignmentData> pendingAlignmentData;
-    private Queue<AlignmentData> previousAlignmentData;
 
     /**
      * Constructs an AssemblyRegionIterator over a provided read shard
