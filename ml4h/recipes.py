@@ -148,8 +148,7 @@ def train_multimodal_multitask(args):
     )
 
     out_path = os.path.join(args.output_folder, args.id + '/')
-    test_paths = None
-    test_data, test_labels = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(
         model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
         args.batch_size, args.hidden_layer, out_path, test_paths, args.embed_visualization, args.alpha,
@@ -170,7 +169,7 @@ def train_block(args):
         decoders[tm].save(f'{args.output_folder}{args.id}/decoder_{tm.name}.h5')
     if merger:
         merger.save(f'{args.output_folder}{args.id}/merger.h5')
-    #test_paths = None
+
     test_data, test_labels, test_paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     performance_metrics = _predict_and_evaluate(
         model, test_data, test_labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
@@ -207,8 +206,7 @@ def test_multimodal_multitask(args):
     _, _, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model = make_multimodal_multitask_model(**args.__dict__)
     out_path = os.path.join(args.output_folder, args.id + '/')
-    paths = None
-    data, labels = big_batch_from_minibatch_generator(generate_test, args.test_steps)
+    data, labels, paths = big_batch_from_minibatch_generator(generate_test, args.test_steps)
     return _predict_and_evaluate(
         model, data, labels, args.tensor_maps_in, args.tensor_maps_out, args.tensor_maps_protected,
         args.batch_size, args.hidden_layer, out_path, paths, args.embed_visualization, args.alpha,
@@ -657,12 +655,11 @@ def _predict_scalars_and_evaluate_from_generator(
     logging.info(f"Scalar predictions {model_predictions} names: {scalar_predictions.keys()} test labels: {test_labels.keys()}")
     embeddings = []
     test_paths = []
-    iterator = generate_test.as_numpy_iterator()
     for i in range(steps):
-        batch = next(iterator)
-        input_data, output_data = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX]
+        batch = next(generate_test)
+        input_data, output_data, tensor_paths = batch[BATCH_INPUT_INDEX], batch[BATCH_OUTPUT_INDEX], batch[BATCH_PATHS_INDEX]
         y_predictions = model.predict(input_data)
-        #test_paths.extend(tensor_paths)
+        test_paths.extend(tensor_paths)
         if hidden_layer in layer_names:
             x_embed = embed_model_predict(model, tensor_maps_in, hidden_layer, input_data, 2)
             embeddings.extend(np.copy(np.reshape(x_embed, (x_embed.shape[0], np.prod(x_embed.shape[1:])))))
