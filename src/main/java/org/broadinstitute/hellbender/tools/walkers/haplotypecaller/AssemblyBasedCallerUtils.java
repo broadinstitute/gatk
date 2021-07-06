@@ -406,7 +406,7 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
         }
-        Set<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads());
+        Set<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads(), givenAlleles.size());
         filteredPileupHaplotypes.forEach(haplotype -> assemblyResultSet.add(haplotype));
         assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
     }
@@ -414,9 +414,16 @@ public final class AssemblyBasedCallerUtils {
 
     static Set<Haplotype> filterPileupHaplotypes(final List<Haplotype> originalAssemblyHaplotypes,
                                                   final List<Haplotype> assembledAndNewHaplotypes,
-                                                  final List<GATKRead> hardClippedPileupReads) {
+                                                  final List<GATKRead> hardClippedPileupReads, final int numPileupHaplotypes) {
+        // TODO AH & BG add the following code to check for quality of the SNPs
+//        // make sure we're supposed to look for high entropy
+//        if ( lookForMismatchEntropy &&
+//                pileup.getNumberOfElements() >= minReadsAtLocus &&
+//                (double)mismatchQualities / (double)totalQualities >= mismatchThreshold )
+//            hasPointEvent = true;
+
         int kmerSize = 10;
-        int numPileupHaplotypes = 5;
+      //  int numPileupHaplotypes = 10;
         // AH & BG filter
         // get reads from assemblyResultSet.regionForGenotyping.reads[x].samRecord mReadBases and mBaseQualities and kmerize them.
         // Map<kmer, Integer> # times Kmer in all the reads
