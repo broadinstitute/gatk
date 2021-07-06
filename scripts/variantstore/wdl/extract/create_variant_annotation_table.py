@@ -126,7 +126,7 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
         transcript_fieldvalue = transcript_line.get(nirvana_transcripts_fieldname)
         row[vat_transcripts_fieldname] = transcript_fieldvalue
 
-      if variant_line.get("spliceAI") != None & transcript_line.get("hgnc") != None:
+      if (test_clinvar.jsonvariant_line.get("spliceAI") != None) and (transcript_line.get("hgnc") != None):
         splice_ai_list = variant_line["spliceAI"]
         for splice_ai_obj in splice_ai_list:
           # get the splice AI value that matches to the transcript_line transcripts.hgnc to "spliceAI.hgnc"
@@ -157,7 +157,7 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
         # get the clinvar lines with the id that starts with RCV
         if clinvar_RCV_line.get("id")[:3] == "RCV":
           clinvar_ids.append(clinvar_RCV_line.get("id"))
-          significance_values.extend(clinvar_RCV_line.get("significance"))
+          significance_values.extend([x.lower() for x in clinvar_RCV_line.get("significance")])
           updated_dates.append(clinvar_RCV_line.get("lastUpdatedDate"))
           phenotypes.extend(clinvar_RCV_line.get("phenotypes"))
       # We want to collect all the significance values and order them by the significance_ordering list
