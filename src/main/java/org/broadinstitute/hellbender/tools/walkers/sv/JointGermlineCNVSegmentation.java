@@ -95,8 +95,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private SortedSet<String> samples;
     private VariantContextWriter vcfWriter;
     private SAMSequenceDictionary dictionary;
-    private CNVDefragmenter defragmenter;
-    private SVClusterEngine<SVCallRecord> clusterEngine;
+    private SVClusterEngine defragmenter;
+    private SVClusterEngine clusterEngine;
     private List<GenomeLoc> callIntervals;
     private String currentContig;
     private SampleDB sampleDB;
@@ -132,24 +132,24 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private int minQS = 20;
 
     @Argument(fullName = MIN_SAMPLE_NUM_OVERLAP_LONG_NAME, doc = "Minimum fraction of common samples for two variants to cluster together", optional = true)
-    private double minSampleSetOverlap = SVClusterEngine.DEFAULT_DEPTH_ONLY_PARAMS.getSampleOverlap();
+    private double minSampleSetOverlap = CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS.getSampleOverlap();
 
     @Argument(fullName = DEFRAGMENTATION_PADDING_LONG_NAME, doc = "Extend events by this fraction on each side when determining overlap to merge", optional = true)
-    private double defragmentationPadding = CNVDefragmenter.DEFAULT_PADDING_FRACTION;
+    private double defragmentationPadding = CNVLinkage.DEFAULT_PADDING_FRACTION;
 
     @Argument(fullName = CLUSTERING_INTERVAL_OVERLAP_LONG_NAME,
             doc="Minimum interval reciprocal overlap for clustering", optional=true)
-    public double clusterIntervalOverlap = SVClusterEngine.DEFAULT_DEPTH_ONLY_PARAMS.getReciprocalOverlap();
+    public double clusterIntervalOverlap = CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS.getReciprocalOverlap();
 
     @Argument(fullName = CLUSTERING_BREAKEND_WINDOW_LONG_NAME,
             doc="Cluster events whose endpoints are within this distance of each other", optional=true)
-    public int clusterWindow = SVClusterEngine.DEFAULT_DEPTH_ONLY_PARAMS.getWindow();
+    public int clusterWindow = CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS.getWindow();
 
     @Argument(fullName = MODEL_CALL_INTERVALS_LONG_NAME, doc = "gCNV model intervals created with the FilterIntervals tool.")
     private GATKPath modelCallIntervalList = null;
 
     @Argument(fullName = BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME, doc = "Strategy to use for choosing a representative value for a breakpoint cluster.", optional = true)
-    private SVCollapser.BreakpointSummaryStrategy breakpointSummaryStrategy = SVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END;
+    private CanonicalSVCollapser.BreakpointSummaryStrategy breakpointSummaryStrategy = CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END;
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -200,15 +200,14 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         final GenomeLocParser parser = new GenomeLocParser(this.dictionary);
         setIntervals(parser);
 
+        final ClusteringParameters clusterArgs = ClusteringParameters.createDepthParameters(clusterIntervalOverlap, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
         if (callIntervals == null) {
-            defragmenter = new CNVDefragmenter(dictionary, defragmentationPadding, minSampleSetOverlap);
+            defragmenter = SVClusterEngineFactory.createCNVDefragmenter(dictionary, reference, defragmentationPadding, minSampleSetOverlap, clusterArgs);
         } else {
-            defragmenter = new BinnedCNVDefragmenter(dictionary, defragmentationPadding, minSampleSetOverlap, callIntervals);
+            defragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(dictionary, reference, defragmentationPadding, minSampleSetOverlap, callIntervals, clusterArgs);
         }
-        clusterEngine = new SVClusterEngine<>(dictionary, LocatableClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE,
-                true, (new SVCollapser(breakpointSummaryStrategy))::collapse);
-        final SVClusterEngine.DepthClusteringParameters clusterArgs = new SVClusterEngine.DepthClusteringParameters(clusterIntervalOverlap, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
-        clusterEngine.setDepthOnlyParams(clusterArgs);
+        clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy,
+                dictionary, reference, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
 
         vcfWriter = getVCFWriter();
 

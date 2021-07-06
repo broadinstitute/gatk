@@ -12,27 +12,26 @@ import java.util.TreeMap;
  * CNV defragmenter for when the intervals used for coverage collection are available. The intervals are used to adjust
  * variant padding by rounding to the nearest bin boundary.
  */
-public class BinnedCNVDefragmenter extends CNVDefragmenter {
+public class BinnedCNVLinkage extends CNVLinkage {
 
-    protected final TreeMap<GenomeLoc, Integer> genomicToBinMap;
+    protected final TreeMap<GenomeLoc, Integer> genomicCoordinatesToBinIndexMap;
     protected final List<GenomeLoc> coverageIntervals;
     final GenomeLocParser parser;
 
-    //for single-sample clustering case
-    public BinnedCNVDefragmenter(final SAMSequenceDictionary dictionary, final double paddingFraction,
-                                 final double minSampleOverlap, final List<GenomeLoc> coverageIntervals) {
+    public BinnedCNVLinkage(final SAMSequenceDictionary dictionary, final double paddingFraction,
+                            final double minSampleOverlap, final List<GenomeLoc> coverageIntervals) {
         super(dictionary, paddingFraction, minSampleOverlap);
         this.coverageIntervals = Utils.nonNull(coverageIntervals);
-        genomicToBinMap = new TreeMap<>();
+        genomicCoordinatesToBinIndexMap = new TreeMap<>();
         for (int i = 0; i < coverageIntervals.size(); i++) {
-            genomicToBinMap.put(coverageIntervals.get(i),i);
+            genomicCoordinatesToBinIndexMap.put(coverageIntervals.get(i),i);
         }
         parser = new GenomeLocParser(this.dictionary);
     }
 
     // TODO: try to calculate this by sweeping through the bin intervals
     @Override
-    protected int getMaxClusterableStartingPosition(final SVCallRecord call) {
+    public int getMaxClusterableStartingPosition(final SVCallRecord call) {
         Utils.nonNull(call);
         return dictionary.getSequence(call.getContigA()).getSequenceLength();
     }
@@ -44,12 +43,12 @@ public class BinnedCNVDefragmenter extends CNVDefragmenter {
         final GenomeLoc callEnd = parser.createGenomeLoc(contig, end, end);
 
         //first interval that is equal to or "greater than" the call start, such that the start of the bin should match the call start, with a little wiggle room
-        final Map.Entry<GenomeLoc, Integer> startBin = genomicToBinMap.ceilingEntry(callStart);
+        final Map.Entry<GenomeLoc, Integer> startBin = genomicCoordinatesToBinIndexMap.ceilingEntry(callStart);
         Utils.validate(startBin != null, "Call start " + callStart + " for  call at " + contig + ":" + start + "-" + end + " not found in model call intervals.");
         final int callStartIndex = startBin.getValue();
 
-        //last interval that is equal to or "less than" the call start, such that the end of the bin should match the call end
-        final Map.Entry<GenomeLoc, Integer> endBin = genomicToBinMap.floorEntry(callEnd);
+        //last interval that is equal to or "less than" the call end, such that the end of the bin should match the call end
+        final Map.Entry<GenomeLoc, Integer> endBin = genomicCoordinatesToBinIndexMap.floorEntry(callEnd);
         Utils.validate(endBin != null, "Call end " + callEnd + " for call at " + contig + ":" + start + "-" + end + " not found in model call intervals.");
         final int callEndIndex = endBin.getValue();
         final int callBinLength = callEndIndex - callStartIndex + 1;
@@ -65,7 +64,7 @@ public class BinnedCNVDefragmenter extends CNVDefragmenter {
             paddedCallStart = callStart.getStart();
         }
 
-        final int paddedEndIndex = Math.min(callEndIndex + (int)Math.round(callBinLength * paddingFraction), genomicToBinMap.size() - 1);
+        final int paddedEndIndex = Math.min(callEndIndex + (int)Math.round(callBinLength * paddingFraction), genomicCoordinatesToBinIndexMap.size() - 1);
         final int paddedCallEnd;
         if (coverageIntervals.get(paddedEndIndex).getContig().equals(callEnd.getContig())) {
             paddedCallEnd = coverageIntervals.get(paddedEndIndex).getEnd();

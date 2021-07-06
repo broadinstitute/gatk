@@ -21,11 +21,11 @@ import java.util.stream.IntStream;
 
 public class SVCollapserTest {
 
-    private static final SVCollapser collapser = new SVCollapser(SVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END);
-    private static final SVCollapser collapserMinMax = new SVCollapser(SVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END);
-    private static final SVCollapser collapserMaxMin = new SVCollapser(SVCollapser.BreakpointSummaryStrategy.MAX_START_MIN_END);
-    private static final SVCollapser collapserMean = new SVCollapser(SVCollapser.BreakpointSummaryStrategy.MEAN_START_MEAN_END);
-    private static final SVCollapser.AlleleCollectionCollapserComparator alleleComparator = new SVCollapser.AlleleCollectionCollapserComparator();
+    private static final CanonicalSVCollapser collapser = new CanonicalSVCollapser(SVTestUtils.ref, CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END);
+    private static final CanonicalSVCollapser collapserMinMax = new CanonicalSVCollapser(SVTestUtils.ref, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END);
+    private static final CanonicalSVCollapser collapserMaxMin = new CanonicalSVCollapser(SVTestUtils.ref, CanonicalSVCollapser.BreakpointSummaryStrategy.MAX_START_MIN_END);
+    private static final CanonicalSVCollapser collapserMean = new CanonicalSVCollapser(SVTestUtils.ref, CanonicalSVCollapser.BreakpointSummaryStrategy.MEAN_START_MEAN_END);
+    private static final CanonicalSVCollapser.AlleleCollectionCollapserComparator alleleComparator = new CanonicalSVCollapser.AlleleCollectionCollapserComparator();
 
     private static final Allele MEI_INSERTION_ALLELE = Allele.create("<INS:MEI>");
     private static final Allele SVA_INSERTION_ALLELE = Allele.create("<INS:SVA>");
@@ -50,29 +50,18 @@ public class SVCollapserTest {
     @DataProvider(name = "collapseRefAllelesTestData")
     public Object[][] collapseRefAllelesTestData() {
         return new Object[][]{
-                // Empty input should give null
-                {Collections.emptyList(), StructuralVariantType.DEL, null},
-                // Result should be input for single unique value case
-                {Collections.singletonList(Allele.SV_SIMPLE_DEL), StructuralVariantType.DEL, null},
-                {Collections.singletonList(Allele.REF_A), StructuralVariantType.DEL, Allele.REF_A},
-                {Collections.singletonList(Allele.REF_N), StructuralVariantType.DEL, Allele.REF_N},
-                {Collections.singletonList(Allele.NO_CALL), StructuralVariantType.DEL, null},
-                {Lists.newArrayList(Allele.REF_A, Allele.REF_A), StructuralVariantType.DUP, Allele.REF_A},
-                {Lists.newArrayList(Allele.REF_T, Allele.NO_CALL), StructuralVariantType.DEL, Allele.REF_T},
-                {Lists.newArrayList(Allele.REF_N, Allele.NO_CALL), StructuralVariantType.DEL, Allele.REF_N},
-                // Result should be N for multiple case
-                {Lists.newArrayList(Allele.REF_A, Allele.REF_C), StructuralVariantType.DEL, Allele.REF_N},
-                {Lists.newArrayList(Allele.REF_T, Allele.REF_N), StructuralVariantType.DEL, Allele.REF_N},
+                {1, Allele.REF_N},
+                {100000, Allele.REF_C},
+                {100001, Allele.REF_A},
+                {100002, Allele.REF_C},
+                {100003, Allele.REF_T},
+                {248956422, Allele.REF_N},
         };
     }
 
     @Test(dataProvider= "collapseRefAllelesTestData")
-    public void testCollapseRefAlleles(final List<Allele> alleles, final StructuralVariantType svtype, final Allele result) {
-        final List<Allele> variantAlleles = alleles.stream().distinct().collect(Collectors.toList());
-        final List<SVCallRecord> records = alleles.stream()
-                .map(a -> SVTestUtils.newCallRecordWithAlleles(Collections.singletonList(a), Collections.singletonList(a), svtype))
-                .collect(Collectors.toList());
-        Assert.assertEquals(collapser.collapseRefAlleles(records), result);
+    public void testCollapseRefAlleles(final int pos, final Allele result) {
+        Assert.assertEquals(collapser.collapseRefAlleles("chr1", pos), result);
     }
 
     @DataProvider(name = "getSymbolicAlleleBaseSymbolTestData")
@@ -86,7 +75,7 @@ public class SVCollapserTest {
 
     @Test(dataProvider= "getSymbolicAlleleBaseSymbolTestData")
     public void getSymbolicAlleleBaseSymbolTest(final Allele allele, final String result) {
-        Assert.assertEquals(SVCollapser.getSymbolicAlleleBaseSymbol(allele), result);
+        Assert.assertEquals(CanonicalSVCollapser.getSymbolicAlleleBaseSymbol(allele), result);
     }
 
     @DataProvider(name = "collapseAltAllelesTestData")

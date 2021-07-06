@@ -7,14 +7,18 @@ import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.COPY_NUMBER_FORMAT;
 
 public class SVCallRecord implements SVLocatable {
 
     public static final String STRAND_PLUS = "+";
     public static final String STRAND_MINUS = "-";
+    public static final int UNDEFINED_LENGTH = -1;
 
     private final String id;
     private final String contigA;
@@ -85,6 +89,84 @@ public class SVCallRecord implements SVLocatable {
                         final List<Allele> alleles,
                         final List<Genotype> genotypes) {
         this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, length, algorithms, alleles, genotypes, Collections.emptyMap());
+    }
+
+    /**
+     * Gets genotypes with non-ref copy number states for a CNV record, as defined by the CN field
+     */
+    private Collection<Genotype> getCNVCarrierGenotypesByCopyNumber() {
+        Utils.validate(isCNV(), "Cannot determine carriers of non-CNV using copy number attribute.");
+        Utils.validate(altAlleles.size() <= 1,
+                "Carrier samples cannot be determined by copy number for multi-allelic sites. Set sample overlap threshold to 0.");
+        if (altAlleles.isEmpty()) {
+            return Collections.emptyList();
+        }
+        final Allele altAllele = altAlleles.get(0);
+        return genotypes.stream()
+                .filter(g -> isCNVCarrierByCopyNumber(g, altAllele))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns true if the copy number is non-ref. Note that ploidy is determined using the number of entries in the GT
+     * field.
+     */
+    private static boolean isCNVCarrierByCopyNumber(final Genotype genotype, final Allele altAllele) {
+        final int ploidy = genotype.getPloidy();
+        if (ploidy == 0 || !genotype.hasExtendedAttribute(COPY_NUMBER_FORMAT)) {
+            return false;
+        }
+        final int copyNumber = VariantContextGetters.getAttributeAsInt(genotype, COPY_NUMBER_FORMAT, 0);
+        if (altAllele.equals(Allele.SV_SIMPLE_DEL)) {
+            return copyNumber < ploidy;
+        } else {
+            // DUP
+            return copyNumber > ploidy;
+        }
+    }
+
+    /**
+     * Returns sample IDs of carriers using copy number
+     */
+    private Set<String> getCarrierSamplesByCopyNumber() {
+        return getCNVCarrierGenotypesByCopyNumber().stream().map(Genotype::getSampleName).collect(Collectors.toSet());
+    }
+
+    /**
+     * Returns true if any given genotype has a defined copy number
+     */
+    private boolean hasDefinedCopyNumbers() {
+        return genotypes.stream().anyMatch(g -> g.getExtendedAttribute(COPY_NUMBER_FORMAT, null) != null);
+    }
+
+    /**
+     * Returns true if any of the given genotypes is called
+     */
+    private boolean hasExplicitGenotypes() {
+        return genotypes.stream().anyMatch(Genotype::isCalled);
+    }
+
+    /**
+     * Gets sample IDs of called non-ref genotypes
+     */
+    private Set<String> getCarrierSamplesByGenotype() {
+        return genotypes.stream()
+                .filter(g -> g.getAlleles().stream().anyMatch(altAlleles::contains))
+                .map(Genotype::getSampleName)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Gets carrier sample IDs based on called GT fields. If there are no called genotypes and the record is a CNV and
+     * has defined copy number fields, determines carrier status based on copy number state. Returns an empty set if
+     * neither is available.
+     */
+    public Set<String> getCarrierSamples() {
+        if (isCNV() && !hasExplicitGenotypes() && hasDefinedCopyNumbers()) {
+            return getCarrierSamplesByCopyNumber();
+        } else {
+            return getCarrierSamplesByGenotype();
+        }
     }
 
     public boolean isDepthOnly() {

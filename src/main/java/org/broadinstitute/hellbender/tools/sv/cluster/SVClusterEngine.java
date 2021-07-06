@@ -1,383 +1,361 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.StructuralVariantType;
-import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import com.google.common.annotations.VisibleForTesting;
+import org.broadinstitute.hellbender.tools.sv.SVLocatable;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.COPY_NUMBER_FORMAT;
-
 /**
- * <p>Main class for SV clustering. Two items are clustered together if they:</p>
- * <ul>
- *   <li>Match event types</li>
- *   <li>Match strands</li>
- *   <li>Match contigs</li>
- *   <li>Meet minimum interval reciprocal overlap (unless inter-chromosomal or a BND).</li>
- *   <li>Meet minimum sample reciprocal overlap using carrier status. Genotypes (GT fields) are used to determine carrier
- *   status first. If not found and the event is of type DEL or DUP, then copy number (CN fields) are used instead.
- *   In the latter case, it is expected that ploidy can be determined from the number of entries in GT.</li>
- *   <li>Start and end coordinates are within a defined distance.</li>
- * </ul>
+ * <p>Base class for clustering items that possess start/end genomic coordinates. Efficient algorithms are implemented for
+ * single-linkage and max-clique clustering that leverage the low dimensionality of position-based clustering criteria.
+ * These algorithms are suitable for clustering problems testing for overlapping events in coordinate-sorted order, with
+ * additional possible criteria, when the maximum feasible starting position for an item can be easily estimated (e.g.
+ * reciprocal overlap, end-point distance).</p>
  *
- * <p>Interval overlap, sample overlap, and coordinate proximity parameters are defined separately for depth-only/depth-only,
- * depth-only/PESR, and PESR/PESR item pairs using the {@link ClusteringParameters} class. Note that all criteria must be met for
- * two candidate items to cluster, unless the comparison is depth-only/depth-only, in which case only one of
- * interval overlap or break-end proximity must be met. For insertions with undefined length (SVLEN less than 1), interval
- * overlap is tested assuming the given start position and a length of
- * {@value SVClusterEngine#INSERTION_ASSUMED_LENGTH_FOR_OVERLAP}.</p>
+ * <p>Based on the method from Marschall T, Costa VG, Canzar S, et al. CLEVER: Clique-enumerating variant finder.
+ * Bioinformatics. 2012;28(22):2875-2882.</p>
+ *
+ * <p>NOTE: precise implementation of {@link SVClusterLinkage#getMaxClusterableStartingPosition(SVLocatable)}
+ * is important for efficiency because it determines when a cluster can be finalized and omitted from further clustering tests.</p>
+ *
+ * @param <T> class of items to cluster
  */
-public class SVClusterEngine<T extends SVCallRecord> extends LocatableClusterEngine<T> {
-
-    protected final boolean enableCNV;  // DEL/DUP multi-allelic site clustering
-    protected ClusteringParameters depthOnlyParams;
-    protected ClusteringParameters mixedParams;
-    protected ClusteringParameters evidenceParams;
-
-    public static final int INSERTION_ASSUMED_LENGTH_FOR_OVERLAP = 50;
-
-    public static final ClusteringParameters DEFAULT_DEPTH_ONLY_PARAMS =
-            new DepthClusteringParameters(0.8, 0, 0);
-    public static final ClusteringParameters DEFAULT_MIXED_PARAMS =
-            new MixedClusteringParameters(0.8, 1000, 0);
-    public static final ClusteringParameters DEFAULT_EVIDENCE_PARAMS =
-            new EvidenceClusteringParameters(0.5, 500, 0);
+public class SVClusterEngine<T extends SVLocatable> {
 
     /**
-     * Create a new engine
-     * @param dictionary sequence dictionary pertaining to clustered records
-     * @param clusteringType clustering algorithm
-     * @param enableCNV enables clustering of DEL/DUP variants into CNVs
-     * @param collapser cluster collapsing function
+     * Available clustering algorithms
      */
-    public SVClusterEngine(final SAMSequenceDictionary dictionary,
-                           final CLUSTERING_TYPE clusteringType,
-                           final boolean enableCNV,
-                           final Function<Collection<T>, T> collapser) {
-        super(dictionary, clusteringType, collapser);
-        this.depthOnlyParams = DEFAULT_DEPTH_ONLY_PARAMS;
-        this.mixedParams = DEFAULT_MIXED_PARAMS;
-        this.evidenceParams = DEFAULT_EVIDENCE_PARAMS;
-        this.enableCNV = enableCNV;
+    public enum CLUSTERING_TYPE {
+        SINGLE_LINKAGE,
+        MAX_CLIQUE
     }
 
-    @Override
-    boolean clusterTogether(final SVCallRecord a, final SVCallRecord b) {
-        if (a.getType() != b.getType()) {
-            if (!enableCNV) {
-                // CNV clustering disabled, so no type mixing
-                return false;
-            } else if (!(a.isCNV() && b.isCNV())) {
-                // CNV clustering enabled, but at least one was not a CNV type
-                return false;
+    private final SVCollapser<T> collapser; // Flattens clusters into a single representative item for output
+    private final SVClusterLinkage<T> linkage;
+    private Map<Integer, Cluster> idToClusterMap; // Active clusters
+    private final Map<Integer, T> idToItemMap; // Active items
+    private final List<T> outputBuffer;
+    protected final CLUSTERING_TYPE clusteringType;
+    private String currentContig;
+    private int nextItemId;
+    private int nextClusterId;
+    private int lastStart;
+
+    /**
+     * @param clusteringType algorithm choice
+     * @param collapser function that ingests a collection of clustered items and returns a single representative item
+     */
+    public SVClusterEngine(final CLUSTERING_TYPE clusteringType,
+                           final SVCollapser collapser,
+                           final SVClusterLinkage<T> linkage) {
+        this.clusteringType = clusteringType;
+        this.collapser = Utils.nonNull(collapser);
+        this.linkage = Utils.nonNull(linkage);
+        idToClusterMap = new HashMap<>();
+        outputBuffer = new ArrayList<>();
+        currentContig = null;
+        idToItemMap = new HashMap<>();
+        nextItemId = 0;
+        nextClusterId = 0;
+        lastStart = 0;
+    }
+
+
+    /**
+     * Flushes all active clusters, adding them to the output buffer. Results from the output buffer are then copied out
+     * and the buffer is cleared. This should be called between contigs to save memory.
+     */
+    public final List<T> getOutput() {
+        flushClusters();
+        final List<T> output = new ArrayList<>(outputBuffer);
+        outputBuffer.clear();
+        return output;
+    }
+
+    @VisibleForTesting
+    public SVCollapser<T> getCollapser() {
+        return collapser;
+    }
+
+    @VisibleForTesting
+    public SVClusterLinkage<T> getLinkage() {
+        return linkage;
+    }
+
+    /**
+     * Returns true if there are any active or finalized clusters.
+     */
+    public final boolean isEmpty() {
+        return idToClusterMap.isEmpty() && outputBuffer.isEmpty();
+    }
+
+    /**
+     * Adds and clusters the given item. Note that items must be added in order of increasing start position.
+     * @param item item to cluster
+     */
+    public final void add(final T item) {
+        // Start a new cluster if on a new contig
+        if (!item.getContigA().equals(currentContig)) {
+            flushClusters();
+            currentContig = item.getContigA();
+            lastStart = 0;
+            seedCluster(registerItem(item));
+            return;
+        }
+        final int itemId = registerItem(item);
+        final List<Integer> clusterIdsToProcess = cluster(itemId);
+        processClusters(clusterIdsToProcess);
+    }
+
+    private final int registerItem(final T item) {
+        Utils.validate(item.getPositionA() >= lastStart, "Items must be added in order of increasing start coordinate");
+        lastStart = item.getPositionA();
+        final int itemId = nextItemId++;
+        idToItemMap.put(itemId, item);
+        return itemId;
+    }
+
+    private final int getMaxClusterableStartingPositionByIds(final Collection<Integer> itemIds) {
+        Utils.nonNull(itemIds);
+        Utils.nonEmpty(itemIds);
+        return linkage.getMaxClusterableStartingPosition(itemIds.stream().map(this::getItem).collect(Collectors.toList()));
+    }
+
+    /**
+     * Add a new {@param <T>} to the current clusters and determine which are complete
+     * @param itemId id of registered item to add
+     * @return the IDs for clusters that are complete and ready for processing
+     */
+    private final List<Integer> cluster(final Integer itemId) {
+        final T item = getItem(itemId);
+        // Get list of item IDs from active clusters that cluster with this item
+        final Set<Integer> linkedItems = idToClusterMap.values().stream().map(Cluster::getItemIds)
+                .flatMap(List::stream)
+                .distinct()
+                .filter(other -> !other.equals(itemId) && linkage.areClusterable(item, getItem(other)))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        // Find clusters to which this item belongs, and which active clusters we're definitely done with
+        final List<Integer> clusterIdsToProcess = new ArrayList<>();
+        // Clusters to which we simply add the item
+        final List<Integer> clustersToAugment = new ArrayList<>();
+        // New clusters, formed from subsets of currently active clusters, to which we will add the item
+        final Set<List<Integer>> clustersToSeedWith = new HashSet<>();    // Use set to prevent creating duplicate clusters
+        for (final Map.Entry<Integer, Cluster> entry : idToClusterMap.entrySet()) {
+            final Integer clusterIndex = entry.getKey();
+            final Cluster cluster = entry.getValue();
+            final List<Integer> clusterItems = cluster.getItemIds();
+            if (item.getPositionA() > cluster.getMaxClusterableStart()) {
+                clusterIdsToProcess.add(clusterIndex);  //this cluster is complete -- process it when we're done
+            } else {
+                if (clusteringType.equals(CLUSTERING_TYPE.MAX_CLIQUE)) {
+                    final List<Integer> linkedClusterItems = clusterItems.stream().filter(linkedItems::contains).collect(Collectors.toList());
+                    final int numLinkedItems = linkedClusterItems.size();
+                    if (numLinkedItems == clusterItems.size()) {
+                        clustersToAugment.add(clusterIndex);
+                    } else if (numLinkedItems > 0) {
+                        clustersToSeedWith.add(linkedClusterItems);
+                    }
+                } else if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
+                    final boolean matchesCluster = clusterItems.stream().anyMatch(linkedItems::contains);
+                    if (matchesCluster) {
+                        clustersToAugment.add(clusterIndex);
+                    }
+                } else {
+                    throw new IllegalArgumentException("Clustering algorithm for type " + clusteringType.name() + " not implemented");
+                }
             }
         }
-        // Contigs match
-        if (!(a.getContigA().equals(b.getContigA()) && a.getContigB().equals(b.getContigB()))) {
-            return false;
+
+        // Create new clusters from subsets (max-clique only)
+        if (!clustersToSeedWith.isEmpty()) {
+            // Currently existing clusters to which we will add the current item
+            final List<Set<Integer>> augmentedClusterItemLists = clustersToAugment.stream()
+                    .map(idToClusterMap::get)
+                    .map(Cluster::getItemIds)
+                    .map(HashSet::new)
+                    .collect(Collectors.toList());
+            final List<Set<Integer>> triggeredClusterItemSets = new ArrayList<>(clustersToSeedWith.size() + augmentedClusterItemLists.size());
+            // New clusters formed from subsets of the currently active clusters
+            triggeredClusterItemSets.addAll(clustersToSeedWith.stream().map(HashSet::new).collect(Collectors.toList()));
+            triggeredClusterItemSets.addAll(augmentedClusterItemLists);
+            triggeredClusterItemSets.sort(Comparator.comparingInt(Set::size));
+            for (int i = 0; i < triggeredClusterItemSets.size(); i++) {
+                final Set<Integer> seedItems = triggeredClusterItemSets.get(i);
+                // Check that this cluster is not a sub-cluster of any of the others being created
+                boolean isSubset = false;
+                for (int j = i + 1; j < triggeredClusterItemSets.size(); j++) {
+                    if (triggeredClusterItemSets.get(j).containsAll(seedItems)) {
+                        isSubset = true;
+                        break;
+                    }
+                }
+                if (!isSubset) {
+                    seedWithExistingCluster(itemId, seedItems);
+                }
+            }
         }
-        // Strands match
-        if (a.getStrandA() != b.getStrandA() || a.getStrandB() != b.getStrandB()) {
-            return false;
+
+        // Add to or merge existing clusters
+        if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
+            if (!clustersToAugment.isEmpty()) {
+                combineClusters(clustersToAugment, itemId);
+            }
+        } else {
+            for (final Integer clusterId : clustersToAugment) {
+                addToCluster(clusterId, itemId);
+            }
         }
-        // Checks appropriate parameter set
-        return clusterTogetherWithParams(a, b, evidenceParams, dictionary)
-                || clusterTogetherWithParams(a, b, depthOnlyParams, dictionary)
-                || clusterTogetherWithParams(a, b, mixedParams, dictionary);
+        
+        // If there weren't any matches, create a new singleton cluster
+        if (clustersToAugment.isEmpty() && clustersToSeedWith.isEmpty()) {
+            seedCluster(itemId);
+        }
+        return clusterIdsToProcess;
     }
 
     /**
-     * Gets genotypes with non-ref copy number states for a CNV record, as defined by the CN field
+     * Creates a new cluster by agglomerating clusters with the given ids together (and deleting them from the currently
+     * active set), along with an additional item.
+     * @param clusterIds ids of clusters to combine
+     * @param itemId id of item to add to new cluster
      */
-    private static Collection<Genotype> getCNVCarrierGenotypesByCopyNumber(final SVCallRecord record) {
-        Utils.validate(record.isCNV(), "Cannot determine carriers of non-CNV using copy number attribute.");
-        final List<Allele> altAlleles = record.getAltAlleles();
-        Utils.validate(altAlleles.size() <= 1,
-                "Carrier samples cannot be determined by copy number for multi-allelic sites. Set sample overlap threshold to 0.");
-        if (altAlleles.isEmpty()) {
-            return Collections.emptyList();
-        }
-        final Allele altAllele = altAlleles.get(0);
-        return record.getGenotypes().stream()
-                .filter(g -> isCNVCarrierByCopyNumber(g, altAllele))
+    private final void combineClusters(final Collection<Integer> clusterIds, final Integer itemId) {
+        final List<Cluster> clusters = clusterIds.stream().map(this::getCluster).collect(Collectors.toList());
+        clusterIds.stream().forEach(idToClusterMap::remove);
+        final List<Integer> clusterItems = clusters.stream()
+                .map(Cluster::getItemIds)
+                .flatMap(List::stream)
+                .distinct()
                 .collect(Collectors.toList());
+        final List<Integer> newClusterItems = new ArrayList<>(clusterItems.size() + 1);
+        newClusterItems.addAll(clusterItems);
+        newClusterItems.add(itemId);
+        idToClusterMap.put(nextClusterId++, new Cluster(getMaxClusterableStartingPositionByIds(newClusterItems), newClusterItems));
     }
 
     /**
-     * Returns true if the copy number is non-ref. Note that ploidy is determined using the number of entries in the GT
-     * field.
+     * Finalizes a single cluster, removing it from the currently active set and adding it to the output buffer.
      */
-    private static boolean isCNVCarrierByCopyNumber(final Genotype genotype, final Allele altAllele) {
-        final int ploidy = genotype.getPloidy();
-        if (ploidy == 0 || !genotype.hasExtendedAttribute(COPY_NUMBER_FORMAT)) {
-            return false;
-        }
-        final int copyNumber = VariantContextGetters.getAttributeAsInt(genotype, COPY_NUMBER_FORMAT, 0);
-        if (altAllele.equals(Allele.SV_SIMPLE_DEL)) {
-            return copyNumber < ploidy;
-        } else {
-            // DUP
-            return copyNumber > ploidy;
-        }
+    private final void processCluster(final int clusterIndex) {
+        final Cluster cluster = getCluster(clusterIndex);
+        idToClusterMap.remove(clusterIndex);
+        outputBuffer.add(collapser.collapse(cluster.getItemIds().stream().map(idToItemMap::get).collect(Collectors.toList())));
     }
 
     /**
-     * Returns sample IDs of carriers using copy number
+     * Finalizes a set of clusters.
      */
-    private static Set<String> getCarrierSamplesByCopyNumber(final SVCallRecord record) {
-        return getCNVCarrierGenotypesByCopyNumber(record).stream().map(Genotype::getSampleName).collect(Collectors.toSet());
-    }
-
-    /**
-     * Checks for minimum fractional sample overlap of the two sets. Defaults to true if both sets are empty.
-     */
-    private static boolean hasSampleSetOverlap(final Set<String> samplesA, final Set<String> samplesB, final double minSampleOverlap) {
-        final int denom = Math.max(samplesA.size(), samplesB.size());
-        if (denom == 0) {
-            return true;
-        }
-        final double sampleOverlap = getSampleSetOverlap(samplesA, samplesB) / (double) denom;
-        return sampleOverlap >= minSampleOverlap;
-    }
-
-    /**
-     * Returns number of overlapping items
-     */
-    private static int getSampleSetOverlap(final Collection<String> a, final Set<String> b) {
-        return (int) a.stream().filter(b::contains).count();
-    }
-
-    /**
-     * Returns true if any given genotype has a defined copy number
-     */
-    private static boolean hasDefinedCopyNumbers(final Collection<Genotype> genotypes) {
-        return genotypes.stream().anyMatch(g -> g.getExtendedAttribute(COPY_NUMBER_FORMAT, null) != null);
-    }
-
-    /**
-     * Returns true if any of the given genotypes is called
-     */
-    private static boolean hasExplicitGenotypes(final Collection<Genotype> genotypes) {
-        return genotypes.stream().anyMatch(Genotype::isCalled);
-    }
-
-    /**
-     * Gets sample IDs of called non-ref genotypes
-     */
-    private static Set<String> getCarrierSamplesByGenotype(final SVCallRecord record) {
-        final Set<Allele> altAlleles = new HashSet<>(record.getAltAlleles());
-        return record.getGenotypes().stream()
-                .filter(g -> g.getAlleles().stream().anyMatch(altAlleles::contains))
-                .map(Genotype::getSampleName)
-                .collect(Collectors.toSet());
-    }
-
-    /**
-     * Gets carrier sample IDs based on called GT fields. If there are no called genotypes and the record is a CNV and
-     * has defined copy number fields, determines carrier status based on copy number state. Returns an empty set if
-     * neither is available.
-     */
-    protected static Set<String> getCarrierSamples(final SVCallRecord record) {
-        if (record.isCNV() && !hasExplicitGenotypes(record.getGenotypes()) && hasDefinedCopyNumbers(record.getGenotypes())) {
-            return getCarrierSamplesByCopyNumber(record);
-        } else {
-            return getCarrierSamplesByGenotype(record);
+    private final void processClusters(final List<Integer> clusterIdsToProcess) {
+        for (final Integer clusterId : clusterIdsToProcess) {
+            processCluster(clusterId);
         }
     }
 
     /**
-     * Returns true if there is sufficient fractional carrier sample overlap in the two records.
+     * Finalizes all active clusters and adds them to the output buffer. Also clears the currently active set of clusters
+     * and items.
      */
-    protected static boolean hasSampleOverlap(final SVCallRecord a, final SVCallRecord b, final double minSampleOverlap) {
-        if (minSampleOverlap > 0) {
-            final Set<String> samplesA = getCarrierSamples(a);
-            final Set<String> samplesB = getCarrierSamples(b);
-            return hasSampleSetOverlap(samplesA, samplesB, minSampleOverlap);
-        } else {
-            return true;
+    private final void flushClusters() {
+        final List<Integer> clustersToFlush = new ArrayList<>(idToClusterMap.keySet());
+        for (final Integer clusterId : clustersToFlush) {
+            processCluster(clusterId);
         }
+        idToItemMap.clear();
+        nextItemId = 0;
+        nextClusterId = 0;
     }
 
     /**
-     * Helper function to test for clustering between two items given a particular set of parameters.
+     * Creates a new singleton cluster containing the given item.
      */
-    private static boolean clusterTogetherWithParams(final SVCallRecord a, final SVCallRecord b,
-                                                     final ClusteringParameters params,
-                                                     final SAMSequenceDictionary dictionary) {
-        // Type check
-        if (!params.isValidPair(a, b)) {
-            return false;
-        }
-
-        // Sample overlap
-        if (!hasSampleOverlap(a, b, params.getSampleOverlap())) {
-            return false;
-        }
-
-        // Reciprocal overlap
-        final boolean isOverlap;
-        if (a.isIntrachromosomal()) {
-            final SimpleInterval intervalA = new SimpleInterval(a.getContigA(), a.getPositionA(), a.getPositionA() + getLengthForOverlap(a) - 1);
-            final SimpleInterval intervalB = new SimpleInterval(b.getContigA(), b.getPositionA(), b.getPositionA() + getLengthForOverlap(b) - 1);
-            isOverlap = IntervalUtils.isReciprocalOverlap(intervalA, intervalB, params.getReciprocalOverlap());
-        } else {
-            isOverlap = true;
-        }
-        if (params.isOverlapAndProximity() && !isOverlap) {
-            return false;
-        } else if (!params.isOverlapAndProximity() && isOverlap) {
-            return true;
-        }
-
-        // Breakend proximity
-        final SimpleInterval intervalA1 = a.getPositionAInterval().expandWithinContig(params.getWindow(), dictionary);
-        final SimpleInterval intervalA2 = a.getPositionBInterval().expandWithinContig(params.getWindow(), dictionary);
-        final SimpleInterval intervalB1 = b.getPositionAInterval();
-        final SimpleInterval intervalB2 = b.getPositionBInterval();
-        return intervalA1.overlaps(intervalB1) && intervalA2.overlaps(intervalB2);
+    private final void seedCluster(final Integer item) {
+        final List<Integer> newClusters = new ArrayList<>(1);
+        newClusters.add(item);
+        idToClusterMap.put(nextClusterId++, new Cluster(linkage.getMaxClusterableStartingPosition(getItem(item)), newClusters));
     }
 
     /**
-     * Gets event length used for overlap testing.
+     * Create a new cluster containing a new item and a set of existing items, and add it to the set of active clusters.
+     * Note that if there exists an identical activate cluster, it will not be added.
+     * @param item new item (assumed registered)
+     * @param seedItems existing items
      */
-    private static int getLengthForOverlap(final SVCallRecord record) {
-        Utils.validate(record.isIntrachromosomal(), "Record even must be intra-chromosomal");
-        if (record.getType() == StructuralVariantType.INS) {
-            return record.getLength() < 1 ? INSERTION_ASSUMED_LENGTH_FOR_OVERLAP : record.getLength();
-        } else {
-            // TODO lengths less than 1 shouldn't be valid
-            return Math.max(record.getLength(), 1);
-        }
+    private final void seedWithExistingCluster(final Integer item, final Collection<Integer> seedItems) {
+        final List<Integer> newClusterItems = new ArrayList<>(1 + seedItems.size());
+        newClusterItems.addAll(seedItems);
+        newClusterItems.add(item);
+        idToClusterMap.put(nextClusterId++,
+                new Cluster(getMaxClusterableStartingPositionByIds(newClusterItems), newClusterItems));
     }
 
-    @Override
-    protected int getMaxClusterableStartingPosition(final SVCallRecord record) {
-        return Math.max(
-                getMaxClusterableStartingPositionWithParams(record, record.isDepthOnly() ? depthOnlyParams : evidenceParams, dictionary),
-                getMaxClusterableStartingPositionWithParams(record, mixedParams, dictionary)
-        );
+    private final Cluster getCluster(final int id) {
+        Utils.validateArg(idToClusterMap.containsKey(id), "Cluster ID " + id + " does not exist.");
+        return idToClusterMap.get(id);
+    }
+
+    private final T getItem(final int id) {
+        Utils.validateArg(idToItemMap.containsKey(id), "Item ID " + id + " does not exist.");
+        return idToItemMap.get(id);
     }
 
     /**
-     * Returns max feasible start position of an item clusterable with the given record, given a set of clustering parameters.
+     * Add the item specified by {@param itemId} to the cluster specified by {@param clusterIndex}
+     * and expand the clustering interval
+     * @param clusterId
+     * @param itemId
      */
-    private static int getMaxClusterableStartingPositionWithParams(final SVCallRecord call,
-                                                                   final ClusteringParameters params,
-                                                                   final SAMSequenceDictionary dictionary) {
-        final String contig = call.getContigA();
-        final int contigLength = dictionary.getSequence(contig).getSequenceLength();
-        // Reciprocal overlap window
-        final int maxPositionByOverlap;
-        if (call.isIntrachromosomal()) {
-            final int maxPosition = (int) (call.getPositionA() + (1.0 - params.getReciprocalOverlap()) * getLengthForOverlap(call));
-            maxPositionByOverlap = Math.min(maxPosition, contigLength);
-        } else {
-            maxPositionByOverlap = call.getPositionA();
-        }
-
-        // Breakend proximity window
-        final int maxPositionByWindow = Math.min(call.getPositionA() + params.getWindow(), contigLength);
-
-        if (params.isOverlapAndProximity()) {
-            return Math.min(maxPositionByOverlap, maxPositionByWindow);
-        } else {
-            return Math.max(maxPositionByOverlap, maxPositionByWindow);
-        }
-    }
-
-    public final ClusteringParameters getDepthOnlyParams() {
-        return depthOnlyParams;
-    }
-    public final ClusteringParameters getMixedParams() {
-        return mixedParams;
-    }
-    public final ClusteringParameters getEvidenceParams() {
-        return evidenceParams;
-    }
-
-    public final void setDepthOnlyParams(ClusteringParameters depthOnlyParams) { this.depthOnlyParams = depthOnlyParams; }
-
-    public final void setMixedParams(ClusteringParameters mixedParams) {
-        this.mixedParams = mixedParams;
-    }
-
-    public final void setEvidenceParams(ClusteringParameters evidenceParams) {
-        this.evidenceParams = evidenceParams;
+    private final void addToCluster(final int clusterId, final Integer itemId) {
+        final Cluster cluster = getCluster(clusterId);
+        final List<Integer> clusterItems = cluster.getItemIds();
+        clusterItems.add(itemId);
+        final T item = getItem(itemId);
+        final int itemClusterableStartPosition = linkage.getMaxClusterableStartingPosition(item);
+        cluster.setMaxClusterableStart(Math.max(cluster.getMaxClusterableStart(), itemClusterableStartPosition));
     }
 
     /**
-     * Stores clustering parameters for different combinations of supporting algorithm types (depth-only/depth-only,
-     * depth-only/PESR, and PESR/PESR)
+     * Container class for clustered items
      */
-    public static class ClusteringParameters {
+    private static final class Cluster {
+        private int maxClusterableStart;
+        private final List<Integer> itemIds;
 
-        private final double reciprocalOverlap;  // minimum fractional reciprocal overlap of event intervals
-        private final int window;  // maximum distance between variant end-points
-        private final double sampleOverlap; // minimum fractional carrier sample overlap
-
-         // if true, both reciprocal overlap and window criteria must be met
-         // if false, reciprocal overlap and/or window criteria must be met
-         private final boolean overlapAndProximity;
-
-        // returns true if two given records are the correct type of pair for this parameter set
-        private final BiPredicate<SVCallRecord, SVCallRecord> validRecordsPredicate;
-
-        public ClusteringParameters(final double reciprocalOverlap, final int window, final double sampleOverlap,
-                                    final boolean overlapAndProximity, final BiPredicate<SVCallRecord, SVCallRecord> validRecordsPredicate) {
-            this.reciprocalOverlap = reciprocalOverlap;
-            this.window = window;
-            this.sampleOverlap = sampleOverlap;
-            this.overlapAndProximity = overlapAndProximity;
-            this.validRecordsPredicate = validRecordsPredicate;
+        public Cluster(final int maxClusterableStart, final List<Integer> itemIds) {
+            Utils.nonNull(itemIds);
+            this.maxClusterableStart = maxClusterableStart;
+            this.itemIds = itemIds;
         }
 
-        public double getReciprocalOverlap() {
-            return reciprocalOverlap;
+        public int getMaxClusterableStart() {
+            return maxClusterableStart;
         }
 
-        public int getWindow() {
-            return window;
+        public void setMaxClusterableStart(final int position) {
+            maxClusterableStart = position;
         }
 
-        public double getSampleOverlap() {
-            return sampleOverlap;
+        public List<Integer> getItemIds() {
+            return itemIds;
         }
 
-        public boolean isOverlapAndProximity() {
-            return overlapAndProximity;
+        /**
+         * Note we do not check for equality on max clusterable start position, which could be dependent on the
+         * state of the engine.
+         */
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof Cluster)) return false;
+            Cluster cluster = (Cluster) o;
+            return itemIds.equals(cluster.itemIds);
         }
 
-        public boolean isValidPair(final SVCallRecord a, final SVCallRecord b) {
-            return validRecordsPredicate.test(a, b);
+        @Override
+        public int hashCode() {
+            return Objects.hash(itemIds);
         }
     }
-
-    public static final class DepthClusteringParameters extends ClusteringParameters {
-        public DepthClusteringParameters(final double reciprocalOverlap, final int window, final double sampleOverlap) {
-            super(reciprocalOverlap, window, sampleOverlap, false, (a,b) -> a.isDepthOnly() && b.isDepthOnly());
-        }
-    }
-
-    public static final class EvidenceClusteringParameters extends ClusteringParameters {
-        public EvidenceClusteringParameters(final double reciprocalOverlap, final int window, final double sampleOverlap) {
-            super(reciprocalOverlap, window, sampleOverlap, true, (a,b) -> !a.isDepthOnly() && !b.isDepthOnly());
-        }
-    }
-
-    public static final class MixedClusteringParameters extends ClusteringParameters {
-        public MixedClusteringParameters(final double reciprocalOverlap, final int window, final double sampleOverlap) {
-            super(reciprocalOverlap, window, sampleOverlap, true, (a,b) -> a.isDepthOnly() != b.isDepthOnly());
-        }
-    }
-
 }

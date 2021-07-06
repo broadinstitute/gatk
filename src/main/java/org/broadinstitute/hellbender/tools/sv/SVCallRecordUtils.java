@@ -18,10 +18,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.broadinstitute.hellbender.tools.sv.SVCallRecord.UNDEFINED_LENGTH;
+
 public final class SVCallRecordUtils {
 
     /**
-     * Create a variant from an {@link SVCallRecord} for VCF interoperability
+     * Create a builder for a variant from an {@link SVCallRecord} for VCF interoperability
      * @param record variant to convert
      * @return variant context builder
      */
@@ -54,15 +56,22 @@ public final class SVCallRecordUtils {
 
         final VariantContextBuilder builder = new VariantContextBuilder(record.getId(), record.getContigA(), record.getPositionA(),
                 end, alleles);
+        final StructuralVariantType svtype = record.getType();
         builder.id(record.getId());
         builder.attributes(record.getAttributes());
         builder.attribute(VCFConstants.END_KEY, end);
-        builder.attribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, record.getContigB());
-        builder.attribute(GATKSVVCFConstants.END2_ATTRIBUTE, end2);
-        builder.attribute(GATKSVVCFConstants.SVLEN, record.getLength());
-        builder.attribute(GATKSVVCFConstants.SVTYPE, record.getType());
-        builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
+        builder.attribute(GATKSVVCFConstants.SVTYPE, svtype);
         builder.attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, record.getAlgorithms());
+        if (svtype.equals(StructuralVariantType.BND)) {
+            builder.attribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, record.getContigB());
+            builder.attribute(GATKSVVCFConstants.END2_ATTRIBUTE, end2);
+        }
+        if (!svtype.equals(StructuralVariantType.BND)) {
+            builder.attribute(GATKSVVCFConstants.SVLEN, record.getLength());
+        }
+        if (svtype.equals(StructuralVariantType.BND) || svtype.equals(StructuralVariantType.INV)) {
+            builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
+        }
         builder.genotypes(record.getGenotypes());
         return builder;
     }
@@ -76,17 +85,17 @@ public final class SVCallRecordUtils {
      * @param attributes attributes to apply to all new genotypes
      * @return genotypes augmented with missing samples
      */
-    public static GenotypesContext fillMissingSamplesWithGenotypes(final GenotypesContext genotypes,
-                                                                   final Set<String> samples,
-                                                                   final List<Allele> alleles,
-                                                                   final Map<String, Object> attributes) {
+    public static GenotypesContext populateGenotypesForMissingSamplesWithAlleles(final GenotypesContext genotypes,
+                                                                                 final Set<String> samples,
+                                                                                 final List<Allele> alleles,
+                                                                                 final Map<String, Object> attributes) {
         Utils.nonNull(genotypes);
         Utils.nonNull(samples);
         final Set<String> missingSamples = Sets.difference(samples, genotypes.getSampleNames());
         if (missingSamples.isEmpty()) {
             return genotypes;
         }
-        final List<Genotype> newGenotypes = new ArrayList<>(genotypes.size() + missingSamples.size());
+        final ArrayList<Genotype> newGenotypes = new ArrayList<>(genotypes.size() + missingSamples.size());
         newGenotypes.addAll(genotypes);
         for (final String sample : missingSamples) {
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sample);
@@ -96,7 +105,7 @@ public final class SVCallRecordUtils {
             genotypeBuilder.alleles(alleles);
             newGenotypes.add(genotypeBuilder.make());
         }
-        return GenotypesContext.copy(newGenotypes);
+        return GenotypesContext.create(newGenotypes);
     }
 
     /**
@@ -121,8 +130,8 @@ public final class SVCallRecordUtils {
     /**
      * Get string representation for a single strand.
      */
-    private static String getStrandString(final boolean strand) {
-        return strand ? SVCallRecord.STRAND_PLUS : SVCallRecord.STRAND_MINUS;
+    private static String getStrandString(final boolean forwardStrand) {
+        return forwardStrand ? SVCallRecord.STRAND_PLUS : SVCallRecord.STRAND_MINUS;
     }
 
     /**
@@ -189,10 +198,10 @@ public final class SVCallRecordUtils {
         }
         Utils.validateArg(record.isIntrachromosomal(), "Inversion is not intrachromosomal");
         final SVCallRecord positiveBreakend = new SVCallRecord(record.getId(), record.getContigA(),
-                record.getPositionA(), true, record.getContigB(), record.getPositionB(), true, StructuralVariantType.BND, -1,
+                record.getPositionA(), true, record.getContigB(), record.getPositionB(), true, StructuralVariantType.BND, UNDEFINED_LENGTH,
                 record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes());
         final SVCallRecord negativeBreakend = new SVCallRecord(record.getId(), record.getContigA(),
-                record.getPositionA(), false, record.getContigB(), record.getPositionB(), false, StructuralVariantType.BND, -1,
+                record.getPositionA(), false, record.getContigB(), record.getPositionB(), false, StructuralVariantType.BND, UNDEFINED_LENGTH,
                 record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes());
         return Stream.of(positiveBreakend, negativeBreakend);
     }
@@ -222,7 +231,7 @@ public final class SVCallRecordUtils {
         final String strands = getStrands(variant, type);
         final boolean strand1 = strands.startsWith(SVCallRecord.STRAND_PLUS);
         final boolean strand2 = strands.endsWith(SVCallRecord.STRAND_PLUS);
-        final int length = getLength(variant);
+        final int length = getLength(variant, type);
         final Map<String, Object> attributes = keepVariantAttributes ? variant.getAttributes() : Collections.emptyMap();
 
         final String contigB;
@@ -247,10 +256,16 @@ public final class SVCallRecordUtils {
         return new SVCallRecord(id, contigA, positionA, strand1, contigB, positionB, strand2, type, length, algorithms, variant.getAlleles(), variant.getGenotypes(), attributes);
     }
 
-    public static int getLength(final VariantContext variant) {
+    public static int getLength(final VariantContext variant, final StructuralVariantType type) {
         Utils.nonNull(variant);
+        Utils.nonNull(type);
+        if (type.equals(StructuralVariantType.BND)) {
+            return UNDEFINED_LENGTH;
+        }
         Utils.validateArg(variant.hasAttribute(GATKSVVCFConstants.SVLEN), "Expected " + GATKSVVCFConstants.SVLEN + " field");
-        return variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+        final int length = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, UNDEFINED_LENGTH);
+        Utils.validate(length >= 0 || length == UNDEFINED_LENGTH, "Length must be non-negative or " + UNDEFINED_LENGTH);
+        return length;
     }
 
     public static List<String> getAlgorithms(final VariantContext variant) {
@@ -263,15 +278,13 @@ public final class SVCallRecordUtils {
         Utils.nonNull(variant);
         Utils.nonNull(type);
         final String strandsAttr = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
-        if (strandsAttr == null) {
-            if (type.equals(StructuralVariantType.DEL) || type.equals(StructuralVariantType.INS)) {
-                return SVCallRecord.STRAND_PLUS + SVCallRecord.STRAND_MINUS;
-            } else if (type.equals(StructuralVariantType.DUP)) {
-                return SVCallRecord.STRAND_MINUS + SVCallRecord.STRAND_PLUS;
-            } else {
-                throw new UserException.BadInput("Record of type " + type.name() + " missing required attribute "
-                        + GATKSVVCFConstants.STRANDS_ATTRIBUTE);
-            }
+        if (type.equals(StructuralVariantType.DEL) || type.equals(StructuralVariantType.INS)) {
+            return SVCallRecord.STRAND_PLUS + SVCallRecord.STRAND_MINUS;
+        } else if (type.equals(StructuralVariantType.DUP)) {
+            return SVCallRecord.STRAND_MINUS + SVCallRecord.STRAND_PLUS;
+        } else if (strandsAttr == null) {
+            throw new UserException.BadInput("Record of type " + type.name() + " missing required attribute "
+                    + GATKSVVCFConstants.STRANDS_ATTRIBUTE);
         }
         if (strandsAttr.length() != 2) {
             throw new IllegalArgumentException("Strands field is not 2 characters long");
@@ -305,6 +318,7 @@ public final class SVCallRecordUtils {
         Utils.validate(alleles.size() == 1, "Non-CNV multiallelic variants not supported");
         final Allele allele = alleles.get(0);
         Utils.validate(allele.isSymbolic(), "Expected symbolic alt allele");
+        // TODO use htsjdk (see https://github.com/samtools/htsjdk/issues/18)
         return StructuralVariantType.valueOf(allele.getDisplayString().replace("<", "").replace(">", ""));
     }
 
@@ -401,7 +415,7 @@ public final class SVCallRecordUtils {
 
     }
 
-    public static boolean isAltGenotype(final Genotype g) {
+    public static boolean containsAltAllele(final Genotype g) {
         return g.getAlleles().stream().anyMatch(SVCallRecordUtils::isAltAllele);
     }
 

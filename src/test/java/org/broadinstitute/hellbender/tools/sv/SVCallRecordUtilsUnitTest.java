@@ -56,10 +56,9 @@ public class SVCallRecordUtilsUnitTest {
                                 .attribute(VCFConstants.END_KEY, 1999)
                                 .attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, DEPTH_ONLY_ALGORITHM)
                                 .attribute(GATKSVVCFConstants.SVLEN, 1000)
-                                .attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, "+-")
                                 .attribute(GATKSVVCFConstants.SVTYPE, StructuralVariantType.DEL)
                                 .make(),
-                        Lists.newArrayList(GATKSVVCFConstants.END2_ATTRIBUTE, GATKSVVCFConstants.CONTIG2_ATTRIBUTE)
+                        Collections.emptyList()
                 },
                 // DEL w/ null ref allele
                 {
@@ -74,10 +73,9 @@ public class SVCallRecordUtilsUnitTest {
                                 .attribute(VCFConstants.END_KEY, 1999)
                                 .attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, DEPTH_ONLY_ALGORITHM)
                                 .attribute(GATKSVVCFConstants.SVLEN, 1000)
-                                .attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, "+-")
                                 .attribute(GATKSVVCFConstants.SVTYPE, StructuralVariantType.DEL)
                                 .make(),
-                        Lists.newArrayList(GATKSVVCFConstants.END2_ATTRIBUTE, GATKSVVCFConstants.CONTIG2_ATTRIBUTE)
+                        Collections.emptyList()
                 },
                 // INS
                 {
@@ -92,14 +90,29 @@ public class SVCallRecordUtilsUnitTest {
                                 .attribute(VCFConstants.END_KEY, 1000)
                                 .attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, PESR_ALGORITHM)
                                 .attribute(GATKSVVCFConstants.SVLEN, 500)
-                                .attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, "+-")
                                 .attribute(GATKSVVCFConstants.SVTYPE, StructuralVariantType.INS)
                                 .make(),
-                        Lists.newArrayList(GATKSVVCFConstants.END2_ATTRIBUTE, GATKSVVCFConstants.CONTIG2_ATTRIBUTE)
+                        Collections.emptyList()
+                },
+                // INS, undefined length
+                {
+                        new SVCallRecord("var2", "chr1", 1000, true, "chr1", 1000, false, StructuralVariantType.INS, SVCallRecord.UNDEFINED_LENGTH,
+                                PESR_ALGORITHM,
+                                ALLELES_INS,
+                                Lists.newArrayList(GENOTYPE_INS_1),
+                                Collections.emptyMap()),
+                        new VariantContextBuilder("", "chr1", 1000, 1000, ALLELES_INS)
+                                .id("var2")
+                                .genotypes(GENOTYPE_INS_1)
+                                .attribute(VCFConstants.END_KEY, 1000)
+                                .attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, PESR_ALGORITHM)
+                                .attribute(GATKSVVCFConstants.SVTYPE, StructuralVariantType.INS)
+                                .make(),
+                        Collections.emptyList()
                 },
                 // BND
                 {
-                        new SVCallRecord("var3", "chr1", 1000, false, "chr2", 1999, true, StructuralVariantType.BND, -1,
+                        new SVCallRecord("var3", "chr1", 1000, false, "chr2", 1999, true, StructuralVariantType.BND, SVCallRecord.UNDEFINED_LENGTH,
                                 PESR_ALGORITHM,
                                 ALLELES_BND,
                                 Lists.newArrayList(GENOTYPE_BND_1),
@@ -109,7 +122,6 @@ public class SVCallRecordUtilsUnitTest {
                                 .genotypes(GENOTYPE_BND_1)
                                 .attribute(VCFConstants.END_KEY, 1000)
                                 .attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, PESR_ALGORITHM)
-                                .attribute(GATKSVVCFConstants.SVLEN, -1)
                                 .attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, "-+")
                                 .attribute(GATKSVVCFConstants.SVTYPE, StructuralVariantType.BND)
                                 .attribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, "chr2")
@@ -139,10 +151,10 @@ public class SVCallRecordUtilsUnitTest {
         final Map<String, Object> attributes = new HashMap<>();
         attributes.put(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM));
 
-        final GenotypesContext resultNoMissing = SVCallRecordUtils.fillMissingSamplesWithGenotypes(genotypesContext, samplesNoMissing, alleles, attributes);
+        final GenotypesContext resultNoMissing = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(genotypesContext, samplesNoMissing, alleles, attributes);
         Assert.assertEquals(resultNoMissing, genotypesContext);
 
-        final GenotypesContext result = SVCallRecordUtils.fillMissingSamplesWithGenotypes(genotypesContext, samples, alleles, attributes);
+        final GenotypesContext result = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(genotypesContext, samples, alleles, attributes);
         Assert.assertEquals(result.size(), 4);
 
         final Genotype g1 = result.get(GENOTYPE_DEL_1.getSampleName());
@@ -249,8 +261,8 @@ public class SVCallRecordUtilsUnitTest {
                 },
                 // Length
                 {
-                        SVTestUtils.newCallRecordInsertionWithLength(-1),
-                        SVTestUtils.newCallRecordInsertionWithLength(-1),
+                        SVTestUtils.newCallRecordInsertionWithLength(SVCallRecord.UNDEFINED_LENGTH),
+                        SVTestUtils.newCallRecordInsertionWithLength(SVCallRecord.UNDEFINED_LENGTH),
                         0
                 },
                 {
@@ -264,13 +276,13 @@ public class SVCallRecordUtilsUnitTest {
                         1
                 },
                 {
-                        SVTestUtils.newCallRecordInsertionWithLength(-1),
+                        SVTestUtils.newCallRecordInsertionWithLength(SVCallRecord.UNDEFINED_LENGTH),
                         SVTestUtils.newCallRecordInsertionWithLength(100),
                         -1
                 },
                 {
                         SVTestUtils.newCallRecordInsertionWithLength(100),
-                        SVTestUtils.newCallRecordInsertionWithLength(-1),
+                        SVTestUtils.newCallRecordInsertionWithLength(SVCallRecord.UNDEFINED_LENGTH),
                         1
                 },
                 // SV type
@@ -319,8 +331,8 @@ public class SVCallRecordUtilsUnitTest {
         Assert.assertNotNull(bnd2);
         Assert.assertEquals(bnd1.getType(), StructuralVariantType.BND);
         Assert.assertEquals(bnd2.getType(), StructuralVariantType.BND);
-        Assert.assertEquals(bnd1.getLength(), -1);
-        Assert.assertEquals(bnd2.getLength(), -1);
+        Assert.assertEquals(bnd1.getLength(), SVCallRecord.UNDEFINED_LENGTH);
+        Assert.assertEquals(bnd2.getLength(), SVCallRecord.UNDEFINED_LENGTH);
         Assert.assertEquals(bnd1.getStrandA(), bnd1.getStrandB());
         Assert.assertEquals(bnd2.getStrandA(), bnd2.getStrandB());
         Assert.assertNotEquals(bnd1.getStrandA(), bnd2.getStrandA());
@@ -348,7 +360,7 @@ public class SVCallRecordUtilsUnitTest {
 
     @Test(dataProvider= "testIsAltGenotypeData")
     public void testIsAltGenotype(final GenotypeBuilder genotype, final boolean expected) {
-        Assert.assertEquals(SVCallRecordUtils.isAltGenotype(genotype.make()), expected);
+        Assert.assertEquals(SVCallRecordUtils.containsAltAllele(genotype.make()), expected);
     }
 
     @DataProvider(name = "testSortAllelesData")
@@ -408,11 +420,11 @@ public class SVCallRecordUtilsUnitTest {
                 },
                 {
                         SVTestUtils.newVariantContext("var3", "chr1", 1000, 1000,
-                                ALLELES_BND, Collections.singletonList(GENOTYPE_BND_1), -1, "++",
+                                ALLELES_BND, Collections.singletonList(GENOTYPE_BND_1), SVCallRecord.UNDEFINED_LENGTH, "++",
                                 StructuralVariantType.BND, Collections.singletonList("pesr"),
                                 "chrX", 2000, Collections.emptyMap()),
                         false,
-                        new SVCallRecord("var3", "chr1", 1000, true, "chrX", 2000, true, StructuralVariantType.BND, -1,
+                        new SVCallRecord("var3", "chr1", 1000, true, "chrX", 2000, true, StructuralVariantType.BND, SVCallRecord.UNDEFINED_LENGTH,
                                 Collections.singletonList("pesr"), ALLELES_BND, Collections.singletonList(GENOTYPE_BND_1),
                                 Collections.emptyMap())
                 },

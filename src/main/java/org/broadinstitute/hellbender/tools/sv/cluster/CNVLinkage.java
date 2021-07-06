@@ -20,7 +20,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConsta
  * of its length and then merged with any other overlapping variants that meet the minimum sample overlap. Additionally,
  * singleton variants (with only one carrier sample) will only be merged with variants of the same copy number.
  */
-public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
+public class CNVLinkage extends CanonicalSVLinkage<SVCallRecord> {
 
     public static final double DEFAULT_SAMPLE_OVERLAP = 0.8;
     public static final double DEFAULT_PADDING_FRACTION = 0.25;
@@ -28,16 +28,15 @@ public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
     protected final double minSampleOverlap;
     protected final double paddingFraction;
 
-    public CNVDefragmenter(final SAMSequenceDictionary dictionary, final double paddingFraction,
-                           final double minSampleOverlap) {
-        super(dictionary, CLUSTERING_TYPE.SINGLE_LINKAGE, false,
-                (new SVCollapser(SVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END))::collapse);
+    public CNVLinkage(final SAMSequenceDictionary dictionary, final double paddingFraction,
+                      final double minSampleOverlap) {
+        super(dictionary, false);
         this.minSampleOverlap = minSampleOverlap;
         this.paddingFraction = paddingFraction;
     }
 
     @Override
-    boolean clusterTogether(final SVCallRecord a, final SVCallRecord b) {
+    public boolean areClusterable(final SVCallRecord a, final SVCallRecord b) {
         // Only do clustering on depth-only CNVs
         if (!a.isDepthOnly() || !b.isDepthOnly()) return false;
         if (!a.isCNV() || !b.isCNV()) return false;
@@ -58,8 +57,8 @@ public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
 
         // In the single-sample case, match copy number strictly if we're looking at the same sample
         // TODO repeated check for CN attributes in hasSampleOverlap and getCarrierSamples
-        final Set<String> carriersA = getCarrierSamples(a);
-        final Set<String> carriersB = getCarrierSamples(b);
+        final Set<String> carriersA = a.getCarrierSamples();
+        final Set<String> carriersB = b.getCarrierSamples();
         if (carriersA.size() == 1 && carriersA.equals(carriersB)) {
             final Genotype genotypeA = a.getGenotypes().get(carriersA.iterator().next());
             final Genotype genotypeB = b.getGenotypes().get(carriersB.iterator().next());
@@ -87,7 +86,7 @@ public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
      * possible event that would extend to the end of the contig.
      */
     @Override
-    protected int getMaxClusterableStartingPosition(final SVCallRecord call) {
+    public int getMaxClusterableStartingPosition(final SVCallRecord call) {
         final int contigLength = dictionary.getSequence(call.getContigA()).getSequenceLength();
         final int maxTheoreticalStart = (int) Math.floor((call.getPositionB() + paddingFraction * (call.getLength() + contigLength)) / (1.0 + paddingFraction));
         return Math.min(maxTheoreticalStart, dictionary.getSequence(call.getContigA()).getSequenceLength());
