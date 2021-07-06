@@ -126,7 +126,7 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
         transcript_fieldvalue = transcript_line.get(nirvana_transcripts_fieldname)
         row[vat_transcripts_fieldname] = transcript_fieldvalue
 
-      if (test_clinvar.jsonvariant_line.get("spliceAI") != None) and (transcript_line.get("hgnc") != None):
+      if (variant_line.get("spliceAI") != None) and (transcript_line.get("hgnc") != None):
         splice_ai_list = variant_line["spliceAI"]
         for splice_ai_obj in splice_ai_list:
           # get the splice AI value that matches to the transcript_line transcripts.hgnc to "spliceAI.hgnc"
