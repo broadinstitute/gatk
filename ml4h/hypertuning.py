@@ -18,6 +18,7 @@ from ml4h.tensor_generators import test_train_valid_tensor_generators
 
 tuner_type = 'bayes'
 MAX_MODEL_SIZE = 15000000
+MAX_LOSS = 9e9
 
 def run(args):
     start_time = timer()
@@ -147,7 +148,7 @@ class BayesianSearchEdit(BayesianOptimization):
 
             dummy_history_obj = tf.keras.callbacks.History()
             dummy_history_obj.on_train_begin()
-            dummy_history_obj.history.setdefault('val_loss', []).append(2.5)
+            dummy_history_obj.history.setdefault('val_loss', []).append(MAX_LOSS)
             return dummy_history_obj
 
         return model.fit(*fit_args, **fit_kwargs)
