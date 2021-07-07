@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -20,13 +19,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class SVTestUtils {
-    public final static int chr1Length = 249250621;
 
     public static final ReferenceSequenceFile ref = ReferenceUtils.createReferenceReader(new GATKPath(GATKBaseTest.hg38Reference));
-    public final static SAMSequenceDictionary dict = new SAMSequenceDictionary(
-            Arrays.asList(new SAMSequenceRecord("chr1", chr1Length),
-                    new SAMSequenceRecord("chr10", 135534747),
-                    new SAMSequenceRecord("chrX", 155270560)));
+    public final static SAMSequenceDictionary dict = ref.getSequenceDictionary();
+    public final static int chr1Length = dict.getSequence("chr1").getSequenceLength();
 
     private final static GenomeLocParser glParser = new GenomeLocParser(SVTestUtils.dict);
     public static final SVCollapser<SVCallRecord> defaultCollapser =
@@ -124,12 +120,14 @@ public class SVTestUtils {
                                                  final List<String> algorithms,
                                                  final List<Allele> alleles,
                                                  final List<GenotypeBuilder> genotypeBuilders) {
-        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(ref, contigA, positionA));
+        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(ref, contigA, positionA), true);
         final List<Allele> newAlleles = replaceRefNAlleles(alleles, refAllele);
+        final List<Genotype> genotypes = new ArrayList<>(genotypeBuilders.size());
         for (final GenotypeBuilder builder : genotypeBuilders) {
-            builder.alleles(replaceRefNAlleles(builder.make().getAlleles(), refAllele));
+            final GenotypeBuilder newBuilder = new GenotypeBuilder(builder.make());
+            newBuilder.alleles(replaceRefNAlleles(builder.make().getAlleles(), refAllele));
+            genotypes.add(newBuilder.make());
         }
-        final List<Genotype> genotypes = genotypeBuilders.stream().map(GenotypeBuilder::make).collect(Collectors.toList());
         return new SVCallRecord(id, contigA, positionA, strandA, contigB, positionB, strandB, type, length, algorithms,
                 newAlleles, genotypes);
     }
