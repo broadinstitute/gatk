@@ -55,6 +55,7 @@ public class GencodeFuncotation implements Funcotation {
     private String                  codonChange;                        //           CDS
     private String                  proteinChange;                      //           CDS
     private Double                  gcContent;
+    private String                  geneTranscriptType;
 
     /**
      * The reference context string is a string of N (configurable) bases around the
@@ -76,7 +77,6 @@ public class GencodeFuncotation implements Funcotation {
     private GencodeGtfGeneFeature.FeatureTag     apprisRank;
     private Integer                              transcriptLength;
     private String                               version;
-    private String                               geneTranscriptType;
 
     //------------------------------------------------------------
     // Fields for overriding serialized values:
@@ -102,6 +102,7 @@ public class GencodeFuncotation implements Funcotation {
     private String proteinChangeSerializedOverride        = null;
     private String gcContentSerializedOverride            = null;
     private String referenceContextSerializedOverride     = null;
+    private String geneTranscriptTypeSerializedOverride   = null;
     private String otherTranscriptsSerializedOverride     = null;
 
     private FuncotationMetadata metadata;
@@ -120,7 +121,7 @@ public class GencodeFuncotation implements Funcotation {
      */
     @VisibleForTesting
     GencodeFuncotation(final GencodeFuncotation that) {
-        this.hugoSymbol = that.hugoSymbol;                         
+        this.hugoSymbol = that.hugoSymbol;
         this.ncbiBuild = that.ncbiBuild;
         this.chromosome = that.chromosome;
         this.start = that.start;
@@ -169,6 +170,7 @@ public class GencodeFuncotation implements Funcotation {
         this.proteinChangeSerializedOverride = that.proteinChangeSerializedOverride;
         this.gcContentSerializedOverride = that.gcContentSerializedOverride;
         this.referenceContextSerializedOverride = that.referenceContextSerializedOverride;
+        this.geneTranscriptTypeSerializedOverride = that.geneTranscriptTypeSerializedOverride;
         this.otherTranscriptsSerializedOverride = that.otherTranscriptsSerializedOverride;
         this.metadata = that.metadata;
     }
@@ -217,6 +219,7 @@ public class GencodeFuncotation implements Funcotation {
             case "proteinChange":                  proteinChangeSerializedOverride = overrideValue;                  break;
             case "gcContent":                      gcContentSerializedOverride = overrideValue;                      break;
             case "referenceContext":               referenceContextSerializedOverride = overrideValue;               break;
+            case "geneTranscriptType":             geneTranscriptTypeSerializedOverride = overrideValue;             break;
             case "otherTranscripts":               otherTranscriptsSerializedOverride = overrideValue;               break;
             default: throw new UserException("Attempted to override invalid field in this GencodeFuncotation: " + fieldName + " (value was: " + overrideValue + ")");
         }
@@ -252,6 +255,7 @@ public class GencodeFuncotation implements Funcotation {
                         getDataSourceName() + "_" + version + "_proteinChange",
                         getDataSourceName() + "_" + version + "_gcContent",
                         getDataSourceName() + "_" + version + "_referenceContext",
+                        getDataSourceName() + "_" + version + "_geneTranscriptType",
                         getDataSourceName() + "_" + version + "_otherTranscripts"
                 )
         );
@@ -309,6 +313,8 @@ public class GencodeFuncotation implements Funcotation {
                     return (gcContentSerializedOverride != null ? gcContentSerializedOverride : (gcContent != null ? String.valueOf(gcContent) : ""));
                 case "referenceContext":
                     return (referenceContextSerializedOverride != null ? referenceContextSerializedOverride : (referenceContext != null ? referenceContext : ""));
+                case "geneTranscriptType":
+                    return (geneTranscriptTypeSerializedOverride != null ? geneTranscriptTypeSerializedOverride: (geneTranscriptType != null ? geneTranscriptType : ""));
                 case "otherTranscripts":
                     return (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride : (otherTranscripts != null ? otherTranscripts.stream().map(Object::toString).collect(Collectors.joining(VcfOutputRenderer.OTHER_TRANSCRIPT_DELIMITER)) : ""));
             }
@@ -368,6 +374,8 @@ public class GencodeFuncotation implements Funcotation {
         if (gcContent != null ? !gcContent.equals(that.gcContent) : that.gcContent != null) return false;
         if (referenceContext != null ? !referenceContext.equals(that.referenceContext) : that.referenceContext != null)
             return false;
+        if (geneTranscriptType != null ? !geneTranscriptType.equals(that.geneTranscriptType) : that.geneTranscriptType != null)
+            return false;
         if (otherTranscripts != null ? !otherTranscripts.equals(that.otherTranscripts) : that.otherTranscripts != null)
             return false;
         if (dataSourceName != null ? !dataSourceName.equals(that.dataSourceName) : that.dataSourceName != null)
@@ -377,7 +385,6 @@ public class GencodeFuncotation implements Funcotation {
         if (transcriptLength != null ? !transcriptLength.equals(that.transcriptLength) : that.transcriptLength != null)
             return false;
         if (version != null ? !version.equals(that.version) : that.version != null) return false;
-        if (geneTranscriptType != that.geneTranscriptType) return false;
         if (hugoSymbolSerializedOverride != null ? !hugoSymbolSerializedOverride.equals(that.hugoSymbolSerializedOverride) : that.hugoSymbolSerializedOverride != null)
             return false;
         if (ncbiBuildSerializedOverride != null ? !ncbiBuildSerializedOverride.equals(that.ncbiBuildSerializedOverride) : that.ncbiBuildSerializedOverride != null)
@@ -419,6 +426,8 @@ public class GencodeFuncotation implements Funcotation {
         if (gcContentSerializedOverride != null ? !gcContentSerializedOverride.equals(that.gcContentSerializedOverride) : that.gcContentSerializedOverride != null)
             return false;
         if (referenceContextSerializedOverride != null ? !referenceContextSerializedOverride.equals(that.referenceContextSerializedOverride) : that.referenceContextSerializedOverride != null)
+            return false;
+        if (geneTranscriptTypeSerializedOverride != null ? !geneTranscriptTypeSerializedOverride.equals(that.geneTranscriptTypeSerializedOverride) : that.geneTranscriptTypeSerializedOverride != null)
             return false;
         if (otherTranscriptsSerializedOverride != null ? !otherTranscriptsSerializedOverride.equals(that.otherTranscriptsSerializedOverride) : that.otherTranscriptsSerializedOverride != null)
             return false;
@@ -476,6 +485,7 @@ public class GencodeFuncotation implements Funcotation {
         result = 31 * result + (proteinChangeSerializedOverride != null ? proteinChangeSerializedOverride.hashCode() : 0);
         result = 31 * result + (gcContentSerializedOverride != null ? gcContentSerializedOverride.hashCode() : 0);
         result = 31 * result + (referenceContextSerializedOverride != null ? referenceContextSerializedOverride.hashCode() : 0);
+        result = 31 * result + (geneTranscriptTypeSerializedOverride != null ? geneTranscriptTypeSerializedOverride.hashCode() : 0);
         result = 31 * result + (otherTranscriptsSerializedOverride != null ? otherTranscriptsSerializedOverride.hashCode() : 0);
         result = 31 * result + (metadata != null ? metadata.hashCode() : 0);
         return result;

@@ -24,7 +24,8 @@ public class DataProviderForTroubleVariants {
                         "-",
                         "c.438G>A",
                         "c.(436-438)tgG>tgA",
-                        "p.W146*" }
+                        "p.W146*",
+                        "protein_coding"}
         );
     }
 
@@ -42,6 +43,7 @@ public class DataProviderForTroubleVariants {
                         "+",
                         null,
                         null,
+                        null,
                         null},
                 // Symbolic alt allele:
                 new Object[] {"NPB",
@@ -52,6 +54,7 @@ public class DataProviderForTroubleVariants {
                         "<DUP>",
                         null,
                         "+",
+                        null,
                         null,
                         null,
                         null},
@@ -66,6 +69,7 @@ public class DataProviderForTroubleVariants {
                         "+",
                         null,
                         null,
+                        null,
                         null},
                 // Masked Ref allele + Symbolic alt allele:
                 new Object[] {"NPB",
@@ -76,6 +80,7 @@ public class DataProviderForTroubleVariants {
                         "<DUP>",
                         null,
                         "+",
+                        null,
                         null,
                         null,
                         null},
@@ -90,6 +95,7 @@ public class DataProviderForTroubleVariants {
                         "+",
                         null,
                         null,
+                        null,
                         null},
                 // Masked Alt allele:
                 new Object[] {"NPB",
@@ -102,6 +108,7 @@ public class DataProviderForTroubleVariants {
                         "+",
                         null,
                         null,
+                        null,
                         null},
                 // Masked Ref allele + Symbollic alt allele in IGR:
                 new Object[] {null,
@@ -110,6 +117,7 @@ public class DataProviderForTroubleVariants {
                         GencodeFuncotation.VariantType.NA,
                         FuncotatorConstants.MASKED_ANY_BASE_STRING,
                         "<DUP>",
+                        null,
                         null,
                         null,
                         null,
@@ -126,6 +134,7 @@ public class DataProviderForTroubleVariants {
                         null,
                         null,
                         null,
+                        null,
                         null},
                 // Masked Alt allele in IGR:
                 new Object[] {null,
@@ -135,6 +144,7 @@ public class DataProviderForTroubleVariants {
                         "C",
                         FuncotatorConstants.MASKED_ANY_BASE_STRING,
                         "g.chr17:81971500C>N",
+                        null,
                         null,
                         null,
                         null,

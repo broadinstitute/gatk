@@ -789,6 +789,7 @@ public class MafOutputRenderer extends OutputRenderer {
         defaultMap.put(MafOutputRendererConstants.FieldName_TCGAscape_Deletion_Peaks               ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
         defaultMap.put(MafOutputRendererConstants.FieldName_DrugBank                               ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
         defaultMap.put(MafOutputRendererConstants.FieldName_ref_context                            ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
+        defaultMap.put(MafOutputRendererConstants.FieldName_gene_transcript_type                   ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
         defaultMap.put(MafOutputRendererConstants.FieldName_gc_content                             ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
         defaultMap.put(MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_overlapping_mutations     ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
         defaultMap.put(MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_total_mutations_in_gene   ,      FuncotatorConstants.UNKNOWN_VALUE_STRING);
@@ -885,6 +886,7 @@ public class MafOutputRenderer extends OutputRenderer {
         outputFieldNameMap.put( MafOutputRendererConstants.FieldName_TCGAscape_Deletion_Peaks               , MafOutputRendererConstants.OutputFieldNameMap_TCGAscape_Deletion_Peaks );
         outputFieldNameMap.put( MafOutputRendererConstants.FieldName_DrugBank                               , MafOutputRendererConstants.OutputFieldNameMap_DrugBank );
         outputFieldNameMap.put( MafOutputRendererConstants.FieldName_ref_context                            , MafOutputRendererConstants.OutputFieldNameMap_ref_context );
+        outputFieldNameMap.put( MafOutputRendererConstants.FieldName_gene_transcript_type                   , MafOutputRendererConstants.OutputFieldNameMap_gene_transcript_type);
         outputFieldNameMap.put( MafOutputRendererConstants.FieldName_gc_content                             , MafOutputRendererConstants.OutputFieldNameMap_gc_content );
         outputFieldNameMap.put( MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_overlapping_mutations     , MafOutputRendererConstants.OutputFieldNameMap_CCLE_ONCOMAP_overlapping_mutations );
         outputFieldNameMap.put( MafOutputRendererConstants.FieldName_CCLE_ONCOMAP_total_mutations_in_gene   , MafOutputRendererConstants.OutputFieldNameMap_CCLE_ONCOMAP_total_mutations_in_gene );
@@ -982,19 +984,20 @@ public class MafOutputRenderer extends OutputRenderer {
 //65    TCGAscape_Deletion_Peaks
 //66    DrugBank
 //67    ref_context
-//68    gc_content
-//69    CCLE_ONCOMAP_overlapping_mutations
-//70    CCLE_ONCOMAP_total_mutations_in_gene
-//71    CGC_Mutation_Type
-//72    CGC_Translocation_Partner
-//73    CGC_Tumor_Types_Somatic
-//74    CGC_Tumor_Types_Germline
-//75    CGC_Other_Diseases
-//76    DNARepairGenes_Role
-//77    FamilialCancerDatabase_Syndromes
-//78    MUTSIG_Published_Results
-//79    OREGANNO_ID
-//80    OREGANNO_Values
-//81    tumor_f
+//68    gene_transcript_type
+//69    gc_content
+//70    CCLE_ONCOMAP_overlapping_mutations
+//71    CCLE_ONCOMAP_total_mutations_in_gene
+//72    CGC_Mutation_Type
+//73    CGC_Translocation_Partner
+//74    CGC_Tumor_Types_Somatic
+//75    CGC_Tumor_Types_Germline
+//76    CGC_Other_Diseases
+//77    DNARepairGenes_Role
+//78    FamilialCancerDatabase_Syndromes
+//79    MUTSIG_Published_Results
+//80    OREGANNO_ID
+//81    OREGANNO_Values
+//82    tumor_f
 
 }

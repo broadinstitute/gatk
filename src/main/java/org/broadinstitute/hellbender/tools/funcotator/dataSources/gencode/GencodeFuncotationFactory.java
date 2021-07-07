@@ -484,6 +484,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                     getName() + "_" + getVersion() + "_proteinChange",
                     getName() + "_" + getVersion() + "_gcContent",
                     getName() + "_" + getVersion() + "_referenceContext",
+                    getName() + "_" + getVersion() + "_geneTranscriptType",
                     getName() + "_" + getVersion() + "_otherTranscripts"
             ));
     }
