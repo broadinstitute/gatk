@@ -429,7 +429,8 @@ tasks.withType(Jar) {
                 'Main-Class': project.mainClassName,
                 'Picard-Version': picardVersion,
                 'htsjdk-Version': htsjdkVersion,
-                'Spark-Version': sparkVersion
+                'Spark-Version': sparkVersion,
+                'Multi-Release': 'true'
     }
 }
 
