@@ -514,7 +514,7 @@ task PopulateFilterSetInfo {
         --ref-version 38 \
         --filter-set-name ~{filter_set_name} \
         -mode SNP \
-        -V ~{snp_recal_file} \ß
+        -V ~{snp_recal_file} \
         -O ~{filter_set_name}.snps.recal.tsv
 
         echo "Creating INDELs reacalibration file"
@@ -537,7 +537,7 @@ task PopulateFilterSetInfo {
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
         --schema "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" \
         ${bq_table} \
-        ~{filter_set_name}.filter_set_load.tsv
+        ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
     >>>
 
     runtime {
@@ -603,7 +603,7 @@ task PopulateFilterSetSites {
         bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
         --schema "filter_set_name:string,location:integer,filters:string" \
         ${bq_table} \
-        ~{filter_set_name}.filter_set_load.tsv
+        ~{filter_set_name}.filter_sites_load.tsv > status_load_filter_set_sites
     >>>
 
     runtime {
@@ -657,7 +657,7 @@ task PopulateFilterSetTranches {
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
         --schema "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float" \
         ${bq_table} \
-        ~{filter_set_name}.filter_set_load.tsv
+        ~{filter_set_name}.tranches_load.csv > status_load_filter_set_tranches
     >>>
 
     runtime {
