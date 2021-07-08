@@ -42,9 +42,9 @@ public class SVClusterEngineTest {
         Assert.assertTrue(flattened.getAlgorithms().containsAll(SVTestUtils.depthOnly.getAlgorithms()));
         Assert.assertTrue(flattened.getAlgorithms().containsAll(SVTestUtils.call2.getAlgorithms()));
         //should have all the genotypes
-        SVTestUtils.assertContainsAll(flattened.getGenotypes(), SVTestUtils.depthAndStuff.getGenotypes());
-        SVTestUtils.assertContainsAll(flattened.getGenotypes(), SVTestUtils.depthOnly.getGenotypes());
-        SVTestUtils.assertContainsAll(flattened.getGenotypes(), SVTestUtils.call2.getGenotypes());
+        SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.depthAndStuff.getGenotypes());
+        SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.depthOnly.getGenotypes());
+        SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.call2.getGenotypes());
         //TODO: add test for insertion cluster
     }
 

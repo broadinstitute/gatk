@@ -91,8 +91,8 @@ public class JointGermlineCNVSegmentationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "samplesForPloidyQuery")
-    public void testSamplePloidy(final String sampleName, final String contig, final Genotype g, final int expected) {
-        Assert.assertEquals(JointGermlineCNVSegmentation.getSamplePloidy(allosomalContigs, refCopyNumber, pedigree, sampleName, contig, g), expected);
+    public void testSamplePloidy(final String sampleName, final String contig, final GenotypeBuilder gb, final int expected) {
+        Assert.assertEquals(JointGermlineCNVSegmentation.getSamplePloidy(allosomalContigs, refCopyNumber, pedigree, sampleName, contig, gb == null ? null : gb.make()), expected);
     }
 
     //allosomalContigs contains something other than X and Y -- we only support mammals for the time being

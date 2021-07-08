@@ -121,26 +121,20 @@ public class SVTestUtils {
                                                  final List<Allele> alleles,
                                                  final List<GenotypeBuilder> genotypeBuilders) {
         final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(ref, contigA, positionA), true);
-        final List<Allele> newAlleles = replaceRefNAlleles(alleles, refAllele);
+        final List<Allele> newAlleles = replaceAllele(alleles, Allele.REF_N, refAllele);
         final List<Genotype> genotypes = new ArrayList<>(genotypeBuilders.size());
         for (final GenotypeBuilder builder : genotypeBuilders) {
             final GenotypeBuilder newBuilder = new GenotypeBuilder(builder.make());
-            newBuilder.alleles(replaceRefNAlleles(builder.make().getAlleles(), refAllele));
+            newBuilder.alleles(replaceAllele(builder.make().getAlleles(), Allele.REF_N, refAllele));
             genotypes.add(newBuilder.make());
         }
         return new SVCallRecord(id, contigA, positionA, strandA, contigB, positionB, strandB, type, length, algorithms,
                 newAlleles, genotypes);
     }
 
-    private static final List<Allele> replaceRefNAlleles(final List<Allele> alleles, final Allele newRefAllele) {
-        return alleles.stream()
-                .map(a -> a.equals(Allele.REF_N) ? newRefAllele : a)
-                .collect(Collectors.toList());
-    }
-
     public static final Genotype makeGenotypeWithRefAllele(final GenotypeBuilder builder, final String contig, final int position) {
-        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(ref, contig, position));
-        builder.alleles(replaceRefNAlleles(builder.make().getAlleles(), refAllele));
+        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(ref, contig, position), true);
+        builder.alleles(replaceAllele(builder.make().getAlleles(), Allele.REF_N, refAllele));
         return builder.make();
     }
 
@@ -276,15 +270,31 @@ public class SVTestUtils {
         }
     }
 
-    public static void assertContainsAll(final GenotypesContext one, final GenotypesContext two) {
+    public static void assertContainsAllIgnoreRefAlleleBase(final GenotypesContext one, final GenotypesContext two) {
         Assert.assertTrue(one.size() >= two.size());
         if ( !one.isEmpty()) {
             Assert.assertTrue(one.getSampleNames().containsAll(two.getSampleNames()), "sample names set");
             final Set<String> samples = two.getSampleNames();
             for ( final String sample : samples ) {
-                VariantContextTestUtils.assertGenotypesAreEqual(one.get(sample), two.get(sample));
+                assertSameGenotypeExceptRefBase(one.get(sample), two.get(sample));
             }
         }
+    }
+
+    public static void assertSameGenotypeExceptRefBase(final Genotype g1, final Genotype g2) {
+        final GenotypeBuilder builderOne = new GenotypeBuilder(g1);
+        final GenotypeBuilder builderTwo = new GenotypeBuilder(g2);
+        builderOne.alleles(replaceRefAlleles(g1.getAlleles(), Allele.REF_N));
+        builderTwo.alleles(replaceRefAlleles(g2.getAlleles(), Allele.REF_N));
+        VariantContextTestUtils.assertGenotypesAreEqual(builderOne.make(), builderTwo.make());
+    }
+
+    public static List<Allele> replaceRefAlleles(final List<Allele> alleles, final Allele replace) {
+        return alleles.stream().map(a -> a.isReference() ? replace : a).collect(Collectors.toList());
+    }
+
+    public static List<Allele> replaceAllele(final List<Allele> alleles, final Allele find, final Allele replace) {
+        return alleles.stream().map(a -> a.equals(find) ? replace : a).collect(Collectors.toList());
     }
 
     public static Genotype buildHomGenotypeWithPloidy(final Allele allele, final int ploidy) {
