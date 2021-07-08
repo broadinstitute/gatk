@@ -65,7 +65,34 @@ public final class AlleleSubsettingUtils {
                                                  final List<Allele> allelesToKeep,
                                                  final GenotypePriorCalculator gpc,
                                                  final GenotypeAssignmentMethod assignmentMethod,
-                                                 final List<String> alleleBasedLengthAnnots) {
+                                                 final List<String> alleleBasedLengthAnnots,
+                                                 final int depth,
+                                                 final boolean emitEmptyPLs) {
+        return subsetAlleles(originalGs, defaultPloidy, originalAlleles, allelesToKeep, gpc, assignmentMethod, alleleBasedLengthAnnots, depth, emitEmptyPLs, true);
+    }
+
+    /**
+     * Create the new GenotypesContext with the subsetted PLs and ADs
+     *
+     * Will reorder subsetted alleles according to the ordering provided by the list allelesToKeep
+     *
+     * @param originalGs               the original GenotypesContext
+     * @param originalAlleles          the original alleles
+     * @param allelesToKeep            the subset of alleles to use with the new Genotypes
+     * @param assignmentMethod         assignment strategy for the (subsetted) PLs
+     * @param depth                    the original variant DP or 0 if there was no DP
+     * @param emitEmptyPLs             force the output of a PL array even if there is no data
+     * @param removeNonRefADReads
+     * @return                         a new non-null GenotypesContext
+     */
+    public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
+                                                 final List<Allele> originalAlleles,
+                                                 final List<Allele> allelesToKeep,
+                                                 final GenotypePriorCalculator gpc,
+                                                 final GenotypeAssignmentMethod assignmentMethod,
+                                                 final int depth,
+                                                 final List<String> alleleBasedLengthAnnots,
+                                                 final boolean emitEmptyPLs, boolean removeNonRefADReads) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
         Utils.nonNull(allelesToKeep, "allelesToKeep is null");
         Utils.nonEmpty(allelesToKeep, "must keep at least one allele");
@@ -126,7 +153,7 @@ public final class AlleleSubsettingUtils {
             attributesToRemove.forEach(attributes::remove);
             gb.noPL().noGQ().noAttributes().attributes(attributes);  //if alleles are subset, old PLs and GQ are invalid
             if (newLog10GQ != Double.NEGATIVE_INFINITY && g.hasGQ()) {  //only put GQ if originally present
-                gb.log10PError(newLog10GQ);
+                gb.log10PError(Math.max(newLog10GQ, -9.9)); //do cap here in case we want to
             }
             gb.PL(newLikelihoods);
 

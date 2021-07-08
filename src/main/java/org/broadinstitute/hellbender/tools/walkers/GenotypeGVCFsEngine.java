@@ -469,6 +469,13 @@ public class GenotypeGVCFsEngine
                 builder.AD(AD);
             }
 
+            //convert GQ0s that were reblocked back to no-calls for better AN and InbreedingCoeff annotations
+            if (oldGT.isHomRef() && !oldGT.hasPL()) {
+                if (depth == 0 && oldGT.hasGQ() && oldGT.getGQ() == 0) {
+                    builder.alleles(Collections.nCopies(oldGT.getPloidy(), Allele.NO_CALL));
+                }
+            }
+
             if ( createRefGTs ) {
                  //keep 0 depth samples and 0 GQ samples as no-call
                 if (depth > 0 && oldGT.hasGQ()) {
