@@ -56,6 +56,30 @@ public final class AlleleSubsettingUtils {
                                                  final GenotypeAssignmentMethod assignmentMethod,
                                                  final int depth,
                                                  final boolean emitEmptyPLs) {
+        return subsetAlleles(originalGs, defaultPloidy, originalAlleles, allelesToKeep, gpc, assignmentMethod, depth, emitEmptyPLs, true);
+    }
+
+    /**
+     * Create the new GenotypesContext with the subsetted PLs and ADs
+     *
+     * Will reorder subsetted alleles according to the ordering provided by the list allelesToKeep
+     *
+     * @param originalGs               the original GenotypesContext
+     * @param originalAlleles          the original alleles
+     * @param allelesToKeep            the subset of alleles to use with the new Genotypes
+     * @param assignmentMethod         assignment strategy for the (subsetted) PLs
+     * @param depth                    the original variant DP or 0 if there was no DP
+     * @param emitEmptyPLs             force the output of a PL array even if there is no data
+     * @param removeNonRefADReads
+     * @return                         a new non-null GenotypesContext
+     */
+    public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
+                                                 final List<Allele> originalAlleles,
+                                                 final List<Allele> allelesToKeep,
+                                                 final GenotypePriorCalculator gpc,
+                                                 final GenotypeAssignmentMethod assignmentMethod,
+                                                 final int depth,
+                                                 final boolean emitEmptyPLs, boolean removeNonRefADReads) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
         Utils.nonNull(allelesToKeep, "allelesToKeep is null");
         Utils.nonEmpty(allelesToKeep, "must keep at least one allele");
@@ -120,8 +144,10 @@ public final class AlleleSubsettingUtils {
                 final int[] oldAD = g.getAD();
                 final int[] newAD = IntStream.range(0, allelesToKeep.size()).map(n -> oldAD[allelePermutation.fromIndex(n)]).toArray();
                 final int nonRefIndex = allelesToKeep.indexOf(Allele.NON_REF_ALLELE);
-                if (nonRefIndex != -1 && nonRefIndex < newAD.length) {
-                    newAD[nonRefIndex] = 0;  //we will "lose" coverage here, but otherwise merging NON_REF AD counts with other alleles "creates" reads
+                if (removeNonRefADReads) {
+                    if (nonRefIndex != -1 && nonRefIndex < newAD.length) {
+                        newAD[nonRefIndex] = 0;  //we will "lose" coverage here, but otherwise merging NON_REF AD counts with other alleles "creates" reads
+                    }
                 }
                 gb.AD(newAD);
             }
