@@ -77,7 +77,7 @@ workflow GvsCreateFilterSet {
         Int snps_variant_recalibration_threshold = 20000
     }
 
-    # don't need to make these inputs because they should be created and used within this workflow
+    # don't need to make these inputs because they should be created (based on inputs) and used only within this workflow
     String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
     String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
     String fq_info_destination_table = "~{data_project}.~{default_dataset}.filter_set_info"
@@ -254,68 +254,36 @@ workflow GvsCreateFilterSet {
         }
     }
 
-    call CreateFilterSetFileInGCS {
+    call PopulateFilterSetInfo {
         input:
             gatk_override = gatk_override,
             filter_set_name = filter_set_name,
-            output_directory = output_directory,
             snp_recal_file = select_first([MergeRecalibrationFiles.output_vcf, SNPsVariantRecalibratorClassic.recalibration]),
             snp_recal_file_index = select_first([MergeRecalibrationFiles.output_vcf_index, SNPsVariantRecalibratorClassic.recalibration_index]),
             indel_recal_file = IndelsVariantRecalibrator.recalibration,
             indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
+            fq_info_destination_table = fq_info_destination_table,
             service_account_json = service_account_json,
             query_project = query_project
     }
 
-    call UploadGCSFileToBQ as UploadToInfoTable {
-        input:
-            gcs_path_to_input_file = fq_gcs_path_to_info_file,
-            fq_destination_table = fq_info_destination_table,
-            table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string",
-            file_creation_done = CreateFilterSetFileInGCS.done,
-            service_account_json = service_account_json,
-            query_project = query_project
-    }
-
-    call MergeTranchesToGCS {
-        input:
-            filter_set_name = filter_set_name,
-            output_directory = output_directory,
-            snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
-            indel_recal_tranches = IndelsVariantRecalibrator.tranches,
-            service_account_json = service_account_json,
-            query_project = query_project
-    }
-
-    call UploadGCSFileToBQ as UploadToTranchesTable {
-        input:
-            gcs_path_to_input_file = fq_gcs_path_to_tranches_file,
-            fq_destination_table = fq_tranches_destination_table,
-            table_schema = "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float",
-            file_delimiter = ",",
-            file_creation_done = MergeTranchesToGCS.done,
-            service_account_json = service_account_json,
-            query_project = query_project
-    }
-
-    call CreateFilterSiteFileInGCS {
+    call PopulateFilterSetSites {
         input:
             gatk_override = gatk_override,
             filter_set_name = filter_set_name,
-            output_directory = output_directory,
             sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
             sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+            fq_filter_sites_destination_table = fq_filter_sites_destination_table,
             service_account_json = service_account_json,
             query_project = query_project
     }
 
-    call UploadGCSFileToBQ as UploadToFilterSitesTable {
+    call PopulateFilterSetTranches {
         input:
-            gcs_path_to_input_file = fq_gcs_path_to_filter_sites_file,
-            fq_destination_table = fq_filter_sites_destination_table,
-            table_schema = "filter_set_name:string,location:integer,filters:string",
-            num_of_skip_rows = 1,
-            file_creation_done = CreateFilterSiteFileInGCS.done,
+            filter_set_name = filter_set_name,
+            snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
+            indel_recal_tranches = IndelsVariantRecalibrator.tranches,
+            fq_tranches_destination_table = fq_tranches_destination_table,
             service_account_json = service_account_json,
             query_project = query_project
     }
@@ -510,7 +478,7 @@ task ExtractFilterTask {
       }
   }
 
-task CreateFilterSetFileInGCS {
+task PopulateFilterSetInfo {
     input {
         # ------------------------------------------------
         # Input args:
@@ -519,7 +487,7 @@ task CreateFilterSetFileInGCS {
         File? gatk_override
 
         String filter_set_name
-        String output_directory
+        String fq_info_destination_table
 
         File snp_recal_file
         File snp_recal_file_index
@@ -543,32 +511,38 @@ task CreateFilterSetFileInGCS {
             gcloud config set project ~{query_project}
         fi
 
-        # no point in doing any of this is the output directory isn't defined
-        if [ -n "~{output_directory}" ]; then
-            export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-            gatk --java-options "-Xmx1g" \
-            CreateFilteringFiles \
-            --ref-version 38 \
-            --filter-set-name ~{filter_set_name} \
-            -mode SNP \
-            -V ~{snp_recal_file} \
-            -O ~{filter_set_name}.snps.recal.tsv
+        echo "Creating SNPs reacalibration file"
+        gatk --java-options "-Xmx1g" \
+        CreateFilteringFiles \
+        --ref-version 38 \
+        --filter-set-name ~{filter_set_name} \
+        -mode SNP \
+        -V ~{snp_recal_file} \ß
+        -O ~{filter_set_name}.snps.recal.tsv
 
-            gatk --java-options "-Xmx1g" \
-            CreateFilteringFiles \
-            --ref-version 38 \
-            --filter-set-name ~{filter_set_name} \
-            -mode INDEL \
-            -V ~{indel_recal_file} \
-            -O ~{filter_set_name}.indels.recal.tsv
+        echo "Creating INDELs reacalibration file"
+        gatk --java-options "-Xmx1g" \
+        CreateFilteringFiles \
+        --ref-version 38 \
+        --filter-set-name ~{filter_set_name} \
+        -mode INDEL \
+        -V ~{indel_recal_file} \
+        -O ~{filter_set_name}.indels.recal.tsv
 
-            # merge into a single file
-            echo "Merging SNP + INDELs"
-            cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > ~{filter_set_name}.filter_set_load.tsv
+        # merge into a single file
+        echo "Merging SNP + INDELs"
+        cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > ~{filter_set_name}.filter_set_load.tsv
 
-            gsutil cp ~{filter_set_name}.filter_set_load.tsv ~{output_directory}/
-        fi
+        # BQ load likes a : instead of a . after the project
+        bq_table=$(echo ~{fq_info_destination_table} | sed s/\\./:/)
+
+        echo "Loading combined TSV into ~{fq_info_destination_table}"
+        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
+        --schema "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" \
+        ${bq_table} \
+        ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
     >>>
 
     # ------------------------------------------------
@@ -585,11 +559,11 @@ task CreateFilterSetFileInGCS {
     # ------------------------------------------------
     # Outputs:
     output {
-        String done = "done"
+        String status_load_filter_set_info = read_string("status_load_filter_set_info")
     }
 }
 
-task CreateFilterSiteFileInGCS {
+task PopulateFilterSetSites {
     # indicates that this task should NOT be call cached
 
     # TODO: should this be marked as volatile???
@@ -605,7 +579,7 @@ task CreateFilterSiteFileInGCS {
         File? gatk_override
 
         String filter_set_name
-        String output_directory
+        String fq_filter_sites_destination_table
 
         File sites_only_variant_filtered_vcf
         File sites_only_variant_filtered_vcf_index
@@ -627,19 +601,24 @@ task CreateFilterSiteFileInGCS {
             gcloud config set project ~{query_project}
         fi
 
-        # no point in doing any of this is the output directory isn't defined
-        if [ -n "~{output_directory}" ]; then
-            export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-            gatk --java-options "-Xmx1g" \
-                CreateSiteFilteringFiles \
-                --ref-version 38 \
-                --filter-set-name ~{filter_set_name} \
-                -V ~{sites_only_variant_filtered_vcf} \
-                -O ~{filter_set_name}.filter_sites_load.tsv
+        echo "Generating filter set sites TSV"
+        gatk --java-options "-Xmx1g" \
+            CreateSiteFilteringFiles \
+            --ref-version 38 \
+            --filter-set-name ~{filter_set_name} \
+            -V ~{sites_only_variant_filtered_vcf} \
+            -O ~{filter_set_name}.filter_sites_load.tsv
 
-            gsutil cp ~{filter_set_name}.filter_sites_load.tsv ~{output_directory}/
-        fi
+        # BQ load likes a : instead of a . after the project
+        bq_table=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
+
+        echo "Loading filter set sites TSV into ~{fq_filter_sites_destination_table}"
+        bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
+        --schema "filter_set_name:string,location:integer,filters:string" \
+        ${bq_table} \
+        ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_sites
     >>>
 
     # ------------------------------------------------
@@ -656,14 +635,15 @@ task CreateFilterSiteFileInGCS {
     # ------------------------------------------------
     # Outputs:
     output {
-        String done = "done"
+        String status_load_filter_set_sites = read_string("status_load_filter_set_sites")
+
     }
 }
 
-task MergeTranchesToGCS {
+task PopulateFilterSetTranches {
     input {
         String filter_set_name
-        String output_directory
+        String fq_tranches_destination_table
 
         File snp_recal_tranches
         File indel_recal_tranches
@@ -683,12 +663,16 @@ task MergeTranchesToGCS {
             gcloud config set project ~{query_project}
         fi
 
-        # no point in doing any of this is the output directory isn't defined
-        if [ -n "~{output_directory}" ]; then
-            cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > ~{filter_set_name}.tranches_load.csv
+        cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > ~{filter_set_name}.tranches_load.csv
 
-            gsutil cp ~{filter_set_name}.tranches_load.csv ~{output_directory}/
-        fi
+        # BQ load likes a : instead of a . after the project
+        bq_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
+
+        echo "Loading combined tranches CSV into ~{fq_tranches_destination_table}"
+        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
+        --schema "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float" \
+        ${bq_table} \
+        ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_tranches
     >>>
 
     # ------------------------------------------------
@@ -703,7 +687,7 @@ task MergeTranchesToGCS {
     }
 
     output {
-        String done = "done"
+        String status_load_filter_set_tranches = read_string("status_load_filter_set_tranches")
     }
 }
 
