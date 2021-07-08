@@ -293,6 +293,8 @@ task BigQueryLoadJson {
        set -e
 
        # TODO check the below logic. Seems to be appending.....?
+       # TODO how do we want to be doing this? With a hash of some sort?
+
        if [ $BQ_SHOW_RC -ne 0 ]; then
          echo "Creating the vat table ~{dataset_name}.~{vat_table}"
          bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
@@ -302,9 +304,9 @@ task BigQueryLoadJson {
        fi
        echo "And putting data into it"
 
-       # now run some giant query in BQ to get this all in the right table
+       # Now we run a giant query in BQ to get this all in the right table and join the genes properly
+       # Note the genes table join includes the group by to avoid the duplicates that get created from genes that span shards
 
-       # Array value was given but no 'sep' attribute was provided"
        bq query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --project_id=~{project_id} \
         'SELECT
               v.vid,
@@ -325,21 +327,21 @@ task BigQueryLoadJson {
               v.exon_number,
               v.intron_number,
               v.genomic_location,
-              #v.hgvsc AS splice_distance has not yet been designed
-              v.dbsnp_rsid,   #ARRAY_TO_STRING(v.dbsnp_rsid, ",") AS dbsnp_rsid,
+              # v.hgvsc AS splice_distance
+              v.dbsnp_rsid,
               v.gene_id,
-              #v.entrez_gene_id,
-              #g.hgnc_gene_id,
+              # v.entrez_gene_id,
+              # g.hgnc_gene_id,
               g.gene_omim_id,
               CASE WHEN ( v.transcript is not null and v.is_canonical_transcript is not True)
                 THEN False WHEN ( v.transcript is not null and v.is_canonical_transcript is True) THEN True END AS is_canonical_transcript,
               v.gnomad_all_af,
               v.gnomad_all_ac,
               v.gnomad_all_an,
-              v.gnomad_max_af, # this still needs to be designed
-              v.gnomad_max_ac, # this still needs to be designed
-              v.gnomad_max_an, # this still needs to be designed
-              null AS gnomad_max_subpop, # what is this mapping?
+              # v.gnomad_max_af,
+              # v.gnomad_max_ac,
+              # v.gnomad_max_an,
+              # null AS gnomad_max_subpop,
               v.revel,
               # this is the first value in spliceAI (need to validate that there will only ever be one)
               v.splice_ai_acceptor_gain_score,
@@ -356,9 +358,9 @@ task BigQueryLoadJson {
               v.clinvar_last_updated,
               v.clinvar_phenotype,
               FROM `~{dataset_name}.~{variant_transcript_table}` as v
-              left join `~{dataset_name}.~{genes_table}` as g on v.gene_symbol = g.gene_symbol'
-              # (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
-              # the genes table may need to be a distinct * or something to avoid the duplicates that get created from genes that span shards
+              left join
+              (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
+              on v.gene_symbol = g.gene_symbol'
 
  # TODO why do I sometimes hit an error above, but still make it to the smoke test?!?!??! Seems like the auth errors dont fail the workflow
   >>>
