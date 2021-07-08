@@ -254,19 +254,15 @@ workflow GvsCreateFilterSet {
         }
     }
 
-    call CreateFilterSetFiles {
+    call CreateFilterSetFileInGCS {
         input:
             gatk_override = gatk_override,
             filter_set_name = filter_set_name,
             output_directory = output_directory,
-            sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-            sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
             snp_recal_file = select_first([MergeRecalibrationFiles.output_vcf, SNPsVariantRecalibratorClassic.recalibration]),
             snp_recal_file_index = select_first([MergeRecalibrationFiles.output_vcf_index, SNPsVariantRecalibratorClassic.recalibration_index]),
-            snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
             indel_recal_file = IndelsVariantRecalibrator.recalibration,
             indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
-            indel_recal_tranches = IndelsVariantRecalibrator.tranches,
             service_account_json = service_account_json,
             query_project = query_project
     }
@@ -276,7 +272,17 @@ workflow GvsCreateFilterSet {
             gcs_path_to_input_file = fq_gcs_path_to_info_file,
             fq_destination_table = fq_info_destination_table,
             table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string",
-            file_creation_done = CreateFilterSetFiles.done,
+            file_creation_done = CreateFilterSetFileInGCS.done,
+            service_account_json = service_account_json,
+            query_project = query_project
+    }
+
+    call MergeTranchesToGCS {
+        input:
+            filter_set_name = filter_set_name,
+            output_directory = output_directory,
+            snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
+            indel_recal_tranches = IndelsVariantRecalibrator.tranches,
             service_account_json = service_account_json,
             query_project = query_project
     }
@@ -287,7 +293,18 @@ workflow GvsCreateFilterSet {
             fq_destination_table = fq_tranches_destination_table,
             table_schema = "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float",
             file_delimiter = ",",
-            file_creation_done = CreateFilterSetFiles.done,
+            file_creation_done = MergeTranchesToGCS.done,
+            service_account_json = service_account_json,
+            query_project = query_project
+    }
+
+    call CreateFilterSiteFileInGCS {
+        input:
+            gatk_override = gatk_override,
+            filter_set_name = filter_set_name,
+            output_directory = output_directory,
+            sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+            sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
             service_account_json = service_account_json,
             query_project = query_project
     }
@@ -298,7 +315,7 @@ workflow GvsCreateFilterSet {
             fq_destination_table = fq_filter_sites_destination_table,
             table_schema = "filter_set_name:string,location:integer,filters:string",
             num_of_skip_rows = 1,
-            file_creation_done = CreateFilterSetFiles.done,
+            file_creation_done = CreateFilterSiteFileInGCS.done,
             service_account_json = service_account_json,
             query_project = query_project
     }
@@ -493,7 +510,86 @@ task ExtractFilterTask {
       }
   }
 
-task CreateFilterSetFiles {
+task CreateFilterSetFileInGCS {
+    input {
+        # ------------------------------------------------
+        # Input args:
+
+        # Runtime Options:
+        File? gatk_override
+
+        String filter_set_name
+        String output_directory
+
+        File snp_recal_file
+        File snp_recal_file_index
+        File indel_recal_file
+        File indel_recal_file_index
+
+        File? service_account_json
+        String query_project
+    }
+
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
+    # ------------------------------------------------
+    # Run our command:
+    command <<<
+        set -eo pipefail
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{query_project}
+        fi
+
+        # no point in doing any of this is the output directory isn't defined
+        if [ -n "~{output_directory}" ]; then
+            export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+            gatk --java-options "-Xmx1g" \
+            CreateFilteringFiles \
+            --ref-version 38 \
+            --filter-set-name ~{filter_set_name} \
+            -mode SNP \
+            -V ~{snp_recal_file} \
+            -O ~{filter_set_name}.snps.recal.tsv
+
+            gatk --java-options "-Xmx1g" \
+            CreateFilteringFiles \
+            --ref-version 38 \
+            --filter-set-name ~{filter_set_name} \
+            -mode INDEL \
+            -V ~{indel_recal_file} \
+            -O ~{filter_set_name}.indels.recal.tsv
+
+            # merge into a single file
+            echo "Merging SNP + INDELs"
+            cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > ~{filter_set_name}.filter_set_load.tsv
+
+            gsutil cp ~{filter_set_name}.filter_set_load.tsv ~{output_directory}/
+        fi
+    >>>
+
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+        memory: "3500 MB"
+        disks: "local-disk 200 HDD"
+        bootDiskSizeGb: 15
+        preemptible: 0
+        cpu: 1
+    }
+
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        String done = "done"
+    }
+}
+
+task CreateFilterSiteFileInGCS {
     # indicates that this task should NOT be call cached
 
     # TODO: should this be marked as volatile???
@@ -514,14 +610,6 @@ task CreateFilterSetFiles {
         File sites_only_variant_filtered_vcf
         File sites_only_variant_filtered_vcf_index
 
-        File snp_recal_file
-        File snp_recal_file_index
-        File snp_recal_tranches
-
-        File indel_recal_file
-        File indel_recal_file_index
-        File indel_recal_tranches
-
         File? service_account_json
         String query_project
     }
@@ -539,42 +627,18 @@ task CreateFilterSetFiles {
             gcloud config set project ~{query_project}
         fi
 
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-        gatk --java-options "-Xmx1g" \
-            CreateFilteringFiles \
-            --ref-version 38 \
-            --filter-set-name ~{filter_set_name} \
-            -mode SNP \
-            -V ~{snp_recal_file} \
-            -O ~{filter_set_name}.snps.recal.tsv
-
-        gatk --java-options "-Xmx1g" \
-            CreateFilteringFiles \
-            --ref-version 38 \
-            --filter-set-name ~{filter_set_name} \
-            -mode INDEL \
-            -V ~{indel_recal_file} \
-            -O ~{filter_set_name}.indels.recal.tsv
-
-        gatk --java-options "-Xmx1g" \
-            CreateSiteFilteringFiles \
-            --ref-version 38 \
-            --filter-set-name ~{filter_set_name} \
-            -V ~{sites_only_variant_filtered_vcf} \
-            -O ~{filter_set_name}.filter_sites_load.tsv
-
-        # merge into a single file
-        echo "Merging SNP + INDELs"
-        cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > ~{filter_set_name}.filter_set_load.tsv
-
-        echo "Merging Tranches"
-        cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > ~{filter_set_name}.tranches_load.csv
-
+        # no point in doing any of this is the output directory isn't defined
         if [ -n "~{output_directory}" ]; then
+            export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+            gatk --java-options "-Xmx1g" \
+                CreateSiteFilteringFiles \
+                --ref-version 38 \
+                --filter-set-name ~{filter_set_name} \
+                -V ~{sites_only_variant_filtered_vcf} \
+                -O ~{filter_set_name}.filter_sites_load.tsv
+
             gsutil cp ~{filter_set_name}.filter_sites_load.tsv ~{output_directory}/
-            gsutil cp ~{filter_set_name}.filter_set_load.tsv ~{output_directory}/
-            gsutil cp ~{filter_set_name}.tranches_load.csv ~{output_directory}/
         fi
     >>>
 
@@ -591,6 +655,53 @@ task CreateFilterSetFiles {
 
     # ------------------------------------------------
     # Outputs:
+    output {
+        String done = "done"
+    }
+}
+
+task MergeTranchesToGCS {
+    input {
+        String filter_set_name
+        String output_directory
+
+        File snp_recal_tranches
+        File indel_recal_tranches
+
+        File? service_account_json
+        String query_project
+    }
+
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
+    command <<<
+        set -eo pipefail
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{query_project}
+        fi
+
+        # no point in doing any of this is the output directory isn't defined
+        if [ -n "~{output_directory}" ]; then
+            cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > ~{filter_set_name}.tranches_load.csv
+
+            gsutil cp ~{filter_set_name}.tranches_load.csv ~{output_directory}/
+        fi
+    >>>
+
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "3500 MB"
+        disks: "local-disk 200 HDD"
+        bootDiskSizeGb: 15
+        preemptible: 0
+        cpu: 1
+    }
+
     output {
         String done = "done"
     }
@@ -635,7 +746,7 @@ task UploadGCSFileToBQ {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
         memory: "3500 MB"
         disks: "local-disk 200 HDD"
         bootDiskSizeGb: 15
@@ -716,7 +827,7 @@ task GetBQTableLastModifiedDatetime {
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
     # ------------------------------------------------
-    # try to get the last modified date for the table in question; fail if something comes back from BigQuwey
+    # try to get the last modified date for the table in question; fail if something comes back from BigQuery
     # that isn't in the right format (e.g. an error)
     command <<<
         set -e
