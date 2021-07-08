@@ -26,6 +26,8 @@ workflow GvsSitesOnlyVCF {
             output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz",
         }
 
+        # we want a step here that uses bcftools to create a TSV for ac, an and af each and then we will nirvana-ize it and then use it for annotations
+
         call AnnotateShardedVCF {
           input:
             input_vcf = SitesOnlyVcf.output_vcf,
@@ -65,6 +67,38 @@ workflow GvsSitesOnlyVCF {
 
 ################################################################################
 task SitesOnlyVcf {
+    input {
+        File vcf_bgz_gts
+        File vcf_index
+        String output_filename
+    }
+    String output_vcf_idx = basename(output_filename) + ".tbi" # or will this be .idx if from .vcf.gz? or ".tbi" if a .vcf
+    command <<<
+        set -e
+        gatk --java-options "-Xmx2048m" \
+            SelectVariants \
+                -V ~{vcf_bgz_gts} \
+                --exclude-filtered \
+                --sites-only-vcf-output \
+                -O ~{output_filename}
+     >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "broadinstitute/gatk:4.2.0.0"
+        memory: "3 GB"
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File output_vcf="~{output_filename}"
+        File output_vcf_idx="~{output_vcf_idx}"
+    }
+}
+
+task ExtractACANAF {
     input {
         File vcf_bgz_gts
         File vcf_index
@@ -323,6 +357,7 @@ task BigQueryLoadJson {
               v.clinvar_phenotype,
               FROM `~{dataset_name}.~{variant_transcript_table}` as v
               left join `~{dataset_name}.~{genes_table}` as g on v.gene_symbol = g.gene_symbol'
+              # (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
               # the genes table may need to be a distinct * or something to avoid the duplicates that get created from genes that span shards
 
  # TODO why do I sometimes hit an error above, but still make it to the smoke test?!?!??! Seems like the auth errors dont fail the workflow
@@ -384,6 +419,7 @@ task BigQuerySmokeTest {
           # exit 1  <-- collect the errors? or fail the pipeline?
         else
           echo "The VAT has been updated"
+          echo "Validation #1 has passed"
         fi
 
         # ------------------------------------------------
@@ -404,6 +440,7 @@ task BigQuerySmokeTest {
           # exit 1  <-- collect the errors? or fail the pipeline?
         else
           echo "The number of passing variants in GVS matches the number of variants in the VAT"
+          echo "Validation #2 has passed"
         fi
 
         # ------------------------------------------------
@@ -426,6 +463,7 @@ task BigQuerySmokeTest {
           # exit 1  <-- collect the errors? or fail the pipeline?
         else
           echo "Less than 5% of the variants have a non-null value in the gene field"
+          echo "Validation #3 has passed"
         fi
 
         # ------------------------------------------------
@@ -434,9 +472,20 @@ task BigQuerySmokeTest {
         echo  "VALIDATION #4"
         # TODO ask Lee for help here. I'm not sure how to do this one?
         # 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163'
+        POSITIONAL_COUNT=$('SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163')
+        TESK2_COUNT=$('SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="TESK2"')
+        AL451136_COUNT=$('SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="AL451136.1"')
         echo  "Still need to validate chr1"
 
-        # TODO this is not done!
+
+        if [[ $POSITIONAL_COUNT -ne ($TESK2_COUNT + $AL451136_COUNT) ]]
+          then echo "There are unexpected genes in the TESK2 region"
+          echo  "Validation has failed"
+          # exit 1  <-- collect the errors? or fail the pipeline?
+        else
+          echo "All variants in the TESK2 gene region list multiple genes and those genes are always TESK2 and AL451136.1"
+          echo "Validation #4 has passed"
+        fi
 
         # ------------------------------------------------
         # VALIDATION #5
@@ -463,6 +512,7 @@ task BigQuerySmokeTest {
           # exit 1  <-- collect the errors? or fail the pipeline?
         else
           echo "If a vid has a null transcript, then the vid is only in one row of the VAT"
+          echo "Validation #5 has passed"
         fi
 
         # ------------------------------------------------
@@ -470,7 +520,20 @@ task BigQuerySmokeTest {
         # If a vid has any non-null transcripts then one transcript must be Ensembl (transcript_source) and canonical (is_canonical).
         echo  "VALIDATION #6"
         # Lee is removing this for now.
+        echo "Lee is removing this for now"
         # SELECT vid, string_agg(DISTINCT is_canonical_transcript) as canonical FROM `spec-ops-aou.anvil_100_for_testing.aou_shard_223_vat` where transcript is not null group by vid order by canonical <--there are plenty that are false
+        BQ_VAT_ENSEMBL_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` where transcript is not null and transcript_source="Ensembl"')
+        BQ_VAT_TRANSCRIPT_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` where transcript is not null')
+
+        if [[ $BQ_VAT_ENSEMBL_COUNT -ne $BQ_VAT_TRANSCRIPT_COUNTT ]]
+        then
+          echo "All transcripts should be from Ensembl"
+          echo  "Validation has failed"
+          # exit 1  <-- collect the errors? or fail the pipeline?
+        else
+          echo "If a vid has any non-null transcripts then one transcript must be Ensembl"
+          echo "Validation #6 has passed"
+        fi
 
 
         # ------------------------------------------------
@@ -490,25 +553,31 @@ task BigQuerySmokeTest {
         # Hmmm--- the use of the vat_schema should do that for us
         # Could get a count of each where _ is null
         # note that the below returns nothing
-        # BQ_VAT_NULL=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT vid FROM `~{dataset_name}.~{vat_table}` WHERE vid IS NULL OR contig IS NULL OR position IS NULL OR ref_allele IS NULL OR alt_allele IS NULL OR variant_type IS NULL OR genomic_location IS NULL'
+        BQ_VAT_NULL=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) as count FROM `~{dataset_name}.~{vat_table}` WHERE vid IS NULL OR contig IS NULL OR position IS NULL OR ref_allele IS NULL OR alt_allele IS NULL OR variant_type IS NULL OR genomic_location IS NULL'
         # vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location + the aou max stuff Lee still has to figure out
+        echo $BQ_VAT_NULL
+
+        if [[ $BQ_VAT_NULL -gt 0 ]]
+          then echo "A required value is null"
+          echo  "Validation has failed"
+          # exit 1  <-- collect the errors? or fail the pipeline?
+        else
+          echo "No required values are null"
+          echo "Validation #8 has passed"
+        fi
 
         # ------------------------------------------------
         # VALIDATION #9
         # Each key combination is unique.
         echo  "VALIDATION #9"
         # get the sum of all the distinct vids where transcript is null and all the distinct transcript where transcript is not null
-        BQ_VAT_DISTINCT_VID_NO_TRANSCRIPT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL')
-        BQ_VAT_DISTINCT_TRANSCRIPT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT transcript) FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NOT NULL')
-        BQ_VAT_NO_TRANSCRIPT_ROW_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (*) FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL')
-        BQ_VAT_WITH_TRANSCRIPT_ROW_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (*) FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NOT NULL')
+        BQ_VAT_UNIQUE_IDS_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) FROM (SELECT vid, transcript FROM `spec-ops-aou.anvil_100_for_testing.vat_jul_6_chr1` group by vid, transcript)')
+        BQ_VAT_ROW_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (*) FROM `~{dataset_name}.~{vat_table}` ')
 
-        if [ $BQ_VAT_DISTINCT_VID_NO_TRANSCRIPT -ne $BQ_VAT_NO_TRANSCRIPT_ROW_COUNT ];
-           then echo "There are duplicate VID rows without transcripts"
-          # exit 1  <-- collect the errors? or fail the pipeline?
-        # fi
-        # if [ $BQ_VAT_DISTINCT_TRANSCRIPT -ne $BQ_VAT_WITH_TRANSCRIPT_ROW_COUNT ]; # TODO double check this transcripts bit!
-          # then echo "The number of rows and keys is different"
+
+        if [ $BQ_VAT_UNIQUE_IDS_COUNT -ne $BQ_VAT_ROW_COUNT ];
+           then echo "There are duplicate variant - transcript rows"
+           echo  "Validation has failed"
           # exit 1  <-- collect the errors? or fail the pipeline?
         else:
           echo "Each key combination is unique"
