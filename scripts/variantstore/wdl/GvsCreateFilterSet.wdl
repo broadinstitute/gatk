@@ -18,12 +18,6 @@ workflow GvsCreateFilterSet {
         String query_project = data_project
         Array[String]? query_labels
 
-        String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
-        String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
-        String fq_info_destination_table = "~{data_project}.~{default_dataset}.filter_set_info"
-        String fq_tranches_destination_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
-        String fq_filter_sites_destination_table = "~{data_project}.~{default_dataset}.filter_set_sites"
-
         String filter_set_name
 
         File? excluded_intervals
@@ -83,9 +77,27 @@ workflow GvsCreateFilterSet {
         Int snps_variant_recalibration_threshold = 20000
     }
 
+    # don't need to make these inputs because they should be created and used within this workflow
+    String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
+    String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
+    String fq_info_destination_table = "~{data_project}.~{default_dataset}.filter_set_info"
+    String fq_tranches_destination_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
+    String fq_filter_sites_destination_table = "~{data_project}.~{default_dataset}.filter_set_sites"
+    String fq_gcs_path_to_info_file = "~{output_directory}/~{filter_set_name}.filter_set_load.tsv"
+    String fq_gcs_path_to_tranches_file = "~{output_directory}/~{filter_set_name}.tranches_load.csv"
+    String fq_gcs_path_to_filter_sites_file = "~{output_directory}/~{filter_set_name}.filter_sites_load.tsv"
+
+    call GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
+        input:
+            query_project = query_project,
+            fq_table = fq_sample_table,
+            service_account_json = service_account_json
+    }
+
     call GetNumSamples {
         input:
             fq_sample_table = fq_sample_table,
+            fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
             service_account_json = service_account_json,
             project_id = query_project
     }
@@ -205,7 +217,6 @@ workflow GvsCreateFilterSet {
                 gatk_override = gatk_override
         }
 
-
         call MergeVCFs as MergeRecalibrationFiles {
             input:
                 input_vcfs = SNPsVariantRecalibratorScattered.recalibration,
@@ -214,24 +225,6 @@ workflow GvsCreateFilterSet {
                 output_vcf_name = "${filter_set_name}.vrecalibration.gz",
                 preemptible_tries = 3,
                 gatk_override = gatk_override
-        }
-
-
-        call CreateFilterSetFiles as CreateFilterSetFilesScattered {
-            input:
-                gatk_override = gatk_override,
-                filter_set_name = filter_set_name,
-                output_directory = output_directory,
-                sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-                sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
-                snp_recal_file = MergeRecalibrationFiles.output_vcf,
-                snp_recal_file_index = MergeRecalibrationFiles.output_vcf_index,
-                snp_recal_tranches = SNPGatherTranches.tranches_file,
-                indel_recal_file = IndelsVariantRecalibrator.recalibration,
-                indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
-                indel_recal_tranches = IndelsVariantRecalibrator.tranches,
-                service_account_json = service_account_json,
-                query_project = query_project
         }
     }
 
@@ -259,34 +252,53 @@ workflow GvsCreateFilterSet {
                 machine_mem_gb = SNP_VQSR_machine_mem_gb,
                 downsampleFactor= SNP_VQSR_downsampleFactor
         }
-
-        call CreateFilterSetFiles as CreateFilterSetFilesClassic {
-            input:
-                gatk_override = gatk_override,
-                filter_set_name = filter_set_name,
-                output_directory = output_directory,
-                sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-                sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
-                snp_recal_file = SNPsVariantRecalibratorClassic.recalibration,
-                snp_recal_file_index = SNPsVariantRecalibratorClassic.recalibration_index,
-                snp_recal_tranches = SNPsVariantRecalibratorClassic.tranches,
-                indel_recal_file = IndelsVariantRecalibrator.recalibration,
-                indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
-                indel_recal_tranches = IndelsVariantRecalibrator.tranches,
-                service_account_json = service_account_json,
-                query_project = query_project
-        }
     }
 
-    call UploadFilterSetFilesToBQ {
+    call CreateFilterSetFiles {
         input:
+            gatk_override = gatk_override,
             filter_set_name = filter_set_name,
-            # get the "done" output from either the scattered call or the unscattered call to CreateFilterSetFiles
-            file_creation_done = if defined(CreateFilterSetFilesScattered.done) then defined(CreateFilterSetFilesScattered.done) else defined(CreateFilterSetFilesClassic.done),
             output_directory = output_directory,
-            fq_info_destination_table = fq_info_destination_table,
-            fq_tranches_destination_table = fq_tranches_destination_table,
-            fq_filter_sites_destination_table = fq_filter_sites_destination_table,
+            sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+            sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+            snp_recal_file = select_first([MergeRecalibrationFiles.output_vcf, SNPsVariantRecalibratorClassic.recalibration]),
+            snp_recal_file_index = select_first([MergeRecalibrationFiles.output_vcf_index, SNPsVariantRecalibratorClassic.recalibration_index]),
+            snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
+            indel_recal_file = IndelsVariantRecalibrator.recalibration,
+            indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
+            indel_recal_tranches = IndelsVariantRecalibrator.tranches,
+            service_account_json = service_account_json,
+            query_project = query_project
+    }
+
+    call UploadGCSFileToBQ as UploadToInfoTable {
+        input:
+            gcs_path_to_input_file = fq_gcs_path_to_info_file,
+            fq_destination_table = fq_info_destination_table,
+            table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string",
+            file_creation_done = CreateFilterSetFiles.done,
+            service_account_json = service_account_json,
+            query_project = query_project
+    }
+
+    call UploadGCSFileToBQ as UploadToTranchesTable {
+        input:
+            gcs_path_to_input_file = fq_gcs_path_to_tranches_file,
+            fq_destination_table = fq_tranches_destination_table,
+            table_schema = "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float",
+            file_delimiter = ",",
+            file_creation_done = CreateFilterSetFiles.done,
+            service_account_json = service_account_json,
+            query_project = query_project
+    }
+
+    call UploadGCSFileToBQ as UploadToFilterSitesTable {
+        input:
+            gcs_path_to_input_file = fq_gcs_path_to_filter_sites_file,
+            fq_destination_table = fq_filter_sites_destination_table,
+            table_schema = "filter_set_name:string,location:integer,filters:string",
+            num_of_skip_rows = 1,
+            file_creation_done = CreateFilterSetFiles.done,
             service_account_json = service_account_json,
             query_project = query_project
     }
@@ -301,6 +313,7 @@ workflow GvsCreateFilterSet {
 task GetNumSamples {
     input {
         String fq_sample_table
+        String fq_sample_table_lastmodified_timestamp
         File? service_account_json
         String project_id
     }
@@ -583,26 +596,14 @@ task CreateFilterSetFiles {
     }
 }
 
-task UploadFilterSetFilesToBQ {
-    # indicates that this task should NOT be call cached
-
-    # TODO: should this be marked as volatile???
-    #meta {
-    #   volatile: true
-    #}
-
+task UploadGCSFileToBQ {
     input {
-        # ------------------------------------------------
-        # Input args:
-
-        String filter_set_name
-        String output_directory
-
-        Boolean file_creation_done
-
-        String fq_info_destination_table
-        String fq_tranches_destination_table
-        String fq_filter_sites_destination_table
+        String gcs_path_to_input_file
+        String fq_destination_table
+        String table_schema
+        String file_delimiter = "tab"
+        Int num_of_skip_rows = 0
+        String file_creation_done
 
         File? service_account_json
         String query_project
@@ -622,32 +623,13 @@ task UploadFilterSetFilesToBQ {
         fi
 
         # BQ load likes a : instead of a . after the project
-        bq_info_table=$(echo ~{fq_info_destination_table} | sed s/\\./:/)
+        bq_table=$(echo ~{fq_destination_table} | sed s/\\./:/)
 
-        echo "Loading Filter Set into BQ"
-        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
-        ${bq_info_table} \
-        ~{output_directory}/~{filter_set_name}.filter_set_load.tsv \
-        "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" > status_bq_load_info_table
-
-        # BQ load likes a : instead of a . after the project
-        bq_tranches_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
-
-        echo "Loading Tranches into BQ"
-        bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
-        ${bq_tranches_table} \
-        ~{output_directory}/~{filter_set_name}.tranches_load.csv \
-        "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float"  > status_bq_load_tranches_table
-
-        # BQ load likes a : instead of a . after the project
-        bq_filter_sites_table=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
-
-        # Creating site
-        echo "Loading Filter Set Sites into BQ"
-        bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
-        ${bq_filter_sites_table} \
-        ~{output_directory}/~{filter_set_name}.filter_sites_load.tsv \
-        "filter_set_name:string,location:integer,filters:string"  > status_bq_load_filter_sites_table
+        echo "Loading ~{gcs_path_to_input_file} into ~{fq_destination_table}"
+        bq load --project_id=~{query_project} --skip_leading_rows ~{num_of_skip_rows} -F "~{file_delimiter}" \
+        --schema "~{table_schema}" \
+        ${bq_table} \
+        ~{gcs_path_to_input_file} > status_bq_load_table
     >>>
 
     # ------------------------------------------------
@@ -664,9 +646,7 @@ task UploadFilterSetFilesToBQ {
     # ------------------------------------------------
     # Outputs:
     output {
-        String status_bq_load_info_table = read_string("status_bq_load_info_table")
-        String status_bq_load_tranches_table = read_string("status_bq_load_tranches_table")
-        String status_bq_load_filter_sites_table = read_string("status_bq_load_filter_sites_table")
+        String status_bq_load_table = read_string("status_bq_load_table")
     }
  }
 
@@ -721,7 +701,52 @@ task UploadFilterSetFilesToBQ {
    }
  }
 
+task GetBQTableLastModifiedDatetime {
+    # because this is being used to determine if the data has changed, never use call cache
+    meta {
+        volatile: true
+    }
 
+    input {
+        String query_project
+        String fq_table
+        String? service_account_json
+    }
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
+    # ------------------------------------------------
+    # try to get the last modified date for the table in question; fail if something comes back from BigQuwey
+    # that isn't in the right format (e.g. an error)
+    command <<<
+        set -e
+        if [ ~{has_service_account_file} = 'true' ]; then
+        gsutil cp ~{service_account_json} local.service_account.json
+        gcloud auth activate-service-account --key-file=local.service_account.json
+        fi
 
+        echo "project_id = ~{query_project}" > ~/.bigqueryrc
+
+        # bq needs the project name to be separate by a colon
+        DATASET_TABLE_COLON=$(echo ~{fq_table} | sed 's/\./:/')
+
+        LASTMODIFIED=$(bq --location=US --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+        if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
+        echo $LASTMODIFIED
+        else
+        exit 1
+        fi
+    >>>
+
+    output {
+        String last_modified_timestamp = read_string(stdout())
+    }
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+}
