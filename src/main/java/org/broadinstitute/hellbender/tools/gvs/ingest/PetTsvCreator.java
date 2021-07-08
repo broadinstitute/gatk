@@ -31,21 +31,28 @@ public final class PetTsvCreator {
     private PetAvroWriter petAvroWriter = null;
     private PetParquetWriter petParquetWriter = null;
 
+    private RefRangesAvroWriter refRangesAvroWriter = null;
+    private boolean writePetData;
+    private boolean writeReferenceRanges;
     private final String sampleId;
     private SimpleInterval previousInterval;
     private final SAMSequenceDictionary seqDictionary;
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<GQStateEnum>();
     private GenomeLocSortedSet coverageLocSortedSet;
     private static String PET_FILETYPE_PREFIX = "pet_";
+    private static String REF_RANGES_FILETYPE_PREFIX = "ref_";
 
-    public PetTsvCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType) {
+
+    public PetTsvCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
         this.outputType = outputType;
+        this.writePetData = writePetData;
+        this.writeReferenceRanges = writeReferenceRanges;
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
-       try {
+        try {
             final File petOutputFile = new File(outputDirectory, PET_FILETYPE_PREFIX + tableNumberPrefix + sampleIdentifierForOutputFileName + "." + outputType.toString().toLowerCase());
             switch (outputType) {
                 case TSV:
@@ -65,6 +72,12 @@ public final class PetTsvCreator {
                 case PARQUET:
                     petParquetWriter = new PetParquetWriter(petOutputFile.getCanonicalPath());
             }
+
+            if (writeReferenceRanges) {
+                final File refOutputFile = new File(outputDirectory, REF_RANGES_FILETYPE_PREFIX + tableNumberPrefix + sampleIdentifierForOutputFileName + ".avro");
+                refRangesAvroWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
+            }
+
         } catch (final IOException e) {
             throw new UserException("Could not create pet outputs", e);
         }
@@ -133,46 +146,59 @@ public final class PetTsvCreator {
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
 
-                List<List<String>> TSVLinesToCreatePet;
-                // handle deletions that span across multiple intervals
-                if (!firstInterval && !variant.isReferenceBlock()) {
-                    TSVLinesToCreatePet = createSpanDelRows(
-                            SchemaUtils.encodeLocation(variantChr, start),
-                            SchemaUtils.encodeLocation(variantChr, end),
-                            variant,
-                            sampleId
-                    );
-                } else {
-                    TSVLinesToCreatePet = createRows(
-                            SchemaUtils.encodeLocation(variantChr, start),
-                            SchemaUtils.encodeLocation(variantChr, end),
-                            variant,
-                            sampleId
+                // if we are writing ref ranges, and this is a reference block, write it!
+                if (writeReferenceRanges && variant.isReferenceBlock()) {
+                    refRangesAvroWriter.write(SchemaUtils.encodeLocation(variantChr, start),
+                            Long.parseLong(sampleId),
+                            end - start + 1,
+                            getGQStateEnum(variant.getGenotype(0).getGQ()).value
                     );
                 }
 
-                // write the position to the XSV
-                for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
-                    long location = Long.parseLong(TSVLineToCreatePet.get(0));
-                    long sampleId = Long.parseLong(TSVLineToCreatePet.get(1));
-                    String state = TSVLineToCreatePet.get(2);
+                if (writePetData) {
+                    List<List<String>> TSVLinesToCreatePet;
+                    // handle deletions that span across multiple intervals
+                    if (!firstInterval && !variant.isReferenceBlock()) {
+                        TSVLinesToCreatePet = createSpanDelRows(
+                                SchemaUtils.encodeLocation(variantChr, start),
+                                SchemaUtils.encodeLocation(variantChr, end),
+                                variant,
+                                sampleId
+                        );
+                    } else {
+                        TSVLinesToCreatePet = createRows(
+                                SchemaUtils.encodeLocation(variantChr, start),
+                                SchemaUtils.encodeLocation(variantChr, end),
+                                variant,
+                                sampleId
+                        );
 
-                    switch (outputType) {
-                        case TSV:
-                            petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
-                            break;
-                        case TSV2:
-                            petTsv2Writer.addRow(location, sampleId, state);
-                            break;
-                        case ORC:
-                            petOrcWriter.addRow(location, sampleId, state);
-                            break;
-                        case AVRO:
-                            petAvroWriter.addRow(location, sampleId, state);
-                            break;
-                        case PARQUET:
-                            petParquetWriter.addRow(location, sampleId, state);
-                            break;
+                    }
+
+
+                    // write the position to the XSV
+                    for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
+                        long location = Long.parseLong(TSVLineToCreatePet.get(0));
+                        long sampleId = Long.parseLong(TSVLineToCreatePet.get(1));
+                        String state = TSVLineToCreatePet.get(2);
+
+                        switch (outputType) {
+                            case TSV:
+                                petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
+                                break;
+                            case TSV2:
+                                petTsv2Writer.addRow(location, sampleId, state);
+                                break;
+                            case ORC:
+                                petOrcWriter.addRow(location, sampleId, state);
+                                break;
+                            case AVRO:
+                                petAvroWriter.addRow(location, sampleId, state);
+                                break;
+                            case PARQUET:
+                                petParquetWriter.addRow(location, sampleId, state);
+                                break;
+                        }
                     }
                 }
             }
@@ -389,6 +415,9 @@ public final class PetTsvCreator {
                     if (petParquetWriter != null) petParquetWriter.close();
                     break;
             }
+
+            if (refRangesAvroWriter != null) refRangesAvroWriter.close();
+
         } catch (final Exception e) {
             throw new IllegalArgumentException("Couldn't close PET writer", e);
         }

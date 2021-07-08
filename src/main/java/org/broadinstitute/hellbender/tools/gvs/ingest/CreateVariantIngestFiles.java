@@ -69,6 +69,24 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     optional = true)
     public boolean dropAboveGqThreshold = false;
 
+    @Argument(fullName = "write-reference-ranges",
+            shortName = "rr",
+            doc = "write reference ranges data",
+            optional = true)
+    public boolean writeReferenceRanges = false;
+
+    @Argument(fullName = "enable-vet",
+            shortName = "ev",
+            doc = "write vet data",
+            optional = true)
+    public boolean enableVet = true;
+
+    @Argument(fullName = "enable-pet",
+            shortName = "ep",
+            doc = "write pet data",
+            optional = true)
+    public boolean enablePet = true;
+
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
             doc = "Sample name to sample id mapping. This must be provided if gvs-sample-id is not",
@@ -172,12 +190,15 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType);
-        switch (mode) {
-            case EXOMES:
-            case GENOMES:
-                vetTsvCreator = new VetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, outputDir);
-                break;
+        petTsvCreator = new PetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, writeReferenceRanges);
+
+        if (enableVet) {
+            switch (mode) {
+                case EXOMES:
+                case GENOMES:
+                    vetTsvCreator = new VetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, outputDir);
+                    break;
+            }
         }
 
 
@@ -207,7 +228,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // write to VET if NOT reference block and NOT a no call
         if (!variant.isReferenceBlock() && !isNoCall(variant)) {
-            vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
+            if (enableVet) vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
         }
 
         try {
