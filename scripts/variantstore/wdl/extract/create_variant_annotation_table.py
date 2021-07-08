@@ -39,7 +39,7 @@ vat_nirvana_transcripts_dictionary = {
   "transcript_source": "source", # nullable
   "aa_change": "hgvsp", # nullable
   "consequence": "consequence", # nullable -- this is now an array
-  "dna_change": "hgvsc", # nullable
+  "dna_change_in_transcript": "hgvsc", # nullable
   "exon_number": "exons", # nullable
   "intron_number": "introns", # nullable
   # "splice_distance": "hgvsc", # nullable -- Lee has pushed this out of p0 for now
