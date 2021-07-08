@@ -403,8 +403,6 @@ task BigQuerySmokeTest {
 
         # ------------------------------------------------
         # VALIDATION #1
-        # The number of passing variants in GVS matches the number of variants in the VAT.
-        # TODO this tests the python---what other qs should we ask here?
         # TODO sometimes when there's an error msg, this is stripping out the #s and doing math with that like a dummy
         echo  "VALIDATION #1"
         # The pipeline completed without an error message
@@ -454,7 +452,6 @@ task BigQuerySmokeTest {
         bq query --nouse_legacy_sql --project_id=~{project_id} \
           'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}` WHERE gene_symbol IS NOT NULL'
         BQ_VAT_GENE_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}` WHERE gene_symbol IS NOT NULL'| tr -dc '0-9')
-        echo $BQ_VAT_GENE_COUNT
         echo "Get the percent"
         PERCENT=$((BQ_VAT_GENE_COUNT * 100 / BQ_VAT_VARIANT_COUNT))
         echo $PERCENT
@@ -504,9 +501,6 @@ task BigQuerySmokeTest {
           'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL'
         BQ_VAT_VARIANT_NO_TRANSCRIPT_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL'| tr -dc '0-9')
 
-        echo $BQ_VAT_ROWS_NO_TRANSCRIPT_COUNT
-        echo $BQ_VAT_VARIANT_NO_TRANSCRIPT_COUNT
-
         if [[ $BQ_VAT_ROWS_NO_TRANSCRIPT_COUNT -ne $BQ_VAT_VARIANT_NO_TRANSCRIPT_COUNT ]]
         then
           echo "The number of rows for variants with no transcripts is incorrect"
@@ -527,7 +521,7 @@ task BigQuerySmokeTest {
         BQ_VAT_ENSEMBL_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` where transcript is not null and transcript_source="Ensembl"')
         BQ_VAT_TRANSCRIPT_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` where transcript is not null')
 
-        if [[ $BQ_VAT_ENSEMBL_COUNT -ne $BQ_VAT_TRANSCRIPT_COUNTT ]]
+        if [[ $BQ_VAT_ENSEMBL_COUNT -ne $BQ_VAT_TRANSCRIPT_COUNT ]]
         then
           echo "All transcripts should be from Ensembl"
           echo  "Validation has failed"
@@ -537,7 +531,6 @@ task BigQuerySmokeTest {
           echo "Validation #6 has passed"
         fi
 
-
         # ------------------------------------------------
         # VALIDATION #7
         # No vid may have a mix of non-null and null transcripts.
@@ -546,7 +539,16 @@ task BigQuerySmokeTest {
         # Get a list of all distinct vids with no transcripts
         # Make sure those lists have no intersection
 
-        # bq query --nouse_legacy_sql --project_id="spec-ops-aou" 'SELECT vids_with_transcript_table.vid, vids_no_transcript_table.vid FROM (SELECT DISTINCT vid FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL) AS vids_no_transcript_table inner join (SELECT DISTINCT vid FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NOT NULL) AS vids_with_transcript_table on vids_with_transcript_table.vid = vids_no_transcript_table.vid'
+        BQ_VAT_VID_OVERLAP=$(bq query --nouse_legacy_sql --project_id="spec-ops-aou" 'SELECT COUNT(vids_with_transcript_table.vid) AS count FROM (SELECT DISTINCT vid FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL) AS vids_no_transcript_table inner join (SELECT DISTINCT vid FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NOT NULL) AS vids_with_transcript_table on vids_with_transcript_table.vid = vids_no_transcript_table.vid')
+
+        if [[ $BQ_VAT_VID_OVERLAP -gt 0 ]]
+          then echo "A vid has a mix of non-null and null transcripts"
+          echo  "Validation has failed"
+          # exit 1  <-- collect the errors? or fail the pipeline?
+        else
+          echo "No vids have a mix of non-null and null transcripts"
+          echo "Validation #7 has passed"
+        fi
 
         # ------------------------------------------------
         # VALIDATION #8
@@ -576,13 +578,13 @@ task BigQuerySmokeTest {
         BQ_VAT_UNIQUE_IDS_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) FROM (SELECT vid, transcript FROM `spec-ops-aou.anvil_100_for_testing.vat_jul_6_chr1` group by vid, transcript)')
         BQ_VAT_ROW_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (*) FROM `~{dataset_name}.~{vat_table}` ')
 
-
         if [ $BQ_VAT_UNIQUE_IDS_COUNT -ne $BQ_VAT_ROW_COUNT ];
            then echo "There are duplicate variant - transcript rows"
            echo  "Validation has failed"
           # exit 1  <-- collect the errors? or fail the pipeline?
         else:
           echo "Each key combination is unique"
+          echo "Validation #9 has passed"
         fi
 
         # ------------------------------------------------
@@ -606,5 +608,3 @@ task BigQuerySmokeTest {
         Boolean done = true
     }
 }
-
-
