@@ -280,6 +280,7 @@ workflow GvsCreateFilterSet {
 
     call PopulateFilterSetTranches {
         input:
+            gatk_override = gatk_override,
             filter_set_name = filter_set_name,
             snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
             indel_recal_tranches = IndelsVariantRecalibrator.tranches,
@@ -480,12 +481,6 @@ task ExtractFilterTask {
 
 task PopulateFilterSetInfo {
     input {
-        # ------------------------------------------------
-        # Input args:
-
-        # Runtime Options:
-        File? gatk_override
-
         String filter_set_name
         String fq_info_destination_table
 
@@ -496,12 +491,12 @@ task PopulateFilterSetInfo {
 
         File? service_account_json
         String query_project
+
+        File? gatk_override
     }
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
-    # ------------------------------------------------
-    # Run our command:
     command <<<
         set -eo pipefail
 
@@ -545,8 +540,6 @@ task PopulateFilterSetInfo {
         ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
     >>>
 
-    # ------------------------------------------------
-    # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "3500 MB"
@@ -556,8 +549,6 @@ task PopulateFilterSetInfo {
         cpu: 1
     }
 
-    # ------------------------------------------------
-    # Outputs:
     output {
         String status_load_filter_set_info = read_string("status_load_filter_set_info")
     }
@@ -572,12 +563,6 @@ task PopulateFilterSetSites {
     #}
 
     input {
-        # ------------------------------------------------
-        # Input args:
-
-        # Runtime Options:
-        File? gatk_override
-
         String filter_set_name
         String fq_filter_sites_destination_table
 
@@ -586,12 +571,12 @@ task PopulateFilterSetSites {
 
         File? service_account_json
         String query_project
+
+        File? gatk_override
     }
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
-    # ------------------------------------------------
-    # Run our command:
     command <<<
         set -eo pipefail
 
@@ -621,8 +606,6 @@ task PopulateFilterSetSites {
         ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_sites
     >>>
 
-    # ------------------------------------------------
-    # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "3500 MB"
@@ -632,8 +615,6 @@ task PopulateFilterSetSites {
         cpu: 1
     }
 
-    # ------------------------------------------------
-    # Outputs:
     output {
         String status_load_filter_set_sites = read_string("status_load_filter_set_sites")
 
@@ -642,6 +623,8 @@ task PopulateFilterSetSites {
 
 task PopulateFilterSetTranches {
     input {
+        File? gatk_override
+
         String filter_set_name
         String fq_tranches_destination_table
 
@@ -663,6 +646,8 @@ task PopulateFilterSetTranches {
             gcloud config set project ~{query_project}
         fi
 
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
         cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > ~{filter_set_name}.tranches_load.csv
 
         # BQ load likes a : instead of a . after the project
@@ -675,10 +660,8 @@ task PopulateFilterSetTranches {
         ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_tranches
     >>>
 
-    # ------------------------------------------------
-    # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "3500 MB"
         disks: "local-disk 200 HDD"
         bootDiskSizeGb: 15
@@ -691,77 +674,23 @@ task PopulateFilterSetTranches {
     }
 }
 
-task UploadGCSFileToBQ {
-    input {
-        String gcs_path_to_input_file
-        String fq_destination_table
-        String table_schema
-        String file_delimiter = "tab"
-        Int num_of_skip_rows = 0
-        String file_creation_done
-
-        File? service_account_json
-        String query_project
-    }
-
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-
-    # ------------------------------------------------
-    # Run our command:
-    command <<<
-        set -eo pipefail
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
-            gcloud config set project ~{query_project}
-        fi
-
-        # BQ load likes a : instead of a . after the project
-        bq_table=$(echo ~{fq_destination_table} | sed s/\\./:/)
-
-        echo "Loading ~{gcs_path_to_input_file} into ~{fq_destination_table}"
-        bq load --project_id=~{query_project} --skip_leading_rows ~{num_of_skip_rows} -F "~{file_delimiter}" \
-        --schema "~{table_schema}" \
-        ${bq_table} \
-        ~{gcs_path_to_input_file} > status_bq_load_table
-    >>>
-
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
-        memory: "3500 MB"
-        disks: "local-disk 200 HDD"
-        bootDiskSizeGb: 15
-        preemptible: 0
-        cpu: 1
-    }
-
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        String status_bq_load_table = read_string("status_bq_load_table")
-    }
- }
-
  task MergeVCFs {
     # TODO: should this be marked as volatile???
     #meta {
     #   volatile: true
     #}
 
-   input {
-     Array[File] input_vcfs
-     Array[File] input_vcfs_indexes
-     String gather_type = "BLOCK"
-     String output_vcf_name
+    input {
+        Array[File] input_vcfs
+        Array[File] input_vcfs_indexes
+        String gather_type = "BLOCK"
+        String output_vcf_name
 
-     File? gatk_override
-     Int preemptible_tries
-   }
+        File? gatk_override
+        Int preemptible_tries
+    }
 
-   Int disk_size = ceil(size(input_vcfs, "GiB") * 2.5) + 10
+    Int disk_size = ceil(size(input_vcfs, "GiB") * 2.5) + 10
 
     parameter_meta {
          input_vcfs: {
@@ -772,29 +701,30 @@ task UploadGCSFileToBQ {
          }
       }
 
-   command {
-       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+    command {
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-       gatk --java-options -Xmx3g GatherVcfsCloud \
+        gatk --java-options -Xmx3g GatherVcfsCloud \
             --ignore-safety-checks --gather-type ~{gather_type} \
             --create-output-variant-index false \
             -I ~{sep=' -I ' input_vcfs} \
             --output ~{output_vcf_name}
 
-       tabix ~{output_vcf_name}
+        tabix ~{output_vcf_name}
+    }
 
-   }
-   runtime {
-     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
-     preemptible: preemptible_tries
-     memory: "3 GiB"
-     disks: "local-disk ~{disk_size} HDD"
-   }
-   output {
-     File output_vcf = "~{output_vcf_name}"
-     File output_vcf_index = "~{output_vcf_name}.tbi"
-   }
- }
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+        preemptible: preemptible_tries
+        memory: "3 GiB"
+        disks: "local-disk ~{disk_size} HDD"
+    }
+
+    output {
+        File output_vcf = "~{output_vcf_name}"
+        File output_vcf_index = "~{output_vcf_name}.tbi"
+    }
+}
 
 task GetBQTableLastModifiedDatetime {
     # because this is being used to determine if the data has changed, never use call cache
