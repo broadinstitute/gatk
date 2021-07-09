@@ -60,17 +60,18 @@ import static org.broadinstitute.hellbender.utils.read.ReadUtils.isBaseInsideAda
  * </ul>
  *
  * The third output file, which should be named "*.ac.txt" or "*.ac.txt.gz" specifies allele counts:
- * For each locus specified in an input VCF as a simple SNP, it gives a count of the number of reads
- * that have the alt allele at that locus, as well as the total number of observations of that locus.
+ * For each locus specified in an input VCF as a simple SNP, it gives a count, for each base, of the
+ * number of reads that cover that locus.
  * It has the following columns:
  *
  * <ul>
  *     <li>contig</li>
  *     <li>position</li>
  *     <li>ref allele</li>
- *     <li>alt allele</li>
- *     <li>total observations</li>
- *     <li>alt observations</li>
+ *     <li>A observations</li>
+ *     <li>C observations</li>
+ *     <li>G observations</li>
+ *     <li>T observations</li>
  * </ul>
  *
  * Each of these output files may also be written as a block-compressed interval file, rather than

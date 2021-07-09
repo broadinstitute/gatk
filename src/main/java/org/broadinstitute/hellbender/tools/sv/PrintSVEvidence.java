@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -13,8 +14,10 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.codecs.*;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Prints SV evidence records. Can be used with -L to retrieve records on a set of intervals.
@@ -42,8 +45,6 @@ import java.util.List;
  *         automatically indexed if ending with ".gz" or ".bci"
  *     </li>
  * </ul>
- *
- * If an output file is not specified, the header from the input file will be written to stdout.
  *
  * <h3>Usage example</h3>
  *
@@ -86,8 +87,7 @@ public final class PrintSVEvidence <F extends Feature> extends FeatureWalker<F> 
             doc = "Output file with an evidence extension matching the input. Will be indexed if it has a " +
                     "block-compressed extension (e.g. '.gz' or '.bci').",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            optional = true
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private GATKPath outputFilePath;
 
@@ -100,6 +100,12 @@ public final class PrintSVEvidence <F extends Feature> extends FeatureWalker<F> 
 
     @Argument(doc = "List of sample names", fullName = "sample-names", optional = true)
     private List<String> sampleNames = new ArrayList<>();
+
+    @Argument(doc = "Output file for sample names", fullName = "sample-list-dump", optional = true)
+    private GATKPath sampleListOutputFile;
+
+    @Argument(doc = "Output file for contig dictionary", fullName = "sequence-dict-dump", optional = true)
+    private GATKPath dictionaryOutputFile;
 
     private FeatureSink<F> outputSink;
     private Class<F> evidenceClass;
@@ -139,50 +145,14 @@ public final class PrintSVEvidence <F extends Feature> extends FeatureWalker<F> 
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-        if ( outputFilePath == null ) {
-            dumpHeader(getHeader());
-        } else {
-            initializeOutput();
-        }
-    }
-
-    private void dumpHeader( final FeaturesHeader header ) {
-        System.out.println("Dictionary:");
-        for ( final SAMSequenceRecord rec : header.getDictionary().getSequences() ) {
-            System.out.println(rec.getSAMString());
-        }
-        System.out.println();
-        System.out.println("Samples:");
-        for ( final String sampleName : header.getSampleNames() ) {
-            System.out.println(sampleName);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private void initializeOutput() {
-        final FeatureOutputCodec<?, ?> outputCodec = findOutputCodec(outputFilePath);
-        final Class<?> outputClass = outputCodec.getFeatureType();
-        if ( !evidenceClass.equals(outputClass) ) {
-            throw new UserException("The input file contains " + evidenceClass.getSimpleName() +
-                    " features, but the output file would be expected to contain " +
-                    outputClass.getSimpleName() + " features.  Please choose an output file name " +
-                    "appropriate for the evidence type.");
-        }
         final FeaturesHeader header = getHeader();
-        outputSink = (FeatureSink<F>)outputCodec.makeSink(outputFilePath,
-                                                            header.getDictionary(),
-                                                            header.getSampleNames(),
-                                                            compressionLevel);
-    }
-
-    private static FeatureOutputCodec<?, ?> findOutputCodec( final GATKPath outputFilePath ) {
-        final String outputFileName = outputFilePath.toString();
-        for ( final FeatureOutputCodec<?, ?> codec : outputCodecs ) {
-            if ( codec.canDecode(outputFileName) ) {
-                return codec;
-            }
+        if ( sampleListOutputFile != null ) {
+            dumpSamples(sampleListOutputFile, header.getSampleNames());
         }
-        throw new UserException("no codec found for path " + outputFileName);
+        if ( dictionaryOutputFile != null ) {
+            dumpDictionary(dictionaryOutputFile, header.getDictionary());
+        }
+        initializeOutput(header);
     }
 
     private FeaturesHeader getHeader() {
@@ -202,22 +172,74 @@ public final class PrintSVEvidence <F extends Feature> extends FeatureWalker<F> 
         return new FeaturesHeader(evidenceClass.getSimpleName(), "?", dict, samples);
     }
 
+    private static void dumpSamples( final GATKPath outputPath, final List<String> sampleNames ) {
+        try ( final BufferedWriter writer = writerForPath(outputPath) ) {
+            for ( final String sampleName : sampleNames ) {
+                writer.write(sampleName);
+                writer.newLine();
+            }
+        } catch ( final IOException ioe ) {
+            throw new UserException("can't open sample-list-dump file: " + outputPath, ioe);
+        }
+    }
+
+    private static void dumpDictionary( final GATKPath outputPath, final SAMSequenceDictionary dict ) {
+        try ( final BufferedWriter writer = writerForPath(outputPath) ) {
+            for ( final SAMSequenceRecord record : dict.getSequences() ) {
+                writer.write(record.getSAMString());
+                writer.newLine();
+            }
+        } catch ( final IOException ioe ) {
+            throw new UserException("can't open sequence-dict-dump file: " + outputPath, ioe);
+        }
+    }
+
+    private static BufferedWriter writerForPath( final GATKPath outputPath ) throws IOException {
+        OutputStream stream = outputPath.getOutputStream();
+        if ( IOUtil.hasBlockCompressedExtension(outputPath.toPath()) ) {
+            stream = new GZIPOutputStream(stream);
+        }
+        return new BufferedWriter(new OutputStreamWriter(stream));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void initializeOutput( final FeaturesHeader header ) {
+        final FeatureOutputCodec<?, ?> outputCodec = findOutputCodec(outputFilePath);
+        final Class<?> outputClass = outputCodec.getFeatureType();
+        if ( !evidenceClass.equals(outputClass) ) {
+            throw new UserException("The input file contains " + evidenceClass.getSimpleName() +
+                    " features, but the output file would be expected to contain " +
+                    outputClass.getSimpleName() + " features.  Please choose an output file name " +
+                    "appropriate for the evidence type.");
+        }
+        outputSink = (FeatureSink<F>)outputCodec.makeSink(outputFilePath,
+                                                            header.getDictionary(),
+                                                            header.getSampleNames(),
+                                                            compressionLevel);
+    }
+
+    private static FeatureOutputCodec<?, ?> findOutputCodec( final GATKPath outputFilePath ) {
+        final String outputFileName = outputFilePath.toString();
+        for ( final FeatureOutputCodec<?, ?> codec : outputCodecs ) {
+            if ( codec.canDecode(outputFileName) ) {
+                return codec;
+            }
+        }
+        throw new UserException("no codec found for path " + outputFileName);
+    }
+
     @Override
     public void apply(final F feature,
                       final ReadsContext readsContext,
                       final ReferenceContext referenceContext,
                       final FeatureContext featureContext) {
-        if ( outputSink != null ) {
-            outputSink.write(feature);
-        }
+        outputSink.write(feature);
     }
 
     @Override
     public Object onTraversalSuccess() {
         super.onTraversalSuccess();
-        if ( outputSink != null ) {
-            outputSink.close();
-        }
+        outputSink.close();
         return null;
     }
 }
