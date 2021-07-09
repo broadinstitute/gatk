@@ -243,8 +243,7 @@ def make_genes_json(annotated_json, output_genes_json):
       row["gene_symbol"] = gene_line.get("name")
       omim_line = gene_line["omim"][0] # TODO I am making the huge assumption that we are only grabbing 1
       if len(gene_line.get("omim")) > 1:
-        print(gene_line.get("name"),len(gene_line.get("omim")))
-        raise ValueError("An assumption about the possible count of omim values is incorrect.")
+        print("WARNING: An assumption about the possible count of omim values is incorrect.", gene_line.get("name"),len(gene_line.get("omim")))
       row["gene_omim_id"] = omim_line.get("mimNumber")
       if omim_line.get("phenotypes") != None:
         phenotypes = omim_line["phenotypes"]
