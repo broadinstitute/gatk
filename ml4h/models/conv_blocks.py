@@ -79,7 +79,7 @@ class ConvEncoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
             return x
         #x = self.preprocess_block(x)  # TODO: upgrade to tensorflow 2.3+
@@ -145,7 +145,7 @@ class ConvDecoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
             return x
         if x.shape != self.start_shape:
@@ -201,7 +201,7 @@ class ResidualBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
             return x
         previous = x
@@ -236,12 +236,141 @@ class PoolBlock(Block):
     def can_apply(self):
         return self.tensor_map.axes() > 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
             return x
         x = self.pool(x)
         intermediates[self.tensor_map].append(x)
         return x
+
+
+class ConvDown(Block):
+    def __init__(
+            self,
+            *,
+            tensor_map: TensorMap,
+            conv_layers: List[int],
+            conv_type: str,
+            conv_width: List[int],
+            conv_x: List[int],
+            conv_y: List[int],
+            conv_z: List[int],
+            activation: str,
+            conv_strides: int,
+            conv_dilate: bool,
+            conv_normalize: str,
+            conv_regularize: str,
+            conv_regularize_rate: float,
+            conv_without_bias: bool,
+            conv_bias_initializer: str,
+            conv_kernel_initializer: str,
+            dense_layers: List[int],
+            dense_normalize: str,
+            dense_regularize: str,
+            dense_regularize_rate: float,
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+        if not self.can_apply():
+            return
+        block_size = len(conv_layers)
+        x_filters, y_filters, z_filters = _get_xyz_filters(block_size, conv_x if self.tensor_map.axes() > 2 else conv_width, conv_y, conv_z)
+        conv_layer, kernels = _conv_layer_from_kind_and_dimension(self.tensor_map.axes(), conv_type, x_filters, y_filters, z_filters)
+        self.conv_layers = []
+        for i, (num_filters, kernel) in enumerate(zip(conv_layers, kernels)):
+            self.conv_layers.append(conv_layer(filters=num_filters, kernel_size=kernel, strides=conv_strides, use_bias=not conv_without_bias,
+                                               kernel_initializer=conv_kernel_initializer, bias_initializer=conv_bias_initializer,
+                                               padding='same', dilation_rate=2**i if conv_dilate else 1))
+
+        self.activations = [_activation_layer(activation) for _ in range(block_size)]
+        self.normalizations = [_normalization_layer(conv_normalize) for _ in range(block_size)]
+        self.regularizations = [_regularization_layer(self.tensor_map.axes(), conv_regularize, conv_regularize_rate) for _ in range(block_size)]
+        self.fully_connected = DenseBlock(
+            widths=dense_layers,
+            activation=activation,
+            normalization=dense_normalize,
+            regularization=dense_regularize,
+            regularization_rate=dense_regularize_rate,
+            name=self.tensor_map.embed_name(),
+        ) if dense_layers else None
+        logging.info(f'Simple Block Convolutional Layers (num_filters, kernel_size): {list(zip(conv_layers, kernels))}')
+
+    def can_apply(self):
+        return self.tensor_map.axes() > 1
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        if not self.can_apply():
+            return x
+        for convolve, activate, normalize, regularize in zip(
+                self.conv_layers, self.activations, self.normalizations, self.regularizations,
+        ):
+            x = regularize(activate(normalize(convolve(x))))
+        if self.fully_connected:
+            x = Flatten()(x)
+            x = self.fully_connected(x, intermediates)
+        intermediates[self.tensor_map].append(x)
+        return x
+
+
+class ConvUp(Block):
+    def __init__(
+            self,
+            *,
+            tensor_map: TensorMap,
+            conv_layers: List[int],
+            conv_type: str,
+            conv_width: List[int],
+            conv_x: List[int],
+            conv_y: List[int],
+            conv_z: List[int],
+            pool_x: int,
+            pool_y: int,
+            pool_z: int,
+            activation: str,
+            conv_dilate: bool,
+            conv_normalize: str,
+            conv_regularize: str,
+            conv_regularize_rate: float,
+            conv_without_bias: bool,
+            conv_bias_initializer: str,
+            conv_kernel_initializer: str,
+            **kwargs,
+    ):
+        self.tensor_map = tensor_map
+        if not self.can_apply():
+            return
+        x_filters, y_filters, z_filters = _get_xyz_filters(len(conv_layers), conv_x if self.tensor_map.axes() > 2 else conv_width, conv_y, conv_z)
+        conv_layer, kernels = _conv_layer_from_kind_and_dimension(self.tensor_map.axes(), conv_type, x_filters, y_filters, z_filters)
+        self.conv_layers = []
+        for i, (num_filters, kernel) in enumerate(zip(conv_layers, kernels)):
+            self.conv_layers.append(conv_layer(filters=num_filters, kernel_size=kernel, use_bias=not conv_without_bias,
+                                               kernel_initializer=conv_kernel_initializer, bias_initializer=conv_bias_initializer,
+                                               padding='same', dilation_rate=2**i if conv_dilate else 1))
+
+        self.activations = [_activation_layer(activation) for _ in range(len(conv_layers))]
+        self.normalizations = [_normalization_layer(conv_normalize) for _ in range(len(conv_layers))]
+        self.upsamples = [_upsampler(tensor_map.axes(), pool_x, pool_y, pool_z) for _ in range(len(conv_layers))]
+        self.regularizations = [_regularization_layer(self.tensor_map.axes(), conv_regularize, conv_regularize_rate) for _ in range(len(conv_layers))]
+        self.start_shape = _start_shape_before_pooling(num_upsamples=len(conv_layers), output_shape=tensor_map.shape,
+                                                       upsample_rates=[pool_x, pool_y, pool_z], channels=conv_layers[-1])
+        self.reshape = FlatToStructure(output_shape=self.start_shape, activation=activation, normalization=conv_normalize)
+        conv_layer, _ = _conv_layer_from_kind_and_dimension(tensor_map.axes(), 'conv', conv_x, conv_y, conv_z)
+        self.conv_label = conv_layer(tensor_map.shape[-1], _one_by_n_kernel(tensor_map.axes()), activation=tensor_map.activation, name=tensor_map.output_name())
+        logging.info(f'Simple Block Convolutional Layers (num_filters, kernel_size): {list(zip(conv_layers, kernels))}')
+
+    def can_apply(self):
+        return self.tensor_map.axes() > 1
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        if not self.can_apply():
+            return x
+        if x.shape != self.start_shape:
+            x = self.reshape(x)
+        for convolve, activate, normalize, regularize, upsample in zip(
+                self.conv_layers, self.activations, self.normalizations, self.regularizations, self.upsamples
+        ):
+            x = regularize(activate(normalize(convolve(upsample(x)))))
+        return self.conv_label(x)
 
 
 class Residual:

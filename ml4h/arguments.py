@@ -140,7 +140,7 @@ def parse_args():
     parser.add_argument('--z', default=48, type=int, help='z tensor resolution')
     parser.add_argument('--t', default=48, type=int, help='Number of time slices')
     parser.add_argument('--mlp_concat', default=False, action='store_true', help='Concatenate input with every multiplayer perceptron layer.')  # TODO: should be the same style as u_connect
-    parser.add_argument('--dense_layers', nargs='*', default=[32, 32], type=int, help='List of number of hidden units in neural nets dense layers.')
+    parser.add_argument('--dense_layers', nargs='*', default=[32], type=int, help='List of number of hidden units in neural nets dense layers.')
     parser.add_argument('--dense_regularize_rate', default=0.0, type=float, help='Rate parameter for dense_regularize.')
     parser.add_argument('--dense_regularize', default=None, choices=list(DENSE_REGULARIZATION_CLASSES), help='Type of regularization layer for dense layers.')
     parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
@@ -174,9 +174,9 @@ def parse_args():
         '--pairs', nargs=2, action='append',
         help='TensorMap pairs for paired autoencoder. The pair_loss metric will encourage similar embeddings for each two input TensorMap pairs. Can be provided multiple times.',
     )
-    parser.add_argument('--pair_loss', default='cosine', help='Distance metric between paired embeddings', choices=['euclid', 'cosine'])
+    parser.add_argument('--pair_loss', default='euclid', help='Distance metric between paired embeddings', choices=['euclid', 'cosine', 'contrastive'])
+    parser.add_argument('--pair_merge', default='average', help='Merging method for paired modality embeddings', choices=['average', 'concat', 'dropout'])
     parser.add_argument('--pair_loss_weight', type=float, default=1.0, help='Weight on the pair loss term relative to other losses')
-    parser.add_argument('--multimodal_merge', default='average', choices=['average', 'concatenate'], help='How to merge modality specific encodings.')
     parser.add_argument(
         '--max_parameters', default=50000000, type=int,
         help='Maximum number of trainable parameters in a model during hyperparameter optimization.',

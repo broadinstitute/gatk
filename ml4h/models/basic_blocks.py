@@ -29,7 +29,7 @@ class DenseBlock(Block):
         self.regularizations = [_regularization_layer(1, regularization, regularization_rate) for _ in widths]
         self.norms = [_normalization_layer(normalization) for _ in widths]
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         for dense, normalize, activate, regularize in zip(self.denses, self.norms, self.activations, self.regularizations):
             x = normalize(regularize(activate(dense(x))))
         return x
@@ -62,7 +62,7 @@ class DenseEncoder(Block):
     def can_apply(self):
         return self.tensor_map.axes() == 1 and not self.tensor_map.is_embedding()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
             return x
         y = self.fully_connected(x, intermediates)
@@ -89,7 +89,7 @@ class DenseDecoder(Block):
     def can_apply(self):
         return self.tensor_map.axes() == 1
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
             return x
         if self.parents:
@@ -113,7 +113,7 @@ class ModelAsBlock(Block):
         self.tensor_map = tensor_map
         self.model = model
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         x = self.model(x)
         intermediates[self.tensor_map].append(x)
         return x
@@ -132,7 +132,7 @@ class LSTMEncoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.is_language()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
             return x
         return self.lstm(x)
@@ -151,7 +151,7 @@ class LanguageDecoderBlock(Block):
     def can_apply(self):
         return self.tensor_map.is_language()
 
-    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
         if not self.can_apply():
             return x
         return self.dense(x)

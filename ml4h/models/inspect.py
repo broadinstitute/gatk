@@ -132,6 +132,5 @@ def _gradients_from_output(model, output_layer, output_index):
     x = model.get_layer(output_layer).output[:, output_index]
     grads = K.gradients(x, input_tensor)[0]
     grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-6)  # normalization trick: we normalize the gradient
-    grads /= 80
     iterate = K.function([input_tensor], [x, grads])
     return iterate

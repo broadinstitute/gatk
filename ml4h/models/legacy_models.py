@@ -29,10 +29,11 @@ from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSamp
 from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
 from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
 from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
-from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
+#from tensorflow.keras.layers.experimental.preprocessing import RandomRotation, RandomZoom, RandomContrast
 import tensorflow_probability as tfp
 
 from ml4h.metrics import get_metric_dict
+from ml4h.models.model_factory import _get_custom_objects
 from ml4h.plots import plot_metric_history
 from ml4h.TensorMap import TensorMap, Interpretation
 from ml4h.optimizers import get_optimizer, NON_KERAS_OPTIMIZERS
@@ -337,13 +338,15 @@ def make_hidden_layer_model(parent_model: Model, tensor_maps_in: List[TensorMap]
         if isinstance(layer, Model):
             try:
                 target_layer = layer.get_layer(output_layer_name)
-                parent_model = layer
+                parent_inputs = [layer.get_layer(tm.input_name()).input for tm in tensor_maps_in]
+                logging.info(f'Found {output_layer_name} nested in layer model: {layer.name}')
                 break
             except ValueError:
+                logging.debug(f'Value error searching for layer: {output_layer_name} at layer: {layer.name}')
                 continue
-    else:
+    if not target_layer:
         target_layer = parent_model.get_layer(output_layer_name)
-    parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
+        parent_inputs = [parent_model.get_layer(tm.input_name()).input for tm in tensor_maps_in]
     dummy_input = {tm.input_name(): np.zeros((1,) + parent_model.get_layer(tm.input_name()).input_shape[0][1:]) for tm in tensor_maps_in}
     intermediate_layer_model = Model(inputs=parent_inputs, outputs=target_layer.output)
     # If we do not predict here then the graph is disconnected, I do not know why?!
@@ -615,7 +618,7 @@ class VariationalDiagNormal(Layer):
         approx_posterior = tfd.MultivariateNormalDiag(loc=mu, scale_diag=tf.math.exp(log_sigma))
         kl = tf.reduce_mean(tfd.kl_divergence(approx_posterior, self.prior))
         self.add_loss(kl * self.kl_divergence_weight)
-        self.add_metric(kl, name='KL_divergence')
+        self.add_metric(kl, 'mean', name='KL_divergence')
         return approx_posterior.sample()
 
     def get_config(self):
@@ -897,17 +900,6 @@ def parent_sort(tms: List[TensorMap]) -> List[TensorMap]:
     return final
 
 
-def _get_custom_objects(tensor_maps_out: List[TensorMap]) -> Dict[str, Any]:
-    custom_objects = {
-        obj.__name__: obj
-        for obj in chain(
-            NON_KERAS_OPTIMIZERS.values(), ACTIVATION_FUNCTIONS.values(), NORMALIZATION_CLASSES.values(),
-            [VariationalDiagNormal, L2LossLayer, CosineLossLayer],
-        )
-    }
-    return {**custom_objects, **get_metric_dict(tensor_maps_out)}
-
-
 def _repeat_dimension(filters: List[int], num_filters_needed: int) -> List[int]:
     if len(filters) < num_filters_needed:
         repeat = num_filters_needed // len(filters) + 1
@@ -918,18 +910,18 @@ def _repeat_dimension(filters: List[int], num_filters_needed: int) -> List[int]:
 def make_multimodal_multitask_model(
         tensor_maps_in: List[TensorMap],
         tensor_maps_out: List[TensorMap],
-        activation: str = 'relu',
-        learning_rate: float = 1e-3,
-        bottleneck_type: BottleneckType = BottleneckType.FlattenRestructure,
-        optimizer: str = 'adam',
+        activation: str,
+        learning_rate: float,
+        bottleneck_type: BottleneckType,
+        optimizer: str,
         dense_layers: List[int] = None,
         dense_normalize: str = None,
         dense_regularize: str = None,
         dense_regularize_rate: float = None,
         conv_layers: List[int] = None,
         dense_blocks: List[int] = None,
-        block_size: int = 3,
-        conv_type: str = 'conv',
+        block_size: int = None,
+        conv_type: str = None,
         conv_normalize: str = None,
         conv_regularize: str = None,
         conv_regularize_rate: float = None,
@@ -942,7 +934,7 @@ def make_multimodal_multitask_model(
         pool_x: int = None,
         pool_y: int = None,
         pool_z: int = None,
-        pool_type: str = 'max',
+        pool_type: str = None,
         training_steps: int = None,
         learning_rate_schedule: str = None,
         **kwargs,
@@ -1000,17 +992,11 @@ def make_multimodal_multitask_model(
     if 'model_file' in kwargs and kwargs['model_file'] is not None:
         logging.info("Attempting to load model file from: {}".format(kwargs['model_file']))
         m = load_model(kwargs['model_file'], custom_objects=custom_dict, compile=False)
-        m.compile(optimizer=opt, loss=custom_dict['loss'])
+        m.compile(optimizer=opt, loss='mse', #[tm.loss for tm in tensor_maps_out],
+                  metrics={tm.output_name(): tm.metrics for tm in tensor_maps_out})
         m.summary()
         logging.info("Loaded model file from: {}".format(kwargs['model_file']))
         return m
-
-    # set up defaults
-    dense_blocks = dense_blocks or [32, 24, 16]
-    conv_x = conv_x or [3]
-    conv_y = conv_y or [3]
-    conv_z = conv_y or [1]
-    conv_width = conv_width or [3]
 
     # list of filter dimensions should match the number of convolutional layers = len(dense_blocks) + [ + len(conv_layers) if convolving input tensors]
     num_dense = len(dense_blocks)

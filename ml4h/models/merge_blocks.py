@@ -1,8 +1,11 @@
+import logging
 from typing import Dict, List, Tuple
 
+import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
 import tensorflow_probability as tfp
+from tensorflow.keras.losses import categorical_crossentropy
 from tensorflow.keras.layers import concatenate, Flatten, Average, Layer
 
 from ml4h.models.Block import Block
@@ -50,7 +53,7 @@ class FlatConcatDenseBlock(Block):
         ) if dense_layers else None
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        y = [Flatten()(x[-1]) for tm, x in intermediates.items() if not tm.is_embedding()]
+        y = [Flatten()(x[-1]) for tm, x in intermediates.items()]
         y = concatenate(y) if len(y) > 1 else y[0]
         y = self.fully_connected(y, intermediates) if self.fully_connected else y
         return y
@@ -94,7 +97,20 @@ class AverageBlock(Block):
         pass
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        return Average()([Flatten()(x[-1]) for tm, x in intermediates.items()])
+        return Average()([t[-1] for tm, t in intermediates.items()])
+
+
+class ReduceMean(Block):
+    """
+    Average the last tensors in intermediates dictionary
+    """
+    def __init__(self, **kwargs):
+        pass
+
+    def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        y = [x[-1] for tm, x in intermediates.items()]
+        y = tf.math.reduce_mean(y, axis=0)
+        return y
 
 
 class EncodeIdentityBlock(Block):
@@ -105,8 +121,7 @@ class EncodeIdentityBlock(Block):
         self.tensor_map = tensor_map
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
-        if self.tensor_map.is_embedding():
-            intermediates[self.tensor_map].append(x)
+        intermediates[self.tensor_map].append(x)
         return x
 
 
@@ -119,20 +134,66 @@ class PairLossBlock(Block):
             pairs: List[Tuple[TensorMap, TensorMap]],
             pair_loss: str = 'cosine',
             pair_loss_weight: float = 1.0,
+            pair_merge: str = 'dropout',
+            batch_size: int = 4,
             **kwargs,
     ):
         self.pairs = pairs
+        self.pair_merge = pair_merge
+        self.batch_size = batch_size
         if pair_loss == 'cosine':
             self.loss_layer = CosineLossLayer(pair_loss_weight)
         elif pair_loss == 'euclid':
             self.loss_layer = L2LossLayer(pair_loss_weight)
+        elif pair_loss == 'contrastive':
+            self.loss_layer = ContrastiveLossLayer(pair_loss_weight, batch_size)
+        else:
+            raise ValueError(f'Unknown pair loss type: {pair_loss}')
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]] = None) -> Tensor:
+        y = []
         for left, right in self.pairs:
-            x = self.loss_layer([intermediates[left][-1], intermediates[right][-1]])
-            intermediates[left].extend(x)
-            intermediates[right].extend(x)
-        return intermediates[left][-1]
+            y.extend(self.loss_layer([intermediates[left][-1], intermediates[right][-1]]))
+        if self.pair_merge == 'average':
+            return Average()(y)
+        elif self.pair_merge == 'concat':
+            return concatenate(y)
+        elif self.pair_merge == 'dropout':
+            random_index = tf.random.uniform(shape=[intermediates[left][-1].shape[-1]], maxval=len(y), dtype=tf.int32)
+            ranger = tf.range(intermediates[left][-1].shape[-1])
+            indices = tf.stack([random_index, ranger], axis=-1)
+            tf_y = tf.convert_to_tensor(y)
+            tf_y = tf.transpose(tf_y, perm=[0, 2, 1])
+            tf_g = tf.gather_nd(tf_y, indices)
+            out = tf.transpose(tf_g)
+            return out
+        else:
+            raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
+        # elif self.pair_merge == 'dropout':
+        #     # get random index vector
+        #     random_index = np.random.randint(len(y), size=intermediates[left][-1].shape[-1])
+        #     tf.print(f'random index {random_index.shape} random_index {random_index[:4]}')
+        #     dropped_y = [y[idx][:, i] for i, idx in enumerate(random_index)]
+        #     tf.print(f'y {len(y)} shape {len(dropped_y)} tf_y {dropped_y[:4]}')
+        #     tf_y = tf.convert_to_tensor(dropped_y)
+        #     tf.print(f'out shape {tf_y.shape}')
+        #     return tf.transpose(tf_y)
+
+
+def contrastive_difference(left: tf.Tensor, right: tf.Tensor, batch_size: int, temperature: tf.Tensor):
+    left_normed = left / l2_norm(left, axis=-1)
+    right_normed = right / l2_norm(right, axis=-1)
+    logits_left = tf.linalg.matmul(left_normed, right_normed, transpose_b=True) * tf.math.exp(temperature)
+    logits_right = tf.linalg.matmul(right_normed, left_normed, transpose_b=True) * tf.math.exp(temperature)
+    prob_left = tf.keras.activations.softmax(logits_left, axis=-1)
+    prob_right = tf.keras.activations.softmax(logits_right, axis=-1)
+
+    # identity matrix (np.eye) matches left row modality with right column modality
+    labels = tf.convert_to_tensor(np.eye(batch_size), dtype=tf.float32)
+    loss_left = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_left, labels)
+    loss_right = tf.keras.losses.CategoricalCrossentropy(from_logits=False, reduction=tf.keras.losses.Reduction.SUM)(prob_right, labels)
+    loss = (loss_left + loss_right)/2
+    return loss / batch_size
 
 
 def l2_norm(x, axis=None):
@@ -185,7 +246,29 @@ class L2LossLayer(Layer):
         return config
 
     def call(self, inputs):
-        self.add_loss(self.weight * tf.reduce_sum(tf.square(inputs[0] - inputs[1])))
+        #self.add_loss(self.weight * tf.reduce_sum(tf.square(inputs[0] - inputs[1])))
+        self.add_loss(self.weight * K.mean(l2_norm(inputs[0] - inputs[1])))
+        return inputs
+
+
+class ContrastiveLossLayer(Layer):
+    """Layer that creates an Cosine loss."""
+
+    def __init__(self, weight, batch_size, **kwargs):
+        super(ContrastiveLossLayer, self).__init__(**kwargs)
+        self.weight = weight
+        self.batch_size = batch_size
+        self.temperature = self.add_weight(shape=(1,), initializer="zeros", trainable=True)
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({'weight': self.weight, 'batch_size': self.batch_size})
+        return config
+
+    def call(self, inputs):
+        # We use `add_loss` to create a regularization loss
+        # that depends on the inputs.
+        self.add_loss(self.weight * contrastive_difference(inputs[0], inputs[1], self.batch_size, self.temperature))
         return inputs
 
 
