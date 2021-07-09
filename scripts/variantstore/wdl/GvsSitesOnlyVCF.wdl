@@ -55,6 +55,7 @@ workflow GvsSitesOnlyVCF {
              dataset_name = dataset_name,
              output_path = output_path,
              table_id = table_id,
+             service_account_json = service_account_json,
              prep_jsons_done = PrepAnnotationJson.done
          }
 
@@ -63,6 +64,7 @@ workflow GvsSitesOnlyVCF {
              project_id = project_id,
              dataset_name = dataset_name,
              table_id = table_id,
+             service_account_json = service_account_json,
              annotation_jsons = AnnotateShardedVCF.annotation_json,
              load_jsons_done = BigQueryLoadJson.done
          }
@@ -134,7 +136,7 @@ task ExtractACANAF {
     command <<<
         # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
         # in it so that downstream steps can call cache
-        
+
         set -e
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
@@ -424,6 +426,7 @@ task BigQuerySmokeTest {
         String dataset_name
         Array[File] annotation_jsons
         Boolean load_jsons_done
+        File? service_account_json
         String table_id
     }
 
@@ -432,8 +435,16 @@ task BigQuerySmokeTest {
 
     String vat_table = "vat_" + table_id
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
     command <<<
         set +e
+        
+        if [ ~{has_service_account_file} = 'true' ]; then
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gcloud config set project ~{project_id}
+        fi
 
         # validate the VAT table
         # We will pass, or fail, a pipeline run by checking the following
