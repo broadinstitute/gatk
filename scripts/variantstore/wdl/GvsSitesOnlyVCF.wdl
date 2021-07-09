@@ -43,7 +43,8 @@ workflow GvsSitesOnlyVCF {
          input:
            annotation_json = AnnotateShardedVCF.annotation_json,
            output_name = "${i}.json.gz",
-           output_path = output_path
+           output_path = output_path,
+           service_account_json = service_account_json,
        }
     }
      call BigQueryLoadJson {
@@ -222,6 +223,7 @@ task PrepAnnotationJson {
         File annotation_json
         String output_name
         String output_path
+        File? service_account_json
     }
 
     String output_vt_json = "vat_vt_bq_load" + output_name
@@ -230,6 +232,8 @@ task PrepAnnotationJson {
     String output_genes_gcp_path = output_path + 'genes/'
     String output_ant_gcp_path = output_path + 'annotations/'
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+
     command <<<
         set -e
 
@@ -237,6 +241,11 @@ task PrepAnnotationJson {
           --annotated_json ~{annotation_json} \
           --output_vt_json ~{output_vt_json} \
           --output_genes_json ~{output_genes_json}
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+        fi
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
