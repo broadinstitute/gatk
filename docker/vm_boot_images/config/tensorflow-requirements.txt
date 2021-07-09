@@ -1,7 +1,5 @@
-numpy==1.18.5
-protobuf==3.13.0
-tensorflow==2.1.2
-h5py==2.10.0
+#numpy==1.18.5
+#protobuf==3.13.0
 pydot==1.2.4
 nibabel==2.5.0
 pydicom==1.2.2
@@ -16,8 +14,10 @@ bokeh
 Pillow==8.1.1
 notebook
 pytest
-tensorflow-addons==0.9.1
-tensorflow_probability==0.9.0
+tensorflow==2.5.0
+tensorflow-addons==0.13.0
+tensorflow_probability==0.13.0-rc0
+keras-tuner
 numcodecs
 beautifulsoup4
 lxml
@@ -32,5 +32,6 @@ plotnine
 vega
 ipycanvas>=0.7.0
 ipyannotations>=0.2.1
+torch
 opencv-python
 blosc
