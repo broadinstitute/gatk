@@ -223,11 +223,10 @@ def make_multimodal_multitask_model_block(
 
     multimodal_activation = merge(encodings, intermediates)
     merge_model = Model(list(inputs.values()), multimodal_activation)
-    # if isinstance(multimodal_activation, list):
-    #     latent_inputs = Input(shape=(multimodal_activation[0].shape[-1],), name='input_multimodal_space')
-    # else:
-    #     latent_inputs = Input(shape=(multimodal_activation.shape[-1],), name='input_multimodal_space')
-    latent_inputs = Input(shape=(256,), name='input_multimodal_space')
+    if isinstance(multimodal_activation, list):
+        latent_inputs = Input(shape=(multimodal_activation[0].shape[-1],), name='input_multimodal_space')
+    else:
+        latent_inputs = Input(shape=(multimodal_activation.shape[-1],), name='input_multimodal_space')
     logging.info(f'Graph from input TensorMaps has intermediates: {[(tm, [ti.shape for ti in t]) for tm, t in intermediates.items()]}')
     decoders: Dict[TensorMap, Model] = {}
     decoder_outputs = []
