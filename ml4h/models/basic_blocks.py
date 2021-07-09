@@ -111,6 +111,7 @@ class ModelAsBlock(Block):
             **kwargs,
     ):
         self.tensor_map = tensor_map
+        model.name = f'blocked_{model.name}'
         self.model = model
 
     def __call__(self, x: Tensor, intermediates: Dict[TensorMap, List[Tensor]]) -> Tensor:
