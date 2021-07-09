@@ -13,6 +13,8 @@ workflow GvsSitesOnlyVCF {
         File vat_genes_schema_json_file
         String output_path # TODO Is there a Path wdl type?
         String table_id
+
+        File? service_account_json
         File? gatk_override
     }
 
@@ -21,8 +23,9 @@ workflow GvsSitesOnlyVCF {
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
         call SitesOnlyVcf {
           input:
-            vcf_bgz_gts = gvs_extract_cohort_filtered_vcfs[i],
-            vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+            input_vcf = gvs_extract_cohort_filtered_vcfs[i],
+            input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+            service_account_json = service_account_json,
             output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz",
         }
 
@@ -68,16 +71,39 @@ workflow GvsSitesOnlyVCF {
 ################################################################################
 task SitesOnlyVcf {
     input {
-        File vcf_bgz_gts
-        File vcf_index
+        File input_vcf
+        File input_vcf_index
+        File? service_account_json
         String output_filename
     }
     String output_vcf_idx = basename(output_filename) + ".tbi" # or will this be .idx if from .vcf.gz? or ".tbi" if a .vcf
+
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String input_vcf_basename = basename(input_vcf)
+    String updated_input_vcf = if (defined(service_account_json)) then input_vcf_basename else input_vcf
+
+    parameter_meta {
+        input_vcf: {
+            localization_optional: true
+        }
+        input_vcf_index: {
+            localization_optional: true
+        }
+    }
     command <<<
         set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+            gcloud auth activate-service-account --key-file='~{service_account_json}'
+
+            gsutil cp ~{input_vcf} .
+            gsutil cp ~{input_vcf_index} .
+        fi
+
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
-                -V ~{vcf_bgz_gts} \
+                -V ~{updated_input_vcf} \
                 --exclude-filtered \
                 --sites-only-vcf-output \
                 -O ~{output_filename}
@@ -234,6 +260,7 @@ task BigQueryLoadJson {
         String dataset_name
         String output_path
         String table_id
+        File? service_account_json
         Array[String] prep_jsons_done
     }
 
@@ -246,8 +273,15 @@ task BigQueryLoadJson {
     String vt_path = output_path + 'vt/*'
     String genes_path = output_path + 'genes/*'
 
+    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
     command <<<
+
+       if [ ~{has_service_account_file} = 'true' ]; then
+           export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
+           gcloud auth activate-service-account --key-file='~{service_account_json}'
+           gcloud config set project ~{project_id}
+       fi
 
        bq show --project_id ~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
        BQ_SHOW_RC=$?
