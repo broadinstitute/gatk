@@ -136,6 +136,7 @@ task ExtractACANAF {
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
                 -V ~{vcf_bgz_gts} \
+                --add-output-vcf-command-line false \
                 --exclude-filtered \
                 --sites-only-vcf-output \
                 -O ~{output_filename}
@@ -199,7 +200,8 @@ task AnnotateShardedVCF {
         docker: "annotation/nirvana:3.14" # this download is too slow---can we beef this up?
         memory: "5 GB"
         cpu: "2"
-        disks: "local-disk 100 SSD"
+        preemptible: 5
+        disks: "local-disk 250 SSD"
     }
     # ------------------------------------------------
     # Outputs:
