@@ -80,10 +80,10 @@ vat_nirvana_gnomad_dictionary = {
   "gnomad_all_af": "allAf", # nullable
   "gnomad_all_ac": "allAc", # nullable
   "gnomad_all_an": "allAn", # nullable
-  "gnomad_max_af": "afrAf", # nullable THIS NEEDS MORE THAN JUST A MAPPING
-  "gnomad_max_ac": "afrAc", # nullable THIS NEEDS MORE THAN JUST A MAPPING
-  "gnomad_max_an": "afrAn", # nullable THIS NEEDS MORE THAN JUST A MAPPING
-  "gnomad_max_subpop": "x" #TODO need to choose the correct mapping. Lee says maybe drop for now
+ # "gnomad_max_af": "afrAf", # nullable THIS NEEDS MORE THAN JUST A MAPPING
+ # "gnomad_max_ac": "afrAc", # nullable THIS NEEDS MORE THAN JUST A MAPPING
+ # "gnomad_max_an": "afrAn", # nullable THIS NEEDS MORE THAN JUST A MAPPING
+ # "gnomad_max_subpop": "x" #TODO need to choose the correct mapping. Lee says maybe drop for now
 }
 
 vat_nirvana_omim_dictionary = { # TODO or should this be vat_nirvana_genes_dictionary ?
