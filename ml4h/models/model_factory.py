@@ -152,6 +152,7 @@ def multimodal_multitask_model(
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], BLOCK_CLASSES[encode_block](tensor_map=tm, **kwargs))
             elif encode_block.endswith(f'encoder_{tm.name}.h5'):  # TODO: load protobuf models too
                 serialized_encoder = load_model(encode_block, custom_objects=custom_dict, compile=False)
+                serialized_encoder = add_prefix(serialized_encoder, f'encode_block_{tm.name}', custom_dict)
                 encoder_block_functions[tm] = compose(encoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_encoder))
                 break  # Don't also reconstruct from scratch if model is serialized, hd5 models must precede BLOCK_CLASS keys
             else:
@@ -182,7 +183,7 @@ def multimodal_multitask_model(
                 ))
             elif decode_block.endswith(f'decoder_{tm.name}.h5'):
                 serialized_decoder = load_model(decode_block, custom_objects=custom_dict, compile=False)
-                serialized_decoder = add_prefix(serialized_decoder, f'decode_{tm.name}')
+                serialized_decoder = add_prefix(serialized_decoder, f'decode_block_{tm.name}', custom_dict)
                 decoder_block_functions[tm] = compose(decoder_block_functions[tm], ModelAsBlock(tensor_map=tm, model=serialized_decoder))
                 break
             else:
