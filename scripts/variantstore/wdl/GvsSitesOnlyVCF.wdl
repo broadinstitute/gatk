@@ -199,7 +199,7 @@ task AnnotateShardedVCF {
         docker: "annotation/nirvana:3.14" # this download is too slow---can we beef this up?
         memory: "5 GB"
         cpu: "2"
-        disks: "local-disk 100 HDD"
+        disks: "local-disk 100 SSD"
     }
     # ------------------------------------------------
     # Outputs:
