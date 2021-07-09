@@ -103,9 +103,13 @@ task SitesOnlyVcf {
             gsutil cp ~{input_vcf_index} .
         fi
 
+        # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
+        # in it so that downstream steps can call cache
+
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
                 -V ~{updated_input_vcf} \
+                --add-output-vcf-command-line false \
                 --exclude-filtered \
                 --sites-only-vcf-output \
                 -O ~{output_filename}
@@ -134,14 +138,11 @@ task ExtractACANAF {
     }
     String output_vcf_idx = basename(output_filename) + ".tbi" # or will this be .idx if from .vcf.gz? or ".tbi" if a .vcf
     command <<<
-        # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
-        # in it so that downstream steps can call cache
 
         set -e
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
                 -V ~{vcf_bgz_gts} \
-                --add-output-vcf-command-line false \
                 --exclude-filtered \
                 --sites-only-vcf-output \
                 -O ~{output_filename}
@@ -439,7 +440,7 @@ task BigQuerySmokeTest {
 
     command <<<
         set +e
-        
+
         if [ ~{has_service_account_file} = 'true' ]; then
             export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
             gcloud auth activate-service-account --key-file='~{service_account_json}'
