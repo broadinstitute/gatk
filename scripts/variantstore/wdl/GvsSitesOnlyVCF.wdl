@@ -132,6 +132,9 @@ task ExtractACANAF {
     }
     String output_vcf_idx = basename(output_filename) + ".tbi" # or will this be .idx if from .vcf.gz? or ".tbi" if a .vcf
     command <<<
+        # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
+        # in it so that downstream steps can call cache
+        
         set -e
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
