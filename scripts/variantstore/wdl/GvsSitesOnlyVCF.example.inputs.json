@@ -10,5 +10,6 @@
   "GvsSitesOnlyVCF.output_path": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/output/jul6/",
   "GvsSitesOnlyVCF.table_id": "jul6",
   "GvsSitesOnlyVCF.project_id": "spec-ops-aou",
-  "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing"
+  "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing",
+  "GvsSitesOnlyVCF.service_account_json": "gs://fc-secure-e91afe60-ca52-48fa-b4a9-c76fed5a0449/keys/aou_wgs_vumc_prod.json"
 }
