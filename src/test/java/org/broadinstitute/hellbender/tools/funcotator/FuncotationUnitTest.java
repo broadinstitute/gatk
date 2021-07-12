@@ -4,13 +4,17 @@ import com.esotericsoftware.kryo.Kryo;
 import com.google.common.collect.Sets;
 import htsjdk.utils.ClassFinder;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.GATKRegistrator;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import htsjdk.variant.vcf.VCFHeaderLine;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -18,6 +22,9 @@ import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 
 public class FuncotationUnitTest extends GATKBaseTest {
 
@@ -80,4 +87,7 @@ public class FuncotationUnitTest extends GATKBaseTest {
             Assert.assertEquals(testInstance, testInstanceCopy);
         }
     }
+
+
 }
+
