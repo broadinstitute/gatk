@@ -120,6 +120,7 @@ task SitesOnlyVcf {
     runtime {
         docker: "broadinstitute/gatk:4.2.0.0"
         memory: "3 GB"
+        preemptible: 3
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
@@ -154,6 +155,7 @@ task ExtractACANAF {
         docker: "broadinstitute/gatk:4.2.0.0"
         memory: "3 GB"
         cpu: "1"
+        preemptible: 3
         disks: "local-disk 100 HDD"
     }
     # ------------------------------------------------
@@ -204,7 +206,7 @@ task AnnotateShardedVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "annotation/nirvana:3.14" # this download is too slow---can we beef this up?
+        docker: "annotation/nirvana:3.14"
         memory: "5 GB"
         cpu: "2"
         preemptible: 5
@@ -252,12 +254,13 @@ task PrepAnnotationJson {
 
      >>>
     # ------------------------------------------------
-    # Runtime settings:
+    # Runtime settings: # TODO this would be worth tweaking
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200709"
-        memory: "10 GB"
-        cpu: "2"
-        disks: "local-disk 100 HDD"
+        memory: "3 GB"
+        preemptible: 5
+        cpu: "1"
+        disks: "local-disk 250 SSD"
     }
     # ------------------------------------------------
     # Outputs:
@@ -269,6 +272,10 @@ task PrepAnnotationJson {
 }
 
 task BigQueryLoadJson {
+    meta { # since the WDL will not see the updated data (its getting put in a gcp bucket)
+        volatile: true
+    }
+
     input {
         File nirvana_schema
         File vt_schema
@@ -420,6 +427,7 @@ task BigQueryLoadJson {
     runtime {
         docker: "openbridge/ob_google-bigquery:latest"
         memory: "3 GB"
+        preemptible: 3
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
@@ -491,6 +499,9 @@ task BigQuerySmokeTest {
         # TODO should these get broken down more so as not to test my sloppy bash over testing the data?
         # TODO should I write this test in python instead?!?!? YES! I think I should!!!!
         ANNOTATE_JSON_VARIANT_COUNT=$(gunzip -dc ~{sep=" " annotation_jsons} | grep -o -i '"vid":' | wc -l)
+
+        # TODO do we want to also count the number of alleles in the final VCF? <-- might be worth asking Lee to clarify!!!!
+
         echo $ANNOTATE_JSON_VARIANT_COUNT
 
         if [[ $ANNOTATE_JSON_VARIANT_COUNT -ne $BQ_VAT_VARIANT_COUNT ]]
@@ -508,15 +519,13 @@ task BigQuerySmokeTest {
         # Less than 5% of the variants have a non-null value in the gene field
         # TODO CHECKING WITH LEE --> We dont think 5% is correct
         echo  "VALIDATION #3"
-        # Get the number of variants which have been joined (TODO is it the actual joining? or just the potential?)
-        bq query --nouse_legacy_sql --project_id=~{project_id} \
-          'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}` WHERE gene_symbol IS NOT NULL'
+        # Get the number of variants which have been joined
         BQ_VAT_GENE_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}` WHERE gene_symbol IS NOT NULL'| tr -dc '0-9')
         echo "Get the percent"
         PERCENT=$((BQ_VAT_GENE_COUNT * 100 / BQ_VAT_VARIANT_COUNT))
         echo $PERCENT
 
-        if [[ $PERCENT -gt 5 ]]
+        if [[ $PERCENT -gt 25 ]]
           then echo "There are too many genes"
           echo  "Validation has failed"
           # exit 1  <-- collect the errors? or fail the pipeline?
@@ -535,9 +544,10 @@ task BigQuerySmokeTest {
         TESK2_COUNT=$('SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="TESK2"')
         AL451136_COUNT=$('SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="AL451136.1"')
         echo  "Still need to validate chr1"
+        GENE_COUNT_SUM=$(( $TESK2_COUNT + $AL451136_COUNT ))
 
 
-        if [[ $POSITIONAL_COUNT -ne ($TESK2_COUNT + $AL451136_COUNT) ]]
+        if [[ $POSITIONAL_COUNT -ne $GENE_COUNT_SUM ]]
           then echo "There are unexpected genes in the TESK2 region"
           echo  "Validation has failed"
           # exit 1  <-- collect the errors? or fail the pipeline?
@@ -554,11 +564,7 @@ task BigQuerySmokeTest {
         # Get a count of all distinct VID in vat with no transcript
         # Make sure they are the same
         # TODO we could in the future specify which VIDs are not distinct
-        bq query --nouse_legacy_sql --project_id=~{project_id} \
-          'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL'
         BQ_VAT_ROWS_NO_TRANSCRIPT_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL'| tr -dc '0-9')
-        bq query --nouse_legacy_sql --project_id=~{project_id} \
-          'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL'
         BQ_VAT_VARIANT_NO_TRANSCRIPT_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL'| tr -dc '0-9')
 
         if [[ $BQ_VAT_ROWS_NO_TRANSCRIPT_COUNT -ne $BQ_VAT_VARIANT_NO_TRANSCRIPT_COUNT ]]
@@ -635,7 +641,7 @@ task BigQuerySmokeTest {
         # Each key combination is unique.
         echo  "VALIDATION #9"
         # get the sum of all the distinct vids where transcript is null and all the distinct transcript where transcript is not null
-        BQ_VAT_UNIQUE_IDS_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) FROM (SELECT vid, transcript FROM `spec-ops-aou.anvil_100_for_testing.vat_jul_6_chr1` group by vid, transcript)')
+        BQ_VAT_UNIQUE_IDS_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) FROM (SELECT vid, transcript FROM `~{dataset_name}.~{vat_table}` group by vid, transcript)')
         BQ_VAT_ROW_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (*) FROM `~{dataset_name}.~{vat_table}` ')
 
         if [ $BQ_VAT_UNIQUE_IDS_COUNT -ne $BQ_VAT_ROW_COUNT ];
@@ -659,6 +665,7 @@ task BigQuerySmokeTest {
     runtime {
         docker: "openbridge/ob_google-bigquery:latest"
         memory: "1 GB"
+        preemptible: 3
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
