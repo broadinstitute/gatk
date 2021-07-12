@@ -80,6 +80,10 @@ public class GenomicsDBUtils {
                 GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, ELEMENT_WISE_SUM);
         vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_INT_SUM);
+        vidMapPB = updateFieldSetDisableRemapMissingAlleleToNonRef(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, true);
+        vidMapPB = updateFieldSetDisableRemapMissingAlleleToNonRef(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.AS_SB_TABLE_KEY, true);
 
         importer.updateProtobufVidMapping(vidMapPB);
     }
@@ -261,6 +265,36 @@ public class GenomicsDBUtils {
     }
 
     /**
+     * Update vid Protobuf field to set whether missing allele should be remapped with value from NON_REF
+     * @param vidMapPB input vid object
+     * @param fieldNameToIndexInVidFieldsList name to index in list
+     * @param fieldName INFO field name
+     * @param value boolean value - true to disable remapping missing value with value from NON_REF
+     * @return updated vid Protobuf object if field exists, else return original protobuf object
+     */
+    public static GenomicsDBVidMapProto.VidMappingPB updateFieldSetDisableRemapMissingAlleleToNonRef(
+            final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
+            final Map<String, Integer> fieldNameToIndexInVidFieldsList,
+            final String fieldName,
+            final boolean value)
+    {
+        int fieldIdx = fieldNameToIndexInVidFieldsList.containsKey(fieldName)
+                ? fieldNameToIndexInVidFieldsList.get(fieldName) : -1;
+        if(fieldIdx >= 0) {
+            //Would need to rebuild vidMapPB - so get top level builder first
+            GenomicsDBVidMapProto.VidMappingPB.Builder updatedVidMapBuilder = vidMapPB.toBuilder();
+            //To update the list element corresponding to fieldName, we get the builder for that specific list element
+            GenomicsDBVidMapProto.GenomicsDBFieldInfo.Builder infoBuilder =
+                    updatedVidMapBuilder.getFieldsBuilder(fieldIdx);
+
+            infoBuilder.setDisableRemapMissingWithNonRef(value);
+            //Rebuild full vidMap
+            return updatedVidMapBuilder.build();
+        }
+        return vidMapPB;
+    }
+
+    /*
      * Changes relative local file paths to be absolute file paths. Cloud Datastore paths are left unchanged
      * @param path to the resource
      * @return an absolute file path if the original path was a relative file path, otherwise the original path
