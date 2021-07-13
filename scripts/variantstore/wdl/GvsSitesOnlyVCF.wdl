@@ -27,17 +27,18 @@ workflow GvsSitesOnlyVCF {
             output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz",
         }
 
-        call AnnotateShardedVCF {
+        call AnnotateVCF {
           input:
             input_vcf = SitesOnlyVcf.output_vcf,
             input_vcf_index = SitesOnlyVcf.output_vcf_idx,
             output_annotated_file_name = "${output_annotated_file_name}_${i}",
-            nirvana_data_tar = nirvana_data_directory
+            nirvana_data_tar = nirvana_data_directory,
+            custom_annotations_file = custom_annotations_file
         }
 
        call PrepAnnotationJson {
          input:
-           annotation_json = AnnotateShardedVCF.annotation_json,
+           annotation_json = AnnotateVCF.annotation_json,
            output_file_suffix = "${i}.json.gz",
            output_path = output_path,
            service_account_json_path = service_account_json_path,
@@ -62,7 +63,7 @@ workflow GvsSitesOnlyVCF {
              dataset_name = dataset_name,
              table_suffix = table_suffix,
              service_account_json_path = service_account_json_path,
-             annotation_jsons = AnnotateShardedVCF.annotation_json,
+             annotation_jsons = AnnotateVCF.annotation_json,
              load_jsons_done = BigQueryLoadJson.done
          }
 }
@@ -129,24 +130,65 @@ task SitesOnlyVcf {
     }
 }
 
-task AnnotateShardedVCF {
+task ExtractACANAF {
+    input {
+        File vcf_bgz_gts
+        File vcf_index
+        String output_filename
+    }
+    String output_vcf_idx = basename(output_filename) + ".tbi" # or will this be .idx if from .vcf.gz? or ".tbi" if a .vcf
+    command <<<
+
+        set -e
+        gatk --java-options "-Xmx2048m" \
+            SelectVariants \
+                -V ~{vcf_bgz_gts} \
+                --exclude-filtered \
+                --sites-only-vcf-output \
+                -O ~{output_filename}
+     >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "broadinstitute/gatk:4.2.0.0"
+        memory: "3 GB"
+        cpu: "1"
+        preemptible: 3
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File output_vcf="~{output_filename}"
+        File output_vcf_idx="~{output_vcf_idx}"
+    }
+}
+
+task AnnotateVCF {
     input {
         File input_vcf
         File input_vcf_index
         String output_annotated_file_name
         File nirvana_data_tar
+        File custom_annotations_file
     }
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String annotation_json_name_jsi = annotation_json_name + ".jsi"
-
     String nirvana_location = "/opt/nirvana/Nirvana.dll"
+    String custom_creation_location = "/opt/nirvana/SAUtils.dll"
     String path = "/Cache/GRCh38/Both"
     String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
-
+    String custom_annotations_dir = "/CA"
     command <<<
         set -e
-
+        # =======================================
+        # Create custom annotations:
+        echo "Creating custom annotations"
+        dotnet ~{custom_creation_location} customvar\
+        -r $DATA_SOURCES_FOLDER~{path_reference} \
+        -i ~{custom_annotations_file} \
+        -o ~{custom_annotations_dir}
         # =======================================
         # Handle our data sources:
 
