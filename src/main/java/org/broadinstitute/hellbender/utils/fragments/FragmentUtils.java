@@ -78,13 +78,13 @@ public final class FragmentUtils {
             final byte firstReadBase = firstReadBases[firstReadIndex];
             final byte secondReadBase = secondReadBases[secondReadIndex];
 
-            if (firstReadBase == secondReadBase) {
+            if (firstReadBase == secondReadBase || !setConflictingToZero) {
                 firstReadQuals[firstReadIndex] = (byte) Math.min(firstReadQuals[firstReadIndex], halfOfPcrErrorQual);
                 secondReadQuals[secondReadIndex] = (byte) Math.min(secondReadQuals[secondReadIndex], halfOfPcrErrorQual);
-            } else if (setConflictingToZero) {
-                // If downstream processing forces read pairs to support the same haplotype, setConflictingToZero should be false
+            } else {
+                // If downstream processing forces read pairs to support the same haplotype, setConflictingToZero should be true
                 // because the original base qualities of conflicting bases, when pegged to the same haplotype, will
-                // automatically weaken the strength of one another's evidence.  Furthermore, if one base if low quality
+                // automatically weaken the strength of one another's evidence.  Furthermore, if one base is low quality
                 // and one is high it will essentially ignore the low quality base without compromising the high-quality base
                 firstReadQuals[firstReadIndex] = 0;
                 secondReadQuals[secondReadIndex] = 0;
