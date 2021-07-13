@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.engine.spark;
 
+import com.google.common.base.Function;
+import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.SparkFiles;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.MapPartitionsFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -18,6 +21,7 @@ import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIterato
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -92,7 +96,8 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
                 .collect(Collectors.toList());
         JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, getReads(), GATKRead.class, sequenceDictionary, intervalShards, readShardSize, shuffle);
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
-        return shardedReads.flatMap(getAlignmentsFunction(referenceFileName, bFeatureManager, sequenceDictionary, getHeaderForReads(), getDownsamplingInfo(), emitEmptyLoci()));
+        return shardedReads.mapPartitions(getAlignmentsFunction(referenceFileName, bFeatureManager, sequenceDictionary, getHeaderForReads(), getDownsamplingInfo(), emitEmptyLoci()) )
+                .flatMap((FlatMapFunction<Iterator<LocusWalkerContext>, LocusWalkerContext>) locusWalkerContextIterator -> locusWalkerContextIterator);
     }
 
     /**
@@ -104,28 +109,36 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
      * @param downsamplingInfo the downsampling method for the reads
      * @return a function that maps a {@link Shard} of reads into a tuple of alignments and their corresponding reference and features.
      */
-    private static FlatMapFunction<Shard<GATKRead>, LocusWalkerContext> getAlignmentsFunction(
+    private static FlatMapFunction<Iterator<Shard<GATKRead>>, Iterator<LocusWalkerContext>> getAlignmentsFunction(
             String referenceFileName, Broadcast<FeatureManager> bFeatureManager,
             SAMSequenceDictionary sequenceDictionary, SAMFileHeader header, LIBSDownsamplingInfo downsamplingInfo, boolean isEmitEmptyLoci) {
-        return (FlatMapFunction<Shard<GATKRead>, LocusWalkerContext>) shardedRead -> {
-            SimpleInterval interval = shardedRead.getInterval();
-            Iterator<GATKRead> readIterator = shardedRead.iterator();
-            ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
-            FeatureManager fm = bFeatureManager == null ? null : bFeatureManager.getValue();
 
-            final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
-            alignmentContextIteratorBuilder.setDownsamplingInfo(downsamplingInfo);
-            alignmentContextIteratorBuilder.setEmitEmptyLoci(isEmitEmptyLoci);
-            alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(false);
-            alignmentContextIteratorBuilder.setIncludeNs(false);
+        String finalReferenceFileName = referenceFileName;
+        return (FlatMapFunction<Iterator<Shard<GATKRead>>, Iterator<LocusWalkerContext>>) partIter -> {
+            ReferenceDataSource reference = finalReferenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(finalReferenceFileName)));
+            return Iterators.transform(partIter, new Function<Shard<GATKRead>, Iterator<LocusWalkerContext> >() {
+                @Override
+                public @Nullable Iterator<LocusWalkerContext> apply(Shard<GATKRead> shardedRead) {
+                    SimpleInterval interval = shardedRead.getInterval();
+                    Iterator<GATKRead> readIterator = shardedRead.iterator();
 
-            final Iterator<AlignmentContext> alignmentContextIterator = alignmentContextIteratorBuilder.build(
-                    readIterator, header, Collections.singletonList(interval), sequenceDictionary, true);
+                    FeatureManager fm = bFeatureManager == null ? null : bFeatureManager.getValue();
 
-            return StreamSupport.stream(Spliterators.spliteratorUnknownSize(alignmentContextIterator, 0), false).map(alignmentContext -> {
-                final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
-                return new LocusWalkerContext(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(fm, alignmentInterval));
-            }).iterator();
+                    final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
+                    alignmentContextIteratorBuilder.setDownsamplingInfo(downsamplingInfo);
+                    alignmentContextIteratorBuilder.setEmitEmptyLoci(isEmitEmptyLoci);
+                    alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(false);
+                    alignmentContextIteratorBuilder.setIncludeNs(false);
+
+                    final Iterator<AlignmentContext> alignmentContextIterator = alignmentContextIteratorBuilder.build(
+                            readIterator, header, Collections.singletonList(interval), sequenceDictionary, true);
+
+                    return StreamSupport.stream(Spliterators.spliteratorUnknownSize(alignmentContextIterator, 0), false).map(alignmentContext -> {
+                        final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
+                        return new LocusWalkerContext(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(fm, alignmentInterval));
+                    } ).iterator();
+                }
+            });
         };
     }
 
