@@ -78,8 +78,7 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
 
     }
 
-    //disabled due to https://github.com/broadinstitute/gatk/issues/3840
-    @Test(groups = {"cloud","bucket"}, enabled=false)
+    @Test(groups = {"cloud","bucket"})
     public void printVariantsOnDataproc() throws IOException {
         final String gcsInputPath = getGCPTestInputPath() + "large/gvcfs/gatk3.7_30_ga4f720357.24_sample.21.expected.vcf";
         final String outputPath = BucketUtils.getTempFilePath(getGCPTestStaging(), ".vcf");
