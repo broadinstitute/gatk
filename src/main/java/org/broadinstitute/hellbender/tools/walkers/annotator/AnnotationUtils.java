@@ -16,6 +16,7 @@ public final class AnnotationUtils {
     public static final String ALLELE_SPECIFIC_SPLIT_REGEX = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String BRACKET_REGEX = "\\[|\\]";
     public static final String LIST_DELIMITER = ",";
+    public static final String MISSING_VALUE = ".";
 
     private AnnotationUtils(){}
 

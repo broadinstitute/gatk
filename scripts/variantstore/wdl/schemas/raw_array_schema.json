@@ -1,0 +1,44 @@
+[
+ {
+   "description": "[DESCRIPTION]",
+   "name": "sample_id",
+   "type": "Integer",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "probe_id",
+   "type": "Integer",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "GT_encoded",
+   "type": "String",
+   "mode": "Nullable"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "NORMX",
+   "type": "Float",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "NORMY",
+   "type": "Float",
+   "mode": "Required"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "BAF",
+   "type": "Float",
+   "mode": "Nullable"
+ },
+ {
+   "description": "[DESCRIPTION]",
+   "name": "LRR",
+   "type": "Float",
+   "mode": "Nullable"
+ }
+]

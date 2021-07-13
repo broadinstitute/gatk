@@ -1,0 +1,5 @@
+{
+  "GvsPrepareCallset.data_project": "PROJECT_ID",
+  "GvsPrepareCallset.default_dataset": "DATASET",
+  "GvsPrepareCallset.destination_cohort_table_name": "COHORT_TABLE_NAME"
+}
