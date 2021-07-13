@@ -14,7 +14,7 @@ workflow GvsImportGenomes {
     String? pet_schema = "location:INTEGER,sample_id:INTEGER,state:STRING"
     String? vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,QUALapprox:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
     String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING"
-    File? service_account_json
+    String? service_account_json_path
     String? drop_state = "SIXTY"
     Boolean? drop_state_includes_greater_than = false
 
@@ -37,7 +37,7 @@ workflow GvsImportGenomes {
   call SetLock {
     input:
       output_directory = output_directory,
-      service_account_json = service_account_json,
+      service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries
   }
 
@@ -56,7 +56,7 @@ workflow GvsImportGenomes {
       superpartitioned = "false",
       partitioned = "false",
       uuid = "",
-      service_account_json = service_account_json,
+      service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries,
       docker = docker_final
   }
@@ -71,7 +71,7 @@ workflow GvsImportGenomes {
       superpartitioned = "true",
       partitioned = "true",
       uuid = "",
-      service_account_json = service_account_json,
+      service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries,
       docker = docker_final
   }
@@ -86,7 +86,7 @@ workflow GvsImportGenomes {
       superpartitioned = "true",
       partitioned = "true",
       uuid = "",
-      service_account_json = service_account_json,
+      service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries,
       docker = docker_final
   }
@@ -96,7 +96,7 @@ workflow GvsImportGenomes {
       project_id = project_id,
       dataset_name = dataset_name,
       sample_names = external_sample_names,
-      service_account_json = service_account_json,
+      service_account_json_path = service_account_json_path,
       output_directory = output_directory,
       run_uuid = SetLock.run_uuid
   }
@@ -109,7 +109,7 @@ workflow GvsImportGenomes {
         sample_name = external_sample_names[i],
         interval_list = interval_list,
         sample_map = sample_map,
-        service_account_json = service_account_json,
+        service_account_json_path = service_account_json_path,
         drop_state = drop_state,
         drop_state_includes_greater_than = drop_state_includes_greater_than,
         output_directory = output_directory,
@@ -131,7 +131,7 @@ workflow GvsImportGenomes {
         datatype = "sample_info",
         superpartitioned = "false",
         schema = sample_info_schema,
-        service_account_json = service_account_json,
+        service_account_json_path = service_account_json_path,
         table_creation_done = CreateSampleInfoTables.done,
         tsv_creation_done = CreateImportTsvs.done,
         docker = docker_final,
@@ -149,7 +149,7 @@ workflow GvsImportGenomes {
       datatype = "pet",
       superpartitioned = "true",
       schema = pet_schema,
-      service_account_json = service_account_json,
+      service_account_json_path = service_account_json_path,
       table_creation_done = CreatePetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
       docker = docker_final,
@@ -167,7 +167,7 @@ workflow GvsImportGenomes {
       datatype = "vet",
       superpartitioned = "true",
       schema = vet_schema,
-      service_account_json = service_account_json,
+      service_account_json_path = service_account_json_path,
       table_creation_done = CreateVetTables.done,
       tsv_creation_done = CreateImportTsvs.done,
       docker = docker_final,
@@ -182,7 +182,7 @@ workflow GvsImportGenomes {
       load_sample_info_done = LoadSampleInfoTable.done,
       load_pet_done = LoadPetTable.done,
       load_vet_done = LoadVetTable.done,
-      service_account_json = service_account_json,
+      service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries
   }
 
@@ -201,20 +201,21 @@ task SetLock {
 
   input {
     String output_directory
-    File? service_account_json
+    String? service_account_json_path
 
     # runtime
     Int? preemptible_tries
   }
 
-  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command <<<
     set -x
     set -e
 
     if [ ~{has_service_account_file} = 'true' ]; then
-      gcloud auth activate-service-account --key-file='~{service_account_json}'
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
     # generate uuid for this run
@@ -262,21 +263,22 @@ task ReleaseLock {
     Array[String] load_sample_info_done
     Array[String] load_pet_done
     Array[String] load_vet_done
-    File? service_account_json
+    String? service_account_json_path
 
     # runtime
     Int? preemptible_tries
   }
 
-  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command <<<
     set -x
     set -e
 
     if [ ~{has_service_account_file} = 'true' ]; then
-      export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-      gcloud auth activate-service-account --key-file='~{service_account_json}'
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
 
@@ -332,7 +334,7 @@ task CheckForDuplicateData {
       String project_id
       String dataset_name
       Array[String] sample_names
-      File? service_account_json
+      String? service_account_json_path
       # needed only for lockfile
       String output_directory
       String run_uuid
@@ -340,14 +342,15 @@ task CheckForDuplicateData {
       Int? preemptible_tries
   }
 
-  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-   
-  
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+
   command <<<
     set -e
 
     if [ ~{has_service_account_file} = 'true' ]; then
-      gcloud auth activate-service-account --key-file='~{service_account_json}'
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
       gcloud config set project ~{project_id}
     fi
 
@@ -382,7 +385,7 @@ task CheckForDuplicateData {
       echo "ERROR: Trying to load samples that have already been loaded"
       cat duplicates
       exit 1
-    fi     
+    fi
 
   >>>
   runtime {
@@ -406,7 +409,7 @@ task CreateImportTsvs {
     File interval_list
     String output_directory
     File sample_map
-    File? service_account_json
+    String? service_account_json_path
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
 
@@ -424,9 +427,9 @@ task CreateImportTsvs {
 
   Int disk_size = if defined(drop_state) then 30 else 75
   String input_vcf_basename = basename(input_vcf)
-  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   # if we are doing a manual localization, we need to set the filename
-  String updated_input_vcf = if (defined(service_account_json)) then input_vcf_basename else input_vcf
+  String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
 
   meta {
     description: "Creates a tsv file for import into BigQuery"
@@ -451,8 +454,9 @@ task CreateImportTsvs {
       ~{for_testing_only}
 
       if [ ~{has_service_account_file} = 'true' ]; then
-        export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-        gcloud auth activate-service-account --key-file='~{service_account_json}'
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
 
         gsutil cp ~{input_vcf} .
         gsutil cp ~{input_vcf_index} .
@@ -549,22 +553,23 @@ task CreateTables {
       String superpartitioned
       String partitioned
       String uuid
-      File? service_account_json
+      String? service_account_json_path
 
       # runtime
       Int? preemptible_tries
       String docker
     }
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command <<<
     set -x
     set -e
 
     if [ ~{has_service_account_file} = 'true' ]; then
-      export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-      gcloud auth activate-service-account --key-file='~{service_account_json}'
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
       gcloud config set project ~{project_id}
     fi
 
@@ -632,7 +637,7 @@ task LoadTable {
     String datatype
     String superpartitioned
     String? schema
-    File? service_account_json
+    String? service_account_json_path
     String table_creation_done
     Array[String] tsv_creation_done
     String run_uuid
@@ -640,15 +645,15 @@ task LoadTable {
     String docker
   }
 
-  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command <<<
     set -x
     set -e
 
     if [ ~{has_service_account_file} = 'true' ]; then
-      gcloud auth activate-service-account --key-file='~{service_account_json}'
-      gcloud config set project ~{project_id}
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
     DIR="~{storage_location}/~{datatype}_tsvs/"

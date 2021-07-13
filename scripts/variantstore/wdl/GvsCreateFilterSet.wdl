@@ -73,7 +73,7 @@ workflow GvsCreateFilterSet {
         String? preemptible_tries_override
         Int preemptible_tries = select_first([preemptible_tries_override, "3"])
 
-        File? service_account_json
+        String? service_account_json_path
 
         Int? SNP_VQSR_machine_mem_gb
         Int SNP_VQSR_downsampleFactor = 1
@@ -86,7 +86,7 @@ workflow GvsCreateFilterSet {
     call GetNumSamples {
         input:
             fq_sample_table = fq_sample_table,
-            service_account_json = service_account_json,
+            service_account_json_path = service_account_json_path,
             project_id = query_project
     }
 
@@ -113,7 +113,7 @@ workflow GvsCreateFilterSet {
                 excess_alleles_threshold = excess_alleles_threshold,
                 read_project_id          = query_project,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
-                service_account_json     = service_account_json,
+                service_account_json_path     = service_account_json_path,
                 query_project            = query_project,
                 query_labels             = query_labels
         }
@@ -230,7 +230,7 @@ workflow GvsCreateFilterSet {
                 indel_recal_file = IndelsVariantRecalibrator.recalibration,
                 indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
                 indel_recal_tranches = IndelsVariantRecalibrator.tranches,
-                service_account_json = service_account_json,
+                service_account_json_path = service_account_json_path,
                 query_project = query_project
         }
     }
@@ -273,7 +273,7 @@ workflow GvsCreateFilterSet {
                 indel_recal_file = IndelsVariantRecalibrator.recalibration,
                 indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
                 indel_recal_tranches = IndelsVariantRecalibrator.tranches,
-                service_account_json = service_account_json,
+                service_account_json_path = service_account_json_path,
                 query_project = query_project
         }
     }
@@ -287,7 +287,7 @@ workflow GvsCreateFilterSet {
             fq_info_destination_table = fq_info_destination_table,
             fq_tranches_destination_table = fq_tranches_destination_table,
             fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-            service_account_json = service_account_json,
+            service_account_json_path = service_account_json_path,
             query_project = query_project
     }
 
@@ -301,17 +301,18 @@ workflow GvsCreateFilterSet {
 task GetNumSamples {
     input {
         String fq_sample_table
-        File? service_account_json
+        String? service_account_json_path
         String project_id
     }
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         set -e
 
         if [ ~{has_service_account_file} = 'true' ]; then
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
             gcloud config set project ~{project_id}
         fi
 
@@ -365,7 +366,7 @@ task ExtractFilterTask {
 
         # Runtime Options:
         File? gatk_override
-        File? service_account_json
+        String? service_account_json_path
         String query_project
         Array[String]? query_labels
 
@@ -373,7 +374,7 @@ task ExtractFilterTask {
     }
 
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     # Note the coercion of optional query_labels using select_first([expr, default])
     Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_first([query_labels])) else []
 
@@ -384,8 +385,9 @@ task ExtractFilterTask {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         if [ ~{has_service_account_file} = 'true' ]; then
-            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
             gcloud config set project ~{query_project}
         fi
 
@@ -509,11 +511,11 @@ task CreateFilterSetFiles {
         File indel_recal_file_index
         File indel_recal_tranches
 
-        File? service_account_json
+        String? service_account_json_path
         String query_project
     }
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     # ------------------------------------------------
     # Run our command:
@@ -521,8 +523,9 @@ task CreateFilterSetFiles {
         set -eo pipefail
 
         if [ ~{has_service_account_file} = 'true' ]; then
-            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
             gcloud config set project ~{query_project}
         fi
 
@@ -604,11 +607,11 @@ task UploadFilterSetFilesToBQ {
         String fq_tranches_destination_table
         String fq_filter_sites_destination_table
 
-        File? service_account_json
+        String? service_account_json_path
         String query_project
     }
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     # ------------------------------------------------
     # Run our command:
@@ -616,8 +619,9 @@ task UploadFilterSetFilesToBQ {
         set -eo pipefail
 
         if [ ~{has_service_account_file} = 'true' ]; then
-            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
             gcloud config set project ~{query_project}
         fi
 
