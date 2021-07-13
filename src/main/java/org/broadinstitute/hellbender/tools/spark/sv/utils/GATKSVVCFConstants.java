@@ -84,7 +84,8 @@ public final class GATKSVVCFConstants {
     public static final String ALGORITHMS_ATTRIBUTE = "ALGORITHMS";
     public static final String STRANDS_ATTRIBUTE = "STRANDS";
     public static final String DEPTH_ALGORITHM = "depth";
-    public static final String END_CONTIG_ATTRIBUTE = "CHR2";
+    public static final String CONTIG2_ATTRIBUTE = "CHR2";
+    public static final String END2_ATTRIBUTE = "END2";
 
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
@@ -95,6 +96,10 @@ public final class GATKSVVCFConstants {
     public static final String ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY = "SHORT_ALN";
     public static final String LOW_QS_SCORE_FILTER_KEY = "LOW_QS";
     public static final String FREQUENCY_FILTER_KEY = "FREQ";
+
+    // Clustering
+    public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
