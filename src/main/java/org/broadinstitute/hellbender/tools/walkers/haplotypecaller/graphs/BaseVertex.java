@@ -3,16 +3,19 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
  * A graph vertex that holds some sequence information
  */
-public class BaseVertex {
+public class BaseVertex implements Serializable {
     /** placeholder to store additional information for debugging purposes */
     private String additionalInfo = "";
     protected final byte[] sequence;
     private final int cachedHashCode;
+
+    private static final long serialVersionUID = 0x1337L;
 
     /**
      * Create a new sequence vertex with sequence
@@ -147,6 +150,13 @@ public class BaseVertex {
      * @return the additional information for display about this vertex
      */
     public String getAdditionalInfo() { return additionalInfo; }
+
+    /**
+     * @return {@link String} Containing the values of any attributes that need to be added this node for GEXF serialization.
+     */
+    public String getGexfAttributesString() {
+        return "";
+    }
 
     /**
      * Checks whether the vertex sequence is ambiguous or not.

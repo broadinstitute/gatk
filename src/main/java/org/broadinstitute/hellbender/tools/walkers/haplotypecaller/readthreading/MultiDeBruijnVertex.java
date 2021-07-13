@@ -10,6 +10,9 @@ import java.util.List;
  * A DeBruijnVertex that supports multiple copies of the same kmer
  */
 public final class MultiDeBruijnVertex extends BaseVertex {
+
+    private static final long serialVersionUID = 0x1337L;
+
     private static final byte[][] sufficesAsByteArray = new byte[Byte.MAX_VALUE - Byte.MIN_VALUE + 1][];
     static {
         for ( int i = 0; i < sufficesAsByteArray.length; i++ ) {

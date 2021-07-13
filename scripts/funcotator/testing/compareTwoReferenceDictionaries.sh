@@ -35,8 +35,10 @@ MAXARGS=0
 D="."
 #refAFile="${D}/GRCh37.p13.genome.dict"
 #refAFile="${D}/human_g1k_v37.dict"
-refAFile="${D}/ucsc.hg19.dict"
-refBFile="${D}/Homo_sapiens_assembly19.dict"
+#refAFile="${D}/ucsc.hg19.dict"
+#refBFile="${D}/Homo_sapiens_assembly19.dict"
+refAFile="${D}/genome.hg38rg.fa.dict"
+refBFile="${D}/Homo_sapiens_assembly38.dict"
 
 ################################################################################
 
@@ -130,6 +132,7 @@ tmpRefB=$( makeTemp )
 # Create a file that has two columns: MD5Sum Contig
 # Assumes MD5sum is in column 6 and Contig is in column 2:
 cat ${refBFile} | awk '{print $6,$2}'  | grep '^M5' | sort -nk2 | sed -e 's#M5:##g' -e 's#SN:##g' > ${tmpRefB} 
+#cat ${refBFile} | awk '{print $4,$2}'  | grep '^M5' | sort -nk2 | sed -e 's#M5:##g' -e 's#SN:##g' > ${tmpRefB} 
 
 # Create a file that has two columns: MD5Sum Contig
 # Assumes MD5sum is in column 4 and Contig is in column 2:
@@ -138,11 +141,15 @@ cat ${refBFile} | awk '{print $6,$2}'  | grep '^M5' | sort -nk2 | sed -e 's#M5:#
 cat ${refAFile} | awk '{print $5,$2}' | grep '^M5' | sort -nk2 | sed -e 's#M5:##g' -e 's#SN:##g' > ${tmpRefA}
 
 tmpJoined=$( makeTemp )
+
+echo "Joining Files" 1>&2
 join -1 1 -2 1 ${tmpRefB} ${tmpRefA} | sort -nk2 > ${tmpJoined} 
 
+echo "Consolidating Ref B" 1>&2
 while read line ; do
 	md5=$( echo ${line} | awk {'print $1'} );
 	sn=$(  echo ${line} | awk {'print $2'} );
+	echo "  SN:${sn}" 1>&2
 	grep "${md5}" $tmpJoined &> /dev/null
 	r=$?
 	if [[ $r -ne 0 ]] ; then
@@ -150,9 +157,11 @@ while read line ; do
 	fi
 done < ${tmpRefB}
 
+echo "Consolidating Ref A" 1>&2
 while read line ; do
 	md5=$( echo ${line} | awk {'print $1'} );
 	sn=$(  echo ${line} | awk {'print $2'} );
+	echo "  SN:${sn}" 1>&2
 	grep "${md5}" $tmpJoined &> /dev/null
 	r=$?
 	if [[ $r -ne 0 ]] ; then
@@ -160,6 +169,7 @@ while read line ; do
 	fi
 done < ${tmpRefA}
 
+echo "Creating Table..." 1>&2
 echo -e "MD5\tB37SN (${refBFile})\tHG19SN (${refAFile})"
 cat ${tmpJoined} | tr ' ' '\t' 
 
