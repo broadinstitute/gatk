@@ -62,7 +62,7 @@ public final class ReadThreadingAssembler {
     private boolean recoverDanglingBranches = true;
     private boolean recoverAllDanglingBranches = false;
     private int minDanglingBranchLength = 0;
-    
+
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
@@ -79,7 +79,7 @@ public final class ReadThreadingAssembler {
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
                                   final double pruningSeedingLogOddsThreshold, final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs,
-                                  final boolean enableLegacyGraphCycleDetection, final int minMachingBasesToDanglngEndRecovery) {
+                                  final boolean enableLegacyGraphCycleDetection, final int minMachingBasesToDanglingEndRecovery) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes.stream().sorted(Integer::compareTo).collect(Collectors.toList());
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
@@ -95,7 +95,7 @@ public final class ReadThreadingAssembler {
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, pruningSeedingLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
-        this.minMatchingBasesToDanglingEndRecovery = minMachingBasesToDanglngEndRecovery;
+        this.minMatchingBasesToDanglingEndRecovery = minMachingBasesToDanglingEndRecovery;
     }
 
     @VisibleForTesting
