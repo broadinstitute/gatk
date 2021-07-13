@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.qc;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -145,7 +146,7 @@ public final class Pileup extends LocusWalker {
     }
 
     @Override
-    public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+    public ArrayList<VariantContext> apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         final String features = getFeaturesString(featureContext);
         final ReadPileup basePileup = alignmentContext.getBasePileup().makeFilteredPileup(pe -> !pe.isDeletion());
         final StringBuilder s = new StringBuilder();
@@ -160,6 +161,7 @@ public final class Pileup extends LocusWalker {
         }
         s.append("\n");
         out.print(s.toString());
+        return null;
     }
 
     /**

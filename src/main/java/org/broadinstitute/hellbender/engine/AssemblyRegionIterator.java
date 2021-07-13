@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.mutect.AlignmentData;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -50,6 +51,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
     private final Iterator<AlignmentContext> locusIterator;
     private final LocusIteratorByState libs;
     private final ActivityProfile activityProfile;
+    private Queue<AlignmentData> pendingAlignmentData;
 
     /**
      * Constructs an AssemblyRegionIterator over a provided read shard
@@ -86,6 +88,8 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
         this.activityProfile = new BandPassActivityProfile(assemblyRegionArgs.maxProbPropagationDistance, assemblyRegionArgs.activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
+// TODO: AH & BG handle changing contig
+        this.pendingAlignmentData = new ArrayDeque<>();
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
         // for uncovered locations. This is critical for reproducing GATK 3.x behavior!
@@ -113,11 +117,20 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         return toReturn;
     }
 
+//    private void addAlignmentData(AlignmentData alignmentData){
+//        int start = alignmentData.getAlignmentContext().getStart();
+//        if(!allAlignmentData.containsKey(start)){
+//
+//        }
+//    }
+
     private AssemblyRegion loadNextAssemblyRegion() {
         AssemblyRegion nextRegion = null;
+//        List<AlignmentData> alignmentData = new ArrayList<>();
 
         while ( locusIterator.hasNext() && nextRegion == null ) {
             final AlignmentContext pileup = locusIterator.next();
+
 
             // Pop any new pending regions off of the activity profile. These pending regions will not become ready
             // until we've traversed all the reads that belong in them.
@@ -132,6 +145,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             final SimpleInterval pileupInterval = new SimpleInterval(pileup);
             final ReferenceContext pileupRefContext = new ReferenceContext(reference, pileupInterval);
             final FeatureContext pileupFeatureContext = new FeatureContext(features, pileupInterval);
+            pendingAlignmentData.add(new AlignmentData(pileup, pileupRefContext));
 
             final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, pileupFeatureContext);
             activityProfile.add(profile);
@@ -169,6 +183,8 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         // If there's a region ready, fill it with reads before returning
         if ( nextRegion != null ) {
             fillNextAssemblyRegionWithReads(nextRegion);
+            // fillnextessemblyregion; check you are on correct chr; if alignment data is not in the assembly region then pop it
+            fillNextAssemblyRegionWithPileupData(nextRegion);
         }
 
         return nextRegion;
@@ -207,6 +223,26 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
                 region.add(nextRead);
             }
         }
+    }
+
+    private void fillNextAssemblyRegionWithPileupData(final AssemblyRegion region){
+        List<AlignmentData> overlappingAlignmentData = new ArrayList<>();
+        Queue<AlignmentData> previousAlignmentData = new ArrayDeque<>();
+
+        while (!pendingAlignmentData.isEmpty() && pendingAlignmentData.peek().getAlignmentContext().getStart() < region.getStart()){
+            pendingAlignmentData.poll();
+        }
+        while (!pendingAlignmentData.isEmpty() && pendingAlignmentData.peek().getAlignmentContext().getStart() <= region.getEnd()){
+
+            overlappingAlignmentData.add(pendingAlignmentData.poll());
+        }
+
+        // reconstructing queue to contain items that maybe in the next assembly region
+        previousAlignmentData.addAll(overlappingAlignmentData);
+        previousAlignmentData.addAll(pendingAlignmentData);
+        pendingAlignmentData = previousAlignmentData;
+
+        region.addAllAlignmentData(overlappingAlignmentData);
     }
 
     @Override

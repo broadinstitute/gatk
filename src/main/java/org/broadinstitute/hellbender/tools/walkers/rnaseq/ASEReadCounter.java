@@ -182,7 +182,7 @@ public class ASEReadCounter extends LocusWalker {
     }
 
     @Override
-    public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+    public ArrayList<VariantContext> apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         final String contig = alignmentContext.getContig();
         final long position = alignmentContext.getPosition();
 
@@ -193,18 +193,18 @@ public class ASEReadCounter extends LocusWalker {
             throw new UserException("More then one variant context at position: " + contig + ":" + position);
         }
         if (VCs == null || VCs.isEmpty()) {
-            return;
+            return null;
         }
 
         final VariantContext vc = VCs.get(0);
         if (!vc.isBiallelic()) {
             logger.warn("Ignoring site: cannot run ASE on non-biallelic sites: " + vc.toString());
-            return;
+            return null;
         }
 
         if (vc.getHetCount() < 1) {
             logger.warn("Ignoring site: variant is not het at postion: " + contig + ":" + position);
-            return;
+            return null;
         }
 
         if (vc.getNAlleles() == 1 || vc.getAlternateAllele(0).getBases().length == 0) {
@@ -221,6 +221,7 @@ public class ASEReadCounter extends LocusWalker {
         if (line != null) {
             outputStream.println(line);
         }
+        return null;
     }
 
     @Override

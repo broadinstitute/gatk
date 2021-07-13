@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -39,7 +40,7 @@ public class ExampleLocusWalker extends LocusWalker {
     }
 
     @Override
-    public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+    public ArrayList<VariantContext> apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         // Get pileup and counts
         ReadPileup pileup = alignmentContext.getBasePileup();
         // print the locus and coverage
@@ -61,6 +62,7 @@ public class ExampleLocusWalker extends LocusWalker {
             }
         }
         outputStream.println();
+        return null;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.qc;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -16,6 +17,7 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -126,7 +128,7 @@ public final class CheckPileup extends LocusWalker {
     }
 
     @Override
-    public void apply(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
+    public ArrayList<VariantContext> apply(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
         final ReadPileup pileup = context.getBasePileup();
         final SAMPileupFeature truePileup = getTruePileup(featureContext);
 
@@ -152,6 +154,7 @@ public final class CheckPileup extends LocusWalker {
         }
         nLoci++;
         nBases += pileup.size();
+        return null;
     }
 
     public String pileupDiff(final ReadPileup a, final SAMPileupFeature b) {
