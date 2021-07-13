@@ -9,18 +9,8 @@ import ijson
 import gzip
 import argparse
 
-JOB_IDS = set()
-
-#
-# CONSTANTS
-#
-VAT_TABLE_PREFIX = "vat_"
-SAMPLES_PER_PARTITION = 4000
-
-## TODO in the future do I want to map the original json key to a function!?!?!?!?
-
 vat_nirvana_positions_dictionary = {
-  "position": "position", # required  TODO pull this out! check how nirvana handles "when the vcf position is not just the preceeding base for the variant"
+  "position": "position", # required
 }
 
 vat_nirvana_variants_dictionary = {
@@ -30,7 +20,7 @@ vat_nirvana_variants_dictionary = {
   "alt_allele": "altAllele", # required
   "variant_type": "variantType", # required
   "genomic_location": "hgvsg", # required
-  "dbsnp_rsid": "dbsnp",  # nullable  -- TODO is this always a single val array?
+  "dbsnp_rsid": "dbsnp",  # nullable
 }
 
 vat_nirvana_transcripts_dictionary = {
@@ -38,15 +28,12 @@ vat_nirvana_transcripts_dictionary = {
   "gene_symbol": "hgnc", # nullable
   "transcript_source": "source", # nullable
   "aa_change": "hgvsp", # nullable
-  "consequence": "consequence", # nullable -- this is now an array
+  "consequence": "consequence", # nullable
   "dna_change_in_transcript": "hgvsc", # nullable
   "exon_number": "exons", # nullable
   "intron_number": "introns", # nullable
-  # "splice_distance": "hgvsc", # nullable -- Lee has pushed this out of p0 for now
   "gene_id": "geneId", # nullable
-  # "entrez_gene_id": "geneId", # nullable
-  # "hgnc_gene_id": "hgncid", # nullable --  Lee has pushed this out of p0 for now
-  "is_canonical_transcript": "isCanonical" # nullable -- (and lets make the nulls false)
+  "is_canonical_transcript": "isCanonical" # nullable
 }
 
 vat_nirvana_gvs_alleles_dictionary = {
@@ -73,27 +60,21 @@ vat_nirvana_splice_ai_dictionary = {
 vat_nirvana_clinvar_dictionary = {
   "clinvar_classification": "significance", # nullable
   "clinvar_last_updated": "lastUpdatedDate", # nullable
-  "clinvar_phenotype": "phenotypes" # nullable -- currently here: "phenotypes":["not specified"] <-- lets talk arrays!
+  "clinvar_phenotype": "phenotypes" # nullable
 }
 
 vat_nirvana_gnomad_dictionary = {
   "gnomad_all_af": "allAf", # nullable
   "gnomad_all_ac": "allAc", # nullable
   "gnomad_all_an": "allAn", # nullable
- # "gnomad_max_af": "afrAf", # nullable THIS NEEDS MORE THAN JUST A MAPPING
- # "gnomad_max_ac": "afrAc", # nullable THIS NEEDS MORE THAN JUST A MAPPING
- # "gnomad_max_an": "afrAn", # nullable THIS NEEDS MORE THAN JUST A MAPPING
- # "gnomad_max_subpop": "x" #TODO need to choose the correct mapping. Lee says maybe drop for now
 }
 
-vat_nirvana_omim_dictionary = { # TODO or should this be vat_nirvana_genes_dictionary ?
-  # "hgnc_gene_id": "hgncid", # nullable genes.hgncid NOT HERE -- Lee has pushed this out of p0 for now
-  # "gene_omim_id": "mimNumber", # nullable genes.omim.mimNumber HARD CODED FOR NOW
-  "omim_phenotypes_id": "mimNumber", # nullable <-- lets talk arrays! genes.omim.phenotypes.mimNumber
+vat_nirvana_omim_dictionary = {
+  "omim_phenotypes_id": "mimNumber", # nullable
   "omim_phenotypes_name": "phenotype" # nullable
 }
 
-significance_ordering = [ # TODO I have lowercased this---check that this is okay. Nirvana seems to have diff cases :P
+significance_ordering = [
   "benign",
   "likely benign",
   "uncertain significance",
@@ -111,9 +92,9 @@ significance_ordering = [ # TODO I have lowercased this---check that this is oka
  ]
 
 
-def make_annotated_json_row(row_position, variant_line, transcript_line): # would it be better to not pass the transcript_line since its dupe data?
+def make_annotated_json_row(row_position, variant_line, transcript_line):
     row = {}
-    row["position"] = row_position # this is a required field -- do we want validation? (what about validation for all the variants_fieldnames?)
+    row["position"] = row_position # this is a required field
 
     for vat_variants_fieldname in vat_nirvana_variants_dictionary.keys():  # like "contig"
       nirvana_variants_fieldname = vat_nirvana_variants_dictionary.get(vat_variants_fieldname)
@@ -144,7 +125,7 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
     if variant_line.get("gnomad") != None:
       for vat_gnomad_fieldname in vat_nirvana_gnomad_dictionary.keys():  # like "gnomad_all_af"
         nirvana_gnomad_fieldname = vat_nirvana_gnomad_dictionary.get(vat_gnomad_fieldname)
-        gnomad_fieldvalue = variant_line.get("gnomad").get(nirvana_gnomad_fieldname) # not a list like the others
+        gnomad_fieldvalue = variant_line.get("gnomad").get(nirvana_gnomad_fieldname)
         row[vat_gnomad_fieldname] = gnomad_fieldvalue
 
     if variant_line.get("clinvar") != None:
@@ -162,7 +143,7 @@ def make_annotated_json_row(row_position, variant_line, transcript_line): # woul
           phenotypes.extend(clinvar_RCV_line.get("phenotypes"))
       # We want to collect all the significance values and order them by the significance_ordering list
       # So I will loop through the significance_ordering values and check for matching values in the significance_values list and put them in a new list
-      ordered_significance_values = [] # how do we deal with cases issues?
+      ordered_significance_values = []
       for value in significance_ordering:
         if value in significance_values:
           ordered_significance_values.append(value) # this adds the id to the end of the list
@@ -190,12 +171,8 @@ def make_positions_json(annotated_json, output_json):
 
   positions = ijson.items(json_data, 'positions.item', use_float=True)
 
-  #TODO: filter down to Ensembl transcripts only.
-  # so we can no longer just check if the transcripts exist or not---need to see if they exist and then if they have transcript_source of "Ensembl"
-  # TODO is it better to do the transcript_source filtering here in the python, or in BQ? MAYBE BQ is cleaner?
-
   for p in positions:
-    position=p['position']  # this is a required field -- do we want validation?
+    position=p['position']
     variants=p['variants']
     # row for each variant - transcript
     # so let's start with each variant
@@ -241,14 +218,13 @@ def make_genes_json(annotated_json, output_genes_json):
     if gene_line.get("omim") != None:
       row = {}
       row["gene_symbol"] = gene_line.get("name")
-      omim_line = gene_line["omim"][0] # TODO I am making the huge assumption that we are only grabbing 1
+      omim_line = gene_line["omim"][0]
       if len(gene_line.get("omim")) > 1:
         print("WARNING: An assumption about the possible count of omim values is incorrect.", gene_line.get("name"),len(gene_line.get("omim")))
       row["gene_omim_id"] = omim_line.get("mimNumber")
       if omim_line.get("phenotypes") != None:
         phenotypes = omim_line["phenotypes"]
         for vat_omim_fieldname in omim_fieldnames:  # like "mimNumber", "phenotype"
-          # both of these are arrays -- TODO would it be clearer if this was just hard coded?
           omim_field_array=[]
           for phenotype in phenotypes:
             nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)
@@ -265,8 +241,6 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
   # we've already read the whole file once so we have to open it again
   # TODO: cleanup closing of file handles
   make_genes_json(annotated_json, output_genes_json)
-  # TODO: should we be taking on the ".json.gz" to all the file names?
-
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Create BQ load friendly jsons for VAT creation')
@@ -274,11 +248,8 @@ if __name__ == '__main__':
   parser.add_argument('--output_vt_json',type=str, help='name of the vt json', required=True)
   parser.add_argument('--output_genes_json',type=str, help='name of the genes json', required=True)
 
-  # Execute the parse_args() method
   args = parser.parse_args()
 
   make_annotation_jsons(args.annotated_json,
                         args.output_vt_json,
                         args.output_genes_json)
-
-# TODO do I want to gsutil cp up the files into a bucket here?
