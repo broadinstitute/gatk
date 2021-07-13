@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.primitives.Doubles;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.*;
-import org.apache.commons.math3.stat.descriptive.moment.Mean;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
@@ -54,14 +54,50 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
 
     }
 
+    /**
+     * Define strategies for collapsing alt alleles with different subtypes.
+     */
+    public enum AltAlleleSummaryStrategy {
+        /**
+         * Use the most specific subtype that doesn't conflict with any of the other alleles.
+         * For example, (&lt;INS&gt, &lt;INS:MEI:SVA&gt, &lt;INS:MEI:LINE&gt) results in &lt;INS:MEI&gt.
+         */
+        MOST_SPECIFIC_SUBTYPE,
+
+        /**
+         * Use subtypes in common among all alleles.
+         * For example, (&lt;INS&gt, &lt;INS:MEI:SVA&gt, &lt;INS:MEI&gt) results in &lt;INS&gt.
+         */
+        COMMON_SUBTYPE
+
+    }
+
+    /**
+     * Strategies for collapsing the insertion LENGTH attribute. Only applied when there are multiple defined values.
+     */
+    public enum InsertionLengthSummaryStrategy {
+        MEDIAN,
+        MEAN,
+        MIN,
+        MAX,
+        UNDEFINED
+    }
+
+    private final AltAlleleSummaryStrategy altAlleleSummaryStrategy;
     private final BreakpointSummaryStrategy breakpointSummaryStrategy;
+    private final InsertionLengthSummaryStrategy insertionLengthSummaryStrategy;
     private final ReferenceSequenceFile reference;
 
     private static final AlleleCollectionCollapserComparator ALLELE_COMPARATOR = new AlleleCollectionCollapserComparator();
 
-    public CanonicalSVCollapser(final ReferenceSequenceFile reference, final BreakpointSummaryStrategy breakpointSummaryStrategy) {
-        this.reference = reference;
-        this.breakpointSummaryStrategy = Utils.nonNull(breakpointSummaryStrategy);
+    public CanonicalSVCollapser(final ReferenceSequenceFile reference,
+                                final AltAlleleSummaryStrategy altAlleleSummaryStrategy,
+                                final BreakpointSummaryStrategy breakpointSummaryStrategy,
+                                final InsertionLengthSummaryStrategy insertionLengthSummaryStrategy) {
+        this.reference = Utils.nonNull(reference);
+        this.altAlleleSummaryStrategy = altAlleleSummaryStrategy;
+        this.breakpointSummaryStrategy = breakpointSummaryStrategy;
+        this.insertionLengthSummaryStrategy = insertionLengthSummaryStrategy;
     }
 
     @Override
@@ -72,10 +108,10 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         final Map<String, Object> attributes = collapseVariantAttributes(items);
 
         // Prefer using variants generated with PESR callers, which tend to generate more precise breakpoints
-        final Collection<SVCallRecord> mostPreciseCalls = getMostPreciseCalls(items);
+        final Collection<SVCallRecord> mostPreciseCalls = getRecordsWithMostPreciseBreakpoints(items);
         final SVCallRecord exampleCall = mostPreciseCalls.iterator().next();
 
-        final Map.Entry<Integer, Integer> coordinates = collapseInterval(mostPreciseCalls);
+        final Pair<Integer, Integer> coordinates = collapseInterval(mostPreciseCalls);
         final int start = coordinates.getKey();
         final int end = coordinates.getValue();
         final int length = collapseLength(mostPreciseCalls, start, end, type);
@@ -119,15 +155,15 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
      * Parses allele for the base type string, e.g. "INS" for "&lt;INS:MEI&gt;"
      */
     @VisibleForTesting
-    protected static final String getSymbolicAlleleBaseSymbol(final Allele allele) {
+    protected static final String[] getSymbolicAlleleSymbols(final Allele allele) {
         return allele.getDisplayString()
                 .replace("<", "")
                 .replace(">", "")
-                .split(":")[0];
+                .split(":");
     }
 
     /**
-     * Collapses alternate alleles a list of representative alleles. Note this supports sub-typed alleles such as
+     * Collapses alternate alleles into a list of representative alleles. Note this supports sub-typed alleles such as
      * &lt;INS:MEI&gt;. If multiple alt alleles are found, the variant must either be a CNV or sub-typed alleles with the
      * same base symbol (e.g. &lt;INS:MEI&gt; and &lt;INS:MEI:SVA&gt; would result in &lt;INS&gt;).
      * @param items records whose alt alleles should be collapsed
@@ -156,22 +192,66 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                 }
             }
 
-            // Check that base symbols match
-            final List<String> uniqueAlleleBaseSymbols = altAlleles.stream()
-                    .map(CanonicalSVCollapser::getSymbolicAlleleBaseSymbol)
-                    .distinct()
-                    .collect(Collectors.toList());
-            Utils.validate(uniqueAlleleBaseSymbols.size() == 1, "Encountered multiple symbolic allele base symbols for non-CNV");
-
-            // Look for subtyped alts
-            final List<Allele> subtypedAlleles = altAlleles.stream().filter(a -> a.getDisplayString().contains(":")).collect(Collectors.toList());
-            if ( subtypedAlleles.size() == 1) {
-                return Collections.singletonList(subtypedAlleles.get(0));
+            final String[] collapsedAlleleTokens;
+            if (altAlleleSummaryStrategy == AltAlleleSummaryStrategy.COMMON_SUBTYPE) {
+                collapsedAlleleTokens = collapseAltAllelesCommon(altAlleles);
+            } else if (altAlleleSummaryStrategy == AltAlleleSummaryStrategy.MOST_SPECIFIC_SUBTYPE) {
+                collapsedAlleleTokens = collapseAltAllelesMostSpecific(altAlleles);
             } else {
-                final String baseSymbol = uniqueAlleleBaseSymbols.get(0);
-                return Collections.singletonList(Allele.create("<" + baseSymbol + ">", false));
+                throw new UnsupportedOperationException("Unimplemented alt allele summary strategy: " + altAlleleSummaryStrategy.name());
+            }
+            Utils.validate(collapsedAlleleTokens.length > 0, "Encountered multiple symbolic allele base symbols for non-CNV");
+            return Collections.singletonList(Allele.create("<" + String.join(":", collapsedAlleleTokens) + ">", false));
+        }
+    }
+
+    private String[] collapseAltAllelesCommon(final List<Allele> alleles) {
+        final List<String[]> alleleTokens = alleles.stream()
+                .map(CanonicalSVCollapser::getSymbolicAlleleSymbols)
+                .collect(Collectors.toList());
+        final String[] firstTokens = alleleTokens.get(0);
+        int alleleSize = 0;
+        outerloop:
+        for (int i = 0; i < firstTokens.length; i++) {
+            final String subtype = firstTokens[i];
+            for (int j = 1; j < alleleTokens.size(); j++) {
+                final String[] tokens = alleleTokens.get(j);
+                if (i < tokens.length && subtype.equals(tokens[i])) {
+                    alleleSize = i + 1;
+                } else {
+                    break outerloop;
+                }
             }
         }
+        return Arrays.copyOf(firstTokens, alleleSize);
+    }
+
+    private String[] collapseAltAllelesMostSpecific(final List<Allele> alleles) {
+        final List<String[]> alleleTokens = alleles.stream()
+                .map(CanonicalSVCollapser::getSymbolicAlleleSymbols)
+                .collect(Collectors.toList());
+        final int maxSize = alleleTokens.stream().mapToInt(arr -> arr.length).max().getAsInt();
+        int alleleIndex = 0;
+        int alleleSize = 0;
+        outerloop:
+        for (int i = 0; i < maxSize; i++) {
+            String subtype = null;
+            for (int j = 0; j < alleleTokens.size(); j++) {
+                final String[] tokens = alleleTokens.get(j);
+                if (i < tokens.length) {
+                    if (subtype == null) {
+                        subtype = tokens[i];
+                        alleleIndex = j;
+                        alleleSize = i + 1;
+                    } else if (!subtype.equals(tokens[i])) {
+                        alleleIndex = j;
+                        alleleSize = i;
+                        break outerloop;
+                    }
+                }
+            }
+        }
+        return Arrays.copyOf(alleleTokens.get(alleleIndex), alleleSize);
     }
 
     private List<Genotype> collapseAllGenotypes(final Collection<SVCallRecord> items,
@@ -186,36 +266,53 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Collapses a set of genotypes from a single sample into a list of alleles for a representative genotype. Ploidy
+     * is determined with the {@link #collapsePloidy(Collection)} method. The result is the most common non-ref genotype
+     * alleles list, potentially augmented with additional ref alleles to match the ploidy.
+     * @param genotypes genotypes from a single variant and single sample
+     * @param refAllele ref allele for the genotype
+     * @param sampleAltAlleles unique alt alleles
+     * @return list of alleles for a representative genotype (may be empty)
+     */
     @VisibleForTesting
-    protected List<Allele> collapseSampleAlleles(final Collection<Genotype> genotypes,
-                                                 final Allele refAllele,
-                                                 final List<Allele> sampleAltAlleles) {
+    protected List<Allele> collapseSampleGenotypeAlleles(final Collection<Genotype> genotypes,
+                                                         final Allele refAllele,
+                                                         final List<Allele> sampleAltAlleles) {
         Utils.nonNull(genotypes);
         Utils.nonEmpty(genotypes);
         final int inferredPloidy = collapsePloidy(genotypes);
+
+        // Ploidy 0
         if (inferredPloidy == 0) {
             return Collections.emptyList();
         }
+
+        // No alt alleles, so return all ref
         if (sampleAltAlleles.isEmpty()) {
             return Collections.nCopies(inferredPloidy, refAllele);
         }
 
+        // Determine frequency of each genotype
         final Map<List<Allele>, Integer> genotypeCounts = genotypes.stream().map(Genotype::getAlleles)
                 .collect(Collectors.groupingBy(l -> l, Collectors.collectingAndThen(Collectors.toList(), List::size)));
-        List<Allele> bestGenotypeAltAlleles = null;
-        int bestGenotypeFrequency = 0;
         // Sort keys somehow, for stability
         final List<List<Allele>> sortedAlleleLists = genotypeCounts.keySet().stream().sorted(ALLELE_COMPARATOR).collect(Collectors.toList());
-        // TODO : break ties
+        // Find most common non-ref genotype
+        // Ties go to the first result in the list, as determined by the comparator
+        // TODO : implement an allele comparator that can take into account GQ if available
+        List<Allele> bestGenotypeAltAlleles = null;
+        int bestGenotypeFrequency = 0;
         for (final List<Allele> alleles : sortedAlleleLists) {
             final List<Allele> altAlleles = alleles.stream().filter(SVCallRecordUtils::isAltAllele).collect(Collectors.toList());
             final int genotypeFrequency = genotypeCounts.get(alleles);
-            if (altAlleles.size() > 0 && (bestGenotypeAltAlleles == null || genotypeFrequency > bestGenotypeFrequency)) {
+            if (!altAlleles.isEmpty() && (bestGenotypeAltAlleles == null || genotypeFrequency > bestGenotypeFrequency)) {
                 bestGenotypeAltAlleles = altAlleles;
                 bestGenotypeFrequency = genotypeFrequency;
             }
         }
 
+        // Create alleles list with the selected alt alleles, and fill in remaining with ref
         final List<Allele> alleles = new ArrayList<>(inferredPloidy);
         final int numCollapsedRefAlleles = inferredPloidy - bestGenotypeAltAlleles.size();
         Utils.validate(numCollapsedRefAlleles >= 0, "Ploidy is less than number of alt alleles");
@@ -231,10 +328,10 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         final GenotypeBuilder builder = new GenotypeBuilder(genotypes.iterator().next());
         final List<Allele> sampleAltAlleles = genotypes.stream().map(Genotype::getAlleles)
                 .flatMap(List::stream)
-                .filter(a -> a != null && !a.isNoCall() && !a.isReference())
+                .filter(SVCallRecordUtils::isAltAllele)
                 .distinct()
                 .collect(Collectors.toList());
-        builder.alleles(collapseSampleAlleles(genotypes, refAllele, sampleAltAlleles));
+        builder.alleles(collapseSampleGenotypeAlleles(genotypes, refAllele, sampleAltAlleles));
         builder.noAttributes();
         builder.attributes(collapseGenotypeAttributes(genotypes));
         return builder.make();
@@ -293,16 +390,48 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         if (!exampleCall.isIntrachromosomal()) {
             return -1;
         } else if (newType.equals(StructuralVariantType.INS)) {
-            // Median
-            final int[] lengths = items.stream().mapToInt(SVCallRecord::getLength).toArray();
-            final int midIndex = lengths.length / 2;
-            if (lengths.length % 2 == 0) {
-                return (int) Math.ceil((lengths[midIndex - 1] + lengths[midIndex]) / 2.0);
-            } else {
-                return lengths[midIndex];
-            }
+            return collapseInsertionLength(items);
         } else {
             return newEnd - newStart + 1;
+        }
+    }
+
+    protected Integer collapseInsertionLength(final Collection<SVCallRecord> items) {
+        // No need for strategy when the answer is obvious
+        if (items.size() == 1) {
+            return items.iterator().next().getLength();
+        }
+
+        // We only want to use strategies when there are multiple defined lengths
+        final int[] definedLengths = items.stream()
+                .map(SVCallRecord::getLength)
+                .filter(len -> len != null)
+                .mapToInt(Integer::intValue)
+                .toArray();
+
+        // All lengths were undefined
+        if (definedLengths.length == 0) {
+            return null;
+        }
+
+        // Only one length is defined - no ambiguity here
+        if (definedLengths.length == 1) {
+            return definedLengths[0];
+        }
+
+        // Employ strategies when there are two or more defined lengths
+        if (insertionLengthSummaryStrategy == InsertionLengthSummaryStrategy.MEDIAN) {
+            return MathUtils.median(definedLengths, Percentile.EstimationType.R_3);
+        } else if (insertionLengthSummaryStrategy == InsertionLengthSummaryStrategy.MEAN) {
+            return (int) Math.ceil(MathUtils.sum(definedLengths) / (double) definedLengths.length);
+        } else if (insertionLengthSummaryStrategy == InsertionLengthSummaryStrategy.MIN) {
+            return MathUtils.arrayMin(definedLengths);
+        } else if (insertionLengthSummaryStrategy == InsertionLengthSummaryStrategy.MAX) {
+            return MathUtils.arrayMax(definedLengths);
+        } else if (insertionLengthSummaryStrategy == InsertionLengthSummaryStrategy.UNDEFINED) {
+            return null;
+        } else {
+            throw new UnsupportedOperationException("Unimplemented insertion summary strategy: " + insertionLengthSummaryStrategy.name());
         }
     }
 
@@ -312,7 +441,11 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         return records.stream().map(SVCallRecord::getId).sorted().collect(Collectors.toList()).get(0);
     }
 
-    protected Collection<SVCallRecord> getMostPreciseCalls(final Collection<SVCallRecord> items) {
+    /**
+     * Gets records likely to have the most accurate breakpoint position. These usually are supported by PE/SR/AS support,
+     * whereas depth-only calls tend to be approximate.
+     */
+    protected Collection<SVCallRecord> getRecordsWithMostPreciseBreakpoints(final Collection<SVCallRecord> items) {
         if (items.stream().allMatch(call -> call.isDepthOnly())) {
             return items;
         } else {
@@ -324,7 +457,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
      * @param items
      * @return (key, value) entry of (start, end)
      */
-    protected Map.Entry<Integer,Integer> collapseInterval(final Collection<SVCallRecord> items) {
+    protected Pair<Integer,Integer> collapseInterval(final Collection<SVCallRecord> items) {
         Utils.nonNull(items);
         Utils.nonEmpty(items);
         final SVCallRecord exampleCall = items.iterator().next();
@@ -334,11 +467,11 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
             final List<String> contigsB = items.stream().map(SVCallRecord::getContigB).distinct().collect(Collectors.toList());
             Utils.validate(contigsB.size() == 1, "Cannot collapse intervals with multiple position B contigs");
         }
-        final List<Integer> startPositions = items.stream().map(SVCallRecord::getPositionA).sorted().collect(Collectors.toList());
-        final List<Integer> endPositions = items.stream().map(SVCallRecord::getPositionB).sorted().collect(Collectors.toList());
+        final int[] startPositions = items.stream().mapToInt(SVCallRecord::getPositionA).sorted().toArray();
+        final int[] endPositions = items.stream().mapToInt(SVCallRecord::getPositionB).sorted().toArray();
         //use the mid value of the sorted list so the start and end represent real breakpoint observations
-        final int medianStart = startPositions.get(startPositions.size() / 2);
-        final int medianEnd = endPositions.get(endPositions.size() / 2);
+        final int medianStart = MathUtils.median(startPositions, Percentile.EstimationType.R_3);
+        final int medianEnd = MathUtils.median(endPositions, Percentile.EstimationType.R_3);
         final int newStart;
         final int newEnd;
         if (exampleCall.getType().equals(StructuralVariantType.INS)) {
@@ -354,22 +487,22 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                     newEnd = medianEnd;
                     break;
                 case MIN_START_MAX_END:
-                    newStart = startPositions.get(0);
-                    newEnd = endPositions.get(endPositions.size() - 1);
+                    newStart = startPositions[0];
+                    newEnd = endPositions[endPositions.length - 1];
                     break;
                 case MAX_START_MIN_END:
-                    newStart = startPositions.get(startPositions.size() - 1);
-                    newEnd = endPositions.get(0);
+                    newStart = startPositions[startPositions.length - 1];
+                    newEnd = endPositions[0];
                     break;
                 case MEAN_START_MEAN_END:
-                    newStart = (int)Math.round(new Mean().evaluate(Doubles.toArray(startPositions)));
-                    newEnd = (int)Math.round(new Mean().evaluate(Doubles.toArray(endPositions)));
+                    newStart = (int)Math.round(MathUtils.sum(startPositions) / (double) startPositions.length);
+                    newEnd = (int)Math.round(MathUtils.sum(endPositions) / (double) startPositions.length);
                     break;
                 default:
                     throw new UnsupportedOperationException("Unknown breakpoint summary strategy: " + breakpointSummaryStrategy.name());
             }
         }
-        return new AbstractMap.SimpleImmutableEntry<>(newStart, newEnd);
+        return Pair.of(newStart, newEnd);
     }
 
     protected StructuralVariantType collapseTypes(final Collection<SVCallRecord> records) {

@@ -127,6 +127,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     public static final String CLUSTERING_BREAKEND_WINDOW_LONG_NAME = "clustering-breakend-window";
     public static final String MODEL_CALL_INTERVALS_LONG_NAME = "model-call-intervals";
     public static final String BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME = "breakpoint-summary-strategy";
+    public static final String ALT_ALLELE_SUMMARY_STRATEGY_LONG_NAME = "alt-allele-summary-strategy";
 
     @Argument(fullName = MIN_QUALITY_LONG_NAME, doc = "Minimum QS score to combine a variant segment", optional = true)
     private int minQS = 20;
@@ -150,6 +151,10 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
     @Argument(fullName = BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME, doc = "Strategy to use for choosing a representative value for a breakpoint cluster.", optional = true)
     private CanonicalSVCollapser.BreakpointSummaryStrategy breakpointSummaryStrategy = CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END;
+
+
+    @Argument(fullName = ALT_ALLELE_SUMMARY_STRATEGY_LONG_NAME, doc = "Strategy to use for choosing a representative alt allele for non-CNV biallelic sites with different subtypes.", optional = true)
+    private CanonicalSVCollapser.AltAlleleSummaryStrategy altAlleleSummaryStrategy = CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE;
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -202,11 +207,11 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
         final ClusteringParameters clusterArgs = ClusteringParameters.createDepthParameters(clusterIntervalOverlap, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
         if (callIntervals == null) {
-            defragmenter = SVClusterEngineFactory.createCNVDefragmenter(dictionary, reference, defragmentationPadding, minSampleSetOverlap, clusterArgs);
+            defragmenter = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap, clusterArgs);
         } else {
-            defragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(dictionary, reference, defragmentationPadding, minSampleSetOverlap, callIntervals, clusterArgs);
+            defragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap, callIntervals, clusterArgs);
         }
-        clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy,
+        clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy, altAlleleSummaryStrategy, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN,
                 dictionary, reference, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
 
         vcfWriter = getVCFWriter();
@@ -521,25 +526,42 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     protected static VariantContext buildVariantContext(final SVCallRecord call, final ReferenceSequenceFile reference) {
         Utils.nonNull(call);
         Utils.nonNull(reference);
-        final boolean isCNV = call.getType().equals(StructuralVariantType.CNV);
-        final List<Allele> outputAlleles = new ArrayList<>(3);  //max is ref, del, dup
-        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(reference, call.getContigA(), call.getPositionA()), true);
-        outputAlleles.add(refAllele);
-        if (!isCNV) {
-            outputAlleles.add(Allele.create("<" + call.getType().name() + ">", false));
-        } else {
-            outputAlleles.add(GATKSVVCFConstants.DEL_ALLELE);
-            outputAlleles.add(GATKSVVCFConstants.DUP_ALLELE);
+        // Use only the alt alleles actually called in genotypes
+        List<Allele> newAltAlleles = call.getGenotypes().stream()
+                .flatMap(g -> g.getAlleles().stream())
+                .filter(allele -> allele != null && !allele.isReference() && allele.isCalled())
+                .distinct()
+                .collect(Collectors.toList());
+        if (newAltAlleles.isEmpty()) {
+            // If calls were dropped, use original alt alleles
+            newAltAlleles = call.getAltAlleles();
         }
+        final boolean isCNV = newAltAlleles.size() != 1;
+        final StructuralVariantType svtype;
+        if (isCNV) {
+            svtype = StructuralVariantType.CNV;
+        } else {
+            final Allele altAllele = newAltAlleles.get(0);
+            if (altAllele.equals(Allele.SV_SIMPLE_DEL)) {
+                svtype = StructuralVariantType.DEL;
+            } else if (altAllele.equals(Allele.SV_SIMPLE_DUP)) {
+                svtype = StructuralVariantType.DUP;
+            } else {
+                throw new IllegalArgumentException("Unsupported alt allele: " + altAllele.getDisplayString());
+            }
+        }
+        final Allele refAllele = call.getRefAllele();
+        final List<Allele> outputAlleles = new ArrayList<>(newAltAlleles);
+        outputAlleles.add(refAllele);
 
         final VariantContextBuilder builder = new VariantContextBuilder("", call.getContigA(), call.getPositionA(), call.getPositionB(),
                 outputAlleles);
         builder.attribute(VCFConstants.END_KEY, call.getPositionB());
         builder.attribute(GATKSVVCFConstants.SVLEN, call.getLength());
-        if (isCNV) {
+        if (svtype == StructuralVariantType.CNV) {
             builder.attribute(VCFConstants.SVTYPE, "MCNV");  //MCNV for compatibility with svtk annotate
         } else {
-            builder.attribute(VCFConstants.SVTYPE, call.getType());
+            builder.attribute(VCFConstants.SVTYPE, svtype);
         }
         final List<Genotype> genotypes = new ArrayList<>(call.getGenotypes().size());
         for (final Genotype g : call.getGenotypes()) {

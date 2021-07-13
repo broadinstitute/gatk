@@ -20,16 +20,20 @@ import java.util.stream.Collectors;
 
 public class SVTestUtils {
 
-    public static final ReferenceSequenceFile ref = ReferenceUtils.createReferenceReader(new GATKPath(GATKBaseTest.hg38Reference));
-    public final static SAMSequenceDictionary dict = ref.getSequenceDictionary();
-    public final static int chr1Length = dict.getSequence("chr1").getSequenceLength();
+    public static final ReferenceSequenceFile hg38Reference = ReferenceUtils.createReferenceReader(new GATKPath(GATKBaseTest.hg38Reference));
+    public final static SAMSequenceDictionary hg38Dict = hg38Reference.getSequenceDictionary();
+    public final static int chr1Length = hg38Dict.getSequence("chr1").getSequenceLength();
 
-    private final static GenomeLocParser glParser = new GenomeLocParser(SVTestUtils.dict);
+    private final static GenomeLocParser glParser = new GenomeLocParser(SVTestUtils.hg38Dict);
     public static final SVCollapser<SVCallRecord> defaultCollapser =
-            new CanonicalSVCollapser(ref, CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END);
+            new CanonicalSVCollapser(
+                    hg38Reference,
+                    CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+                    CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+                    CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
 
     public static CanonicalSVLinkage<SVCallRecord> getNewDefaultLinkage() {
-        final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<>(SVTestUtils.dict, false);
+        final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<>(SVTestUtils.hg38Dict, false);
         linkage.setDepthOnlyParams(defaultDepthOnlyParameters);
         linkage.setMixedParams(defaultMixedParameters);
         linkage.setEvidenceParams(defaultEvidenceParameters);
@@ -111,16 +115,16 @@ public class SVTestUtils {
     public final static SVCallRecord makeRecord(final String id,
                                                  final String contigA,
                                                  final int positionA,
-                                                 final boolean strandA,
+                                                 final Boolean strandA,
                                                  final String contigB,
                                                  final int positionB,
-                                                 final boolean strandB,
+                                                 final Boolean strandB,
                                                  final StructuralVariantType type,
-                                                 final int length,
+                                                 final Integer length,
                                                  final List<String> algorithms,
                                                  final List<Allele> alleles,
                                                  final List<GenotypeBuilder> genotypeBuilders) {
-        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(ref, contigA, positionA), true);
+        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(hg38Reference, contigA, positionA), true);
         final List<Allele> newAlleles = replaceAllele(alleles, Allele.REF_N, refAllele);
         final List<Genotype> genotypes = new ArrayList<>(genotypeBuilders.size());
         for (final GenotypeBuilder builder : genotypeBuilders) {
@@ -133,83 +137,83 @@ public class SVTestUtils {
     }
 
     public static final Genotype makeGenotypeWithRefAllele(final GenotypeBuilder builder, final String contig, final int position) {
-        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(ref, contig, position), true);
+        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(hg38Reference, contig, position), true);
         builder.alleles(replaceAllele(builder.make().getAlleles(), Allele.REF_N, refAllele));
         return builder.make();
     }
 
-    public final static SVCallRecord rightEdgeCall = makeRecord("rightEdgeCall", "chr1", chr1Length - 99, true,
-            "chr1", chr1Length, true,
+    public final static SVCallRecord rightEdgeCall = makeRecord("rightEdgeCall", "chr1", chr1Length - 99, null,
+            "chr1", chr1Length, null,
             StructuralVariantType.CNV, 100,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
             Arrays.asList(sample1, sample2));
 
-    public final static SVCallRecord leftEdgeCall = makeRecord("leftEdgeCall", "chr1", 1, true,
-            "chr1", length/2, true,
+    public final static SVCallRecord leftEdgeCall = makeRecord("leftEdgeCall", "chr1", 1, null,
+            "chr1", length/2, null,
             StructuralVariantType.CNV, length/2,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
             Arrays.asList(sample1, sample2));
 
-    public final static SVCallRecord nonDepthOnly = makeRecord("nonDepthOnly", "chr1", start, true,
-            "chr1", start + length -1, true,
+    public final static SVCallRecord nonDepthOnly = makeRecord("nonDepthOnly", "chr1", start, null,
+            "chr1", start + length -1, null,
             StructuralVariantType.CNV, length,
             Arrays.asList(GATKSVVCFConstants.DEPTH_ALGORITHM, "PE"),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
             Arrays.asList(sample1, sample2));
 
-    public final static SVCallRecord call1 = makeRecord("call1", "chr1", start, true,
-            "chr1", start + length -1, true,
+    public final static SVCallRecord call1 = makeRecord("call1", "chr1", start, null,
+            "chr1", start + length -1, null,
             StructuralVariantType.CNV, length,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
             Arrays.asList(sample1, sample2));
 
-    public final static SVCallRecord call1b = makeRecord("call1b", "chr1", start1b, true,
-            "chr1", start1b + length1b + 1, true,
+    public final static SVCallRecord call1b = makeRecord("call1b", "chr1", start1b, null,
+            "chr1", start1b + length1b - 1, null,
             StructuralVariantType.CNV, length1b,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
             Arrays.asList(sample1, sample2));
 
-    public final static SVCallRecord call2 = makeRecord("call2", "chr1", start2, true,
-            "chr1", start2 + length -1, true,
+    public final static SVCallRecord call2 = makeRecord("call2", "chr1", start2, null,
+            "chr1", start2 + length - 1, null,
             StructuralVariantType.CNV, length,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
             Arrays.asList(sample1, sample2));
 
-    public final static SVCallRecord call3 = makeRecord("call3", "chr1", start2+length, true,
-            "chr1", start2 + length + length -1, true,
+    public final static SVCallRecord call3 = makeRecord("call3", "chr1", start2+length, null,
+            "chr1", start2 + length + length - 1, null,
             StructuralVariantType.CNV, length,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
             Arrays.asList(sample1, sample2));
 
-    public final static SVCallRecord call4_chr10 = makeRecord("call4_chr10", "chr10", start, true,
-            "chr10", start + length -1, true,
+    public final static SVCallRecord call4_chr10 = makeRecord("call4_chr10", "chr10", start, null,
+            "chr10", start + length - 1, null,
             StructuralVariantType.CNV, length,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
             Arrays.asList(sample1, sample2));
 
-    public final static SVCallRecord call1_CN1 = makeRecord("call1_CN1", "chr1", start, true,
-            "chr1", start + length -1, true,
+    public final static SVCallRecord call1_CN1 = makeRecord("call1_CN1", "chr1", start, null,
+            "chr1", start + length - 1, null,
             StructuralVariantType.CNV, length,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
             Arrays.asList(sample1));
 
-    public final static SVCallRecord call2_CN0 = makeRecord("call2_CN0", "chr1", start2, true,
-            "chr1", start2 + length -1, true,
+    public final static SVCallRecord call2_CN0 = makeRecord("call2_CN0", "chr1", start2, null,
+            "chr1", start2 + length - 1, null,
             StructuralVariantType.CNV, length,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
             Arrays.asList(sample1_CN0));
 
-    public final static SVCallRecord sameBoundsSampleMismatch = makeRecord("sameBoundsSampleMismatch", "chr1", start, true,
-            "chr1", start + length -1, true,
+    public final static SVCallRecord sameBoundsSampleMismatch = makeRecord("sameBoundsSampleMismatch", "chr1", start, null,
+            "chr1", start + length - 1, null,
             StructuralVariantType.CNV, length,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
@@ -220,20 +224,20 @@ public class SVTestUtils {
     public final static SVCallRecord inversion = makeRecord("inversion", "chr1", 10000, true, "chr1", 20000, true,
             StructuralVariantType.INV, 10001, Arrays.asList("SR", "PE"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP), Collections.singletonList(sample2));
 
-    public static final SVCallRecord depthOnly = makeRecord("depthOnly", "chr1", 10000, true, "chr1", 20000, true,
+    public static final SVCallRecord depthOnly = makeRecord("depthOnly", "chr1", 10000, null, "chr1", 20000, null,
             StructuralVariantType.CNV, 10001, Collections.singletonList("depth"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), Collections.singletonList(sample1));
 
-    public static final SVCallRecord depthAndStuff = makeRecord("depthAndStuff", "chr1", 10000, true, "chr1", 20000, true,
+    public static final SVCallRecord depthAndStuff = makeRecord("depthAndStuff", "chr1", 10000, null, "chr1", 20000, null,
                     StructuralVariantType.CNV, 10001, Arrays.asList("depth", "PE"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP), Collections.singletonList(sample2));
 
-    public static final SVCallRecord depthAndStuff2 = makeRecord("depthAndStuff2", "chr1", 10000 - defaultEvidenceParameters.getWindow(), true, "chr1", 20000, true,
+    public static final SVCallRecord depthAndStuff2 = makeRecord("depthAndStuff2", "chr1", 10000 - defaultEvidenceParameters.getWindow(), null, "chr1", 20000, null,
             StructuralVariantType.CNV, 10001 + defaultEvidenceParameters.getWindow(), Arrays.asList("depth", "PE"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP), Collections.singletonList(sample2));
 
-    public static final SVCallRecord depthAndStuff3 = makeRecord("depthAndStuff3", "chr1", 10000 + defaultEvidenceParameters.getWindow(), true, "chr1", 20000, true,
+    public static final SVCallRecord depthAndStuff3 = makeRecord("depthAndStuff3", "chr1", 10000 + defaultEvidenceParameters.getWindow(), null, "chr1", 20000, null,
             StructuralVariantType.CNV, 10001 - defaultEvidenceParameters.getWindow(), Arrays.asList("depth", "PE"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP), Collections.singletonList(sample2));
 
-    public final static SVCallRecord overlapsCall1 = makeRecord("overlapsCall1", "chr1", start3, true,
-            "chr1", start3 + length -1, true,
+    public final static SVCallRecord overlapsCall1 = makeRecord("overlapsCall1", "chr1", start3, null,
+            "chr1", start3 + length -1, null,
             StructuralVariantType.CNV, length,
             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
             Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
@@ -327,7 +331,7 @@ public class SVTestUtils {
 
     public static SVCallRecord newCallRecordWithAlleles(final List<Allele> genotypeAlleles, final List<Allele> variantAlleles,
                                                         final StructuralVariantType svtype) {
-        return new SVCallRecord("", "chr1", 100, true, "chr1", 199, false,
+        return new SVCallRecord("", "chr1", 100, getValidTestStrandA(svtype), "chr1", 199, getValidTestStrandB(svtype),
                 svtype, 100, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 variantAlleles,
                 Collections.singletonList(new GenotypeBuilder().alleles(genotypeAlleles).make()),
@@ -352,8 +356,9 @@ public class SVTestUtils {
     }
 
     // Note that strands may not be valid
-    public static SVCallRecord newCallRecordWithLengthAndTypeAndChrom2(final int length, final StructuralVariantType svtype, final String chrom2) {
-        return new SVCallRecord("", "chr1", 1, true, chrom2, length, false,
+    public static SVCallRecord newCallRecordWithLengthAndTypeAndChrom2(final Integer length, final StructuralVariantType svtype, final String chrom2) {
+        final int positionB = length == null ? 1 : length;
+        return new SVCallRecord("", "chr1", 1, getValidTestStrandA(svtype), chrom2, positionB, getValidTestStrandB(svtype),
                 svtype, length, Collections.singletonList("pesr"), Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyMap());
     }
@@ -372,13 +377,21 @@ public class SVTestUtils {
 
     // Note strands and length may not be set properly
     public static SVCallRecord newCallRecordWithIntervalAndType(final int start, final int end, final StructuralVariantType svtype) {
-        return new SVCallRecord("", "chr1", start, true, "chr1", end, false,
+        return new SVCallRecord("", "chr1", start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
                 svtype, end - start + 1, Collections.singletonList("pesr"), Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyMap());
     }
 
-    public static SVCallRecord newCallRecordWithStrands(final boolean strandA, final boolean strandB) {
-        return new SVCallRecord("", "chr1", 1000, strandA, "chr1", 1999, strandB, StructuralVariantType.DEL, 1000,
+    public static SVCallRecord newBndCallRecordWithStrands(final boolean strandA, final boolean strandB) {
+        return new SVCallRecord("", "chr1", 1000, strandA, "chr1", 1999, strandB, StructuralVariantType.BND, 1000,
+                Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap());
+    }
+
+    public static SVCallRecord newCnvCallRecordWithStrands(final Boolean strandA, final Boolean strandB) {
+        return new SVCallRecord("", "chr1", 1000, strandA, "chr1", 1999, strandB, StructuralVariantType.CNV, 1000,
                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
@@ -386,7 +399,15 @@ public class SVTestUtils {
     }
 
     public static SVCallRecord newCallRecordWithCoordinates(final String id, final String chrA, final int posA, final String chrB, final int posB) {
-        return new SVCallRecord(id, chrA, posA, true, chrB, posB, false, StructuralVariantType.DEL, chrA.equals(chrB) ? posB - posA + 1 : -1,
+        return new SVCallRecord(id, chrA, posA, true, chrB, posB, false, StructuralVariantType.BND, chrA.equals(chrB) ? posB - posA + 1 : -1,
+                Collections.singletonList("peser"),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap());
+    }
+
+    public static SVCallRecord newCallRecordWithCoordinatesAndType(final String id, final String chrA, final int posA, final String chrB, final int posB, final StructuralVariantType type) {
+        return new SVCallRecord(id, chrA, posA, true, chrB, posB, false, type, chrA.equals(chrB) ? posB - posA + 1 : -1,
                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
@@ -401,7 +422,7 @@ public class SVTestUtils {
                 Collections.emptyMap());
     }
 
-    public static SVCallRecord newCallRecordInsertionWithLength(final int length) {
+    public static SVCallRecord newCallRecordInsertionWithLength(final Integer length) {
         return new SVCallRecord("", "chr1", 1000, true, "chr1", 1000, false, StructuralVariantType.INS, length,
                 Collections.singletonList("pesr"),
                 Collections.emptyList(),
@@ -411,7 +432,7 @@ public class SVTestUtils {
 
     public static VariantContext newVariantContext(final String id, final String chrA, final int posA,
                                                    final int end, final List<Allele> alleles,
-                                                   final List<Genotype> genotypes, final int svlen,
+                                                   final List<Genotype> genotypes, final Integer svlen,
                                                    final String strands, final StructuralVariantType svtype,
                                                    final List<String> algorithms, final String chr2, final Integer end2,
                                                    final Map<String, Object> extendedAttributes) {
@@ -434,5 +455,23 @@ public class SVTestUtils {
                 .genotypes(genotypes)
                 .attributes(attributes)
                 .make();
+    }
+
+    public static Boolean getValidTestStrandA(final StructuralVariantType type) {
+        if (type == StructuralVariantType.DUP) {
+            return Boolean.FALSE;
+        } else if (type == StructuralVariantType.CNV) {
+            return null;
+        }
+        return Boolean.TRUE;
+    }
+
+    public static Boolean getValidTestStrandB(final StructuralVariantType type) {
+        if (type == StructuralVariantType.DUP) {
+            return Boolean.TRUE;
+        } else if (type == StructuralVariantType.CNV) {
+            return null;
+        }
+        return Boolean.FALSE;
     }
 }

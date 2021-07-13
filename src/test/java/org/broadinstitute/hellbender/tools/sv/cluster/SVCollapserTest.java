@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
@@ -21,14 +22,58 @@ import java.util.stream.IntStream;
 
 public class SVCollapserTest {
 
-    private static final CanonicalSVCollapser collapser = new CanonicalSVCollapser(SVTestUtils.ref, CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END);
-    private static final CanonicalSVCollapser collapserMinMax = new CanonicalSVCollapser(SVTestUtils.ref, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END);
-    private static final CanonicalSVCollapser collapserMaxMin = new CanonicalSVCollapser(SVTestUtils.ref, CanonicalSVCollapser.BreakpointSummaryStrategy.MAX_START_MIN_END);
-    private static final CanonicalSVCollapser collapserMean = new CanonicalSVCollapser(SVTestUtils.ref, CanonicalSVCollapser.BreakpointSummaryStrategy.MEAN_START_MEAN_END);
+    private static final CanonicalSVCollapser collapser = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+    private static final CanonicalSVCollapser collapserMinMax = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END,
+            CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+    private static final CanonicalSVCollapser collapserMaxMin = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MAX_START_MIN_END,
+            CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+    private static final CanonicalSVCollapser collapserMean = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEAN_START_MEAN_END,
+            CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+    private static final CanonicalSVCollapser collapserSpecificAltAllele = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.MOST_SPECIFIC_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+
+    private static final CanonicalSVCollapser collapserInsertionMean = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEAN);
+    private static final CanonicalSVCollapser collapserInsertionMin = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.InsertionLengthSummaryStrategy.MIN);
+    private static final CanonicalSVCollapser collapserInsertionMax = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.InsertionLengthSummaryStrategy.MAX);
+    private static final CanonicalSVCollapser collapserInsertionUndefined = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
+            CanonicalSVCollapser.InsertionLengthSummaryStrategy.UNDEFINED);
+
     private static final CanonicalSVCollapser.AlleleCollectionCollapserComparator alleleComparator = new CanonicalSVCollapser.AlleleCollectionCollapserComparator();
 
     private static final Allele MEI_INSERTION_ALLELE = Allele.create("<INS:MEI>");
-    private static final Allele SVA_INSERTION_ALLELE = Allele.create("<INS:SVA>");
+    private static final Allele SVA_INSERTION_ALLELE = Allele.create("<INS:MEI:SVA>");
+    private static final Allele LINE_INSERTION_ALLELE = Allele.create("<INS:MEI:LINE>");
 
     @DataProvider(name = "ploidyTestData")
     public Object[][] ploidyTestData() {
@@ -64,50 +109,57 @@ public class SVCollapserTest {
         Assert.assertEquals(collapser.collapseRefAlleles("chr1", pos), result);
     }
 
-    @DataProvider(name = "getSymbolicAlleleBaseSymbolTestData")
-    public Object[][] getSymbolicAlleleBaseSymbolTestData() {
+    @DataProvider(name = "getSymbolicAlleleSymbolsTestData")
+    public Object[][] getSymbolicAlleleSymbolsTestData() {
         return new Object[][]{
-                {Allele.create("<DUP>"), "DUP"},
-                {Allele.create("<DUP:TANDEM>"), "DUP"},
-                {Allele.create("<INS:MEI:LINE>"), "INS"},
+                {Allele.create("<DUP>"), new String[] {"DUP"}},
+                {Allele.create("<DUP:TANDEM>"), new String[] {"DUP", "TANDEM"}},
+                {Allele.create("<INS:MEI:LINE>"), new String[] {"INS", "MEI", "LINE"}}
         };
     }
 
-    @Test(dataProvider= "getSymbolicAlleleBaseSymbolTestData")
-    public void getSymbolicAlleleBaseSymbolTest(final Allele allele, final String result) {
-        Assert.assertEquals(CanonicalSVCollapser.getSymbolicAlleleBaseSymbol(allele), result);
+    @Test(dataProvider= "getSymbolicAlleleSymbolsTestData")
+    public void getSymbolicAlleleSymbolsTest(final Allele allele, final String[] result) {
+        final String[] test = CanonicalSVCollapser.getSymbolicAlleleSymbols(allele);
+        Assert.assertEquals(test, result);
     }
 
     @DataProvider(name = "collapseAltAllelesTestData")
     public Object[][] collapseAltAllelesTestData() {
         return new Object[][]{
-                {Collections.singletonList(Collections.emptyList()), StructuralVariantType.DEL, Collections.emptyList()},
-                {Collections.singletonList(Collections.singletonList(Allele.REF_N)), StructuralVariantType.DEL, Collections.emptyList()},
-                {Collections.singletonList(Collections.singletonList(Allele.REF_A)), StructuralVariantType.DEL, Collections.emptyList()},
-                {Collections.singletonList(Collections.singletonList(Allele.NO_CALL)), StructuralVariantType.DEL, Collections.emptyList()},
-                {Collections.singletonList(Collections.singletonList(Allele.ALT_A)), StructuralVariantType.INS, Collections.singletonList(Allele.ALT_A)},
-                {Collections.singletonList(Collections.singletonList(Allele.SV_SIMPLE_DEL)), StructuralVariantType.DEL, Collections.singletonList(Allele.SV_SIMPLE_DEL)},
-                {Lists.newArrayList(Collections.singletonList(Allele.REF_N), Collections.singletonList(Allele.SV_SIMPLE_DEL)), StructuralVariantType.DEL, Collections.singletonList(Allele.SV_SIMPLE_DEL)},
-                {Lists.newArrayList(Lists.newArrayList(Allele.REF_N, Allele.REF_N), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)), StructuralVariantType.DEL, Collections.singletonList(Allele.SV_SIMPLE_DEL)},
-                {Lists.newArrayList(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)), StructuralVariantType.CNV, Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP)},
-                {Lists.newArrayList(Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(MEI_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(MEI_INSERTION_ALLELE)},
-                {Lists.newArrayList(Collections.singletonList(Allele.SV_SIMPLE_INS), Collections.singletonList(MEI_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(MEI_INSERTION_ALLELE)},
-                {Lists.newArrayList(Collections.singletonList(Allele.SV_SIMPLE_INS), Collections.singletonList(MEI_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(MEI_INSERTION_ALLELE)},
-                {Lists.newArrayList(Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(SVA_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(Allele.SV_SIMPLE_INS)},
+                {Collections.singletonList(Collections.emptyList()), StructuralVariantType.DEL, Collections.emptyList(), Collections.emptyList()},
+                {Collections.singletonList(Collections.singletonList(Allele.REF_N)), StructuralVariantType.DEL, Collections.emptyList(), Collections.emptyList()},
+                {Collections.singletonList(Collections.singletonList(Allele.REF_A)), StructuralVariantType.DEL, Collections.emptyList(), Collections.emptyList()},
+                {Collections.singletonList(Collections.singletonList(Allele.NO_CALL)), StructuralVariantType.DEL, Collections.emptyList(), Collections.emptyList()},
+                {Collections.singletonList(Collections.singletonList(Allele.ALT_A)), StructuralVariantType.INS, Collections.singletonList(Allele.ALT_A), Collections.singletonList(Allele.ALT_A)},
+                {Collections.singletonList(Collections.singletonList(Allele.SV_SIMPLE_DEL)), StructuralVariantType.DEL, Collections.singletonList(Allele.SV_SIMPLE_DEL), Collections.singletonList(Allele.SV_SIMPLE_DEL)},
+                {Lists.newArrayList(Collections.singletonList(Allele.REF_N), Collections.singletonList(Allele.SV_SIMPLE_DEL)), StructuralVariantType.DEL, Collections.singletonList(Allele.SV_SIMPLE_DEL), Collections.singletonList(Allele.SV_SIMPLE_DEL)},
+                {Lists.newArrayList(Lists.newArrayList(Allele.REF_N, Allele.REF_N), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)), StructuralVariantType.DEL, Collections.singletonList(Allele.SV_SIMPLE_DEL), Collections.singletonList(Allele.SV_SIMPLE_DEL)},
+                {Lists.newArrayList(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)), StructuralVariantType.CNV, Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP), Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP)},
+                {Lists.newArrayList(Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(MEI_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(MEI_INSERTION_ALLELE)},
+                {Lists.newArrayList(Collections.singletonList(Allele.SV_SIMPLE_INS), Collections.singletonList(MEI_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(Allele.SV_SIMPLE_INS), Collections.singletonList(MEI_INSERTION_ALLELE)},
+                {Lists.newArrayList(Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(SVA_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(SVA_INSERTION_ALLELE)},
+                {Lists.newArrayList(Collections.singletonList(LINE_INSERTION_ALLELE), Collections.singletonList(SVA_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(MEI_INSERTION_ALLELE)},
         };
     }
 
     @Test(dataProvider= "collapseAltAllelesTestData")
     public void collapseAltAllelesTest(final List<List<Allele>> recordGenotypeAlleles,
                                        final StructuralVariantType svtype,
-                                       final List<Allele> result) {
+                                       final List<Allele> resultCommon,
+                                       final List<Allele> resultSpecific) {
         final List<Allele> variantAlleles = recordGenotypeAlleles.stream().flatMap(List::stream).distinct().collect(Collectors.toList());
         final List<SVCallRecord> records = recordGenotypeAlleles.stream()
                 .map(a -> SVTestUtils.newCallRecordWithAlleles(a, variantAlleles, svtype))
                 .collect(Collectors.toList());
-        final List<Allele> sortedTest = SVCallRecordUtils.sortAlleles(collapser.collapseAltAlleles(records, svtype));
-        final List<Allele> sortedExpected = SVCallRecordUtils.sortAlleles(result);
-        Assert.assertEquals(sortedTest, sortedExpected);
+
+        final List<Allele> sortedTestCommon = SVCallRecordUtils.sortAlleles(collapser.collapseAltAlleles(records, svtype));
+        final List<Allele> sortedExpectedCommon = SVCallRecordUtils.sortAlleles(resultCommon);
+        Assert.assertEquals(sortedTestCommon, sortedExpectedCommon);
+
+        final List<Allele> sortedTestSpecific = SVCallRecordUtils.sortAlleles(collapserSpecificAltAllele.collapseAltAlleles(records, svtype));
+        final List<Allele> sortedExpectedSpecific = SVCallRecordUtils.sortAlleles(resultSpecific);
+        Assert.assertEquals(sortedTestSpecific, sortedExpectedSpecific);
     }
 
     @DataProvider(name = "collapseSampleAllelesTestData")
@@ -236,7 +288,7 @@ public class SVCollapserTest {
                                           final List<Allele> sampleAltAlleles,
                                           final List<Allele> result) {
         final Collection<Genotype> genotypes = alleles.stream().map(a -> new GenotypeBuilder().alleles(a).make()).collect(Collectors.toList());
-        final List<Allele> sortedTest = SVCallRecordUtils.sortAlleles(collapser.collapseSampleAlleles(genotypes, Allele.REF_N, sampleAltAlleles));
+        final List<Allele> sortedTest = SVCallRecordUtils.sortAlleles(collapser.collapseSampleGenotypeAlleles(genotypes, Allele.REF_N, sampleAltAlleles));
         final List<Allele> sortedResult = SVCallRecordUtils.sortAlleles(result);
         Assert.assertEquals(sortedTest, sortedResult);
     }
@@ -378,7 +430,7 @@ public class SVCollapserTest {
                         1,
                         1,
                         StructuralVariantType.INS,
-                        350
+                        300
                 },
                 {
                         new int[]{300, 400, 500},
@@ -406,6 +458,84 @@ public class SVCollapserTest {
                                    final int newStart, final int newEnd, final StructuralVariantType newType, final int expectedLength) {
         final List<SVCallRecord> records = IntStream.range(0, lengths.length).mapToObj(i -> SVTestUtils.newCallRecordWithLengthAndTypeAndChrom2(lengths[i], svtypes[i], chrom2[i])).collect(Collectors.toList());
         Assert.assertEquals(collapser.collapseLength(records, newStart, newEnd, newType), expectedLength);
+    }
+
+    @DataProvider(name = "collapseInsertionLengthTestData")
+    public Object[][] collapseInsertionLengthTestData() {
+        return new Object[][]{
+                {
+                        new Integer[]{},
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                },
+                {
+                        new Integer[]{null},
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                },
+                {
+                        new Integer[]{100},
+                        100,
+                        100,
+                        100,
+                        100,
+                        100
+                },
+                {
+                        new Integer[]{null, 100},
+                        100,
+                        100,
+                        100,
+                        100,
+                        100
+                },
+                {
+                        new Integer[]{100, null},
+                        100,
+                        100,
+                        100,
+                        100,
+                        100
+                },
+                {
+                        new Integer[]{200, 100},
+                        100,
+                        150,
+                        100,
+                        200,
+                        null
+                },
+                {
+                        new Integer[]{200, 100, 400},
+                        200,
+                        234,
+                        100,
+                        400,
+                        null
+                }
+        };
+    }
+
+    @Test(dataProvider= "collapseInsertionLengthTestData")
+    public void collapseInsertionLengthTest(final Integer[] lengths,
+                                            final Integer expectedMedian,
+                                            final Integer expectedMean,
+                                            final Integer expectedMin,
+                                            final Integer expectedMax,
+                                            final Integer expectedUndefined) {
+        final List<SVCallRecord> records = IntStream.range(0, lengths.length).mapToObj(i -> SVTestUtils.newCallRecordWithLengthAndTypeAndChrom2(lengths[i], StructuralVariantType.INS, "chr1")).collect(Collectors.toList());
+        Assert.assertEquals(collapser.collapseInsertionLength(records), expectedMedian);
+        Assert.assertEquals(collapserInsertionMean.collapseInsertionLength(records), expectedMean);
+        Assert.assertEquals(collapserInsertionMin.collapseInsertionLength(records), expectedMin);
+        Assert.assertEquals(collapserInsertionMax.collapseInsertionLength(records), expectedMax);
+        Assert.assertEquals(collapserInsertionUndefined.collapseInsertionLength(records), expectedUndefined);
+
     }
 
     @DataProvider(name = "collapseIdsTestData")
@@ -487,7 +617,7 @@ public class SVCollapserTest {
     @Test(dataProvider= "getMostPreciseCallsTestData")
     public void getMostPreciseCallsTest(final String[] ids, final List<List<String>> algorithms, final Set<String> expectedIds) {
         final List<SVCallRecord> records = IntStream.range(0, ids.length).mapToObj(i -> SVTestUtils.newDeletionCallRecordWithIdAndAlgorithms(ids[i], algorithms.get(i))).collect(Collectors.toList());
-        final List<String> resultIds = collapser.getMostPreciseCalls(records).stream().map(SVCallRecord::getId).collect(Collectors.toList());
+        final List<String> resultIds = collapser.getRecordsWithMostPreciseBreakpoints(records).stream().map(SVCallRecord::getId).collect(Collectors.toList());
         Assert.assertEquals(resultIds.size(), expectedIds.size());
         Assert.assertTrue(expectedIds.containsAll(resultIds));
     }
@@ -510,7 +640,7 @@ public class SVCollapserTest {
                         new int[]{1001, 1011},
                         new int[]{1100, 1110},
                         StructuralVariantType.DEL,
-                        new int[]{1011, 1110},
+                        new int[]{1001, 1100},
                         new int[]{1001, 1110},
                         new int[]{1011, 1100},
                         new int[]{1006, 1105}
@@ -565,19 +695,19 @@ public class SVCollapserTest {
         final List<SVCallRecord> records =  IntStream.range(0, starts.length)
                 .mapToObj(i -> SVTestUtils.newCallRecordWithIntervalAndType(starts[i], ends[i], svtype)).collect(Collectors.toList());
 
-        final Map.Entry<Integer, Integer> resultMedian = collapser.collapseInterval(records);
+        final Pair<Integer, Integer> resultMedian = collapser.collapseInterval(records);
         Assert.assertEquals((int) resultMedian.getKey(), expectedMedian[0]);
         Assert.assertEquals((int) resultMedian.getValue(), expectedMedian[1]);
 
-        final Map.Entry<Integer, Integer> resultMinMax = collapserMinMax.collapseInterval(records);
+        final Pair<Integer, Integer> resultMinMax = collapserMinMax.collapseInterval(records);
         Assert.assertEquals((int) resultMinMax.getKey(), expectedMinMax[0]);
         Assert.assertEquals((int) resultMinMax.getValue(), expectedMinMax[1]);
 
-        final Map.Entry<Integer, Integer> resultMaxMin = collapserMaxMin.collapseInterval(records);
+        final Pair<Integer, Integer> resultMaxMin = collapserMaxMin.collapseInterval(records);
         Assert.assertEquals((int) resultMaxMin.getKey(), expectedMaxMin[0]);
         Assert.assertEquals((int) resultMaxMin.getValue(), expectedMaxMin[1]);
 
-        final Map.Entry<Integer, Integer> resultMean = collapserMean.collapseInterval(records);
+        final Pair<Integer, Integer> resultMean = collapserMean.collapseInterval(records);
         Assert.assertEquals((int) resultMean.getKey(), expectedMean[0]);
         Assert.assertEquals((int) resultMean.getValue(), expectedMean[1]);
     }

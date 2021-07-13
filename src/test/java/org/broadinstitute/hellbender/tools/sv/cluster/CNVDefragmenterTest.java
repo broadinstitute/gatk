@@ -16,7 +16,7 @@ import java.util.Collections;
 
 public class CNVDefragmenterTest {
 
-    private final SAMSequenceDictionary dictionary = SVTestUtils.dict;
+    private final SAMSequenceDictionary dictionary = SVTestUtils.hg38Dict;
     private final CNVLinkage defragmenter = new CNVLinkage(dictionary, 0.5, 0.6);
 
     @Test
@@ -25,19 +25,19 @@ public class CNVDefragmenterTest {
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap());
-        final SVCallRecord duplication = new SVCallRecord("test_dup", "chr1", 1000, false, "chr1", 1999, false, StructuralVariantType.DUP,
+        final SVCallRecord duplication = new SVCallRecord("test_dup", "chr1", 1000, false, "chr1", 1999, true, StructuralVariantType.DUP,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP),
                 Collections.emptyList(), Collections.emptyMap());
         Assert.assertFalse(defragmenter.areClusterable(deletion, duplication), "Different sv types should not cluster");
 
-        final SVCallRecord duplicationNonDepthOnly = new SVCallRecord("test_dup", "chr1", 1000, false, "chr1", 1999, false, StructuralVariantType.DUP,
+        final SVCallRecord duplicationNonDepthOnly = new SVCallRecord("test_dup", "chr1", 1000, false, "chr1", 1999, true, StructuralVariantType.DUP,
                 1000, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, "pesr"),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP),
                 Collections.emptyList(), Collections.emptyMap());
         Assert.assertFalse(defragmenter.areClusterable(duplication, duplicationNonDepthOnly), "Clustered records must be depth-only");
 
-        final SVCallRecord cnv = new SVCallRecord("test_cnv", "chr1", 1000, false, "chr1", 1999, false, StructuralVariantType.CNV,
+        final SVCallRecord cnv = new SVCallRecord("test_cnv", "chr1", 1000, null, "chr1", 1999, null, StructuralVariantType.CNV,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                 Collections.emptyList(), Collections.emptyMap());

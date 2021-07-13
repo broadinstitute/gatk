@@ -53,6 +53,6 @@ public class SVCallRecordUnitTest {
 
     @Test(dataProvider= "testIsCNVData")
     public void testIsCNV(final SVCallRecord record, final boolean expected) {
-        Assert.assertEquals(record.isCNV(), expected);
+        Assert.assertEquals(record.isSimpleCNV(), expected);
     }
 }

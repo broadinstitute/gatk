@@ -39,7 +39,7 @@ public class CNVLinkage extends CanonicalSVLinkage<SVCallRecord> {
     public boolean areClusterable(final SVCallRecord a, final SVCallRecord b) {
         // Only do clustering on depth-only CNVs
         if (!a.isDepthOnly() || !b.isDepthOnly()) return false;
-        if (!a.isCNV() || !b.isCNV()) return false;
+        if (!a.isSimpleCNV() || !b.isSimpleCNV()) return false;
         Utils.validate(a.getContigA().equals(a.getContigB()), "Variant A is a CNV but interchromosomal");
         Utils.validate(b.getContigA().equals(b.getContigB()), "Variant B is a CNV but interchromosomal");
 

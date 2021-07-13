@@ -39,11 +39,6 @@ public interface SVLocatable {
     StructuralVariantType getType();
 
     /**
-     * @return variant size in bp (-1 if undefined)
-     */
-    int getLength();
-
-    /**
      * @return number of bases of reference covered by this interval, or 0 if coordinates on different contigs
      */
     default int getLengthOnReference() {

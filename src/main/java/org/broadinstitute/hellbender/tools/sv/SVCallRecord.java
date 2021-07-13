@@ -1,9 +1,13 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import com.google.common.collect.Lists;
+import htsjdk.samtools.util.CoordMath;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.StructuralVariantType;
+import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -19,32 +23,40 @@ public class SVCallRecord implements SVLocatable {
     public static final String STRAND_PLUS = "+";
     public static final String STRAND_MINUS = "-";
     public static final int UNDEFINED_LENGTH = -1;
+    public static final List<String> INVALID_ATTRIBUTES = Lists.newArrayList(
+            VCFConstants.END_KEY,
+            GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE,
+            GATKSVVCFConstants.CONTIG2_ATTRIBUTE,
+            GATKSVVCFConstants.END2_ATTRIBUTE,
+            GATKSVVCFConstants.SVLEN,
+            GATKSVVCFConstants.STRANDS_ATTRIBUTE
+    );
 
     private final String id;
     private final String contigA;
     private final int positionA;
-    private final boolean strandA;
+    private final Boolean strandA;
     private final String contigB;
     private final int positionB;
-    private final boolean strandB;
+    private final Boolean strandB;
     private final StructuralVariantType type;
-    private int length;
+    private final Integer length;
     private final List<String> algorithms;
     private final List<Allele> alleles;
     private final Allele refAllele;
     private final List<Allele> altAlleles;
     private final GenotypesContext genotypes;
-    private final Map<String,Object> attributes;    // TODO: utilize this to pass through variant attributes
+    private final Map<String,Object> attributes;
 
     public SVCallRecord(final String id,
                         final String contigA,
                         final int positionA,
-                        final boolean strandA,
+                        final Boolean strandA,
                         final String contigB,
                         final int positionB,
-                        final boolean strandB,
+                        final Boolean strandB,
                         final StructuralVariantType type,
-                        final int length,
+                        final Integer length,
                         final List<String> algorithms,
                         final List<Allele> alleles,
                         final List<Genotype> genotypes,
@@ -60,12 +72,9 @@ public class SVCallRecord implements SVLocatable {
         this.id = id;
         this.contigA = contigA;
         this.positionA = positionA;
-        this.strandA = strandA;
         this.contigB = contigB;
         this.positionB = positionB;
-        this.strandB = strandB;
         this.type = type;
-        this.length = length;
         this.algorithms = Collections.unmodifiableList(algorithms);
         this.alleles = Collections.unmodifiableList(alleles);
         this.altAlleles = alleles.stream().filter(allele -> !allele.isNoCall() && !allele.isReference()).collect(Collectors.toList());
@@ -73,29 +82,81 @@ public class SVCallRecord implements SVLocatable {
         Utils.validate(refAllelesList.size() <= 1, "Encountered multiple reference alleles");
         this.refAllele = refAllelesList.isEmpty() ? null : refAllelesList.get(0);
         this.genotypes = GenotypesContext.copy(genotypes).immutable();
-        this.attributes = Collections.unmodifiableMap(attributes);
+        this.attributes = validateAttributes(attributes);
+        this.length = inferLength(type, positionA, positionB, length);
+        final Pair<Boolean, Boolean> strands = inferStrands(type, strandA, strandB);
+        this.strandA = strands.getLeft();
+        this.strandB = strands.getRight();
     }
 
     public SVCallRecord(final String id,
                         final String contigA,
                         final int positionA,
-                        final boolean strandA,
+                        final Boolean strandA,
                         final String contigB,
                         final int positionB,
-                        final boolean strandB,
+                        final Boolean strandB,
                         final StructuralVariantType type,
-                        final int length,
+                        final Integer length,
                         final List<String> algorithms,
                         final List<Allele> alleles,
                         final List<Genotype> genotypes) {
         this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, length, algorithms, alleles, genotypes, Collections.emptyMap());
     }
 
+    private static Map<String, Object> validateAttributes(final Map<String, Object> attributes) {
+        for (final String key : INVALID_ATTRIBUTES) {
+            Utils.validateArg(!attributes.containsKey(key), "Attempted to create record with invalid key: " + key);
+        }
+        return attributes;
+    }
+
+    private static Integer inferLength(final StructuralVariantType type, final int positionA, final int positionB,
+                                       final Integer inputLength) {
+        if (type.equals(StructuralVariantType.CNV) || type.equals(StructuralVariantType.DEL) || type.equals(StructuralVariantType.DUP) || type.equals(StructuralVariantType.INV)) {
+            final int length = CoordMath.getLength(positionA, positionB);
+            if (inputLength != null) {
+                Utils.validateArg(inputLength.intValue() == length, "Input length does not match calculated length");
+            }
+            return length;
+        } else {
+            return inputLength;
+        }
+    }
+
+    private static Pair<Boolean, Boolean> inferStrands(final StructuralVariantType type,
+                                                       final Boolean inputStrandA,
+                                                       final Boolean inputStrandB) {
+        if (type.equals(StructuralVariantType.CNV)) {
+            Utils.validateArg(inputStrandA == null && inputStrandB == null, "Attempted to create CNV with non-null strands");
+            return Pair.of(null, null);
+        } else if (type.equals(StructuralVariantType.DEL) || type.equals(StructuralVariantType.INS)) {
+            if (inputStrandA != null) {
+                Utils.validateArg(inputStrandA.booleanValue() == true, "Attempted to create DEL/INS with negative first strand");
+            }
+            if (inputStrandB != null) {
+                Utils.validateArg(inputStrandB.booleanValue() == false, "Attempted to create DEL/INS with positive second strand");
+            }
+            return Pair.of(Boolean.TRUE, Boolean.FALSE);
+        } else if (type.equals(StructuralVariantType.DUP)) {
+            if (inputStrandA != null) {
+                Utils.validateArg(inputStrandA.booleanValue() == false, "Attempted to create DUP with positive first strand");
+            }
+            if (inputStrandB != null) {
+                Utils.validateArg(inputStrandB.booleanValue() == true, "Attempted to create DUP with negative second strand");
+            }
+            return Pair.of(Boolean.FALSE, Boolean.TRUE);
+        } else {
+            Utils.validateArg(inputStrandA != null && inputStrandB != null, "Cannot create variant of type " + type + " with null strands");
+            return Pair.of(inputStrandA, inputStrandB);
+        }
+    }
+
     /**
      * Gets genotypes with non-ref copy number states for a CNV record, as defined by the CN field
      */
     private Collection<Genotype> getCNVCarrierGenotypesByCopyNumber() {
-        Utils.validate(isCNV(), "Cannot determine carriers of non-CNV using copy number attribute.");
+        Utils.validate(isSimpleCNV(), "Cannot determine carriers of non-CNV using copy number attribute.");
         Utils.validate(altAlleles.size() <= 1,
                 "Carrier samples cannot be determined by copy number for multi-allelic sites. Set sample overlap threshold to 0.");
         if (altAlleles.isEmpty()) {
@@ -162,7 +223,7 @@ public class SVCallRecord implements SVLocatable {
      * neither is available.
      */
     public Set<String> getCarrierSamples() {
-        if (isCNV() && !hasExplicitGenotypes() && hasDefinedCopyNumbers()) {
+        if (isSimpleCNV() && !hasExplicitGenotypes() && hasDefinedCopyNumbers()) {
             return getCarrierSamplesByCopyNumber();
         } else {
             return getCarrierSamplesByGenotype();
@@ -173,7 +234,7 @@ public class SVCallRecord implements SVLocatable {
         return algorithms.size() == 1 && algorithms.get(0).equals(GATKSVVCFConstants.DEPTH_ALGORITHM);
     }
 
-    public boolean isCNV() {
+    public boolean isSimpleCNV() {
         return type == StructuralVariantType.DEL || type == StructuralVariantType.DUP || type == StructuralVariantType.CNV;
     }
 
@@ -205,11 +266,11 @@ public class SVCallRecord implements SVLocatable {
         return positionB;
     }
 
-    public boolean getStrandA() {
+    public Boolean getStrandA() {
         return strandA;
     }
 
-    public boolean getStrandB() {
+    public Boolean getStrandB() {
         return strandB;
     }
 
@@ -218,8 +279,7 @@ public class SVCallRecord implements SVLocatable {
         return type;
     }
 
-    @Override
-    public int getLength() {
+    public Integer getLength() {
         return length;
     }
 

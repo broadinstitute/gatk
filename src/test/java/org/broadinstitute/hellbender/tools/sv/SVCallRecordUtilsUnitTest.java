@@ -38,7 +38,7 @@ public class SVCallRecordUtilsUnitTest {
     private static final Genotype GENOTYPE_BND_1 = new GenotypeBuilder("sample1")
             .alleles(Lists.newArrayList(Allele.REF_N, BND_ALLELE)).make();
 
-    private static final Comparator<SVCallRecord> RECORD_COMPARATOR = SVCallRecordUtils.getCallComparator(SVTestUtils.dict);
+    private static final Comparator<SVCallRecord> RECORD_COMPARATOR = SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict);
 
     @DataProvider(name = "testGetVariantBuilderData")
     public Object[][] testGetVariantBuilderData() {
@@ -96,7 +96,7 @@ public class SVCallRecordUtilsUnitTest {
                 },
                 // INS, undefined length
                 {
-                        new SVCallRecord("var2", "chr1", 1000, true, "chr1", 1000, false, StructuralVariantType.INS, SVCallRecord.UNDEFINED_LENGTH,
+                        new SVCallRecord("var2", "chr1", 1000, true, "chr1", 1000, false, StructuralVariantType.INS, null,
                                 PESR_ALGORITHM,
                                 ALLELES_INS,
                                 Lists.newArrayList(GENOTYPE_INS_1),
@@ -112,7 +112,7 @@ public class SVCallRecordUtilsUnitTest {
                 },
                 // BND
                 {
-                        new SVCallRecord("var3", "chr1", 1000, false, "chr2", 1999, true, StructuralVariantType.BND, SVCallRecord.UNDEFINED_LENGTH,
+                        new SVCallRecord("var3", "chr1", 1000, false, "chr2", 1999, true, StructuralVariantType.BND, null,
                                 PESR_ALGORITHM,
                                 ALLELES_BND,
                                 Lists.newArrayList(GENOTYPE_BND_1),
@@ -210,11 +210,11 @@ public class SVCallRecordUtilsUnitTest {
                 },
                 {
                         SVTestUtils.newCallRecordWithCoordinates("var1", "chr1", 1000, "chr1", 1999),
-                        SVTestUtils.newCallRecordWithCoordinates("var2", "chrX", 1000, "chr1", 1999),
+                        SVTestUtils.newCallRecordWithCoordinatesAndType("var2", "chrX", 1000, "chr1", 1999, StructuralVariantType.BND),
                         -1
                 },
                 {
-                        SVTestUtils.newCallRecordWithCoordinates("var1", "chrX", 1000, "chr1", 1999),
+                        SVTestUtils.newCallRecordWithCoordinatesAndType("var1", "chrX", 1000, "chr1", 1999, StructuralVariantType.BND),
                         SVTestUtils.newCallRecordWithCoordinates("var2", "chr1", 1000, "chr1", 1999),
                         1
                 },
@@ -230,39 +230,44 @@ public class SVCallRecordUtilsUnitTest {
                 },
                 {
                         SVTestUtils.newCallRecordWithCoordinates("var1", "chr1", 1000, "chr1", 1999),
-                        SVTestUtils.newCallRecordWithCoordinates("var2", "chr1", 1000, "chrX", 1999),
+                        SVTestUtils.newCallRecordWithCoordinatesAndType("var2", "chr1", 1000, "chrX", 1999, StructuralVariantType.BND),
                         -1
                 },
                 {
-                        SVTestUtils.newCallRecordWithCoordinates("var1", "chr1", 1000, "chrX", 1999),
+                        SVTestUtils.newCallRecordWithCoordinatesAndType("var1", "chr1", 1000, "chrX", 1999, StructuralVariantType.BND),
                         SVTestUtils.newCallRecordWithCoordinates("var2", "chr1", 1000, "chr1", 1999),
                         1
                 },
                 // Strands
                 {
-                        SVTestUtils.newCallRecordWithStrands(true, false),
-                        SVTestUtils.newCallRecordWithStrands(false, false),
+                        SVTestUtils.newBndCallRecordWithStrands(true, false),
+                        SVTestUtils.newBndCallRecordWithStrands(false, false),
                         Boolean.compare(true, false)
                 },
                 {
-                        SVTestUtils.newCallRecordWithStrands(false, false),
-                        SVTestUtils.newCallRecordWithStrands(true, false),
+                        SVTestUtils.newBndCallRecordWithStrands(false, false),
+                        SVTestUtils.newBndCallRecordWithStrands(true, false),
                         Boolean.compare(false, true)
                 },
                 {
-                        SVTestUtils.newCallRecordWithStrands(true, true),
-                        SVTestUtils.newCallRecordWithStrands(true, false),
+                        SVTestUtils.newBndCallRecordWithStrands(true, true),
+                        SVTestUtils.newBndCallRecordWithStrands(true, false),
                         Boolean.compare(true, false)
                 },
                 {
-                        SVTestUtils.newCallRecordWithStrands(true, false),
-                        SVTestUtils.newCallRecordWithStrands(true, true),
+                        SVTestUtils.newBndCallRecordWithStrands(true, false),
+                        SVTestUtils.newBndCallRecordWithStrands(true, true),
                         Boolean.compare(false, true)
+                },
+                {
+                        SVTestUtils.newCnvCallRecordWithStrands(null, null),
+                        SVTestUtils.newCnvCallRecordWithStrands(null, null),
+                        0
                 },
                 // Length
                 {
-                        SVTestUtils.newCallRecordInsertionWithLength(SVCallRecord.UNDEFINED_LENGTH),
-                        SVTestUtils.newCallRecordInsertionWithLength(SVCallRecord.UNDEFINED_LENGTH),
+                        SVTestUtils.newCallRecordInsertionWithLength(null),
+                        SVTestUtils.newCallRecordInsertionWithLength(null),
                         0
                 },
                 {
@@ -276,13 +281,13 @@ public class SVCallRecordUtilsUnitTest {
                         1
                 },
                 {
-                        SVTestUtils.newCallRecordInsertionWithLength(SVCallRecord.UNDEFINED_LENGTH),
+                        SVTestUtils.newCallRecordInsertionWithLength(null),
                         SVTestUtils.newCallRecordInsertionWithLength(100),
                         -1
                 },
                 {
                         SVTestUtils.newCallRecordInsertionWithLength(100),
-                        SVTestUtils.newCallRecordInsertionWithLength(SVCallRecord.UNDEFINED_LENGTH),
+                        SVTestUtils.newCallRecordInsertionWithLength(null),
                         1
                 },
                 // SV type
@@ -331,8 +336,8 @@ public class SVCallRecordUtilsUnitTest {
         Assert.assertNotNull(bnd2);
         Assert.assertEquals(bnd1.getType(), StructuralVariantType.BND);
         Assert.assertEquals(bnd2.getType(), StructuralVariantType.BND);
-        Assert.assertEquals(bnd1.getLength(), SVCallRecord.UNDEFINED_LENGTH);
-        Assert.assertEquals(bnd2.getLength(), SVCallRecord.UNDEFINED_LENGTH);
+        Assert.assertNull(bnd1.getLength());
+        Assert.assertNull(bnd2.getLength());
         Assert.assertEquals(bnd1.getStrandA(), bnd1.getStrandB());
         Assert.assertEquals(bnd2.getStrandA(), bnd2.getStrandB());
         Assert.assertNotEquals(bnd1.getStrandA(), bnd2.getStrandA());
@@ -420,11 +425,11 @@ public class SVCallRecordUtilsUnitTest {
                 },
                 {
                         SVTestUtils.newVariantContext("var3", "chr1", 1000, 1000,
-                                ALLELES_BND, Collections.singletonList(GENOTYPE_BND_1), SVCallRecord.UNDEFINED_LENGTH, "++",
+                                ALLELES_BND, Collections.singletonList(GENOTYPE_BND_1), null, "++",
                                 StructuralVariantType.BND, Collections.singletonList("pesr"),
                                 "chrX", 2000, Collections.emptyMap()),
                         false,
-                        new SVCallRecord("var3", "chr1", 1000, true, "chrX", 2000, true, StructuralVariantType.BND, SVCallRecord.UNDEFINED_LENGTH,
+                        new SVCallRecord("var3", "chr1", 1000, true, "chrX", 2000, true, StructuralVariantType.BND, null,
                                 Collections.singletonList("pesr"), ALLELES_BND, Collections.singletonList(GENOTYPE_BND_1),
                                 Collections.emptyMap())
                 },

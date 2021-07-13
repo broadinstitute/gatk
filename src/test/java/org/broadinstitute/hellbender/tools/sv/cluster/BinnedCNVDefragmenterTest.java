@@ -14,8 +14,8 @@ public class BinnedCNVDefragmenterTest {
 
     private static final double paddingFraction = 0.5;
     private static final double sampleOverlap = 0.9;
-    private static final SVClusterEngine<SVCallRecord> defaultDefragmenter = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.dict, SVTestUtils.ref, paddingFraction, sampleOverlap, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
-    private static final SVClusterEngine<SVCallRecord> binnedDefragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.dict, SVTestUtils.ref, paddingFraction, 0, SVTestUtils.targetIntervals, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
+    private static final SVClusterEngine<SVCallRecord> defaultDefragmenter = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, paddingFraction, sampleOverlap, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
+    private static final SVClusterEngine<SVCallRecord> binnedDefragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, paddingFraction, 0, SVTestUtils.targetIntervals, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
 
     @Test
     public void testCollapser() {
@@ -79,7 +79,7 @@ public class BinnedCNVDefragmenterTest {
     @Test
     public void testAdd() {
         //single-sample merge case, ignoring sample sets
-        final SVClusterEngine<SVCallRecord> temp1 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.dict, SVTestUtils.ref, paddingFraction, 0.8, SVTestUtils.targetIntervals, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
+        final SVClusterEngine<SVCallRecord> temp1 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, paddingFraction, 0.8, SVTestUtils.targetIntervals, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
         temp1.add(SVTestUtils.call1);
         //force new cluster by adding a non-overlapping event
         temp1.add(SVTestUtils.call3);
@@ -88,7 +88,7 @@ public class BinnedCNVDefragmenterTest {
         SVTestUtils.assertEqualsExceptMembership(SVTestUtils.call1, output1.get(0));
         SVTestUtils.assertEqualsExceptMembership(SVTestUtils.call3, output1.get(1));
 
-        final SVClusterEngine<SVCallRecord> temp2 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.dict, SVTestUtils.ref, paddingFraction, 0.8, SVTestUtils.targetIntervals, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
+        final SVClusterEngine<SVCallRecord> temp2 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, paddingFraction, 0.8, SVTestUtils.targetIntervals, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
         temp2.add(SVTestUtils.call1);
         temp2.add(SVTestUtils.call2);  //should overlap after padding
         //force new cluster by adding a call on another contig
@@ -100,7 +100,7 @@ public class BinnedCNVDefragmenterTest {
         SVTestUtils.assertEqualsExceptMembership(output2.get(1), SVTestUtils.call4_chr10);
 
         //cohort case, checking sample set overlap
-        final SVClusterEngine<SVCallRecord> temp3 = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.dict, SVTestUtils.ref, CNVLinkage.DEFAULT_PADDING_FRACTION, CNVLinkage.DEFAULT_SAMPLE_OVERLAP, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
+        final SVClusterEngine<SVCallRecord> temp3 = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, CNVLinkage.DEFAULT_PADDING_FRACTION, CNVLinkage.DEFAULT_SAMPLE_OVERLAP, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
         temp3.add(SVTestUtils.call1);
         temp3.add(SVTestUtils.sameBoundsSampleMismatch);
         final List<SVCallRecord> output3 = temp3.getOutput();

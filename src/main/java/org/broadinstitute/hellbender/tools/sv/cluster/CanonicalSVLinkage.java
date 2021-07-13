@@ -89,7 +89,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> implements SVClusterLink
             if (!enableCNV) {
                 // CNV clustering disabled, so no type mixing
                 return false;
-            } else if (!(a.isCNV() && b.isCNV())) {
+            } else if (!(a.isSimpleCNV() && b.isSimpleCNV())) {
                 // CNV clustering enabled, but at least one was not a CNV type
                 return false;
             }
