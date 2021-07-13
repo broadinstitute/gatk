@@ -592,7 +592,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, false, VCpriors);
         }
 
-        final AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
+        final AssemblyResultSet assemblyResult = trimmingResult.isVariationPresent() ? untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion()) : untrimmedAssemblyResult;
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
