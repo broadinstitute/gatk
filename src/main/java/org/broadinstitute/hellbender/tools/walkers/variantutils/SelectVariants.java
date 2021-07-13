@@ -118,6 +118,8 @@ public final class SelectVariants extends VariantWalker {
     private static final int MAX_NOCALL_NUMBER_DEFAULT_VALUE = Integer.MAX_VALUE;
     private static final double MAX_NOCALL_FRACTION_DEFAULT_VALUE = 1.0;
 
+    private static final List<String> GVCF_EXTENSIONS = Arrays.asList(".g.vcf", ".g.vcf.gz", ".gvcf", ".gvcf.gz");
+
     /**
      * A site is considered discordant if there exists some sample in the variant track that has a non-reference
      * genotype and either the site isn't present in this track, the sample isn't present in this track, or the
@@ -317,6 +319,16 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName="select-type-to-exclude", shortName="xl-select-type",
                     doc="Do not select certain type of variants from the input file", optional=true)
     private List<VariantContext.Type> typesToExclude = new ArrayList<>();
+
+    /**
+     * When this argument is set, NON_REF alleles will not be considered for the variant type determination. This is
+     * necessary because every variant in a GVCF file would otherwise be assigned the type MIXED, which makes it
+     * impossible to filter for e.g. SNPs. If only NON_REF alleles are present at a given site it will still be
+     * considered SYMBOLIC.
+     */
+    @Argument(fullName="ignore-non-ref-in-types",
+                    doc="If set, NON_REF alleles will be ignored for variant type determination, which is required for filtering GVCF files by type", optional=true)
+    private boolean ignoreNonRefInTypes = false;
 
     /**
      * List of IDs (or a .list file containing ids) to select. The tool will only select variants whose ID
@@ -540,6 +552,11 @@ public final class SelectVariants extends VariantWalker {
             }
         }
 
+        if (!ignoreNonRefInTypes && (!typesToInclude.isEmpty() || !typesToExclude.isEmpty()) &&
+                GVCF_EXTENSIONS.stream().anyMatch(extension -> getDrivingVariantsFeatureInput().hasExtension(extension))) {
+            logger.warn("Filtering by variant type and GVCF input detected, but --ignore-non-ref-in-types argument is not set. Variant types will likely not be filtered correctly. Consider setting this argument for meaningful results.");
+        }
+
         final Path outPath = vcfOutput.toPath();
         vcfWriter = createVCFWriter(outPath);
         vcfWriter.writeHeader(new VCFHeader(actualLines, samples));
@@ -715,7 +732,7 @@ public final class SelectVariants extends VariantWalker {
         CountingVariantFilter compositeFilter = new CountingVariantFilter(VariantFilterLibrary.ALLOW_ALL_VARIANTS);
 
         if (!selectedTypes.isEmpty()) {
-            compositeFilter = compositeFilter.and(new CountingVariantFilter(new VariantTypesVariantFilter(selectedTypes)));
+            compositeFilter = compositeFilter.and(new CountingVariantFilter(new VariantTypesVariantFilter(selectedTypes, ignoreNonRefInTypes)));
         }
 
         if (rsIDsToKeep != null && !rsIDsToKeep.isEmpty()) {

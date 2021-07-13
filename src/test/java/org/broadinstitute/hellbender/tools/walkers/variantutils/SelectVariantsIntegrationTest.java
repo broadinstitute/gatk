@@ -290,6 +290,21 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     /**
+     * Test including variant types in GVCF files.
+     */
+    @Test
+    public void testVariantTypeSelectionForGVCF() throws IOException {
+        final String testFile = getToolTestDataDir() + "gvcfExample.g.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" --select-type-to-include SNP --ignore-non-ref-in-types ",testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_VariantTypeSelectionForGVCF.vcf")
+        );
+
+        spec.executeTest("testVariantTypeSelectionForGVCF--" + testFile, this);
+    }
+
+    /**
      * Test excluding indels that are larger than the specified size
      */
     @Test

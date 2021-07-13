@@ -12,15 +12,21 @@ public final class VariantTypesVariantFilter implements VariantFilter {
     private static final long serialVersionUID = 1L;
 
     private final Set<VariantContext.Type> sampleTypes;
+    private final boolean ignoreNonRef;
 
     public VariantTypesVariantFilter(Set<VariantContext.Type> includeTypes) {
+        this(includeTypes, false);
+    }
+
+    public VariantTypesVariantFilter(Set<VariantContext.Type> includeTypes, final boolean ignoreNonRefAlleles) {
         Utils.nonNull(includeTypes);
         sampleTypes = includeTypes;
+        ignoreNonRef = ignoreNonRefAlleles;
     }
 
     @Override
     public boolean test(final VariantContext vc) {
-        final VariantContext.Type vcSampleType = vc.getType();
+        final VariantContext.Type vcSampleType = vc.getType(ignoreNonRef);
         return sampleTypes.contains(vcSampleType);
     }
 }
