@@ -390,10 +390,10 @@ public final class FeatureManager implements AutoCloseable {
     public <T extends Feature> Iterator<T> getFeatureIterator( final FeatureInput<T> featureDescriptor,
                                                                final List<SimpleInterval> intervals ) {
         final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
-        if ( intervals != null ) {
-            dataSource.setIntervalsForTraversal(intervals);
-        }
-        return dataSource.iterator();
+        dataSource.setIntervalsForTraversal(intervals);
+        final Iterator<T> itr = dataSource.iterator();
+        dataSource.setIntervalsForTraversal(null);
+        return itr;
     }
 
     /**
