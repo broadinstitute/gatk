@@ -272,7 +272,7 @@ task BigQueryLoadJson {
        BQ_SHOW_RC=$?
        set -e
 
-       if [ $BQ_SHOW_RC -ne 0 ];
+       if [ $BQ_SHOW_RC -ne 0 ]; then
          echo "Creating a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
          bq --location=US mk --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{vt_schema}
        fi
@@ -321,7 +321,7 @@ task BigQueryLoadJson {
        # We want the vat creation query to overwrite the destination table because if new data has been put into the pre-vat tables
        # and this workflow has been run an additional time, we dont want duplicates being appended from the original run
 
-       bq query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --force=true --project_id=~{project_id} \
+       bq query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --replace --project_id=~{project_id} \
         'SELECT
               v.vid,
               v.transcript,
