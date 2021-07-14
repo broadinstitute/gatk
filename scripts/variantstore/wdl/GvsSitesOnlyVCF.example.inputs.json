@@ -10,5 +10,6 @@
   "GvsSitesOnlyVCF.output_path": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/output/jul13/",
   "GvsSitesOnlyVCF.table_suffix": "jul13",
   "GvsSitesOnlyVCF.project_id": "spec-ops-aou",
-  "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing"
+  "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing",
+  "GvsSitesOnlyVCF.AnAcAf_annotations_template": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/custom_annotations_template.tsv",
 }
