@@ -183,6 +183,9 @@ public class ContaminationModel {
                 PileupSummary.writeToFile("sample", homs, homSitesOutput.get());
             }
 
+            if (contaminatedSitesOutput.isPresent()){
+                writeContaminatedSites(homs, contaminatedSitesOutput.get());
+            }
             return myContamination.calculateContaminationFromHoms(homs);
         }
 
@@ -215,34 +218,27 @@ public class ContaminationModel {
             }
 
             if (contaminatedSitesOutput.isPresent()){
-                List<PileupSummary> contaminatedSites = homs.stream().filter(ps -> ps.getRefCount() > 0)
-                        .collect(Collectors.toList());
-
-                boolean writeIntervalBeta = false; // Can't write an interval file without a header
-                if (writeIntervalBeta){
-//                    final SimpleAnnotatedIntervalWriter writer = new SimpleAnnotatedIntervalWriter(contaminatedSitesOutput.get());
-//
-//                    // writer.writeHeader(header); sato: usually no file with a header is provided...
-//                    for (PileupSummary contaminatedSite : contaminatedSites){
-//                        final AnnotatedInterval interval = new AnnotatedInterval(new SimpleInterval(contaminatedSite), new TreeMap());
-//                        writer.add(interval);
-//                    }
-//                    writer.close();
-                } else {
-                    try (PrintWriter pw = new PrintWriter(contaminatedSitesOutput.get())){
-                        for (PileupSummary contaminatedSite : contaminatedSites){
-                            pw.println(String.format("%s\t%s\t%s", contaminatedSite.getContig(),
-                                    contaminatedSite.getStart() - 1, contaminatedSite.getStart())); // -1 to convert from 1-based vcf to 0-based bed
-                        }
-                    } catch (IOException e){
-                        throw new UserException("Couldn't write contaminated sites", e);
-                    }
-                    // PileupSummary.writeToFile("sample", contaminatedSites,  contaminatedSitesOutput.get());
-                }
+                writeContaminatedSites(homs, contaminatedSitesOutput.get());
             }
         }
 
         return Pair.of(Math.min(contamination, 1.0), stdError);
+    }
+
+    private void writeContaminatedSites(List<PileupSummary> homs, File output){
+        List<PileupSummary> contaminatedSites = homs.stream().filter(ps -> ps.getRefCount() > 0)
+                .collect(Collectors.toList());
+
+        // Ideally we would write an interval_list file, but that would require a header but
+        // a PileupSummary does not have a header
+        try (PrintWriter pw = new PrintWriter(output)){
+            for (PileupSummary contaminatedSite : contaminatedSites){
+                pw.println(String.format("%s\t%s\t%s", contaminatedSite.getContig(),
+                        contaminatedSite.getStart() - 1, contaminatedSite.getStart())); // -1 to convert from 1-based vcf to 0-based bed
+            }
+        } catch (IOException e){
+            throw new UserException("Couldn't write contaminated sites", e);
+        }
     }
 
     public void writeMessages(File auxInfoFile, boolean append){
