@@ -16,6 +16,7 @@ workflow GvsSitesOnlyVCF {
 
         String? service_account_json_path
         File? gatk_override
+        File AnAcAf_annotations_template
     }
 
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
@@ -25,6 +26,14 @@ workflow GvsSitesOnlyVCF {
             input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
             service_account_json_path = service_account_json_path,
             output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz",
+            custom_annotations_template = AnAcAf_annotations_template
+        }
+
+        call ExtractAnAcAfFromVCF {
+            input:
+                input_vcf = SitesOnlyVcf.output_vcf,
+                input_vcf_index = SitesOnlyVcf.output_vcf_idx,
+                custom_annotations_template = SitesOnlyVcf.annotations_template
         }
 
         call AnnotateVCF {
@@ -33,7 +42,7 @@ workflow GvsSitesOnlyVCF {
             input_vcf_index = SitesOnlyVcf.output_vcf_idx,
             output_annotated_file_name = "${output_annotated_file_name}_${i}",
             nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = custom_annotations_file
+            custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file
         }
 
        call PrepAnnotationJson {
@@ -44,6 +53,7 @@ workflow GvsSitesOnlyVCF {
            service_account_json_path = service_account_json_path,
        }
     }
+
      call BigQueryLoadJson {
          input:
              nirvana_schema = vat_schema_json_file,
@@ -75,6 +85,7 @@ task SitesOnlyVcf {
         File input_vcf_index
         String? service_account_json_path
         String output_filename
+        File custom_annotations_template
     }
     String output_vcf_idx = basename(output_filename) + ".tbi"
 
@@ -112,6 +123,10 @@ task SitesOnlyVcf {
                 --exclude-filtered \
                 --sites-only-vcf-output \
                 -O ~{output_filename}
+
+
+        gsutil cp ~{custom_annotations_template} .
+
      >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -127,40 +142,33 @@ task SitesOnlyVcf {
     output {
         File output_vcf="~{output_filename}"
         File output_vcf_idx="~{output_vcf_idx}"
+        File annotations_template="~{custom_annotations_template}"
     }
 }
 
-task ExtractACANAF {
+task ExtractAnAcAfFromVCF {
     input {
-        File vcf_bgz_gts
-        File vcf_index
-        String output_filename
+        File input_vcf
+        File input_vcf_index
+        File custom_annotations_template
     }
-    String output_vcf_idx = basename(output_filename) + ".tbi" # or will this be .idx if from .vcf.gz? or ".tbi" if a .vcf
     command <<<
-
         set -e
-        gatk --java-options "-Xmx2048m" \
-            SelectVariants \
-                -V ~{vcf_bgz_gts} \
-                --exclude-filtered \
-                --sites-only-vcf-output \
-                -O ~{output_filename}
-     >>>
+        bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' >> ~{custom_annotations_template}
+    >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "broadinstitute/gatk:4.2.0.0"
-        memory: "3 GB"
-        cpu: "1"
+        docker: "biocontainers/bcftools:v1.9-1-deb_cv1" # TODO lets put bcftools in our custom container please
+        memory: "1 GB"
         preemptible: 3
+        cpu: "1"
         disks: "local-disk 100 HDD"
     }
     # ------------------------------------------------
     # Outputs:
     output {
-        File output_vcf="~{output_filename}"
-        File output_vcf_idx="~{output_vcf_idx}"
+        File annotations_file="~{custom_annotations_template}"
     }
 }
 
@@ -179,16 +187,19 @@ task AnnotateVCF {
     String path = "/Cache/GRCh38/Both"
     String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
-    String custom_annotations_dir = "/CA"
+    String path_custom_annotations = "/CA"
     command <<<
         set -e
         # =======================================
         # Create custom annotations:
         echo "Creating custom annotations"
+
+
         dotnet ~{custom_creation_location} customvar\
-        -r $DATA_SOURCES_FOLDER~{path_reference} \
-        -i ~{custom_annotations_file} \
-        -o ~{custom_annotations_dir}
+             -r $DATA_SOURCES_FOLDER~{path_reference} \
+             -i ~{custom_annotations_file} \
+             -o ~{path_custom_annotations}
+
         # =======================================
         # Handle our data sources:
 
@@ -202,6 +213,7 @@ task AnnotateVCF {
         dotnet ~{nirvana_location} \
              -c $DATA_SOURCES_FOLDER~{path} \
              --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
+             --sd ~{path_custom_annotations} \
              -r $DATA_SOURCES_FOLDER~{path_reference} \
              -i ~{input_vcf} \
              -o ~{output_annotated_file_name}
@@ -237,6 +249,7 @@ task PrepAnnotationJson {
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
+    String output_ant_gcp_path = output_path + 'annotations/'
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -256,6 +269,7 @@ task PrepAnnotationJson {
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
+        gsutil cp ~{annotation_json} '~{output_ant_gcp_path}'
 
      >>>
     # ------------------------------------------------
@@ -436,6 +450,7 @@ task BigQueryLoadJson {
         Boolean done = true
     }
 }
+<<<<<<< HEAD
 
 task BigQuerySmokeTest { # TO BE BROKEN UP AND POTENTIALLY RUN SEPARATELY
     input {
@@ -621,3 +636,5 @@ task BigQuerySmokeTest { # TO BE BROKEN UP AND POTENTIALLY RUN SEPARATELY
         Boolean done = true
     }
 }
+=======
+>>>>>>> 4f13994c8 (add init custom tsvs)
