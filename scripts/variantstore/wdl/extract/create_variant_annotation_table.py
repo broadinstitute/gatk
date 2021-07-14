@@ -186,7 +186,7 @@ def make_positions_json(annotated_json, output_json):
         output_file.write(json_bytes)
       else:
         transcript_lines = variant.get("transcripts")
-        # Collect all the transcript sources and check for if they contain Ensembl <-- this might be a good place for optimization
+        # Collect all the transcript sources and check for if they contain Ensembl
         sources = [transcript.get('source') for transcript in transcript_lines]
         if "Ensembl" in sources:
           for transcript in transcript_lines:
@@ -202,6 +202,7 @@ def make_positions_json(annotated_json, output_json):
           json_bytes = json_str.encode('utf-8')
           output_file.write(json_bytes)
   output_file.close()
+  json_data.close()
 
 def make_genes_json(annotated_json, output_genes_json):
   output_genes_file=gzip.open(output_genes_json, 'w')
@@ -235,11 +236,11 @@ def make_genes_json(annotated_json, output_genes_json):
       json_bytes = json_str.encode('utf-8')
       output_genes_file.write(json_bytes)
   output_genes_file.close()
+  json_data.close()
 
 def make_annotation_jsons(annotated_json, output_json, output_genes_json):
   make_positions_json(annotated_json, output_json)
   # we've already read the whole file once so we have to open it again
-  # TODO: cleanup closing of file handles
   make_genes_json(annotated_json, output_genes_json)
 
 if __name__ == '__main__':

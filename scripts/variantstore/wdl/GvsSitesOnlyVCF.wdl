@@ -8,9 +8,9 @@ workflow GvsSitesOnlyVCF {
         String project_id
         String dataset_name
         File nirvana_data_directory
-        File nirvana_schema_json_file
-        File vat_vt_schema_json_file
-        File vat_genes_schema_json_file
+        File vat_schema_json_file
+        File variant_transcript_schema_json_file
+        File genes_schema_json_file
         String output_path
         String table_suffix
 
@@ -38,16 +38,16 @@ workflow GvsSitesOnlyVCF {
        call PrepAnnotationJson {
          input:
            annotation_json = AnnotateShardedVCF.annotation_json,
-           output_name = "${i}.json.gz",
+           output_file_suffix = "${i}.json.gz",
            output_path = output_path,
            service_account_json = service_account_json,
        }
     }
      call BigQueryLoadJson {
          input:
-             nirvana_schema = nirvana_schema_json_file,
-             vt_schema = vat_vt_schema_json_file,
-             genes_schema = vat_genes_schema_json_file,
+             nirvana_schema = vat_schema_json_file,
+             vt_schema = variant_transcript_schema_json_file,
+             genes_schema = genes_schema_json_file,
              project_id = project_id,
              dataset_name = dataset_name,
              output_path = output_path,
@@ -185,16 +185,15 @@ task AnnotateShardedVCF {
 task PrepAnnotationJson {
     input {
         File annotation_json
-        String output_name
+        String output_file_suffix
         String output_path
         File? service_account_json
     }
 
-    String output_vt_json = "vat_vt_bq_load" + output_name
-    String output_genes_json = "vat_genes_bq_load" + output_name
+    String output_vt_json = "vat_vt_bq_load" + output_file_suffix
+    String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
-    String output_ant_gcp_path = output_path + 'annotations/'
 
     String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
 
