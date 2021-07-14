@@ -189,18 +189,8 @@ task AnnotateVCF {
     String path = "/Cache/GRCh38/Both"
     String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
-    String path_custom_annotations = "/CA"
     command <<<
         set -e
-        # =======================================
-        # Create custom annotations:
-        echo "Creating custom annotations"
-
-
-        dotnet ~{custom_creation_location} customvar\
-             -r $DATA_SOURCES_FOLDER~{path_reference} \
-             -i ~{custom_annotations_file} \
-             -o ~{path_custom_annotations}
 
         # =======================================
         # Handle our data sources:
@@ -212,10 +202,27 @@ task AnnotateVCF {
         DATA_SOURCES_FOLDER="$PWD/datasources_dir"
 
 
+        # =======================================
+        # Create custom annotations:
+        echo "Creating custom annotations"
+        mkdir customannotations_dir
+        CUSTOM_ANNOTATIONS_FOLDER="$PWD/customannotations_dir"
+
+
+        dotnet ~{custom_creation_location} customvar\
+             -r $DATA_SOURCES_FOLDER~{path_reference} \
+             -i ~{custom_annotations_file} \
+             -o $CUSTOM_ANNOTATIONS_FOLDER
+
+
+        # =======================================
+        # Create Nirvana annotations:
+
+
         dotnet ~{nirvana_location} \
              -c $DATA_SOURCES_FOLDER~{path} \
              --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
-             --sd ~{path_custom_annotations} \
+             --sd $CUSTOM_ANNOTATIONS_FOLDER \
              -r $DATA_SOURCES_FOLDER~{path_reference} \
              -i ~{input_vcf} \
              -o ~{output_annotated_file_name}
