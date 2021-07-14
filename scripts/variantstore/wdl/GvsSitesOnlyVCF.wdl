@@ -152,9 +152,11 @@ task ExtractAnAcAfFromVCF {
         File input_vcf_index
         File custom_annotations_template
     }
+    String custom_annotations_file_name = "an_ac_af.tsv"
     command <<<
         set -e
-        bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' >> ~{custom_annotations_template}
+        cp ~{custom_annotations_template} ~{custom_annotations_file_name}
+        bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' >> ~{custom_annotations_file_name}
     >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -168,7 +170,7 @@ task ExtractAnAcAfFromVCF {
     # ------------------------------------------------
     # Outputs:
     output {
-        File annotations_file="~{custom_annotations_template}"
+        File annotations_file="~{custom_annotations_file_name}"
     }
 }
 
