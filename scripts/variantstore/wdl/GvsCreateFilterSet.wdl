@@ -520,7 +520,8 @@ task CreateFilterSetFiles {
     # ------------------------------------------------
     # Run our command:
     command <<<
-        GvsImportGenomes.wdl
+        set -eo pipefail
+
         if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json_path} local.service_account.json
             export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
