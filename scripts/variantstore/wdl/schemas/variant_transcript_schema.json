@@ -72,7 +72,7 @@
    "mode": "Nullable"
  },
  {
-   "description": "Amino acid change type TODO check with Lee about why this json thinks its Repeated not nullable",
+   "description": "Amino acid change type",
    "name": "consequence",
    "type": "String",
    "mode": "Repeated"
@@ -108,27 +108,27 @@
     "mode": "Nullable"
   },
   {
-    "description": "AC TODO -- this needs to be added back and swapped to required -- Lee said this was a string?",
+    "description": "AC",
     "name": "gvs_all_ac",
     "type": "Integer",
-    "mode": "Nullable"
+    "mode": "Required"
   },
   {
-    "description": "AN TODO -- this needs to be added back and swapped to required",
+    "description": "AN",
     "name": "gvs_all_an",
     "type": "Integer",
-    "mode": "Nullable"
+    "mode": "Required"
   },
   {
-    "description": "AF TODO -- this needs to be added back and swapped to required  -- Lee said this was a Float?",
+    "description": "AF",
     "name": "gvs_all_af",
-    "type": "INTEGER",
-    "mode": "Nullable"
+    "type": "Float",
+    "mode": "Required"
   },
   {
     "description": "REVEL",
     "name": "revel",
-    "type": "FLOAT",
+    "type": "Float",
     "mode": "Nullable"
   },
   {
