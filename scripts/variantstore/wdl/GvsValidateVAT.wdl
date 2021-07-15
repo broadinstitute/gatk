@@ -26,6 +26,12 @@ workflow GvsValidateVatTable {
             service_account_json_path = service_account_json_path,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
+
+    String sample_results = "FAIL [SomeStep]: this step failed for reasons."
+
+    output {
+        String validation_results = EnsureVatTableHasVariants.result + "\n" + sample_results
+    }
 }
 
 task EnsureVatTableHasVariants {
@@ -53,9 +59,9 @@ task EnsureVatTableHasVariants {
         # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
         if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
             if [[ $NUMVARS = "0" ]]; then
-                echo "FAIL: The VAT table ~{fq_vat_table} has no variants in it." > validation_results.txt
+                echo "FAIL [EnsureVatTableHasVariants]: The VAT table ~{fq_vat_table} has no variants in it." > validation_results.txt
             else
-                echo "PASS: The VAT table ~{fq_vat_table} has $NUMVARS variants in it." > validation_results.txt
+                echo "PASS [EnsureVatTableHasVariants]: The VAT table ~{fq_vat_table} has $NUMVARS variants in it." > validation_results.txt
             fi
         # otherwise, something is off, so return the output from the bq query call
         else
