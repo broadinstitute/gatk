@@ -14,7 +14,7 @@ workflow GvsSitesOnlyVCF {
         String output_path
         String table_suffix
 
-        File? service_account_json
+        String? service_account_json_path
         File? gatk_override
     }
 
@@ -23,7 +23,7 @@ workflow GvsSitesOnlyVCF {
           input:
             input_vcf = gvs_extract_cohort_filtered_vcfs[i],
             input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
-            service_account_json = service_account_json,
+            service_account_json_path = service_account_json_path,
             output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz",
         }
 
@@ -40,7 +40,7 @@ workflow GvsSitesOnlyVCF {
            annotation_json = AnnotateShardedVCF.annotation_json,
            output_file_suffix = "${i}.json.gz",
            output_path = output_path,
-           service_account_json = service_account_json,
+           service_account_json_path = service_account_json_path,
        }
     }
      call BigQueryLoadJson {
@@ -52,7 +52,7 @@ workflow GvsSitesOnlyVCF {
              dataset_name = dataset_name,
              output_path = output_path,
              table_suffix = table_suffix,
-             service_account_json = service_account_json,
+             service_account_json_path = service_account_json_path,
              prep_jsons_done = PrepAnnotationJson.done
          }
 
@@ -61,7 +61,7 @@ workflow GvsSitesOnlyVCF {
              project_id = project_id,
              dataset_name = dataset_name,
              table_suffix = table_suffix,
-             service_account_json = service_account_json,
+             service_account_json_path = service_account_json_path,
              annotation_jsons = AnnotateShardedVCF.annotation_json,
              load_jsons_done = BigQueryLoadJson.done
          }
@@ -72,14 +72,14 @@ task SitesOnlyVcf {
     input {
         File input_vcf
         File input_vcf_index
-        File? service_account_json
+        String? service_account_json_path
         String output_filename
     }
     String output_vcf_idx = basename(output_filename) + ".tbi"
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String input_vcf_basename = basename(input_vcf)
-    String updated_input_vcf = if (defined(service_account_json)) then input_vcf_basename else input_vcf
+    String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
 
     parameter_meta {
         input_vcf: {
@@ -93,10 +93,11 @@ task SitesOnlyVcf {
         set -e
 
         if [ ~{has_service_account_file} = 'true' ]; then
-            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
 
-            gsutil cp ~{input_vcf} .
+        gsutil cp ~{input_vcf} .
             gsutil cp ~{input_vcf_index} .
         fi
 
@@ -187,7 +188,7 @@ task PrepAnnotationJson {
         File annotation_json
         String output_file_suffix
         String output_path
-        File? service_account_json
+        String? service_account_json_path
     }
 
     String output_vt_json = "vat_vt_bq_load" + output_file_suffix
@@ -195,7 +196,7 @@ task PrepAnnotationJson {
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         set -e
@@ -206,8 +207,9 @@ task PrepAnnotationJson {
           --output_genes_json ~{output_genes_json}
 
         if [ ~{has_service_account_file} = 'true' ]; then
-            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
         fi
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
@@ -245,7 +247,7 @@ task BigQueryLoadJson {
         String dataset_name
         String output_path
         String table_suffix
-        File? service_account_json
+        String? service_account_json_path
         Array[String] prep_jsons_done
     }
 
@@ -257,14 +259,15 @@ task BigQueryLoadJson {
     String vt_path = output_path + 'vt/*'
     String genes_path = output_path + 'genes/*'
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
 
        if [ ~{has_service_account_file} = 'true' ]; then
-           export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-           gcloud auth activate-service-account --key-file='~{service_account_json}'
-           gcloud config set project ~{project_id}
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{project_id}
        fi
 
        set +e
@@ -398,7 +401,7 @@ task BigQuerySmokeTest { # TO BE BROKEN UP AND POTENTIALLY RUN SEPARATELY
         String dataset_name
         Array[File] annotation_jsons
         Boolean load_jsons_done
-        File? service_account_json
+        String? service_account_json_path
         String table_suffix
     }
 
@@ -406,14 +409,15 @@ task BigQuerySmokeTest { # TO BE BROKEN UP AND POTENTIALLY RUN SEPARATELY
 
     String vat_table = "vat_" + table_suffix
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         set +e
 
         if [ ~{has_service_account_file} = 'true' ]; then
-            export GOOGLE_APPLICATION_CREDENTIALS=~{service_account_json}
-            gcloud auth activate-service-account --key-file='~{service_account_json}'
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
             gcloud config set project ~{project_id}
         fi
 

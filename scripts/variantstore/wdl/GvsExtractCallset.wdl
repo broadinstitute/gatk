@@ -29,7 +29,7 @@ workflow GvsExtractCallset {
         File? excluded_intervals
         Boolean? emit_pls = false
 
-        String? service_account_json
+        String? service_account_json_path
 
         String output_file_base_name
         String? output_gcs_dir
@@ -53,42 +53,42 @@ workflow GvsExtractCallset {
         input:
             query_project = query_project,
             fq_table = fq_cohort_extract_table,
-            service_account_json = service_account_json
+            service_account_json_path = service_account_json_path
     }
 
     call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
         input:
             query_project = query_project,
             fq_table = fq_samples_to_extract_table,
-            service_account_json = service_account_json
+            service_account_json_path = service_account_json_path
     }
 
     scatter(i in range(scatter_count) ) {
         call ExtractTask {
             input:
-                gatk_override            = gatk_override,
-                reference                = reference,
-                reference_index          = reference_index,
-                reference_dict           = reference_dict,
-                fq_samples_to_extract_table = fq_samples_to_extract_table,
-                intervals                = SplitIntervals.interval_files[i],
-                fq_cohort_extract_table  = fq_cohort_extract_table,
-                read_project_id          = query_project,
-                do_not_filter_override   = do_not_filter_override,
-                fq_filter_set_info_table = fq_filter_set_info_table,
-                fq_filter_set_site_table = fq_filter_set_site_table,
-                fq_filter_set_tranches_table = fq_filter_set_tranches_table,
-                filter_set_name          = filter_set_name,
-                vqslod_filter_by_site    = vqslod_filter_by_site,
+                gatk_override                   = gatk_override,
+                reference                       = reference,
+                reference_index                 = reference_index,
+                reference_dict                  = reference_dict,
+                fq_samples_to_extract_table     = fq_samples_to_extract_table,
+                intervals                       = SplitIntervals.interval_files[i],
+                fq_cohort_extract_table         = fq_cohort_extract_table,
+                read_project_id                 = query_project,
+                do_not_filter_override          = do_not_filter_override,
+                fq_filter_set_info_table        = fq_filter_set_info_table,
+                fq_filter_set_site_table        = fq_filter_set_site_table,
+                fq_filter_set_tranches_table    = fq_filter_set_tranches_table,
+                filter_set_name                 = filter_set_name,
+                vqslod_filter_by_site           = vqslod_filter_by_site,
                 snps_truth_sensitivity_filter_level = snps_truth_sensitivity_filter_level_override,
                 indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level_override,
-                excluded_intervals       = excluded_intervals,
-                emit_pls                 = emit_pls,
-                service_account_json     = service_account_json,
-                output_file              = "${output_file_base_name}_${i}.vcf.gz",
-                output_gcs_dir           = output_gcs_dir,
-                local_disk               = local_disk_for_extract,
-                last_modified_timestamps = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp]
+                excluded_intervals              = excluded_intervals,
+                emit_pls                        = emit_pls,
+                service_account_json_path       = service_account_json_path,
+                output_file                     = "${output_file_base_name}_${i}.vcf.gz",
+                output_gcs_dir                  = output_gcs_dir,
+                local_disk                      = local_disk_for_extract,
+                last_modified_timestamps        = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp]
         }
     }
 
@@ -135,7 +135,7 @@ task ExtractTask {
         Boolean? emit_pls
 
         # Runtime Options:
-        String? service_account_json
+        String? service_account_json_path
         File? gatk_override
 
         Int? local_sort_max_records_in_ram = 10000000
@@ -145,7 +145,7 @@ task ExtractTask {
         Array[String] last_modified_timestamps
     }
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     # ------------------------------------------------
     # Run our command:
@@ -154,7 +154,7 @@ task ExtractTask {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
         if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json} local.service_account.json
+            gsutil cp ~{service_account_json_path} local.service_account.json
             export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
             gcloud auth activate-service-account --key-file=local.service_account.json
             gcloud config set project ~{read_project_id}
@@ -286,10 +286,10 @@ task GetBQTableLastModifiedDatetime {
     input {
         String query_project
         String fq_table
-        String? service_account_json
+        String? service_account_json_path
     }
 
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     # ------------------------------------------------
     # try to get the last modified date for the table in question; fail if something comes back from BigQuwey
@@ -297,7 +297,7 @@ task GetBQTableLastModifiedDatetime {
     command <<<
         set -e
         if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json} local.service_account.json
+            gsutil cp ~{service_account_json_path} local.service_account.json
             gcloud auth activate-service-account --key-file=local.service_account.json
         fi
 

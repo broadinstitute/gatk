@@ -20,17 +20,17 @@ workflow GvsPrepareCallset {
         String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
         Int temp_table_ttl_in_hours = 72
-        File? service_account_json
+        String? service_account_json_path
         String? docker
     }
 
     String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210604"])
 
-    if (localize_sample_names_with_service_account && defined(service_account_json)) {
+    if (localize_sample_names_with_service_account && defined(service_account_json_path)) {
         call LocalizeFile {
             input:
               file = "~{sample_names_to_extract}",
-              service_account_json = select_first([service_account_json])
+              service_account_json_path = select_first([service_account_json_path])
         }
     }
 
@@ -45,7 +45,7 @@ workflow GvsPrepareCallset {
             fq_temp_table_dataset           = fq_temp_table_dataset,
             fq_destination_dataset          = fq_destination_dataset,
             temp_table_ttl_in_hours         = temp_table_ttl_in_hours,
-            service_account_json            = service_account_json,
+            service_account_json_path            = service_account_json_path,
 
             docker                          = docker_final
     }
@@ -74,7 +74,7 @@ task PrepareCallsetTask {
         String fq_destination_dataset
         Int temp_table_ttl_in_hours
 
-        File? service_account_json
+        String? service_account_json_path
         String docker
     }
     # Note the coercion of optional query_labels using select_first([expr, default])
@@ -93,7 +93,7 @@ task PrepareCallsetTask {
             ~{sep=" " query_label_args} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
             --ttl ~{temp_table_ttl_in_hours} \
-            ~{"--sa_key_path " + service_account_json}
+            ~{"--sa_key_path " + service_account_json_path}
     >>>
 
     output {
@@ -114,13 +114,14 @@ task PrepareCallsetTask {
 task LocalizeFile {
   input {
     String file
-    File service_account_json
+    String service_account_json_path
   }
 
   command {
     set -euo pipefail
 
-    gcloud auth activate-service-account --key-file='~{service_account_json}'
+    gsutil cp ~{service_account_json_path} local.service_account.json
+    gcloud auth activate-service-account --key-file=local.service_account.json
     gsutil cp '~{file}' .
   }
 
