@@ -41,7 +41,7 @@ task EnsureVatTableHasVariants {
 
         NUMVARS=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
-        if [[ $NUMVARS =~ ^[0-9]+$ ]] then
+        if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
             echo "The VAT table ~{fq_vat_table} has $NUMVARS variants in it." > validation_results.txt
         else
             echo "Something went wrong. The attempt to count the variants returned: " + $(cat bq_variant_count.csv) > validation_results.txt
