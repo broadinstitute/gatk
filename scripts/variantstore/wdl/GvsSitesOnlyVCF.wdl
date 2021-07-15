@@ -153,10 +153,11 @@ task ExtractAnAcAfFromVCF {
         File custom_annotations_template
     }
     String custom_annotations_file_name = "an_ac_af.tsv"
+    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
     command <<<
         set -e
         cp ~{custom_annotations_template} ~{custom_annotations_file_name}
-        bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' >> ~{custom_annotations_file_name}
+        bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' | grep -v "*" >> ~{custom_annotations_file_name}
     >>>
     # ------------------------------------------------
     # Runtime settings:
