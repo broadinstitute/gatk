@@ -66,7 +66,7 @@ task EnsureVatTableHasVariants {
             fi
         # otherwise, something is off, so return the output from the bq query call
         else
-            echo "Something went wrong. The attempt to count the variants returned: " + $(cat bq_variant_count.csv) > validation_results.txt
+            echo "Something went wrong. The attempt to count the variants returned: " $(cat bq_variant_count.csv) > validation_results.txt
         fi
     >>>
     # ------------------------------------------------
