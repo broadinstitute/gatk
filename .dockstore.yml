@@ -100,6 +100,13 @@ workflows:
      filters:
        branches:
          - ah_var_store
+   - name: GvsSitesOnlyVCF
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVAT.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - rsa_add_vat_val_1
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
