@@ -37,9 +37,9 @@ vat_nirvana_transcripts_dictionary = {
 }
 
 vat_nirvana_gvs_alleles_dictionary = {
-  "gvs_all_ac": "x", # required
-  "gvs_all_an": "x", # required
-  "gvs_all_af": "x" # required
+  "gvs_all_an": "AN", # required
+  "gvs_all_ac": "AC", # required
+  "gvs_all_af": "AF" # required
 }
 
 vat_nirvana_revel_dictionary = {
@@ -117,10 +117,12 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
               splice_ai_fieldvalue = splice_ai_obj.get(nirvana_splice_ai_fieldname)
               row[vat_splice_ai_fieldname] = splice_ai_fieldvalue
 
-    for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
-      nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
-      gvs_alleles_fieldvalue = variant_line.get(nirvana_gvs_alleles_fieldname)
-      row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
+    if variant_line.get("gvsAnnotations") != None: #TODO need this to be in tandem with the custom annotations header / template
+      gvs_annotations_line = variant_line["gvsAnnotations"]
+      for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
+        nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
+        gvs_alleles_fieldvalue = gvs_annotations_line.get(nirvana_gvs_alleles_fieldname)
+        row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
 
     if variant_line.get("gnomad") != None:
       for vat_gnomad_fieldname in vat_nirvana_gnomad_dictionary.keys():  # like "gnomad_all_af"
