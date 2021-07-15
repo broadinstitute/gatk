@@ -48,15 +48,16 @@ task EnsureVatTableHasVariants {
 
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM ~{fq_vat_table}' > bq_variant_count.csv
 
-        echo "contents of bq_variant_count.csv:"
-        cat bq_variant_count.csv
-
         NUMVARS=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
-        echo "contents of NUMVARS: $NUMVARS"
-
+        # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
         if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
-            echo "The VAT table ~{fq_vat_table} has $NUMVARS variants in it." > validation_results.txt
+            if [[ $NUMVARS = "0" ]]; then
+                echo "FAIL: The VAT table ~{fq_vat_table} has no variants in it." > validation_results.txt
+            else
+                echo "PASS: The VAT table ~{fq_vat_table} has $NUMVARS variants in it." > validation_results.txt
+            fi
+        # otherwise, something is off, so return the output from the bq query call
         else
             echo "Something went wrong. The attempt to count the variants returned: " + $(cat bq_variant_count.csv) > validation_results.txt
         fi
