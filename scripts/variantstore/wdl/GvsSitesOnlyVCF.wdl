@@ -464,9 +464,9 @@ task BigQuerySmokeTest { # TO BE BROKEN UP AND POTENTIALLY RUN SEPARATELY
         # Note: Lee has swapped this valdation to chr19
         # SELECT gene_symbol, consequence  FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr19" and position >= 35740407 and position <= 35740469 and gene_symbol!="IGFLR1" and gene_symbol!="AD000671.2"
 
-        POSITIONAL_COUNT=$('SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163')
-        TESK2_COUNT=$('SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="TESK2"')
-        AL451136_COUNT=$('SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="AL451136.1"')
+        POSITIONAL_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163'| tr -dc '0-9')
+        TESK2_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="TESK2"'| tr -dc '0-9')
+        AL451136_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="AL451136.1"'| tr -dc '0-9')
         GENE_COUNT_SUM=$(( $TESK2_COUNT + $AL451136_COUNT ))
 
         if [[ $POSITIONAL_COUNT -ne $GENE_COUNT_SUM ]]
@@ -514,11 +514,12 @@ task BigQuerySmokeTest { # TO BE BROKEN UP AND POTENTIALLY RUN SEPARATELY
         # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
         echo  "VALIDATION #6"
 
-        BQ_VAT_NULL=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) as count FROM `~{dataset_name}.~{vat_table}` WHERE vid IS NULL OR contig IS NULL OR position IS NULL OR ref_allele IS NULL OR alt_allele IS NULL OR variant_type IS NULL OR genomic_location IS NULL'
+        BQ_VAT_NULL=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) as count FROM `~{dataset_name}.~{vat_table}` WHERE vid IS NULL OR contig IS NULL OR position IS NULL OR ref_allele IS NULL OR alt_allele IS NULL OR variant_type IS NULL OR genomic_location IS NULL')
         echo $BQ_VAT_NULL
 
         if [[ $BQ_VAT_NULL -gt 0 ]]
-        then echo "A required value is null"
+        then
+          echo "A required value is null"
           echo  "Validation has failed"
         else
           echo "No required values are null"
