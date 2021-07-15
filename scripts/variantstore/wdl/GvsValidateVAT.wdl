@@ -64,7 +64,7 @@ task EnsureVatTableHasVariants {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "openbridge/ob_google-bigquery:latest"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
