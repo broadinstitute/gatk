@@ -27,10 +27,10 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
-    String sample_results = "FAIL [SomeStep]: this step failed for reasons."
+    String sample_results = "FAIL: this step failed for reasons."
 
     output {
-        String validation_results = EnsureVatTableHasVariants.result + "\n" + sample_results
+        Array[Map[String, String]] validation_results = [EnsureVatTableHasVariants.result, {"sample_results": sample_results}]
     }
 }
 
@@ -59,9 +59,9 @@ task EnsureVatTableHasVariants {
         # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
         if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
             if [[ $NUMVARS = "0" ]]; then
-                echo "FAIL [EnsureVatTableHasVariants]: The VAT table ~{fq_vat_table} has no variants in it." > validation_results.txt
+                echo "FAIL: The VAT table ~{fq_vat_table} has no variants in it." > validation_results.txt
             else
-                echo "PASS [EnsureVatTableHasVariants]: The VAT table ~{fq_vat_table} has $NUMVARS variants in it." > validation_results.txt
+                echo "PASS: The VAT table ~{fq_vat_table} has $NUMVARS variants in it." > validation_results.txt
             fi
         # otherwise, something is off, so return the output from the bq query call
         else
@@ -80,7 +80,7 @@ task EnsureVatTableHasVariants {
     # ------------------------------------------------
     # Outputs:
     output {
-        String result = read_string('validation_results.txt')
+        Map[String, String] result = {"EnsureVatTableHasVariants": read_string('validation_results.txt')}
     }
 }
 
