@@ -27,10 +27,11 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
-    String sample_results = "FAIL: this step failed for reasons."
-
+    # once there is more than one check, they will be gathered into this workflow output, in the format
+    # [{ValidationRule1: "PASS/FAIL Extra info from this test"},
+    #  {ValidationRule2: "PASS/FAIL Extra from this test"}]
     output {
-        Array[Map[String, String]] validation_results = [EnsureVatTableHasVariants.result, {"sample_results": sample_results}]
+        Array[Map[String, String]] validation_results = [EnsureVatTableHasVariants.result]
     }
 }
 
@@ -78,7 +79,7 @@ task EnsureVatTableHasVariants {
         disks: "local-disk 100 HDD"
     }
     # ------------------------------------------------
-    # Outputs:
+    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
         Map[String, String] result = {"EnsureVatTableHasVariants": read_string('validation_results.txt')}
     }
