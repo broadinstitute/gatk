@@ -399,7 +399,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         } else {
             try {
                 codec = codecClass.getDeclaredConstructor().newInstance();
-                if ( !codec.canDecode(featureInput.toPath().toString()) ) {
+                if ( !codec.canDecode(featureInput.toPath().toAbsolutePath().toUri().toString()) ) {
                     throw new GATKException(codec.getClass().getSimpleName() + " cannot decode " +
                             featureInput.toPath().toString());
                 }
