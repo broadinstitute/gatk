@@ -158,10 +158,9 @@ def train_multimodal_multitask(args):
 def train_block(args):
     generate_train, generate_valid, generate_test = test_train_valid_tensor_generators(**args.__dict__)
     model, encoders, decoders, merger = block_make_multimodal_multitask_model(**args.__dict__)
-    model, history = train_model_from_generators(
+    model = train_model_from_generators(
         model, generate_train, generate_valid, args.training_steps, args.validation_steps, args.batch_size, args.epochs,
-        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, args.tensor_maps_out,
-        save_last_model=args.save_last_model
+        args.patience, args.output_folder, args.id, args.inspect_model, args.inspect_show_labels, save_last_model=args.save_last_model
     )
     for tm in encoders:
         encoders[tm].save(f'{args.output_folder}{args.id}/encoder_{tm.name}.h5')
@@ -198,8 +197,6 @@ def train_block(args):
             else:
                 evaluate_predictions(dtm, reconstruction, test_labels[dtm.output_name()], {}, dtm.name, my_out_path, test_paths)
     return performance_metrics
-
-
 
 
 def test_multimodal_multitask(args):
