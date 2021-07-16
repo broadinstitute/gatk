@@ -146,15 +146,23 @@ def parse_args():
     parser.add_argument('--dense_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for dense layers.')
     parser.add_argument('--activation', default='relu',  help='Activation function for hidden units in neural nets dense layers.')
     parser.add_argument('--conv_layers', nargs='*', default=[32], type=int, help='List of number of kernels in convolutional layers.')
-    parser.add_argument('--conv_width', default=[71], nargs='*', type=int, help='X dimension of convolutional kernel for 1D models. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
-    parser.add_argument('--conv_x', default=[3], nargs='*', type=int, help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
-    parser.add_argument('--conv_y', default=[3], nargs='*', type=int, help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
-    parser.add_argument('--conv_z', default=[2], nargs='*', type=int, help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
+    parser.add_argument('--conv_width', default=[71], nargs='*', type=int,
+                        help='X dimension of convolutional kernel for 1D models. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
+    parser.add_argument('--conv_x', default=[3], nargs='*', type=int,
+                        help='X dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
+    parser.add_argument('--conv_y', default=[3], nargs='*', type=int,
+                        help='Y dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
+    parser.add_argument('--conv_z', default=[2], nargs='*', type=int,
+                        help='Z dimension of convolutional kernel. Filter sizes are specified per layer given by conv_layers and per block given by dense_blocks. Filter sizes are repeated if there are less than the number of layers/blocks.')
     parser.add_argument('--conv_dilate', default=False, action='store_true', help='Dilate the convolutional layers.')
     parser.add_argument('--conv_type', default='conv', choices=['conv', 'separable', 'depth'], help='Type of convolutional layer')
     parser.add_argument('--conv_normalize', default=None, choices=list(NORMALIZATION_CLASSES), help='Type of normalization layer for convolutions')
     parser.add_argument('--conv_regularize', default=None, choices=list(CONV_REGULARIZATION_CLASSES), help='Type of regularization layer for convolutions.')
     parser.add_argument('--conv_regularize_rate', default=0.0, type=float, help='Rate parameter for conv_regularize.')
+    parser.add_argument('--conv_strides', default=1, type=int, help='Strides to take during convolution')
+    parser.add_argument('--conv_without_bias', default=False, action='store_true', help='If True, Do not add bias to convolutional layers.')
+    parser.add_argument('--conv_bias_initializer', default='zeros', help='Initializer for the bias vector')
+    parser.add_argument('--conv_kernel_initializer', default='glorot_uniform', help='Initializer for the convolutional weight kernel')
     parser.add_argument('--max_pools', nargs='*', default=[], type=int, help='List of maxpooling layers.')
     parser.add_argument('--pool_type', default='max', choices=['max', 'average'], help='Type of pooling layers.')
     parser.add_argument('--pool_x', default=2, type=int, help='Pooling size in the x-axis, if 1 no pooling will be performed.')
