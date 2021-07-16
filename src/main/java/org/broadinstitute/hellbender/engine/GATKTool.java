@@ -598,6 +598,14 @@ public abstract class GATKTool extends CommandLineProgram {
         return false;
     }
 
+    /**
+     * Does this tool want to disable the progress meter? If so, override here to return true
+     * 
+     * @return true if this tools wants to disable progress meter output, otherwise false
+     */
+    public boolean disableProgressMeter() {
+        return false;
+    }
 
     /**
      * Get the {@link SequenceDictionaryValidationArgumentCollection} for the tool.
@@ -1073,9 +1081,11 @@ public abstract class GATKTool extends CommandLineProgram {
     protected final Object doWork() {
         try {
             onTraversalStart();
-            progressMeter.start();
+            if (!disableProgressMeter()) {
+                progressMeter.start();
+            }
             traverse();
-            if (!progressMeter.stopped()) {
+            if (!disableProgressMeter() && !progressMeter.stopped()) {
                 progressMeter.stop();
             }
             return onTraversalSuccess();
