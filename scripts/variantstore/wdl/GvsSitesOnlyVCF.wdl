@@ -460,7 +460,6 @@ task BigQueryLoadJson {
         Boolean done = true
     }
 }
-<<<<<<< HEAD
 
 task BigQuerySmokeTest { # TO BE BROKEN UP AND POTENTIALLY RUN SEPARATELY
     input {
@@ -646,5 +645,3 @@ task BigQuerySmokeTest { # TO BE BROKEN UP AND POTENTIALLY RUN SEPARATELY
         Boolean done = true
     }
 }
-=======
->>>>>>> 4f13994c8 (add init custom tsvs)
