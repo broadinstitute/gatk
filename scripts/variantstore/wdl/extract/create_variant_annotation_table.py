@@ -176,9 +176,10 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
 
     gvs_annotations = variant_line["gvsAnnotations"]
     if gvs_annotations.get("AC") < 19: # if AC is between 1-18, make the value 19 and then recalculate AF as 19 / AN (we already checked for AC=0)
-      row[vat_nirvana_gvs_alleles_dictionary.get("AC")] = 19
-      row[vat_nirvana_gvs_alleles_dictionary.get("AN")] = gvs_annotations.get("AN")
-      row[vat_nirvana_gvs_alleles_dictionary.get("AF")] = 19 / gvs_annotations.get("AN")
+      print("I am 19!", variant_line.get("vid"))
+      row["gvs_all_ac"] = 19
+      row["gvs_all_an"] = gvs_annotations.get("AN")
+      row["gvs_all_af"] = 19 / gvs_annotations.get("AN")
     else:
       for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
         nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
