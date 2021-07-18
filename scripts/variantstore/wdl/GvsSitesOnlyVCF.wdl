@@ -259,7 +259,7 @@ task PrepAnnotationJson {
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
-    String output_ant_gcp_path = output_path + 'annotations/'
+    String output_ants_gcp_path = output_path + 'ants/'
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -279,13 +279,13 @@ task PrepAnnotationJson {
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
-        gsutil cp ~{annotation_json} '~{output_ant_gcp_path}'
+        gsutil cp ~{annotation_json} '~{output_ants_gcp_path}'
 
      >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200709"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200718"
         memory: "3 GB"
         preemptible: 5
         cpu: "1"
