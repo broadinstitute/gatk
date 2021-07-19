@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.seekablestream.ByteArraySeekableStream;
 import htsjdk.samtools.util.LocationAware;
 import htsjdk.tribble.*;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.codecs.FeaturesHeader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Reader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Writer;
@@ -12,10 +13,9 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.Collections;
 
-public class BlockCompressIntervalStreamUnitTests {
+public class BlockCompressIntervalStreamUnitTest extends GATKBaseTest {
     private static int POS_START = 1000;
     private static int POS_INC = 1100;
     private static int POS_END = 10000000;
@@ -90,7 +90,7 @@ public class BlockCompressIntervalStreamUnitTests {
         final FeaturesHeader header =
                 new FeaturesHeader(SimpleFeature.class.getSimpleName(), "1", dict, Collections.emptyList());
         final Writer<SimpleFeature> writer =
-                new Writer<>("in-memory stream", os, header, BlockCompressIntervalStreamUnitTests::write);
+                new Writer<>("in-memory stream", os, header, BlockCompressIntervalStreamUnitTest::write);
         for ( final SAMSequenceRecord rec : dict.getSequences() ) {
             final String contig = rec.getSequenceName();
             for ( int start = POS_START; start < POS_END; start += POS_INC ) {
@@ -122,7 +122,7 @@ public class BlockCompressIntervalStreamUnitTests {
         final FeaturesHeader header =
                 new FeaturesHeader(SimpleFeature.class.getSimpleName(), "1", dict, Collections.emptyList());
         final Writer<SimpleFeature> writer =
-                new Writer<>("in-memory stream", os, header, BlockCompressIntervalStreamUnitTests::write);
+                new Writer<>("in-memory stream", os, header, BlockCompressIntervalStreamUnitTest::write);
 
         // write an initial gigantic feature
         final String contig0 = dict.getSequence(0).getSequenceName();

@@ -69,7 +69,7 @@ public abstract class FeatureWalker<F extends Feature> extends WalkerBase {
             final FeatureInput<F> featureInput = new FeatureInput<>(drivingPath, "drivingFeatureFile");
             featureInput.setFeatureCodecClass((Class<FeatureCodec<F, ?>>)codec.getClass());
             features.addToFeatureSources(featureInput,
-                    new FeatureDataSource<>(featureInput, 0, null,
+                    new FeatureDataSource<>(featureInput, 0, codec.getFeatureType(),
                         cloudPrefetchBuffer, cloudIndexPrefetchBuffer, options, false));
         } else {
             throw new UserException("File " + drivingPath.getRawInputString() + " contains features of the wrong type.");
