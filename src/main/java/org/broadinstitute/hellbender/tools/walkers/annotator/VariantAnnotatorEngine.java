@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Redu
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -44,6 +45,7 @@ public final class VariantAnnotatorEngine {
     private final boolean keepRawCombinedAnnotations;
 
     private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
+    private final static OneShotLogger jumboAnnotationsLogger = new OneShotLogger(VariantAnnotatorEngine.class);
 
     /**
      * Creates an annotation engine from a list of selected annotations output from command line parsing
@@ -355,8 +357,8 @@ public final class VariantAnnotatorEngine {
                                                final Optional<AlleleLikelihoods<Fragment, Allele>> fragmentLikelihoods,
                                                final Optional<AlleleLikelihoods<Fragment, Haplotype>> haplotypeLikelihoods,
                                                final Predicate<VariantAnnotation> addAnnot) {
-        if (!jumboGenotypeAnnotations.isEmpty() && !fragmentLikelihoods.isPresent() || !haplotypeLikelihoods.isPresent()) {
-            logger.warn("Jumbo genotype annotations requested but fragment likelihoods or haplotype likelihoods were not given.");
+        if (!jumboGenotypeAnnotations.isEmpty() && (!fragmentLikelihoods.isPresent() || !haplotypeLikelihoods.isPresent())) {
+            jumboAnnotationsLogger.warn("Jumbo genotype annotations requested but fragment likelihoods or haplotype likelihoods were not given.");
         }
         if ( genotypeAnnotations.isEmpty() && jumboGenotypeAnnotations.isEmpty()) {
             return vc.getGenotypes();
