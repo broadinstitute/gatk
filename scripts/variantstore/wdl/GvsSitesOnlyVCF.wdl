@@ -30,10 +30,10 @@ workflow GvsSitesOnlyVCF {
         }
 
         call ExtractAnAcAfFromVCF {
-            input:
-                input_vcf = SitesOnlyVcf.output_vcf,
-                input_vcf_index = SitesOnlyVcf.output_vcf_idx,
-                custom_annotations_template = SitesOnlyVcf.annotations_template
+          input:
+            input_vcf = SitesOnlyVcf.output_vcf,
+            input_vcf_index = SitesOnlyVcf.output_vcf_idx,
+            custom_annotations_template = SitesOnlyVcf.annotations_template
         }
 
         call AnnotateVCF {
@@ -109,7 +109,7 @@ task SitesOnlyVcf {
             export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
             gcloud auth activate-service-account --key-file=local.service_account.json
 
-        gsutil cp ~{input_vcf} .
+            gsutil cp ~{input_vcf} .
             gsutil cp ~{input_vcf_index} .
         fi
 
@@ -259,7 +259,6 @@ task PrepAnnotationJson {
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
-    String output_ants_gcp_path = output_path + 'ants/'
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -279,7 +278,6 @@ task PrepAnnotationJson {
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
-        gsutil cp ~{annotation_json} '~{output_ants_gcp_path}'
 
      >>>
     # ------------------------------------------------
