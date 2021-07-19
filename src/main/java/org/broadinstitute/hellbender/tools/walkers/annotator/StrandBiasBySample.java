@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -53,6 +54,7 @@ import java.util.List;
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of forward and reverse reads that support REF and ALT alleles (SB)")
 public final class StrandBiasBySample implements GenotypeAnnotation, StandardMutectAnnotation {
     private final static Logger logger = LogManager.getLogger(StrandBiasBySample.class);
+    private final static OneShotLogger droppedElementLogger = new OneShotLogger(StrandBiasBySample.class);
 
     @Override
     public void annotate(final ReferenceContext ref,
@@ -65,7 +67,7 @@ public final class StrandBiasBySample implements GenotypeAnnotation, StandardMut
         Utils.nonNull(gb);
 
         if ( likelihoods == null || !g.isCalled() ) {
-            logger.warn(AnnotationUtils.generateMissingDataWarning(vc, g, likelihoods));
+            droppedElementLogger.warn(() -> AnnotationUtils.generateMissingDataWarning(vc, g, likelihoods));
             return;
         }
 
