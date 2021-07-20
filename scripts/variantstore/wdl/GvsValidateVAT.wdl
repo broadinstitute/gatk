@@ -27,7 +27,7 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
-    call EnsureVatTableHasExpectedTranscriptsAtLocation {
+    call SpotCheckLocationForExpectedGenes {
         input:
             query_project_id = query_project_id,
             fq_vat_table = fq_vat_table,
@@ -39,7 +39,7 @@ workflow GvsValidateVatTable {
     # [{ValidationRule1: "PASS/FAIL Extra info from this test"},
     #  {ValidationRule2: "PASS/FAIL Extra from this test"}]
     output {
-        Array[Map[String, String]] validation_results = [EnsureVatTableHasVariants.result, EnsureVatTableHasExpectedTranscriptsAtLocation.result]
+        Array[Map[String, String]] validation_results = [EnsureVatTableHasVariants.result, SpotCheckLocationForExpectedGenes.result]
     }
 }
 
@@ -93,7 +93,7 @@ task EnsureVatTableHasVariants {
     }
 }
 
-task EnsureVatTableHasExpectedTranscriptsAtLocation {
+task SpotCheckLocationForExpectedGenes {
     input {
         String query_project_id
         String fq_vat_table
@@ -120,7 +120,7 @@ task EnsureVatTableHasExpectedTranscriptsAtLocation {
             position >= 35740407 AND
             position <= 35740469 AND
             single_consequence NOT IN ("downstream_gene_variant","upstream_gene_variant") AND
-            gene_symbol NOT IN ("IGFLR1","AD000671.2")' > bq_query_output.txt
+            gene_symbol NOT IN ("IGFLR1")' > bq_query_output.txt
 
         # get number of lines in bq query output
         NUMVARS=$(awk 'END{print NR}' bq_query_output.txt)
@@ -145,7 +145,7 @@ task EnsureVatTableHasExpectedTranscriptsAtLocation {
     # ------------------------------------------------
     # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"EnsureVatTableHasExpectedTranscriptsAtLocation": read_string('validation_results.txt')}
+        Map[String, String] result = {"SpotCheckLocationForExpectedGenes": read_string('validation_results.txt')}
     }
 }
 
