@@ -1,16 +1,20 @@
 package org.broadinstitute.hellbender.utils.codecs;
 
 import com.google.common.base.Splitter;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
+import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 
 import java.util.Arrays;
 import java.util.List;
 
-public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPairEvidence> {
+public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPairEvidence>
+        implements FeatureOutputCodec<DiscordantPairEvidence, FeatureOutputStream<DiscordantPairEvidence>> {
 
     public static final String FORMAT_SUFFIX = ".pe.txt";
     public static final String COL_DELIMITER = "\t";
@@ -43,17 +47,33 @@ public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPai
 
     @Override
     public boolean canDecode(final String path) {
-        final String toDecode;
-        if (IOUtil.hasBlockCompressedExtension(path)) {
-            toDecode = path.substring(0, path.lastIndexOf("."));
-        } else {
-            toDecode = path;
+        String toDecode = path.toLowerCase();
+        if ( IOUtil.hasBlockCompressedExtension(toDecode) ) {
+            toDecode = toDecode.substring(0, toDecode.lastIndexOf('.'));
         }
-        return toDecode.toLowerCase().endsWith(FORMAT_SUFFIX);
+        return toDecode.endsWith(FORMAT_SUFFIX);
     }
 
     @Override
     public Object readActualHeader(final LineIterator reader) { return null; }
+
+    @Override
+    public FeatureOutputStream<DiscordantPairEvidence> makeSink( final GATKPath path,
+                                                                 final SAMSequenceDictionary dict,
+                                                                 final List<String> sampleNames,
+                                                                 final int compressionLevel ) {
+        return new FeatureOutputStream<>(path,
+                                        getTabixFormat(),
+                                        DiscordantPairEvidenceCodec::encode,
+                                        dict,
+                                        compressionLevel);
+    }
+
+    @Override
+    public void encode( final DiscordantPairEvidence ev,
+                        final FeatureOutputStream<DiscordantPairEvidence> os ) {
+        os.write(ev);
+    }
 
     public static String encode(final DiscordantPairEvidence ev) {
         final List<String> columns = Arrays.asList(

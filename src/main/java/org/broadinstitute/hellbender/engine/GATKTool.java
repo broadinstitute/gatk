@@ -668,7 +668,7 @@ public abstract class GATKTool extends CommandLineProgram {
         } else if (hasReads()){
             return reads.getSequenceDictionary();
         } else if (hasFeatures()){
-            final List<SAMSequenceDictionary> dictionaries = features.getVariantSequenceDictionaries();
+            final List<SAMSequenceDictionary> dictionaries = features.getAllSequenceDictionaries();
             //If there is just one, it clearly is the best. Otherwise, none is best.
             if (dictionaries.size() == 1){
                 return dictionaries.get(0);
