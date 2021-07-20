@@ -33,6 +33,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -63,7 +64,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     private static final String DS_XSV_CLINVAR_TESTS          = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
     private static final String DS_FILTER_PARSE_TESTS         = largeFileTestDir + "funcotator" + File.separator + "small_ds_FILTER_test" + File.separator;
     public static final String VCF_FIELD_ORDER_TEST_DATA_SOURCES = largeFileTestDir + "funcotator" + File.separator + "vcfFuncotationOrderingBugRepro" + File.separator;
-    
+
     private static final String NOT_M2_TEST_HG19 = toolsTestDir + "funcotator/NotM2_test_custom_maf_fields.vcf";
     private static final String M2_TEST_HG19 = toolsTestDir + "funcotator/M2_test_custom_maf_fields.vcf";
     private static final String NOT_M2_TEST_HG19_TUMOR_ONLY = toolsTestDir + "funcotator/NotM2_test_custom_maf_fields_tumor_only.vcf";
@@ -258,7 +259,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             refVer,
             outputFormatType,
             shouldValidateSeqDicts,
-            Collections.emptyList());
+            Collections.emptyList(),
+            false);
     }
 
     private ArgumentsBuilder createBaselineArgumentsForFuncotator(final String variantFileName,
@@ -268,7 +270,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                                                                   final String refVer,
                                                                   final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType,
                                                                   final boolean shouldValidateSeqDicts,
-                                                                  final List<String> excludedFields) {
+                                                                  final List<String> excludedFields,
+                                                                  final boolean reannotate) {
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
@@ -286,6 +289,10 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             arguments.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true);
         }
 
+        if ( reannotate ) {
+            arguments.add(FuncotatorArgumentDefinitions.REANNOTATE_VCF_LONG_NAME, true);
+        }
+
         return arguments;
     }
 
@@ -300,14 +307,18 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT,
+                        Collections.emptyList(),
+                        false
                 },
                 {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2_EXPECTED_OUTPUT
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_2_EXPECTED_OUTPUT,
+                        Collections.emptyList(),
+                        false
                 },
                 {
                     //This tests https://github.com/broadinstitute/gatk/issues/6173
@@ -315,21 +326,27 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        FuncotatorTestConstants.SINGLE_LINE_EXPECTED
+                        FuncotatorTestConstants.SINGLE_LINE_EXPECTED,
+                        Collections.emptyList(),
+                        false
                 },
                 {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG38,
                         hg38Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG38,
                         FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_EXPECTED_OUTPUT
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_EXPECTED_OUTPUT,
+                        Collections.emptyList(),
+                        false
                 },
                 {
                         FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET,
                         b37Reference,
                         FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                         FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
-                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET_EXPECTED_OUTPUT
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_LARGE_DATA_SET_EXPECTED_OUTPUT,
+                        Collections.emptyList(),
+                        true
                 },
         };
     }
@@ -615,7 +632,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                                final String referencePath,
                                final String referenceVersion,
                                final String dataSourcesPath,
-                               final String expectedOutputPath ) {
+                               final String expectedOutputPath, final List<String>excludedFields, final boolean reannotate) {
 
         for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType : FuncotatorArgumentDefinitions.OutputFormatType.values()) {
             // The CLI for Funcotator does not support SEG output.  Must use FuncotateSegments for that.
@@ -633,7 +650,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                     dataSourcesPath,
                     referenceVersion,
                     outputFormatType,
-                    true);
+                    true,
+                    excludedFields,
+                    reannotate);
 
             // Run the tool with our args:
             long startTime = 0, endTime = 0;
@@ -1014,7 +1033,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                 DS_PIK3CA_DIR,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG38,
                 outputFormatType,
-                false, excludedFields);
+                false, excludedFields, false);
 
         runCommandLine(arguments);
 
@@ -1910,5 +1929,145 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(funcotations.get(0).getField("Gencode_19_variantClassification"), expected[2]);
         }
     }
-}
+
+    @DataProvider
+    public Object[][] provideForUnannotatedInputWithOverrideArgument() {
+        return new Object[][] {
+                {
+                    FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1,
+                        b37Reference,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT
+                }
+        };
+    }
+    /**
+     * An integration test for the Funcotator tool, and specifically,
+     * for the function checkIfAlreadyAnnotated which is included in this
+     * tool. In this test, we are giving as input a vcf which has not already been
+     * annotated, but we are also using the flag "true" to indicate that we want it
+     * to be reannotated to make sure that this does not cause a problem.
+     * Created by Hailey on 7/9/21.
+     */
+    @Test(dataProvider = "provideForUnannotatedInputWithOverrideArgument")
+    public void testUnannotatedInputWithOverrideArgument(final String inputVcfName,
+                                                      final String referencePath,
+                                                      final String referenceVersion,
+                                                      final String dataSourcesPath,
+                                                      final String expectedOutputPath ) {
+
+        for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType :
+        FuncotatorArgumentDefinitions.OutputFormatType.values()) {
+            if (outputFormatType.equals(FuncotatorArgumentDefinitions.OutputFormatType.SEG)) {
+                continue;
+            }
+            final String typeCorrectedExpectedOutPath = FilenameUtils.removeExtension(expectedOutputPath) +
+                    "." + outputFormatType.toString().toLowerCase();
+            final File outputFile = createTempFile(tmpOutDir + File.separator + inputVcfName + ".funcotator", "." + outputFormatType.toString().toLowerCase());
+
+            final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                    inputVcfName,
+                    outputFile,
+                    referencePath,
+                    dataSourcesPath,
+                    referenceVersion,
+                    outputFormatType,
+                    true,
+                    Collections.emptyList(),
+                    true);
+            runCommandLine(arguments);
+        }
+
+     }
+
+    @DataProvider
+    public Object[][] provideForAlreadyAnnotatedInput() {
+        return new Object[][] {
+                {
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT,
+                        b37Reference,
+                        FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                        FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER,
+                        FuncotatorTestConstants.NON_TRIVIAL_DATA_VALIDATION_TEST_HG19_DATA_SET_1_EXPECTED_OUTPUT,
+
+                }
+        };
+    }
+
+
+    /** In this test, we are giving as input a vcf which has already been annotated.
+     * Because we are not giving the flag argument which indicates that we should reannotate,
+     * then the default argument will be used which is to no reannotate and instead to throw
+     * an error.
+     */
+    @Test(dataProvider = "provideForAlreadyAnnotatedInput", expectedExceptions = UserException.BadInput.class)
+    public void testAlreadyAnnotatedInputWithoutOverrideArgument(final String inputVcfName,
+                                                           final String referencePath,
+                                                           final String referenceVersion,
+                                                           final String dataSourcesPath,
+                                                           final String expectedOutputPath)
+    {
+
+        for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType :
+                FuncotatorArgumentDefinitions.OutputFormatType.values()) {
+            if (outputFormatType.equals(FuncotatorArgumentDefinitions.OutputFormatType.SEG)) {
+                continue;
+            }
+            final String typeCorrectedExpectedOutPath = FilenameUtils.removeExtension(expectedOutputPath) +
+                    "." + outputFormatType.toString().toLowerCase();
+            final File outputFile = createTempFile(tmpOutDir + File.separator + inputVcfName + ".funcotator", "." + outputFormatType.toString().toLowerCase());
+
+            final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                    inputVcfName,
+                    outputFile,
+                    referencePath,
+                    dataSourcesPath,
+                    referenceVersion,
+                    outputFormatType,
+                    true);
+            runCommandLine(arguments);
+        }
+
+    }
+
+    /** In this instance, we are again giving an already annotated file, but
+     * the --reannotate-vcf argument is being turned on using the flag "true"
+     * to indicate that we want this file to be reannotated. There should be no errors.
+     */
+    @Test(dataProvider = "provideForAlreadyAnnotatedInput")
+    public void testAlreadyAnnotatedInputWithOverrideArgument(final String inputVcfName,
+                                                final String referencePath,
+                                                final String referenceVersion,
+                                                final String dataSourcesPath,
+                                                final String expectedOutputPath)
+    {
+
+        for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType :
+                FuncotatorArgumentDefinitions.OutputFormatType.values()) {
+            if (outputFormatType.equals(FuncotatorArgumentDefinitions.OutputFormatType.SEG)) {
+                continue;
+            }
+            final String typeCorrectedExpectedOutPath = FilenameUtils.removeExtension(expectedOutputPath) +
+                    "." + outputFormatType.toString().toLowerCase();
+            final File outputFile = createTempFile(tmpOutDir + File.separator + inputVcfName + ".funcotator", "." + outputFormatType.toString().toLowerCase());
+
+            //the --reannotate-vcf is being turned on here using the "true" flag
+            final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                    inputVcfName,
+                    outputFile,
+                    referencePath,
+                    dataSourcesPath,
+                    referenceVersion,
+                    outputFormatType,
+                    true,
+                    Collections.emptyList(),
+                    true);
+            runCommandLine(arguments);
+        }
+
+    }
+
+    }
+
 

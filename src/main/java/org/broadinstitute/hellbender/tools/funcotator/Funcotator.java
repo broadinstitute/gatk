@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -222,7 +224,7 @@ import java.util.*;
  *     <li>The version of the reference genome sequence being used (e.g. <i>hg19</i>, <i>hg38</i>, etc.).</li>
  *     <li>A VCF of variant calls to annotate.</li>
  *     <li>The path to a folder of data sources formatted for use by Funcotator.</li>
- *     <li>The desired output format for the annotated vaiants file (either <i>MAF</i> or <i>VCF</i>)</li>
+ *     <li>The desired output format for the annotated variants file (either <i>MAF</i> or <i>VCF</i>)</li>
  * </ul>
  *
  * <h3>Output</h3>
@@ -769,6 +771,10 @@ public class Funcotator extends VariantWalker {
         // Get the header for our variants:
         final VCFHeader vcfHeader = getHeaderForVariants();
 
+        if (!funcotatorArgs.reannotateVCF) {
+            checkIfAlreadyAnnotated(vcfHeader, drivingVariantFile);
+        }
+
         logger.info("Initializing data sources...");
         // Initialize all of our data sources:
         // Sort data sources to make them process in the same order each time:
@@ -811,6 +817,21 @@ public class Funcotator extends VariantWalker {
                 getDefaultToolVCFHeaderLines(),
                 this
         );
+    }
+
+    /**
+     *  Checks to see if the given vcf has already been annotated.
+     *
+     *  No need to annotate again.
+     */
+    @VisibleForTesting
+    static void checkIfAlreadyAnnotated(final VCFHeader vcfHeader, GATKPath drivingVariantFile) {
+        if (vcfHeader.getOtherHeaderLine(FuncotatorConstants.VCF_HEADER_ALREADY_ANNOTATED_1) != null) {
+            throw new UserException.BadInput("Given VCF " +drivingVariantFile+ " has already been annotated!");
+        }
+        else if (vcfHeader.getOtherHeaderLine(FuncotatorConstants.VCF_HEADER_ALREADY_ANNOTATED_2) != null) {
+            throw new UserException.BadInput("Given VCF " +drivingVariantFile+ " has already been annotated!");
+        }
     }
 
     /**
