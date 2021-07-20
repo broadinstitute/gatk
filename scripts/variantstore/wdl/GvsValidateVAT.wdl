@@ -27,7 +27,7 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
-    call SpotCheckLocationForExpectedGenes {
+    call SpotCheckForExpectedTranscripts {
         input:
             query_project_id = query_project_id,
             fq_vat_table = fq_vat_table,
@@ -39,7 +39,7 @@ workflow GvsValidateVatTable {
     # [{ValidationRule1: "PASS/FAIL Extra info from this test"},
     #  {ValidationRule2: "PASS/FAIL Extra from this test"}]
     output {
-        Array[Map[String, String]] validation_results = [EnsureVatTableHasVariants.result, SpotCheckLocationForExpectedGenes.result]
+        Array[Map[String, String]] validation_results = [EnsureVatTableHasVariants.result, SpotCheckForExpectedTranscripts.result]
     }
 }
 
@@ -93,7 +93,7 @@ task EnsureVatTableHasVariants {
     }
 }
 
-task SpotCheckLocationForExpectedGenes {
+task SpotCheckForExpectedTranscripts {
     input {
         String query_project_id
         String fq_vat_table
@@ -111,7 +111,7 @@ task SpotCheckLocationForExpectedGenes {
         fi
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=sparse 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
             contig, position, vid, gene_symbol, single_consequence
         FROM  ~{fq_vat_table},
            UNNEST(consequence) as single_consequence
@@ -120,10 +120,10 @@ task SpotCheckLocationForExpectedGenes {
             position >= 35740407 AND
             position <= 35740469 AND
             single_consequence NOT IN ("downstream_gene_variant","upstream_gene_variant") AND
-            gene_symbol NOT IN ("IGFLR1")' > bq_query_output.txt
+            gene_symbol NOT IN ("IGFLR1","AD000671.2")' > bq_query_output.csv
 
         # get number of lines in bq query output
-        NUMVARS=$(awk 'END{print NR}' bq_query_output.txt)
+        NUMVARS=$(awk 'END{print NR}' bq_query_output.csv)
 
         # if the result of the bq call has any rows, that means there were other genes at the specified
         # location than expected, so report those back
@@ -131,7 +131,7 @@ task SpotCheckLocationForExpectedGenes {
             echo "PASS: The VAT table ~{fq_vat_table} only has the expected genes at the expected location tested ("IGFLR1" and "AD000671.2" in chromosome 19, between positions 35,740,407 - 35,740,469)." > validation_results.txt
         else
             echo "FAIL: The VAT table ~{fq_vat_table} had unexpected genes at the expected location tested: " > validation_results.txt
-            cat bq_query_output.txt >> validation_results.txt
+            cat bq_query_output.csv >> validation_results.txt
         fi    >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -145,7 +145,7 @@ task SpotCheckLocationForExpectedGenes {
     # ------------------------------------------------
     # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SpotCheckLocationForExpectedGenes": read_string('validation_results.txt')}
+        Map[String, String] result = {"SpotCheckForExpectedTranscripts": read_string('validation_results.txt')}
     }
 }
 
