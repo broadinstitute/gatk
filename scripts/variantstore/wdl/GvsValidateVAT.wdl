@@ -120,7 +120,7 @@ task SpotCheckForExpectedTranscripts {
             position >= 35740407 AND
             position <= 35740469 AND
             single_consequence NOT IN ("downstream_gene_variant","upstream_gene_variant") AND
-            gene_symbol NOT IN ("IGFLR1","AD000671.2")' > bq_query_output.csv
+            gene_symbol NOT IN ("IGFLR1")' > bq_query_output.csv
 
         # get number of lines in bq query output
         NUMVARS=$(awk 'END{print NR}' bq_query_output.csv)
