@@ -169,15 +169,6 @@ class PairLossBlock(Block):
             return out
         else:
             raise ValueError(f'Unknown pair merge method: {self.pair_merge}')
-        # elif self.pair_merge == 'dropout':
-        #     # get random index vector
-        #     random_index = np.random.randint(len(y), size=intermediates[left][-1].shape[-1])
-        #     tf.print(f'random index {random_index.shape} random_index {random_index[:4]}')
-        #     dropped_y = [y[idx][:, i] for i, idx in enumerate(random_index)]
-        #     tf.print(f'y {len(y)} shape {len(dropped_y)} tf_y {dropped_y[:4]}')
-        #     tf_y = tf.convert_to_tensor(dropped_y)
-        #     tf.print(f'out shape {tf_y.shape}')
-        #     return tf.transpose(tf_y)
 
 
 def contrastive_difference(left: tf.Tensor, right: tf.Tensor, batch_size: int, temperature: tf.Tensor):
