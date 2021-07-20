@@ -8,12 +8,12 @@ workflow GvsImportGenomes {
     Array[String] external_sample_names
     File interval_list
     String output_directory
-    File sample_map
+    # File sample_map
     String project_id
     String dataset_name
     String? pet_schema = "location:INTEGER,sample_id:INTEGER,state:STRING"
     String? vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,QUALapprox:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
-    String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING"
+#    String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING"
     String? service_account_json_path
     String? drop_state = "SIXTY"
     Boolean? drop_state_includes_greater_than = false
@@ -45,7 +45,7 @@ workflow GvsImportGenomes {
 
   call GetMaxTableId {
     input:
-      sample_map = sample_map
+      external_sample_names = external_sample_names
   }
 
   call CreateTables as CreateSampleInfoTables {
@@ -324,7 +324,7 @@ task ReleaseLock {
 
 task GetMaxTableId {
   input {
-    File sample_map
+    Array[String] external_sample_names
     Int? samples_per_table = 4000
 
     # runtime
@@ -337,7 +337,7 @@ task GetMaxTableId {
       python -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))"
   >>>
   runtime {
-      docker: "python:3.8-slim-buster"
+      docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
       memory: "1 GB"
       disks: "local-disk 10 HDD"
       preemptible: select_first([preemptible_tries, 5])
