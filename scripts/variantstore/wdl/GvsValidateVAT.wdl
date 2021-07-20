@@ -105,34 +105,40 @@ task SpotCheckForExpectedTranscripts {
 
     command <<<
         if [ ~{has_service_account_file} = 'true' ]; then
-        gsutil cp ~{service_account_json_path} local.service_account.json
-        gcloud auth activate-service-account --key-file=local.service_account.json
-        gcloud config set project ~{query_project_id}
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
         fi
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
-            contig, position, vid, gene_symbol, single_consequence
-        FROM  ~{fq_vat_table},
-           UNNEST(consequence) as single_consequence
+            contig,
+            position,
+            vid,
+            gene_symbol,
+            variant_consequence
+        FROM
+            ~{fq_vat_table},
+            UNNEST(consequence) AS variant_consequence
         WHERE
             contig = "chr19" AND
             position >= 35740407 AND
             position <= 35740469 AND
-            single_consequence NOT IN ("downstream_gene_variant","upstream_gene_variant") AND
-            gene_symbol NOT IN ("IGFLR1")' > bq_query_output.csv
+            variant_consequence NOT IN ("downstream_gene_variant","upstream_gene_variant") AND
+            gene_symbol NOT IN ("IGFLR1","AD000671.2")' > bq_query_output.csv
 
         # get number of lines in bq query output
-        NUMVARS=$(awk 'END{print NR}' bq_query_output.csv)
+        NUMRESULTS=$(awk 'END{print NR}' bq_query_output.csv)
 
-        # if the result of the bq call has any rows, that means there were other genes at the specified
-        # location than expected, so report those back
-        if [[ $NUMVARS =~ ^[0-9]+$ && $NUMVARS = "0" ]]; then
-            echo "PASS: The VAT table ~{fq_vat_table} only has the expected genes at the expected location tested ("IGFLR1" and "AD000671.2" in chromosome 19, between positions 35,740,407 - 35,740,469)." > validation_results.txt
+        # if the result of the query has any rows, that means there were unexpected transcripts at the
+        # specified location, so report those back in the output
+        if [[ $NUMRESULTS = "0" ]]; then
+            echo "PASS: The VAT table ~{fq_vat_table} only has the expected transcripts at the tested location ("IGFLR1" and "AD000671.2" in chromosome 19, between positions 35,740,407 - 35,740,469)." > validation_results.txt
         else
-            echo "FAIL: The VAT table ~{fq_vat_table} had unexpected genes at the expected location tested: " > validation_results.txt
+            echo "FAIL: The VAT table ~{fq_vat_table} had unexpected transcripts at the tested location: [csv output follows] " > validation_results.txt
             cat bq_query_output.csv >> validation_results.txt
-        fi    >>>
+        fi
+    >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
