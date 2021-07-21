@@ -740,7 +740,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Helper method to initialize the progress meter without exposing engine level arguements.
      */
     protected final void initializeProgressMeter(final String progressMeterRecordLabel) {
-        progressMeter = new ProgressMeter(secondsBetweenProgressUpdates);
+        progressMeter = new ProgressMeter(secondsBetweenProgressUpdates, disableProgressMeter());
         progressMeter.setRecordLabel(progressMeterRecordLabel);
     }
 
@@ -1081,11 +1081,9 @@ public abstract class GATKTool extends CommandLineProgram {
     protected final Object doWork() {
         try {
             onTraversalStart();
-            if (!disableProgressMeter()) {
-                progressMeter.start();
-            }
+            progressMeter.start();
             traverse();
-            if (!disableProgressMeter() && !progressMeter.stopped()) {
+            if (!progressMeter.stopped()) {
                 progressMeter.stop();
             }
             return onTraversalSuccess();
