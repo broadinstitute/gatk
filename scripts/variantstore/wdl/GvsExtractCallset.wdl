@@ -254,7 +254,8 @@ task ExtractTask {
          export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
          mkdir interval-files
-         gatk --java-options "-Xmx5g" SplitIntervals \
+         gatk --java-options "-Xmx2g" SplitIntervals \
+             --dont-mix-contigs \
              -R ~{ref_fasta} \
              ~{"-L " + intervals} \
              -scatter ~{scatter_count} \
@@ -264,9 +265,9 @@ task ExtractTask {
      }
 
      runtime {
-         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+         docker: "us.gcr.io/broad-gatk/gatk:4.2.0.0"
          bootDiskSizeGb: 15
-         memory: "6 GB"
+         memory: "3 GB"
          disks: "local-disk 10 HDD"
          preemptible: 3
          cpu: 1
