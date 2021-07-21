@@ -27,6 +27,14 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
+    call SpotCheckForExpectedTranscripts {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
     call SchemaOnlyOneRowPerNullTranscript {
         input:
             query_project_id = query_project_id,
@@ -36,7 +44,7 @@ workflow GvsValidateVatTable {
     }
 
     output {
-        Array[Map[String, String]] validation_results = [EnsureVatTableHasVariants.result, SchemaOnlyOneRowPerNullTranscript.result]
+        Array[Map[String, String]] validation_results = [EnsureVatTableHasVariants.result, SpotCheckForExpectedTranscripts.result, SchemaOnlyOneRowPerNullTranscript.result]
     }
 }
 
@@ -87,6 +95,35 @@ task EnsureVatTableHasVariants {
     # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
         Map[String, String] result = {"EnsureVatTableHasVariants": read_string('validation_results.txt')}
+    }
+}
+
+task SpotCheckForExpectedTranscripts {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+
+    >>>
+
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        Map[String, String] result = {"SpotCheckForExpectedTranscripts": read_string('validation_results.txt')}
     }
 }
 
