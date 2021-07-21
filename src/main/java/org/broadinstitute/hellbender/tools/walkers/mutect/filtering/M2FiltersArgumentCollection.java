@@ -89,11 +89,11 @@ public class M2FiltersArgumentCollection {
     @Argument(fullName = MIN_MEDIAN_MAPPING_QUALITY_LONG_NAME, optional = true, doc="Minimum median mapping quality of alt reads")
     public int minMedianMappingQuality = -1;
     public int getMinMedianMappingQuality() {
-        if (minMedianBaseQuality == -1) {
+        if (minMedianMappingQuality == -1) {
             if (microbial) {
-                minMedianBaseQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY_FOR_MICROBIAL;
+                minMedianMappingQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY_FOR_MICROBIAL;
             } else {
-                minMedianBaseQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY;
+                minMedianMappingQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY;
             }
         }
         return minMedianMappingQuality;

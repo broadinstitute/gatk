@@ -632,46 +632,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(actualFilters, expectedFilters);
     }
 
-    @DataProvider(name = "vcfsForFilteringMicrobial")
-    public Object[][] vcfsForFilteringMicrobial() {
-        return new Object[][]{
-                {NA12878_MITO_VCF, 0.5, Collections.emptyList(), Arrays.asList(
-                        ImmutableSet.of(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
-                        Collections.emptySet(),
-                        ImmutableSet.of( GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,
-                                GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME),
-                        Collections.emptySet(),
-                        Collections.emptySet(),
-                        ImmutableSet.of(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME),
-                        ImmutableSet.of(GATKVCFConstants.FAIL)),
-                        Arrays.asList(
-                                Arrays.asList(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME), // strand_bias, strict_stand
-                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS), // SITE
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME), // weak_evidence, low_allele_frac
-                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME), // SITE|weak_evidence, strand_bias, low_allele_frac|strand_bias, strict_strand, low_allele_frac
-                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS),  // SITE
-                                Arrays.asList(GATKVCFConstants.DUPLICATED_EVIDENCE_FILTER_NAME), // duplicate
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME) // weak_evidence, strand_bias, strict_stand|low_allele_frac
-
-                        )},
-                {NA12878_MITO_GVCF, .0009, Arrays.asList("MT:1", "MT:37", "MT:40", "MT:152", "MT:157"), Arrays.asList(
-                        Collections.emptySet(),
-                        ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME),
-                        ImmutableSet.of(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME,GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME),
-                        Collections.emptySet(),
-                        ImmutableSet.of(GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME, GATKVCFConstants.CONTAMINATION_FILTER_NAME, GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME,
-                                GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME, GATKVCFConstants.READ_POSITION_FILTER_NAME, GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME)),
-                        Arrays.asList(
-                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS), // SITE,
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), //"weak_evidence, base_qual, strand_bias|SITE",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), // "weak_evidence, strict_strand, strand_bias|SITE",
-                                Arrays.asList(GATKVCFConstants.SITE_LEVEL_FILTERS, GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS), //".|weak_evidence, base_qual, strand_bias, low_allele_frac|SITE",
-                                Arrays.asList(GATKVCFConstants.TUMOR_EVIDENCE_FILTER_NAME + ", " + GATKVCFConstants.MEDIAN_BASE_QUALITY_FILTER_NAME + ", " + GATKVCFConstants.CONTAMINATION_FILTER_NAME + ", " + GATKVCFConstants.STRICT_STRAND_BIAS_FILTER_NAME + ", " + GATKVCFConstants.READ_POSITION_FILTER_NAME + ", " + GATKVCFConstants.ALLELE_FRACTION_FILTER_NAME, GATKVCFConstants.SITE_LEVEL_FILTERS) // "weak_evidence, base_qual, map_qual, contamination, strand_artifact, position, low_allele_frac|SITE"
-                        )}
-        };
-    }
-
-    @Test(dataProvider = "vcfsForFilteringMicrobial")
+    @Test(dataProvider = "vcfsForFiltering")
     public void testFilterMicrobial(File unfiltered, final double minAlleleFraction, final List<String> intervals, List<Set<String>> expectedFilters, List<List<String>> expectedASFilters)  {
         final File filteredVcf = createTempFile("filtered", ".vcf");
 
