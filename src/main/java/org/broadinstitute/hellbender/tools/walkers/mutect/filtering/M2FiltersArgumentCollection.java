@@ -87,9 +87,16 @@ public class M2FiltersArgumentCollection {
     public int uniqueAltReadCount = DEFAULT_MIN_UNIQUE_ALT_READS;
 
     @Argument(fullName = MIN_MEDIAN_MAPPING_QUALITY_LONG_NAME, optional = true, doc="Minimum median mapping quality of alt reads")
-    public int minMedianMappingQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY;
+    public int minMedianMappingQuality = -1;
     public int getMinMedianMappingQuality() {
-        return microbial && minMedianMappingQuality == DEFAULT_MIN_MEDIAN_MAPPING_QUALITY ? DEFAULT_MIN_MEDIAN_MAPPING_QUALITY_FOR_MICROBIAL : minMedianMappingQuality;
+        if (minMedianBaseQuality == -1) {
+            if (microbial) {
+                minMedianBaseQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY_FOR_MICROBIAL;
+            } else {
+                minMedianBaseQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY;
+            }
+        }
+        return minMedianMappingQuality;
     }
 
     @Argument(fullName = MIN_MEDIAN_BASE_QUALITY_LONG_NAME, optional = true, doc="Minimum median base quality of alt reads")
