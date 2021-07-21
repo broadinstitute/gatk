@@ -133,7 +133,7 @@ task SpotCheckForExpectedTranscripts {
         # if the result of the query has any rows, that means there were unexpected transcripts at the
         # specified location, so report those back in the output
         if [[ $NUMRESULTS = "0" ]]; then
-            echo "PASS: The VAT table ~{fq_vat_table} only has the expected transcripts at the tested location ("IGFLR1" and "AD000671.2" in chromosome 19, between positions 35,740,407 - 35,740,469)." > validation_results.txt
+            echo "PASS: The VAT table ~{fq_vat_table} only has the expected transcripts at the tested location ('IGFLR1' and 'AD000671.2' in chromosome 19, between positions 35,740,407 - 35,740,469)." > validation_results.txt
         else
             echo "FAIL: The VAT table ~{fq_vat_table} had unexpected transcripts at the tested location: [csv output follows] " > validation_results.txt
             cat bq_query_output.csv >> validation_results.txt
