@@ -43,3 +43,12 @@ bq show --format prettyjson -j $JOB_ID > ${JOB_ID}.json
 
 Visit https://bqvisualiser.appspot.com/, and upload your JSON!  This is run by google professional services, but do not log in with your credentials to get queries since the app would also have access to all the data in your BigQuery projects.  Upload the JSON instead. 
 
+### Visualize Shuffle for GvsPrepareCallset
+
+Sometimes it's necessary look at the amount of shuffle used for an entire GvsPrepareCallset run.  One can extract the metadata by filtering by the run id which is output in the logs:
+
+```
+cat all.json | jq '[.[] | select(.configuration.labels.id == "6b66ffb0")]' > 22k_success_6b66ffb0.json
+```
+
+There is a notebook in the [Spec Ops GVS Analysis](https://app.terra.bio/#workspaces/broad-dsp-spec-ops-fc/Spec%20Ops%20GVS%20Analysis) workspace which can be used to plot this data 
