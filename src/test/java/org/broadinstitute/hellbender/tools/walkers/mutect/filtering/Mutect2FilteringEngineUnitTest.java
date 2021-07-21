@@ -27,9 +27,4 @@ public class Mutect2FilteringEngineUnitTest {
         final double threshold = ThresholdCalculator.calculateThresholdBasedOnFalseDiscoveryRate(Doubles.asList(posteriors), maxErrorRate);
         Assert.assertEquals(threshold, expectedThreshold);
     }
-
-    @Test
-    public void testMicrobialDefault() {
-        Mutect2
-    }
 }
