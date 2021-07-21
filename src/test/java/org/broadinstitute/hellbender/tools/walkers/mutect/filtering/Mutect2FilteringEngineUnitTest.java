@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import com.google.common.primitives.Doubles;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -25,5 +26,10 @@ public class Mutect2FilteringEngineUnitTest {
                                        final double expectedThreshold) {
         final double threshold = ThresholdCalculator.calculateThresholdBasedOnFalseDiscoveryRate(Doubles.asList(posteriors), maxErrorRate);
         Assert.assertEquals(threshold, expectedThreshold);
+    }
+
+    @Test
+    public void testMicrobialDefault() {
+        Mutect2
     }
 }
