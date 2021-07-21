@@ -204,6 +204,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
+    public void testGenomicsDBImportFileInputsNativeReader() throws IOException {
+        testGenomicsDBImporter(LOCAL_GVCFS, INTERVAL, COMBINED, b38_reference_20_21, true, 1, true);
+    }
+
+    @Test
     public void testGenomicsDBImportFileInputs_newMQ() throws IOException {
         testGenomicsDBImporter_newMQ(GVCFS_WITH_NEW_MQ, INTERVAL2, COMBINED_WITH_NEW_MQ, b37_reference_20_21, true, Collections.emptyList());
     }
@@ -211,6 +216,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test
     public void testGenomicsDBImportFileInputsWithMultipleIntervals() throws IOException {
         testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true, 1);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsWithMultipleIntervalsNativeReader() throws IOException {
+        testGenomicsDBImporter(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true, 1, true);
     }
 
     @Test(timeOut = 1000000)
@@ -236,6 +246,11 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFNativeReader() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, INTERVAL, b38_reference_20_21, new String[0], 1, 0, true);
+    }
+
+    @Test
     public void testGenomicsDBImportMergeContigsManyNonAdjacentContigsToSeveralContigs() throws IOException {
         List<SimpleInterval> manyContigs = MANY_CONTIGS_NON_ADJACENT_INTERVALS.stream().map(SimpleInterval::new).collect(Collectors.toList());
         final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
@@ -257,9 +272,20 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleIntervalsNativeReader() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, b38_reference_20_21, new String[0], 1, 0, true);
+    }
+
+    @Test
     public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleIntervalsWithMultipleThreads() throws IOException {
         testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, b38_reference_20_21,
                 new String[0], 4);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleIntervalsWithMultipleThreadsNativeReader() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, b38_reference_20_21,
+                new String[0], 4, 0, true);
     }
 
     @Test
@@ -269,11 +295,25 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleNonAdjacentIntervalsNativeReader() throws IOException {
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS,
+            b38_reference_20_21, new String[0], 1, 0, true);
+    }
+
+    @Test
     public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleNonAdjacentIntervalsForFilesProducedAfterCombineGVCFs()
         throws IOException {
         //this test covers the scenario where the input vcfs have spanning deletions
         testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS_AFTER_COMBINE_GVCFS, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS,
             b38_reference_20_21, new String[0]);
+    }
+
+    @Test
+    public void testGenomicsDBImportFileInputsAgainstCombineGVCFWithMultipleNonAdjacentIntervalsForFilesProducedAfterCombineGVCFsNativeReader()
+        throws IOException {
+        //this test covers the scenario where the input vcfs have spanning deletions
+        testGenomicsDBAgainstCombineGVCFs(LOCAL_GVCFS_AFTER_COMBINE_GVCFS, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS,
+            b38_reference_20_21, new String[0], 1, 0, true);
     }
 
     @Test
@@ -305,6 +345,12 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     public void testGenomicsDBThreeLargeSamplesWithGenotypes() throws IOException {
         ArrayList<SimpleInterval> intervals = new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 1, 64444167)));
         testGenomicsDBImporterWithGenotypes(LOCAL_GVCFS, intervals, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, true, false);
+    }
+
+    @Test
+    public void testGenomicsDBThreeLargeSamplesWithGenotypesNativeReader() throws IOException {
+        ArrayList<SimpleInterval> intervals = new ArrayList<SimpleInterval>(Arrays.asList(new SimpleInterval("chr20", 1, 64444167)));
+        testGenomicsDBImporterWithGenotypes(LOCAL_GVCFS, intervals, COMBINED_WITH_GENOTYPES, b38_reference_20_21, true, true, false, true);
     }
 
     @Test
@@ -504,9 +550,19 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         testGenomicsDBImporterWithBatchSize(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, batchSize);
     }
 
+    @Test(dataProvider = "batchSizes")
+    public void testGenomicsDBImportFileInputsInBatchesWithMultipleIntervalsNativeReader(final int batchSize) throws IOException {
+        testGenomicsDBImporterWithBatchSize(LOCAL_GVCFS, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, batchSize, true);
+    }
+
     @Test(groups = {"bucket"}, dataProvider = "batchSizes")
     public void testGenomicsDBImportGCSInputsInBatches(final int batchSize) throws IOException {
         testGenomicsDBImporterWithBatchSize(resolveLargeFilesAsCloudURIs(LOCAL_GVCFS), INTERVAL, COMBINED, batchSize);
+    }
+
+    @Test(groups = {"bucket"}, dataProvider = "batchSizes")
+    public void testGenomicsDBImportGCSInputsInBatchesNativeReader(final int batchSize) throws IOException {
+        testGenomicsDBImporterWithBatchSize(resolveLargeFilesAsCloudURIs(LOCAL_GVCFS), INTERVAL, COMBINED, batchSize, true);
     }
 
     @DataProvider
@@ -632,6 +688,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         if (chrsToPartitions != 0) {
             args.add(GenomicsDBImport.MERGE_CONTIGS_INTO_NUM_PARTITIONS, String.valueOf(chrsToPartitions));
         }
+        args.add(GenomicsDBImport.BYPASS_FEATURE_READER, useNativeReader);
         if (useBufferSize) {
             args.add("genomicsdb-vcf-buffer-size", String.valueOf(bufferSizePerSample));
         }
@@ -1125,6 +1182,19 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
         testIncrementalImport(2, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, true, "", 0, false);
         createAndCheckIntervalListFromExistingWorkspace(workspace, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS_PICARD_STYLE_EXPECTED);
+    }
+
+    @Test
+    public void testGenomicsDBIncrementalAndBatchSize1WithNonAdjacentIntervalsNativeReader() throws IOException {
+        final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
+        testIncrementalImport(2, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS, workspace, 1, false, true, "", 0, true);
+        createAndCheckIntervalListFromExistingWorkspace(workspace, MULTIPLE_NON_ADJACENT_INTERVALS_THAT_WORK_WITH_COMBINE_GVCFS_PICARD_STYLE_EXPECTED);
+    }
+
+    @Test(expectedExceptions = {UserException.class}, expectedExceptionsMessageRegExp=".*must be block compressed.*")
+    public void testGenomicsDBImportNativeReaderNoCompressedVcf() throws IOException {
+        testGenomicsDBImporterWithGenotypes(Arrays.asList(NA_12878_PHASED), MULTIPLE_INTERVALS, NA_12878_PHASED, b37_reference_20_21, 
+                false, true, false, true);
     }
 
     @Test
