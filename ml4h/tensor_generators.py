@@ -816,12 +816,12 @@ def test_train_valid_tensor_generators(
     )
     generate_valid = generator_class(
         batch_size=batch_size, input_maps=tensor_maps_in, output_maps=tensor_maps_out,
-        paths=train_paths, num_workers=num_train_workers, cache_size=cache_size, weights=weights,
+        paths=valid_paths, num_workers=num_valid_workers, cache_size=cache_size, weights=weights,
         keep_paths=keep_paths, mixup_alpha=0, name='validation_worker', siamese=siamese, augment=False,
     )
     generate_test = generator_class(
         batch_size=batch_size, input_maps=tensor_maps_in, output_maps=tensor_maps_out + tensor_maps_protected,
-        paths=train_paths, num_workers=num_train_workers, cache_size=0, weights=weights,
+        paths=test_paths, num_workers=num_train_workers, cache_size=0, weights=weights,
         keep_paths=keep_paths or keep_paths_test, mixup_alpha=0, name='test_worker', siamese=siamese, augment=False,
     )
     if wrap_with_tf_dataset:
