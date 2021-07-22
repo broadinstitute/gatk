@@ -1,5 +1,5 @@
 {
   "GvsAssignIds.project_id": "spec-ops-aou",
-  "GvsAssignIds.external_sample_names": ["tests3", "tests4"],
+  "GvsAssignIds.external_sample_names": ["tests7", "tests8"],
   "GvsAssignIds.dataset_name": "ah_test_id_generation",
 }
