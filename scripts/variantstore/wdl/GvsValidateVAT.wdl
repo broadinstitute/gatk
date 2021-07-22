@@ -236,7 +236,7 @@ task SchemaOnlyOneRowPerNullTranscript {
         fi
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT * FROM (SELECT
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
             vid,
             COUNT(vid) AS num_rows
         FROM
@@ -244,8 +244,8 @@ task SchemaOnlyOneRowPerNullTranscript {
         WHERE
             transcript_source is NULL AND
             transcript is NULL
-        GROUP BY vid) null_transcripts
-        WHERE num_rows > 1' > bq_variant_count.csv
+        GROUP BY vid
+        HAVING num_rows = 1' > bq_variant_count.csv
 
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
