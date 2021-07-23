@@ -19,6 +19,8 @@ def run():
         write_reference_and_annotation_tensors(args)
     elif 'write_read_and_annotation_tensors' == args.mode:
         write_read_and_annotation_tensors(args)
+    elif 'write_read_and_annotation_tensors_tf2' == args.mode:
+        write_read_and_annotation_tensors_tf2(args)
     elif 'train_default_1d_model' == args.mode:
         train_default_1d_model(args)
     elif 'train_default_2d_model' == args.mode:
@@ -182,6 +184,101 @@ def write_read_and_annotation_tensors(args, include_annotations=True, pileup=Fal
                     pileup_tensor = read_tensor_to_pileup(args, read_tensor)
                     hf.create_dataset('pileup_tensor', data=pileup_tensor, compression='gzip')
                 hf.create_dataset(args.tensor_name, data=read_tensor, compression='gzip')
+                if include_annotations:
+                    hf.create_dataset(args.annotation_set, data=annotation_data, compression='gzip')
+
+            stats['count'] += 1
+            if stats['count']%100 == 0:
+                print('Wrote', stats['count'], 'tensors out of', args.samples, ' last variant:', str(variant))
+        if stats['count'] >= args.samples:
+            break
+
+    for s in stats.keys():
+        print(s, 'has:', stats[s])
+    if variant:
+        print('Done generating tensors. Last variant:', str(variant), 'from vcf:', args.input_vcf)
+
+
+def write_read_and_annotation_tensors_tf2(args, include_annotations=True, pileup=False):
+    '''Create tensors structured as tensor map of reads organized by labels in the data directory.
+
+    Defines true variants as those in the args.train_vcf, defines false variants as
+    those called in args.input_vcf and in the args.bed_file high confidence intervals,
+    but not in args.train_vcf.
+
+    Arguments
+        args.data_dir: directory where tensors will live. Created here and filled with
+            subdirectories of test, valid and train, each containing
+            subdirectories for each label with tensors stored as hd5 files.
+        args.bam_file: BAM or BAMout file where the aligned reads are stored
+        args.input_vcf: VCF file with annotation values from Haplotype caller or VQSR
+        args.train_vcf: VCF file with true variant (from NIST or Platinum genomes, etc.)
+        args.bed_file: High confidence intervals for the calls in args.train_vcf
+        args.window_size: Size of sequence window around variant (width of the tensor)
+        args.read_limit: Maximum number of reads to include (height of the tensor)
+        args.chrom: Only write tensors from this chromosome (optional, used for parallelization)
+        args.start_pos: Only write tensors after this position (optional, used for parallelization)
+        args.end_pos: Only write tensors before this position (optional, used for parallelization)
+    '''
+    print('Writing tensors with:', args.tensor_name, 'channel map.')
+    stats = Counter()
+
+    samfile = pysam.AlignmentFile(args.bam_file, "rb")
+    bed_dict = bed_file_to_dict(args.bed_file)
+    record_dict = SeqIO.to_dict(SeqIO.parse(args.reference_fasta, "fasta"))
+    vcf_reader = get_vcf_reader(args.input_vcf)
+    vcf_ram = get_vcf_reader(args.train_vcf)
+
+    if args.chrom:
+        variants = vcf_reader.fetch(args.chrom, args.start_pos, args.end_pos)
+    else:
+        variants = vcf_reader
+
+    for variant in variants:
+        for allele_idx, allele in enumerate(variant.ALT):
+            idx_offset, ref_start, ref_end = get_variant_window(args, variant)
+            contig = record_dict[variant.CHROM]
+            record = contig[ ref_start : ref_end ]
+
+            cur_label_key = get_true_label(allele, variant, bed_dict, vcf_ram, stats)
+            if not cur_label_key or downsample(args, cur_label_key, stats):
+                continue
+
+            if include_annotations:
+                if all(map(
+                        lambda x: x not in variant.INFO and x not in variant.FORMAT and x != "QUAL", args.annotations)):
+                    stats['Missing ALL annotations'] += 1
+                    continue # Require at least 1 annotation...
+                annotation_data = get_annotation_data(args, variant, stats)
+
+            good_reads, insert_dict = get_good_reads(args, samfile, variant)
+            if len(good_reads) >= args.read_limit:
+                stats['More reads than read_limit'] += 1
+            if len(good_reads) == 0:
+                stats['No reads aligned'] += 1
+                continue
+
+            reference_seq = record.seq
+            for i in sorted(insert_dict.keys(), key=int, reverse=True):
+                if i < 0:
+                    reference_seq = vqsr_cnn.INDEL_CHAR*insert_dict[i] + reference_seq
+                else:
+                    reference_seq = reference_seq[:i] + vqsr_cnn.INDEL_CHAR*insert_dict[i] + reference_seq[i:]
+
+            read_tensor = good_reads_to_tensor(args, good_reads, ref_start, insert_dict)
+            reference_sequence_into_tensor(args, reference_seq, read_tensor)
+
+            tensor_prefix = plain_name(args.input_vcf) +'_'+ plain_name(args.train_vcf)
+            tensor_prefix += '_allele_' + str(allele_idx)
+            tensor_path = 'tensors/' + tensor_prefix + '-' + variant.CHROM
+            tensor_path += '_' + str(variant.POS) + vqsr_cnn.TENSOR_SUFFIX
+            stats[cur_label_key] += 1
+
+            if not os.path.exists(os.path.dirname(tensor_path)):
+                os.makedirs(os.path.dirname(tensor_path))
+            with h5py.File(tensor_path, 'w') as hf:
+                hf.create_dataset(args.tensor_name, data=read_tensor, compression='gzip')
+                hf.create_dataset('variant_label', data=cur_label_key, dtype=h5py.special_dtype(vlen=str))
                 if include_annotations:
                     hf.create_dataset(args.annotation_set, data=annotation_data, compression='gzip')
 
