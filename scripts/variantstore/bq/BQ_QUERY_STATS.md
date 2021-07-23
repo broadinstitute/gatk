@@ -1,9 +1,13 @@
-## How to view BigQuery Query Statistics using BQ Visualizer
 
-### Identify the Query 
+We have found two tools that are useful in visualizing BigQuery performance:
+1. [BQ Visualizer](#bq-visualizer)
+2. [Shuffle usage with a Terra Notebook](#shuffle-usage-with-a-terra-notebook)
+
+## BQ Visualizer
+
+### Identify the Query
 The first job is to find the query in question and get the job id (e.g. `spec-ops-aou:5b673c2f-8073-4c22-b5bb-b567eceda62f`).  The BigQuery console is very helpful here, using the `Query History` tab to find your query.
 
- 
 This part is painful for AoU because the BigQuery jobs are run as the service account user and our pmi-ops.org accounts don't have access to see those jobs.  This means we can't use the GUI to look for these job ids.
 
 You need to use the BQ command line tool to list jobs
@@ -41,9 +45,9 @@ bq show --format prettyjson -j $JOB_ID > ${JOB_ID}.json
 
 ### Visualize w/ BQ Visualizer
 
-Visit https://bqvisualiser.appspot.com/, and upload your JSON!  This is run by google professional services, but do not log in with your credentials to get queries since the app would also have access to all the data in your BigQuery projects.  Upload the JSON instead. 
+Visit https://bqvisualiser.appspot.com/, and upload your JSON!  This is run by google professional services, but do not log in with your credentials to get queries since the app would also have access to all the data in your BigQuery projects.  Upload the JSON instead.
 
-### Visualize Shuffle for GvsPrepareCallset
+## Shuffle usage with a Terra Notebook
 
 Sometimes it's necessary look at the amount of shuffle used for an entire GvsPrepareCallset run.  One can extract the metadata by filtering by the run id which is output in the logs:
 
