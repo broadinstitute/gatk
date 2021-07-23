@@ -162,7 +162,7 @@ task ExtractAnAcAfFromVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "biocontainers/bcftools:v1.9-1-deb_cv1" # TODO lets put bcftools in our custom container please
+        docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
