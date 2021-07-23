@@ -367,12 +367,6 @@ task NonzeroAcAn {
     }
 }
 
-task GetBQTableLastModifiedDatetime {
-    # because this is being used to determine if the data has changed, never use call cache
-    meta {
-        volatile: true
-    }
-
 task SchemaOnlyOneRowPerNullTranscript {
     input {
         String query_project_id
