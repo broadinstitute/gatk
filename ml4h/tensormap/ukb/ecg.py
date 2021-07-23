@@ -406,7 +406,7 @@ ecg_rest_raw_100 = TensorMap(
 )
 ecg_rest_raw_8s = TensorMap(
     'ecg_rest_raw_8s', Interpretation.CONTINUOUS, shape=(4096, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
-    channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=100),
+    channel_map=ECG_REST_LEADS, normalization=Standardize(mean=0, std=10),
 )
 ecg_rest_raw_10 = TensorMap(
     'ecg_rest_raw_10', Interpretation.CONTINUOUS, shape=(5000, 12), path_prefix='ukb_ecg_rest', tensor_from_file=_make_ecg_rest(),
