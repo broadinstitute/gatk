@@ -37,9 +37,9 @@ vat_nirvana_transcripts_dictionary = {
 }
 
 vat_nirvana_gvs_alleles_dictionary = {
-  "gvs_all_ac": "x", # required
-  "gvs_all_an": "x", # required
-  "gvs_all_af": "x" # required
+  "gvs_all_an": "AN", # required
+  "gvs_all_ac": "AC", # required
+  "gvs_all_af": "AF" # required
 }
 
 vat_nirvana_revel_dictionary = {
@@ -91,6 +91,27 @@ significance_ordering = [
   "'-'"
  ]
 
+def check_filtering(variant):
+    # skip any row (with a warning) if no gvsAnnotations exist
+    if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
+      print("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
+      return False
+    # skip any row (with a warning) if AC, AN or AF is missing
+    elif variant["gvsAnnotations"].get("AC") == None:
+      print("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
+      return False
+    elif variant["gvsAnnotations"].get("AN") == None:
+      print("WARNING: There has been an error-- there is an AC value---but no AN value", variant.get("vid"))
+      return False
+    elif variant["gvsAnnotations"].get("AF") == None:
+      print("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
+      return False
+    # skip any row (with a warning) if the AC value is 0
+    elif variant["gvsAnnotations"].get("AC") == 0:
+      print("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
+      return False
+    else:
+      return True
 
 def make_annotated_json_row(row_position, variant_line, transcript_line):
     row = {}
@@ -116,11 +137,6 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
               nirvana_splice_ai_fieldname = vat_nirvana_splice_ai_dictionary.get(vat_splice_ai_fieldname)
               splice_ai_fieldvalue = splice_ai_obj.get(nirvana_splice_ai_fieldname)
               row[vat_splice_ai_fieldname] = splice_ai_fieldvalue
-
-    for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
-      nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
-      gvs_alleles_fieldvalue = variant_line.get(nirvana_gvs_alleles_fieldname)
-      row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
 
     if variant_line.get("gnomad") != None:
       for vat_gnomad_fieldname in vat_nirvana_gnomad_dictionary.keys():  # like "gnomad_all_af"
@@ -158,6 +174,18 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
     if variant_line.get("revel") != None:
       row["revel"] = variant_line.get("revel").get("score")
 
+    gvs_annotations = variant_line["gvsAnnotations"]
+    if gvs_annotations.get("AC") < 19: # if AC is between 1-18, make the value 19 and then recalculate AF as 19 / AN (we already checked for AC=0)
+      print("I am 19!", variant_line.get("vid"))
+      row["gvs_all_ac"] = 19
+      row["gvs_all_an"] = gvs_annotations.get("AN")
+      row["gvs_all_af"] = 19 / gvs_annotations.get("AN")
+    else:
+      for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
+        nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
+        gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
+        row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
+
     return row
 
 
@@ -177,6 +205,9 @@ def make_positions_json(annotated_json, output_json):
     # row for each variant - transcript
     # so let's start with each variant
     for variant in variants:
+      # check if it's a row we care about
+      if check_filtering(variant) is False:
+        continue
       # remember that we want one for each variant-transcript and variant-null for variants without transcripts
       if variant.get("transcripts") == None:
         # then we make a special row
