@@ -1,0 +1,5 @@
+{
+  "GvsValidateVatTable.query_project_id": "spec-ops-aou",
+  "GvsValidateVatTable.default_dataset": "anvil_100_for_testing",
+  "GvsValidateVatTable.vat_table_name": "vat_kc_vat_1"
+}
