@@ -106,7 +106,6 @@ workflows:
      filters:
        branches:
          - ah_var_store
-         - rsa_add_vat_val_4
          - rsa_add_vat_val_5
    - name: MitochondriaPipeline
      subclass: WDL
