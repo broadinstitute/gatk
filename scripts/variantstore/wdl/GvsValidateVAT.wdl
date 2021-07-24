@@ -79,7 +79,6 @@ workflow GvsValidateVatTable {
     }
 }
 
-
 task GetBQTableLastModifiedDatetime {
     # because this is being used to determine if the data has changed, never use call cache
     meta {
@@ -130,6 +129,7 @@ task GetBQTableLastModifiedDatetime {
         preemptible: 3
         cpu: 1
     }
+
 }
 
 task EnsureVatTableHasVariants {
@@ -182,6 +182,7 @@ task EnsureVatTableHasVariants {
         Map[String, String] result = {"EnsureVatTableHasVariants": read_string('validation_results.txt')}
     }
 }
+
 
 task SpotCheckForExpectedTranscripts {
     input {
@@ -244,6 +245,129 @@ task SpotCheckForExpectedTranscripts {
 
     output {
         Map[String, String] result = {"SpotCheckForExpectedTranscripts": read_string('validation_results.txt')}
+
+    }
+}
+
+task EnsemblTranscripts {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+    # Every transcript_source is Ensembl or null
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv
+        'SELECT
+            contig,
+            position,
+            vid,
+            transcript,
+            transcript_source
+        FROM
+            ~{fq_vat_table},
+        WHERE
+            transcript IS NOT NULL AND
+            transcript_source != "Ensembl"' > bq_transcript_output.csv
+
+
+            # get number of lines in bq query output
+            NUMRESULTS=$(awk 'END{print NR}' bq_transcript_output.csv)
+
+            # if the result of the query has any rows, that means there were unexpected transcripts (not from Ensembl), so report those back in the output
+            if [[ $NUMRESULTS = "0" ]]; then
+                echo "PASS: The VAT table ~{fq_vat_table} only has the expected Ensembl transcripts"  > validation_results.txt
+            else
+                echo "FAIL: The VAT table ~{fq_vat_table} had unexpected transcripts (not from Ensembl): [csv output follows] " > validation_results.txt
+                cat bq_transcript_output.csv >> validation_results.txt
+            fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
+    output {
+        Map[String, String] result = {"EnsemblTranscripts": read_string('validation_results.txt')}
+    }
+}
+
+task NonzeroAcAn {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+    # No row has AC of zero or AN of zero.
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv
+        'SELECT
+            contig,
+            position,
+            vid,
+            gvs_all_ac,
+            gvs_all_an
+        FROM
+            ~{fq_vat_table},
+        WHERE
+            gvs_all_ac IS NULL OR
+            gvs_all_ac == 0 OR
+            gvs_all_an IS NULL OR
+            gvs_all_an == 0 ' > bq_ac_an_output.csv
+
+
+            # get number of lines in bq query output
+            NUMRESULTS=$(awk 'END{print NR}' bq_ac_an_output.csv)
+
+            # if the result of the query has any rows, that means there were unexpected rows with either an AC of zero or AN of zero, so report those back in the output
+            if [[ $NUMRESULTS = "0" ]]; then
+                echo "PASS: The VAT table ~{fq_vat_table} only has no rows with AC of zero or AN of zero"  > validation_results.txt
+            else
+                echo "FAIL: The VAT table ~{fq_vat_table} had unexpected rows with AC of zero or AN of zero: [csv output follows] " > validation_results.txt
+                cat bq_ac_an_output.csv >> validation_results.txt
+            fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
+    output {
+        Map[String, String] result = {"NonzeroAcAn": read_string('validation_results.txt')}
     }
 }
 
@@ -281,7 +405,7 @@ task SchemaOnlyOneRowPerNullTranscript {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
 
-        # if the result of the query has any rows, that means there were vids will null transcripts and multiple
+        # if the result of the query has any rows, that means there were vids with null transcripts and multiple
         # rows in the VAT, which should not be the case
         if [[ $NUMRESULTS = "0" ]]; then
             echo "PASS: The VAT table ~{fq_vat_table} only has 1 row per vid with a null transcript" > validation_results.txt

@@ -16,6 +16,7 @@ workflow GvsSitesOnlyVCF {
 
         String? service_account_json_path
         File? gatk_override
+        File AnAcAf_annotations_template
     }
 
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
@@ -25,24 +26,34 @@ workflow GvsSitesOnlyVCF {
             input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
             service_account_json_path = service_account_json_path,
             output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz",
+            custom_annotations_template = AnAcAf_annotations_template
         }
 
-        call AnnotateShardedVCF {
+        call ExtractAnAcAfFromVCF {
+          input:
+            input_vcf = SitesOnlyVcf.output_vcf,
+            input_vcf_index = SitesOnlyVcf.output_vcf_idx,
+            custom_annotations_template = SitesOnlyVcf.annotations_template
+        }
+
+        call AnnotateVCF {
           input:
             input_vcf = SitesOnlyVcf.output_vcf,
             input_vcf_index = SitesOnlyVcf.output_vcf_idx,
             output_annotated_file_name = "${output_annotated_file_name}_${i}",
-            nirvana_data_tar = nirvana_data_directory
+            nirvana_data_tar = nirvana_data_directory,
+            custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file
         }
 
        call PrepAnnotationJson {
          input:
-           annotation_json = AnnotateShardedVCF.annotation_json,
+           annotation_json = AnnotateVCF.annotation_json,
            output_file_suffix = "${i}.json.gz",
            output_path = output_path,
            service_account_json_path = service_account_json_path,
        }
     }
+
      call BigQueryLoadJson {
          input:
              nirvana_schema = vat_schema_json_file,
@@ -62,7 +73,7 @@ workflow GvsSitesOnlyVCF {
              dataset_name = dataset_name,
              table_suffix = table_suffix,
              service_account_json_path = service_account_json_path,
-             annotation_jsons = AnnotateShardedVCF.annotation_json,
+             annotation_jsons = AnnotateVCF.annotation_json,
              load_jsons_done = BigQueryLoadJson.done
          }
 }
@@ -74,6 +85,7 @@ task SitesOnlyVcf {
         File input_vcf_index
         String? service_account_json_path
         String output_filename
+        File custom_annotations_template
     }
     String output_vcf_idx = basename(output_filename) + ".tbi"
 
@@ -97,7 +109,7 @@ task SitesOnlyVcf {
             export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
             gcloud auth activate-service-account --key-file=local.service_account.json
 
-        gsutil cp ~{input_vcf} .
+            gsutil cp ~{input_vcf} .
             gsutil cp ~{input_vcf_index} .
         fi
 
@@ -111,6 +123,10 @@ task SitesOnlyVcf {
                 --exclude-filtered \
                 --sites-only-vcf-output \
                 -O ~{output_filename}
+
+
+        gsutil cp ~{custom_annotations_template} .
+
      >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -126,24 +142,54 @@ task SitesOnlyVcf {
     output {
         File output_vcf="~{output_filename}"
         File output_vcf_idx="~{output_vcf_idx}"
+        File annotations_template="~{custom_annotations_template}"
     }
 }
 
-task AnnotateShardedVCF {
+task ExtractAnAcAfFromVCF {
+    input {
+        File input_vcf
+        File input_vcf_index
+        File custom_annotations_template
+    }
+    String custom_annotations_file_name = "an_ac_af.tsv"
+    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
+    command <<<
+        set -e
+        cp ~{custom_annotations_template} ~{custom_annotations_file_name}
+        bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' | grep -v "*" >> ~{custom_annotations_file_name}
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File annotations_file="~{custom_annotations_file_name}"
+    }
+}
+
+task AnnotateVCF {
     input {
         File input_vcf
         File input_vcf_index
         String output_annotated_file_name
         File nirvana_data_tar
+        File custom_annotations_file
     }
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String annotation_json_name_jsi = annotation_json_name + ".jsi"
-
     String nirvana_location = "/opt/nirvana/Nirvana.dll"
+    String custom_creation_location = "/opt/nirvana/SAUtils.dll"
     String path = "/Cache/GRCh38/Both"
     String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
-
     command <<<
         set -e
 
@@ -157,9 +203,27 @@ task AnnotateShardedVCF {
         DATA_SOURCES_FOLDER="$PWD/datasources_dir"
 
 
+        # =======================================
+        # Create custom annotations:
+        echo "Creating custom annotations"
+        mkdir customannotations_dir
+        CUSTOM_ANNOTATIONS_FOLDER="$PWD/customannotations_dir"
+
+
+        dotnet ~{custom_creation_location} customvar\
+             -r $DATA_SOURCES_FOLDER~{path_reference} \
+             -i ~{custom_annotations_file} \
+             -o $CUSTOM_ANNOTATIONS_FOLDER
+
+
+        # =======================================
+        # Create Nirvana annotations:
+
+
         dotnet ~{nirvana_location} \
              -c $DATA_SOURCES_FOLDER~{path} \
              --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
+             --sd $CUSTOM_ANNOTATIONS_FOLDER \
              -r $DATA_SOURCES_FOLDER~{path_reference} \
              -i ~{input_vcf} \
              -o ~{output_annotated_file_name}
@@ -219,7 +283,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200709"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200718"
         memory: "3 GB"
         preemptible: 5
         cpu: "1"
@@ -332,9 +396,9 @@ task BigQueryLoadJson {
               v.position,
               v.ref_allele,
               v.alt_allele,
-              null AS gvs_all_ac,
-              null AS gvs_all_an,
-              null AS  gvs_all_af,
+              v.gvs_all_ac,
+              v.gvs_all_an,
+              v.gvs_all_af,
               v.gene_symbol,
               v.transcript_source,
               v.aa_change,
