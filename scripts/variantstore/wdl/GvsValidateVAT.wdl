@@ -484,7 +484,7 @@ task SchemaEnsemblTranscripts {
     # ------------------------------------------------
     # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"EnsemblTranscripts": read_string('validation_results.txt')}
+        Map[String, String] result = {"SchemaEnsemblTranscripts": read_string('validation_results.txt')}
     }
 }
 
@@ -545,7 +545,7 @@ task SchemaNonzeroAcAn {
     # ------------------------------------------------
     # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"NonzeroAcAn": read_string('validation_results.txt')}
+        Map[String, String] result = {"SchemaNonzeroAcAn": read_string('validation_results.txt')}
     }
 }
 
