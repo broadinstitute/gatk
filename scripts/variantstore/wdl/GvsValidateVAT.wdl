@@ -276,7 +276,7 @@ task EnsemblTranscripts {
             transcript,
             transcript_source
         FROM
-            ~{fq_vat_table},
+            ~{fq_vat_table}
         WHERE
             transcript IS NOT NULL AND
             transcript_source != "Ensembl"' > bq_transcript_output.csv
@@ -336,7 +336,7 @@ task NonzeroAcAn {
             gvs_all_ac,
             gvs_all_an
         FROM
-            ~{fq_vat_table},
+            ~{fq_vat_table}
         WHERE
             gvs_all_ac IS NULL OR
             gvs_all_ac == 0 OR
@@ -456,7 +456,7 @@ task SchemaEnsemblTranscripts {
             transcript,
             transcript_source
         FROM
-            ~{fq_vat_table},
+            ~{fq_vat_table}
         WHERE
             transcript IS NOT NULL AND
             transcript_source != "Ensembl"' > bq_transcript_output.csv
@@ -514,7 +514,7 @@ task SchemaNonzeroAcAn {
             gvs_all_ac,
             gvs_all_an
         FROM
-            ~{fq_vat_table},
+            ~{fq_vat_table}
         WHERE
             gvs_all_ac IS NULL OR
             gvs_all_ac == 0 OR
@@ -570,21 +570,21 @@ task SchemaNullTranscriptsExist {
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
-        vid
+            vid
         FROM
-        ~{fq_vat_table}
+            ~{fq_vat_table}
         WHERE
-        transcript_source is NULL AND
-        transcript is NULL' > bq_variant_count.csv
+            transcript_source is NULL AND
+            transcript is NULL' > bq_variant_count.csv
 
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
 
         # if the result of the query has any rows, that means there were null transcripts
         if [[ $NUMRESULTS != "0" ]]; then
-        echo "PASS: The VAT table ~{fq_vat_table} has at least one null transcript" > validation_results.txt
+           echo "PASS: The VAT table ~{fq_vat_table} has at least one null transcript" > validation_results.txt
         else
-        echo "FAIL: The VAT table ~{fq_vat_table} has no null transcripts" > validation_results.txt
+           echo "FAIL: The VAT table ~{fq_vat_table} has no null transcripts" > validation_results.txt
         fi
     >>>
     # ------------------------------------------------
