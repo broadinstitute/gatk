@@ -339,9 +339,9 @@ task NonzeroAcAn {
             ~{fq_vat_table}
         WHERE
             gvs_all_ac IS NULL OR
-            gvs_all_ac == 0 OR
+            gvs_all_ac = 0 OR
             gvs_all_an IS NULL OR
-            gvs_all_an == 0 ' > bq_ac_an_output.csv
+            gvs_all_an = 0 ' > bq_ac_an_output.csv
 
 
             # get number of lines in bq query output
@@ -517,9 +517,9 @@ task SchemaNonzeroAcAn {
             ~{fq_vat_table}
         WHERE
             gvs_all_ac IS NULL OR
-            gvs_all_ac == 0 OR
+            gvs_all_ac = 0 OR
             gvs_all_an IS NULL OR
-            gvs_all_an == 0 ' > bq_ac_an_output.csv
+            gvs_all_an = 0' > bq_ac_an_output.csv
 
 
         # get number of lines in bq query output
