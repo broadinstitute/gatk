@@ -396,12 +396,12 @@ task SchemaOnlyOneRowPerNullTranscript {
             transcript_source is NULL AND
             transcript is NULL
         GROUP BY vid
-        HAVING num_rows = 1' > bq_variant_count.csv
+        HAVING num_rows != 1' > bq_variant_count.csv
 
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
 
-        # if the result of the query has any rows, that means there were vids will null transcripts and multiple
+        # if the result of the query has any rows, that means there were vids with null transcripts and multiple
         # rows in the VAT, which should not be the case
         if [[ $NUMRESULTS = "0" ]]; then
             echo "PASS: The VAT table ~{fq_vat_table} only has 1 row per vid with a null transcript" > validation_results.txt
