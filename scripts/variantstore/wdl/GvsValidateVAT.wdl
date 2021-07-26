@@ -35,6 +35,14 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
+    call NoNullRequiredFields {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
     call SchemaOnlyOneRowPerNullTranscript {
         input:
             query_project_id = query_project_id,
