@@ -296,7 +296,7 @@ task NoNullRequiredFields {
               case(genomic_location is null) when true then 'genomic_location ' else '' end
            ) AS null_fields
         FROM
-            ~{fq_vat_table},
+            ~{fq_vat_table}
         WHERE
             vid IS NULL OR
             contig IS NULL OR
