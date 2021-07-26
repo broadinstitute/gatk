@@ -2,15 +2,22 @@ import os
 import json
 
 # Keras Imports
-from keras import layers
-from keras import metrics
-import keras.backend as K
-from keras.optimizers import Adam
-from keras.models import Model, load_model
-from keras.layers.convolutional import Conv1D, Conv2D,  MaxPooling1D, MaxPooling2D
-from keras.callbacks import ModelCheckpoint, EarlyStopping, TensorBoard, ReduceLROnPlateau
-from keras.layers import Input, Dense, Dropout, BatchNormalization, SpatialDropout1D, SpatialDropout2D, Activation, Flatten, AlphaDropout
-
+import tensorflow as tf
+import tensorflow.keras.backend as K
+from tensorflow.keras import layers
+from tensorflow.keras.callbacks import History
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.utils import model_to_dot
+from tensorflow.keras.layers import LeakyReLU, PReLU, ELU, ThresholdedReLU, Lambda, Reshape, LayerNormalization
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, Callback
+from tensorflow.keras.layers import SpatialDropout1D, SpatialDropout2D, SpatialDropout3D, add, concatenate
+from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Flatten, LSTM, RepeatVector
+from tensorflow.keras.layers import Conv1D, Conv2D, Conv3D, UpSampling1D, UpSampling2D, UpSampling3D, MaxPooling1D
+from tensorflow.keras.layers import MaxPooling2D, MaxPooling3D, Average, AveragePooling1D, AveragePooling2D, AveragePooling3D, Layer
+from tensorflow.keras.layers import SeparableConv1D, SeparableConv2D, DepthwiseConv2D, Concatenate, Add
+from tensorflow.keras.layers import GlobalAveragePooling1D, GlobalAveragePooling2D, GlobalAveragePooling3D
+#
 from . import plots
 from . import defines
 from . import arguments
@@ -18,11 +25,11 @@ from . import tensor_maps
 
 
 def start_session_get_args_and_model(intra_ops, inter_ops, semantics_json, weights_hd5=None, tensor_type=None):
-    K.clear_session()
-    K.get_session().close()
-    cfg = K.tf.ConfigProto(intra_op_parallelism_threads=intra_ops, inter_op_parallelism_threads=inter_ops)
-    cfg.gpu_options.allow_growth = True
-    K.set_session(K.tf.Session(config=cfg))
+    #K.clear_session()
+    #K.get_session().close()
+    #cfg = K.tf.ConfigProto(intra_op_parallelism_threads=intra_ops, inter_op_parallelism_threads=inter_ops)
+    #cfg.gpu_options.allow_growth = True
+    #K.set_session(K.tf.Session(config=cfg))
     return args_and_model_from_semantics(semantics_json, weights_hd5, tensor_type)
 
 
@@ -560,11 +567,11 @@ def per_class_precision_3d(labels):
 
 def get_metrics(classes=None, dim=2):
     if classes and dim == 2:
-        return [metrics.categorical_accuracy] + per_class_precision(classes) + per_class_recall(classes)
+        return per_class_precision(classes) + per_class_recall(classes)
     elif classes and dim == 3:
-        return [metrics.categorical_accuracy] + per_class_precision_3d(classes) + per_class_recall_3d(classes)
+        return per_class_precision_3d(classes) + per_class_recall_3d(classes)
     else:
-        return [metrics.categorical_accuracy, precision, recall]
+        return [precision, recall]
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
