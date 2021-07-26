@@ -249,6 +249,7 @@ task SpotCheckForExpectedTranscripts {
     }
 }
 
+
 task EnsemblTranscripts {
     input {
         String query_project_id
