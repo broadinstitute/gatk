@@ -76,10 +76,12 @@ workflow GvsValidateVatTable {
     }
 
     output {
+<<<<<<< HEAD
         Array[Map[String, String]] validation_results = [
             EnsureVatTableHasVariants.result,
             SpotCheckForExpectedTranscripts.result,
             SchemaOnlyOneRowPerNullTranscript.result,
+            NoNullRequiredFields.result,
             SchemaEnsemblTranscripts.result,
             SchemaNonzeroAcAn.result,
             SchemaNullTranscriptsExist.result
