@@ -35,6 +35,22 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
+    call SchemaOnlyOneRowPerNullTranscript {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
+    call SchemaNullTranscriptsExist {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
     call NoNullRequiredFields {
         input:
             query_project_id = query_project_id,
@@ -43,7 +59,7 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
-    call SchemaOnlyOneRowPerNullTranscript {
+    call PrimaryKey {
         input:
             query_project_id = query_project_id,
             fq_vat_table = fq_vat_table,
@@ -67,23 +83,16 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
-    call SchemaNullTranscriptsExist {
-        input:
-            query_project_id = query_project_id,
-            fq_vat_table = fq_vat_table,
-            service_account_json_path = service_account_json_path,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
-    }
-
     output {
         Array[Map[String, String]] validation_results = [
             EnsureVatTableHasVariants.result,
             SpotCheckForExpectedTranscripts.result,
-            NoNullRequiredFields.result,
             SchemaOnlyOneRowPerNullTranscript.result,
-            SchemaEnsemblTranscripts.result,
-            SchemaNonzeroAcAn.result,
             SchemaNullTranscriptsExist.result
+            NoNullRequiredFields.result,
+            PrimaryKey.result,
+            SchemaEnsemblTranscripts.result,
+            SchemaNonzeroAcAn.result
         ]
     }
 }
