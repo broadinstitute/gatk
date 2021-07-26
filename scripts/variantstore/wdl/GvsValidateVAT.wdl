@@ -249,6 +249,86 @@ task SpotCheckForExpectedTranscripts {
     }
 }
 
+task NoNullRequiredFields {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+    # No non-nullable fields contain null values
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv
+        'SELECT
+            contig,
+            position,
+            vid,
+            concat(
+              case(vid is null) when true then 'vid ' else '' end,
+              case(contig is null) when true then 'contig ' else '' end,
+              case(position is null) when true then 'position ' else '' end,
+              case(ref_allele is null) when true then 'ref_allele ' else '' end,
+              case(alt_allele is null) when true then 'alt_allele ' else '' end,
+              case(gvs_all_ac is null) when true then 'gvs_all_ac ' else '' end,
+              case(gvs_all_an is null) when true then 'gvs_all_an ' else '' end,
+              case(gvs_all_af is null) when true then 'gvs_all_af ' else '' end,
+              case(variant_type is null) when true then 'variant_type ' else '' end,
+              case(genomic_location is null) when true then 'genomic_location ' else '' end
+           ) AS null_fields
+        FROM
+            ~{fq_vat_table},
+        WHERE
+            vid IS NULL OR
+            contig IS NULL OR
+            position IS NULL OR
+            ref_allele IS NULL OR
+            alt_allele IS NULL OR
+            gvs_all_ac IS NULL OR
+            gvs_all_an IS NULL OR
+            gvs_all_af IS NULL OR
+            variant_type IS NULL OR
+            genomic_location IS NULL' > bq_null_required_output.csv
+
+
+            # get number of lines in bq query output
+            NUMRESULTS=$(awk 'END{print NR}' bq_null_required_output.csv)
+
+            # if the result of the query has any rows, that means there were unexpected null values in required fields, so report those back in the output
+            if [[ $NUMRESULTS = "0" ]]; then
+                echo "PASS: The VAT table ~{fq_vat_table} has no null values in required fields"  > validation_results.txt
+            else
+                echo "FAIL: The VAT table ~{fq_vat_table} had null values in required fields: [csv output follows] " > validation_results.txt
+                cat bq_null_required_output.csv >> validation_results.txt
+            fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
+    output {
+        Map[String, String] result = {"NoNullRequiredFields": read_string('validation_results.txt')}
+    }
+}
+
 
 task EnsemblTranscripts {
     input {
