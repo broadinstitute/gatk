@@ -754,7 +754,7 @@ def test_train_valid_tensor_generators(
     valid_csv: str = None,
     test_csv: str = None,
     siamese: bool = False,
-    wrap_with_tf_dataset: bool = False,
+    wrap_with_tf_dataset: bool = True,
     **kwargs
 ) -> Tuple[TensorGeneratorABC, TensorGeneratorABC, TensorGeneratorABC]:
     """ Get 3 tensor generator functions for training, validation and testing data.
