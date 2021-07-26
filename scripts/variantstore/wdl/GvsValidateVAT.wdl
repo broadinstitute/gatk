@@ -397,6 +397,63 @@ task SchemaOnlyOneRowPerNullTranscript {
     }
 }
 
+task PrimaryKey {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+    # Each key combination (vid+transcript) is unique--confirms that primary key is enforced.
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv
+        'SELECT
+            vid,
+            transcript,
+            COUNT(vid) AS num_vids,
+            COUNT(transcript) AS num_transcripts
+        FROM
+            ~{fq_vat_table}
+        GROUP BY vid, transcript
+        HAVING num_vids > 1 OR num_transcripts > 1' > bq_primary_key.csv
+
+        # get number of lines in bq query output
+        NUMRESULTS=$(awk 'END{print NR}' bq_primary_key.csv)
+
+        # if the result of the query has any rows, that means not all key combinations (vid+transcript) are unique, so report those back in the output
+        if [[ $NUMRESULTS = "0" ]]; then
+          echo "PASS: The VAT table ~{fq_vat_table} has all unique key combinations (vid+transcript)"  > validation_results.txt
+        else
+          echo "FAIL: The VAT table ~{fq_vat_table} had repeating key combinations (vid+transcript): [csv output follows] " > validation_results.txt
+        cat bq_primary_key.csv >> validation_results.txt
+        fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
+    output {
+        Map[String, String] result = {"PrimaryKey": read_string('validation_results.txt')}
+    }
+}
+
 task SchemaEnsemblTranscripts {
     input {
         String query_project_id
