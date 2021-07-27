@@ -2155,11 +2155,13 @@ public final class FuncotatorUtils {
         // Encoded version:
         final List<String> cleanLetters = new ArrayList<>();
         for(String s: badLetters) {
-            String hex = Integer.toHexString(s.getBytes(StandardCharsets.US_ASCII)[0] & 0xFF).toUpperCase();
-            if (hex.length() < 2) {
-                hex = "0" + hex;
+            final String hex;
+            if (s.getBytes(StandardCharsets.US_ASCII)[0] < 16) {
+                hex = "_%0"+Integer.toHexString(s.getBytes(StandardCharsets.US_ASCII)[0] & 0xFF).toUpperCase()+ "_";
             }
-            hex = "_%" + hex + "_";
+            else {
+                hex = "_%" +Integer.toHexString(s.getBytes(StandardCharsets.US_ASCII)[0] & 0xFF).toUpperCase() + "_";
+            }
             cleanLetters.add(hex);
         }
 
