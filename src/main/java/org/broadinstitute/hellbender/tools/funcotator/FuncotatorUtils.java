@@ -2154,7 +2154,7 @@ public final class FuncotatorUtils {
 
         // Encoded version:
         final List<String> cleanLetters = badLetters.stream().map(
-                s -> "_%" + s.getBytes(StandardCharsets.US_ASCII)[0] + "_")
+                s -> "_%" + Integer.toHexString(s.getBytes(StandardCharsets.US_ASCII)[0]) + "_")
                 .collect(Collectors.toList());
 
         // Now replace them:
