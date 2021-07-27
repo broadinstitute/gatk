@@ -25,15 +25,14 @@ workflow GvsSitesOnlyVCF {
             input_vcf = gvs_extract_cohort_filtered_vcfs[i],
             input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
             service_account_json_path = service_account_json_path,
-            output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz",
-            custom_annotations_template = AnAcAf_annotations_template
+            output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz"
         }
 
         call ExtractAnAcAfFromVCF {
           input:
             input_vcf = SitesOnlyVcf.output_vcf,
             input_vcf_index = SitesOnlyVcf.output_vcf_idx,
-            custom_annotations_template = SitesOnlyVcf.annotations_template
+            custom_annotations_template = AnAcAf_annotations_template
         }
 
         call AnnotateVCF {
@@ -85,7 +84,6 @@ task SitesOnlyVcf {
         File input_vcf_index
         String? service_account_json_path
         String output_filename
-        File custom_annotations_template
     }
     String output_vcf_idx = basename(output_filename) + ".tbi"
 
@@ -124,9 +122,6 @@ task SitesOnlyVcf {
                 --sites-only-vcf-output \
                 -O ~{output_filename}
 
-
-        gsutil cp ~{custom_annotations_template} .
-
      >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -142,7 +137,6 @@ task SitesOnlyVcf {
     output {
         File output_vcf="~{output_filename}"
         File output_vcf_idx="~{output_vcf_idx}"
-        File annotations_template="~{custom_annotations_template}"
     }
 }
 
