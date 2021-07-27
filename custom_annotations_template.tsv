@@ -1,0 +1,7 @@
+#title=gvsAnnotations
+#assembly=GRCh38
+#matchVariantsBy=allele
+#CHROM	POS	REF	ALT	AN	AC	AF
+#categories	.	.	.	AlleleNumber	AlleleCount	AlleleFrequency
+#descriptions	.	.	.	.	.	.
+#type	.	.	.	number	number	number
