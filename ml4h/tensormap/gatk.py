@@ -7,6 +7,9 @@ from ml4h.TensorMap import TensorMap, Interpretation
 DNA_SYMBOLS = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
 VARIANT_LABELS = {'NOT_SNP': 0, 'NOT_INDEL': 1, 'SNP': 2, 'INDEL': 3}
 
+
+
+
 def reference_tensor_from_hd5(tm: TensorMap, hd5: h5py.File, dependents: Dict = {}) -> np.ndarray:
     return np.array(hd5['reference'])
 
