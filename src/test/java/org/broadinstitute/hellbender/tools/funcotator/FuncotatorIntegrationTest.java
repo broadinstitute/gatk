@@ -133,13 +133,14 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     //==================================================================================================================
     // Disabled tests to regenerate expected outputs for integration tests:
     @Test(dataProvider = "provideForNonTrivialLargeDataValidationTest",
-               enabled = false)
+            enabled = true)
     public void regenerateExpectedOutputsForNonTrivialLargeDataValidationTest(
                                                   final String inputVcfName,
                                                   final String referencePath,
                                                   final String referenceVersion,
                                                   final String dataSourcesPath,
-                                                  final String expectedOutputPath ) {
+                                                  final String expectedOutputPath,
+                                                  final List<String>excludedFields, final boolean reannotate) {
 
         for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType : FuncotatorArgumentDefinitions.OutputFormatType.values() ) {
             if (outputFormatType.equals(FuncotatorArgumentDefinitions.OutputFormatType.SEG)) {
@@ -154,7 +155,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                     dataSourcesPath,
                     referenceVersion,
                     outputFormatType,
-                    true);
+                    true,
+                    excludedFields,
+                    reannotate);
 
             // Run the tool with our args:
             runCommandLine(arguments);
