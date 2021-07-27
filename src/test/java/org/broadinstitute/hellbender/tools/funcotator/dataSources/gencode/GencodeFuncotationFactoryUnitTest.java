@@ -2610,7 +2610,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @Test
     public void testFivePrimeFlankSorting() {
-        // This variant context would get a sorting that was different than the ground truth in FuncotatorIntegrationTest#nonTrivialxDataValidationTest
+        // This variant context would get a sorting that was different than the ground truth in FuncotatorIntegrationTest#nonTrivialDataValidationTest
         final VariantContext variantContext = new VariantContextBuilder("", "1", 871276, 871276,
                 Arrays.asList(Allele.create("G", true), Allele.create("A"))).make();
         final String transcriptGtfFile = GENCODE_HG19_BIG_GTF_FILE;
