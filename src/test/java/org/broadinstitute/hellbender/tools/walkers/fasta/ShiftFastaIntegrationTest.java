@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class ShiftFastaTest extends CommandLineProgramTest {
+public class ShiftFastaIntegrationTest extends CommandLineProgramTest {
 
     private static final File MITO_REF = new File(toolsTestDir, "mutect/mito/Homo_sapiens_assembly38.mt_only.fasta");
     private static final File SHIFTED_MITO_REF = new File(largeFileTestDir + "mitochondria_references/Homo_sapiens_assembly38.chrM.shifted_by_8000_bases.fasta");

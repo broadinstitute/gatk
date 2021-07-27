@@ -40,10 +40,11 @@ import java.util.ListIterator;
  *
  * Example command line:
  * ShiftFasta
- * -R "testfiles/shift/ecoli/Escherichia_coli_2017C-4173W12.fa"   // the reference to shift
- * -O "testfiles/shift/ecoli/shifted.fa"                          // the shifted fasta
- * --shift-back-output "testfiles/shift/ecoli/shiftback.chain"    // the shiftback chain file to use when lifting over
- * --interval-file-name "testfiles/shift/ecoli/ecoli"             // base name for output interval files (one for regular and one for shifted)
+ * -R "<CIRCURLAR_REFERENCE.fasta>"         // the reference to shift
+ * -O "<SHIFTED_REFERENCE.fasta>"           // output; the shifted fasta
+ * --shift-back-output "<SHIFT_BACK.chain>" // output; the shiftback chain file to use when lifting over
+ * --shift-offset-list "<SHIFT_OFFSETS>"    // optional; Specifies the offset to shift for each contig in the reference. If not specified, the offset will be half the length of the contig.
+ * --interval-file-name "<SHIFT_INTERVALS>" // output; base name for output interval files (.intervals and .shifted.intervals) that should be used when calling variants against the unshifted and shifted reference.
  * --line-width 100
  */
 @DocumentedFeature
