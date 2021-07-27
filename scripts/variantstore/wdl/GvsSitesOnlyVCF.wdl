@@ -71,9 +71,9 @@ workflow GvsSitesOnlyVCF {
          input:
              project_id = project_id,
              dataset_name = dataset_name,
+             counts_variants = ExtractAnAcAfFromVCF.count_variants,
              table_suffix = table_suffix,
              service_account_json_path = service_account_json_path,
-             annotation_jsons = AnnotateVCF.annotation_json,
              load_jsons_done = BigQueryLoadJson.done
          }
 }
@@ -152,12 +152,21 @@ task ExtractAnAcAfFromVCF {
         File input_vcf_index
         File custom_annotations_template
     }
+
     String custom_annotations_file_name = "an_ac_af.tsv"
+
     # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
     command <<<
         set -e
+
         cp ~{custom_annotations_template} ~{custom_annotations_file_name}
+
         bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' | grep -v "*" >> ~{custom_annotations_file_name}
+
+        ### for validation of the pipeline
+        bcftools norm -m- ~{input_vcf} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
+        # I find this ^ clearer, but could also do a regex like:  grep "AC=[1-9][0-9]*;A[N|F]=[.0-9]*;A[N|F]=[.0-9]*"
+        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python? still have the <20 issue...?
     >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -171,7 +180,8 @@ task ExtractAnAcAfFromVCF {
     # ------------------------------------------------
     # Outputs:
     output {
-        File annotations_file="~{custom_annotations_file_name}"
+        File annotations_file = "~{custom_annotations_file_name}"
+        Int count_variants = read_int("count.txt")
     }
 }
 
@@ -459,179 +469,58 @@ task BigQueryLoadJson {
     }
 }
 
-task BigQuerySmokeTest { # TO BE BROKEN UP AND POTENTIALLY RUN SEPARATELY
+task BigQuerySmokeTest {
     input {
         String project_id
         String dataset_name
-        Array[File] annotation_jsons
-        Boolean load_jsons_done
-        String? service_account_json_path
+        Array[Int] counts_variants
         String table_suffix
+        String? service_account_json_path
+        Boolean load_jsons_done
     }
-
     # Now query the final table for expected results
+    # Compare the number of variants we expect from the input with the size of the output / VAT
+    # The number of passing variants in GVS matches the number of variants in the VAT.
+    # Please note that we are counting the number of variants in GVS, not the number of sites, which may add a difficulty to this task.
 
     String vat_table = "vat_" + table_suffix
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
-        set +e
-
+        set -e
         if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
             gcloud auth activate-service-account --key-file=local.service_account.json
             gcloud config set project ~{project_id}
         fi
-
-        # For the validation rules that use count in SQL--the results are parsed to grab all digits in the response, which will also include error responses
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
         # ------------------------------------------------
-        # VALIDATION #1
-        echo  "VALIDATION #1"
-        # The pipeline completed without an error message
-        # The VAT has data in it
+        # VALIDATION CALCULATION
+        # sum all the initial input variants across the shards
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) FROM `~{dataset_name}.~{vat_table}`'
-        BQ_VAT_VARIANT_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}`'| tr -dc '0-9')
-        echo $BQ_VAT_VARIANT_COUNT
+        INITIAL_VARIANT_COUNT=$(python -c "print(sum([~{sep=', ' counts_variants}]))")
 
-        if [[ $BQ_VAT_VARIANT_COUNT -le 0 ]]
-        then
-          echo "The VAT has no data in it"
-          echo  "Validation has failed"
+        # Count number of variants in the VAT
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}`' > bq_variant_count.csv
+        VAT_COUNT=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+        # if the result of the bq call and the csv parsing is a series of digits, then check that it matches the input
+        if [[ $VAT_COUNT =~ ^[0-9]+$ ]]; then
+            if [[ $INITIAL_VARIANT_COUNT -ne $VAT_COUNT ]]; then
+                echo "FAIL: The VAT table ~{vat_table} and the input files had mismatched variant counts."
+            else
+                echo "PASS: The VAT table ~{vat_table} has $VAT_COUNT variants in it, which is the expected number."
+            fi
+        # otherwise, something is off, so return the output from the bq query call
         else
-          echo "The VAT has been updated"
-          echo "Validation #1 has passed"
+            echo "Something went wrong. The attempt to count the variants returned: " $(cat bq_variant_count.csv)
         fi
-
-        # ------------------------------------------------
-        # VALIDATION #2
-        # The number of passing variants in GVS matches the number of variants in the VAT.
-        echo  "VALIDATION #2"
-        # Please note that we are counting the number of variants in GVS, not the number of sites, which may add a difficulty to this task.
-        ANNOTATE_JSON_VARIANT_COUNT=$(gunzip -dc ~{sep=" " annotation_jsons} | grep -o -i '"vid":' | wc -l)
-
-        echo $ANNOTATE_JSON_VARIANT_COUNT
-
-        if [[ $ANNOTATE_JSON_VARIANT_COUNT -ne $BQ_VAT_VARIANT_COUNT ]]
-        then
-          echo "The number of variants is incorrect"
-          echo  "Validation has failed"
-        else
-          echo "The number of passing variants in GVS matches the number of variants in the VAT"
-          echo "Validation #2 has passed"
-        fi
-
-        # ------------------------------------------------
-        # VALIDATION #3
-        # All variants in the TESK2 gene region (chr1:45,343,883-45,491,163) list multiple genes and those genes are always TESK2 and AL451136.1.
-        echo  "VALIDATION #3"
-
-        # Note: Lee has swapped this valdation to chr19
-        # SELECT gene_symbol, consequence  FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr19" and position >= 35740407 and position <= 35740469 and gene_symbol!="IGFLR1" and gene_symbol!="AD000671.2"
-
-        POSITIONAL_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163'| tr -dc '0-9')
-        TESK2_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="TESK2"'| tr -dc '0-9')
-        AL451136_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE contig = "chr1" and position >= 45343883 and position <= 45491163 and gene_symbol="AL451136.1"'| tr -dc '0-9')
-        GENE_COUNT_SUM=$(( $TESK2_COUNT + $AL451136_COUNT ))
-
-        if [[ $POSITIONAL_COUNT -ne $GENE_COUNT_SUM ]]
-          then echo "There are unexpected genes in the TESK2 region"
-          echo  "Validation has failed"
-        else
-          echo "All variants in the TESK2 gene region list multiple genes and those genes are always TESK2 and AL451136.1"
-          echo "Validation #4 has passed"
-        fi
-
-        # ------------------------------------------------
-        # VALIDATION #4
-        # If a vid has a null transcript, then the vid is only in one row of the VAT.
-        echo  "VALIDATION #4"
-        # Get a count of all the rows in the vat with no transcript
-        # Get a count of all distinct VID in vat with no transcript
-        # Make sure they are the same
-        BQ_VAT_ROWS_NO_TRANSCRIPT_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) AS distinct_vid_count FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL'| tr -dc '0-9')
-        BQ_VAT_VARIANT_NO_TRANSCRIPT_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` WHERE transcript IS NULL'| tr -dc '0-9')
-
-        if [[ $BQ_VAT_ROWS_NO_TRANSCRIPT_COUNT -ne $BQ_VAT_VARIANT_NO_TRANSCRIPT_COUNT ]]
-        then
-          echo "The number of rows for variants with no transcripts is incorrect"
-          echo  "Validation has failed"
-        else
-          echo "If a vid has a null transcript, then the vid is only in one row of the VAT"
-          echo "Validation #4 has passed"
-        fi
-
-        # ------------------------------------------------
-        # VALIDATION #5
-        # There is a non-zero number of transcript fields with null values in the VAT.
-        echo  "VALIDATION #5"
-
-        if [[ $BQ_VAT_VARIANT_NO_TRANSCRIPT_COUNT -gt 0 ]]
-        then
-          echo  "Validation has failed"
-        else
-          echo "Validation #5 has passed"
-        fi
-
-        # ------------------------------------------------
-        # VALIDATION #6
-        # No non-nullable fields contain null values.
-        # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
-        echo  "VALIDATION #6"
-
-        BQ_VAT_NULL=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT (DISTINCT vid) as count FROM `~{dataset_name}.~{vat_table}` WHERE vid IS NULL OR contig IS NULL OR position IS NULL OR ref_allele IS NULL OR alt_allele IS NULL OR variant_type IS NULL OR genomic_location IS NULL')
-        echo $BQ_VAT_NULL
-
-        if [[ $BQ_VAT_NULL -gt 0 ]]
-        then
-          echo "A required value is null"
-          echo  "Validation has failed"
-        else
-          echo "No required values are null"
-          echo "Validation #6 has passed"
-        fi
-
-        # ------------------------------------------------
-        # VALIDATION #7
-        # Each key combination (vid+transcript) is unique.
-        echo  "VALIDATION #7"
-        # get the sum of all the distinct vids where transcript is null and all the distinct transcript where transcript is not null
-        BQ_VAT_UNIQUE_IDS_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM (SELECT vid, transcript FROM `~{dataset_name}.~{vat_table}` group by vid, transcript)')
-        BQ_VAT_ROW_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` ')
-
-        if [ $BQ_VAT_UNIQUE_IDS_COUNT -ne $BQ_VAT_ROW_COUNT ];
-        then echo "There are duplicate variant - transcript rows"
-          echo  "Validation has failed"
-        else:
-          echo "Each key combination is unique"
-          echo "Validation #7 has passed"
-        fi
-
-        # ------------------------------------------------
-
-        # VALIDATION #8
-        # If a vid has any non-null transcripts then one transcript must be Ensembl (transcript_source). Every transcript_source is Ensembl or null.
-        echo  "VALIDATION #8"
-        BQ_VAT_ENSEMBL_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` where transcript is not null and transcript_source="Ensembl"')
-        BQ_VAT_TRANSCRIPT_COUNT=$(bq query --nouse_legacy_sql --project_id=~{project_id} 'SELECT COUNT(*) AS count FROM `~{dataset_name}.~{vat_table}` where transcript is not null')
-
-        if [[ $BQ_VAT_ENSEMBL_COUNT -ne $BQ_VAT_TRANSCRIPT_COUNT ]]
-        then
-          echo "All transcripts should be from Ensembl"
-          echo  "Validation has failed"
-        else
-          echo "If a vid has any non-null transcripts then one transcript must be Ensembl"
-          echo "Validation #8 has passed"
-        fi
-
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "openbridge/ob_google-bigquery:latest"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
