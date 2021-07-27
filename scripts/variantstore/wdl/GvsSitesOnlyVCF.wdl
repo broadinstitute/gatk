@@ -488,7 +488,7 @@ task BigQuerySmokeTest {
             gcloud auth activate-service-account --key-file=local.service_account.json
             gcloud config set project ~{project_id}
         fi
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # ------------------------------------------------
         # VALIDATION CALCULATION
@@ -497,7 +497,7 @@ task BigQuerySmokeTest {
         INITIAL_VARIANT_COUNT=$(python -c "print(sum([~{sep=', ' counts_variants}]))")
 
         # Count number of variants in the VAT
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}`' > bq_variant_count.csv
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}`' > bq_variant_count.csv
         VAT_COUNT=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
         # if the result of the bq call and the csv parsing is a series of digits, then check that it matches the input
         if [[ $VAT_COUNT =~ ^[0-9]+$ ]]; then
