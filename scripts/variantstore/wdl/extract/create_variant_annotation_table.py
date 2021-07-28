@@ -103,6 +103,28 @@ gnomad_ordering = [
 ]
 
 
+def check_filtering(variant):
+    # skip any row (with a warning) if no gvsAnnotations exist
+    if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
+      print("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
+      return False
+    # skip any row (with a warning) if AC, AN or AF is missing
+    elif variant["gvsAnnotations"].get("AC") == None:
+      print("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
+      return False
+    elif variant["gvsAnnotations"].get("AN") == None:
+      print("WARNING: There has been an error-- there is an AC value---but no AN value", variant.get("vid"))
+      return False
+    elif variant["gvsAnnotations"].get("AF") == None:
+      print("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
+      return False
+    # skip any row (with a warning) if the AC value is 0
+    elif variant["gvsAnnotations"].get("AC") == 0:
+      print("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
+      return False
+    else:
+      return True
+
 def get_gnomad_subpop(gnomad_obj, row):
     max_af = -1
     max_ac = -1
@@ -128,29 +150,6 @@ def get_gnomad_subpop(gnomad_obj, row):
     row["gnomad_max_ac"] = max_ac
     row["gnomad_max_af"] = max_af
     return row
-
-
-def check_filtering(variant):
-    # skip any row (with a warning) if no gvsAnnotations exist
-    if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
-      print("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
-      return False
-    # skip any row (with a warning) if AC, AN or AF is missing
-    elif variant["gvsAnnotations"].get("AC") == None:
-      print("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
-      return False
-    elif variant["gvsAnnotations"].get("AN") == None:
-      print("WARNING: There has been an error-- there is an AC value---but no AN value", variant.get("vid"))
-      return False
-    elif variant["gvsAnnotations"].get("AF") == None:
-      print("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
-      return False
-    # skip any row (with a warning) if the AC value is 0
-    elif variant["gvsAnnotations"].get("AC") == 0:
-      print("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
-      return False
-    else:
-      return True
 
 
 def make_annotated_json_row(row_position, variant_line, transcript_line):
@@ -183,6 +182,7 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
         nirvana_gnomad_fieldname = vat_nirvana_gnomad_dictionary.get(vat_gnomad_fieldname)
         gnomad_fieldvalue = variant_line.get("gnomad").get(nirvana_gnomad_fieldname)
         row[vat_gnomad_fieldname] = gnomad_fieldvalue
+      row = get_gnomad_subpop(variant_line["gnomad"], row) # TODO I dont like this---lets create a new one and merge it, not pass the row thru
 
     if variant_line.get("clinvar") != None:
       clinvar_lines = variant_line["clinvar"]
