@@ -89,9 +89,9 @@ significance_ordering = [
   "other",
   "not provided",
   "'-'"
- ]
+]
 
- gnomad_ordering = [
+gnomad_ordering = [
  "afr",
  "amr",
  "eas",
@@ -100,7 +100,8 @@ significance_ordering = [
  "asj",
  "oth",
  "sas"
- ]
+]
+
 
 def get_gnomad_subpop(gnomad_obj, row):
     max_af = -1
@@ -128,6 +129,7 @@ def get_gnomad_subpop(gnomad_obj, row):
     row["gnomad_max_af"] = max_af
     return row
 
+
 def check_filtering(variant):
     # skip any row (with a warning) if no gvsAnnotations exist
     if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
@@ -149,6 +151,7 @@ def check_filtering(variant):
       return False
     else:
       return True
+
 
 def make_annotated_json_row(row_position, variant_line, transcript_line):
     row = {}
@@ -305,10 +308,12 @@ def make_genes_json(annotated_json, output_genes_json):
   output_genes_file.close()
   json_data.close()
 
+
 def make_annotation_jsons(annotated_json, output_json, output_genes_json):
   make_positions_json(annotated_json, output_json)
   # we've already read the whole file once so we have to open it again
   make_genes_json(annotated_json, output_genes_json)
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Create BQ load friendly jsons for VAT creation')
