@@ -18,6 +18,8 @@ workflow GvsImportGenomes {
     String? drop_state = "SIXTY"
     Boolean? drop_state_includes_greater_than = false
 
+    Int batch_size = 1
+
     Int? preemptible_tries
     File? gatk_override
     String? docker
@@ -101,12 +103,21 @@ workflow GvsImportGenomes {
       run_uuid = SetLock.run_uuid
   }
 
-  scatter (i in range(length(input_vcfs))) {
+  call CreateFOFNs {
+    input:
+        input_vcf_list = write_lines(input_vcfs),
+        input_vcf_index_list = write_lines(input_vcf_indexes),
+        sample_name_list = write_lines(external_sample_names),
+        batch_size = batch_size,
+        run_uuid = SetLock.run_uuid
+  }
+
+  scatter (i in range(length(CreateFOFNs.vcf_batch_fofns))) {
     call CreateImportTsvs {
       input:
-        input_vcf = input_vcfs[i],
-        input_vcf_index = input_vcf_indexes[i],
-        sample_name = external_sample_names[i],
+        input_vcfs = read_lines(CreateFOFNs.vcf_batch_fofns[i]),
+        input_vcf_indexes = read_lines(CreateFOFNs.vcf_index_batch_fofns[i]),
+        sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         interval_list = interval_list,
         sample_map = sample_map,
         service_account_json_path = service_account_json_path,
@@ -400,12 +411,44 @@ task CheckForDuplicateData {
   }
 }
 
+task CreateFOFNs {
+    input {
+        File input_vcf_list
+        File input_vcf_index_list
+        File sample_name_list
+        Int batch_size
+        String run_uuid
+    }
+
+     command {
+         set -e
+
+         split -d -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcfs.
+         split -d -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcf_indexes.
+         split -d -a 5 -l ~{batch_size} ~{input_vcf_list} batched_sample_names.
+     }
+
+     runtime {
+         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+         bootDiskSizeGb: 15
+         memory: "3 GB"
+         disks: "local-disk 10 HDD"
+         preemptible: 3
+         cpu: 1
+     }
+
+     output {
+         Array[File] vcf_batch_fofns = glob("batched_vcfs.*")
+         Array[File] vcf_index_batch_fofns = glob("batched_vcf_indexes.*")
+         Array[File] vcf_sample_name_fofns = glob("batched_sample_names.*")
+     }
+}
 
 task CreateImportTsvs {
   input {
-    File input_vcf
-    File input_vcf_index
-    String sample_name
+    Array[File] input_vcfs
+    Array[File] input_vcf_indexes
+    Array[String] sample_names
     File interval_list
     String output_directory
     File sample_map
@@ -426,10 +469,8 @@ task CreateImportTsvs {
   }
 
   Int disk_size = if defined(drop_state) then 30 else 75
-  String input_vcf_basename = basename(input_vcf)
+
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-  # if we are doing a manual localization, we need to set the filename
-  String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
 
   meta {
     description: "Creates a tsv file for import into BigQuery"
@@ -437,10 +478,10 @@ task CreateImportTsvs {
   }
 
   parameter_meta {
-    input_vcf: {
+    input_vcfs: {
       localization_optional: true
     }
-    input_vcf_index: {
+    input_vcf_indexes: {
       localization_optional: true
     }
   }
@@ -457,10 +498,8 @@ task CreateImportTsvs {
           gsutil cp ~{service_account_json_path} local.service_account.json
           export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
           gcloud auth activate-service-account --key-file=local.service_account.json
-
-        gsutil cp ~{input_vcf} .
-        gsutil cp ~{input_vcf_index} .
       fi
+
 
       # check for existence of the correct lockfile
       LOCKFILE="~{output_directory}/LOCKFILE"
@@ -472,59 +511,79 @@ task CreateImportTsvs {
         exit 1
       fi
 
-      # check whether these files have already been generated
-      DO_TSV_GENERATION='true'
-      if [ ~{call_cache_tsvs} = 'true' ]; then
-        echo "Checking for files to call cache"
+      # translate WDL arrays into BASH arrays
+      VCFS_ARRAY="(~{sep=" " input_vcfs})"
+      VCF_INDEXES_ARRAY="(~{sep=" " input_vcf_indexes})"
+      SAMPLE_NAMES_ARRAY="(~{sep=" " sample_names})"
 
-        declare -a TABLETYPES=("sample_info" "pet" "vet")
-        ALL_FILES_EXIST='true'
-        for TABLETYPE in ${TABLETYPES[@]}; do
-            FILEPATH="~{output_directory}/${TABLETYPE}_tsvs/**${TABLETYPE}_*_~{input_vcf_basename}.tsv"
-            # output 1 if no file is found
-            result=$(gsutil ls $FILEPATH || echo 1)
+      # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
+      for i in "${!VCFS_ARRAY[@]}"; do
+          input_vcf="${VCFS_ARRAY[$i]}"
+          input_vcf_basename=$(basename $input_vcf)
+          updated_input_vcf=$input_vcf
+          input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
+          sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
-            if [ $result == 1 ]; then
-              echo "A file matching ${FILEPATH} does not exist"
-              ALL_FILES_EXIST='false'
-            else
-              if [[ $result = *"/done/"* ]]; then
-                echo "File ${FILENAME} seems to have been processed already; found at ${result}"
-                echo "Something is very wrong!"
-                exit 1
-              elif [[ $result = "~{output_directory}/${TABLETYPE}_tsvs/set_"* ]]; then
-                FILENAME=$(basename $result)
-                echo "File ${FILENAME} is in a set directory. Moving out of set directory to ~{output_directory}/${TABLETYPE}_tsvs/${FILENAME}"
-                gsutil mv $result "~{output_directory}/${TABLETYPE}_tsvs/"
-              fi
+          if [ ~{has_service_account_file} = 'true' ]; then
+              gsutil cp $input_vcf .
+              gsutil cp $input_vcf_index .
+              updated_input_vcf=$input_vcf_basename
+          fi
 
+          # check whether these files have already been generated
+          DO_TSV_GENERATION='true'
+          if [ ~{call_cache_tsvs} = 'true' ]; then
+            echo "Checking for files to call cache"
+
+            declare -a TABLETYPES=("sample_info" "pet" "vet")
+            ALL_FILES_EXIST='true'
+            for TABLETYPE in ${TABLETYPES[@]}; do
+                FILEPATH="~{output_directory}/${TABLETYPE}_tsvs/**${TABLETYPE}_*_${input_vcf_basename}.tsv"
+                # output 1 if no file is found
+                result=$(gsutil ls $FILEPATH || echo 1)
+
+                if [ $result == 1 ]; then
+                  echo "A file matching ${FILEPATH} does not exist"
+                  ALL_FILES_EXIST='false'
+                else
+                  if [[ $result = *"/done/"* ]]; then
+                    echo "File ${FILENAME} seems to have been processed already; found at ${result}"
+                    echo "Something is very wrong!"
+                    exit 1
+                  elif [[ $result = "~{output_directory}/${TABLETYPE}_tsvs/set_"* ]]; then
+                    FILENAME=$(basename $result)
+                    echo "File ${FILENAME} is in a set directory. Moving out of set directory to ~{output_directory}/${TABLETYPE}_tsvs/${FILENAME}"
+                    gsutil mv $result "~{output_directory}/${TABLETYPE}_tsvs/"
+                  fi
+                fi
+            done
+
+            if [ $ALL_FILES_EXIST = 'true' ]; then
+                DO_TSV_GENERATION='false'
+                echo "Skipping TSV generation for input file ${input_vcf_basename} because the output TSV files already exist."
             fi
-        done
+          fi
 
-        if [ $ALL_FILES_EXIST = 'true' ]; then
-            DO_TSV_GENERATION='false'
-            echo "Skipping TSV generation for input file ~{input_vcf_basename} because the output TSV files already exist."
-        fi
-      fi
+          if [ $DO_TSV_GENERATION = 'true' ]; then
+              echo "Generating TSVs for input file ${input_vcf_basename}"
 
-      if [ $DO_TSV_GENERATION = 'true' ]; then
-          echo "Generating TSVs for input file ~{input_vcf_basename}"
+              # TODO in future when we pass the source path or gvs_id as an arg here, use a version of that for the filename too
+              gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
+                -V ${updated_input_vcf} \
+                -L ~{interval_list} \
+                ~{"-IG " + drop_state} \
+                --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
+                --mode GENOMES \
+                -SN $sample_name \
+                -SNM ~{sample_map} \
+                --ref-version 38
 
-          # TODO in future when we pass the source path or gvs_id as an arg here, use a version of that for the filename too
-          gatk --java-options "-Xmx7000m" CreateVariantIngestFiles \
-            -V ~{updated_input_vcf} \
-            -L ~{interval_list} \
-            ~{"-IG " + drop_state} \
-            --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
-            --mode GENOMES \
-            -SN ~{sample_name} \
-            -SNM ~{sample_map} \
-            --ref-version 38
+              gsutil -m mv sample_info_*.tsv ~{output_directory}/sample_info_tsvs/
+              gsutil -m mv pet_*.tsv ~{output_directory}/pet_tsvs/
+              gsutil -m mv vet_*.tsv ~{output_directory}/vet_tsvs/
+          fi
+      done
 
-          gsutil -m cp sample_info_*.tsv ~{output_directory}/sample_info_tsvs/
-          gsutil -m cp pet_*.tsv ~{output_directory}/pet_tsvs/
-          gsutil -m cp vet_*.tsv ~{output_directory}/vet_tsvs/
-      fi
   >>>
   runtime {
       docker: docker
