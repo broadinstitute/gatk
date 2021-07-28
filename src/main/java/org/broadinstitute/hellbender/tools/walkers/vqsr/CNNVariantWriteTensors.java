@@ -150,7 +150,7 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
         if (tensorType == TensorType.reference) {
             arguments.addAll(Arrays.asList("--mode", "write_reference_and_annotation_tensors"));
         } else if (tensorType == TensorType.read_tensor) {
-            arguments.addAll(Arrays.asList("--mode", "write_read_and_annotation_tensors"));
+            arguments.addAll(Arrays.asList("--mode", "write_all_tensors_tf2"));
         } else {
             throw new GATKException("Unknown tensor mapping mode:"+ tensorType.name());
         }

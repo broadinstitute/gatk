@@ -1,5 +1,6 @@
 # Imports
 import os
+import sys
 import vcf
 import math
 import h5py
@@ -12,6 +13,15 @@ from collections import Counter
 # Keras Imports
 import keras.backend as K
 
+# ml4h Imports
+from ml4h.TensorMap import TensorMap
+from ml4h.arguments import parse_args
+from ml4h.metrics import coefficient_of_determination
+from ml4h.explorations import latent_space_dataframe
+from ml4h.recipes import train_multimodal_multitask
+from ml4h.models.model_factory import block_make_multimodal_multitask_model
+from ml4h.tensor_generators import TensorGenerator, big_batch_from_minibatch_generator, test_train_valid_tensor_generators
+from ml4h.recipes import plot_predictions, infer_hidden_layer_multimodal_multitask
 
 def run():
     args = vqsr_cnn.parse_args()
@@ -19,8 +29,8 @@ def run():
         write_reference_and_annotation_tensors(args)
     elif 'write_read_and_annotation_tensors' == args.mode:
         write_read_and_annotation_tensors(args)
-    elif 'write_read_and_annotation_tensors_tf2' == args.mode:
-        write_read_and_annotation_tensors_tf2(args)
+    elif 'write_all_tensors_tf2' == args.mode:
+        write_all_tensors_tf2(args)
     elif 'train_default_1d_model' == args.mode:
         train_default_1d_model(args)
     elif 'train_default_2d_model' == args.mode:
@@ -29,8 +39,23 @@ def run():
         train_args_model_on_read_tensors_and_annotations(args)
     elif 'train_args_model_on_reference_and_annotations' == args.mode:
         train_args_model_on_read_tensors_and_annotations(args)
+    elif 'train_from_tensor_maps' == args.mode:
+        train_from_tensor_maps(args)
     else:
         raise ValueError('Unknown training mode:', args.mode)
+
+
+def train_from_tensor_maps(args):
+    sys.argv = ['train', '--tensors', args.data_dir,
+                '--input_tensors', args.tensor_name,
+                '--output_tensors', 'variant_label',
+                '--batch_size', f'{args.batch_size}',
+                '--epochs', f'{args.epochs}',
+                '--logging_level', 'DEBUG',
+                '--tensormap_prefix', 'ml4h.tensormap.gatk']
+    args = parse_args()
+    train_multimodal_multitask(args)
+
 
 
 def write_reference_and_annotation_tensors(args, include_dna=True, include_annotations=True):
@@ -199,7 +224,7 @@ def write_read_and_annotation_tensors(args, include_annotations=True, pileup=Fal
         print('Done generating tensors. Last variant:', str(variant), 'from vcf:', args.input_vcf)
 
 
-def write_read_and_annotation_tensors_tf2(args, include_annotations=True, pileup=False):
+def write_all_tensors_tf2(args):
     '''Create tensors structured as tensor map of reads organized by labels in the data directory.
 
     Defines true variants as those in the args.train_vcf, defines false variants as
@@ -220,7 +245,7 @@ def write_read_and_annotation_tensors_tf2(args, include_annotations=True, pileup
         args.start_pos: Only write tensors after this position (optional, used for parallelization)
         args.end_pos: Only write tensors before this position (optional, used for parallelization)
     '''
-    print('Writing tensors with:', args.tensor_name, 'channel map.')
+    print(f'Writing tensors to: {args.data_dir}')
     stats = Counter()
 
     samfile = pysam.AlignmentFile(args.bam_file, "rb")
@@ -234,23 +259,31 @@ def write_read_and_annotation_tensors_tf2(args, include_annotations=True, pileup
     else:
         variants = vcf_reader
 
-    for variant in variants:
+    for v, variant in enumerate(variants):
         for allele_idx, allele in enumerate(variant.ALT):
             idx_offset, ref_start, ref_end = get_variant_window(args, variant)
             contig = record_dict[variant.CHROM]
-            record = contig[ ref_start : ref_end ]
-
+            record = contig[variant.POS - idx_offset: variant.POS + idx_offset]
             cur_label_key = get_true_label(allele, variant, bed_dict, vcf_ram, stats)
             if not cur_label_key or downsample(args, cur_label_key, stats):
                 continue
 
-            if include_annotations:
-                if all(map(
-                        lambda x: x not in variant.INFO and x not in variant.FORMAT and x != "QUAL", args.annotations)):
-                    stats['Missing ALL annotations'] += 1
-                    continue # Require at least 1 annotation...
-                annotation_data = get_annotation_data(args, variant, stats)
+            # Tabular Data
+            annotation_dict = get_annotation_dict(args, variant, stats)
 
+            # 1D 1-Hot Reference Sequence
+            dna_data = np.zeros((args.window_size, len(vqsr_cnn.DNA_SYMBOLS)))
+            for i, b in enumerate(record.seq):
+                if i == args.window_size:
+                    break
+                if b in vqsr_cnn.DNA_SYMBOLS:
+                    dna_data[i, vqsr_cnn.DNA_SYMBOLS[b]] = 1.0
+                elif b in vqsr_cnn.AMBIGUITY_CODES:
+                    dna_data[i] = vqsr_cnn.AMBIGUITY_CODES[b]
+                else:
+                    raise ValueError('Error! Unknown code:', b)
+
+            # 2D P-hot aligned read tensor
             good_reads, insert_dict = get_good_reads(args, samfile, variant)
             if len(good_reads) >= args.read_limit:
                 stats['More reads than read_limit'] += 1
@@ -258,6 +291,7 @@ def write_read_and_annotation_tensors_tf2(args, include_annotations=True, pileup
                 stats['No reads aligned'] += 1
                 continue
 
+            record = contig[ref_start: ref_end]
             reference_seq = record.seq
             for i in sorted(insert_dict.keys(), key=int, reverse=True):
                 if i < 0:
@@ -268,19 +302,20 @@ def write_read_and_annotation_tensors_tf2(args, include_annotations=True, pileup
             read_tensor = good_reads_to_tensor(args, good_reads, ref_start, insert_dict)
             reference_sequence_into_tensor(args, reference_seq, read_tensor)
 
-            tensor_prefix = plain_name(args.input_vcf) +'_'+ plain_name(args.train_vcf)
-            tensor_prefix += '_allele_' + str(allele_idx)
-            tensor_path = 'tensors/' + tensor_prefix + '-' + variant.CHROM
-            tensor_path += '_' + str(variant.POS) + vqsr_cnn.TENSOR_SUFFIX
+            tensor_prefix = f'{plain_name(args.input_vcf)}_{plain_name(args.train_vcf)}_allele_{str(allele)[:12]}'
+            #tensor_path = f'{args.data_dir}/{tensor_prefix}-{variant.CHROM}_{variant.POS}{vqsr_cnn.TENSOR_SUFFIX}'
+            tensor_path = f'{args.data_dir}/{v}{vqsr_cnn.TENSOR_SUFFIX}'
             stats[cur_label_key] += 1
 
             if not os.path.exists(os.path.dirname(tensor_path)):
                 os.makedirs(os.path.dirname(tensor_path))
             with h5py.File(tensor_path, 'w') as hf:
-                hf.create_dataset(args.tensor_name, data=read_tensor, compression='gzip')
+                hf.create_dataset('reference', data=dna_data, compression='gzip')
+                hf.create_dataset('read_tensor', data=read_tensor, compression='gzip')
+                hf.create_dataset('reference_tensor', data=read_tensor, compression='gzip')
                 hf.create_dataset('variant_label', data=cur_label_key, dtype=h5py.special_dtype(vlen=str))
-                if include_annotations:
-                    hf.create_dataset(args.annotation_set, data=annotation_data, compression='gzip')
+                for a in annotation_dict:
+                    hf.create_dataset(a.lower(), data=annotation_dict[a], )
 
             stats['count'] += 1
             if stats['count']%100 == 0:
@@ -404,7 +439,7 @@ def train_small_model_on_read_tensors_and_annotations(args):
                                     prefix=args.image_dir, batch_size=args.batch_size)
 
 
-def get_annotation_data(args, annotation_variant, stats):
+def get_annotation_dict(args, annotation_variant, stats):
     '''Return an array annotation data about the variant.
 
     Arguments:
@@ -415,40 +450,40 @@ def get_annotation_data(args, annotation_variant, stats):
     Returns:
         annotation_data: numpy array of annotation values
     '''
-    annotation_data = np.zeros((len(args.annotations),))
+    annotation_dict = {}
 
-    for i, a in enumerate(args.annotations):
+    for a in args.annotations:
         if a == 'QUAL':
-            annotation_data[i] = annotation_variant.QUAL
+            annotation_dict[a] = annotation_variant.QUAL
         elif a == 'AF':
-            annotation_data[i] = annotation_variant.INFO[a][0]
+            annotation_dict[a] = annotation_variant.INFO[a][0]
         elif a in annotation_variant.INFO and not math.isnan(annotation_variant.INFO[a]):
-            annotation_data[i] = annotation_variant.INFO[a]
+            annotation_dict[a] = annotation_variant.INFO[a]
         elif a == 'MBQ':
             call = annotation_variant.genotype(args.sample_name)
-            annotation_data[i] = call.data.MBQ
+            annotation_dict[a] = call.data.MBQ
         elif a == 'MPOS':
             call = annotation_variant.genotype(args.sample_name)
-            annotation_data[i] = call.data.MPOS
+            annotation_dict[a] = call.data.MPOS
         elif a == 'MMQ':
             call = annotation_variant.genotype(args.sample_name)
-            annotation_data[i] = call.data.MMQ
+            annotation_dict[a] = call.data.MMQ
         elif a == 'MFRL_0':
             call = annotation_variant.genotype(args.sample_name)
-            annotation_data[i] = call.data.MFRL[0]
+            annotation_dict[a] = call.data.MFRL[0]
         elif a == 'MFRL_1':
             call = annotation_variant.genotype(args.sample_name)
-            annotation_data[i] = call.data.MFRL[1]
+            annotation_dict[a] = call.data.MFRL[1]
         elif a == 'AD_0':
             call = annotation_variant.genotype(args.sample_name)
-            annotation_data[i] = call.data.AD[0]
+            annotation_dict[a] = call.data.AD[0]
         elif a == 'AD_1':
             call = annotation_variant.genotype(args.sample_name)
-            annotation_data[i] = call.data.AD[1]
+            annotation_dict[a] = call.data.AD[1]
         else:
             stats['Could not find annotation:' + a] += 1
 
-    return annotation_data
+    return annotation_dict
 
 
 def get_good_reads(args, samfile, variant, sort_by='base'):

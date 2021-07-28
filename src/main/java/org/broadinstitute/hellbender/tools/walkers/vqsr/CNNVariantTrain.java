@@ -204,7 +204,7 @@ public class CNNVariantTrain extends CommandLineProgram {
             if (tensorType == TensorType.reference) {
                 arguments.addAll(Arrays.asList("--mode", "train_args_model_on_reference_and_annotations"));
             } else if (tensorType == TensorType.read_tensor) {
-                arguments.addAll(Arrays.asList("--mode", "train_args_model_on_read_tensors_and_annotations"));
+                arguments.addAll(Arrays.asList("--mode", "train_from_tensor_maps"));
             } else {
                 throw new GATKException("Unknown tensor mapping mode:"+ tensorType.name());
             }
