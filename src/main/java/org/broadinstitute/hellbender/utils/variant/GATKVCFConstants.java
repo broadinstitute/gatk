@@ -89,6 +89,7 @@ public final class GATKVCFConstants {
     public static final String CNN_2D_KEY =                         "CNN_2D";
     public static final String F1R2_KEY =                           "F1R2";
     public static final String F2R1_KEY =                           "F2R1";
+    public static final String INSERT_SIZE_RANK_SUM_KEY =           "InsertSizeRankSum";
 
     // Mutect2-specific INFO keys
     public static final String TUMOR_LOG_10_ODDS_KEY =              "TLOD";
