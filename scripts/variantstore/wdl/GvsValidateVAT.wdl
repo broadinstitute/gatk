@@ -1,7 +1,5 @@
 version 1.0
 
-import "GvsWarpTasks.wdl" as Tasks
-
 workflow GvsValidateVatTable {
     input {
         String query_project_id
@@ -88,7 +86,7 @@ workflow GvsValidateVatTable {
             EnsureVatTableHasVariants.result,
             SpotCheckForExpectedTranscripts.result,
             SchemaOnlyOneRowPerNullTranscript.result,
-            SchemaNullTranscriptsExist.result
+            SchemaNullTranscriptsExist.result,
             NoNullRequiredFields.result,
             PrimaryKey.result,
             SchemaEnsemblTranscripts.result,
