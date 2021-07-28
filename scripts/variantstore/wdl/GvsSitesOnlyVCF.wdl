@@ -165,7 +165,7 @@ task ExtractAnAcAfFromVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "biocontainers/bcftools:v1.9-1-deb_cv1"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210726"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -287,7 +287,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200718"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210726"
         memory: "3 GB"
         preemptible: 5
         cpu: "1"
