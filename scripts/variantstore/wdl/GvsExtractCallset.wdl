@@ -169,7 +169,7 @@ task ExtractTask {
                 --filter-set-site-table ~{fq_filter_set_site_table}
                 --tranches-table ~{fq_filter_set_tranches_table}
                 --filter-set-name ~{filter_set_name}
-                --vqslod-filter-by-site ~{vqslod_filter_by_site}
+                ~{true='--vqslod-filter-by-site' false='' vqslod_filter_by_site}
                 ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level}
                 ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
