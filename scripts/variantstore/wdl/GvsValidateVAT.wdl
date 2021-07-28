@@ -49,7 +49,7 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
-    call NoNullRequiredFields {
+    call SchemaNoNullRequiredFields {
         input:
             query_project_id = query_project_id,
             fq_vat_table = fq_vat_table,
@@ -57,7 +57,7 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
-    call PrimaryKey {
+    call SchemaPrimaryKey {
         input:
             query_project_id = query_project_id,
             fq_vat_table = fq_vat_table,
@@ -87,8 +87,8 @@ workflow GvsValidateVatTable {
             SpotCheckForExpectedTranscripts.result,
             SchemaOnlyOneRowPerNullTranscript.result,
             SchemaNullTranscriptsExist.result,
-            NoNullRequiredFields.result,
-            PrimaryKey.result,
+            SchemaNoNullRequiredFields.result,
+            SchemaPrimaryKey.result,
             SchemaEnsemblTranscripts.result,
             SchemaNonzeroAcAn.result
         ]
@@ -265,7 +265,7 @@ task SpotCheckForExpectedTranscripts {
     }
 }
 
-task NoNullRequiredFields {
+task SchemaNoNullRequiredFields {
     input {
         String query_project_id
         String fq_vat_table
@@ -341,7 +341,7 @@ task NoNullRequiredFields {
     # ------------------------------------------------
     # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"NoNullRequiredFields": read_string('validation_results.txt')}
+        Map[String, String] result = {"SchemaNoNullRequiredFields": read_string('validation_results.txt')}
     }
 }
 
@@ -404,7 +404,7 @@ task SchemaOnlyOneRowPerNullTranscript {
     }
 }
 
-task PrimaryKey {
+task SchemaPrimaryKey {
     input {
         String query_project_id
         String fq_vat_table
@@ -457,7 +457,7 @@ task PrimaryKey {
     # ------------------------------------------------
     # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"PrimaryKey": read_string('validation_results.txt')}
+        Map[String, String] result = {"SchemaPrimaryKey": read_string('validation_results.txt')}
     }
 }
 
