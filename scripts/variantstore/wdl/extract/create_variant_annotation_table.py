@@ -128,52 +128,6 @@ def get_gnomad_subpop(gnomad_obj, row):
     row["gnomad_max_af"] = max_af
     return row
 
-
-
-def get_gvs_subpop(gnomad_obj, row):
-    max_af = -1
-    max_ac = -1
-    max_an = -1
-    max_subpop = ""
-    for gnomad_subpop in gnomad_ordering: # since we cycle through this in order, if there is a tie, we just ignore it because we wouldn't chose it anyway based on order
-      subpop_af_key = "".join([gnomad_subpop, "Af"])
-      subpop_ac_key = "".join([gnomad_subpop, "Ac"]) # We are okay with AC = 0! Dont change to 20
-      subpop_an_key = "".join([gnomad_subpop, "An"]) # We need to check for AN=0 and if it is 0, then AF is null and AC should be 0 as well-- crash if this is wrong
-      subpop_af_val = gnomad_obj.get(subpop_af_key)
-      subpop_ac_val = gnomad_obj.get(subpop_ac_key)
-      subpop_an_val = gnomad_obj.get(subpop_an_key)
-      row["_".join(["gnomad", gnomad_subpop, "an"])] = subpop_an_val
-      if subpop_ac_val < 20: # if AC is between 1-19, make the value 20 and then recalculate AF as 20 / AN
-        row["_".join(["gnomad", gnomad_subpop, "ac"])] = 20
-        row["_".join(["gnomad", gnomad_subpop, "af"])] = 20 / subpop_an_val # unless an is 0 in which case this is null
-      else:
-        row["_".join(["gnomad", gnomad_subpop, "ac"])] = subpop_ac_val
-        row["_".join(["gnomad", gnomad_subpop, "af"])] = subpop_af_val
-
-
-
-        # ok if AN IS LRSS THAN 20---- also make it 20!!
-      # now find the max Af subpop
-      if subpop_af_val > max_af:
-        max_subpop = gnomad_subpop
-        max_an = subpop_an_val
-        if subpop_ac_val < 20:
-          max_ac = 20
-          max_af = 20 / subpop_an_val
-        else:
-          max_ac = subpop_ac_val
-          max_af = subpop_af_val
-    row["gnomad_max_subpop"] = max_subpop
-    row["gnomad_max_an"] = max_an
-    row["gnomad_max_ac"] = max_ac
-    row["gnomad_max_af"] = max_af
-    # TODO NOTE that this calculates the max and adds the 20 in incongruos ways--that needs to be resolved
-    return row
-
-
-
-
-
 def check_filtering(variant):
     # skip any row (with a warning) if no gvsAnnotations exist
     if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
