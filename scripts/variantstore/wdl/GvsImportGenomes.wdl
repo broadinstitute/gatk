@@ -512,9 +512,9 @@ task CreateImportTsvs {
       fi
 
       # translate WDL arrays into BASH arrays
-      VCFS_ARRAY="(~{sep=" " input_vcfs})"
-      VCF_INDEXES_ARRAY="(~{sep=" " input_vcf_indexes})"
-      SAMPLE_NAMES_ARRAY="(~{sep=" " sample_names})"
+      VCFS_ARRAY=(~{sep=" " input_vcfs})
+      VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
+      SAMPLE_NAMES_ARRAY=(~{sep=" " sample_names})
 
       # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
       for i in "${!VCFS_ARRAY[@]}"; do
