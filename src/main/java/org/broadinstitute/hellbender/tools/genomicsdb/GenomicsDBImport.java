@@ -1010,7 +1010,8 @@ public final class GenomicsDBImport extends GATKTool {
                 }
             };
         } catch (final TribbleException e){
-            throw new UserException("Failed to create reader from " + variantURI, e);
+            throw new UserException("Failed to create reader from " + variantURI + " because of the following error:\n\t"
+                    + e.getMessage(), e);
         }
     }
 
