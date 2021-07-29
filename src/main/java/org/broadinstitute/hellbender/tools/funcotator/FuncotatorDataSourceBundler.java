@@ -132,8 +132,8 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     @Override
     protected Object doWork() {
 
-        final String dataSourcePath;
-
+        final String dataSourcePath = null;
+        return dataSourcePath;
     }
 
 }
