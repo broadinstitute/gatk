@@ -7,7 +7,7 @@ workflow GvsImportGenomes {
     Array[String] external_sample_names
     File interval_list
     String output_directory
-    # File? sample_map
+    File? sample_map
     String project_id
     String dataset_name
     String? pet_schema = "location:INTEGER,sample_id:INTEGER,state:STRING"
@@ -41,13 +41,22 @@ workflow GvsImportGenomes {
       preemptible_tries = preemptible_tries
   }
 
-  call GetSampleIds {
-    input:
-      external_sample_names = external_sample_names,
-      project_id = project_id,
-      dataset_name = dataset_name,
-      table_name = "sample_info",
-      service_account_json_path = service_account_json_path
+  if (defined(sample_map)) {
+    call GetMaxTableIdLegacy {
+      input:
+        sample_map = sample_map
+    }
+  }
+  
+  if (!defined(sample_map)) {
+    call GetSampleIds {
+      input:
+        external_sample_names = external_sample_names,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        table_name = "sample_info",
+        service_account_json_path = service_account_json_path
+    }
   }
 
   call CreateTables as CreatePetTables {
@@ -55,7 +64,7 @@ workflow GvsImportGenomes {
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "pet",
-      max_table_id = GetSampleIds.max_table_id,
+      max_table_id = select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id]),
       schema = pet_schema,
       superpartitioned = "true",
       partitioned = "true",
@@ -70,7 +79,7 @@ workflow GvsImportGenomes {
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "vet",
-      max_table_id = GetSampleIds.max_table_id,
+      max_table_id = select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id]),
       schema = vet_schema,
       superpartitioned = "true",
       partitioned = "true",
@@ -105,7 +114,7 @@ workflow GvsImportGenomes {
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         interval_list = interval_list,
         service_account_json_path = service_account_json_path,
-        sample_map = GetSampleIds.sample_map,
+        sample_map = select_first([GetSampleIds.sample_map, sample_map]),
         drop_state = drop_state,
         drop_state_includes_greater_than = drop_state_includes_greater_than,
         output_directory = output_directory,
@@ -117,7 +126,7 @@ workflow GvsImportGenomes {
     }
   }
 
-  scatter (i in range(GetSampleIds.max_table_id)) {
+  scatter (i in range(select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id]))) {
     call LoadTable as LoadPetTable {
     input:
       project_id = project_id,
@@ -135,7 +144,7 @@ workflow GvsImportGenomes {
     }
   }
 
-  scatter (i in range(GetSampleIds.max_table_id)) {
+  scatter (i in range(select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id])) {
     call LoadTable as LoadVetTable {
     input:
       project_id = project_id,
@@ -289,6 +298,32 @@ task ReleaseLock {
       preemptible: select_first([preemptible_tries, 5])
       cpu: 1
     }
+}
+
+task GetMaxTableIdLegacy {
+  input {
+    File sample_map
+    Int? samples_per_table = 4000
+
+    # runtime
+    Int? preemptible_tries
+  }
+
+  command <<<
+      set -e
+      max_sample_id=$(cat ~{sample_map} | cut -d"," -f1 | sort -rn | head -1)
+      python -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))"
+  >>>
+  runtime {
+      docker: "python:3.8-slim-buster"
+      memory: "1 GB"
+      disks: "local-disk 10 HDD"
+      preemptible: select_first([preemptible_tries, 5])
+      cpu: 1
+  }
+  output {
+      Int max_table_id = read_int(stdout())
+  }
 }
 
 task GetSampleIds {
