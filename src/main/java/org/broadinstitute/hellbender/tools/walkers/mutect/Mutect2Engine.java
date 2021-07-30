@@ -368,7 +368,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public void shutdown() {
         likelihoodCalculationEngine.close();
         aligner.close();
-        haplotypeBAMWriter.ifPresent(writer -> writer.close());
+        haplotypeBAMWriter.ifPresent(HaplotypeBAMWriter::close);
+        assembledEventMapVcfOutputWriter.ifPresent(VariantContextWriter::close);
         referenceReader.close();
     }
 
