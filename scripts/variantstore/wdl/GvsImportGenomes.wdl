@@ -41,7 +41,7 @@ workflow GvsImportGenomes {
       preemptible_tries = preemptible_tries
   }
 
-  call GetMaxTableIdAndSampleMap {
+  call GetSampleIds {
     input:
       external_sample_names = external_sample_names,
       project_id = project_id,
@@ -55,7 +55,7 @@ workflow GvsImportGenomes {
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "pet",
-      max_table_id = GetMaxTableIdAndSampleMap.max_table_id,
+      max_table_id = GetSampleIds.max_table_id,
       schema = pet_schema,
       superpartitioned = "true",
       partitioned = "true",
@@ -70,7 +70,7 @@ workflow GvsImportGenomes {
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "vet",
-      max_table_id = GetMaxTableIdAndSampleMap.max_table_id,
+      max_table_id = GetSampleIds.max_table_id,
       schema = vet_schema,
       superpartitioned = "true",
       partitioned = "true",
@@ -105,7 +105,7 @@ workflow GvsImportGenomes {
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         interval_list = interval_list,
         service_account_json_path = service_account_json_path,
-        sample_map = GetMaxTableIdAndSampleMap.sample_map,
+        sample_map = GetSampleIds.sample_map,
         drop_state = drop_state,
         drop_state_includes_greater_than = drop_state_includes_greater_than,
         output_directory = output_directory,
@@ -117,11 +117,11 @@ workflow GvsImportGenomes {
     }
   }
 
-  scatter (i in range(GetMaxTableIdAndSampleMap.max_table_id)) {
+  scatter (i in range(GetSampleIds.max_table_id)) {
     call LoadTable as LoadPetTable {
     input:
       project_id = project_id,
-      table_id = i + 1,
+      table_id = i,
       dataset_name = dataset_name,
       storage_location = output_directory,
       datatype = "pet",
@@ -135,11 +135,11 @@ workflow GvsImportGenomes {
     }
   }
 
-  scatter (i in range(GetMaxTableIdAndSampleMap.max_table_id)) {
+  scatter (i in range(GetSampleIds.max_table_id)) {
     call LoadTable as LoadVetTable {
     input:
       project_id = project_id,
-      table_id = i + 1,
+      table_id = i,
       dataset_name = dataset_name,
       storage_location = output_directory,
       datatype = "vet",
@@ -291,7 +291,7 @@ task ReleaseLock {
     }
 }
 
-task GetMaxTableIdAndSampleMap {
+task GetSampleIds {
   input {
     Array[String] external_sample_names
     String project_id
@@ -324,8 +324,8 @@ task GetMaxTableIdAndSampleMap {
       min_sample_id=$(tail -1 results | cut -d, -f1)
       max_sample_id=$(tail -1 results | cut -d, -f2)
 
-      python -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
-      python -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
+      python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
+      python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
         "SELECT sample_id, sample_name FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > sample_map
@@ -469,7 +469,7 @@ task CreateImportTsvs {
     String run_uuid
   }
 
-  Int disk_size = if defined(drop_state) then 30 else 75
+  Int disk_size = if defined(drop_state) then 50 else 75
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
