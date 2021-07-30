@@ -220,5 +220,173 @@
     "name": "gnomad_all_an",
     "type": "Integer",
     "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: Max subpopulation frequency.  Need to determine the max subpopulation (i.e. the subpopulation with the highest AF)",
+    "name": "gnomad_max_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: Max subpopulation allele count.  Need to determine the max subpopulation.",
+    "name": "gnomad_max_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: Max subpopulation allele number.  Need to determine the max subpopulation.",
+    "name": "gnomad_max_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: Max subpopulation ethnicity.  Need to determine the max subpopulation.",
+    "name": "gnomad_max_subpop",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele count in the afr subpop",
+    "name": "gnomad_afr_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele number in the afr subpop.",
+    "name": "gnomad_afr_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele frequency in the afr subpop.",
+    "name": "gnomad_afr_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele count in the amr subpop.",
+    "name": "gnomad_amr_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele number in the amr subpop.",
+    "name": "gnomad_amr_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele frequency in the amr subpop.",
+    "name": "gnomad_amr_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele count in the asj subpop.",
+    "name": "gnomad_asj_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele number in the asj subpop.",
+    "name": "gnomad_asj_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele frequency in the asj subpop.",
+    "name": "gnomad_asj_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele count in the eas subpop.",
+    "name": "gnomad_eas_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele number in the eas subpop.",
+    "name": "gnomad_eas_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele frequency in the eas subpop.",
+    "name": "gnomad_eas_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele count in the fin subpop.",
+    "name": "gnomad_fin_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele number in the fin subpop.",
+    "name": "gnomad_fin_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele frequency in the fin subpop.",
+    "name": "gnomad_fin_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele count in the nfr subpop.",
+    "name": "gnomad_nfr_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele number in the nfr subpop.",
+    "name": "gnomad_nfr_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele frequency in the nfr subpop.",
+    "name": "gnomad_nfr_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele count in the sas subpop.",
+    "name": "gnomad_sas_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele number in the sas subpop.",
+    "name": "gnomad_sas_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele frequency in the sas subpop.",
+    "name": "gnomad_sas_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele count in the oth subpop.",
+    "name": "gnomad_oth_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele number in the oth subpop.",
+    "name": "gnomad_oth_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "gnomAD: allele frequency in the oth subpop.",
+    "name": "gnomad_oth_af",
+    "type": "Float",
+    "mode": "Nullable"
   }
 ]
