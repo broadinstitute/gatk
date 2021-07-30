@@ -797,6 +797,10 @@ public final class ReadThreadingAssembler {
         this.graphOutputPath = graphOutputPath;
     }
 
+    public void setEventMapOut(File graphOutputPath) {
+        this.graphOutputPath = graphOutputPath;
+    }
+
     public byte getMinBaseQualityToUseInAssembly() {
         return minBaseQualityToUseInAssembly;
     }

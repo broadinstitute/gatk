@@ -92,6 +92,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     // writes Haplotypes to a bam file when the -bamout option is specified
     private Optional<HaplotypeBAMWriter> haplotypeBAMWriter;
+    // writes Variants from assembly graph
+    private Optional<VariantContextWriter> assembledEventMapVcfOutputWriter;
 
     private Set<String> sampleSet;
     private SampleList samplesList;
@@ -238,6 +240,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader);
         assemblyEngine = hcArgs.createReadThreadingAssembler();
+        assembledEventMapVcfOutputWriter = Optional.ofNullable(hcArgs.assemblerArgs.debugAssemblyVariantsOut != null ?
+                makeVCFWriter(new GATKPath(hcArgs.assemblerArgs.debugAssemblyVariantsOut), readsHeader.getSequenceDictionary(), false, true, true)
+                : null);
+        assembledEventMapVcfOutputWriter.ifPresent(writer -> writeHeader(writer, readsHeader.getSequenceDictionary(), new HashSet<>()));
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs, !hcArgs.softClipLowQualityEnds);
     }
 
@@ -570,6 +576,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
+        assembledEventMapVcfOutputWriter.ifPresent(writer ->
+                untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance).forEach(writer::add));
+
+
 
         if (assemblyDebugOutStream != null) {
             try {
@@ -774,6 +784,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();
         }
+        assembledEventMapVcfOutputWriter.ifPresent(VariantContextWriter::close);
         if ( referenceReader != null){
             try {
                 referenceReader.close();
