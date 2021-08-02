@@ -25,7 +25,7 @@ public class FuncotatorDataSourceDownloaderIntegrationTest extends CommandLinePr
     // Private Static Members:
 
     // Off by default because each test case takes ~1 hour to run:
-    private static final boolean doFullScaleTests = false;
+    private static final boolean doFullScaleTests = true;
 
     //==================================================================================================================
     // Helper Methods:
@@ -145,9 +145,8 @@ public class FuncotatorDataSourceDownloaderIntegrationTest extends CommandLinePr
     //==================================================================================================================
     // Tests:
 
-    @Test(enabled = doFullScaleTests,
-            dataProvider = "provideForTestDownload",
-            groups = {"funcotatorValidation", "bucket"}
+    @Test(
+            dataProvider = "provideForTestDownload"
     )
     void testDownloadRealDataSources(final String dsTypeArg, final boolean doOverwrite, final boolean doValidate, final boolean doExtract) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
