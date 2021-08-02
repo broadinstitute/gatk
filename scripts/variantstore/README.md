@@ -14,3 +14,11 @@ After using the json file to auth as that service account, you can query the
     
     # use a query like this to get the total number of bytes billed
     bq --project_id <project> query --use_legacy_sql=false 'select sum(total_bytes_billed) as total from `region-us`.INFORMATION_SCHEMA.JOBS_BY_USER where creation_time > "2021-04-16 00:00:00" and creation_time < "2021-04-18 00:00:00" and total_bytes_billed > 1 limit 100'
+
+
+### Running the VAT pipeline
+The VAT pipeline is a set of WDLs
+GvsSitesOnlyVCF.wdl
+GvsValidateVAT.wdl
+
+The pipeline takes in a jointVCF and outputs a table in BigQuery
