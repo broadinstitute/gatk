@@ -59,6 +59,11 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     //==================================================================================================================
     // Public Static Members:
 
+    public static final String BACTERIA_ARG_LONG_NAME  = "bacteria";
+    public static final String FUNGI_ARG_LONG_NAME     = "fungi";
+    public static final String METAZOA_ARG_LONG_NAME   = "metazoa";
+    public static final String PLANTS_ARG_LONG_NAME    = "plants";
+    public static final String PROTISTS_ARG_LONG_NAME  = "protists";
     public static final String OVERWRITE_ARG_LONG_NAME = "overwrite-output-file";
     public static final String EXTRACT_AFTER_DOWNLOAD  = "extract-after-download";
 
@@ -68,10 +73,50 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     // Set to always get the latest version of the data sources:
     private static final String BASE_URL = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION;
 
+    private static final String BACTERIA_BASE_URL = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION;
+
+    private static final String FUNGI_BASE_URL = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION;
+
+    private static final String METAZOA_BASE_URL = BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION;
+
+    private static final String PLANTS_BASE_URL = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION;
+
+    private static final String PROTISTS_BASE_URL = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION;
+
     //will maybe add in variables for the urls for each of the different organisms
 
     //==================================================================================================================
     // Private Members:
+
+    @Argument(fullName = BACTERIA_ARG_LONG_NAME,
+            shortName  = BACTERIA_ARG_LONG_NAME,
+            doc = "Download data sources for bacteria.",
+            optional = true)
+    private boolean getBacteriaDataSources = false;
+
+    @Argument(fullName = FUNGI_ARG_LONG_NAME,
+            shortName  = FUNGI_ARG_LONG_NAME,
+            doc = "Download data sources for fungi.",
+            optional = true)
+    private boolean getFungiDataSources = false;
+
+    @Argument(fullName = METAZOA_ARG_LONG_NAME,
+            shortName  = METAZOA_ARG_LONG_NAME,
+            doc = "Download data sources for metazoa.",
+            optional = true)
+    private boolean getMetazoaDataSources = false;
+
+    @Argument(fullName = PLANTS_ARG_LONG_NAME,
+            shortName  = PLANTS_ARG_LONG_NAME,
+            doc = "Download data sources for plants.",
+            optional = true)
+    private boolean getPlantsDataSources = false;
+
+    @Argument(fullName = PROTISTS_ARG_LONG_NAME,
+            shortName  = PROTISTS_ARG_LONG_NAME,
+            doc = "Download data sources for protists.",
+            optional = true)
+    private boolean getProtistsDataSources = false;
 
     @Argument(fullName = OVERWRITE_ARG_LONG_NAME,
             shortName  = OVERWRITE_ARG_LONG_NAME,
@@ -94,16 +139,22 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     protected boolean extractDataSourcesAfterDownload = false;
 
     @Argument(
-            shortName = StandardArgumentDefinitions.ORGANISM_TYPE_SHORT_NAME,
-            fullName  = StandardArgumentDefinitions.ORGANISM_TYPE_LONG_NAME,
-            doc = "Organism we want to download data sources for.")
-    protected String organismName;
+            shortName = StandardArgumentDefinitions.SPECIES_SHORT_NAME,
+            fullName  = StandardArgumentDefinitions.SPECIES_LONG_NAME,
+            doc = "Download data sources for this species of the organism.")
+    protected String speciesName;
 
-    @Argument(
-            shortName = StandardArgumentDefinitions.SUBGROUP_SHORT_NAME,
-            fullName  = StandardArgumentDefinitions.SUBGROUP_LONG_NAME,
-            doc = "Subgroup of organism type which we want the data sources for.")
-    protected String subgroupName;
+//    @Argument(
+//            shortName = StandardArgumentDefinitions.ORGANISM_TYPE_SHORT_NAME,
+//            fullName  = StandardArgumentDefinitions.ORGANISM_TYPE_LONG_NAME,
+//            doc = "Organism we want to download data sources for.")
+//    protected String organismName;
+//
+//    @Argument(
+//            shortName = StandardArgumentDefinitions.SUBGROUP_SHORT_NAME,
+//            fullName  = StandardArgumentDefinitions.SUBGROUP_LONG_NAME,
+//            doc = "Subgroup of organism type which we want the data sources for.")
+//    protected String subgroupName;
 
     //==================================================================================================================
     // Constructors:
@@ -114,15 +165,15 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     @Override
     protected void onStartup() {
 
-        // Make sure the user specified an organism type and a subgroup type for the data source:
-        if ((organismName == null) || (subgroupName == null)) {
-            throw new UserException("Must select an organism and subgroup for data source.");
-        }
-
-        // Make sure the testing inputs are correct:
-        if ( ((organismName == null) && (subgroupName != null)) || ((subgroupName == null) && (organismName != null)) ) {
-            throw new UserException("Must specify both an organism type and a subgroup type.");
-        }
+//        // Make sure the user specified an organism type and a subgroup type for the data source:
+//        if ((organismName == null) || (subgroupName == null)) {
+//            throw new UserException("Must select an organism and subgroup for data source.");
+//        }
+//
+//        // Make sure the testing inputs are correct:
+//        if ( ((organismName == null) && (subgroupName != null)) || ((subgroupName == null) && (organismName != null)) ) {
+//            throw new UserException("Must specify both an organism type and a subgroup type.");
+//        }
 
         if ( overwriteOutputFile ) {
             logger.info("Overwrite ENABLED. Will overwrite existing data sources download.");

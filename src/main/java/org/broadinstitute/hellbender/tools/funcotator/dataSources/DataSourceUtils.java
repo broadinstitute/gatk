@@ -118,6 +118,11 @@ final public class DataSourceUtils {
     public static final String DATA_SOURCES_VERSION                        = "current/";
     public static final String GTF_FOLDER                                  = "gtf/";
     public static final String RELEASE_VERSION                             = "release-";
+    public static final String BACTERIA_DS_EXTENSION                       = "bacteria/";
+    public static final String FUNGI_DS_EXTENSION                          = "fungi/";
+    public static final String METAZOA_DS_EXTENSION                        = "metazoa/";
+    public static final String PLANTS_DS_EXTENSION                         = "plants/";
+    public static final String PROTISTS_DS_EXTENSION                       = "protists/";
 
     //==================================================================================================================
     // Public Static Methods:
