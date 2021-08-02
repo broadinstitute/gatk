@@ -656,6 +656,38 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(actualFilters, expectedFilters);
     }
 
+    @Test(dataProvider = "vcfsForFiltering")
+    public void testFilterMicrobial(File unfiltered, final double minAlleleFraction, final List<String> intervals, List<Set<String>> expectedFilters, List<List<String>> expectedASFilters)  {
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        // vcf sequence dicts don't match ref
+        runFilterMutectCalls(unfiltered, filteredVcf, MITO_REF.getAbsolutePath(),
+                args -> args.add(M2ArgumentCollection.MICROBIAL_MODE_LONG_NAME, true),
+                args -> args.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
+                args -> args.add(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
+                args -> args.add(M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, 1),
+                args -> args.add(M2FiltersArgumentCollection.UNIQUE_ALT_READ_COUNT_LONG_NAME, 2),
+                args -> {
+                    intervals.stream().map(SimpleInterval::new).forEach(args::addInterval);
+                    return args;
+                });
+
+        final List<Set<String>> actualFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(VariantContext::getFilters).collect(Collectors.toList());
+
+        final List<List<String>> actualASFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(vc -> AnnotationUtils.decodeAnyASListWithRawDelim(vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, ""))).collect(Collectors.toList());
+        Assert.assertEquals(actualASFilters, expectedASFilters);
+
+        Assert.assertEquals(actualFilters.size(), expectedFilters.size());
+        for (int n = 0; n < actualFilters.size(); n++) {
+            Assert.assertTrue(actualFilters.get(n).containsAll(expectedFilters.get(n)), "Actual filters missing some expected filters: " + SetUtils.difference(expectedFilters.get(n), actualFilters.get(n)));
+            Assert.assertTrue(expectedFilters.get(n).containsAll(actualFilters.get(n)), "Expected filters missing some actual filters: " + SetUtils.difference(actualFilters.get(n), expectedFilters.get(n)));
+        }
+
+        Assert.assertEquals(actualFilters, expectedFilters);
+    }
+
     @DataProvider(name = "vcfsForNuMTFiltering")
     public Object[][] vcfsForNuMTFiltering() {
         return new Object[][]{

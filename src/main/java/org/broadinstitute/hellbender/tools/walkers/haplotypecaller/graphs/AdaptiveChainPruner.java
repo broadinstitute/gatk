@@ -56,11 +56,11 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
         final Multimap<V, Path<V,E>> vertexToGoodOutgoingChains = ArrayListMultimap.create();
 
         for (final Path<V,E> chain : chains) {
-            if (chainLogOdds.get(chain).getRight() >= logOddsThreshold) {
+            if (chainLogOdds.get(chain).getRight() >= logOddsThreshold || chain.getEdges().get(0).isRef()) {
                 vertexToGoodIncomingChains.put(chain.getLastVertex(), chain);
             }
 
-            if (chainLogOdds.get(chain).getLeft() >= logOddsThreshold) {
+            if (chainLogOdds.get(chain).getLeft() >= logOddsThreshold || chain.getEdges().get(0).isRef()) {
                 vertexToGoodOutgoingChains.put(chain.getFirstVertex(), chain);
             }
 

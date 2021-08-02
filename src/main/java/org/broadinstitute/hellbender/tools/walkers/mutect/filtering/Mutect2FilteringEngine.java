@@ -284,7 +284,7 @@ public class Mutect2FilteringEngine {
     private void buildFiltersList(final M2FiltersArgumentCollection MTFAC) {
         filters.add(new TumorEvidenceFilter());
         filters.add(new BaseQualityFilter(MTFAC.minMedianBaseQuality));
-        filters.add(new MappingQualityFilter(MTFAC.minMedianMappingQuality, MTFAC.longIndelLength));
+        filters.add(new MappingQualityFilter(MTFAC.getMinMedianMappingQuality(), MTFAC.longIndelLength));
         filters.add(new DuplicatedAltReadFilter(MTFAC.uniqueAltReadCount));
         filters.add(new StrandArtifactFilter());
         filters.add(new ContaminationFilter(MTFAC.contaminationTables, MTFAC.contaminationEstimate));
@@ -311,7 +311,7 @@ public class Mutect2FilteringEngine {
             filters.add(new ReadOrientationFilter(artifactTables));
         }
 
-        if (!MTFAC.mitochondria) {
+        if (!MTFAC.mitochondria && !MTFAC.microbial) {
             filters.add(new ClusteredEventsFilter(MTFAC.maxEventsInRegion));
             filters.add(new MultiallelicFilter(MTFAC.numAltAllelesThreshold));
             filters.add(new FragmentLengthFilter(MTFAC.maxMedianFragmentLengthDifference));
@@ -319,5 +319,10 @@ public class Mutect2FilteringEngine {
             filters.add(new FilteredHaplotypeFilter(MTFAC.maxDistanceToFilteredCallOnSameHaplotype));
             filters.add(new GermlineFilter(MTFAC.tumorSegmentationTables));
         }
+
+        if (MTFAC.microbial) {
+            filters.add(new PolymeraseSlippageFilter(MTFAC.minSlippageLength, MTFAC.slippageRate));
+        }
+
     }
 }
