@@ -81,7 +81,9 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
         return new Object[][]{
                 {
                         FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
-                        "species-name acinebactor_baumannii_aye"
+                        "acinebactor_baumannii_aye",
+                        true,
+                        true
                 }
 //                {
 //                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
@@ -160,19 +162,19 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     // Tests:
 
     @Test( dataProvider = "provideForTestDownload")
-    void testDownloadRealDataSources (final String dsTypeArg, final String speciesArg) {
+    void testDownloadRealDataSources (final String dsTypeArg, final String speciesArg, final boolean doOverwrite, final boolean doExtract) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
         arguments.add(dsTypeArg, true);
-        arguments.add(speciesArg, true);
-        //arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
-        //arguments.add(FuncotatorDataSourceBundler.EXTRACT_AFTER_DOWNLOAD, doExtract);
+        arguments.add("species-name", speciesArg);
+        arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
+        arguments.add(FuncotatorDataSourceBundler.EXTRACT_AFTER_DOWNLOAD, doExtract);
 
         runCommandLine(arguments);
 
         // Now verify we got the data sources and clean up the files
         // so we don't have up to 30 gigs of stuff lying around:
-        verifyDataSourcesExistThenDeleteThem(dsTypeArg, false);
+        verifyDataSourcesExistThenDeleteThem(dsTypeArg, doExtract);
     }
 
 }
