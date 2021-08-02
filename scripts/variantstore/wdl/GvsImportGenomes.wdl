@@ -13,7 +13,7 @@ workflow GvsImportGenomes {
     String dataset_name
     String? pet_schema = "location:INTEGER,sample_id:INTEGER,state:STRING"
     String? vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,QUALapprox:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
-    String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING"
+    String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING,is_loaded:BOOLEAN"
     String? service_account_json_path
     String? drop_state = "SIXTY"
     Boolean? drop_state_includes_greater_than = false
@@ -186,11 +186,21 @@ workflow GvsImportGenomes {
     }
   }
 
+  call UpdateIsLoadedColumn {
+    input:
+      load_sample_info_done = LoadSampleInfoTable.done,
+      load_pet_done = LoadPetTable.done,
+      dataset_name = dataset_name,
+      service_account_json_path = service_account_json_path,
+      project_id = project_id,
+      preemptible_tries = preemptible_tries
+  }
+
   call ReleaseLock {
     input:
       run_uuid = SetLock.run_uuid,
       output_directory = output_directory,
-      load_sample_info_done = LoadSampleInfoTable.done,
+      load_sample_info_done = UpdateIsLoadedColumn.done,
       load_pet_done = LoadPetTable.done,
       load_vet_done = LoadVetTable.done,
       service_account_json_path = service_account_json_path,
@@ -271,7 +281,7 @@ task ReleaseLock {
   input {
     String run_uuid
     String output_directory
-    Array[String] load_sample_info_done
+    String load_sample_info_done
     Array[String] load_pet_done
     Array[String] load_vet_done
     String? service_account_json_path
@@ -822,5 +832,45 @@ task TerminateWorkflow {
       disks: "local-disk 10 HDD"
       preemptible: 3
       cpu: 1
+  }
+}
+
+task UpdateIsLoadedColumn {
+  input {
+    Array[String] load_sample_info_done
+    Array[String] load_pet_done
+    String dataset_name
+    String project_id
+    String? service_account_json_path
+    Int? preemptible_tries
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+  command <<<
+    set -ex
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{project_id}
+    fi
+
+    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    "UPDATE `~{dataset_name}.sample_info`
+    SET is_loaded = true
+    WHERE sample_name IN (SELECT partition_id from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE total_logical_bytes > 0 AND table_name LIKE 'pet_%')"
+  >>>
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "1 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: select_first([preemptible_tries, 5])
+    cpu: 1
+  }
+
+  output {
+    String done = "done"
   }
 }

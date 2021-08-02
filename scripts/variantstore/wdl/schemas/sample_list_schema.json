@@ -22,6 +22,12 @@
     "name": "inferred_state",
     "type": "String",
     "mode": "Required"
+  },
+  {
+    "description": "[DESCRIPTION]",
+    "name": "is_loaded",
+    "type": "Boolean",
+    "mode": "Nullable"
   }
 ]
 
