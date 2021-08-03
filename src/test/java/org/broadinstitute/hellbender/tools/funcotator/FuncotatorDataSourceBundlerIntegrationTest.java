@@ -81,7 +81,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
         return new Object[][]{
                 {
                         FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
-                        "absiella_dolichum_dsm_3991_gca_000154285/Absiella_dolichum_dsm_3991_gca_000154285.ASM15428v1.51.gtf",
+                        "absiella_dolichum_dsm_3991_gca_000154285/",
                         true,
                         true
                 }
@@ -165,8 +165,10 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     void testDownloadRealDataSources (final String dsTypeArg, final String speciesArg, final boolean doOverwrite, final boolean doExtract) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
+        File outputFile = new File("Absiella_dolichum_dsm_3991_gca_000154285.ASM15428v1.51.gtf");
         arguments.add(dsTypeArg, true);
         arguments.add("species-name", speciesArg);
+        arguments.add("output", outputFile);
         arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
         arguments.add(FuncotatorDataSourceBundler.EXTRACT_AFTER_DOWNLOAD, doExtract);
 

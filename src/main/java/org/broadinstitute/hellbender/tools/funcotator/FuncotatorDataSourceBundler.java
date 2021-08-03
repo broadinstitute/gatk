@@ -1,10 +1,14 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.codec.digest.MessageDigestAlgorithms;
+import org.apache.http.HttpClientConnection;
+//import org.apache.commons.httpclient.*;
+//import org.apache.commons.httpclient.methods.*;
+import sun.net.www.http.HttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -16,9 +20,11 @@ import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeterRes
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
+
+//import org.jsoup.Connection;
+//import org.jsoup.Jsoup;
+//import org.jsoup.nodes.Document;
 
 /**
  * {@link FuncotatorDataSourceBundler} is a tool to download data sources for a specified organism for <b><i>{@link Funcotator}</i></b>.
@@ -33,8 +39,8 @@ import java.nio.file.Path;
  * To download, package and extract the data sources, you can invoke {@link FuncotatorDataSourceBundler} in the following way:
  *      <ul>
  *          ./gatk FuncotatorDataSourceBundler \
- *          -N organismName \
- *          -S subgroup \
+ *          -organismName \
+ *          -species-name speciesName \
  *          -O outputFile \
  *          --overwrite-output-file
  *          --extract-data-source
@@ -271,10 +277,11 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 //            validateIntegrity(results);
 //        }
         // Create our downloader:
-        final NioFileCopierWithProgressMeter xerox = createNioDownloader(dsPath);
+//        final NioFileCopierWithProgressMeter xerox = createNioDownloader(dsPath);
+        final HttpClient client = new HttpClient();
 
         // Get the datasources file:
-        final NioFileCopierWithProgressMeterResults results = downloadDataSources(xerox);
+//        final NioFileCopierWithProgressMeterResults results = downloadDataSources(xerox);
 
 //
 
