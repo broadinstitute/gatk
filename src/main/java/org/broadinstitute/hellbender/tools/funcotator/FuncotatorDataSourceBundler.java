@@ -76,23 +76,23 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
     private static final String BACTERIA_BASE_URL = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION;
 
-    private static final Path BACTERIA_PATH = IOUtils.getPath(BACTERIA_BASE_URL);
+    private static final Path BACTERIA_PATH = IOUtils.getPath(BACTERIA_BASE_URL + DataSourceUtils.GTF_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION);
 
     private static final String FUNGI_BASE_URL = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION;
 
-    private static final Path FUNGI_PATH = IOUtils.getPath(FUNGI_BASE_URL);
+    private static final Path FUNGI_PATH = IOUtils.getPath(FUNGI_BASE_URL + DataSourceUtils.GTF_EXTENSION);
 
     private static final String METAZOA_BASE_URL = BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION;
 
-    private static final Path METAZOA_PATH = IOUtils.getPath(METAZOA_BASE_URL);
+    private static final Path METAZOA_PATH = IOUtils.getPath(METAZOA_BASE_URL + DataSourceUtils.GTF_EXTENSION);
 
     private static final String PLANTS_BASE_URL = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION;
 
-    private static final Path PLANTS_PATH = IOUtils.getPath(PLANTS_BASE_URL);
+    private static final Path PLANTS_PATH = IOUtils.getPath(PLANTS_BASE_URL + DataSourceUtils.GTF_EXTENSION);
 
     private static final String PROTISTS_BASE_URL = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION;
 
-    private static final Path PROTISTS_PATH = IOUtils.getPath(PROTISTS_BASE_URL);
+    private static final Path PROTISTS_PATH = IOUtils.getPath(PROTISTS_BASE_URL + DataSourceUtils.GTF_EXTENSION);
 
     //will maybe add in variables for the urls for each of the different organisms
 
@@ -129,12 +129,6 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             optional = true)
     private boolean getProtistsDataSources = false;
 
-    @Argument(fullName = OVERWRITE_ARG_LONG_NAME,
-            shortName  = OVERWRITE_ARG_LONG_NAME,
-            doc = "Overwrite output file if it exists already.",
-            optional = true)
-    private boolean overwriteOutputFile = false;
-
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -143,17 +137,23 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     protected File outputFile;
 
     @Argument(
+            shortName = StandardArgumentDefinitions.SPECIES_SHORT_NAME,
+            fullName  = StandardArgumentDefinitions.SPECIES_LONG_NAME,
+            doc = "Download data sources for this species of the organism.")
+    protected String speciesName;
+
+    @Argument(fullName = OVERWRITE_ARG_LONG_NAME,
+            shortName  = OVERWRITE_ARG_LONG_NAME,
+            doc = "Overwrite output file if it exists already.",
+            optional = true)
+    private boolean overwriteOutputFile = false;
+
+    @Argument(
             shortName = EXTRACT_AFTER_DOWNLOAD,
             fullName  = EXTRACT_AFTER_DOWNLOAD,
             doc = "Extract the data sources to a sibling folder after they have been downloaded.",
             optional = true)
     protected boolean extractDataSourcesAfterDownload = false;
-
-    @Argument(
-            shortName = StandardArgumentDefinitions.SPECIES_SHORT_NAME,
-            fullName  = StandardArgumentDefinitions.SPECIES_LONG_NAME,
-            doc = "Download data sources for this species of the organism.")
-    protected String speciesName;
 
     @Argument(fullName = VALIDATE_INTEGRITY_ARG_LONG_NAME,
             shortName = VALIDATE_INTEGRITY_ARG_LONG_NAME,
@@ -182,9 +182,14 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     @Override
     protected void onStartup() {
 
-        //Make sure the user specified an organism data source to bundle
+        // Make sure the user specified an organism data source to bundle
         if ((!getBacteriaDataSources) && (!getFungiDataSources) && (!getMetazoaDataSources) && (!getPlantsDataSources) && (!getProtistsDataSources)) {
             throw new UserException("Must select either bacteria, fungi, metazoa, plants, or protists data sources.");
+        }
+
+        // Make sure the user specified a species data source to bundle
+        if (speciesName == null) {
+            throw new UserException("Must specify a species to bundle data sources for."):
         }
 
 //        // Make sure the user specified an organism type and a subgroup type for the data source:
@@ -230,7 +235,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             dataSourcePath = PROTISTS_PATH;
         }
 
-        downloadAndValidateDataSources(dataSourceOrganism, dataSourcePath);
+        downloadAndValidateDataSources(dataSourceOrganism, speciesName, dataSourcePath);
 
         // Token return value:
         return true;
@@ -251,7 +256,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
     }
 
-    private void downloadAndValidateDataSources(final String dataSourceType, final Path dsPath) {
+    private void downloadAndValidateDataSources(final String dataSourceType, final String speciesName, final Path dsPath) {
         logger.info(dataSourceType + " data sources selected.");
         // Confirm file integrity if requested:
 //        if ( doValidateIntegrity ) {
