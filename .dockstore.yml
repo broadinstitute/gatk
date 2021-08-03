@@ -104,7 +104,7 @@ workflows:
          - ah_var_store
    - name: GvsValidateVatTable
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVAT.wdl
+     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
      filters:
        branches:
          - ah_var_store
