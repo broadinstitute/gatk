@@ -84,7 +84,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_batch_tsv
          - rsa_add_is_loaded
    - name: GvsPrepareCallset
      subclass: WDL
