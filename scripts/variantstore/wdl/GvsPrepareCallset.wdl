@@ -45,7 +45,7 @@ workflow GvsPrepareCallset {
             fq_temp_table_dataset           = fq_temp_table_dataset,
             fq_destination_dataset          = fq_destination_dataset,
             temp_table_ttl_in_hours         = temp_table_ttl_in_hours,
-            service_account_json_path            = service_account_json_path,
+            service_account_json_path       = service_account_json_path,
 
             docker                          = docker_final
     }
@@ -80,8 +80,15 @@ task PrepareCallsetTask {
     # Note the coercion of optional query_labels using select_first([expr, default])
     Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
 
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
     command <<<
         set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            SERVICE_ACCOUNT_STANZA="--sa_key_path local.service_account.json "
+        fi
 
         python3 /app/create_cohort_extract_data_table.py \
             --fq_petvet_dataset ~{fq_petvet_dataset} \
@@ -93,7 +100,7 @@ task PrepareCallsetTask {
             ~{sep=" " query_label_args} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
             --ttl ~{temp_table_ttl_in_hours} \
-            ~{"--sa_key_path " + service_account_json_path}
+            $SERVICE_ACCOUNT_STANZA
     >>>
 
     output {

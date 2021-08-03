@@ -8,6 +8,7 @@ RUN apt-get update && apt-get -y upgrade && apt-get -y install bcftools
 # Add the application source code.
 ADD create_cohort_extract_data_table.py /app
 ADD create_variant_annotation_table.py /app
+ADD extract_subpop.py /app
 
 WORKDIR /app
 ENTRYPOINT ["/bin/bash"]
