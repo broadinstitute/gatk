@@ -81,7 +81,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
         return new Object[][]{
                 {
                         FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
-                        "acinebactor_baumannii_aye",
+                        "absiella_dolichum_dsm_3991_gca_000154285/Absiella_dolichum_dsm_3991_gca_000154285.ASM15428v1.51.gtf",
                         true,
                         true
                 }

@@ -47,7 +47,7 @@ public final class StandardArgumentDefinitions {
     public static final String SORT_ORDER_LONG_NAME = "sort-order";
 //    public static final String ORGANISM_TYPE_LONG_NAME = "organism-name";
 //    public static final String SUBGROUP_LONG_NAME = "subgroup-name";
-    public static final String SPECIES_LONG_NAME = "species-name";
+//    public static final String SPECIES_LONG_NAME = "species-name";
 
 
     public static final String INPUT_SHORT_NAME = "I";
@@ -80,7 +80,7 @@ public final class StandardArgumentDefinitions {
     public static final String SORT_ORDER_SHORT_NAME = "SO";
 //    public static final String ORGANISM_TYPE_SHORT_NAME = "ON";
 //    public static final String SUBGROUP_SHORT_NAME = "S";
-    public static final String SPECIES_SHORT_NAME = "S";
+//    public static final String SPECIES_SHORT_NAME = "S";
 
     public static final String SPARK_PROPERTY_NAME = "conf";
 

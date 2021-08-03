@@ -119,7 +119,7 @@ final public class DataSourceUtils {
     public static final String GTF_EXTENSION                               = "gtf/";
     public static final String RELEASE_VERSION                             = "release-";
     public static final String BACTERIA_DS_EXTENSION                       = "bacteria/";
-    public static final String BACTERIA_COLLECTION_EXTENSION               = "bacteria_128_collection";
+    public static final String BACTERIA_COLLECTION_EXTENSION               = "bacteria_128_collection/";
     public static final String FUNGI_DS_EXTENSION                          = "fungi/";
     public static final String METAZOA_DS_EXTENSION                        = "metazoa/";
     public static final String PLANTS_DS_EXTENSION                         = "plants/";
