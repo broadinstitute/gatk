@@ -44,7 +44,7 @@ workflow GvsImportGenomes {
   if (defined(sample_map)) {
     call GetMaxTableIdLegacy {
       input:
-        sample_map = sample_map
+        sample_map = select_first([sample_map])
     }
   }
   
@@ -130,7 +130,7 @@ workflow GvsImportGenomes {
     call LoadTable as LoadPetTable {
     input:
       project_id = project_id,
-      table_id = i,
+      table_id = i + 1,
       dataset_name = dataset_name,
       storage_location = output_directory,
       datatype = "pet",
@@ -144,11 +144,11 @@ workflow GvsImportGenomes {
     }
   }
 
-  scatter (i in range(select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id])) {
+  scatter (i in range(select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id]))) {
     call LoadTable as LoadVetTable {
     input:
       project_id = project_id,
-      table_id = i,
+      table_id = i + 1,
       dataset_name = dataset_name,
       storage_location = output_directory,
       datatype = "vet",
