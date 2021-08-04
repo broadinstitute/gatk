@@ -28,7 +28,12 @@ public abstract class GVCFBlock implements Locatable {
         this.minGQ = lowerGQBound;
         this.maxGQ = upperGQBound;
         this.ref = startingVC.getReference();
-        this.end = getStart() - 1;
+        this.end = startingVC.getAttributeAsInt(VCFConstants.END_KEY, getStart());
+
+        final Genotype g = startingVC.getGenotype(0);
+        if (g.hasDP()) {
+            DPs.add(Math.max(g.getDP(), 0)); // DP must be >= 0
+        }
     }
 
     public void add(int pos, Genotype genotype) {add(pos, pos, genotype);}
@@ -83,8 +88,13 @@ public abstract class GVCFBlock implements Locatable {
         return minGQ;
     }
 
+    /**
+     * Allow overlapping input blocks, as in the case where shards are split with duplicate boundary events
+     * @param vc
+     * @return false if there is a gap between this block and input vc
+     */
     public boolean isContiguous(final VariantContext vc) {
-        return (vc.getStart() == getEnd() + 1) && startingVC.getContig().equals(vc.getContig());
+        return vc.withinDistanceOf(this, 1);
     }
 
     public VariantContext getStartingVC() {

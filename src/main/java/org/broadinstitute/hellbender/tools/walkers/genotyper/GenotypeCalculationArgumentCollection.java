@@ -16,6 +16,8 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final String SUPPORTING_CALLSET_LONG_NAME = "population-callset";
     public static final String SUPPORTING_CALLSET_SHORT_NAME = "population";
     public static final String NUM_REF_SAMPLES_LONG_NAME = "num-reference-samples-if-no-call";
+    public static final String CALL_CONFIDENCE_LONG_NAME = "standard-min-confidence-threshold-for-calling";
+    public static final String CALL_CONFIDENCE_SHORT_NAME = "stand-call-conf";
     public static final String MAX_ALTERNATE_ALLELES_LONG_NAME = "max-alternate-alleles";
     public static final String MAX_GENOTYPE_COUNT_LONG_NAME = "max-genotype-count";
     public static final String SAMPLE_PLOIDY_SHORT_NAME = "ploidy";
@@ -124,7 +126,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      *
      * Note that the default was changed from 10.0 to 30.0 in version 4.1.0.0 to accompany the switch to use the the new quality score by default.
      */
-    @Argument(fullName = "standard-min-confidence-threshold-for-calling", shortName = "stand-call-conf", doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
+    @Argument(fullName = CALL_CONFIDENCE_LONG_NAME, shortName = CALL_CONFIDENCE_SHORT_NAME, doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
     public double STANDARD_CONFIDENCE_FOR_CALLING = DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING;
 
     /**

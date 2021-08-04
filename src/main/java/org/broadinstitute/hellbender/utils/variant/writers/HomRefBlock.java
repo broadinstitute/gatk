@@ -51,6 +51,20 @@ final class HomRefBlock extends GVCFBlock {
         if ( lowerGQBound > upperGQBound ) { throw new IllegalArgumentException("bad lowerGQBound " + lowerGQBound + " as it's >= upperGQBound " + upperGQBound); }
 
         this.ploidy = startingVC.getMaxPloidy(defaultPloidy);
+        final Genotype g = startingVC.getGenotype(0);
+        if (g.hasPL()) {
+            this.minPLs = g.getPL();
+        }
+        if (g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY)) {
+            this.minPPs = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(g);
+        }
+        if (minPPs != null) {
+            minGQ = GATKVariantContextUtils.calculateGQFromPLs(minPPs);
+        } else if (minPLs != null) {
+            minGQ = GATKVariantContextUtils.calculateGQFromPLs(minPLs);
+        } else if (g.hasGQ()) {
+            minGQ = g.getGQ();
+        }
     }
 
 
@@ -73,7 +87,9 @@ final class HomRefBlock extends GVCFBlock {
         else {
             gb.GQ(getGQLowerBound());
         }
-        gb.DP(getMedianDP());
+        if (!DPs.isEmpty()) {
+            gb.DP(getMedianDP());
+        }
         if (minPPs != null) {
             gb.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, Utils.listFromPrimitives(minPPs));
         }
@@ -84,14 +100,15 @@ final class HomRefBlock extends GVCFBlock {
     /**
      * Add a homRef block to the current block
      *
-     * @param pos current genomic position
+     * @param pos current genomic position, must be directly following this block (i.e. contiguous and non-overlapping)
      * @param newEnd new calculated block end position
      * @param genotype A non-null Genotype with GQ and DP attributes
      */
     @Override
     public void add(final int pos, final int newEnd, final Genotype genotype) {
         Utils.nonNull(genotype, "genotype cannot be null");
-        if ( pos != end + 1 ) { throw new IllegalArgumentException("adding genotype at pos " + pos + " isn't contiguous with previous end " + end); }
+        if ( pos > end + 1 ) { throw new IllegalArgumentException("adding genotype at pos " + pos + " isn't contiguous with previous end " + end); }
+        if ( pos < end + 1 ) { throw new IllegalArgumentException("adding genotype at pos " + pos + " overlaps previous end " + end); }
         if ( genotype.getPloidy() != ploidy) { throw new IllegalArgumentException("cannot add a genotype with a different ploidy: " + genotype.getPloidy() + " != " + ploidy); }
         // Make sure the GQ is within the bounds of this band. Treat GQs > 99 as 99.
         if ( !withinBounds(Math.min(genotype.getGQ(), VCFConstants.MAX_GENOTYPE_QUAL))) {

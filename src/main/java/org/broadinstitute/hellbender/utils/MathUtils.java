@@ -900,6 +900,18 @@ public final class MathUtils {
         return min;
     }
 
+    public static int minElementIndex(final int[] array) {
+        Utils.nonNull(array);
+        Utils.validateArg(array.length > 0, "array may not be empty");
+
+        int minI = 0;
+        for (int i = 1; i < array.length; i++) {
+            if (array[i] < array[minI])
+                minI = i;
+        }
+        return minI;
+    }
+
     public static boolean isValidLog10Probability(final double result) { return result <= 0.0; }
 
     public static boolean isValidProbability(final double result) {

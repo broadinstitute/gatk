@@ -52,6 +52,11 @@ public final class AS_RMSMappingQuality implements InfoFieldAnnotation, AS_Stand
     private static final OneShotLogger genotype_logger = new OneShotLogger(AS_RMSMappingQuality.class);
 
     @Override
+    public String getEmptyRawValue() {
+        return "0.00";
+    }
+
+    @Override
     public String getPrimaryRawKey() { return GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY; }
 
     /**

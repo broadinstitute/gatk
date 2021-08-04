@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
@@ -8,19 +9,19 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.io.IOException;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
@@ -32,7 +33,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     public void testJustOneSample() throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 "-L chr20:69771 -O %s -R " + hg38_reference_20_21 +
-                        " -V " + getToolTestDataDir() + "gvcfForReblocking.g.vcf -rgq-threshold 20" +
+                        " -V " + getToolTestDataDir() + "gvcfForReblocking.g.vcf -rgq-threshold 19" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
                 Arrays.asList(getToolTestDataDir() + "testJustOneSample.expected.g.vcf"));
         spec.executeTest("testJustOneSample", this);
@@ -72,6 +73,27 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testContiguityWithSpanningDels() {
+        final File input = new File(getToolTestDataDir() + "regressionTests.vcf");
+        final File intervals = new File(getToolTestDataDir() + "regressionContinuityIntervals.list");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input.getAbsolutePath())
+                .addOutput(output);
+        runCommandLine(args);
+
+        final CommandLineProgramTester validator = ValidateVariants.class::getSimpleName;
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.add("R", hg38Reference);
+        args2.add("V", output.getAbsolutePath());
+        args2.add("L", intervals.getAbsolutePath());
+        args2.addRaw("-gvcf");  //TODO: add --no-overlaps after ValidateVariants update is merged
+        validator.runCommandLine(args2);  //will throw a UserException if GVCF isn't contiguous
+    }
+
     @Test  //absolute minimal output
     public void testOneSampleAsForGnomAD() throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -83,7 +105,6 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testOneSampleDropLows", this);
     }
 
-    //TODO: this isn't actually correcting non-ref GTs because I changed some args around -- separate out dropping low qual alleles and low qual sites?
     @Test  //covers non-ref AD and non-ref GT corrections
     public void testNonRefADCorrection() throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -107,6 +128,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testASAnnotationsAndSubsetting() throws Exception {
         //some subsetting, but never dropping the first alt
+        //also has multi-allelic that gets trimmed with ref block added
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 "-O %s -R " + b37_reference_20_21 +
                         " -drop-low-quals -do-qual-approx -V " + "src/test/resources/org/broadinstitute/hellbender/tools/walkers/CombineGVCFs/NA12878.AS.chr20snippet.g.vcf" +
@@ -130,6 +152,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 .add("drop-low-quals", true)
                 .add("rgq-threshold", "10")
                 .add("L", "chr20")
+                .addReference(hg38Reference)
                 .addOutput(output);
         runCommandLine(args);
 
@@ -164,10 +187,23 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testAggressiveQualFiltering() throws Exception {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                "-O %s -R " + hg38_reference_20_21 +
+                        " -drop-low-quals -do-qual-approx -V " + getToolTestDataDir() + "gvcfForReblocking.g.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false" +
+                        " --floor-blocks" +
+                        " --" + GenotypeCalculationArgumentCollection.CALL_CONFIDENCE_LONG_NAME + " 65.0",
+                Arrays.asList(getToolTestDataDir() + "expected.aggressiveQualFiltering.g.vcf"));
+        spec.executeTest("testVariantQualFiltering", this);
+    }
+
+    @Test
     public void testMQHeadersAreUpdated() throws Exception {
         final File output = createTempFile("reblockedgvcf", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("V", getToolTestDataDir() + "justHeader.g.vcf")
+                .addReference(hg38Reference)
                 .addOutput(output);
         runCommandLine(args);
 
@@ -191,6 +227,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         final File output = createTempFile("rereblockedgvcf", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("V", input)
+                .addReference(hg38Reference)
                 .addOutput(output);
         runCommandLine(args);
 
@@ -212,5 +249,145 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(outputVCs.stream().filter(vc -> vc.getGenotype(0).hasGQ()).count(), outputVCs.size());
         //we didn't ask to drop GQ0s, but they might get merged together
         Assert.assertEquals(inputVCs.stream().anyMatch(vc -> vc.getGenotype(0).getGQ() == 0), outputVCs.stream().anyMatch(vc -> vc.getGenotype(0).getGQ() == 0));
+    }
+
+    @Test
+    public void testOverlappingDeletions() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                "-O %s -R " + hg38_reference_20_21 +
+                        " -V " + getToolTestDataDir() + "overlappingDeletions.hc.g.vcf" +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
+                Arrays.asList(getToolTestDataDir() + "expected.overlappingDeletions.g.vcf"));
+        spec.executeTest("testOverlappingDeletions", this);
+    }
+
+    @Test
+    public void testHomRefCalls() throws IOException {
+        final File input = new File(getToolTestDataDir() + "dropGQ0Dels.g.vcf");
+        final File output = createTempFile("dropGQ0Dels.reblocked", ".g.vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", input)
+                .addReference(hg38Reference)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> inputVCs = VariantContextTestUtils.readEntireVCFIntoMemory(input.getAbsolutePath()).getRight();
+        final List<VariantContext> outputVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+
+        Assert.assertEquals(outputVCs.size(), 3);
+        Assert.assertEquals(outputVCs.get(0).getStart(), inputVCs.get(0).getStart());
+        Assert.assertEquals(outputVCs.get(outputVCs.size()-1).getEnd(), inputVCs.get(inputVCs.size()-1).getEnd());
+        Assert.assertEquals(outputVCs.get(1).getGenotype(0).getGQ(), 0);  //there should be a GQ0 block in the middle from a crap variant in the input
+    }
+
+    @Test
+    public void testMultipleInputs() {
+        //run with multiple inputs split from chr20:19995000-19998999 of prod.chr20snippet.withRawMQ.g.vcf
+        //note that an event is duplicated in shard1 and shard2 because it spans the boundary
+        final File output = createTempFile("multi-input", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", getToolTestDataDir() + "chr20.shard3.g.vcf")
+                .add("V", getToolTestDataDir() + "chr20.shard2.g.vcf")
+                .add("V", getToolTestDataDir() + "chr20.shard1.g.vcf")
+                .add("V", getToolTestDataDir() + "chr20.shard0.g.vcf")
+                .addReference(hg38Reference)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final File output2 = createTempFile("single-input",".vcf");
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.add("V", getToolTestDataDir() + "prod.chr20snippet.withRawMQ.g.vcf")
+                .add("L", "chr20:19995000-19998999")
+                .addReference(hg38Reference)
+                .addOutput(output2);
+        runCommandLine(args2);
+
+        try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output);
+             final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(output2)) {
+            GATKBaseTest.assertCondition(actualVcs, expectedVcs,
+                    (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e,
+                            Collections.emptyList(), Collections.emptyList()));
+        }
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testMixedSamples() {
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", getToolTestDataDir() + "justHeader.g.vcf") //sample "Sample"
+            .add("V", getToolTestDataDir() + "nonRefAD.g.vcf") //sample "HK017-0046"
+            .addReference(hg38Reference)
+            .addOutput(output);
+        runCommandLine(args);
+    }
+
+    @Test
+    //we had some external GVCFs that each went through CombineGVCFs for some reason, so GTs all went to ./.
+    //also test variants and ref blocks with no DP
+    public void testNoCallGenotypes() {
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", getToolTestDataDir() + "noCallGTs.g.vcf")
+                .addReference(hg38Reference)
+                .addOutput(output);
+        runCommandLine(args);
+
+        Pair<VCFHeader, List<VariantContext>> actual = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        final List<VariantContext> variants = actual.getRight();
+        final List<String> variantKeys = variants.stream().map(VariantContextTestUtils::keyForVariant).collect(Collectors.toList());
+        final Map<String, VariantContext> resultMap = new LinkedHashMap<>();
+        for (int i = 0; i < variants.size(); i++) {
+            resultMap.put(variantKeys.get(i), variants.get(i));
+        }
+
+        final List<String> expectedHomVarKeys = Arrays.asList(
+                "chr22:10514994-10514994 G*, [<NON_REF>, A]",
+                "chr22:10515170-10515170 C*, [<NON_REF>, T]",
+                "chr22:10515223-10515223 G*, [<NON_REF>, C]",
+                "chrY:6067982-6067982 T*, [<NON_REF>, G]");
+
+        final List<String> expectedHetKeys = Arrays.asList(
+                "chr22:10515120-10515120 A*, [<NON_REF>, AAAGC]",
+                "chr22:10515223-10515223 G*, [<NON_REF>, C]");
+
+        final List<String> expectedHomRefKeys = Arrays.asList(
+                "chr22:10515118-10515118 G*, [<NON_REF>]",
+                "chrY:6067983-6068157 A*, [<NON_REF>]");
+
+        Assert.assertTrue(variantKeys.containsAll(expectedHomVarKeys));
+        Assert.assertTrue(variantKeys.containsAll(expectedHetKeys));
+        Assert.assertTrue(variantKeys.containsAll(expectedHomRefKeys));
+        Assert.assertTrue(variants.size() == 24);
+    }
+
+    @Test
+    //here genotype call disagrees with PLs and subsetting can be wrong and lead to no confidence hom-ref if we rely on GT
+    public void testPosteriorDisagreementNeedingSubset() {
+        final File funkyDragenVariant = new File(getToolTestDataDir() + "HG002.snippet.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", funkyDragenVariant)
+                .addReference(hg38Reference)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertEquals(outVCs.getRight().size(), 2);  //one variant and one ref block from trimmed deletion
+        final VariantContext testResult = outVCs.getRight().get(0);
+        final Genotype g = testResult.getGenotype(0);
+        Assert.assertFalse(testResult.hasAttribute(VCFConstants.END_KEY));
+        Assert.assertTrue(g.isHetNonRef());
+        Assert.assertEquals(testResult.getAlternateAlleles().size(), 3);
+        Assert.assertTrue(testResult.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
+        Assert.assertEquals(testResult.getReference().getBaseString().length(), 1);  //alleles are properly trimmed
+
+        final VariantContext newRefBlock = outVCs.getRight().get(1);
+        Assert.assertTrue(newRefBlock.hasAttribute(VCFConstants.END_KEY));
+        Assert.assertEquals(newRefBlock.getAttributeAsInt(VCFConstants.END_KEY, 0), 103392934);
+        final Genotype refG = newRefBlock.getGenotype(0);
+        Assert.assertTrue(refG.isHomRef());
+        Assert.assertEquals(newRefBlock.getAlternateAlleles().size(), 1);
+        Assert.assertTrue(newRefBlock.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
     }
 }

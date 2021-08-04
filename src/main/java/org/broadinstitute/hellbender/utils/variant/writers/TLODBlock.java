@@ -35,6 +35,11 @@ final class TLODBlock extends GVCFBlock {
     TLODBlock(final VariantContext startingVC, final int lowerLODBoundAsBinnedInt, final int upperLODBoundAsBinnedInt, final int partitionPrecision) {
         super(startingVC, (int)Math.floor(lowerLODBoundAsBinnedInt), (int)Math.floor(upperLODBoundAsBinnedInt));
         this.partitionPrecision = partitionPrecision;
+
+        final Genotype g = startingVC.getGenotype(0);
+        if (g.hasExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)) {
+            setMinBlockLod(g);
+        }
     }
 
     private int convertLODtoInt(final double LOD) {
@@ -84,9 +89,16 @@ final class TLODBlock extends GVCFBlock {
     @Override
     public void add(final int pos, final int newEnd, final Genotype genotype) {
         Utils.nonNull(genotype, "genotype cannot be null");
-        Utils.validateArg( pos == end + 1,"adding genotype at pos " + pos + " isn't contiguous with previous end " + end);
-        // Make sure the LOD is within the bounds of this band
+        Utils.validateArg(pos == end + 1 , "adding genotype at pos " + pos + " isn't contiguous with previous end " + end);
+        setMinBlockLod(genotype);
+
+        end = newEnd;
+        DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
+    }
+
+    private void setMinBlockLod(Genotype genotype) {
         final double currentLOD = Double.parseDouble(genotype.getExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY).toString());
+        // Make sure the LOD is within the bounds of this band
         if ( !withinBounds(currentLOD)) {
             throw new IllegalArgumentException("cannot add a genotype with LOD=" + currentLOD + " because it's not within bounds ["
                     + this.getLODLowerBound() + ',' + this.getLODUpperBound() + ')');
@@ -95,9 +107,6 @@ final class TLODBlock extends GVCFBlock {
         if( minBlockLOD == Double.POSITIVE_INFINITY || currentLOD < minBlockLOD) {
             minBlockLOD = currentLOD;
         }
-
-        end = newEnd;
-        DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
     }
 
     @Override

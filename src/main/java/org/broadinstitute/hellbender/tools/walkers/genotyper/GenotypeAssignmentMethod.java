@@ -16,6 +16,11 @@ public enum GenotypeAssignmentMethod {
     USE_PLS_TO_ASSIGN,
 
     /**
+     * Use the existing, subsetted posteriors array to assign genotypes
+     */
+    USE_POSTERIORS_ANNOTATION,
+
+    /**
      * set all of the genotype GT values to NO_CALL and remove annotations
      */
     SET_TO_NO_CALL_NO_ANNOTATIONS,
@@ -45,7 +50,7 @@ public enum GenotypeAssignmentMethod {
     DO_NOT_ASSIGN_GENOTYPES,
 
     /**
-     * Use posterior probabilities:
+     * Calculate posterior probabilities and use those to assign genotypes
      */
     USE_POSTERIOR_PROBABILITIES,
 
