@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.arrow.flatbuf.Int;
 import org.apache.http.HttpClientConnection;
 //import org.apache.commons.httpclient.*;
 //import org.apache.commons.httpclient.methods.*;
@@ -18,6 +19,33 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeter;
 import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeterResults;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import org.checkerframework.common.reflection.qual.GetMethod;
+import com.google.cloud.storage.HttpMethod;
+//import org.apache.commons.httpclient.methods;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.HttpEntity;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpUriRequest;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import org.apache.http.client.ClientProtocolException;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import java.net.URL;
+import java.net.HttpURLConnection;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -65,14 +93,14 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     //==================================================================================================================
     // Public Static Members:
 
-    public static final String BACTERIA_ARG_LONG_NAME           = "bacteria";
-    public static final String FUNGI_ARG_LONG_NAME              = "fungi";
-    public static final String METAZOA_ARG_LONG_NAME            = "metazoa";
-    public static final String PLANTS_ARG_LONG_NAME             = "plants";
-    public static final String PROTISTS_ARG_LONG_NAME           = "protists";
-    public static final String SPECIES_ARG_LONG_NAME            = "species-name";
-    public static final String OVERWRITE_ARG_LONG_NAME          = "overwrite-output-file";
-    public static final String EXTRACT_AFTER_DOWNLOAD           = "extract-after-download";
+    public static final String BACTERIA_ARG_LONG_NAME = "bacteria";
+    public static final String FUNGI_ARG_LONG_NAME = "fungi";
+    public static final String METAZOA_ARG_LONG_NAME = "metazoa";
+    public static final String PLANTS_ARG_LONG_NAME = "plants";
+    public static final String PROTISTS_ARG_LONG_NAME = "protists";
+    public static final String SPECIES_ARG_LONG_NAME = "species-name";
+    public static final String OVERWRITE_ARG_LONG_NAME = "overwrite-output-file";
+    public static final String EXTRACT_AFTER_DOWNLOAD = "extract-after-download";
 
     //==================================================================================================================
     // Private Static Members:
@@ -100,84 +128,72 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
 //    private static final Path PROTISTS_PATH = IOUtils.getPath(PROTISTS_BASE_URL + DataSourceUtils.GTF_EXTENSION);
 
+    protected static final int BUFFER_SIZE_BYTES = 1024 * 1024;
+
     //will maybe add in variables for the urls for each of the different organisms
 
     //==================================================================================================================
     // Private Members:
 
+    // Copy buffer:
+    protected final byte copyBuffer[] = new byte[BUFFER_SIZE_BYTES];
+
+    // Arguments:
     @Argument(fullName = BACTERIA_ARG_LONG_NAME,
-            shortName  = BACTERIA_ARG_LONG_NAME,
+            shortName = BACTERIA_ARG_LONG_NAME,
             doc = "Download data sources for bacteria.",
             optional = true)
     private boolean getBacteriaDataSources = false;
 
     @Argument(fullName = FUNGI_ARG_LONG_NAME,
-            shortName  = FUNGI_ARG_LONG_NAME,
+            shortName = FUNGI_ARG_LONG_NAME,
             doc = "Download data sources for fungi.",
             optional = true)
     private boolean getFungiDataSources = false;
 
     @Argument(fullName = METAZOA_ARG_LONG_NAME,
-            shortName  = METAZOA_ARG_LONG_NAME,
+            shortName = METAZOA_ARG_LONG_NAME,
             doc = "Download data sources for metazoa.",
             optional = true)
     private boolean getMetazoaDataSources = false;
 
     @Argument(fullName = PLANTS_ARG_LONG_NAME,
-            shortName  = PLANTS_ARG_LONG_NAME,
+            shortName = PLANTS_ARG_LONG_NAME,
             doc = "Download data sources for plants.",
             optional = true)
     private boolean getPlantsDataSources = false;
 
     @Argument(fullName = PROTISTS_ARG_LONG_NAME,
-            shortName  = PROTISTS_ARG_LONG_NAME,
+            shortName = PROTISTS_ARG_LONG_NAME,
             doc = "Download data sources for protists.",
             optional = true)
     private boolean getProtistsDataSources = false;
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output location for the data sources.",
             optional = true)
     protected File outputFile;
 
     @Argument(
             shortName = SPECIES_ARG_LONG_NAME,
-            fullName  = SPECIES_ARG_LONG_NAME,
+            fullName = SPECIES_ARG_LONG_NAME,
             doc = "Download data sources for this species of the organism.")
     protected String speciesName;
 
-//    @Argument(
-//            shortName = StandardArgumentDefinitions.ORGANISM_SHORT_NAME,
-//            fullName = StandardArgumentDefinitions.ORGANISM_LONG_NAME,
-//            doc = "Download data sources for this species of the organism.")
-//    protected String organismName;
-
     @Argument(fullName = OVERWRITE_ARG_LONG_NAME,
-            shortName  = OVERWRITE_ARG_LONG_NAME,
+            shortName = OVERWRITE_ARG_LONG_NAME,
             doc = "Overwrite output file if it exists already.",
             optional = true)
     private boolean overwriteOutputFile = false;
 
     @Argument(
             shortName = EXTRACT_AFTER_DOWNLOAD,
-            fullName  = EXTRACT_AFTER_DOWNLOAD,
+            fullName = EXTRACT_AFTER_DOWNLOAD,
             doc = "Extract the data sources to a sibling folder after they have been downloaded.",
             optional = true)
     protected boolean extractDataSourcesAfterDownload = false;
-
-//    @Argument(
-//            shortName = StandardArgumentDefinitions.ORGANISM_TYPE_SHORT_NAME,
-//            fullName  = StandardArgumentDefinitions.ORGANISM_TYPE_LONG_NAME,
-//            doc = "Organism we want to download data sources for.")
-//    protected String organismName;
-//
-//    @Argument(
-//            shortName = StandardArgumentDefinitions.SUBGROUP_SHORT_NAME,
-//            fullName  = StandardArgumentDefinitions.SUBGROUP_LONG_NAME,
-//            doc = "Subgroup of organism type which we want the data sources for.")
-//    protected String subgroupName;
 
     //==================================================================================================================
     // Constructors:
@@ -198,18 +214,10 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             throw new UserException("Must specify a species to bundle data sources for.");
         }
 
-        if ( overwriteOutputFile ) {
+        if (overwriteOutputFile) {
             logger.info("Overwrite ENABLED. Will overwrite existing data sources download.");
         }
-//        // Make sure the user specified an organism type and a subgroup type for the data source:
-//        if ((organismName == null) || (subgroupName == null)) {
-//            throw new UserException("Must select an organism and subgroup for data source.");
-//        }
-//
-//        // Make sure the testing inputs are correct:
-//        if ( ((organismName == null) && (subgroupName != null)) || ((subgroupName == null) && (organismName != null)) ) {
-//            throw new UserException("Must specify both an organism type and a subgroup type.");
-//        }
+
     }
 
     @Override
@@ -217,31 +225,33 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
         final String dataSourceOrganism;
         final String dataSourceSpecies = speciesName;
+        final String dataSourceURL;
         final Path dataSourcePath;
 
         // Get the correct data source:
-        if ( getBacteriaDataSources ) {
+        if (getBacteriaDataSources) {
             dataSourceOrganism = "Bacteria";
+            dataSourceURL = BACTERIA_BASE_URL + speciesName + "/";
             dataSourcePath = IOUtils.getPath(BACTERIA_BASE_URL + speciesName);
-        }
-        else if ( getFungiDataSources ) {
+        } else if (getFungiDataSources) {
             dataSourceOrganism = "Fungi";
+            dataSourceURL = FUNGI_BASE_URL + speciesName + "/";
             dataSourcePath = IOUtils.getPath(FUNGI_BASE_URL + speciesName + "/");
-        }
-        else if ( getMetazoaDataSources ) {
+        } else if (getMetazoaDataSources) {
             dataSourceOrganism = "Metazoa";
+            dataSourceURL = METAZOA_BASE_URL + speciesName + "/";
             dataSourcePath = IOUtils.getPath(METAZOA_BASE_URL + speciesName + "/");
-        }
-        else if ( getPlantsDataSources ) {
+        } else if (getPlantsDataSources) {
             dataSourceOrganism = "Plants";
+            dataSourceURL = PLANTS_BASE_URL + speciesName + "/";
             dataSourcePath = IOUtils.getPath(PLANTS_BASE_URL + speciesName + "/");
-        }
-        else {
+        } else {
             dataSourceOrganism = "Protists";
+            dataSourceURL = PROTISTS_BASE_URL + speciesName + "/";
             dataSourcePath = IOUtils.getPath(PROTISTS_BASE_URL + speciesName + "/");
         }
 
-        downloadAndValidateDataSources(dataSourceOrganism, dataSourceSpecies, dataSourcePath);
+        downloadAndValidateDataSources(dataSourceOrganism, dataSourceSpecies, dataSourceURL, dataSourcePath);
 
         // Token return value:
         return true;
@@ -259,116 +269,68 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     //==================================================================================================================
     // Instance Methods:
 
-//    private String getURL(String dataSourceOrganism, String speciesName, )
-
-    private NioFileCopierWithProgressMeter createNioDownloader(final Path dsPath) {
-        // Get the data sources file:
-        final Path outputDestination = getOutputLocation(dsPath);
-
-        // Set up and initiate our download:
-        return NioFileCopierWithProgressMeter.create(dsPath, outputDestination, overwriteOutputFile);
-
-    }
-
-    private void downloadAndValidateDataSources(final String dsOrganism, final String dsSpecies, final Path dsPath) {
+    private void downloadAndValidateDataSources(final String dsOrganism, final String dsSpecies, final String dsURL, final Path dsPath){
         logger.info(dsOrganism + ":" + dsSpecies + " data sources selected.");
-        // Confirm file integrity if requested:
-//        if ( doValidateIntegrity ) {
-//            validateIntegrity(results);
-//        }
-        // Create our downloader:
-//        final NioFileCopierWithProgressMeter xerox = createNioDownloader(dsPath);
-        final HttpClient client = new HttpClient();
 
-        // Get the datasources file:
-//        final NioFileCopierWithProgressMeterResults results = downloadDataSources(xerox);
+        // Creating CloseableHttpClient object to access the webpage and retrieve the file:
+        CloseableHttpClient client = HttpClientBuilder.create().build();
 
-//
+        // Creating an HttpGet object to send the request to the server:
+        HttpGet request = new HttpGet(dsURL + "/" + dsSpecies); //instead of dsSpecies this will be getFileName where the hashmaps will be used
 
-        // Extract data sources if requested:
+        try {
+            // Using an HttpResponse class object to catch the response from the server
+            HttpResponse response = client.execute(request);
+            // The data sent by the server is obtained in this getEntity() function:
+            HttpEntity entity = response.getEntity();
+
+            // Extracting the data from the entity object:
+            try( InputStream inputStream = entity.getContent();
+                 OutputStream outputStream = new FileOutputStream(outputFile) ) {
+
+                // Perform the copy:
+                while (true) {
+
+                    // Read from our input:
+                    final int bytesRead = inputStream.read(copyBuffer);
+                    if (bytesRead == -1) {
+                        break;
+                    }
+
+                    // Write to our output:
+                    outputStream.write(copyBuffer, 0, bytesRead);
+                }
+            }
+            catch (final IOException ex) {
+                throw new UserException("Could not copy file: " + dsURL + " -> " + outputFile, ex);
+            }
+        }
+        catch (final IOException ex) {
+            throw new UserException("Could not obtain data from "+ dsURL, ex);
+        }
+
+        // Extract data sources if requested:       need to change these variables, these will not be right
         if ( extractDataSourcesAfterDownload ) {
-            IOUtils.extractTarGz(results.getDestination(), results.getDestination().getParent(), overwriteOutputFile);
+            final Path outputDestination = getOutputLocation(dsPath);
+            IOUtils.extractTarGz(outputDestination, outputDestination.getParent(), overwriteOutputFile);
         }
         else {
             logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");
         }
     }
 
-    private NioFileCopierWithProgressMeterResults downloadDataSources(final NioFileCopierWithProgressMeter xerox) {
-
-        // Set up the validity check while the download occurs if requested:
-//        if ( doValidateIntegrity ) {
-//            // Read the sha256sum into memory:
-//            final String expectedSha256Sum = readSha256SumFromPath(checksumPath);
-//
-//            // Setup the copier to calculate the checksum:
-//            xerox.setChecksumAlgorithmAndExpectedChecksum(MessageDigestAlgorithms.SHA_256, expectedSha256Sum);
-//        }
-
-        // Initiate the copy and return our results:
-        return xerox.initiateCopy();
-
-    }
 
     private Path getOutputLocation(final Path dataSourcesPath) {
-        if ( outputFile == null ) {
+        if (outputFile == null) {
             return IOUtils.getPath(dataSourcesPath.getFileName().toString());
-        }
-        else {
+        } else {
             return outputFile.toPath();
         }
     }
 
-//        private void validateIntegrity(final NioFileCopierWithProgressMeterResults results) {
-//
-//            // verify the hashes are the same:
-//            if ( !results.isDestFileValid() ) {
-//                throw new UserException("ERROR: downloaded data sources are corrupt!  Unexpected checksum: " + results.getChecksum() + " != " + results.getExpectedChecksum());
-//            }
-//            else {
-//                logger.info("Integrity check on downloaded data sources succeeded.");
-//            }
-//        }
-
-//        private String readSha256SumFromPath(final Path sha256Path) {
-//            final String expectedSha256Sum;
-//            try {
-//                logger.info("Collecting expected checksum...");
-//                expectedSha256Sum = Files.lines(sha256Path).findFirst().orElse(null);
-//
-//                if ( expectedSha256Sum == null ) {
-//                    throw new UserException("Unable to retrieve expected checksum from: " + sha256Path.toUri());
-//                }
-//
-//                logger.info("Collection complete!");
-//            }
-//            catch ( final IOException ex ) {
-//                throw new UserException("Could not read in sha256sum from file: " + sha256Path.toUri().toString(), ex);
-//            }
-//
-//            // Clean up and return the checksum:
-//            return cleanExpectedSha256SumString(expectedSha256Sum);
-        }
-
-
-//        private String cleanExpectedSha256SumString(final String expectedSha256SumString) {
-//
-//            String cleanString = expectedSha256SumString.trim().toLowerCase();
-//
-//            // The format of the file can contain the checksum, followed by the file name.
-//            // If this is the case, we need to truncate the string:
-//            if ( cleanString.contains(" ") ) {
-//                cleanString = cleanString.substring(0, cleanString.indexOf(" "));
-//            }
-//            if ( cleanString.contains("\t")) {
-//                cleanString = cleanString.substring(0, cleanString.indexOf("\t"));
-//            }
-//
-//            return cleanString;
-//        }
-
-        //==================================================================================================================
-        // Helper Data Types:
+    //==================================================================================================================
+    // Helper Data Types:
+}
 
 
 
