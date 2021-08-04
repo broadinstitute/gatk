@@ -45,17 +45,22 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.io.File;
-
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.File;
+import java.io.IOException;
 
 public class FuncotatorDataSourceBundlerUtils {
 
     private final static Logger logger = LogManager.getLogger(FuncotatorDataSourceBundlerUtils.class);
 
-    private static final Map<String, String> bacteriaMap = new LinkedHashMap<>();
-    private static final Map<String, String> fungiMap = new LinkedHashMap<>();
-    private static final Map<String, String> metazoaMap = new LinkedHashMap<>();
-    private static final Map<String, String> plantsMap = new LinkedHashMap<>();
-    private static final Map<String, String> protistsMap = new LinkedHashMap<>();
+    private static  Map<String, String> bacteriaMap = new LinkedHashMap<>();
+    private static  Map<String, String> fungiMap = new LinkedHashMap<>();
+    private static  Map<String, String> metazoaMap = new LinkedHashMap<>();
+    private static  Map<String, String> plantsMap = new LinkedHashMap<>();
+    private static  Map<String, String> protistsMap = new LinkedHashMap<>();
 
     private static final String bacteriaFileName = "uniprot_report_EnsemblBacteria_compressed";
     private static final String fungiFileName = "uniprot_report_EnsemblFungi_compressed";
@@ -80,15 +85,30 @@ public class FuncotatorDataSourceBundlerUtils {
         organismNames.add("protists");
 
         for (String orgName : organismNames) {
+            String baseURLName =  DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/");
             String fileName = "uniprot_report_Ensembl" + orgName + "_compressed";
             readExcel(fileName, orgName);
         }
     }
 
     public static void readExcel(String fileName, String orgName){
+        final List<String> keys = new ArrayList<>();
+        final List<String> values = new ArrayList<>();
         try {
-            InputStream inputStream = 
+            Scanner inputStream = new Scanner(new File(fileName));
+            while (inputStream.hasNextLine()) {
+                String data = inputStream.nextLine();
+                String[] columnValues = data.split("\t");
+                keys.add(columnValues[0].replaceAll("[[]()]]", ""));
+                values.add(columnValues[1] + "." + columnValues[4] + "." + ENSEMBL_VERSION);
+            }
+            inputStream.close();
+            String mapName = orgName + "map";
+            bacteriaMap = FuncotatorUtils.createLinkedHashMapFromLists(keys, values);
 
+        }
+        catch ( final IOException ex ){
+            throw new UserException("Could not open file: " + fileName, ex);
         }
 
     }
