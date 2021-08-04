@@ -13,7 +13,7 @@ workflow GvsImportGenomes {
     String dataset_name
     String? pet_schema = "location:INTEGER,sample_id:INTEGER,state:STRING"
     String? vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,QUALapprox:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
-    String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING,is_loaded:BOOLEAN"
+    String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING"
     String? service_account_json_path
     String? drop_state = "SIXTY"
     Boolean? drop_state_includes_greater_than = false
@@ -186,7 +186,7 @@ workflow GvsImportGenomes {
     }
   }
 
-  call UpdateIsLoadedColumn {
+  call AddIsLoadedColumn {
     input:
       load_sample_info_done = LoadSampleInfoTable.done,
       load_pet_done = LoadPetTable.done,
@@ -200,8 +200,7 @@ workflow GvsImportGenomes {
     input:
       run_uuid = SetLock.run_uuid,
       output_directory = output_directory,
-      load_sample_info_done = UpdateIsLoadedColumn.done,
-      load_pet_done = LoadPetTable.done,
+      load_sample_info_done = AddIsLoadedColumn.done,
       load_vet_done = LoadVetTable.done,
       service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries
@@ -282,7 +281,6 @@ task ReleaseLock {
     String run_uuid
     String output_directory
     String load_sample_info_done
-    Array[String] load_pet_done
     Array[String] load_vet_done
     String? service_account_json_path
 
@@ -835,7 +833,11 @@ task TerminateWorkflow {
   }
 }
 
-task UpdateIsLoadedColumn {
+task AddIsLoadedColumn {
+  meta {
+    volatile: true
+  }
+
   input {
     Array[String] load_sample_info_done
     Array[String] load_pet_done
@@ -856,10 +858,13 @@ task UpdateIsLoadedColumn {
       gcloud config set project ~{project_id}
     fi
 
+    # add is_loaded column
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "UPDATE `~{dataset_name}.sample_info`
-    SET is_loaded = true
-    WHERE sample_name IN (SELECT partition_id from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE total_logical_bytes > 0 AND table_name LIKE 'pet_%')"
+    "ALTER TABLE ~{dataset_name}.sample_info ADD COLUMN is_loaded BOOLEAN"
+
+    # set is_loaded to true if there is a corresponding pet table partition with rows for that sample_id
+    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE total_logical_bytes > 0 AND table_name LIKE \"pet_%\")"
   >>>
 
   runtime {
