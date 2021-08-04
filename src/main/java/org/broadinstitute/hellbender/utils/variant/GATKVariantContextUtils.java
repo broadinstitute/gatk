@@ -296,7 +296,7 @@ public final class GATKVariantContextUtils {
                 final List<Allele> finalAlleles = alleleCounts.asAlleleList(allelesToUse);
                 if (finalAlleles.contains(Allele.NON_REF_ALLELE)) {
                     final Allele ref = allelesToUse.stream().filter(Allele::isReference).collect(Collectors.toList()).get(0);
-                    gb.alleles(Arrays.asList(ref, ref));
+                    gb.alleles(Collections.nCopies(ploidy, ref));
                     gb.PL(new int[genotypeLikelihoods.length]).log10PError(0);
                 } else {
                     gb.alleles(finalAlleles);

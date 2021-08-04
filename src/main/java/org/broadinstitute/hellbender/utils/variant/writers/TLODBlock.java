@@ -37,9 +37,6 @@ final class TLODBlock extends GVCFBlock {
         this.partitionPrecision = partitionPrecision;
 
         final Genotype g = startingVC.getGenotype(0);
-        if (g.hasDP()) {
-            DPs.add(Math.max(g.getDP(), 0)); // DP must be >= 0
-        }
         if (g.hasExtendedAttribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY)) {
             setMinBlockLod(g);
         }

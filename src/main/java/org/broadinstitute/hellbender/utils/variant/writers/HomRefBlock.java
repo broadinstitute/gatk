@@ -65,7 +65,6 @@ final class HomRefBlock extends GVCFBlock {
         } else if (g.hasGQ()) {
             minGQ = g.getGQ();
         }
-        DPs.add(Math.max(g.getDP(), 0)); // if DP is missing, getDP will return -1, but we'll assume zero depth
     }
 
 

@@ -23,7 +23,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     }
 
     private static Genotype getGenotype() {
-        return new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, REF)).make();
+        return new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(REF, REF)).DP(10).make();
     }
 
     private static VariantContext getVariantContext() {
@@ -49,16 +49,16 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     public void testMinMedian() {
         final VariantContext vc = getVariantContext();
         final HomRefBlock band = getHomRefBlock(vc);
+        assertValues(band, 10, 10);
+        Assert.assertEquals(band.getEnd(), START);
+
+        int pos = band.getStart() + 1;
+
         final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME);
         gb.alleles(vc.getAlleles());
 
-        int pos = band.getStart() + 1;
-        band.add(pos++, gb.DP(10).GQ(11).PL(new int[]{0,11,100}).make());
-        Assert.assertEquals(band.getEnd(), pos - 1);
-        assertValues(band, 10, 10);
-
         band.add(pos++, gb.DP(11).GQ(10).PL(new int[]{0, 10, 100}).make());
-        Assert.assertEquals(band.getEnd(), pos - 1);
+        Assert.assertEquals(band.getEnd(), pos - 1);  //-1 because we already did a postfix add above
         assertValues(band, 10, 11);
 
         band.add(pos++, gb.DP(12).GQ(12).PL(new int[]{0,12,100}).make());
@@ -178,7 +178,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testToVariantCoxntext(){
+    public void testToVariantContext(){
         final VariantContext vc = getVariantContext();
         final GenotypeBuilder gb = new GenotypeBuilder(SAMPLE_NAME, vc.getAlleles());
         final Genotype genotype1 = gb.GQ(15).DP(6).PL(new int[]{0, 10, 100}).make();
@@ -191,7 +191,7 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
         final VariantContext newVc = block.toVariantContext(SAMPLE_NAME, false);
         Assert.assertEquals(newVc.getGenotypes().size(), 1);
         final Genotype genotype = newVc.getGenotypes().get(0);
-        Assert.assertEquals(genotype.getDP(),8); //dp should be median of the added DPs
+        Assert.assertEquals(genotype.getDP(),10); //dp should be median of the added DPs and the initial DP (from getVariantContext())
         Assert.assertEquals(genotype.getGQ(), 5); //GQ should have been recalculated with the minPls
         Assert.assertTrue(genotype.getAlleles().stream().allMatch(a -> a.equals(REF)));
     }
