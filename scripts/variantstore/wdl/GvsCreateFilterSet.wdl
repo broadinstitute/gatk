@@ -322,7 +322,6 @@ task GetNumSamplesLoaded {
         NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
         [[ $NUMROWS =~ ^[0-9]+$ ]] && echo $NUMROWS || exit 1
-
     >>>
 
     output {
@@ -339,16 +338,7 @@ task GetNumSamplesLoaded {
 }
 
 task ExtractFilterTask {
-    # indicates that this task should NOT be call cached
-
-    # TODO: should this be marked as volatile???
-    #meta {
-    #   volatile: true
-    #}
-
     input {
-        # ------------------------------------------------
-        # Input args:
         File reference
         File reference_index
         File reference_dict
@@ -377,8 +367,6 @@ task ExtractFilterTask {
     # Note the coercion of optional query_labels using select_first([expr, default])
     Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_first([query_labels])) else []
 
-    # ------------------------------------------------
-    # Run our command:
     command <<<
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -407,8 +395,6 @@ task ExtractFilterTask {
                 --project-id ~{read_project_id}
     >>>
 
-    # ------------------------------------------------
-    # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "7 GB"
@@ -418,8 +404,6 @@ task ExtractFilterTask {
         cpu: 2
     }
 
-    # ------------------------------------------------
-    # Outputs:
     output {
         File output_vcf = "~{output_file}"
         File output_vcf_index = "~{output_file}.tbi"
@@ -558,13 +542,6 @@ task PopulateFilterSetInfo {
 }
 
 task PopulateFilterSetSites {
-    # indicates that this task should NOT be call cached
-
-    # TODO: should this be marked as volatile???
-    #meta {
-    #   volatile: true
-    #}
-
     input {
         String filter_set_name
         String fq_filter_sites_destination_table
@@ -679,12 +656,7 @@ task PopulateFilterSetTranches {
     }
 }
 
- task MergeVCFs {
-    # TODO: should this be marked as volatile???
-    #meta {
-    #   volatile: true
-    #}
-
+task MergeVCFs {
     input {
         Array[File] input_vcfs
         Array[File] input_vcfs_indexes
