@@ -65,7 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_add_is_loaded
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -84,7 +83,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_add_is_loaded
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
