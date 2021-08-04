@@ -62,7 +62,6 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
 | filter_set_name | A unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 4  |
-| output_directory | A unique GCS path to be used for loading, can be in the workspace bucket.  E.g. `gs://fc-124-12-132-123-31/gvs/demo1`) |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
