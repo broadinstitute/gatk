@@ -56,6 +56,9 @@ public class FuncotatorDataSourceBundlerUtils {
 
     private final static Logger logger = LogManager.getLogger(FuncotatorDataSourceBundlerUtils.class);
 
+    // If we have already initialized the maps then there is no need to build them again:
+    public static boolean haveInitializedMaps = false;
+
     // Maps will map from each species in a given organism to the species file name associated with that species name:
     private static  Map<String, String> bacteriaMap = new LinkedHashMap<>();
     private static  Map<String, String> fungiMap = new LinkedHashMap<>();
@@ -136,6 +139,29 @@ public class FuncotatorDataSourceBundlerUtils {
         for (String orgName : orgNameKeys) {
             String urlName =  DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
             readUniprotFile(urlName, orgName);
+        }
+
+        haveInitializedMaps = true;
+    }
+
+    public static void buildMap(String orgName){
+        String urlName =  DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
+        readUniprotFile(urlName, orgName);
+    }
+
+    public static String buildMapGetFileName(String orgName, String speciesName) {
+        String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
+        readUniprotFile(urlName, orgName);
+
+        // Get the map for this organism:
+        Map<String, String> tempMap = orgNamesMapNames.get(orgName);
+
+        // Check to see if specified species name is valid and if so, return the corresponding file name:
+        if (tempMap.get(speciesName) == null) {
+            throw new UserException.BadInput("Given species name: " + speciesName + " is not a valid species for organism: " + orgName + "!");
+        } else {
+            return tempMap.get(speciesName);
+
         }
     }
 

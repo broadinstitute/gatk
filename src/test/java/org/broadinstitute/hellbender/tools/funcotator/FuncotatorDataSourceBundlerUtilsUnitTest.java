@@ -27,5 +27,32 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
     // Static Variables:
     private static final String TEST_WRONG_ORGNAME = "virus";
     private static final String TEST_WRONG_SPECIESNAME = "ashbya_gossypii";
+    private static final String PLANTS_NAME = "plants";
+    private static final String PLANTS_SPECIES = "arabidopsis_thaliana";
+    private static final String PROTISTS_SPECIES = "plasmodium_falciparum_camp_malaysia_gca_000521115";
 
+    //==================================================================================================================
+    // Data Providers:
+
+    @DataProvider
+    Object[][] provideForTestBuildMap() {
+        return new Object[][] {
+                {
+                        PLANTS_NAME,
+                        PLANTS_SPECIES,
+                        PROTISTS_SPECIES
+                }
+        };
+    }
+    //==================================================================================================================
+    // Tests:
+
+    @Test(dataProvider = "provideForTestBuildMap")
+    void testBuildMap(String orgName, String correctSpeciesName, String incorrectSpeciesName) {
+        String correctFileName = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(orgName, correctSpeciesName);
+        String test = "pause";
+        String incorrectFileName = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(orgName, incorrectSpeciesName);
+        String test2 = "pause2";
+        String results = "Correct species name: " + correctFileName + ", Incorrect species name: " + incorrectSpeciesName;
+    }
 }

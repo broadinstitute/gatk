@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -18,7 +19,7 @@ import org.broadinstitute.hellbender.tools.funcotator.FuncotatorDataSourceBundle
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorDataSourceBundler;
 
 /**
- * Class to test the {@link FuncotatorDataSourceBundler}.
+ * Class to test the {@link FuncotatorDataSourceBundler} class.
  * Created by Hailey on 8/2/21.
  */
 
@@ -50,10 +51,10 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     }
 
 
-    private void verifyDataSourcesExistThenDeleteThem(final String dsTypeArg, final boolean doExtract) {
+    private void verifyDataSourcesExistThenDeleteThem(final String dsOrgArg, final String dsSpeciesArg, final boolean doExtract) {
         // Get the path to our files:
         final Path currentPath          = IOUtils.getPath(".");
-        final Path remoteDataSourcePath = IOUtils.getPath(getDataSourceRemoteURL(dsTypeArg));
+        final Path remoteDataSourcePath = IOUtils.getPath(getDataSourceRemoteURL(dsOrgArg) + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dsOrgArg, dsSpeciesArg) + DataSourceUtils.GTF_GZ_EXTENSION);
         final Path expectedDownloadedDataSourcePath = currentPath.resolve(remoteDataSourcePath.getFileName().toString());
 
         // Verify it exists and delete it:
@@ -170,12 +171,12 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     // Tests:
 
     @Test( dataProvider = "provideForTestDownload")
-    void testDownloadRealDataSources (final String dsTypeArg, final String speciesArg, final boolean doOverwrite, final boolean doExtract) {
+    void testDownloadRealDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite, final boolean doExtract) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
         File outputFile = new File("Absiella_dolichum_dsm_3991_gca_000154285.ASM15428v1.51.gtf");
-        arguments.add(dsTypeArg, true);
-        arguments.add("species-name", speciesArg);
+        arguments.add(dsOrgArg, true);
+        arguments.add("species-name", dsSpeciesArg);
         arguments.add("output", outputFile);
         arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
         arguments.add(FuncotatorDataSourceBundler.EXTRACT_AFTER_DOWNLOAD, doExtract);
@@ -184,7 +185,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
 
         // Now verify we got the data sources and clean up the files
         // so we don't have up to 30 gigs of stuff lying around:
-        verifyDataSourcesExistThenDeleteThem(dsTypeArg, doExtract);
+        verifyDataSourcesExistThenDeleteThem(dsOrgArg, dsSpeciesArg, doExtract);
     }
 
 }

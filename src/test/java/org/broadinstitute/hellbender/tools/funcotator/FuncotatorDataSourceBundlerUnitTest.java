@@ -24,9 +24,10 @@ public class FuncotatorDataSourceBundlerUnitTest extends CommandLineProgramTest{
 
     @Test
     public void testPath() {
+        String orgName = "bacteria";
         String baseURL = "http://ftp.ensemblgenomes.org/pub/current/bacteria/gtf/bacteria_collection_128/";
         String speciesName = "absiella_dolichum_dsm_3991_gca_000154285";
-        Path testPath = FuncotatorDataSourceBundler.getPath(baseURL, speciesName);
+        Path testPath = FuncotatorDataSourceBundler.getPath(baseURL, orgName, speciesName);
         Path outputDestination = getOutputLocation(testPath);
     }
 

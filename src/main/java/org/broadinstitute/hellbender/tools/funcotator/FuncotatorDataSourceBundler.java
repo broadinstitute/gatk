@@ -5,7 +5,6 @@ import org.apache.arrow.flatbuf.Int;
 import org.apache.http.HttpClientConnection;
 //import org.apache.commons.httpclient.*;
 //import org.apache.commons.httpclient.methods.*;
-import sun.net.www.http.HttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -251,8 +250,8 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     // Static Methods:
 
     @VisibleForTesting
-    static Path getPath(String organismBaseURL, String speciesName) {
-        Path testPath = IOUtils.getPath(organismBaseURL + speciesName + "/");
+    static Path getPath(String organismBaseURL, String orgName, String speciesName) {
+        Path testPath = IOUtils.getPath(organismBaseURL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(orgName, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
         return testPath;
     }
 
@@ -299,7 +298,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             throw new UserException("Could not obtain data from "+ dsURL, ex);
         }
 
-        // Extract data sources if requested:      
+        // Extract data sources if requested:
         if ( extractDataSourcesAfterDownload ) {
             final Path outputDestination = getOutputLocation(dsPath);
             IOUtils.extractTarGz(outputDestination, outputDestination.getParent(), overwriteOutputFile);
