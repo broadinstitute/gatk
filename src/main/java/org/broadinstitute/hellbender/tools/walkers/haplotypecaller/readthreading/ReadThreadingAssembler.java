@@ -5,6 +5,8 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
@@ -869,5 +871,15 @@ public final class ReadThreadingAssembler {
             }
             recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = false;
         }
+    }
+
+    // Debug output writer for the event map that ensures events are correctly sorted (even if there are cross region overlaps)
+    public static void addAssembledVariantsToEventMapOutput(final AssemblyResultSet untrimmedAssemblyResult, final Optional<PriorityQueue<VariantContext>> assembledEventMapVariants, final int maxMnpDistance, final Optional<VariantContextWriter> assembledEventMapVcfOutputWriter) {
+        assembledEventMapVariants.ifPresent(queue ->
+                untrimmedAssemblyResult.getVariationEvents(maxMnpDistance).forEach(event -> {
+                    if (queue.size() >= 300) {
+                        queue.stream().limit(200).forEachOrdered(vc -> assembledEventMapVcfOutputWriter.get().add(vc));
+                    }
+                    queue.add(event);}));
     }
 }
