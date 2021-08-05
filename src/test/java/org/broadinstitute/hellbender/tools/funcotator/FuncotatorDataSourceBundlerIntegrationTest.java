@@ -89,11 +89,18 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     private Object[][] provideForTestDownload() {
         return new Object[][]{
                 {
-                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
-                        "absiella_dolichum_dsm_3991_gca_000154285/",
-                        true,
-                        true
+                    FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
+                        "acyrthosiphon_pisum",
+                        false,
+                        false
+
                 }
+//                {
+//                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
+//                        "absiella_dolichum_dsm_3991_gca_000154285/",
+//                        true,
+//                        true
+//                }
 //                {
 //                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
 //                        "species-name acinebactor_baumannii_aye",
@@ -174,10 +181,10 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     void testDownloadRealDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite, final boolean doExtract) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
 
-        File outputFile = new File("Absiella_dolichum_dsm_3991_gca_000154285.ASM15428v1.51.gtf");
+        //File outputFile = new File("Absiella_dolichum_dsm_3991_gca_000154285.ASM15428v1.51.gtf");
         arguments.add(dsOrgArg, true);
         arguments.add("species-name", dsSpeciesArg);
-        arguments.add("output", outputFile);
+        //arguments.add("output", outputFile);
         arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
         arguments.add(FuncotatorDataSourceBundler.EXTRACT_AFTER_DOWNLOAD, doExtract);
 

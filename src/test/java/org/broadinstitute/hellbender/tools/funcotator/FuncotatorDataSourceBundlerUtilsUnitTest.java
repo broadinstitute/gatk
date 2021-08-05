@@ -28,7 +28,8 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
     private static final String TEST_WRONG_ORGNAME = "virus";
     private static final String TEST_WRONG_SPECIESNAME = "ashbya_gossypii";
     private static final String PLANTS_NAME = "plants";
-    private static final String PLANTS_SPECIES = "Actinidia chinensis";
+//    private static final String PLANTS_SPECIES = "Actinidia chinensis";
+    private static final String PLANTS_SPECIES = "actinidia_chinensis";
     private static final String PROTISTS_SPECIES = "Aphanomyces astaci GCA_002197585.2";
 
     //==================================================================================================================

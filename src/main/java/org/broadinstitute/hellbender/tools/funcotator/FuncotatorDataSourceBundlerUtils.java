@@ -204,11 +204,12 @@ public class FuncotatorDataSourceBundlerUtils {
                 while (inputStream.hasNextLine()) {
                     String data = inputStream.nextLine();
                     String[] columnValues = data.split("\t");
+                    keys.add(columnValues[1]);
                     // First column is the species name:
-                    keys.add(columnValues[0].replaceAll("[[]()]]", ""));
+//                    keys.add(columnValues[0].replaceAll("[[]()]]", ""));
                     // Second column is the species division, and third column is the assembly ID, both of which
                     // are used to make the corresponding file name for this species:
-                    if (orgName.equals("bacteria")) {
+                    if (columnValues[1].substring(0, 1).equals("_")) {
                         values.add(columnValues[1] + "." + columnValues[5] + "." + ENSEMBL_VERSION);
                     }
                     else {
