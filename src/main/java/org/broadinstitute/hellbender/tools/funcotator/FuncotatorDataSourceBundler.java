@@ -230,23 +230,23 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
         // Get the correct data source:
         if (getBacteriaDataSources) {
-            dataSourceOrganism = "Bacteria";
+            dataSourceOrganism = "bcteria";
             dataSourceURL = BACTERIA_BASE_URL + speciesName + "/";
-            dataSourcePath = IOUtils.getPath(BACTERIA_BASE_URL + speciesName);
+            dataSourcePath = IOUtils.getPath(BACTERIA_BASE_URL + speciesName "/" );
         } else if (getFungiDataSources) {
-            dataSourceOrganism = "Fungi";
+            dataSourceOrganism = "fungi";
             dataSourceURL = FUNGI_BASE_URL + speciesName + "/";
             dataSourcePath = IOUtils.getPath(FUNGI_BASE_URL + speciesName + "/");
         } else if (getMetazoaDataSources) {
-            dataSourceOrganism = "Metazoa";
+            dataSourceOrganism = "metazoa";
             dataSourceURL = METAZOA_BASE_URL + speciesName + "/";
             dataSourcePath = IOUtils.getPath(METAZOA_BASE_URL + speciesName + "/");
         } else if (getPlantsDataSources) {
-            dataSourceOrganism = "Plants";
+            dataSourceOrganism = "plants";
             dataSourceURL = PLANTS_BASE_URL + speciesName + "/";
             dataSourcePath = IOUtils.getPath(PLANTS_BASE_URL + speciesName + "/");
         } else {
-            dataSourceOrganism = "Protists";
+            dataSourceOrganism = "protists";
             dataSourceURL = PROTISTS_BASE_URL + speciesName + "/";
             dataSourcePath = IOUtils.getPath(PROTISTS_BASE_URL + speciesName + "/");
         }

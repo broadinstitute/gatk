@@ -72,30 +72,58 @@ public class FuncotatorDataSourceBundlerUtils {
     public static final String SEPARATOR_CHARACTER = ".";
     public static final String GTF_GZ_ESTENSION = "gtf.gz";
 
-    public static final List<String> organismNames = new ArrayList<>();
+    public static Map<String, String> orgNamesAndFileNames = new LinkedHashMap<>();
+    public static final List<String> orgNameKeys = new ArrayList<>();
+    public static final List<String> fileNameValues = new ArrayList<>();
+    public static Map<String, Map<String, String>> orgNamesMapNames = new LinkedHashMap<>();
+    public static final List<Map<String, String>> mapNameValues = new ArrayList<>();
+
+    /**
+     * Return the file name associated with the given species and organism.
+     * @param orgName
+     * @param speciesName
+     */
+    public static void getDSFileName(String orgName, String speciesName) {
+
+    }
 
     /**
      * Initialize our hashmaps of lookup tables:
      */
     public static void buildMaps() {
-        organismNames.add("bacteria");
-        organismNames.add("fungi");
-        organismNames.add("metazoa");
-        organismNames.add("plants");
-        organismNames.add("protists");
+        orgNameKeys.add("bacteria");
+        orgNameKeys.add("fungi");
+        orgNameKeys.add("metazoa");
+        orgNameKeys.add("plants");
+        orgNameKeys.add("protists");
 
-        for (String orgName : organismNames) {
-            String baseURLName =  DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/");
-            String fileName = "uniprot_report_Ensembl" + orgName + "_compressed";
-            readExcel(fileName, orgName);
+        fileNameValues.add(bacteriaFileName);
+        fileNameValues.add(fungiFileName);
+        fileNameValues.add(metazoaFileName);
+        fileNameValues.add(plantsFileName);
+        fileNameValues.add(protistsFileName);
+
+        mapNameValues.add(bacteriaMap);
+        mapNameValues.add(fungiMap);
+        mapNameValues.add(metazoaMap);
+        mapNameValues.add(plantsMap);
+        mapNameValues.add(protistsMap);
+
+
+        orgNamesAndFileNames = FuncotatorUtils.createLinkedHashMapFromLists(orgNameKeys, fileNameValues);
+        orgNamesMapNames = FuncotatorUtils.createLinkedHashMapFromLists(orgNameKeys, mapNameValues);
+
+        for (String orgName : orgNameKeys) {
+            String urlName =  DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
+            readUniprotFile(urlName, orgName);
         }
     }
 
-    public static void readExcel(String fileName, String orgName){
+    public static void readUniprotFile(String urlFilePath, String orgName){
         final List<String> keys = new ArrayList<>();
         final List<String> values = new ArrayList<>();
         try {
-            Scanner inputStream = new Scanner(new File(fileName));
+            Scanner inputStream = new Scanner(new File(urlFilePath));
             while (inputStream.hasNextLine()) {
                 String data = inputStream.nextLine();
                 String[] columnValues = data.split("\t");
@@ -103,12 +131,16 @@ public class FuncotatorDataSourceBundlerUtils {
                 values.add(columnValues[1] + "." + columnValues[4] + "." + ENSEMBL_VERSION);
             }
             inputStream.close();
-            String mapName = orgName + "map";
-            bacteriaMap = FuncotatorUtils.createLinkedHashMapFromLists(keys, values);
+            if ( orgNamesMapNames.get(orgName) != null ) {
+                orgNamesMapNames.get(orgName) = FuncotatorUtils.createLinkedHashMapFromLists(keys, values);
+            }
+            else {
+                throw new UserException("Key has a null value.");
+            }
 
         }
         catch ( final IOException ex ){
-            throw new UserException("Could not open file: " + fileName, ex);
+            throw new UserException("Could not open file: " + urlFilePath, ex);
         }
 
     }
