@@ -186,12 +186,21 @@ workflow GvsImportGenomes {
     }
   }
 
+  call AddIsLoadedColumn {
+    input:
+      load_sample_info_done = LoadSampleInfoTable.done,
+      load_pet_done = LoadPetTable.done,
+      dataset_name = dataset_name,
+      service_account_json_path = service_account_json_path,
+      project_id = project_id,
+      preemptible_tries = preemptible_tries
+  }
+
   call ReleaseLock {
     input:
       run_uuid = SetLock.run_uuid,
       output_directory = output_directory,
-      load_sample_info_done = LoadSampleInfoTable.done,
-      load_pet_done = LoadPetTable.done,
+      load_sample_info_done = AddIsLoadedColumn.done,
       load_vet_done = LoadVetTable.done,
       service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries
@@ -271,8 +280,7 @@ task ReleaseLock {
   input {
     String run_uuid
     String output_directory
-    Array[String] load_sample_info_done
-    Array[String] load_pet_done
+    String load_sample_info_done
     Array[String] load_vet_done
     String? service_account_json_path
 
@@ -822,5 +830,52 @@ task TerminateWorkflow {
       disks: "local-disk 10 HDD"
       preemptible: 3
       cpu: 1
+  }
+}
+
+task AddIsLoadedColumn {
+  meta {
+    volatile: true
+  }
+
+  input {
+    Array[String] load_sample_info_done
+    Array[String] load_pet_done
+    String dataset_name
+    String project_id
+    String? service_account_json_path
+    Int? preemptible_tries
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+  command <<<
+    set -ex
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{project_id}
+    fi
+
+    # add is_loaded column
+    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    "ALTER TABLE ~{dataset_name}.sample_info ADD COLUMN is_loaded BOOLEAN"
+
+    # set is_loaded to true if there is a corresponding pet table partition with rows for that sample_id
+    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE total_logical_bytes > 0 AND table_name LIKE \"pet_%\")"
+  >>>
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "1 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: select_first([preemptible_tries, 5])
+    cpu: 1
+  }
+
+  output {
+    String done = "done"
   }
 }

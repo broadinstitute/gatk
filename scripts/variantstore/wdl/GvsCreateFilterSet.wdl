@@ -13,7 +13,6 @@ workflow GvsCreateFilterSet {
 
         String data_project
         String default_dataset
-        String output_directory
 
         String query_project = data_project
         Array[String]? query_labels
@@ -83,9 +82,6 @@ workflow GvsCreateFilterSet {
     String fq_info_destination_table = "~{data_project}.~{default_dataset}.filter_set_info"
     String fq_tranches_destination_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
     String fq_filter_sites_destination_table = "~{data_project}.~{default_dataset}.filter_set_sites"
-    String fq_gcs_path_to_info_file = "~{output_directory}/~{filter_set_name}.filter_set_load.tsv"
-    String fq_gcs_path_to_tranches_file = "~{output_directory}/~{filter_set_name}.tranches_load.csv"
-    String fq_gcs_path_to_filter_sites_file = "~{output_directory}/~{filter_set_name}.filter_sites_load.tsv"
 
     call GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
         input:
@@ -94,7 +90,7 @@ workflow GvsCreateFilterSet {
             service_account_json_path = service_account_json_path
     }
 
-    call GetNumSamples {
+    call GetNumSamplesLoaded {
         input:
             fq_sample_table = fq_sample_table,
             fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
@@ -161,7 +157,7 @@ workflow GvsCreateFilterSet {
         machine_mem_gb = INDEL_VQSR_machine_mem_gb,
     }
 
-    if (GetNumSamples.num_samples > snps_variant_recalibration_threshold) {
+    if (GetNumSamplesLoaded.num_samples > snps_variant_recalibration_threshold) {
         call Tasks.SNPsVariantRecalibratorCreateModel {
             input:
                 sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
@@ -228,7 +224,7 @@ workflow GvsCreateFilterSet {
         }
     }
 
-    if (GetNumSamples.num_samples <= snps_variant_recalibration_threshold) {
+    if (GetNumSamplesLoaded.num_samples <= snps_variant_recalibration_threshold) {
         call Tasks.SNPsVariantRecalibrator as SNPsVariantRecalibratorClassic {
             input:
                 sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
@@ -296,7 +292,7 @@ workflow GvsCreateFilterSet {
 }
 
 ################################################################################
-task GetNumSamples {
+task GetNumSamplesLoaded {
     input {
         String fq_sample_table
         String fq_sample_table_lastmodified_timestamp
@@ -317,12 +313,11 @@ task GetNumSamples {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-        "SELECT COUNT(*) as num_rows FROM ~{fq_sample_table}" > num_rows.csv
+        "SELECT COUNT(*) as num_rows FROM ~{fq_sample_table} WHERE is_loaded = true" > num_rows.csv
 
         NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
         [[ $NUMROWS =~ ^[0-9]+$ ]] && echo $NUMROWS || exit 1
-
     >>>
 
     output {
@@ -339,16 +334,7 @@ task GetNumSamples {
 }
 
 task ExtractFilterTask {
-    # indicates that this task should NOT be call cached
-
-    # TODO: should this be marked as volatile???
-    #meta {
-    #   volatile: true
-    #}
-
     input {
-        # ------------------------------------------------
-        # Input args:
         File reference
         File reference_index
         File reference_dict
@@ -377,8 +363,6 @@ task ExtractFilterTask {
     # Note the coercion of optional query_labels using select_first([expr, default])
     Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_first([query_labels])) else []
 
-    # ------------------------------------------------
-    # Run our command:
     command <<<
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -407,8 +391,6 @@ task ExtractFilterTask {
                 --project-id ~{read_project_id}
     >>>
 
-    # ------------------------------------------------
-    # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "7 GB"
@@ -418,8 +400,6 @@ task ExtractFilterTask {
         cpu: 2
     }
 
-    # ------------------------------------------------
-    # Outputs:
     output {
         File output_vcf = "~{output_file}"
         File output_vcf_index = "~{output_file}.tbi"
@@ -558,13 +538,6 @@ task PopulateFilterSetInfo {
 }
 
 task PopulateFilterSetSites {
-    # indicates that this task should NOT be call cached
-
-    # TODO: should this be marked as volatile???
-    #meta {
-    #   volatile: true
-    #}
-
     input {
         String filter_set_name
         String fq_filter_sites_destination_table
@@ -679,12 +652,7 @@ task PopulateFilterSetTranches {
     }
 }
 
- task MergeVCFs {
-    # TODO: should this be marked as volatile???
-    #meta {
-    #   volatile: true
-    #}
-
+task MergeVCFs {
     input {
         Array[File] input_vcfs
         Array[File] input_vcfs_indexes
