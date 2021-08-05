@@ -220,24 +220,24 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         // Get the correct data source:
         if (getBacteriaDataSources) {
             dataSourceOrganism = "bacteria";
-            dataSourceURL = BACTERIA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(BACTERIA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
+            dataSourceURL = BACTERIA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(BACTERIA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
         } else if (getFungiDataSources) {
             dataSourceOrganism = "fungi";
-            dataSourceURL = FUNGI_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(FUNGI_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
+            dataSourceURL = FUNGI_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(FUNGI_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
         } else if (getMetazoaDataSources) {
             dataSourceOrganism = "metazoa";
-            dataSourceURL = METAZOA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(METAZOA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
+            dataSourceURL = METAZOA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(METAZOA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
         } else if (getPlantsDataSources) {
             dataSourceOrganism = "plants";
-            dataSourceURL = PLANTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(PLANTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
+            dataSourceURL = PLANTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(PLANTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
         } else {
             dataSourceOrganism = "protists";
-            dataSourceURL = PROTISTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(PROTISTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
+            dataSourceURL = PROTISTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(PROTISTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
         }
 
         downloadAndValidateDataSources(dataSourceOrganism, dataSourceSpecies, dataSourceURL, dataSourcePath);
