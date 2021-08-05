@@ -14,6 +14,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorDataSourceBundlerUtils;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorDataSourceBundler;
 
 /**
  * Class to test the {@link FuncotatorDataSourceBundler}.
@@ -31,12 +33,18 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     //==================================================================================================================
     // Helper Methods:
 
-    private Path getDataSourceRemotePath(final String dsTypeArg) {
+    private String getDataSourceRemoteURL(final String dsTypeArg) {
         switch (dsTypeArg) {
-            case FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME:
-                return FuncotatorDataSourceDownloader.SOMATIC_GCLOUD_DATASOURCES_PATH;
-            case FuncotatorDataSourceDownloader.GERMLINE_ARG_LONG_NAME:
-                return FuncotatorDataSourceDownloader.GERMLINE_GCLOUD_DATASOURCES_PATH;
+            case FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME:
+                return FuncotatorDataSourceBundler.BACTERIA_BASE_URL;
+            case FuncotatorDataSourceBundler.FUNGI_ARG_LONG_NAME:
+                return FuncotatorDataSourceBundler.FUNGI_BASE_URL;
+            case FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME:
+                return FuncotatorDataSourceBundler.METAZOA_BASE_URL;
+            case FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME:
+                return FuncotatorDataSourceBundler.PLANTS_BASE_URL;
+            case FuncotatorDataSourceBundler.PROTISTS_ARG_LONG_NAME:
+                return FuncotatorDataSourceBundler.PROTISTS_BASE_URL;
             default: throw new GATKException("Data source type does not exist: " + dsTypeArg);
         }
     }
@@ -45,7 +53,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     private void verifyDataSourcesExistThenDeleteThem(final String dsTypeArg, final boolean doExtract) {
         // Get the path to our files:
         final Path currentPath          = IOUtils.getPath(".");
-        final Path remoteDataSourcePath = getDataSourceRemotePath(dsTypeArg);
+        final Path remoteDataSourcePath = IOUtils.getPath(getDataSourceRemoteURL(dsTypeArg));
         final Path expectedDownloadedDataSourcePath = currentPath.resolve(remoteDataSourcePath.getFileName().toString());
 
         // Verify it exists and delete it:
@@ -63,7 +71,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
             if ( doExtract ) {
                 // Get the base name for our folder.
                 // (this way we get rid of all extensions (i.e. both `tar` and `gz`):
-                final String baseName = expectedDownloadedDataSourcePath.toFile().getName().replace(".tar.gz", "");
+                final String baseName = expectedDownloadedDataSourcePath.toFile().getName().replace(".gtf.gz", "");
                 final Path   extractedDataSourceFolder = expectedDownloadedDataSourcePath.resolveSibling(baseName);
                 FileUtils.deleteDirectory(extractedDataSourceFolder.toFile());
             }

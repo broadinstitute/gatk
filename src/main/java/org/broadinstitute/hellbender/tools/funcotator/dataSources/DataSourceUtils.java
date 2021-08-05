@@ -124,6 +124,7 @@ final public class DataSourceUtils {
     public static final String METAZOA_DS_EXTENSION                        = "metazoa/";
     public static final String PLANTS_DS_EXTENSION                         = "plants/";
     public static final String PROTISTS_DS_EXTENSION                       = "protists/";
+    public static final String GTF_GZ_EXTENSION                            = "gtf.gz";
 
     //==================================================================================================================
     // Public Static Methods:

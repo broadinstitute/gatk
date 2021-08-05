@@ -56,26 +56,27 @@ public class FuncotatorDataSourceBundlerUtils {
 
     private final static Logger logger = LogManager.getLogger(FuncotatorDataSourceBundlerUtils.class);
 
+    // Maps will map from each species in a given organism to the species file name associated with that species name:
     private static  Map<String, String> bacteriaMap = new LinkedHashMap<>();
     private static  Map<String, String> fungiMap = new LinkedHashMap<>();
     private static  Map<String, String> metazoaMap = new LinkedHashMap<>();
     private static  Map<String, String> plantsMap = new LinkedHashMap<>();
     private static  Map<String, String> protistsMap = new LinkedHashMap<>();
 
-    private static final String bacteriaFileName = "uniprot_report_EnsemblBacteria_compressed";
-    private static final String fungiFileName = "uniprot_report_EnsemblFungi_compressed";
-    private static final String metazoaFileName = "uniprot_report_EnsemblMetazoa_compressed";
-    private static final String plantsFileName = "uniprot_report_EnsemblPlants_compressed";
-    private static final String protistsFileName = "uniprot_report_EnsemblProtists_compressed";
+    // File names for the files which will be used to
+    private static final String bacteriaFileName = "uniprot_report_EnsemblBacteria.txt";
+    private static final String fungiFileName = "uniprot_report_EnsemblFungi.txt";
+    private static final String metazoaFileName = "uniprot_report_EnsemblMetazoa.txt";
+    private static final String plantsFileName = "uniprot_report_EnsemblPlants.txt";
+    private static final String protistsFileName = "uniprot_report_EnsemblProtists.txt";
 
     public static final String ENSEMBL_VERSION = "51";
     public static final String SEPARATOR_CHARACTER = ".";
-    public static final String GTF_GZ_ESTENSION = "gtf.gz";
 
     public static Map<String, String> orgNamesAndFileNames = new LinkedHashMap<>();
+    public static Map<String, Map<String, String>> orgNamesMapNames = new LinkedHashMap<>();
     public static final List<String> orgNameKeys = new ArrayList<>();
     public static final List<String> fileNameValues = new ArrayList<>();
-    public static Map<String, Map<String, String>> orgNamesMapNames = new LinkedHashMap<>();
     public static final List<Map<String, String>> mapNameValues = new ArrayList<>();
 
     /**
@@ -83,36 +84,55 @@ public class FuncotatorDataSourceBundlerUtils {
      * @param orgName
      * @param speciesName
      */
-    public static void getDSFileName(String orgName, String speciesName) {
+    public static String getDSFileName(String orgName, String speciesName) {
 
+        // Initialize the maps from species name to species file name for each organism:
+        buildMaps();
+
+        // Get the map for this organism:
+        Map<String, String> tempMap = orgNamesMapNames.get(orgName);
+
+        // Check to see if specified species name is valid and if so, return the corresponding file name:
+        if (tempMap.get(speciesName) == null) {
+            throw new UserException.BadInput("Given species name: " + speciesName + " is not a valid species for organism: " + orgName + "!");
+        }
+        else {
+            return tempMap.get(speciesName);
+        }
     }
 
     /**
      * Initialize our hashmaps of lookup tables:
      */
     public static void buildMaps() {
+
+        // Initializing list of allowed organism names:
         orgNameKeys.add("bacteria");
         orgNameKeys.add("fungi");
         orgNameKeys.add("metazoa");
         orgNameKeys.add("plants");
         orgNameKeys.add("protists");
 
+        // Initializing list of file names for each organism:
         fileNameValues.add(bacteriaFileName);
         fileNameValues.add(fungiFileName);
         fileNameValues.add(metazoaFileName);
         fileNameValues.add(plantsFileName);
         fileNameValues.add(protistsFileName);
 
+        // Initializing list of map names for each organism:
         mapNameValues.add(bacteriaMap);
         mapNameValues.add(fungiMap);
         mapNameValues.add(metazoaMap);
         mapNameValues.add(plantsMap);
         mapNameValues.add(protistsMap);
 
-
+        // Creating map from the organism names to their corresponding file names:
         orgNamesAndFileNames = FuncotatorUtils.createLinkedHashMapFromLists(orgNameKeys, fileNameValues);
+        // Creating map from the organism names to their corresponding map objects:
         orgNamesMapNames = FuncotatorUtils.createLinkedHashMapFromLists(orgNameKeys, mapNameValues);
 
+        // Looping through each organism in our list of valid organisms to initialize their maps from species name to species file name:
         for (String orgName : orgNameKeys) {
             String urlName =  DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
             readUniprotFile(urlName, orgName);
@@ -120,24 +140,34 @@ public class FuncotatorDataSourceBundlerUtils {
     }
 
     public static void readUniprotFile(String urlFilePath, String orgName){
+
+        // Keys will be a list of all of the species for a given organism:
         final List<String> keys = new ArrayList<>();
+        // Values will be a list of all of the associated file names for each species:
         final List<String> values = new ArrayList<>();
+
+        // Using Scanner object to read in the data on the web page specified by the given url:
         try {
             Scanner inputStream = new Scanner(new File(urlFilePath));
             while (inputStream.hasNextLine()) {
                 String data = inputStream.nextLine();
                 String[] columnValues = data.split("\t");
+                // First column is the species name:
                 keys.add(columnValues[0].replaceAll("[[]()]]", ""));
+                // Second column is the species division, and third column is the assembly ID, both of which
+                // are used to make the corresponding file name for this species:
                 values.add(columnValues[1] + "." + columnValues[4] + "." + ENSEMBL_VERSION);
             }
             inputStream.close();
-            if ( orgNamesMapNames.get(orgName) != null ) {
-                orgNamesMapNames.get(orgName) = FuncotatorUtils.createLinkedHashMapFromLists(keys, values);
-            }
-            else {
-                throw new UserException("Key has a null value.");
-            }
 
+            // Finding the corresponding map for this organism name:
+            Map<String, String> tempMap = orgNamesMapNames.get(orgName);
+
+            // Initializing this organism's map from all of its species to their corresponding file names:
+            tempMap = FuncotatorUtils.createLinkedHashMapFromLists(keys, values);
+
+            // Setting the organism's map equal to the temporary map value:
+//          orgNamesMapNames.get(orgName) = tempMap;
         }
         catch ( final IOException ex ){
             throw new UserException("Could not open file: " + urlFilePath, ex);

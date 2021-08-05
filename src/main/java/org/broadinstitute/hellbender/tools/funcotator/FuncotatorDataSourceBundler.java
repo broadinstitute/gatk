@@ -49,6 +49,7 @@ import java.net.HttpURLConnection;
 
 import java.io.File;
 import java.nio.file.Path;
+//import org.broadinstitute.hellbender.tools.funcotator.FuncotatorDataSourceBundlerUtils.getDSFileName;
 
 //import org.jsoup.Connection;
 //import org.jsoup.Jsoup;
@@ -93,14 +94,14 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     //==================================================================================================================
     // Public Static Members:
 
-    public static final String BACTERIA_ARG_LONG_NAME = "bacteria";
-    public static final String FUNGI_ARG_LONG_NAME = "fungi";
-    public static final String METAZOA_ARG_LONG_NAME = "metazoa";
-    public static final String PLANTS_ARG_LONG_NAME = "plants";
-    public static final String PROTISTS_ARG_LONG_NAME = "protists";
-    public static final String SPECIES_ARG_LONG_NAME = "species-name";
-    public static final String OVERWRITE_ARG_LONG_NAME = "overwrite-output-file";
-    public static final String EXTRACT_AFTER_DOWNLOAD = "extract-after-download";
+    public static final String BACTERIA_ARG_LONG_NAME   = "bacteria";
+    public static final String FUNGI_ARG_LONG_NAME      = "fungi";
+    public static final String METAZOA_ARG_LONG_NAME    = "metazoa";
+    public static final String PLANTS_ARG_LONG_NAME     = "plants";
+    public static final String PROTISTS_ARG_LONG_NAME   = "protists";
+    public static final String SPECIES_ARG_LONG_NAME    = "species-name";
+    public static final String OVERWRITE_ARG_LONG_NAME  = "overwrite-output-file";
+    public static final String EXTRACT_AFTER_DOWNLOAD   = "extract-after-download";
 
     //==================================================================================================================
     // Private Static Members:
@@ -108,29 +109,18 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     // Set to always get the latest version of the data sources:
     private static final String BASE_URL = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION;
 
-    private static final String BACTERIA_BASE_URL = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION;
+    // Will maybe make these private again
+    @VisibleForTesting
+    public static final String BACTERIA_BASE_URL    = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION;
+    public static final String FUNGI_BASE_URL       = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
+    public static final String METAZOA_BASE_URL     = BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
+    public static final String PLANTS_BASE_URL      = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
+    public static final String PROTISTS_BASE_URL    = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
 
-//    private static final Path BACTERIA_PATH = IOUtils.getPath(BACTERIA_BASE_URL + DataSourceUtils.GTF_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION);
+    //==================================================================================================================
+    // Private Static Members:
+    protected static final int BUFFER_SIZE_BYTES    = 1024 * 1024;
 
-    private static final String FUNGI_BASE_URL = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-
-//    private static final Path FUNGI_PATH = IOUtils.getPath(FUNGI_BASE_URL + DataSourceUtils.GTF_EXTENSION);
-
-    private static final String METAZOA_BASE_URL = BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-
-//    private static final Path METAZOA_PATH = IOUtils.getPath(METAZOA_BASE_URL + DataSourceUtils.GTF_EXTENSION);
-
-    private static final String PLANTS_BASE_URL = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-
-//    private static final Path PLANTS_PATH = IOUtils.getPath(PLANTS_BASE_URL + DataSourceUtils.GTF_EXTENSION);
-
-    private static final String PROTISTS_BASE_URL = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-
-//    private static final Path PROTISTS_PATH = IOUtils.getPath(PROTISTS_BASE_URL + DataSourceUtils.GTF_EXTENSION);
-
-    protected static final int BUFFER_SIZE_BYTES = 1024 * 1024;
-
-    //will maybe add in variables for the urls for each of the different organisms
 
     //==================================================================================================================
     // Private Members:
@@ -230,25 +220,25 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
         // Get the correct data source:
         if (getBacteriaDataSources) {
-            dataSourceOrganism = "bcteria";
-            dataSourceURL = BACTERIA_BASE_URL + speciesName + "/";
-            dataSourcePath = IOUtils.getPath(BACTERIA_BASE_URL + speciesName "/" );
+            dataSourceOrganism = "bacteria";
+            dataSourceURL = BACTERIA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(BACTERIA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
         } else if (getFungiDataSources) {
             dataSourceOrganism = "fungi";
-            dataSourceURL = FUNGI_BASE_URL + speciesName + "/";
-            dataSourcePath = IOUtils.getPath(FUNGI_BASE_URL + speciesName + "/");
+            dataSourceURL = FUNGI_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(FUNGI_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
         } else if (getMetazoaDataSources) {
             dataSourceOrganism = "metazoa";
-            dataSourceURL = METAZOA_BASE_URL + speciesName + "/";
-            dataSourcePath = IOUtils.getPath(METAZOA_BASE_URL + speciesName + "/");
+            dataSourceURL = METAZOA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(METAZOA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
         } else if (getPlantsDataSources) {
             dataSourceOrganism = "plants";
-            dataSourceURL = PLANTS_BASE_URL + speciesName + "/";
-            dataSourcePath = IOUtils.getPath(PLANTS_BASE_URL + speciesName + "/");
+            dataSourceURL = PLANTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(PLANTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
         } else {
             dataSourceOrganism = "protists";
-            dataSourceURL = PROTISTS_BASE_URL + speciesName + "/";
-            dataSourcePath = IOUtils.getPath(PROTISTS_BASE_URL + speciesName + "/");
+            dataSourceURL = PROTISTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION;
+            dataSourcePath = IOUtils.getPath(PROTISTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
         }
 
         downloadAndValidateDataSources(dataSourceOrganism, dataSourceSpecies, dataSourceURL, dataSourcePath);
@@ -276,7 +266,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         CloseableHttpClient client = HttpClientBuilder.create().build();
 
         // Creating an HttpGet object to send the request to the server:
-        HttpGet request = new HttpGet(dsURL + "/" + dsSpecies); //instead of dsSpecies this will be getFileName where the hashmaps will be used
+        HttpGet request = new HttpGet(dsURL);
 
         try {
             // Using an HttpResponse class object to catch the response from the server
@@ -309,7 +299,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             throw new UserException("Could not obtain data from "+ dsURL, ex);
         }
 
-        // Extract data sources if requested:       need to change these variables, these will not be right
+        // Extract data sources if requested:      
         if ( extractDataSourcesAfterDownload ) {
             final Path outputDestination = getOutputLocation(dsPath);
             IOUtils.extractTarGz(outputDestination, outputDestination.getParent(), overwriteOutputFile);
