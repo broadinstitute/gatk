@@ -46,7 +46,6 @@ workflow GvsPrepareCallset {
             fq_destination_dataset          = fq_destination_dataset,
             temp_table_ttl_in_hours         = temp_table_ttl_in_hours,
             service_account_json_path       = service_account_json_path,
-
             docker                          = docker_final
     }
 
