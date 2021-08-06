@@ -78,17 +78,27 @@ task AssignIds {
 
       echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+      # Check that lock table has not been created yet
+      set +e
+      bq --project_id=~{project_id} show ~{dataset_name}.sample_id_assignment_lock > /dev/null
+      BQ_SHOW_RC=$?
+      set -e
+      if [ $BQ_SHOW_RC -eq 0 ]; then
+        echo "lock table already exists. Exiting"
+        exit 1
+      fi
+
       # create the lock table
-      bq --project_id=~{project_id} mk ~{dataset_name}.metadata_lock
+      bq --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
 
       NAMES_FILE=~{write_lines(sample_names)}
 
       # first load name into the lock table - will check for dupes when adding to sample_info table
-      bq load --project_id=~{project_id} ~{dataset_name}.metadata_lock $NAMES_FILE "sample_name:STRING"
+      bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
 
       # add sample_name to sample_info_table
       bq --project_id=~{project_id} query --use_legacy_sql=false \
-        'INSERT into ~{dataset_name}.~{sample_info_table} (sample_name) select sample_name from ~{dataset_name}.metadata_lock m where m.sample_name not in (SELECT sample_name FROM ~{dataset_name}.~{sample_info_table})'
+        'INSERT into ~{dataset_name}.~{sample_info_table} (sample_name) select sample_name from ~{dataset_name}.sample_id_assignment_lock m where m.sample_name not in (SELECT sample_name FROM ~{dataset_name}.~{sample_info_table})'
 
       # get the current maximum id, or 0 if there are none
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false "SELECT IFNULL(MAX(sample_id),0) FROM ~{dataset_name}.~{sample_info_table}" > maxid
@@ -99,7 +109,7 @@ task AssignIds {
         "UPDATE ~{dataset_name}.~{sample_info_table} m SET m.sample_id = id_assign.id FROM (SELECT sample_name, $offset + ROW_NUMBER() OVER() as id FROM ~{dataset_name}.~{sample_info_table} WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;"
       
       # remove the lock table
-      bq --project_id=~{project_id} rm -f -t ~{dataset_name}.metadata_lock
+      bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
 
   >>>
   runtime {
