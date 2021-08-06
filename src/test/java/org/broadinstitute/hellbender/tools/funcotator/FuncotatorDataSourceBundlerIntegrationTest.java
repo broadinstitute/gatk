@@ -91,85 +91,22 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
                 {
                     FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
                         "acyrthosiphon_pisum",
+//                        "aedes_albopictus",
                         false,
-                        false
+                        true
 
                 }
 //                {
 //                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
 //                        "absiella_dolichum_dsm_3991_gca_000154285/",
+//                        false,
+//                        true
+//                },
+//                {
+//                        FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME,
+//                        "actinidia_chinensis",
 //                        true,
 //                        true
-//                }
-//                {
-//                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
-//                        "species-name acinebactor_baumannii_aye",
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        false
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.FUNGI_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.FUNGI_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.FUNGI_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        false
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        false
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        false
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.PROTISTS_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.PROTISTS_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.PROTISTS_ARG_LONG_NAME,
-//                        "acinebactor_baumannii_aye",
-//                        false
 //                }
         };
     }
@@ -180,11 +117,8 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     @Test( dataProvider = "provideForTestDownload")
     void testDownloadRealDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite, final boolean doExtract) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
-
-        //File outputFile = new File("Absiella_dolichum_dsm_3991_gca_000154285.ASM15428v1.51.gtf");
         arguments.add(dsOrgArg, true);
         arguments.add("species-name", dsSpeciesArg);
-        //arguments.add("output", outputFile);
         arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
         arguments.add(FuncotatorDataSourceBundler.EXTRACT_AFTER_DOWNLOAD, doExtract);
 
@@ -192,7 +126,9 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
 
         // Now verify we got the data sources and clean up the files
         // so we don't have up to 30 gigs of stuff lying around:
-        verifyDataSourcesExistThenDeleteThem(dsOrgArg, dsSpeciesArg, doExtract);
+//        verifyDataSourcesExistThenDeleteThem(dsOrgArg, dsSpeciesArg, doExtract);
     }
+
+    // To do: need to make some integration tests for running with incorrect input arguments
 
 }

@@ -125,6 +125,17 @@ final public class DataSourceUtils {
     public static final String PLANTS_DS_EXTENSION                         = "plants/";
     public static final String PROTISTS_DS_EXTENSION                       = "protists/";
     public static final String GTF_GZ_EXTENSION                            = "gtf.gz";
+    public static final String TXT_EXTENSION                               = ".txt";
+    public static final String ENSEMBL_EXTENSION                           = "ensembl";
+    public static final String FASTA_EXTENSION                             = "fasta/";
+    public static final String FASTA_GZ_EXTENSION                          = "fa.gz";
+    public static final String CDNA_EXTENSION                              = "cdna/";
+    public static final String GTF_UNZIPPED_EXTENSION                      = ".gtf";
+    public static final String FASTA_UNZIPPED_EXTENSION                    = ".fasta";
+    public static final String IDX_EXTENSION                               = ".idx";
+    public static final String README_EXTENSION                            = "README";
+    public static final String GTF_README_EXTENSION                        = "GTF_README.txt";
+    public static final String FASTA_README_EXTENSION                      = "FASTA_README.txt";
 
     //==================================================================================================================
     // Public Static Methods:

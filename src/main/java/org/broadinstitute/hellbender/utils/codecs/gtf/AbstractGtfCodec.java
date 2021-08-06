@@ -315,7 +315,13 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
                             transcript.addUtr((GencodeGtfUTRFeature) feature);
                             break;
                         case SELENOCYSTEINE:
-                            transcript.addSelenocysteine(((GencodeGtfSelenocysteineFeature) feature));
+                            transcript.addSelenocysteine((GencodeGtfSelenocysteineFeature) feature);
+                            break;
+                        case FIVE_PRIME_UTR:
+                            transcript.addFivePrimeUtr((GencodeGtfFivePrimeUtrFeature) feature);
+                            break;
+                        case THREE_PRIME_UTR:
+                            transcript.addThreePrimeUtr((GencodeGtfThreePrimeUtrFeature) feature);
                             break;
                         default:
                             throw new UserException.MalformedFile(
@@ -407,7 +413,9 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
 
         if ( (featureType != GencodeGtfFeature.FeatureType.GENE) &&
              (featureType != GencodeGtfFeature.FeatureType.TRANSCRIPT) &&
-             (featureType != GencodeGtfFeature.FeatureType.SELENOCYSTEINE) ) {
+             (featureType != GencodeGtfFeature.FeatureType.SELENOCYSTEINE) &&
+                (featureType != GencodeGtfFeature.FeatureType.FIVE_PRIME_UTR) &&
+                (featureType != GencodeGtfFeature.FeatureType.THREE_PRIME_UTR) ) {
 
             if (feature.getExonNumber() == GencodeGtfFeature.NO_EXON_NUMBER) {
                 return false;

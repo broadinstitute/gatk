@@ -107,38 +107,38 @@ public class FuncotatorDataSourceDownloaderIntegrationTest extends CommandLinePr
                         FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
                         true,
                         true,
-                        false
-                },
-                {
-                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
-                        true,
-                        false,
-                        false
-                },
-                {
-                        FuncotatorDataSourceDownloader.GERMLINE_ARG_LONG_NAME,
-                        true,
-                        true,
-                        false
-                },
-                {
-                        FuncotatorDataSourceDownloader.GERMLINE_ARG_LONG_NAME,
-                        true,
-                        false,
-                        false
-                },
-                {
-                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
-                        true,
-                        false,
-                        true
-                },
-                {
-                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
-                        true,
-                        false,
                         true
                 }
+//                {
+//                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
+//                        true,
+//                        false,
+//                        false
+//                },
+//                {
+//                        FuncotatorDataSourceDownloader.GERMLINE_ARG_LONG_NAME,
+//                        true,
+//                        true,
+//                        false
+//                },
+//                {
+//                        FuncotatorDataSourceDownloader.GERMLINE_ARG_LONG_NAME,
+//                        true,
+//                        false,
+//                        false
+//                },
+//                {
+//                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
+//                        true,
+//                        false,
+//                        true
+//                },
+//                {
+//                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
+//                        true,
+//                        false,
+//                        true
+//                }
         };
     }
 

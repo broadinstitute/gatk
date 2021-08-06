@@ -815,6 +815,22 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
                 return GencodeGtfUTRFeature.create(gtfFields, gtfFileType);
             }
+        },
+        FIVE_PRIME_UTR("five_prime_utr") {
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfFivePrimeUtrFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfFivePrimeUtrFeature.create(gtfFields, gtfFileType);
+            }
+        },
+        THREE_PRIME_UTR("three_prime_utr") {
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfThreePrimeUtrFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfThreePrimeUtrFeature.create(gtfFields, gtfFileType);
+            }
         };
 
         @SuppressWarnings("unchecked")

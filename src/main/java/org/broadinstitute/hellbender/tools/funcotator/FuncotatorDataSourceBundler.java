@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.arrow.flatbuf.Int;
-import org.apache.http.HttpClientConnection;
-//import org.apache.commons.httpclient.*;
-//import org.apache.commons.httpclient.methods.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -15,44 +11,11 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeter;
-import org.broadinstitute.hellbender.utils.nio.NioFileCopierWithProgressMeterResults;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
-import org.checkerframework.common.reflection.qual.GetMethod;
-import com.google.cloud.storage.HttpMethod;
-//import org.apache.commons.httpclient.methods;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.HttpEntity;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpUriRequest;
-
-import java.io.FileOutputStream;
-import java.io.IOException;
-import org.apache.http.client.ClientProtocolException;
-
-import java.io.InputStream;
-import java.io.OutputStream;
-
-import java.net.URL;
-import java.net.HttpURLConnection;
 
 import java.io.File;
 import java.nio.file.Path;
-//import org.broadinstitute.hellbender.tools.funcotator.FuncotatorDataSourceBundlerUtils.getDSFileName;
 
-//import org.jsoup.Connection;
-//import org.jsoup.Jsoup;
-//import org.jsoup.nodes.Document;
 
 /**
  * {@link FuncotatorDataSourceBundler} is a tool to download data sources for a specified organism for <b><i>{@link Funcotator}</i></b>.
@@ -116,6 +79,12 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     public static final String PLANTS_BASE_URL      = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
     public static final String PROTISTS_BASE_URL    = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
 
+    public static final String BACTERIA_BASE_FASTA    = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION;
+    public static final String FUNGI_BASE_FASTA       = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION;
+    public static final String METAZOA_BASE_FASTA     = BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION;
+    public static final String PLANTS_BASE_FASTA      = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION;
+    public static final String PROTISTS_BASE_FASTA    = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION;
+
     //==================================================================================================================
     // Private Static Members:
     protected static final int BUFFER_SIZE_BYTES    = 1024 * 1024;
@@ -129,38 +98,38 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
     // Arguments:
     @Argument(fullName = BACTERIA_ARG_LONG_NAME,
-            shortName = BACTERIA_ARG_LONG_NAME,
+            shortName  = BACTERIA_ARG_LONG_NAME,
             doc = "Download data sources for bacteria.",
             optional = true)
     private boolean getBacteriaDataSources = false;
 
     @Argument(fullName = FUNGI_ARG_LONG_NAME,
-            shortName = FUNGI_ARG_LONG_NAME,
+            shortName  = FUNGI_ARG_LONG_NAME,
             doc = "Download data sources for fungi.",
             optional = true)
     private boolean getFungiDataSources = false;
 
     @Argument(fullName = METAZOA_ARG_LONG_NAME,
-            shortName = METAZOA_ARG_LONG_NAME,
+            shortName  = METAZOA_ARG_LONG_NAME,
             doc = "Download data sources for metazoa.",
             optional = true)
     private boolean getMetazoaDataSources = false;
 
     @Argument(fullName = PLANTS_ARG_LONG_NAME,
-            shortName = PLANTS_ARG_LONG_NAME,
+            shortName  = PLANTS_ARG_LONG_NAME,
             doc = "Download data sources for plants.",
             optional = true)
     private boolean getPlantsDataSources = false;
 
     @Argument(fullName = PROTISTS_ARG_LONG_NAME,
-            shortName = PROTISTS_ARG_LONG_NAME,
+            shortName  = PROTISTS_ARG_LONG_NAME,
             doc = "Download data sources for protists.",
             optional = true)
     private boolean getProtistsDataSources = false;
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output location for the data sources.",
             optional = true)
     protected File outputFile;
@@ -213,34 +182,33 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     protected Object doWork() {
 
         final String dataSourceOrganism;
-        final String dataSourceSpecies = speciesName;
-        final String dataSourceURL;
-        final Path dataSourcePath;
+        final String baseURL;
+        final String baseFastaURL;
 
         // Get the correct data source:
         if (getBacteriaDataSources) {
             dataSourceOrganism = "bacteria";
-            dataSourceURL = BACTERIA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.buildMapGetFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(BACTERIA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
+            baseURL = BACTERIA_BASE_URL;
+            baseFastaURL = BACTERIA_BASE_FASTA;
         } else if (getFungiDataSources) {
             dataSourceOrganism = "fungi";
-            dataSourceURL = FUNGI_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.buildMapGetFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(FUNGI_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
+            baseURL = FUNGI_BASE_URL;
+            baseFastaURL = FUNGI_BASE_FASTA;
         } else if (getMetazoaDataSources) {
             dataSourceOrganism = "metazoa";
-            dataSourceURL = METAZOA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.buildMapGetFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(METAZOA_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
+            baseURL = METAZOA_BASE_URL;
+            baseFastaURL = METAZOA_BASE_FASTA;
         } else if (getPlantsDataSources) {
             dataSourceOrganism = "plants";
-            dataSourceURL = PLANTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.buildMapGetFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(PLANTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
+            baseURL = PLANTS_BASE_URL;
+            baseFastaURL = PLANTS_BASE_FASTA;
         } else {
             dataSourceOrganism = "protists";
-            dataSourceURL = PROTISTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.buildMapGetFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION;
-            dataSourcePath = IOUtils.getPath(PROTISTS_BASE_URL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dataSourceOrganism, speciesName) + "." + DataSourceUtils.GTF_GZ_EXTENSION);
+            baseURL = PROTISTS_BASE_URL;
+            baseFastaURL = PROTISTS_BASE_FASTA;
         }
 
-        downloadAndValidateDataSources(dataSourceOrganism, dataSourceSpecies, dataSourceURL, dataSourcePath);
+        downloadAndValidateDataSources(dataSourceOrganism, speciesName, baseURL, baseFastaURL);
 
         // Token return value:
         return true;
@@ -249,73 +217,92 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     //==================================================================================================================
     // Static Methods:
 
-    @VisibleForTesting
-    static Path getPath(String organismBaseURL, String orgName, String speciesName) {
-        Path testPath = IOUtils.getPath(organismBaseURL + speciesName + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(orgName, speciesName) + DataSourceUtils.GTF_GZ_EXTENSION);
-        return testPath;
-    }
-
     //==================================================================================================================
     // Instance Methods:
 
-    private void downloadAndValidateDataSources(final String dsOrganism, final String dsSpecies, final String dsURL, final Path dsPath){
+    private void downloadAndValidateDataSources(final String dsOrganism, final String dsSpecies, final String baseURL, final String baseFastaURL) {
+
         logger.info(dsOrganism + ":" + dsSpecies + " data sources selected.");
 
-        // Creating CloseableHttpClient object to access the webpage and retrieve the file:
-        CloseableHttpClient client = HttpClientBuilder.create().build();
+//        // Make folders to put data sources in:
+//        makeFolders(IOUtils.getPath(speciesName));
 
-        // Creating an HttpGet object to send the request to the server:
-        HttpGet request = new HttpGet(dsURL);
+        // Make the bundler object:
+        final FuncotatorDataSourceBundlerHttpClient bundler = FuncotatorDataSourceBundlerHttpClient.create(dsOrganism, speciesName, baseURL, baseFastaURL);
 
-        try {
-            // Using an HttpResponse class object to catch the response from the server
-            HttpResponse response = client.execute(request);
-            // The data sent by the server is obtained in this getEntity() function:
-            HttpEntity entity = response.getEntity();
 
-            // Extracting the data from the entity object:
-            try( InputStream inputStream = entity.getContent();
-                 OutputStream outputStream = new FileOutputStream(outputFile) ) {
+//        // Download the gtf file:
+//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getDSUrl(), bundler.getOutputDestination());
+//
+//        // Download the fasta file:
+//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaURL(), bundler.getFastaOutputDestination());
+//
 
-                // Perform the copy:
-                while (true) {
+//        // Extract data sources if requested:
+//        if ( extractDataSourcesAfterDownload ) {
+//            FuncotatorDataSourceBundlerUtils.extractGtfGz(bundler.getOutputDestination().toString(), bundler.getDSUnzipPath().toString(), overwriteOutputFile);
+//            FuncotatorDataSourceBundlerUtils.extractGtfGz(bundler.getFastaOutputDestination().toString(), bundler.getFastaUnzipPath().toString(), overwriteOutputFile);
+//        }
+//        else {
+//            logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");
+//        }
 
-                    // Read from our input:
-                    final int bytesRead = inputStream.read(copyBuffer);
-                    if (bytesRead == -1) {
-                        break;
-                    }
 
-                    // Write to our output:
-                    outputStream.write(copyBuffer, 0, bytesRead);
-                }
-            }
-            catch (final IOException ex) {
-                throw new UserException("Could not copy file: " + dsURL + " -> " + outputFile, ex);
-            }
+//        // Index the fasta file and build the dict file:
+//        FuncotatorDataSourceBundlerHttpClient.buildFastaIndexFile(bundler.getFastaUnzipPath());
+//
+//        // Copy the config file into new directory:
+//        FuncotatorDataSourceBundlerHttpClient.buildConfigFile(bundler);
+//
+//        // Create a manifest file:
+//        FuncotatorDataSourceBundlerHttpClient.buildManifestFile(bundler);
+//
+//        // Create the template config file:
+//        FuncotatorDataSourceBundlerHttpClient.buildTemplateConfigFile(bundler);
+//
+//        // Create ReadMe file:
+//        FuncotatorDataSourceBundlerHttpClient.buildReadMeFile(bundler);
+//
+//        // Download the gtf ReadMe file for specific data source file:
+//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getGtfReadMeURL(), bundler.getGtfReadMePath());
+//
+//        // Download the fasta ReadMe file for specific data source file:
+//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaReadMeURL(), bundler.getFastaReadMePath());
+
+        // Index the gtf file:
+        FuncotatorDataSourceBundlerHttpClient.buildIndexFile(bundler.getDSUnzipPath(), bundler.getIndexPath());
+
+    }
+
+    public static void makeFolders(Path speciesName) {
+        String path = speciesName.toAbsolutePath().toString();
+        File newFolder = new File(path);
+        boolean bool = newFolder.mkdir();
+        if (!bool) {
+            throw new UserException("Unable to make file.");
         }
-        catch (final IOException ex) {
-            throw new UserException("Could not obtain data from "+ dsURL, ex);
-        }
+        makeFolder2(path, speciesName);
+    }
 
-        // Extract data sources if requested:
-        if ( extractDataSourcesAfterDownload ) {
-            final Path outputDestination = getOutputLocation(dsPath);
-            IOUtils.extractTarGz(outputDestination, outputDestination.getParent(), overwriteOutputFile);
+    public static void makeFolder2(String pathName, Path speciesName) {
+        String path = pathName + "/" + DataSourceUtils.ENSEMBL_EXTENSION;
+        File newFolder = new File(path);
+        boolean bool = newFolder.mkdir();
+        if (!bool) {
+            throw new UserException("Unable to make file.");
         }
-        else {
-            logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");
+        makeFolder3(path, speciesName);
+    }
+
+    public static void makeFolder3(String pathName, Path speciesName) {
+        String path = pathName + "/" + speciesName.toString();
+        File newFolder = new File(path);
+        boolean bool = newFolder.mkdir();
+        if (!bool) {
+            throw new UserException("Unable to make file.");
         }
     }
 
-
-    private Path getOutputLocation(final Path dataSourcesPath) {
-        if (outputFile == null) {
-            return IOUtils.getPath(dataSourcesPath.getFileName().toString());
-        } else {
-            return outputFile.toPath();
-        }
-    }
 
     //==================================================================================================================
     // Helper Data Types:

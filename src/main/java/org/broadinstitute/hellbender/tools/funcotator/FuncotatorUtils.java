@@ -2344,23 +2344,4 @@ public final class FuncotatorUtils {
                 }, LinkedHashMap::new));
     }
 
-    /**
-     * Create a linked hash map from a list and a LinkedHashMap with corresponding values.
-     * @param keys Never {@code null}.  Length must be the same as values.
-     * @param values Never {@code null}.  Length must be the same as keys.
-     * @param <T> Type for keys
-     * @param <U> Type for values
-     * @return Never {@code null}
-     */
-//    public static <T,U> LinkedHashMap<T, U> createLinkedHashMapFromListAndLinkedHashMap(final List<T> keys, final LinkedHashMap<T,U> values) {
-//        Utils.nonNull(keys);
-//        Utils.nonNull(values);
-////        Utils.validateArg(keys.size() == values.keySet().size());
-//        return IntStream.range(0, keys.size()).boxed().collect(Collectors.toMap(keys::get,
-//                values::get, (x1, x2) -> {
-//                    throw new IllegalArgumentException("Should not be able to have duplicated field names.");
-//                }, LinkedHashMap::new));
-//
-//    }
-
 }

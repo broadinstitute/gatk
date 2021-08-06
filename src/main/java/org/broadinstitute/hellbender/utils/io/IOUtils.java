@@ -458,6 +458,7 @@ public final class IOUtils {
         }
     }
 
+
     private static void extractFilesFromArchiveStream(final TarArchiveInputStream archiveStream,
                                                       final Path localTarGzPath,
                                                       final Path destDir,
@@ -563,7 +564,7 @@ public final class IOUtils {
         }
     }
 
-    private static void ensurePathIsOkForOutput(final Path p, final boolean overwriteExistingFiles) {
+    public static void ensurePathIsOkForOutput(final Path p, final boolean overwriteExistingFiles) {
         if ( Files.exists(p) ) {
             if ( overwriteExistingFiles ) {
                 logger.warn("Overwriting existing output destination: " + p.toUri());
@@ -1073,5 +1074,29 @@ public final class IOUtils {
             }
         }
         return path;
+    }
+
+    /**
+     * Extracts the gtf.gz file given by {@code gtfGzFilePath}.
+     * Input {@link Path} MUST be to a gzipped gtf file.
+     * Will extract contents in the containing folder of {@code gtfGzFilePath}.
+     * Will throw an exception if files exist already.
+     * @param gtfGzFilePath {@link Path} to a gzipped gtf file for extraction.
+     */
+    public static void extractGtfGz(String gtfGzFilePath, String decompressedFilePath) {
+        byte[] buffer = new byte[1024];
+        try {
+            FileInputStream inputStream = new FileInputStream(gtfGzFilePath);
+            GZIPInputStream gZIPInputStream = new GZIPInputStream(inputStream);
+            FileOutputStream fileOutputStream = new FileOutputStream(decompressedFilePath);
+
+            int bytes_read;
+
+            while ((bytes_read = gZIPInputStream.read(buffer)) > 0) {
+                fileOutputStream.write(buffer, 0, bytes_read);
+            }
+        } catch (IOException ex) {
+            throw new UserException("Could not obtain ");
+        }
     }
 }

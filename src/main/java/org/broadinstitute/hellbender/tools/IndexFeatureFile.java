@@ -7,6 +7,7 @@ import htsjdk.tribble.*;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.tabix.TabixIndex;
+import org.apache.hadoop.yarn.webapp.hamlet2.Hamlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -15,6 +16,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.utils.codecs.gtf.EnsemblGtfCodec;
 import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
@@ -85,7 +87,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
         return indexPath.toString();
     }
 
-    private Path determineFileName(final Index index) {
+    public Path determineFileName(final Index index) {
         if (outputPath != null) {
             return outputPath.toPath();
         } else if (index instanceof TabixIndex) {
@@ -95,7 +97,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
         }
     }
 
-    private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec) {
+    public Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec) {
         try {
             // For block-compression files, write a Tabix index
             if (IOUtil.hasBlockCompressedExtension(featurePath.toPath())) {
@@ -122,5 +124,39 @@ public final class IndexFeatureFile extends CommandLineProgram {
             // "codec does not support tabix"
             throw new UserException.CouldNotIndexFile(featurePath.toPath(), e);
         }
+    }
+
+    public void indexGTF(Path featurePath, Path idxFilePath) {
+        if (!Files.isReadable(featurePath)) {
+            throw new UserException.CouldNotReadInputFile(featurePath);
+        }
+        // Get the right codec for the file to be indexed. This call will throw an appropriate exception
+        // if featureFile is not in a supported format or is unreadable.
+//        final FeatureCodec<? extends Feature, ?> codecName = new EnsemblGtfCodec();
+        final FeatureCodec<? extends Feature, ?> codec = new ProgressReportingDelegatingCodec<>(
+                FeatureManager.getCodecForFile(featurePath), ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES);
+        try {
+            final Index index = IndexFactory.createDynamicIndex(featurePath, codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
+            if (index instanceof TabixIndex) {
+                final Path indexPath = Tribble.tabixIndexPath(featurePath);
+                try {
+                    index.write(indexPath);
+                } catch (final IOException e) {
+                    throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
+                }
+            } else {
+                final Path indexPath = Tribble.indexPath(featurePath);
+                try {
+                    index.write(indexPath);
+                } catch (final IOException e) {
+                    throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
+                }
+            }
+        } catch (TribbleException e) {
+            // Underlying cause here is usually a malformed file, but can also be things like
+            // "codec does not support tabix"
+            throw new UserException.CouldNotIndexFile(featurePath, e);
+        }
+        logger.info("Successfully wrote index to " + idxFilePath);
     }
 }

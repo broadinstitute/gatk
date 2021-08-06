@@ -36,6 +36,8 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
     private final List<GencodeGtfExonFeature>            exons = new ArrayList<>();
     private final List<GencodeGtfSelenocysteineFeature>  selenocysteines = new ArrayList<>();
     private final List<GencodeGtfUTRFeature>             utrs = new ArrayList<>();
+    private final List<GencodeGtfFivePrimeUtrFeature>    fivePrimeUtrs = new ArrayList<>();
+    private final List<GencodeGtfThreePrimeUtrFeature>   threePrimeUtrs = new ArrayList<>();
 
     // ================================================================================================
 
@@ -61,6 +63,14 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
 
     public void addUtr( final GencodeGtfUTRFeature utr ) { utrs.add(utr); }
 
+    public List<GencodeGtfFivePrimeUtrFeature> getFivePrimeUtrs() { return fivePrimeUtrs; }
+
+    public void addFivePrimeUtr( final GencodeGtfFivePrimeUtrFeature fivePrimeUtr ) { fivePrimeUtrs.add(fivePrimeUtr); }
+
+    public List<GencodeGtfThreePrimeUtrFeature> getThreePrimeUtrs() { return threePrimeUtrs; }
+
+    public void addThreePrimeUtr( final GencodeGtfThreePrimeUtrFeature threePrimeUtr ) { threePrimeUtrs.add(threePrimeUtr); }
+
     @Override
     protected List<GencodeGtfFeature> getAllFeatures() {
         final ArrayList<GencodeGtfFeature> list = new ArrayList<>();
@@ -75,6 +85,14 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
         }
 
         for ( final GencodeGtfUTRFeature feature : utrs ) {
+            list.addAll(feature.getAllFeatures());
+        }
+
+        for ( final GencodeGtfFivePrimeUtrFeature feature : fivePrimeUtrs ) {
+            list.addAll(feature.getAllFeatures());
+        }
+
+        for ( final GencodeGtfThreePrimeUtrFeature feature : threePrimeUtrs ) {
             list.addAll(feature.getAllFeatures());
         }
 
@@ -102,7 +120,9 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
 
         if ( (!Objects.equals(exons, otherTranscript.exons)) ||
              (!Objects.equals(selenocysteines, otherTranscript.selenocysteines)) ||
-             (!Objects.equals(utrs, otherTranscript.utrs)) ) {
+             (!Objects.equals(utrs, otherTranscript.utrs)) ||
+             (!Objects.equals(fivePrimeUtrs, otherTranscript.fivePrimeUtrs)) ||
+             (!Objects.equals(threePrimeUtrs, otherTranscript.threePrimeUtrs)) ) {
             return false;
         }
 
@@ -115,6 +135,8 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
         result = 31 * result + (exons != null ? exons.hashCode() : 0);
         result = 31 * result + (selenocysteines != null ? selenocysteines.hashCode() : 0);
         result = 31 * result + (utrs != null ? utrs.hashCode() : 0);
+        result = 31 * result + (fivePrimeUtrs != null ? fivePrimeUtrs.hashCode() : 0);
+        result = 31 * result + (threePrimeUtrs != null ? threePrimeUtrs.hashCode() : 0);
         return result;
     }
 }
