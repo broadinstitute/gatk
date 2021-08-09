@@ -24,7 +24,7 @@ workflow GvsPrepareCallset {
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210726"])
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210806"])
 
     if (localize_sample_names_with_service_account && defined(service_account_json_path)) {
         call LocalizeFile {
