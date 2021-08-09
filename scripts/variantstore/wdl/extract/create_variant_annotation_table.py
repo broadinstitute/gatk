@@ -125,7 +125,8 @@ def check_filtering(variant):
     else:
       return True
 
-def get_gnomad_subpop(gnomad_obj, row):
+def get_gnomad_subpop(gnomad_obj):
+    row = {}
     max_af = -1
     max_ac = -1
     max_an = -1
@@ -182,7 +183,8 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
         nirvana_gnomad_fieldname = vat_nirvana_gnomad_dictionary.get(vat_gnomad_fieldname)
         gnomad_fieldvalue = variant_line.get("gnomad").get(nirvana_gnomad_fieldname)
         row[vat_gnomad_fieldname] = gnomad_fieldvalue
-      row = get_gnomad_subpop(variant_line["gnomad"], row) # TODO I dont like this---lets create a new one and merge it, not pass the row thru
+      gnomad_row = get_gnomad_subpop(variant_line["gnomad"])
+      row.update(gnomad_row)
 
     if variant_line.get("clinvar") != None:
       clinvar_lines = variant_line["clinvar"]
