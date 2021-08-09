@@ -286,12 +286,15 @@ public class StreamingPythonScriptExecutor<T> extends PythonExecutorBase {
      * @return returns null if no previous work to complete, otherwise a completed Future
      */
     public Future<Integer> waitForPreviousBatchCompletion() {
-        // wait for the batch queue to be completely written
+        // Rather than waiting for the asyncWriter Future to complete first, and THEN waiting for
+        // the ack, call waitForAck() first instead, because it will will detect and propagate any
+        // exception that occurs on the python side that causes it to stop pulling data from the
+        // FIFO (which in turn can result in the background thread blocking, thereby preventing the
+        // asyncWriter Future from ever completing). This is safer than waiting for the Future first,
+        // since the Future might never complete if the async writer thread is blocked.
+        waitForAck();
+        // now that we have the ack, verify that the async batch write completed
         final Future<Integer> numberOfItemsWritten = asyncWriter.waitForPreviousBatchCompletion();
-        if (numberOfItemsWritten != null) {
-            // wait for the written items to be completely consumed
-            waitForAck();
-        }
         return numberOfItemsWritten;
     }
 

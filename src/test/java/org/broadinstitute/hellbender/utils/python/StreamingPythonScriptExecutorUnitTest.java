@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.python;
 import htsjdk.samtools.util.BufferedLineReader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.runtime.AsynchronousStreamWriter;
-import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -180,8 +179,8 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
             for (int i = 0; i < ROUND_TRIP_COUNT; i++) {
                 if (i != 0 && (i % syncFrequency) == 0) {
                     // wait for the last batch to complete before we start a new one
-                    streamingPythonExecutor.waitForPreviousBatchCompletion();
                     streamingPythonExecutor.startBatchWrite(String.format(PYTHON_TRANSFER_FIFO_TO_TEMP_FILE, count), fifoData);
+                    streamingPythonExecutor.waitForPreviousBatchCompletion();
                     count = 0;
                     fifoData = new ArrayList<>(syncFrequency);
                 }
@@ -193,9 +192,6 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
                 linesWrittenToFIFO.add(roundTripLine);
                 count++;
             }
-
-            // wait for the writing to complete
-            streamingPythonExecutor.waitForPreviousBatchCompletion();
 
             if (fifoData.size() != 0) {
                 streamingPythonExecutor.startBatchWrite(String.format(PYTHON_TRANSFER_FIFO_TO_TEMP_FILE, count), fifoData);
@@ -252,6 +248,59 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
             expectedExceptions = PythonScriptExecutorException.class)
     public void testRaisePythonException(final PythonScriptExecutor.PythonExecutableName executableName) {
         executeBadPythonCode(executableName,"raise Exception");
+    }
+
+    @Test(groups = "python", dataProvider = "supportedPythonVersions", dependsOnMethods = "testPythonExists",
+            expectedExceptions = PythonScriptExecutorException.class)
+    public void testRaiseAsynchronousPythonException(final PythonScriptExecutor.PythonExecutableName executableName) {
+        final StreamingPythonScriptExecutor<String> streamingPythonExecutor =
+                new StreamingPythonScriptExecutor<>(executableName, true);
+        Assert.assertNotNull(streamingPythonExecutor);
+        Assert.assertTrue(streamingPythonExecutor.start(Collections.emptyList(), true, null));
+
+        try {
+            streamingPythonExecutor.sendAsynchronousCommand("raise Exception" + NL);
+            streamingPythonExecutor.waitForAck();
+        } catch (PythonScriptExecutorException e) {
+            throw e;
+        } finally {
+            streamingPythonExecutor.terminate();
+            Assert.assertFalse(streamingPythonExecutor.getProcess().isAlive());
+        }
+    }
+
+    @Test(groups = "python", dataProvider = "supportedPythonVersions", dependsOnMethods = "testPythonExists",
+            expectedExceptions = PythonScriptExecutorException.class)
+    public void testRaiseAsynchronousBatchWritePythonException(final PythonScriptExecutor.PythonExecutableName executableName) {
+        final StreamingPythonScriptExecutor<String> streamingPythonExecutor =
+                new StreamingPythonScriptExecutor<>(executableName, true);
+        Assert.assertNotNull(streamingPythonExecutor);
+        Assert.assertTrue(streamingPythonExecutor.start(Collections.emptyList(), true, null));
+
+        try {
+            final int BATCH_SIZE = 1000;
+            final List<String> batchList = createLargeBatch(BATCH_SIZE);
+            streamingPythonExecutor.initStreamWriter(AsynchronousStreamWriter.stringSerializer);
+
+            final String batchCommand = String.format(
+                    "for i in range(0, %d):"+ NL + "\t tool.readDataFIFO()" + NL + NL + "raise Exception" + NL,
+                    BATCH_SIZE);
+            streamingPythonExecutor.startBatchWrite(batchCommand, batchList);
+            streamingPythonExecutor.waitForPreviousBatchCompletion();
+        } catch (PythonScriptExecutorException e) {
+            throw e;
+        } finally {
+            streamingPythonExecutor.terminate();
+            Assert.assertFalse(streamingPythonExecutor.getProcess().isAlive());
+        }
+    }
+
+    private List<String> createLargeBatch(final int batchSize) {
+        final List<String> batchList = new ArrayList<>(1000);
+        for (int i = 0; i < batchSize; i++) {
+            batchList.add(String.format("%d\n", i));
+        }
+        return batchList;
     }
 
     @Test(groups = "python", dataProvider="supportedPythonVersions", dependsOnMethods = "testPythonExists",
