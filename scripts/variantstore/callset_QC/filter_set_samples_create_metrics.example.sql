@@ -42,8 +42,11 @@ if (alt_lengths.size > 1) {
      }   
 }     
     """;
-CREATE OR REPLACE TABLE `aou-genomics-curation-prod.alpha1_1000.filter_set_samples` AS    
-SELECT "kc-testing-1" filter_set_name,
+
+-- TODO Do we eventually want to support multiple filter sets in this table? 
+-- If so have separate 'create table if not exists' statement and make this an insert
+CREATE OR REPLACE TABLE `$FQ_DATASET.sample_metrics` AS    
+SELECT "$NAME_OF_FILTER_SET" filter_set_name,
        sample_id, 
        count(1) variant_entries,
        SUM(CASE WHEN type = "del" THEN 1 ELSE 0 END) del_count,
@@ -63,7 +66,7 @@ SELECT "kc-testing-1" filter_set_name,
                CASE WHEN INSTR(call_GT, "0") > 0 THEN "het" ELSE "homvar" END as gt_type, -- if GT contains a zero, its a het
                titv(ref, alt) as titv,
                CASE WHEN gnomad.location IS NULL THEN false ELSE true END in_gnomad
-        FROM `aou-genomics-curation-prod.alpha1_1000.vet_001` v
+        FROM `$FQ_DATASET.vet_all` v
         LEFT JOIN `spec-ops-aou.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
         WHERE call_GT != "./." -- for safety
         AND v.location < 23000000000000 -- autosomal only

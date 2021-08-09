@@ -4,8 +4,8 @@ WITH fss AS (
          (ti_count / tv_count) as ti_tv_ratio, 
          (snp_het_count / snp_homvar_count) snp_het_homvar_ratio, 
          (indel_het_count / indel_homvar_count) as indel_het_homvar_ratio
-  FROM `aou-genomics-curation-prod.alpha1_1000.filter_set_samples`
-  WHERE filter_set_name = 'kc-testing-1'),
+  FROM `$FQ_DATASET.sample_metrics`
+  WHERE filter_set_name = '$NAME_OF_FILTER_SET'),
 medians AS ( 
     SELECT 
         `bqutil`.fn.median(ARRAY_AGG(del_count IGNORE NULLS)) as m_del_count,
@@ -29,7 +29,7 @@ mads AS (
         `bqutil`.fn.median(ARRAY_AGG(ABS(indel_het_homvar_ratio - m_indel_het_homvar_ratio) IGNORE NULLS)) as mad_indel_het_homvar_ratio
     FROM fss
     CROSS JOIN medians 
-    WHERE filter_set_name = 'kc-testing-1')
+    WHERE filter_set_name = '$NAME_OF_FILTER_SET')
 
 SELECT 
     fss.sample_id,
@@ -58,7 +58,7 @@ SELECT
     indel_het_homvar_ratio, m_indel_het_homvar_ratio, mad_indel_het_homvar_ratio,
     CASE WHEN indel_het_homvar_ratio BETWEEN m_indel_het_homvar_ratio - 4*mad_indel_het_homvar_ratio AND m_indel_het_homvar_ratio + 4*mad_indel_het_homvar_ratio THEN true ELSE false END pass_indel_het_homvar_ratio,    
 FROM fss
-JOIN `aou-genomics-curation-prod.alpha1_1000.sample_info` si ON (fss.sample_id = si.sample_id)
+JOIN `$FQ_DATASET.sample_info` si ON (fss.sample_id = si.sample_id)
 CROSS JOIN medians 
 CROSS JOIN mads
 order by 1
