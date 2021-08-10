@@ -260,6 +260,10 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
 
     public int getBufferEnd() { return bufferEnd; }
 
+    public int getBufferStart() {
+        return (int)homRefBlockBuffer.get(0).getStart();
+    }
+
     @Override
     public void signalEndOfInput() {
         flushRefBlockBuffer();
