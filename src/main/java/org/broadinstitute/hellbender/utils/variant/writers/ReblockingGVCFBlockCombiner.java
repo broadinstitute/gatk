@@ -110,7 +110,7 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
         } else if (!variantContextToOutput.getContig().equals(currentContig)) {
             flushRefBlockBuffer();
             currentContig = variantContextToOutput.getContig();
-            vcfOutputEnd = 1;  //must be one to be a valid SimpleInterval
+            vcfOutputEnd = 0;
         }
         final VariantContextBuilder newHomRefBlock = new VariantContextBuilder(variantContextToOutput);
 
@@ -260,7 +260,12 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
 
     public int getBufferEnd() { return bufferEnd; }
 
+    public boolean isBufferEmpty() {return homRefBlockBuffer.isEmpty();}
+
     public int getBufferStart() {
+        if (homRefBlockBuffer.isEmpty()) {
+            return 0;
+        }
         return (int)homRefBlockBuffer.get(0).getStart();
     }
 

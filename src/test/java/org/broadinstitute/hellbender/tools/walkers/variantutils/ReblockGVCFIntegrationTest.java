@@ -416,7 +416,8 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
-        Assert.assertEquals(outVCs.size(), 1);
+        Assert.assertEquals(outVCs.size(), 2);
         Assert.assertEquals(outVCs.get(0).getStart(), 1);
+        Assert.assertEquals(outVCs.get(1).getStart(), 1);
     }
 }
