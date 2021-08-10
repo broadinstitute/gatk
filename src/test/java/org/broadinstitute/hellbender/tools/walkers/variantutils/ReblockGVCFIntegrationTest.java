@@ -259,6 +259,19 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
                 Arrays.asList(getToolTestDataDir() + "expected.overlappingDeletions.g.vcf"));
         spec.executeTest("testOverlappingDeletions", this);
+
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", getToolTestDataDir() + "overlappingDels2.vcf" )
+                .addReference(hg38Reference)
+                .addOutput(output);
+        runCommandLine(args);
+
+        //regression test for dropped span del allele
+        Pair<VCFHeader, List<VariantContext>> actual = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        final List<VariantContext> variants = actual.getRight();
+        Assert.assertEquals(variants.size(), 3);
+        Assert.assertEquals(variants.get(1).getGenotype(0).getAllele(0), Allele.SPAN_DEL);
     }
 
     @Test
@@ -389,5 +402,21 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(refG.isHomRef());
         Assert.assertEquals(newRefBlock.getAlternateAlleles().size(), 1);
         Assert.assertTrue(newRefBlock.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
+    }
+
+    @Test
+    public void testLeftContigBoundary() {
+        final File funkyDragenVariant = new File(getToolTestDataDir() + "testLeftContigBoundary.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", funkyDragenVariant)
+                .addReference(hg38Reference)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        Assert.assertEquals(outVCs.size(), 1);
+        Assert.assertEquals(outVCs.get(0).getStart(), 1);
     }
 }

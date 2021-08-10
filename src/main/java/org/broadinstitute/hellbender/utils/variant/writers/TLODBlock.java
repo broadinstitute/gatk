@@ -74,8 +74,10 @@ final class TLODBlock extends GVCFBlock {
         gb.noAD().noPL().noAttributes(); // clear all attributes
 
         gb.attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, minBlockLOD);
-        gb.DP(getMedianDP());
-        gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
+        if (!DPs.isEmpty()) {
+            gb.DP(getMedianDP());
+            gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
+        }
 
         return gb.make();
     }
@@ -93,7 +95,9 @@ final class TLODBlock extends GVCFBlock {
         setMinBlockLod(genotype);
 
         end = newEnd;
-        DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
+        if (genotype.hasDP()) {
+            DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
+        }
     }
 
     private void setMinBlockLod(Genotype genotype) {

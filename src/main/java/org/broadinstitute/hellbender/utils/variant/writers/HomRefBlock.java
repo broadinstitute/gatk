@@ -82,7 +82,9 @@ final class HomRefBlock extends GVCFBlock {
                 gb.PL(minPLs);
             }
             gb.GQ(getMinGQ());
-            gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
+            if (!DPs.isEmpty()) {
+                gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
+            }
         }
         else {
             gb.GQ(getGQLowerBound());
@@ -154,7 +156,9 @@ final class HomRefBlock extends GVCFBlock {
         }
 
         end = newEnd;
-        DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
+        if (genotype.hasDP()) {
+            DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
+        }
     }
 
     /** Get the min PLs observed within this band, can be null if no PLs have yet been observed */

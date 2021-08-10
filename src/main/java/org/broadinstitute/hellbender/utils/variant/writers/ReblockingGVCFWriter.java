@@ -34,6 +34,9 @@ public class ReblockingGVCFWriter extends GVCFWriter {
             return null;
         }
         final int position = ((ReblockingGVCFBlockCombiner)gvcfBlockCombiner).getVcfOutputEnd();
+        if (position == 0) {
+            return null;
+        }
         return new SimpleInterval(contig, position, position);
     }
 
@@ -43,6 +46,9 @@ public class ReblockingGVCFWriter extends GVCFWriter {
      * @param vc
      * @return true if the input variant context overlapped the stored (but not output) reference blocks
      */
-    public boolean siteOverlapsBuffer(final VariantContext vc) { return vc.getContig().equals(((ReblockingGVCFBlockCombiner)gvcfBlockCombiner).getCurrentContig())
-            && vc.getStart() <= ((ReblockingGVCFBlockCombiner)gvcfBlockCombiner).getBufferEnd(); }
+    public boolean siteOverlapsBuffer(final VariantContext vc) {
+        final ReblockingGVCFBlockCombiner combiner = ((ReblockingGVCFBlockCombiner)gvcfBlockCombiner);
+        return vc.getContig().equals(combiner.getCurrentContig())
+            && vc.getStart() <= combiner.getBufferEnd()
+            && vc.getStart() >= combiner.getBufferStart(); }  //we need the start too in case there's a tail block from a trimmed deletion, but the deletion still overlaps
 }
