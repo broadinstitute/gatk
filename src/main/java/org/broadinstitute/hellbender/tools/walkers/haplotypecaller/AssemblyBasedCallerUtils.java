@@ -46,11 +46,11 @@ import java.util.stream.Stream;
  */
 public final class AssemblyBasedCallerUtils {
 
- // BG testing   static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
-    static final int REFERENCE_PADDING_FOR_ASSEMBLY = 200;
+    static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
+//    static final int REFERENCE_PADDING_FOR_ASSEMBLY = 200;
 //    public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 5;
     // AH & BG edit
-    public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 5;
+    public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 20;
     public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
@@ -347,14 +347,15 @@ public final class AssemblyBasedCallerUtils {
         final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
                 .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
 
-        List<Haplotype> assembledAndNewHaplotypes = new ArrayList<>();
+        Set<Haplotype> baseHaplotypes = new TreeSet<>();
         //BG Testing assembledAndNewHaplotypes.addAll(assemblyResultSet.getHaplotypeList());
         //Todo BG testing to see if limiting the initial list of haplotypes resolves the issue of variants not getting called in clustered regions
-        assembledAndNewHaplotypes.addAll(assemblyResultSet.getHaplotypeList().stream()
+        baseHaplotypes.addAll(assemblyResultSet.getHaplotypeList().stream()
                 .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
                 .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
                 .collect(Collectors.toList()));
 
+        Map<Kmer, Integer> kmerReadCounts = getKmerReadCounts(region.getHardClippedPileupReads(), 10);
         //TODO BG & AH filter out low base and/or mapping quality alleles
 
         for (final VariantContext givenVC : givenAlleles) {
@@ -380,16 +381,12 @@ public final class AssemblyBasedCallerUtils {
             }).collect(Collectors.toList());
 
             // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
-//            final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledAndNewHaplotypes.stream()
+//            final List<Haplotype> filteredPileupHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledAndNewHaplotypes.stream()
 //                    .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
-//                    .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
+////                    .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
 //                    .collect(Collectors.toList());
 
-            final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledAndNewHaplotypes.stream()
-                    .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
-//BG Testing                    .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
-                    .collect(Collectors.toList());
-
+            final List<Haplotype> newPileupHaplotypes = new ArrayList<>();
             for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
                 for (final Haplotype baseHaplotype : baseHaplotypes) {
                     // make sure this allele doesn't collide with a variant on the haplotype
@@ -409,24 +406,32 @@ public final class AssemblyBasedCallerUtils {
 
                         // and add to our internal list so we get haplotypes that contain all given alleles
                         // do we want a flag to control this behavior
-                        assembledAndNewHaplotypes.add(insertedHaplotype);
+                        newPileupHaplotypes.add(insertedHaplotype);
 //                        if(!assembledAndNewHaplotypes.get(assembledAndNewHaplotypes.indexOf(insertedHaplotype)).isReference()) {
 //                            assembledAndNewHaplotypes.get(assembledAndNewHaplotypes.indexOf(insertedHaplotype)).setVariantContext(givenVC);
 //                        }
                     }
                 }
             }
+
+            baseHaplotypes.addAll(filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts, 10));
+
         }
-        Set<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads(), givenAlleles.size()*10);
+//        Set<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads(), givenAlleles.size()*10);
 //        Set<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads(), 30000 );
-        filteredPileupHaplotypes.forEach(haplotype -> assemblyResultSet.add(haplotype));
+        baseHaplotypes.forEach(haplotype -> assemblyResultSet.add(haplotype));
         assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
     }
 
 
-    static Set<Haplotype> filterPileupHaplotypes(final List<Haplotype> originalAssemblyHaplotypes,
-                                                  final List<Haplotype> assembledAndNewHaplotypes,
-                                                  final List<GATKRead> hardClippedPileupReads, final int numPileupHaplotypes) {
+    static Map<Kmer, Integer>  getKmerReadCounts(final List<GATKRead> hardClippedPileupReads, int kmerSize) {
+        Map<Kmer, Integer> kmerReadCounts = new HashMap<>();
+        hardClippedPileupReads.forEach(read -> kmerizeAndCountOccurences(read.getBases(), kmerSize, kmerReadCounts));
+        return kmerReadCounts;
+    }
+
+    static Set<Haplotype> filterPileupHaplotypes(final List<Haplotype> onlyNewHaplotypes,
+                                                  final Map<Kmer, Integer> kmerReadCounts, final int numPileupHaplotypes) {
         // TODO AH & BG add the following code to check for quality of the SNPs
 //        // make sure we're supposed to look for high entropy
 //        if ( lookForMismatchEntropy &&
@@ -435,9 +440,9 @@ public final class AssemblyBasedCallerUtils {
 //            hasPointEvent = true;
 
         int kmerSize = 10;
-        List<Haplotype> onlyNewHaplotypes = new ArrayList<>();
-        onlyNewHaplotypes.addAll(assembledAndNewHaplotypes);
-        onlyNewHaplotypes.removeAll(originalAssemblyHaplotypes);
+//        List<Haplotype> onlyNewHaplotypes = new ArrayList<>();
+//        onlyNewHaplotypes.addAll(assembledAndNewHaplotypes);
+//        onlyNewHaplotypes.removeAll(originalAssemblyHaplotypes);
 
         //  int numPileupHaplotypes = 10;
         // AH & BG filter
@@ -446,8 +451,8 @@ public final class AssemblyBasedCallerUtils {
         // for each kmer in reads - find hapotypes that contain it and
         // filter haplotypes that don't have 10% coverage of read kmers
         // check if finalizeRegion methods is already applied and it removes the softclipped bases
-        Map<Kmer, Integer> kmerReadCounts = new HashMap<>();
-        hardClippedPileupReads.forEach(read -> kmerizeAndCountOccurences(read.getBases(), kmerSize, kmerReadCounts));
+//        Map<Kmer, Integer> kmerReadCounts = new HashMap<>();
+//        hardClippedPileupReads.forEach(read -> kmerizeAndCountOccurences(read.getBases(), kmerSize, kmerReadCounts));
 
         // get haplotypes from assemblyResultSet and kmerize. for each haplotype create a set of kmers.
         // for each haplotype, look up the kmers in the read-map and sum thee counts fo the haplotype score
@@ -462,6 +467,8 @@ public final class AssemblyBasedCallerUtils {
 
             }
             haplotypeScores.put(haplotype, hapKmerCount);
+            // reuse score to save kmer count for debugging
+            haplotype.setScore(hapKmerCount);
         }
 
         Map<Haplotype,Integer> sortedHaplotypeScores =
