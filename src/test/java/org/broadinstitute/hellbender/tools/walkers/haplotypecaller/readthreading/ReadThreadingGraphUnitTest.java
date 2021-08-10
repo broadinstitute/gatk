@@ -377,7 +377,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
 
             // confirm that the SW alignment agrees with our expectations
             final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink,
-                    0, 2, false, SmithWatermanJavaAligner.getInstance());
+                    0, 2, false, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
             Assert.assertNotNull(result);
             Assert.assertTrue(ReadThreadingGraph.cigarIsOkayToMerge(result.cigar, false, true));
 
