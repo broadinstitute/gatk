@@ -30,7 +30,7 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
     /**
      * fields updated on the fly during GVCFWriter operation
      */
-    private int vcfOutputEnd = 1;
+    private int vcfOutputEnd = 0;
     private int bufferEnd = 0;
     final private boolean dropLowQuals;
     final private boolean allowMissingHomRefData;

@@ -403,4 +403,20 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(newRefBlock.getAlternateAlleles().size(), 1);
         Assert.assertTrue(newRefBlock.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
     }
+
+    @Test
+    public void testLeftContigBoundary() {
+        final File funkyDragenVariant = new File(getToolTestDataDir() + "testLeftContigBoundary.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", funkyDragenVariant)
+                .addReference(hg38Reference)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        Assert.assertEquals(outVCs.size(), 1);
+        Assert.assertEquals(outVCs.get(0).getStart(), 1);
+    }
 }

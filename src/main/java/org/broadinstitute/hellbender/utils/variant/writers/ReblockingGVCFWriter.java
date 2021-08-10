@@ -34,6 +34,9 @@ public class ReblockingGVCFWriter extends GVCFWriter {
             return null;
         }
         final int position = ((ReblockingGVCFBlockCombiner)gvcfBlockCombiner).getVcfOutputEnd();
+        if (position == 0) {
+            return null;
+        }
         return new SimpleInterval(contig, position, position);
     }
 
