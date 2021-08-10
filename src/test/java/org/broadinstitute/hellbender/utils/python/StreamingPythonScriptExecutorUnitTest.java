@@ -261,8 +261,6 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
         try {
             streamingPythonExecutor.sendAsynchronousCommand("raise Exception" + NL);
             streamingPythonExecutor.waitForAck();
-        } catch (PythonScriptExecutorException e) {
-            throw e;
         } finally {
             streamingPythonExecutor.terminate();
             Assert.assertFalse(streamingPythonExecutor.getProcess().isAlive());
@@ -287,8 +285,6 @@ public class StreamingPythonScriptExecutorUnitTest extends GATKBaseTest {
                     BATCH_SIZE);
             streamingPythonExecutor.startBatchWrite(batchCommand, batchList);
             streamingPythonExecutor.waitForPreviousBatchCompletion();
-        } catch (PythonScriptExecutorException e) {
-            throw e;
         } finally {
             streamingPythonExecutor.terminate();
             Assert.assertFalse(streamingPythonExecutor.getProcess().isAlive());
