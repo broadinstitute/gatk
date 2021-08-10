@@ -105,6 +105,7 @@
 ##INFO=<ID=RAW_MQandDP,Number=2,Type=Integer,Description="Raw data (sum of squared MQ and total depth) for improved RMS Mapping Quality calculation. Incompatible with deprecated RAW_MQ formulation.">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##contig=<ID=chr22,length=50818468>
+##contig=<ID=chrY,length=57227415>
 ##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
 chr22	10514494	.	A	<NON_REF>	.	.	END=10514847	GT:DP:GQ:MIN_DP:PL	./.:0:0:0:0,0,0
@@ -290,7 +291,7 @@ chr22	10515997	.	G	<NON_REF>	.	.	.	GT:DP:GQ:MIN_DP:PL	./.:11:33:11:0,33,362
 chr22	10515998	.	A	<NON_REF>	.	.	.	GT:DP:GQ:MIN_DP:PL	./.:11:19:11:0,19,333
 chr22	10515999	.	T	<NON_REF>	.	.	END=10516008	GT:DP:GQ:MIN_DP:PL	./.:11:33:11:0,33,372
 chrY	6067982	.	T	G,<NON_REF>	35.48	.	AS_RAW_BaseQRankSum=||;AS_RAW_MQ=0.00|2401.00|0.00;AS_RAW_MQRankSum=||;AS_RAW_ReadPosRankSum=||;AS_SB_TABLE=0,0|0,0|0,0;DP=1;ExcessHet=3.0103;MLEAC=1,0;MLEAF=0.500,0.00;RAW_MQandDP=2401,1	GT:AD:DP:GQ:PGT:PID:PL:PS:SB	1|1:0,1,0:1:3:0|1:6067960_G_A:45,3,0,45,3,45:6067960:0,0,1,0
-chrY	6067983	.	A	<NON_REF>	.	.	END=6068117	GT:DP:GQ:MIN_DP:PL	0/0:0:0:0:0,0,0
+chrY	6067983	.	A	<NON_REF>	.	.	END=6068117	GT:GQ:PL	0/0:0:0,0,0
 chrY	6068118	.	G	T,<NON_REF>	0.01	.	AS_RAW_BaseQRankSum=||;AS_RAW_MQ=0.00|0.00|0.00;AS_RAW_MQRankSum=||;AS_RAW_ReadPosRankSum=||;AS_SB_TABLE=0,0|0,0|0,0;MLEAC=0,0;MLEAF=NaN,NaN	GT	./.
-chrY	6068119	.	A	<NON_REF>	.	.	END=6068156	GT:DP:GQ:MIN_DP:PL	0/0:5:12:5:0,12,136
+chrY	6068119	.	A	<NON_REF>	.	.	END=6068156	GT:GQ:PL	0/0:12:0,12,136
 chrY	6068157	.	G	<NON_REF>	.	.	END=6068157	GT:GQ:PL	0/0:0:0,0,0
