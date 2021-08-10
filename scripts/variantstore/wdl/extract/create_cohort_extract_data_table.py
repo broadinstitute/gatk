@@ -152,8 +152,8 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
         subs[id] = get_subselect(fq_vet_table, samples, id)
         j = j + 1
 
-  sql = f"create or replace table `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n" + \
-        "with\n" + \
+  sql = f"CREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n" + \
+        "WITH\n" + \
         ("\n".join(subs.values())) + "\n" \
         "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
         f" (SELECT * FROM q_all)"
@@ -172,12 +172,12 @@ def create_position_table(fq_temp_table_dataset, min_variant_samples):
   # it is == 0 then we don't need to touch the sample_id column (which doubles the cost of this query)
   min_sample_clause = ""
   if min_variant_samples > 0:
-      min_sample_clause = f"HAVING count(distinct sample_id) >= {min_variant_samples}"
+      min_sample_clause = f"HAVING COUNT(distinct sample_id) >= {min_variant_samples}"
 
   sql = f"""
-          create or replace table `{dest}` {TEMP_TABLE_TTL}
-          as (
-            select location from `{fq_temp_table_dataset}.{VET_NEW_TABLE}` WHERE alt != '*' GROUP BY location {min_sample_clause}
+          CREATE OR REPLACE TABLE `{dest}` {TEMP_TABLE_TTL}
+         AS (
+            SELECT location FROM `{fq_temp_table_dataset}.{VET_NEW_TABLE}` WHERE alt != '*' GROUP BY location {min_sample_clause}
           )
         """
   existing_labels = client._default_query_job_config.labels
@@ -194,7 +194,7 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
   def get_pet_subselect(fq_pet_table, samples, id):
     sample_stanza = ','.join([str(s) for s in samples])
     sql = f"    q_{id} AS (SELECT p.location, p.sample_id, p.state FROM `{fq_pet_table}` p \n" \
-          f"        JOIN `{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}` v on (p.location = v.location) \n WHERE p.sample_id IN ({sample_stanza})), "
+          f"        JOIN `{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}` v ON (p.location = v.location) \n WHERE p.sample_id IN ({sample_stanza})), "
     return sql
 
   for i in range(1, PET_VET_TABLE_COUNT+1):
@@ -217,6 +217,7 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
       f" (SELECT * FROM q_all)"
 
       print(sql)
+      print(f"{fq_pet_table} query is {utf8len(sql)/(1024*1024)} MB in length")
       if i == 1:
         execute_with_retry("create and populate pet new table", sql)
       else:
