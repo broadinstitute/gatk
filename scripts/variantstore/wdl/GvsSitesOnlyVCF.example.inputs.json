@@ -1,15 +1,16 @@
 {
-  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcfs": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz", "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/Data/gvs_features_0.vcf.gz"],
-  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcf_indices": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz.tbi", "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/Data/gvs_features_0.vcf.gz.tbi"],
+  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcfs": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz"],
+  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcf_indices": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz.tbi"],
   "GvsSitesOnlyVCF.output_sites_only_file_name": "hello_did_I_sites_only",
   "GvsSitesOnlyVCF.output_annotated_file_name": "hello_did_I_annotate",
   "GvsSitesOnlyVCF.nirvana_data_directory": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz",
   "GvsSitesOnlyVCF.vat_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json",
   "GvsSitesOnlyVCF.variant_transcript_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json",
   "GvsSitesOnlyVCF.genes_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json",
-  "GvsSitesOnlyVCF.output_path": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/output/jul13/",
-  "GvsSitesOnlyVCF.table_suffix": "jul13",
+  "GvsSitesOnlyVCF.output_path": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/output/aug09/",
+  "GvsSitesOnlyVCF.table_suffix": "aug09",
   "GvsSitesOnlyVCF.project_id": "spec-ops-aou",
   "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing",
   "GvsSitesOnlyVCF.AnAcAf_annotations_template": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/custom_annotations_template.tsv",
+  "GvsSitesOnlyVCF.sample_list": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/subpop.tsv"
 }
