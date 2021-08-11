@@ -154,7 +154,7 @@ workflow GvsCreateFilterSet {
         dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
         use_allele_specific_annotations = true,
         disk_size = large_disk,
-        machine_mem_gb = INDEL_VQSR_machine_mem_gb,
+        machine_mem_gb = INDEL_VQSR_machine_mem_gb
     }
 
     if (GetNumSamplesLoaded.num_samples > snps_variant_recalibration_threshold) {
@@ -189,6 +189,7 @@ workflow GvsCreateFilterSet {
                     tranches_filename = filter_set_name + ".snps." + idx + ".tranches",
                     recalibration_tranche_values = snp_recalibration_tranche_values,
                     recalibration_annotation_values = snp_recalibration_annotation_values,
+                    excluded_sites_bed = excluded_sites_bed,
                     model_report = SNPsVariantRecalibratorCreateModel.model_report,
                     hapmap_resource_vcf = hapmap_resource_vcf,
                     hapmap_resource_vcf_index = hapmap_resource_vcf_index,
@@ -199,7 +200,8 @@ workflow GvsCreateFilterSet {
                     dbsnp_resource_vcf = dbsnp_resource_vcf,
                     dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
                     use_allele_specific_annotations = true,
-                    disk_size = small_disk
+                    disk_size = large_disk,
+                    machine_mem_gb = SNP_VQSR_machine_mem_gb
             }
         }
 
