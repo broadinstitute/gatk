@@ -7,7 +7,6 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,9 +23,9 @@ import java.util.List;
 @Test
 public abstract class SmithWatermanAlignerAbstractUnitTest extends GATKBaseTest {
 
-    private static final SWParameters ORIGINAL_DEFAULT = SmithWatermanAlignmentUtils.ORIGINAL_DEFAULT;
-    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentUtils.STANDARD_NGS;
-    private static final SWParameters HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS;
+    private static final SWParameters ORIGINAL_DEFAULT = SmithWatermanAlignmentConstants.ORIGINAL_DEFAULT;
+    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentConstants.STANDARD_NGS;
+    private static final SWParameters HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
 
     /**
      * @return an aligner to be tested

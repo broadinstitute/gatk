@@ -1,26 +1,20 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentUtils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 
 /**
  * Set of arguments for Assembly Based Callers
  */
 public abstract class AssemblyBasedCallerArgumentCollection {
-    private static final Logger logger = LogManager.getLogger(AssemblyBasedCallerArgumentCollection.class);
-
     private static final long serialVersionUID = 1L;
     public static final String USE_FILTERED_READS_FOR_ANNOTATIONS_LONG_NAME = "use-filtered-reads-for-annotations";
     public static final String BAM_OUTPUT_LONG_NAME = "bam-output";
@@ -40,9 +34,25 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String EMIT_REF_CONFIDENCE_SHORT_NAME = "ERC";
     public static final String ALLELE_EXTENSION_LONG_NAME = "allele-informative-reads-overlap-margin";
 
-    public static final String DANGLING_END_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "dangling-end-smith-waterman-parameters-table";
-    public static final String HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "haplotype-to-reference-smith-waterman-parameters-table";
-    public static final String READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME = "read-to-haplotype-smith-waterman-parameters-table";
+    public static final String SMITH_WATERMAN_DANGLING_END_MATCH_VALUE_LONG_NAME = "smith-waterman-dangling-end-match-value";
+    public static final String SMITH_WATERMAN_DANGLING_END_MISMATCH_PENALTY_LONG_NAME = "smith-waterman-dangling-end-mismatch-penalty";
+    public static final String SMITH_WATERMAN_DANGLING_END_GAP_OPEN_PENALTY_LONG_NAME = "smith-waterman-dangling-end-gap-open-penalty";
+    public static final String SMITH_WATERMAN_DANGLING_END_GAP_EXTEND_PENALTY_LONG_NAME = "smith-waterman-dangling-end-gap-extend-penalty";
+    public static final String SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_MATCH_VALUE_LONG_NAME = "smith-waterman-haplotype-to-reference-match-value";
+    public static final String SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_MISMATCH_PENALTY_LONG_NAME = "smith-waterman-haplotype-to-reference-mismatch-penalty";
+    public static final String SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_GAP_OPEN_PENALTY_LONG_NAME = "smith-waterman-haplotype-to-reference-gap-open-penalty";
+    public static final String SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_GAP_EXTEND_PENALTY_LONG_NAME = "smith-waterman-haplotype-to-reference-gap-extend-penalty";
+    public static final String SMITH_WATERMAN_READ_TO_HAPLOTYPE_MATCH_VALUE_LONG_NAME = "smith-waterman-read-to-haplotype-match-value";
+    public static final String SMITH_WATERMAN_READ_TO_HAPLOTYPE_MISMATCH_PENALTY_LONG_NAME = "smith-waterman-read-to-haplotype-mismatch-penalty";
+    public static final String SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_OPEN_PENALTY_LONG_NAME = "smith-waterman-read-to-haplotype-gap-open-penalty";
+    public static final String SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_EXTEND_PENALTY_LONG_NAME = "smith-waterman-read-to-haplotype-gap-extend-penalty";
+
+    /** See documentation at {@link SmithWatermanAlignmentConstants#STANDARD_NGS}. */
+    private static final SWParameters DEFAULT_DANGLING_END_SMITH_WATERMAN_PARAMETERS = SmithWatermanAlignmentConstants.STANDARD_NGS;
+    /** See documentation at {@link SmithWatermanAlignmentConstants#NEW_SW_PARAMETERS}. */
+    private static final SWParameters DEFAULT_HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
+    /** See documentation at {@link SmithWatermanAlignmentConstants#ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS}. */
+    private static final SWParameters DEFAULT_READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS = SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS;
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = assemblerArgs.makeReadThreadingAssembler();
@@ -161,74 +171,123 @@ public abstract class AssemblyBasedCallerArgumentCollection {
             optional = true)
     public int informativeReadOverlapMargin = 2;
 
-    @Advanced
-    @Argument(fullName = DANGLING_END_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME,
-            //TODO
-            doc = "",
-            optional = true)
-    public GATKPath danglingEndSmithWatermanParametersTablePath;
+    // -----------------------------------------------------------------------------------------------
+    // Smith-Waterman parameters for dangling-end recovery
+    // -----------------------------------------------------------------------------------------------
 
     @Advanced
-    @Argument(fullName = HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME,
-            //TODO
-            doc = "",
+    @Argument(fullName = SMITH_WATERMAN_DANGLING_END_MATCH_VALUE_LONG_NAME,
+            doc = "Smith-Waterman match value for dangling-end recovery.",
+            minValue = 0,
             optional = true)
-    public GATKPath haplotypeToReferenceSmithWatermanParametersTablePath;
+    public int smithWatermanDanglingEndMatchValue = DEFAULT_DANGLING_END_SMITH_WATERMAN_PARAMETERS.getMatchValue();
 
     @Advanced
-    @Argument(fullName = READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS_TABLE_LONG_NAME,
-            //TODO
-            doc = "",
+    @Argument(fullName = SMITH_WATERMAN_DANGLING_END_MISMATCH_PENALTY_LONG_NAME,
+            doc = "Smith-Waterman mismatch penalty for dangling-end recovery.",
+            maxValue = 0,
             optional = true)
-    public GATKPath readToHaplotypeSmithWatermanParametersTablePath;
+    public int smithWatermanDanglingEndMismatchPenalty = DEFAULT_DANGLING_END_SMITH_WATERMAN_PARAMETERS.getMismatchPenalty();
 
-    private SWParameters danglingEndSWParameters;
-    private SWParameters haplotypeToReferenceSWParameters;
-    private SWParameters readToHaplotypeSWParameters;
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_DANGLING_END_GAP_OPEN_PENALTY_LONG_NAME,
+            doc = "Smith-Waterman gap-open penalty for dangling-end recovery.",
+            maxValue = 0,
+            optional = true)
+    public int smithWatermanDanglingEndGapOpenPenalty = DEFAULT_DANGLING_END_SMITH_WATERMAN_PARAMETERS.getGapOpenPenalty();
+
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_DANGLING_END_GAP_EXTEND_PENALTY_LONG_NAME,
+            doc = "Smith-Waterman gap-extend penalty for dangling-end recovery.",
+            maxValue = 0,
+            optional = true)
+    public int smithWatermanDanglingEndGapExtendPenalty = DEFAULT_DANGLING_END_SMITH_WATERMAN_PARAMETERS.getGapExtendPenalty();
+
+    // -----------------------------------------------------------------------------------------------
+    // Smith-Waterman parameters for haplotype-to-reference alignment
+    // -----------------------------------------------------------------------------------------------
+
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_MATCH_VALUE_LONG_NAME,
+            doc = "Smith-Waterman match value for haplotype-to-reference alignment.",
+            minValue = 0,
+            optional = true)
+    public int smithWatermanHaplotypeToReferenceMatchValue = DEFAULT_HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS.getMatchValue();
+
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_MISMATCH_PENALTY_LONG_NAME,
+            doc = "Smith-Waterman mismatch penalty for haplotype-to-reference alignment.",
+            maxValue = 0,
+            optional = true)
+    public int smithWatermanHaplotypeToReferenceMismatchPenalty = DEFAULT_HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS.getMismatchPenalty();
+
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_GAP_OPEN_PENALTY_LONG_NAME,
+            doc = "Smith-Waterman gap-open penalty for haplotype-to-reference alignment.",
+            maxValue = 0,
+            optional = true)
+    public int smithWatermanHaplotypeToReferenceGapOpenPenalty = DEFAULT_HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS.getGapOpenPenalty();
+
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_GAP_EXTEND_PENALTY_LONG_NAME,
+            doc = "Smith-Waterman gap-extend penalty for haplotype-to-reference alignment.",
+            maxValue = 0,
+            optional = true)
+    public int smithWatermanHaplotypeToReferenceGapExtendPenalty = DEFAULT_HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS.getGapExtendPenalty();
+
+    // -----------------------------------------------------------------------------------------------
+    // Smith-Waterman parameters for read-to-haplotype alignment
+    // -----------------------------------------------------------------------------------------------
+
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_READ_TO_HAPLOTYPE_MATCH_VALUE_LONG_NAME,
+            doc = "Smith-Waterman match value for read-to-haplotype alignment.",
+            minValue = 0,
+            optional = true)
+    public int smithWatermanReadToHaplotypeMatchValue = DEFAULT_READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS.getMatchValue();
+
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_READ_TO_HAPLOTYPE_MISMATCH_PENALTY_LONG_NAME,
+            doc = "Smith-Waterman mismatch penalty for read-to-haplotype alignment.",
+            maxValue = 0,
+            optional = true)
+    public int smithWatermanReadToHaplotypeMismatchPenalty = DEFAULT_READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS.getMismatchPenalty();
+
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_OPEN_PENALTY_LONG_NAME,
+            doc = "Smith-Waterman gap-open penalty for read-to-haplotype alignment.",
+            maxValue = 0,
+            optional = true)
+    public int smithWatermanReadToHaplotypeGapOpenPenalty = DEFAULT_READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS.getGapOpenPenalty();
+
+    @Advanced
+    @Argument(fullName = SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_EXTEND_PENALTY_LONG_NAME,
+            doc = "Smith-Waterman gap-extend penalty for read-to-haplotype alignment.",
+            maxValue = 0,
+            optional = true)
+    public int smithWatermanReadToHaplotypeGapExtendPenalty = DEFAULT_READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS.getGapExtendPenalty();
 
     public SWParameters getDanglingEndSWParameters() {
-        if (danglingEndSWParameters == null) {
-            danglingEndSWParameters = readAndLogSWParameters(
-                    danglingEndSmithWatermanParametersTablePath,
-                    SmithWatermanAlignmentUtils.STANDARD_NGS,
-                    "dangling-end recovery");
-        }
-        return danglingEndSWParameters;
+        return new SWParameters(
+                smithWatermanDanglingEndMatchValue,
+                smithWatermanDanglingEndMismatchPenalty,
+                smithWatermanDanglingEndGapOpenPenalty,
+                smithWatermanDanglingEndGapExtendPenalty);
     }
 
     public SWParameters getHaplotypeToReferenceSWParameters() {
-        if (haplotypeToReferenceSWParameters == null) {
-            haplotypeToReferenceSWParameters = readAndLogSWParameters(
-                    haplotypeToReferenceSmithWatermanParametersTablePath,
-                    SmithWatermanAlignmentUtils.NEW_SW_PARAMETERS,
-                    "haplotype-to-reference alignment");
-        }
-        return haplotypeToReferenceSWParameters;
+        return new SWParameters(
+                smithWatermanHaplotypeToReferenceMatchValue,
+                smithWatermanHaplotypeToReferenceMismatchPenalty,
+                smithWatermanHaplotypeToReferenceGapOpenPenalty,
+                smithWatermanHaplotypeToReferenceGapExtendPenalty);
     }
 
     public SWParameters getReadToHaplotypeSWParameters() {
-        if (readToHaplotypeSWParameters == null) {
-            readToHaplotypeSWParameters = readAndLogSWParameters(
-                    readToHaplotypeSmithWatermanParametersTablePath,
-                    SmithWatermanAlignmentUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS,
-                    "read-to-haplotype alignment");
-        }
-        return readToHaplotypeSWParameters;
-    }
-
-    private static SWParameters readAndLogSWParameters(final GATKPath path,
-                                                       final SWParameters defaultSWParameters,
-                                                       final String swParametersDescription) {
-        Utils.nonNull(defaultSWParameters);
-        Utils.nonEmpty(swParametersDescription);
-        final SWParameters swParameters = path == null
-                ? defaultSWParameters
-                : SmithWatermanAlignmentUtils.readSmithWatermanParametersFromTSV(path);
-        final String swParametersString = SmithWatermanAlignmentUtils.swParametersToString(swParameters);
-        final String logMessage = path == null
-                ? String.format("Using default Smith-Waterman parameters for %s: %s", swParametersDescription, swParametersString)
-                : String.format("Using input Smith-Waterman parameters for %s from %s: %s", swParametersDescription, path.toString(), swParametersString);
-        logger.info(logMessage);
-        return swParameters;
+        return new SWParameters(
+                smithWatermanReadToHaplotypeMatchValue,
+                smithWatermanReadToHaplotypeMismatchPenalty,
+                smithWatermanReadToHaplotypeGapOpenPenalty,
+                smithWatermanReadToHaplotypeGapExtendPenalty);
     }
 }

@@ -9,8 +9,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentUtils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import org.testng.Assert;
@@ -23,8 +22,8 @@ import java.util.*;
 public final class AlignmentUtilsUnitTest {
     private final static boolean DEBUG = false;
 
-    private static final SWParameters ORIGINAL_DEFAULT = SmithWatermanAlignmentUtils.ORIGINAL_DEFAULT;
-    private static final SWParameters READ_TO_HAPLOTYPE_SW_PARAMETERS = SmithWatermanAlignmentUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS;
+    private static final SWParameters ORIGINAL_DEFAULT = SmithWatermanAlignmentConstants.ORIGINAL_DEFAULT;
+    private static final SWParameters READ_TO_HAPLOTYPE_SW_PARAMETERS = SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS;
 
     private SAMFileHeader header;
 
