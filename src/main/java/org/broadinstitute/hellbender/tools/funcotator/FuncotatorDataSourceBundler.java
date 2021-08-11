@@ -224,53 +224,53 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
         logger.info(dsOrganism + ":" + dsSpecies + " data sources selected.");
 
-//        // Make folders to put data sources in:
-//        makeFolders(IOUtils.getPath(speciesName));
+        // Make folders to put data sources in:
+        makeFolders(IOUtils.getPath(speciesName));
 
         // Make the bundler object:
         final FuncotatorDataSourceBundlerHttpClient bundler = FuncotatorDataSourceBundlerHttpClient.create(dsOrganism, speciesName, baseURL, baseFastaURL);
 
 
-//        // Download the gtf file:
-//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getDSUrl(), bundler.getOutputDestination());
-//
-//        // Download the fasta file:
-//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaURL(), bundler.getFastaOutputDestination());
-//
+        // Download the gtf file:
+        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getDSUrl(), bundler.getOutputDestination());
 
-//        // Extract data sources if requested:
-//        if ( extractDataSourcesAfterDownload ) {
-//            FuncotatorDataSourceBundlerUtils.extractGtfGz(bundler.getOutputDestination().toString(), bundler.getDSUnzipPath().toString(), overwriteOutputFile);
-//            FuncotatorDataSourceBundlerUtils.extractGtfGz(bundler.getFastaOutputDestination().toString(), bundler.getFastaUnzipPath().toString(), overwriteOutputFile);
-//        }
-//        else {
-//            logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");
-//        }
+        // Download the fasta file:
+        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaURL(), bundler.getFastaOutputDestination());
 
 
-//        // Index the fasta file and build the dict file:
-//        FuncotatorDataSourceBundlerHttpClient.buildFastaIndexFile(bundler.getFastaUnzipPath());
-//
-//        // Copy the config file into new directory:
-//        FuncotatorDataSourceBundlerHttpClient.buildConfigFile(bundler);
-//
-//        // Create a manifest file:
-//        FuncotatorDataSourceBundlerHttpClient.buildManifestFile(bundler);
-//
-//        // Create the template config file:
-//        FuncotatorDataSourceBundlerHttpClient.buildTemplateConfigFile(bundler);
-//
-//        // Create ReadMe file:
-//        FuncotatorDataSourceBundlerHttpClient.buildReadMeFile(bundler);
-//
-//        // Download the gtf ReadMe file for specific data source file:
-//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getGtfReadMeURL(), bundler.getGtfReadMePath());
-//
-//        // Download the fasta ReadMe file for specific data source file:
-//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaReadMeURL(), bundler.getFastaReadMePath());
+        // Extract data sources if requested:
+        if ( extractDataSourcesAfterDownload ) {
+            FuncotatorDataSourceBundlerUtils.extractGtfGz(bundler.getOutputDestination().toString(), bundler.getDSUnzipPath().toString(), overwriteOutputFile);
+            FuncotatorDataSourceBundlerUtils.extractGtfGz(bundler.getFastaOutputDestination().toString(), bundler.getFastaUnzipPath().toString(), overwriteOutputFile);
+        }
+        else {
+            logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");
+        }
 
-        // Index the gtf file:
-        FuncotatorDataSourceBundlerHttpClient.buildIndexFile(bundler.getDSUnzipPath(), bundler.getIndexPath());
+
+        // Index the fasta file and build the dict file:
+        FuncotatorDataSourceBundlerHttpClient.buildFastaIndexFile(bundler.getFastaUnzipPath());
+
+        // Copy the config file into new directory:
+        FuncotatorDataSourceBundlerHttpClient.buildConfigFile(bundler);
+
+        // Create a manifest file:
+        FuncotatorDataSourceBundlerHttpClient.buildManifestFile(bundler);
+
+        // Create the template config file:
+        FuncotatorDataSourceBundlerHttpClient.buildTemplateConfigFile(bundler);
+
+        // Create ReadMe file:
+        FuncotatorDataSourceBundlerHttpClient.buildReadMeFile(bundler);
+
+        // Download the gtf ReadMe file for specific data source file:
+        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getGtfReadMeURL(), bundler.getGtfReadMePath());
+
+        // Download the fasta ReadMe file for specific data source file:
+        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaReadMeURL(), bundler.getFastaReadMePath());
+
+//        // Index the gtf file:
+//        FuncotatorDataSourceBundlerHttpClient.buildIndexFile(bundler.getDSUnzipPath(), bundler.getIndexPath());
 
     }
 

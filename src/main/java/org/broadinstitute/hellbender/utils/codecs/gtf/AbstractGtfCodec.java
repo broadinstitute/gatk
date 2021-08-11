@@ -384,10 +384,11 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
         }
 
         final GencodeGtfFeature.FeatureType featureType = feature.getFeatureType();
-
+        String chromName = feature.getChromosomeName();
         if (feature.getChromosomeName() == null) {
             return false;
         }
+        String annotationSource = feature.getAnnotationSource();
         if (feature.getAnnotationSource() == null) {
             return false;
         }
@@ -400,17 +401,18 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
         if (feature.getGenomicPhase() == null) {
             return false;
         }
-
+        String geneID = feature.getGeneId();
         if (feature.getGeneId() == null) {
             return false;
         }
+        String geneType = feature.getGeneType();
         if (feature.getGeneType() == null) {
             return false;
         }
+        String geneName = feature.getGeneName();
         if (feature.getGeneName() == null) {
             return false;
         }
-
         if ( (featureType != GencodeGtfFeature.FeatureType.GENE) &&
              (featureType != GencodeGtfFeature.FeatureType.TRANSCRIPT) &&
              (featureType != GencodeGtfFeature.FeatureType.SELENOCYSTEINE) &&
