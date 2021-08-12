@@ -69,15 +69,15 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     // Private Static Members:
 
     // Set to always get the latest version of the data sources:
-    private static final String BASE_URL = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION;
+    private static final String  BASE_URL = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION;
 
     // Will maybe make these private again
     @VisibleForTesting
-    public static final String BACTERIA_BASE_URL    = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION;
-    public static final String FUNGI_BASE_URL       = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-    public static final String METAZOA_BASE_URL     = BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-    public static final String PLANTS_BASE_URL      = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-    public static final String PROTISTS_BASE_URL    = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
+    public static final String BACTERIA_BASE_URL      = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION;
+    public static final String FUNGI_BASE_URL         = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
+    public static final String METAZOA_BASE_URL       = BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
+    public static final String PLANTS_BASE_URL        = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
+    public static final String PROTISTS_BASE_URL      = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
 
     public static final String BACTERIA_BASE_FASTA    = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION;
     public static final String FUNGI_BASE_FASTA       = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION;
@@ -136,19 +136,19 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
     @Argument(
             shortName = SPECIES_ARG_LONG_NAME,
-            fullName = SPECIES_ARG_LONG_NAME,
+            fullName  = SPECIES_ARG_LONG_NAME,
             doc = "Download data sources for this species of the organism.")
     protected String speciesName;
 
     @Argument(fullName = OVERWRITE_ARG_LONG_NAME,
-            shortName = OVERWRITE_ARG_LONG_NAME,
+            shortName  = OVERWRITE_ARG_LONG_NAME,
             doc = "Overwrite output file if it exists already.",
             optional = true)
     private boolean overwriteOutputFile = false;
 
     @Argument(
             shortName = EXTRACT_AFTER_DOWNLOAD,
-            fullName = EXTRACT_AFTER_DOWNLOAD,
+            fullName  = EXTRACT_AFTER_DOWNLOAD,
             doc = "Extract the data sources to a sibling folder after they have been downloaded.",
             optional = true)
     protected boolean extractDataSourcesAfterDownload = false;
@@ -186,19 +186,19 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         final String baseFastaURL;
 
         // Get the correct data source:
-        if (getBacteriaDataSources) {
+        if ( getBacteriaDataSources ) {
             dataSourceOrganism = "bacteria";
             baseURL = BACTERIA_BASE_URL;
             baseFastaURL = BACTERIA_BASE_FASTA;
-        } else if (getFungiDataSources) {
+        } else if ( getFungiDataSources ) {
             dataSourceOrganism = "fungi";
             baseURL = FUNGI_BASE_URL;
             baseFastaURL = FUNGI_BASE_FASTA;
-        } else if (getMetazoaDataSources) {
+        } else if ( getMetazoaDataSources ) {
             dataSourceOrganism = "metazoa";
             baseURL = METAZOA_BASE_URL;
             baseFastaURL = METAZOA_BASE_FASTA;
-        } else if (getPlantsDataSources) {
+        } else if ( getPlantsDataSources ) {
             dataSourceOrganism = "plants";
             baseURL = PLANTS_BASE_URL;
             baseFastaURL = PLANTS_BASE_FASTA;
@@ -240,8 +240,8 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
         // Extract data sources if requested:
         if ( extractDataSourcesAfterDownload ) {
-            FuncotatorDataSourceBundlerUtils.extractGtfGz(bundler.getOutputDestination().toString(), bundler.getDSUnzipPath().toString(), overwriteOutputFile);
-            FuncotatorDataSourceBundlerUtils.extractGtfGz(bundler.getFastaOutputDestination().toString(), bundler.getFastaUnzipPath().toString(), overwriteOutputFile);
+            FuncotatorDataSourceBundlerUtils.extractGzFile(bundler.getOutputDestination().toString(), bundler.getDSUnzipPath().toString(), overwriteOutputFile);
+            FuncotatorDataSourceBundlerUtils.extractGzFile(bundler.getFastaOutputDestination().toString(), bundler.getFastaUnzipPath().toString(), overwriteOutputFile);
         }
         else {
             logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");
@@ -274,6 +274,11 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
     }
 
+    /**
+     * Helper function which builds the first folder for the funcotator data sources.
+     * First folder is the outermost folder and will be named "speciesName".
+     * @param speciesName The name of the species to download data sources for.
+     */
     public static void makeFolders(Path speciesName) {
         String path = speciesName.toAbsolutePath().toString();
         File newFolder = new File(path);
@@ -284,6 +289,12 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         makeFolder2(path, speciesName);
     }
 
+    /**
+     * Helper function which builds the second folder for the funcotator data sources.
+     * Second folder is the middle folder and is named "ensembl" and goes inside the "speciesName" folder.
+     * @param pathName The destination path for this folder.
+     * @param speciesName The name of the species to download data sources for.
+     */
     public static void makeFolder2(String pathName, Path speciesName) {
         String path = pathName + "/" + DataSourceUtils.ENSEMBL_EXTENSION;
         File newFolder = new File(path);
@@ -294,6 +305,12 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         makeFolder3(path, speciesName);
     }
 
+    /**
+     * Helper function which builds the third folder for the funcotator data sources.
+     * The third folder is the innermost folder and is named "speciesName" and goes inside the "ensembl" folder.
+     * @param pathName The destination path for this folder.
+     * @param speciesName The name of the species to download data sources for.
+     */
     public static void makeFolder3(String pathName, Path speciesName) {
         String path = pathName + "/" + speciesName.toString();
         File newFolder = new File(path);

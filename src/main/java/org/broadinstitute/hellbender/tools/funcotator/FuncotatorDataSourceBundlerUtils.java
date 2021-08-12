@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.net.MalformedURLException;
 import java.util.*;
@@ -15,44 +16,54 @@ import java.io.FileOutputStream;
 import java.io.FileInputStream;
 import java.net.URL;
 import java.util.zip.GZIPInputStream;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 
 /**
  * Utilities for reading / working with / manipulating data sources for other organisms.
  * Created to be used with {@link FuncotatorDataSourceBundler}.
- * Created by Hailey
+ * Created by Hailey on 8/2/21.
  */
 public class FuncotatorDataSourceBundlerUtils {
+
+    //==================================================================================================================
+    // Private Static Members:
 
     private final static Logger logger = LogManager.getLogger(FuncotatorDataSourceBundlerUtils.class);
 
     // If we have already initialized the maps then there is no need to build them again:
     public static boolean haveInitializedMaps = false;
 
-    // Maps will map from each species in a given organism to the species file name associated with that species name:
-    private static  Map<String, String> bacteriaMap = new LinkedHashMap<>();
-    private static  Map<String, String> fungiMap = new LinkedHashMap<>();
-    private static  Map<String, String> metazoaMap = new LinkedHashMap<>();
-    private static  Map<String, String> plantsMap = new LinkedHashMap<>();
-    private static  Map<String, String> protistsMap = new LinkedHashMap<>();
+    // These map each species for a given organism to the file name associated with that species name:
+    private static  Map<String, String> bacteriaMap     = new LinkedHashMap<>();
+    private static  Map<String, String> fungiMap        = new LinkedHashMap<>();
+    private static  Map<String, String> metazoaMap      = new LinkedHashMap<>();
+    private static  Map<String, String> plantsMap       = new LinkedHashMap<>();
+    private static  Map<String, String> protistsMap     = new LinkedHashMap<>();
 
-    // File names for the files which will be used to initialize the maps from species name to file name
-    private static final String bacteriaFileName = "uniprot_report_EnsemblBacteria.txt";
-    private static final String fungiFileName = "uniprot_report_EnsemblFungi.txt";
-    private static final String metazoaFileName = "uniprot_report_EnsemblMetazoa.txt";
-    private static final String plantsFileName = "uniprot_report_EnsemblPlants.txt";
-    private static final String protistsFileName = "uniprot_report_EnsemblProtists.txt";
+    // File names for the files which will be used to initialize the maps from species name to file name:
+    private static final String bacteriaFileName        = "uniprot_report_EnsemblBacteria.txt";
+    private static final String fungiFileName           = "uniprot_report_EnsemblFungi.txt";
+    private static final String metazoaFileName         = "uniprot_report_EnsemblMetazoa.txt";
+    private static final String plantsFileName          = "uniprot_report_EnsemblPlants.txt";
+    private static final String protistsFileName        = "uniprot_report_EnsemblProtists.txt";
 
-    public static final String ENSEMBL_VERSION = "51";
-    public static final String SEPARATOR_CHARACTER = ".";
-    public static final String SEQUENCE_TYPE_AND_STATUS = "cdna.all";
 
-    public static Map<String, String> orgNamesAndFileNames = new LinkedHashMap<>();
-    public static Map<String, Map<String, String>> orgNamesMapNames = new LinkedHashMap<>();
-    public static final List<String> orgNameKeys = new ArrayList<>();
-    public static final List<String> fileNameValues = new ArrayList<>();
-    public static final List<Map<String, String>> nullMapValues = new ArrayList<>();
+    //==================================================================================================================
+    // Public Static Members:
+
+    public static final String ENSEMBL_VERSION                          = "51";
+    public static final String SEPARATOR_CHARACTER                      = ".";
+    public static final String SEQUENCE_TYPE_AND_STATUS                 = "cdna.all";
+
+    public static Map<String, String> orgNamesAndFileNames              = new LinkedHashMap<>();
+    public static Map<String, Map<String, String>> orgNamesMapNames     = new LinkedHashMap<>();
+
+    public static final List<String> orgNameKeys                        = new ArrayList<>();
+    public static final List<String> fileNameValues                     = new ArrayList<>();
+    public static final List<Map<String, String>> nullMapValues         = new ArrayList<>();
+
+    //==================================================================================================================
+    // Public Static Methods:
 
     /**
      * Return the file name associated with the given species and organism.
@@ -219,7 +230,7 @@ public class FuncotatorDataSourceBundlerUtils {
      * Will throw an exception if files exist already.
      * @param gtfGzFilePath {@link String} to a gzipped gtf file for extraction.
      */
-    public static void extractGtfGz(String gtfGzFilePath, String decompressedFilePath, boolean doOverwrite) {
+    public static void extractGzFile(String gtfGzFilePath, String decompressedFilePath, boolean doOverwrite) {
         byte[] buffer = new byte[1024];
 
         IOUtils.ensurePathIsOkForOutput(IOUtils.getPath(decompressedFilePath), doOverwrite);

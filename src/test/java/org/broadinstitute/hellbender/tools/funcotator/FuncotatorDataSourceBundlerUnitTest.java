@@ -1,18 +1,12 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -22,26 +16,61 @@ import java.nio.file.Path;
 
 public class FuncotatorDataSourceBundlerUnitTest extends CommandLineProgramTest{
 
-//    @Test
-//    public void testPath() {
-//        String orgName = "bacteria";
-//        String baseURL = "http://ftp.ensemblgenomes.org/pub/current/bacteria/gtf/bacteria_collection_128/";
-//        String speciesName = "absiella_dolichum_dsm_3991_gca_000154285";
-//        Path testPath = FuncotatorDataSourceBundler.getPath(baseURL, orgName, speciesName);
-//        Path outputDestination = getOutputLocation(testPath);
-//    }
+    //==================================================================================================================
+    // Static Variables:
+    private static final String speciesName     = "speciesName";
+    private static final String speciesName2    = "speciesName2";
+    private static final String speciesName3    = "speciesName3";
 
-    @Test
-    private Path getOutputLocation(final Path dataSourcesPath) {
-        final File tmpDir = createTempDir("FuncotatorDataSourceDownloaderIntegrationTest_testDownloadDummySmallDataSources");
-        final Path tmpDirPath = tmpDir.toPath();
-        final Path outputDataSourcesPath = tmpDirPath.resolve(IOUtils.getPath(FuncotatorTestConstants.DUMMY_DATA_SOURCES_TAR_GZ).getFileName());
-        final String outputFile = outputDataSourcesPath.toFile().getAbsolutePath();
-        if ( outputFile == null ) {
-            return IOUtils.getPath(dataSourcesPath.getFileName().toString());
-        }
-        else {
-            return outputDataSourcesPath;
-        }
+    //==================================================================================================================
+    // Data Providers:
+
+    @DataProvider
+    Object[][] provideForTestMakeFolder1() {
+        return new Object[][] {
+                {
+                    IOUtils.getPath(speciesName)
+                },
+                {
+                    IOUtils.getPath("")
+                }
+        };
     }
+
+    @DataProvider
+    Object[][] provideForTestMakeFolder2() {
+        return new Object[][] {
+                {
+                    IOUtils.getPath(speciesName2).toAbsolutePath().toString(),
+                        IOUtils.getPath(speciesName2)
+                }
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForTestMakeFolder3() {
+        return new Object[][] {
+                {
+                    IOUtils.getPath(speciesName3).toAbsolutePath().toString(),
+                        IOUtils.getPath(speciesName3)
+                }
+        };
+    }
+    @Test(dataProvider = "provideForTestMakeFolder1")
+    public void testMakeFolder1(Path folderName) {
+        FuncotatorDataSourceBundler.makeFolders(folderName);
+    }
+
+    @Test(dataProvider = "provideForTestMakeFolder2", expectedExceptions = UserException.BadInput.class)
+    public void testMakeFolder2(String pathName, Path speciesName) {
+        // Assuming we haven't run testMakeFolder1 yet, this test should cause an exception to be thrown:
+        FuncotatorDataSourceBundler.makeFolder2(pathName, speciesName);
+    }
+
+    @Test(dataProvider = "provideForTestMakeFolder3", expectedExceptions = UserException.BadInput.class)
+    public void testMakeFolder3(String pathName, Path speciesName) {
+        // Assuming we haven't run testMakeFolder1 or testMakeFolder2 yet, this test should cause an exception to be thrown:
+        FuncotatorDataSourceBundler.makeFolder3(pathName, speciesName);
+    }
+
 }

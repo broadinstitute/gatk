@@ -7,7 +7,6 @@ import htsjdk.tribble.*;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.tabix.TabixIndex;
-import org.apache.hadoop.yarn.webapp.hamlet2.Hamlet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -16,7 +15,6 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.utils.codecs.gtf.EnsemblGtfCodec;
 import picard.cmdline.programgroups.OtherProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
@@ -87,7 +85,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
         return indexPath.toString();
     }
 
-    public Path determineFileName(final Index index) {
+    private Path determineFileName(final Index index) {
         if (outputPath != null) {
             return outputPath.toPath();
         } else if (index instanceof TabixIndex) {
@@ -97,7 +95,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
         }
     }
 
-    public Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec) {
+    private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec) {
         try {
             // For block-compression files, write a Tabix index
             if (IOUtil.hasBlockCompressedExtension(featurePath.toPath())) {

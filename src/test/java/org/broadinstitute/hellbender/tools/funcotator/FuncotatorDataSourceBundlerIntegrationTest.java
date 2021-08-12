@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -11,12 +11,11 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorDataSourceBundlerUtils;
-import org.broadinstitute.hellbender.tools.funcotator.FuncotatorDataSourceBundler;
+
 
 /**
  * Class to test the {@link FuncotatorDataSourceBundler} class.
@@ -27,9 +26,6 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
 
     //==================================================================================================================
     // Private Static Members:
-
-    // Off by default because each test case takes ~1 hour to run:
-    private static final boolean doFullScaleTests = false;
 
     //==================================================================================================================
     // Helper Methods:
@@ -111,6 +107,18 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
         };
     }
 
+    @DataProvider
+    private Object[][] provideForTestDownloadWrong() {
+        return new Object[][] {
+                {
+                    FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
+                        "absiella_dolichum_dsm_3991_gca_000154285",
+                        false,
+                        true
+                }
+        };
+    }
+
     //==================================================================================================================
     // Tests:
 
@@ -130,5 +138,15 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     }
 
     // To do: need to make some integration tests for running with incorrect input arguments
+
+    @Test( dataProvider = "provideForTestDownloadWrong", expectedExceptions = UserException.BadInput.class)
+    void testDownloadWrongDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite, final boolean doExtract) {
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+        arguments.add(dsOrgArg, true);
+        arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
+        arguments.add(FuncotatorDataSourceBundler.EXTRACT_AFTER_DOWNLOAD, doExtract);
+
+        runCommandLine(arguments);
+    }
 
 }

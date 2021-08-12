@@ -25,7 +25,7 @@ public class FuncotatorDataSourceDownloaderIntegrationTest extends CommandLinePr
     // Private Static Members:
 
     // Off by default because each test case takes ~1 hour to run:
-    private static final boolean doFullScaleTests = true;
+    private static final boolean doFullScaleTests = false;
 
     //==================================================================================================================
     // Helper Methods:
@@ -108,45 +108,46 @@ public class FuncotatorDataSourceDownloaderIntegrationTest extends CommandLinePr
                         true,
                         true,
                         true
+                },
+                {
+                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
+                        true,
+                        false,
+                        false
+                },
+                {
+                        FuncotatorDataSourceDownloader.GERMLINE_ARG_LONG_NAME,
+                        true,
+                        true,
+                        false
+                },
+                {
+                        FuncotatorDataSourceDownloader.GERMLINE_ARG_LONG_NAME,
+                        true,
+                        false,
+                        false
+                },
+                {
+                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
+                        true,
+                        false,
+                        true
+                },
+                {
+                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
+                        true,
+                        false,
+                        true
                 }
-//                {
-//                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
-//                        true,
-//                        false,
-//                        false
-//                },
-//                {
-//                        FuncotatorDataSourceDownloader.GERMLINE_ARG_LONG_NAME,
-//                        true,
-//                        true,
-//                        false
-//                },
-//                {
-//                        FuncotatorDataSourceDownloader.GERMLINE_ARG_LONG_NAME,
-//                        true,
-//                        false,
-//                        false
-//                },
-//                {
-//                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
-//                        true,
-//                        false,
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
-//                        true,
-//                        false,
-//                        true
-//                }
         };
     }
 
     //==================================================================================================================
     // Tests:
 
-    @Test(
-            dataProvider = "provideForTestDownload"
+    @Test(enabled = doFullScaleTests,
+            dataProvider = "provideForTestDownload",
+            groups = {"funcotatorValidation", "bucket"}
     )
     void testDownloadRealDataSources(final String dsTypeArg, final boolean doOverwrite, final boolean doValidate, final boolean doExtract) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();

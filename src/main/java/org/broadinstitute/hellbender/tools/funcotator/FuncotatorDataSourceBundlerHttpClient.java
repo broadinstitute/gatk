@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 
-import htsjdk.tribble.FeatureCodec;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -11,11 +10,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
-import org.broadinstitute.hellbender.utils.codecs.gtf.EnsemblGtfCodec;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.codecs.ProgressReportingDelegatingCodec;
-import htsjdk.tribble.Feature;
-import htsjdk.tribble.index.IndexFactory;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
 
@@ -24,9 +19,7 @@ import java.nio.file.Path;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.time.LocalDate;
 import java.time.Month;
@@ -40,16 +33,17 @@ import java.time.Month;
  */
 public class FuncotatorDataSourceBundlerHttpClient {
 
+    //==================================================================================================================
     // Standard logger:
     private final static Logger logger = LogManager.getLogger(FuncotatorDataSourceBundlerHttpClient.class);
 
     //==================================================================================================================
     // Public Static Members:
-    public static final String ENSEMBL_TEMPLATE_CONFIG = "src/test/resources/large/funcotator/funcotator_dataSources/ensembl.template.config";
-    public static final String ENSEMBL_CONFIG_NAME = "ensembl.config";
-    public static final String MANIFEST_FILE_NAME = "MANIFEST.txt";
-    public static final String TEMPLATE_CONFIG_FILE_NAME = "template.config";
-    public static final String README_FILE_NAME = "README.txt";
+    public static final String ENSEMBL_TEMPLATE_CONFIG      = "src/test/resources/large/funcotator/funcotator_dataSources/ensembl.template.config";
+    public static final String ENSEMBL_CONFIG_NAME          = "ensembl.config";
+    public static final String MANIFEST_FILE_NAME           = "MANIFEST.txt";
+    public static final String TEMPLATE_CONFIG_FILE_NAME    = "template.config";
+    public static final String README_FILE_NAME             = "README.txt";
 
     //==================================================================================================================
     // Private Static Members:
@@ -100,30 +94,30 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @param baseURL The {@link String} representing the base url for the chosen organism.
      */
     protected FuncotatorDataSourceBundlerHttpClient(final String dsOrganism, final String speciesName, final String baseURL, final String baseFastaURL) {
-        this.dsOrganism = dsOrganism;
-        this.speciesName = speciesName;
-        this.baseURL = baseURL;
-        this.baseFastaURL = baseFastaURL;
-        this.fileName = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(this.dsOrganism, this.speciesName, false);
-        this.fastaFileName = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(this.dsOrganism, this.speciesName, true);
-        this.dsURL = setURL(this.baseURL, this.speciesName, this.fileName);
-        this.dsPath = setPath(this.speciesName, this.fileName);
-        this.dsUnzipPath = setUnzipPath(this.speciesName, this.fileName);
-        this.dsFastaURL = setFastaUrl(this.baseFastaURL, this.speciesName, this.fastaFileName);
-        this.dsFastaPath = setFastaPath(this.speciesName, this.fastaFileName);
-        this.dsFastaUnzipPath = setFastaUnzipPath(this.speciesName, this.fastaFileName);
-        this.indexFilePath = setIndexFilePath(this.speciesName, this.fileName);
-        this.outputDestination = this.dsPath.toAbsolutePath();
-        this.outputUnzippedDest = this.dsUnzipPath.toAbsolutePath();
-        this.outputFastaDest = this.dsFastaPath.toAbsolutePath();
-        this.outputFastaUnzipDest = this.dsFastaUnzipPath.toAbsolutePath();
-        this.outputIndexDest = this.indexFilePath.toAbsolutePath();
-        this.configFilePath = setConfigFilePath(this.speciesName);
-        this.metadataFilePath = setMetadataFilePath(this.speciesName);
-        this.dsGtfReadMeURL = setReadMeURL(this.baseURL, this.speciesName);
-        this.dsFastaReadMeURL = setReadMeURL(this.baseFastaURL, this.speciesName);
-        this.dsGtfReadMePath = setGtfReadMePath(this.speciesName, this.fileName);
-        this.dsFastaReadMePath = setFastaReadMePath(this.speciesName, this.fileName);
+        this.dsOrganism             = dsOrganism;
+        this.speciesName            = speciesName;
+        this.baseURL                = baseURL;
+        this.baseFastaURL           = baseFastaURL;
+        this.fileName               = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(this.dsOrganism, this.speciesName, false);
+        this.fastaFileName          = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(this.dsOrganism, this.speciesName, true);
+        this.dsURL                  = setURL(this.baseURL, this.speciesName, this.fileName);
+        this.dsPath                 = setPath(this.speciesName, this.fileName);
+        this.dsUnzipPath            = setUnzipPath(this.speciesName, this.fileName);
+        this.dsFastaURL             = setFastaUrl(this.baseFastaURL, this.speciesName, this.fastaFileName);
+        this.dsFastaPath            = setFastaPath(this.speciesName, this.fastaFileName);
+        this.dsFastaUnzipPath       = setFastaUnzipPath(this.speciesName, this.fastaFileName);
+        this.indexFilePath          = setIndexFilePath(this.speciesName, this.fileName);
+        this.outputDestination      = this.dsPath.toAbsolutePath();
+        this.outputUnzippedDest     = this.dsUnzipPath.toAbsolutePath();
+        this.outputFastaDest        = this.dsFastaPath.toAbsolutePath();
+        this.outputFastaUnzipDest   = this.dsFastaUnzipPath.toAbsolutePath();
+        this.outputIndexDest        = this.indexFilePath.toAbsolutePath();
+        this.configFilePath         = setConfigFilePath(this.speciesName);
+        this.metadataFilePath       = setMetadataFilePath(this.speciesName);
+        this.dsGtfReadMeURL         = setReadMeURL(this.baseURL, this.speciesName);
+        this.dsFastaReadMeURL       = setReadMeURL(this.baseFastaURL, this.speciesName);
+        this.dsGtfReadMePath        = setGtfReadMePath(this.speciesName, this.fileName);
+        this.dsFastaReadMePath      = setFastaReadMePath(this.speciesName, this.fileName);
     }
 
     //==================================================================================================================
