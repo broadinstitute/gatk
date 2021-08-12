@@ -20,32 +20,30 @@ workflow GvsSitesOnlyVCF {
         File sample_list
     }
 
-    Array[String] subpopulations = [ "afr", "amr", "eas", "fin", "nfr", "asj", "oth", "sas"]
+    Array[String] subpopulations = [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"] # gvs
 
+    ## Scatter across the shards from the GVS jointVCF
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
-        call ExtractSubpopulationFiles {
-          input:
-            sample_list = sample_list,
-            subpopulation = subpopulations[0]
+        scatter(j in range(length(subpopulations)) ) {
+        ## Calculate AC/AN/AF for subpopulations
+          call GetSubpopulationCalculations {
+            input:
+              input_vcf = gvs_extract_cohort_filtered_vcfs[i],
+              input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+              sample_list = sample_list,
+              subpopulation = subpopulations[j]
+          }
+
+          call ExtractAcAnAfFromSubpopulationVCFs {
+            input:
+              subpopulation = subpopulations[j],
+              input_vcf = GetSubpopulationCalculations.subpopulation_output_vcf,
+              input_vcf_index = GetSubpopulationCalculations.subpopulation_output_vcf_idx,
+              custom_annotations_template = AnAcAf_annotations_template
+          }
         }
 
-        call GetSubpopulationCalculations {
-          input:
-            input_vcf = gvs_extract_cohort_filtered_vcfs[i],
-            input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
-            subpopulation = subpopulations[0],
-            subpopulation_sample_list = ExtractSubpopulationFiles.subpopulation_sample_list,
-            service_account_json_path = service_account_json_path
-        }
-
-        call ExtractAcAnAfFromSubpopulationVCFs {
-          input:
-            subpopulation = subpopulations[0],
-            input_vcf = GetSubpopulationCalculations.subpopulation_output_vcf,
-            input_vcf_index = GetSubpopulationCalculations.subpopulation_output_vcf_idx,
-            custom_annotations_template = AnAcAf_annotations_template
-        }
-
+      ## Create a sites-only VCF from the original GVS jointVCF
         call SitesOnlyVcf {
           input:
             input_vcf = gvs_extract_cohort_filtered_vcfs[i],
@@ -61,13 +59,15 @@ workflow GvsSitesOnlyVCF {
             custom_annotations_template = AnAcAf_annotations_template
         }
 
+      ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
         call AnnotateVCF {
           input:
             input_vcf = SitesOnlyVcf.output_vcf,
             input_vcf_index = SitesOnlyVcf.output_vcf_idx,
             output_annotated_file_name = "${output_annotated_file_name}_${i}",
             nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file
+            custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
+            subpopulation_calculations_files = ExtractAcAnAfFromSubpopulationVCFs.annotations_file
         }
 
         call PrepAnnotationJson {
@@ -75,7 +75,7 @@ workflow GvsSitesOnlyVCF {
             annotation_json = AnnotateVCF.annotation_json,
             output_file_suffix = "${i}.json.gz",
             output_path = output_path,
-            service_account_json_path = service_account_json_path,
+            service_account_json_path = service_account_json_path
         }
     }
 
@@ -90,7 +90,7 @@ workflow GvsSitesOnlyVCF {
          table_suffix = table_suffix,
          service_account_json_path = service_account_json_path,
          prep_jsons_done = PrepAnnotationJson.done
-    }
+  }
 
     call BigQuerySmokeTest {
        input:
@@ -100,54 +100,21 @@ workflow GvsSitesOnlyVCF {
          table_suffix = table_suffix,
          service_account_json_path = service_account_json_path,
          load_jsons_done = BigQueryLoadJson.done
-    }
+   }
 }
 
 ################################################################################
-task ExtractSubpopulationFiles {
-    input {
-        File sample_list
-        String subpopulation
-    }
-    command <<<
-        set -e
-
-        # get all the sub-sample lists for each subpopulation
-
-        grep ~{subpopulation} ~{sample_list} | cut -d " " -f1 > ~{subpopulation}.args
-
-
-     >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "broadinstitute/gatk:4.2.0.0"
-        memory: "3 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        File subpopulation_sample_list = "~{subpopulation}.args"
-    }
-}
 
 task GetSubpopulationCalculations {
     input {
         File input_vcf
         File input_vcf_index
+        File sample_list
         String subpopulation
-        File subpopulation_sample_list
-        String? service_account_json_path
     }
     String output_filename = subpopulation + ".vcf"
     String output_vcf_idx = output_filename + ".idx"
-
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String input_vcf_basename = basename(input_vcf)
-    String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
+    String subpopulation_sample_list = "~{subpopulation}.args"
 
     parameter_meta {
         input_vcf: {
@@ -160,14 +127,11 @@ task GetSubpopulationCalculations {
     command <<<
         set -e
 
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
+        # get all the sub-sample lists for each subpopulation
+        grep ~{subpopulation} ~{sample_list} | cut -d " " -f1 > ~{subpopulation_sample_list}
 
-            gsutil cp ~{input_vcf} .
-            gsutil cp ~{input_vcf_index} .
-        fi
+        ## TODO we need a check that if there's NOTHING in this subpop we dont bother with the rest of this!
+
 
         # Hacky method to get the subpopulation AC/AN/AF
         # The input here will be a list of samples for a given subpopulation
@@ -180,11 +144,10 @@ task GetSubpopulationCalculations {
 
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
-                -V ~{updated_input_vcf} \
+                -V ~{input_vcf} \
                 -sn ~{subpopulation_sample_list} \
                 --add-output-vcf-command-line false \
                 --exclude-filtered \
-                --sites-only-vcf-output \
                 -O ~{output_filename}
 
      >>>
@@ -200,6 +163,7 @@ task GetSubpopulationCalculations {
     # ------------------------------------------------
     # Outputs:
     output {
+        File subpopulation_subset_samples="~{subpopulation_sample_list}"
         File subpopulation_output_vcf="~{output_filename}"
         File subpopulation_output_vcf_idx="~{output_vcf_idx}"
     }
@@ -219,7 +183,7 @@ task ExtractAcAnAfFromSubpopulationVCFs {
     command <<<
         set -e
 
-        sed -i 's/gvsAnnotations/gvsSubpopulation~{subpopulation}Annotations/g' ~{custom_annotations_template} > ~{custom_annotations_file_name}
+        sed 's/gvsAnnotations/~{subpopulation}SubpopulationAnnotations/g' ~{custom_annotations_template} > ~{custom_annotations_file_name}
 
         bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' | grep -v "*" >> ~{custom_annotations_file_name}
     >>>
@@ -347,6 +311,7 @@ task AnnotateVCF {
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
+        Array[File] subpopulation_calculations_files
     }
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String annotation_json_name_jsi = annotation_json_name + ".jsi"
@@ -355,6 +320,7 @@ task AnnotateVCF {
     String path = "/Cache/GRCh38/Both"
     String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
+
     command <<<
         set -e
 
@@ -374,12 +340,22 @@ task AnnotateVCF {
         mkdir customannotations_dir
         CUSTOM_ANNOTATIONS_FOLDER="$PWD/customannotations_dir"
 
+        # Start with the subpopulations
+        # Create an array in path of the paths and loop through them
+        subpopulation_array=(~{sep=" " subpopulation_calculations_files})
+        for val in ${subpopulation_array[@]}; do
+          echo $val
+          dotnet ~{custom_creation_location} customvar\
+             -r $DATA_SOURCES_FOLDER~{path_reference} \
+             -i $val \
+             -o $CUSTOM_ANNOTATIONS_FOLDER
+        done
 
+        # Then do the full set of samples
         dotnet ~{custom_creation_location} customvar\
              -r $DATA_SOURCES_FOLDER~{path_reference} \
              -i ~{custom_annotations_file} \
              -o $CUSTOM_ANNOTATIONS_FOLDER
-
 
         # =======================================
         # Create Nirvana annotations:
@@ -424,6 +400,7 @@ task PrepAnnotationJson {
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
+    String output_annotations_gcp_path = output_path + 'annotations/'
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -441,6 +418,7 @@ task PrepAnnotationJson {
             gcloud auth activate-service-account --key-file=local.service_account.json
         fi
 
+        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
