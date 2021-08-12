@@ -190,7 +190,7 @@ task ExtractAcAnAfFromSubpopulationVCFs {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210808"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210812"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -290,7 +290,7 @@ task ExtractAnAcAfFromVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210808"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210812"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -426,7 +426,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210808"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210812"
         memory: "3 GB"
         preemptible: 5
         cpu: "1"
@@ -542,6 +542,31 @@ task BigQueryLoadJson {
               v.gvs_all_ac,
               v.gvs_all_an,
               v.gvs_all_af,
+              v.gvs_max_af,
+              v.gvs_max_ac,
+              v.gvs_max_an,
+              v.gvs_max_subpop,
+              v.gvs_afr_ac,
+              v.gvs_afr_an,
+              v.gvs_afr_af,
+              v.gvs_amr_ac,
+              v.gvs_amr_an,
+              v.gvs_amr_af,
+              v.gvs_eas_ac,
+              v.gvs_eas_an,
+              v.gvs_eas_af,
+              v.gvs_eur_ac,
+              v.gvs_eur_an,
+              v.gvs_eur_af,
+              v.gvs_mid_ac,
+              v.gvs_mid_an,
+              v.gvs_mid_af,
+              v.gvs_oth_ac,
+              v.gvs_oth_an,
+              v.gvs_oth_af,
+              v.gvs_sas_ac,
+              v.gvs_sas_an,
+              v.gvs_sas_af,
               v.gene_symbol,
               v.transcript_source,
               v.aa_change,
