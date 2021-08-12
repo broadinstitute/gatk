@@ -336,6 +336,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
     @Test
     //we had some external GVCFs that each went through CombineGVCFs for some reason, so GTs all went to ./.
+    //chr4 is regression for overlapping ref blocks induced by a hom ref with a real alt
     //also test variants and ref blocks with no DP
     public void testNoCallGenotypes() {
         final File output = createTempFile("reblockedgvcf", ".vcf");
@@ -360,17 +361,23 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 "chrY:6067982-6067982 T*, [<NON_REF>, G]");
 
         final List<String> expectedHetKeys = Arrays.asList(
+                "chr4:24339212-24339218 GTATATA*, [<NON_REF>, G]",
                 "chr22:10515120-10515120 A*, [<NON_REF>, AAAGC]",
                 "chr22:10515223-10515223 G*, [<NON_REF>, C]");
 
         final List<String> expectedHomRefKeys = Arrays.asList(
+                "chr4:24339199-24339209 T*, [<NON_REF>]",
+                "chr4:24339210-24339211 G*, [<NON_REF>]",
+                "chr4:24339219-24339219 T*, [<NON_REF>]",
+                "chr4:24339221-24339221 T*, [<NON_REF>]",
+                "chr4:24339222-24339226 A*, [<NON_REF>]",
                 "chr22:10515118-10515118 G*, [<NON_REF>]",
                 "chrY:6067983-6068157 A*, [<NON_REF>]");
 
         Assert.assertTrue(variantKeys.containsAll(expectedHomVarKeys));
         Assert.assertTrue(variantKeys.containsAll(expectedHetKeys));
         Assert.assertTrue(variantKeys.containsAll(expectedHomRefKeys));
-        Assert.assertTrue(variants.size() == 24);
+        Assert.assertTrue(variants.size() == 31);
     }
 
     @Test

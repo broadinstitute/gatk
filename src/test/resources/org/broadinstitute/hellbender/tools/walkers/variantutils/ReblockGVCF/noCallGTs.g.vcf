@@ -104,10 +104,25 @@
 ##INFO=<ID=RAW_MQ,Number=1,Type=Float,Description="Raw data for RMS Mapping Quality">
 ##INFO=<ID=RAW_MQandDP,Number=2,Type=Integer,Description="Raw data (sum of squared MQ and total depth) for improved RMS Mapping Quality calculation. Incompatible with deprecated RAW_MQ formulation.">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##contig=<ID=chr4,length=190214555>
 ##contig=<ID=chr22,length=50818468>
 ##contig=<ID=chrY,length=57227415>
 ##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+chr4	24339199	.	T	<NON_REF>	.	.	END=24339203	GT:DP:GQ:MIN_DP:PL	./.:18:9:18:0,9,135
+chr4	24339204	.	G	<NON_REF>	.	.	.	GT:DP:GQ:MIN_DP:PL	./.:18:5:18:0,5,457
+chr4	24339205	.	T	<NON_REF>	.	.	END=24339206	GT:DP:GQ:MIN_DP:PL	./.:18:9:18:0,9,135
+chr4	24339207	.	T	<NON_REF>	.	.	END=24339208	GT:DP:GQ:MIN_DP:PL	./.:18:12:18:0,12,180
+chr4	24339209	.	T	<NON_REF>	.	.	.	GT:DP:GQ:MIN_DP:PL	./.:19:15:19:0,15,225
+chr4	24339210	.	GTGTATATATATATATA	G,GTA,<NON_REF>	.	.	DP=12;ExcessHet=3.01;RAW_MQ=43200.00	GT:AD:DP:GQ:PL:SB	./.:10,0,0,0:10:30:0,30,438,30,438,438,30,438,438,438:1,9,0,0
+chr4	24339211	.	T	*,<NON_REF>	.	.	DP=12	GT:AD:DP:GQ:PL:SB	./.:10,0,0:10:30:0,30,438,30,438,438:1,9,0,0
+chr4	24339212	.	GTATATATATA	G,GTA,GTATA,<NON_REF>	.	.	BaseQRankSum=0.742;ClippingRankSum=0.742;DP=11;ExcessHet=3.01;MQRankSum=-7.420e-01;RAW_MQ=39600.00;ReadPosRankSum=0.742	GT:AD:DP:GQ:PL:SB	./.:6,0,0,1,0:7:32:63,83,456,32,334,319,0,303,291,288,32,334,319,291,319:1,5,0,1
+chr4	24339213	.	T	*,<NON_REF>	.	.	DP=11	GT:AD:DP:GQ:PL:SB	./.:6,1,0:7:32:63,0,288,32,291,319:1,5,0,1
+chr4	24339214	.	A	G,<NON_REF>	.	.	DP=11;ExcessHet=3.01;RAW_MQ=39600.00	GT:AD:DP:GQ:PL:SB	./.:8,0,0:8:25:0,25,350,25,350,350:1,7,0,0
+chr4	24339215	.	T	<NON_REF>	.	.	END=24339219	GT:DP:GQ:MIN_DP:PL	./.:19:0:19:0,0,44
+chr4	24339220	.	A	G,<NON_REF>	.	.	BaseQRankSum=0.742;ClippingRankSum=-7.420e-01;DP=11;ExcessHet=3.01;MQRankSum=0.742;RAW_MQ=39600.00;ReadPosRankSum=0.742	GT:AD:DP:GQ:PL:SB	./.:6,1,0:7:11:11,0,249,29,252,281:1,5,0,1
+chr4	24339221	.	T	<NON_REF>	.	.	.	GT:DP:GQ:MIN_DP:PL	./.:17:0:17:0,0,102
+chr4	24339222	.	A	G,<NON_REF>	.	.	DP=11;ExcessHet=3.01;RAW_MQ=39600.00	GT:AD:DP:GQ:PL:SB	./.:8,0,0:8:27:0,27,379,27,379,379:1,7,0,0
 chr22	10514494	.	A	<NON_REF>	.	.	END=10514847	GT:DP:GQ:MIN_DP:PL	./.:0:0:0:0,0,0
 chr22	10514848	.	C	<NON_REF>	.	.	END=10514850	GT:DP:GQ:MIN_DP:PL	./.:1:3:1:0,3,35
 chr22	10514851	.	G	<NON_REF>	.	.	.	GT:DP:GQ:MIN_DP:PL	./.:1:3:1:0,3,25
