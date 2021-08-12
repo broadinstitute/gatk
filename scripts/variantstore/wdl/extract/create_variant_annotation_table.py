@@ -102,7 +102,6 @@ gnomad_ordering = [
  "sas"
 ]
 
-
 gvs_subpopulations = [
   "afr",
   "amr",
@@ -136,6 +135,10 @@ def check_filtering(variant):
       return True
 
 def get_gnomad_subpop(gnomad_obj):
+    row = {}
+    max_ac = None
+    max_an = None
+    max_af = None
     max_subpop = ""
     for gnomad_subpop in gnomad_ordering: # since we cycle through this in order, if there is a tie, we just ignore it because we wouldn't chose it anyway based on order
       subpop_af_key = "".join([gnomad_subpop, "Af"])
@@ -148,9 +151,7 @@ def get_gnomad_subpop(gnomad_obj):
       row["_".join(["gnomad", gnomad_subpop, "an"])] = subpop_an_val
       row["_".join(["gnomad", gnomad_subpop, "ac"])] = subpop_ac_val
       row["_".join(["gnomad", gnomad_subpop, "af"])] = subpop_af_val
-      if subpop_af_val != None and max_af == None: # this will set the first max_af value
-        max_af = subpop_af_val
-      if subpop_af_val != None and subpop_af_val > max_af:
+      if subpop_af_val != None and (subpop_af_val > max_af or max_af == None): # this will also set the first max_af value
         max_subpop = gnomad_subpop
         max_ac = subpop_ac_val
         max_an = subpop_an_val
@@ -163,14 +164,15 @@ def get_gnomad_subpop(gnomad_obj):
     return row
 
 
-def get_subpopulation_calculations(variant):
+def get_subpopulation_calculations(variant_obj):
     row = {}
-    max_af = None
     max_ac = None
     max_an = None
+    max_af = None
+    max_subpop = ""
     for gvs_subpop in gvs_subpopulations: # TODO check with Lee on order
-      subpop_annotations = variant.get("".join([gvs_subpop, "SubpopulationAnnotations"]))
-      if variant.get(subpop_annotations) != None:
+      subpop_annotations = variant_obj.get("".join([gvs_subpop, "SubpopulationAnnotations"]))
+      if subpop_annotations != None:
         subpop_ac_val = subpop_annotations.get("AC") # note that these can be null if there is no value in the annotations. They will be null in the VAT
         subpop_an_val = subpop_annotations.get("AN")
         subpop_af_val = subpop_annotations.get("AF")
@@ -178,9 +180,7 @@ def get_subpopulation_calculations(variant):
         row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
         row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
         row["_".join(["gvs", gvs_subpop, "af"])] = subpop_af_val
-        if subpop_af_val != None and max_af == None: # this will set the first max_af value
-          max_af = subpop_af_val
-        if subpop_af_val != None and subpop_af_val > max_af:
+        if subpop_af_val != None and(subpop_af_val > max_af or max_af == None): # this will also set the first max_af value
           max_subpop = gvs_subpop
           max_ac = subpop_ac_val
           max_an = subpop_an_val
@@ -266,7 +266,7 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
         gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
         row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
     subpopulation_info = get_subpopulation_calculations(variant_line)
-    row.update(subpopulation_infof)
+    row.update(subpopulation_info)
 
     return row
 
