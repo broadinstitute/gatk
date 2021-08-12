@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.nio.file.Path;
 
 /**
@@ -42,7 +41,7 @@ public class FuncotatorDataSourceBundlerUnitTest extends CommandLineProgramTest{
         return new Object[][] {
                 {
                     IOUtils.getPath(speciesName2).toAbsolutePath().toString(),
-                        IOUtils.getPath(speciesName2)
+                        speciesName2
                 }
         };
     }
@@ -52,23 +51,23 @@ public class FuncotatorDataSourceBundlerUnitTest extends CommandLineProgramTest{
         return new Object[][] {
                 {
                     IOUtils.getPath(speciesName3).toAbsolutePath().toString(),
-                        IOUtils.getPath(speciesName3)
+                        speciesName3
                 }
         };
     }
     @Test(dataProvider = "provideForTestMakeFolder1")
-    public void testMakeFolder1(Path folderName) {
+    public void testMakeFolder1(String folderName) {
         FuncotatorDataSourceBundler.makeFolders(folderName);
     }
 
     @Test(dataProvider = "provideForTestMakeFolder2", expectedExceptions = UserException.BadInput.class)
-    public void testMakeFolder2(String pathName, Path speciesName) {
+    public void testMakeFolder2(String pathName, String speciesName) {
         // Assuming we haven't run testMakeFolder1 yet, this test should cause an exception to be thrown:
         FuncotatorDataSourceBundler.makeFolder2(pathName, speciesName);
     }
 
     @Test(dataProvider = "provideForTestMakeFolder3", expectedExceptions = UserException.BadInput.class)
-    public void testMakeFolder3(String pathName, Path speciesName) {
+    public void testMakeFolder3(String pathName, String speciesName) {
         // Assuming we haven't run testMakeFolder1 or testMakeFolder2 yet, this test should cause an exception to be thrown:
         FuncotatorDataSourceBundler.makeFolder3(pathName, speciesName);
     }

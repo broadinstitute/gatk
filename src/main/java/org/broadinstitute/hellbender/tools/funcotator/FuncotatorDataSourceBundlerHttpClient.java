@@ -114,8 +114,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
         this.outputIndexDest        = this.indexFilePath.toAbsolutePath();
         this.configFilePath         = setConfigFilePath(this.speciesName);
         this.metadataFilePath       = setMetadataFilePath(this.speciesName);
-        this.dsGtfReadMeURL         = setReadMeURL(this.baseURL, this.speciesName);
-        this.dsFastaReadMeURL       = setReadMeURL(this.baseFastaURL, this.speciesName);
+        this.dsGtfReadMeURL         = setGtfReadMeURL(this.baseURL, this.speciesName);
+        this.dsFastaReadMeURL       = setFastaReadMeURL(this.baseFastaURL, this.speciesName);
         this.dsGtfReadMePath        = setGtfReadMePath(this.speciesName, this.fileName);
         this.dsFastaReadMePath      = setFastaReadMePath(this.speciesName, this.fileName);
     }
@@ -229,7 +229,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
                             "\n" +
                             "# Required field for GENCODE files.\n" +
                             "# Path to the FASTA file from which to load the sequences for GENCODE transcripts:\n" +
-                            "gencode_fasta_path = " + bundler.dsFastaURL + "\n" +
+                            "gencode_fasta_path = " + bundler.fastaFileName + ".fasta" + "\n" +
                             "\n" +
                             "# Required field for simpleXSV files.\n" +
                             "# Valid values:\n" +
@@ -382,32 +382,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
                             "+---------------------------------------------+ \n" +
                             "\n" +
                             "Using this Data Sources Folder will enable the following data sources:\n" +
-                            "\n" +
-                            " acmg_lof\n" +
                             "--------------------\n" +
-                            " Custom list of genes found with (or without) LoF mechanisms in earlier studies from the Laboratory for Molecular Medicine (LMM).  \n" +
-                            " This datasource provides information whether a given gene was found in that list and whether there were any LoF variants found by the LMM.\n" +
-                            "\n" +
-                            " acmg_rec\n" +
-                            "--------------------\n" +
-                            " The ACMG59 recommendation list for clinical intervention.  See https://www.ncbi.nlm.nih.gov/clinvar/docs/acmg/ for more information.\n" +
-                            "\n" +
-                            " clinvar\n" +
-                            "--------------------\n" +
-                            " ClinVar is a freely accessible, public archive of reports of the relationships among human variations and phenotypes, with supporting evidence.  \n" +
-                            " See https://www.ncbi.nlm.nih.gov/clinvar/intro/\n" +
-                            "\n" +
-                            " exac\n" +
-                            "--------------------\n" +
-                            " Variants from the Exome Aggregation Consortium.  See http://exac.broadinstitute.org/\n" +
-                            "\n" +
-                            " gencode\n" +
-                            "--------------------\n" +
-                            " The GENCODE project produces high quality reference gene annotation and experimental validation for human and mouse genomes.\n" +
-                            "\n" +
-                            " lmm_known\n" +
-                            "--------------------\n" +
-                            " Variants flagged as possibly having pathogenic effects found by the Laboratory for Molecular Medicine (LMM).\n" +
                             "\n" +
                             "  ensembl\n" +
                             "--------------------\n" +
@@ -560,13 +535,23 @@ public class FuncotatorDataSourceBundlerHttpClient {
     }
 
     /**
-     * Constructs the url for the gtf ReadMe for the data source file.
+     * Constructs the url for the gtf ReadMe file.
      * @param baseURL The {@link String} representing the base url where the data source will be found.
      * @param speciesName The {@link String} representing the chosen species to gather data sources for.
      * @return The url constructed using the base URL, the species name, and the ReadMe extension.
      */
-    public String setReadMeURL(String baseURL, String speciesName) {
+    public String setGtfReadMeURL(String baseURL, String speciesName) {
         return baseURL + speciesName + "/" + DataSourceUtils.README_EXTENSION;
+    }
+
+    /**
+     * Constructs the url for the fasta ReadMe file.
+     * @param baseURL The {@link String} representing the base url where the data source will be found.
+     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
+     * @return The url constructed using the base URL, the species name, the cdna extension, and the ReadMe extension.
+     */
+    public String setFastaReadMeURL(String baseURL, String speciesName) {
+        return baseURL + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + DataSourceUtils.README_EXTENSION;
     }
 
     /**
@@ -576,7 +561,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return A path to the data source.
      */
     public Path setPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION);
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() +  "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION);
     }
 
     /**
@@ -586,7 +571,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return A path to the data source.
      */
     public Path setGtfReadMePath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.GTF_README_EXTENSION);
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.GTF_README_EXTENSION);
     }
 
     /**
@@ -596,7 +581,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return A path to the unzipped gtf file.
      */
     public Path setUnzipPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
     }
 
     /**
@@ -617,7 +602,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return A path to the fasta data source.
      */
     public Path setFastaPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION);
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION);
     }
 
     /**
@@ -627,7 +612,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return A path to the fasta data source.
      */
     public Path setFastaReadMePath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.FASTA_README_EXTENSION);
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.FASTA_README_EXTENSION);
     }
 
     /**
@@ -637,7 +622,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return A path to the unzipped fasta file.
      */
     public Path setFastaUnzipPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_UNZIPPED_EXTENSION);
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_UNZIPPED_EXTENSION);
     }
 
     /**
@@ -647,7 +632,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return A path to the index file for this data source.
      */
     public Path setIndexFilePath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION + DataSourceUtils.IDX_EXTENSION);
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION + DataSourceUtils.IDX_EXTENSION);
     }
 
     /**
@@ -656,7 +641,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return The path where the config file will be found.
      */
     public Path setConfigFilePath(String speciesName) {
-        return IOUtils.getPath(speciesName + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + ENSEMBL_CONFIG_NAME);
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + ENSEMBL_CONFIG_NAME);
     }
 
     /**
@@ -665,7 +650,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return The path where the manifest file will be found.
      */
     public Path setMetadataFilePath(String speciesName) {
-        return IOUtils.getPath(speciesName + "/");
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/");
     }
 
 }

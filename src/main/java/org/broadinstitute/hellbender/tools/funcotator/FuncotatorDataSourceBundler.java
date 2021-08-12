@@ -15,6 +15,8 @@ import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.Month;
 
 
 /**
@@ -225,11 +227,10 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         logger.info(dsOrganism + ":" + dsSpecies + " data sources selected.");
 
         // Make folders to put data sources in:
-        makeFolders(IOUtils.getPath(speciesName));
+        makeFolders(speciesName);
 
         // Make the bundler object:
         final FuncotatorDataSourceBundlerHttpClient bundler = FuncotatorDataSourceBundlerHttpClient.create(dsOrganism, speciesName, baseURL, baseFastaURL);
-
 
         // Download the gtf file:
         FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getDSUrl(), bundler.getOutputDestination());
@@ -251,7 +252,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         // Index the fasta file and build the dict file:
         FuncotatorDataSourceBundlerHttpClient.buildFastaIndexFile(bundler.getFastaUnzipPath());
 
-        // Copy the config file into new directory:
+        // Build the config file for the new data source directory:
         FuncotatorDataSourceBundlerHttpClient.buildConfigFile(bundler);
 
         // Create a manifest file:
@@ -279,8 +280,9 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
      * First folder is the outermost folder and will be named "speciesName".
      * @param speciesName The name of the species to download data sources for.
      */
-    public static void makeFolders(Path speciesName) {
-        String path = speciesName.toAbsolutePath().toString();
+    public static void makeFolders(String speciesName) {
+        Path folderName = IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate());
+        String path = folderName.toAbsolutePath().toString();
         File newFolder = new File(path);
         boolean bool = newFolder.mkdir();
         if (!bool) {
@@ -295,7 +297,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
      * @param pathName The destination path for this folder.
      * @param speciesName The name of the species to download data sources for.
      */
-    public static void makeFolder2(String pathName, Path speciesName) {
+    public static void makeFolder2(String pathName, String speciesName) {
         String path = pathName + "/" + DataSourceUtils.ENSEMBL_EXTENSION;
         File newFolder = new File(path);
         boolean bool = newFolder.mkdir();
@@ -311,13 +313,21 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
      * @param pathName The destination path for this folder.
      * @param speciesName The name of the species to download data sources for.
      */
-    public static void makeFolder3(String pathName, Path speciesName) {
-        String path = pathName + "/" + speciesName.toString();
+    public static void makeFolder3(String pathName, String speciesName) {
+        String path = pathName + "/" + speciesName;
         File newFolder = new File(path);
         boolean bool = newFolder.mkdir();
         if (!bool) {
             throw new UserException("Unable to make file.");
         }
+    }
+
+    /**
+     * @return A copy of the {@link String} which is the date for this {@link FuncotatorDataSourceBundler}.
+     */
+    public static String getDate() {
+        final LocalDate date = LocalDate.of(2021, Month.AUGUST, 10);
+        return String.format("%d%02d%02d", date.getYear(), date.getMonthValue(), date.getDayOfMonth());
     }
 
 

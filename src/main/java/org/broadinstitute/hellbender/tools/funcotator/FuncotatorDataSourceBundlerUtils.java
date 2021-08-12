@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
+import java.io.File;
 import java.net.MalformedURLException;
 import java.util.*;
 import java.io.IOException;
@@ -224,18 +225,20 @@ public class FuncotatorDataSourceBundlerUtils {
     }
 
     /**
-     * Extracts the gtf.gz file given by {@code gtfGzFilePath}.
-     * Input {@link String} MUST be to a gzipped gtf file.
-     * Will extract contents in the containing folder of {@code gtfGzFilePath}.
+     * Extracts the .gz file given by {@code gzFilePath}.
+     * Input {@link String} MUST be to a gzipped gtf or fasta file.
+     * Will extract contents in the containing folder of {@code gzFilePath}.
      * Will throw an exception if files exist already.
-     * @param gtfGzFilePath {@link String} to a gzipped gtf file for extraction.
+     * @param gzFilePath {@link String} path to a gzipped gtf or fasta file for extraction.
+     * @param decompressedFilePath {@link String} path where the unzipped gtf or fasta file will go.
+     * @param doOverwrite {@link boolean} which determine if a pre-existing file should be overwritten or not.
      */
-    public static void extractGzFile(String gtfGzFilePath, String decompressedFilePath, boolean doOverwrite) {
+    public static void extractGzFile(String gzFilePath, String decompressedFilePath, boolean doOverwrite) {
         byte[] buffer = new byte[1024];
 
         IOUtils.ensurePathIsOkForOutput(IOUtils.getPath(decompressedFilePath), doOverwrite);
         try {
-            FileInputStream inputStream = new FileInputStream(gtfGzFilePath);
+            FileInputStream inputStream = new FileInputStream(gzFilePath);
             GZIPInputStream gZIPInputStream = new GZIPInputStream(inputStream);
             FileOutputStream fileOutputStream = new FileOutputStream(decompressedFilePath);
 
@@ -244,8 +247,13 @@ public class FuncotatorDataSourceBundlerUtils {
             while ((bytes_read = gZIPInputStream.read(buffer)) > 0) {
                 fileOutputStream.write(buffer, 0, bytes_read);
             }
+            inputStream.close();
+            gZIPInputStream.close();
+            fileOutputStream.close();
+            File file = new File(gzFilePath.toString());
+            file.delete();
         } catch (IOException ex) {
-            throw new UserException("Could not obtain data from " + gtfGzFilePath, ex);
+            throw new UserException("Could not obtain data from " + gzFilePath, ex);
         }
 
     }
