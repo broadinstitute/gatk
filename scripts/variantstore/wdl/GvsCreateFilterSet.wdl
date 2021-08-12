@@ -177,7 +177,7 @@ workflow GvsCreateFilterSet {
                 dbsnp_resource_vcf = dbsnp_resource_vcf,
                 dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
                 use_allele_specific_annotations = true,
-                disk_size = small_disk
+                disk_size = large_disk
         }
 
         scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
