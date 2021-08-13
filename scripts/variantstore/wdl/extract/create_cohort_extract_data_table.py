@@ -107,7 +107,7 @@ def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
   table = bigquery.Table(fq_sample_table, schema=schema)
   expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=TEMP_TABLE_TTL_HOURS)
   table.expires = expiration
-  table = client.update_table(table, ["expires"]) 
+  table = client.update_table(table, ["expires"])
 
   return fq_sample_table
 
@@ -152,8 +152,8 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
         subs[id] = get_subselect(fq_vet_table, samples, id)
         j = j + 1
 
-  sql = f"create or replace table `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n" + \
-        "with\n" + \
+  sql = f"CREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n" + \
+        "WITH\n" + \
         ("\n".join(subs.values())) + "\n" \
         "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
         f" (SELECT * FROM q_all)"
@@ -172,12 +172,12 @@ def create_position_table(fq_temp_table_dataset, min_variant_samples):
   # it is == 0 then we don't need to touch the sample_id column (which doubles the cost of this query)
   min_sample_clause = ""
   if min_variant_samples > 0:
-      min_sample_clause = f"HAVING count(distinct sample_id) >= {min_variant_samples}"
+      min_sample_clause = f"HAVING COUNT(distinct sample_id) >= {min_variant_samples}"
 
   sql = f"""
-          create or replace table `{dest}` {TEMP_TABLE_TTL}
-          as (
-            select location from `{fq_temp_table_dataset}.{VET_NEW_TABLE}` WHERE alt != '*' GROUP BY location {min_sample_clause}
+          CREATE OR REPLACE TABLE `{dest}` {TEMP_TABLE_TTL}
+         AS (
+            SELECT location FROM `{fq_temp_table_dataset}.{VET_NEW_TABLE}` WHERE alt != '*' GROUP BY location {min_sample_clause}
           )
         """
   existing_labels = client._default_query_job_config.labels
@@ -193,34 +193,37 @@ def create_position_table(fq_temp_table_dataset, min_variant_samples):
 def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids):
   def get_pet_subselect(fq_pet_table, samples, id):
     sample_stanza = ','.join([str(s) for s in samples])
-    sql = f"    q_{id} AS (SELECT p.location, p.sample_id, p.state from `{fq_pet_table}` p " \
-          f"    join `{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}` v on (p.location = v.location) WHERE p.sample_id IN ({sample_stanza})), "
+    sql = f"    q_{id} AS (SELECT p.location, p.sample_id, p.state FROM `{fq_pet_table}` p \n" \
+          f"        JOIN `{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}` v ON (p.location = v.location) \n WHERE p.sample_id IN ({sample_stanza})), "
     return sql
 
-  subs = {}
   for i in range(1, PET_VET_TABLE_COUNT+1):
-    partition_samples = get_samples_for_partition(sample_ids, i)
+    partition_samples = get_samples_for_partition(sample_ids, i)  #sample ids for the partition
 
-      # KCIBUL -- grr, should be fixed width
-    fq_pet_table = f"{fq_pet_vet_dataset}.{PET_TABLE_PREFIX}{i:03}"
     if len(partition_samples) > 0:
+      subs = {}
+      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{PET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i == 1 \
+      else f"\nINSERT INTO `{fq_temp_table_dataset}.{PET_NEW_TABLE}` \n WITH \n"
+      fq_pet_table = f"{fq_pet_vet_dataset}.{PET_TABLE_PREFIX}{i:03}"
       j = 1
+
       for samples in split_lists(partition_samples, 1000):
         id = f"{i}_{j}"
         subs[id] = get_pet_subselect(fq_pet_table, samples, id)
         j = j + 1
 
-  sql = f"create or replace table `{fq_temp_table_dataset}.{PET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n" + \
-        "with\n" + \
-        ("\n".join(subs.values())) + "\n" \
-        "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
-        f" (SELECT * FROM q_all)"
+      sql = create_or_insert + ("\n".join(subs.values())) + "\n" + \
+      "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
+      f" (SELECT * FROM q_all)"
 
-  print(sql)
-  print(f"PET Query is {utf8len(sql)/(1024*1024)} MB in length")
-  results = execute_with_retry("insert pet new table", sql)
-  return results
+      print(sql)
+      print(f"{fq_pet_table} query is {utf8len(sql)/(1024*1024)} MB in length")
+      if i == 1:
+        execute_with_retry("create and populate pet new table", sql)
+      else:
+        execute_with_retry("populate pet new table", sql)
 
+  return
 
 def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_data, fq_sample_mapping_table):
   # first, create the table structure
@@ -306,7 +309,7 @@ def make_extract_table(fq_pet_vet_dataset,
   try:
     fq_destination_table_data = f"{fq_destination_dataset}.{destination_table_prefix}__DATA"
     fq_destination_table_samples = f"{fq_destination_dataset}.{destination_table_prefix}__SAMPLES"
-    
+
     global client
     # this is where a set of labels are being created for the cohort extract
     query_labels_map = {}
@@ -323,7 +326,7 @@ def make_extract_table(fq_pet_vet_dataset,
 
           if not (bool(re.match(r"[a-z0-9_-]+$", key)) & bool(re.match(r"[a-z0-9_-]+$", value))):
             raise ValueError(f"label key or value did not pass validation--format should be 'key1=val1, key2=val2'")
-        
+
     #Default QueryJobConfig will be merged into job configs passed in
     #but if a specific default config is being updated (eg labels), new config must be added
     #to the client._default_query_job_config that already exists
@@ -345,10 +348,10 @@ def make_extract_table(fq_pet_vet_dataset,
 
     global PET_VET_TABLE_COUNT
     PET_VET_TABLE_COUNT = max_tables
-    
+
     global TEMP_TABLE_TTL_HOURS
     TEMP_TABLE_TTL_HOURS = temp_table_ttl_hours
-    
+
     global TEMP_TABLE_TTL
     TEMP_TABLE_TTL = f" OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL {TEMP_TABLE_TTL_HOURS} HOUR)) "
 
@@ -367,7 +370,7 @@ def make_extract_table(fq_pet_vet_dataset,
     # pull the sample ids back down
     sample_ids = get_all_sample_ids(fq_destination_table_samples)
     print(f"Discovered {len(sample_ids)} samples in {fq_destination_table_samples}...")
-           
+
     make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids)
 
     create_position_table(fq_temp_table_dataset, min_variant_samples)

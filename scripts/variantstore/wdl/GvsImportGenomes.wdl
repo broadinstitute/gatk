@@ -164,7 +164,7 @@ workflow GvsImportGenomes {
 
   call AddIsLoadedColumn {
     input:
-      load_sample_info_done = LoadSampleInfoTable.done,
+      load_vet_done = LoadVetTable.done,
       load_pet_done = LoadPetTable.done,
       dataset_name = dataset_name,
       service_account_json_path = service_account_json_path,
@@ -862,7 +862,7 @@ task AddIsLoadedColumn {
   }
 
   input {
-    Array[String] load_sample_info_done
+    Array[String] load_vet_done
     Array[String] load_pet_done
     String dataset_name
     String project_id
