@@ -68,7 +68,7 @@ import java.util.*;
  * <p>Only GVCF files produced by HaplotypeCaller (or CombineGVCFs) can be used as input for this tool. Some other
  * programs produce files that they call GVCFs but those lack some important information (accurate genotype likelihoods
  * for every position) that GenotypeGVCFs requires for its operation.</p>
- * <p>If the GVCF files contain allele specific annotations, add `-G Standard -G AS_Standard` to the command line.</p>
+ * <p>If the GVCF files contain allele specific annotations, add `-G StandardAnnotation -G AS_StandardAnnotation` to the command line.</p>
  *
  * <p>Users generating large callsets (1000+ samples) may prefer GenomicsDBImport, which uses Intel's GenomicsDB and is capable of scaling to much larger sample sizes than CombineGVCFs.
  * This tool provides a pure java reference implementation of the combine operation which is available on all architectures.<p/>
