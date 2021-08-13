@@ -431,7 +431,8 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         final List<File> intervalSubsetReadCountFiles = new ArrayList<>(inputReadCountPaths.size());
         streamOfSubsettedAndValidatedReadCounts(inputReadCountPaths, specifiedIntervals, logger)
                 .forEach(subsetReadCounts -> {
-                    final File intervalSubsetReadCountFile = IOUtils.createTempFile(subsetReadCounts.getMetadata().getSampleName(), ".tsv");
+                    final File intervalSubsetReadCountFile = IOUtils.createTempFile(
+                            subsetReadCounts.getMetadata().getSampleName() + ".rc", ".tsv"); // we add ".rc" to ensure prefix will be >= 3 characters, see https://github.com/broadinstitute/gatk/issues/7410
                     subsetReadCounts.write(intervalSubsetReadCountFile);
                     intervalSubsetReadCountFiles.add(intervalSubsetReadCountFile);
                 });
