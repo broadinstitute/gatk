@@ -56,6 +56,15 @@ workflows:
      filters:
        branches:
          - master
+   - name: GvsCreateFilterSet
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateFilterSet.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -63,8 +72,8 @@ workflows:
        - /scripts/variantstore/wdl/GvsExtractCallset.example.inputs.json
      filters:
        branches:
+         - master
          - ah_var_store
-         - ah_filter_fixes
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
