@@ -239,7 +239,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaURL(), bundler.getFastaOutputDestination());
 
 
-        // Extract data sources if requested:
+//        // Extract data sources if requested:
         if ( extractDataSourcesAfterDownload ) {
             FuncotatorDataSourceBundlerUtils.extractGzFile(bundler.getOutputDestination().toString(), bundler.getDSUnzipPath().toString(), overwriteOutputFile);
             FuncotatorDataSourceBundlerUtils.extractGzFile(bundler.getFastaOutputDestination().toString(), bundler.getFastaUnzipPath().toString(), overwriteOutputFile);
@@ -250,7 +250,11 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
 
         // Index the fasta file and build the dict file:
-        FuncotatorDataSourceBundlerHttpClient.buildFastaIndexFile(bundler.getFastaUnzipPath());
+        FuncotatorDataSourceBundlerHttpClient.buildFastaIndexFile(bundler.getFastaOutputDestination());
+//
+        // Delete gtf and fasta zip files:
+        FuncotatorDataSourceBundlerUtils.deleteZipFiles(bundler.getOutputDestination().toString());
+        FuncotatorDataSourceBundlerUtils.deleteZipFiles(bundler.getFastaOutputDestination().toString());
 
         // Build the config file for the new data source directory:
         FuncotatorDataSourceBundlerHttpClient.buildConfigFile(bundler);

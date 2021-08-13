@@ -198,6 +198,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
         FastaReferenceWriterBuilder fastaIndexer = new FastaReferenceWriterBuilder();
         fastaIndexer.setFastaFile(dsFastaUnzipPath);
         fastaIndexer.setMakeFaiOutput(true);
+        fastaIndexer.setMakeDictOutput(true);
         try {
             fastaIndexer.build();
         } catch (IOException e) {
@@ -329,6 +330,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
                             "# The 0-based index of the column containing the end position for each row\n" +
                             "end_column ="
             );
+            buffer.close();
+
         } catch (IOException e) {
             throw new UserException("Error. Unable to make template config file in location: " + bundler.metadataFilePath + "/" + TEMPLATE_CONFIG_FILE_NAME);
         }

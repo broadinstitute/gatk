@@ -250,11 +250,20 @@ public class FuncotatorDataSourceBundlerUtils {
             inputStream.close();
             gZIPInputStream.close();
             fileOutputStream.close();
-            File file = new File(gzFilePath.toString());
-            file.delete();
         } catch (IOException ex) {
             throw new UserException("Could not obtain data from " + gzFilePath, ex);
         }
 
+    }
+
+    /**
+     * Deletes the zip file.
+     * Input {@link String} MUST be to a gzipped gtf or fasta file.
+     * Will delete the file found at path {@code gzFilePath}.
+     * @param gzFilePath {@link String} path to a gzipped gtf or fasta file for extraction.
+     */
+    public static void deleteZipFiles(String gzFilePath) {
+        File file = new File(gzFilePath);
+        file.delete();
     }
 }
