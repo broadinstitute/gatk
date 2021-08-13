@@ -4,16 +4,14 @@ workflow GvsImportGenomes {
 
   input {
     Array[File] input_vcfs
-    Array[File] input_vcf_indexes
     Array[String] external_sample_names
     File interval_list
     String output_directory
-    File sample_map
+    File? sample_map
     String project_id
     String dataset_name
     String? pet_schema = "location:INTEGER,sample_id:INTEGER,state:STRING"
     String? vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,QUALapprox:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
-    String? sample_info_schema = "sample_name:STRING,sample_id:INTEGER,inferred_state:STRING"
     String? service_account_json_path
     String? drop_state = "SIXTY"
     Boolean? drop_state_includes_greater_than = false
@@ -27,9 +25,9 @@ workflow GvsImportGenomes {
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
 
-  # how do i return an error if the lengths are not equal?
+  # return an error if the lengths are not equal
   Int input_length = length(input_vcfs)
-  if (input_length != length(input_vcf_indexes) || input_length != length(external_sample_names)) {
+  if (input_length != length(external_sample_names)) {
     call TerminateWorkflow {
       input:
         message = 'Input array lengths do not match'
@@ -43,24 +41,22 @@ workflow GvsImportGenomes {
       preemptible_tries = preemptible_tries
   }
 
-  call GetMaxTableId {
-    input:
-      sample_map = sample_map
+  if (defined(sample_map)) {
+    call GetMaxTableIdLegacy {
+      input:
+        sample_map = select_first([sample_map])
+    }
   }
-
-  call CreateTables as CreateSampleInfoTables {
-  	input:
-      project_id = project_id,
-      dataset_name = dataset_name,
-      datatype = "sample_info",
-      max_table_id = GetMaxTableId.max_table_id,
-      schema = sample_info_schema,
-      superpartitioned = "false",
-      partitioned = "false",
-      uuid = "",
-      service_account_json_path = service_account_json_path,
-      preemptible_tries = preemptible_tries,
-      docker = docker_final
+  
+  if (!defined(sample_map)) {
+    call GetSampleIds {
+      input:
+        external_sample_names = external_sample_names,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        table_name = "sample_info",
+        service_account_json_path = service_account_json_path
+    }
   }
 
   call CreateTables as CreatePetTables {
@@ -68,7 +64,7 @@ workflow GvsImportGenomes {
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "pet",
-      max_table_id = GetMaxTableId.max_table_id,
+      max_table_id = select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id]),
       schema = pet_schema,
       superpartitioned = "true",
       partitioned = "true",
@@ -83,7 +79,7 @@ workflow GvsImportGenomes {
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "vet",
-      max_table_id = GetMaxTableId.max_table_id,
+      max_table_id = select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id]),
       schema = vet_schema,
       superpartitioned = "true",
       partitioned = "true",
@@ -106,7 +102,6 @@ workflow GvsImportGenomes {
   call CreateFOFNs {
     input:
         input_vcf_list = write_lines(input_vcfs),
-        input_vcf_index_list = write_lines(input_vcf_indexes),
         sample_name_list = write_lines(external_sample_names),
         batch_size = batch_size,
         run_uuid = SetLock.run_uuid
@@ -116,11 +111,10 @@ workflow GvsImportGenomes {
     call CreateImportTsvs {
       input:
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_fofns[i]),
-        input_vcf_indexes = read_lines(CreateFOFNs.vcf_index_batch_fofns[i]),
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         interval_list = interval_list,
-        sample_map = sample_map,
         service_account_json_path = service_account_json_path,
+        sample_map = select_first([GetSampleIds.sample_map, sample_map]),
         drop_state = drop_state,
         drop_state_includes_greater_than = drop_state_includes_greater_than,
         output_directory = output_directory,
@@ -132,25 +126,7 @@ workflow GvsImportGenomes {
     }
   }
 
-  scatter (i in range(GetMaxTableId.max_table_id)) {
-    call LoadTable as LoadSampleInfoTable {
-      input:
-        project_id = project_id,
-        table_id = i + 1,
-        dataset_name = dataset_name,
-        storage_location = output_directory,
-        datatype = "sample_info",
-        superpartitioned = "false",
-        schema = sample_info_schema,
-        service_account_json_path = service_account_json_path,
-        table_creation_done = CreateSampleInfoTables.done,
-        tsv_creation_done = CreateImportTsvs.done,
-        docker = docker_final,
-        run_uuid = SetLock.run_uuid
-    }
-  }
-
-  scatter (i in range(GetMaxTableId.max_table_id)) {
+  scatter (i in range(select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id]))) {
     call LoadTable as LoadPetTable {
     input:
       project_id = project_id,
@@ -168,7 +144,7 @@ workflow GvsImportGenomes {
     }
   }
 
-  scatter (i in range(GetMaxTableId.max_table_id)) {
+  scatter (i in range(select_first([GetSampleIds.max_table_id, GetMaxTableIdLegacy.max_table_id]))) {
     call LoadTable as LoadVetTable {
     input:
       project_id = project_id,
@@ -188,7 +164,7 @@ workflow GvsImportGenomes {
 
   call AddIsLoadedColumn {
     input:
-      load_sample_info_done = LoadSampleInfoTable.done,
+      load_vet_done = LoadVetTable.done,
       load_pet_done = LoadPetTable.done,
       dataset_name = dataset_name,
       service_account_json_path = service_account_json_path,
@@ -201,6 +177,7 @@ workflow GvsImportGenomes {
       run_uuid = SetLock.run_uuid,
       output_directory = output_directory,
       load_sample_info_done = AddIsLoadedColumn.done,
+      load_pet_done = LoadPetTable.done,
       load_vet_done = LoadVetTable.done,
       service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries
@@ -281,6 +258,7 @@ task ReleaseLock {
     String run_uuid
     String output_directory
     String load_sample_info_done
+    Array[String] load_pet_done
     Array[String] load_vet_done
     String? service_account_json_path
 
@@ -322,7 +300,7 @@ task ReleaseLock {
     }
 }
 
-task GetMaxTableId {
+task GetMaxTableIdLegacy {
   input {
     File sample_map
     Int? samples_per_table = 4000
@@ -345,6 +323,60 @@ task GetMaxTableId {
   }
   output {
       Int max_table_id = read_int(stdout())
+  }
+}
+
+task GetSampleIds {
+  input {
+    Array[String] external_sample_names
+    String project_id
+    String dataset_name
+    String table_name
+    String? service_account_json_path
+    Int samples_per_table = 4000
+
+    # runtime
+    Int? preemptible_tries
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  Int num_samples = length(external_sample_names)
+
+  command <<<
+      set -ex
+      if [ ~{has_service_account_file} = 'true' ]; then
+        gsutil cp ~{service_account_json_path} local.service_account.json
+        gcloud auth activate-service-account --key-file=local.service_account.json
+      fi
+
+      echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+      # get the current maximum id, or 0 if there are none
+      bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > results
+
+      # prep for being able to return min table id
+      min_sample_id=$(tail -1 results | cut -d, -f1)
+      max_sample_id=$(tail -1 results | cut -d, -f2)
+
+      python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
+      python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
+
+      bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
+        "SELECT sample_id, sample_name FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > sample_map
+
+  >>>
+  runtime {
+      docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+      memory: "1 GB"
+      disks: "local-disk 10 HDD"
+      preemptible: select_first([preemptible_tries, 5])
+      cpu: 1
+  }
+  output {
+      Int max_table_id = ceil(read_float("max_sample_id"))
+      Int min_table_id = ceil(read_float("min_sample_id"))
+      File sample_map = "sample_map"
   }
 }
 
@@ -422,7 +454,6 @@ task CheckForDuplicateData {
 task CreateFOFNs {
     input {
         File input_vcf_list
-        File input_vcf_index_list
         File sample_name_list
         Int batch_size
         String run_uuid
@@ -432,7 +463,6 @@ task CreateFOFNs {
          set -e
 
          split -d -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcfs.
-         split -d -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
          split -d -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
      }
 
@@ -447,7 +477,6 @@ task CreateFOFNs {
 
      output {
          Array[File] vcf_batch_fofns = glob("batched_vcfs.*")
-         Array[File] vcf_index_batch_fofns = glob("batched_vcf_indexes.*")
          Array[File] vcf_sample_name_fofns = glob("batched_sample_names.*")
      }
 }
@@ -455,7 +484,6 @@ task CreateFOFNs {
 task CreateImportTsvs {
   input {
     Array[File] input_vcfs
-    Array[File] input_vcf_indexes
     Array[String] sample_names
     File interval_list
     String output_directory
@@ -476,7 +504,7 @@ task CreateImportTsvs {
     String run_uuid
   }
 
-  Int disk_size = if defined(drop_state) then 30 else 75
+  Int disk_size = if defined(drop_state) then 50 else 75
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -487,9 +515,6 @@ task CreateImportTsvs {
 
   parameter_meta {
     input_vcfs: {
-      localization_optional: true
-    }
-    input_vcf_indexes: {
       localization_optional: true
     }
   }
@@ -521,7 +546,6 @@ task CreateImportTsvs {
 
       # translate WDL arrays into BASH arrays
       VCFS_ARRAY=(~{sep=" " input_vcfs})
-      VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
       SAMPLE_NAMES_ARRAY=(~{sep=" " sample_names})
 
       # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
@@ -529,7 +553,7 @@ task CreateImportTsvs {
           input_vcf="${VCFS_ARRAY[$i]}"
           input_vcf_basename=$(basename $input_vcf)
           updated_input_vcf=$input_vcf
-          input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
+          input_vcf_index="${VCFS_ARRAY[$i]}.tbi"
           sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
           if [ ~{has_service_account_file} = 'true' ]; then
@@ -739,7 +763,6 @@ task LoadTable {
 
     printf -v PADDED_TABLE_ID "%03d" ~{table_id}
 
-    # even for non-superpartitioned tables (e.g. sample_info), the TSVs do have the suffix
     FILES="~{datatype}_${PADDED_TABLE_ID}_*"
 
     NUM_FILES=$(gsutil ls "${DIR}${FILES}" | wc -l)
@@ -839,7 +862,7 @@ task AddIsLoadedColumn {
   }
 
   input {
-    Array[String] load_sample_info_done
+    Array[String] load_vet_done
     Array[String] load_pet_done
     String dataset_name
     String project_id

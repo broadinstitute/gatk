@@ -287,7 +287,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210726"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210808"
         memory: "3 GB"
         preemptible: 5
         cpu: "1"
@@ -423,10 +423,34 @@ task BigQueryLoadJson {
               v.gnomad_all_af,
               v.gnomad_all_ac,
               v.gnomad_all_an,
-              # v.gnomad_max_af,
-              # v.gnomad_max_ac,
-              # v.gnomad_max_an,
-              # null AS gnomad_max_subpop,
+              v.gnomad_max_af,
+              v.gnomad_max_ac,
+              v.gnomad_max_an,
+              v.gnomad_max_subpop,
+              v.gnomad_afr_ac,
+              v.gnomad_afr_an,
+              v.gnomad_afr_af,
+              v.gnomad_amr_ac,
+              v.gnomad_amr_an,
+              v.gnomad_amr_af,
+              v.gnomad_asj_ac,
+              v.gnomad_asj_an,
+              v.gnomad_asj_af,
+              v.gnomad_eas_ac,
+              v.gnomad_eas_an,
+              v.gnomad_eas_af,
+              v.gnomad_fin_ac,
+              v.gnomad_fin_an,
+              v.gnomad_fin_af,
+              v.gnomad_nfr_ac,
+              v.gnomad_nfr_an,
+              v.gnomad_nfr_af,
+              v.gnomad_sas_ac,
+              v.gnomad_sas_an,
+              v.gnomad_sas_af,
+              v.gnomad_oth_ac,
+              v.gnomad_oth_an,
+              v.gnomad_oth_af,
               v.revel,
               v.splice_ai_acceptor_gain_score,
               v.splice_ai_acceptor_gain_distance,
