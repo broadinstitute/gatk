@@ -405,6 +405,8 @@ task CheckForDuplicateData {
       gcloud config set project ~{project_id}
     fi
 
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
     # check for existence of the correct lockfile
     LOCKFILE="~{output_directory}/LOCKFILE"
     EXISTING_LOCK_ID=$(gsutil cat ${LOCKFILE}) || { echo "Error retrieving lockfile from ${LOCKFILE}" 1>&2 ; exit 1; }
@@ -664,6 +666,8 @@ task CreateTables {
       gcloud config set project ~{project_id}
     fi
 
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
     PREFIX=""
     if [ -n "~{uuid}" ]; then
       PREFIX="~{uuid}_"
@@ -747,6 +751,8 @@ task LoadTable {
       gcloud auth activate-service-account --key-file=local.service_account.json
       gcloud config set project ~{project_id}
     fi
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
     # check for existence of the correct lockfile
@@ -881,9 +887,7 @@ task AddIsLoadedColumn {
       gcloud config set project ~{project_id}
     fi
 
-    # add is_loaded column
-    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "ALTER TABLE ~{dataset_name}.sample_info ADD COLUMN is_loaded BOOLEAN"
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # set is_loaded to true if there is a corresponding pet table partition with rows for that sample_id
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
