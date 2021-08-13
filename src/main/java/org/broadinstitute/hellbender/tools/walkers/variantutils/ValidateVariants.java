@@ -214,6 +214,7 @@ public final class ValidateVariants extends VariantWalker {
     private String previousContig = null;
     private boolean previousIntervalIsReference = true;
     private boolean sawOverlap = false;
+    private SimpleInterval firstOverlap;
 
     @Override
     public void onTraversalStart() {
@@ -269,8 +270,9 @@ public final class ValidateVariants extends VariantWalker {
             // small as possible while still containing the same bases.
             if (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 0) &&
                     (previousIntervalIsReference || thisIntervalIsReference)) {
-                logger.warn("Current interval " + refInterval.toString() + " overlaps previous interval " + previousInterval.toString());
+                logger.warn("Current interval " + refInterval.toString() + " overlaps previous interval ending at " + previousInterval.getEnd());
                 sawOverlap = true;
+                firstOverlap = refInterval;
             }
             final int start = (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) ?
                     previousInterval.getStart() : refInterval.getStart();
@@ -279,11 +281,9 @@ public final class ValidateVariants extends VariantWalker {
             final GenomeLoc possiblyMergedGenomeLoc = genomeLocSortedSet.getGenomeLocParser().createGenomeLoc(refInterval.getContig(), start, end);
             genomeLocSortedSet.add(possiblyMergedGenomeLoc, true);
 
-            //if (vc.getGenotype(0).isHomRef()) {
-                previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
-                previousStart = vc.getStart();
-                previousIntervalIsReference = thisIntervalIsReference;
-            //}
+            previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
+            previousStart = vc.getStart();
+            previousIntervalIsReference = thisIntervalIsReference;
             validateGVCFVariant(vc);
         }
 
@@ -310,13 +310,14 @@ public final class ValidateVariants extends VariantWalker {
 
             final GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(genomeLocSortedSet);
             if (uncoveredIntervals.coveredSize() > 0) {
-                final UserException e = new UserException("A GVCF must cover the entire region. Found " + uncoveredIntervals.coveredSize() +
+                final UserException e = new UserException.ValidationFailure("A GVCF must cover the entire region. Found " + uncoveredIntervals.coveredSize() +
                         " loci with no VariantContext covering it. The first uncovered segment is:" +
                         uncoveredIntervals.iterator().next());
                 throwOrWarn(e);
             }
             if (FAIL_ON_OVERLAP && sawOverlap) {
-                final UserException e = new UserException("This GVCF contained overlapping reference blocks.  See log above for details.");
+                final UserException e = new UserException.ValidationFailure("This GVCF contained overlapping reference blocks.  The first overlapping interval is " +
+                        firstOverlap.toString());
                 throwOrWarn(e);
             }
         }
