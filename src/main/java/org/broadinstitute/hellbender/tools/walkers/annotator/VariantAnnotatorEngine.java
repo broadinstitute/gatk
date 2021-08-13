@@ -232,9 +232,11 @@ public final class VariantAnnotatorEngine {
                         final List<ReducibleAnnotationData<?>> annotationValue = (List<ReducibleAnnotationData<?>>)
                                 annotationMap.get(rawKey);
                         final Map<String, Object> annotationsFromCurrentType = currentASannotation.combineRawData(allelesList, annotationValue);
-                        combinedAnnotations.putAll(annotationsFromCurrentType);
-                        //remove all the raw keys for the annotation because we already used all of them in combineRawData
-                        annotationMap.keySet().removeAll(currentASannotation.getRawKeyNames());
+                        if (annotationsFromCurrentType != null) {
+                            combinedAnnotations.putAll(annotationsFromCurrentType);
+                            //remove all the raw keys for the annotation because we already used all of them in combineRawData
+                            annotationMap.keySet().removeAll(currentASannotation.getRawKeyNames());
+                        }
                     }
                 }
             }

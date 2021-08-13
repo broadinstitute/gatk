@@ -88,6 +88,7 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements InfoFie
 
     @VisibleForTesting
     static Pair<Integer, Double> calculateIC(final VariantContext vc, final GenotypesContext genotypes) {
+        Utils.validate(!genotypes.isEmpty(), "Must provide genotypes to calculate InbreedingCoeff");
         final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, ROUND_GENOTYPE_COUNTS);
 
         final double refCount = t.getRefs();

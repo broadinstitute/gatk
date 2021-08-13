@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.engine.MultiVariantWalkerGroupedOnStart;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -90,7 +91,6 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     public static final String SOMATIC_INPUT_LONG_NAME = "input-is-somatic";
     public static final String DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME = "drop-somatic-filtering-annotations";
     public static final String ALLELE_FRACTION_DELTA_LONG_NAME = "allele-fraction-error";
-    public static final String CALL_GENOTYPES_LONG_NAME = "call-genotypes";
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -128,7 +128,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
     /**
      * By default CombineGVCFs reverts all genotypes to no-calls, but calls can be made if specified
      */
-    @Argument(fullName = CALL_GENOTYPES_LONG_NAME, doc = "Output called genotypes?", optional = true)
+    @Argument(fullName = GenomicsDBArgumentCollection.CALL_GENOTYPES_LONG_NAME, doc = "Output called genotypes?", optional = true)
     protected boolean makeGenotypeCalls = false;
 
     @Override
@@ -455,16 +455,13 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
         // genotypes
         final GenotypesContext genotypes = GenotypesContext.create();
+        final GenotypeAssignmentMethod assignmentMethod = makeGenotypeCalls ? GenotypeAssignmentMethod.PREFER_PLS : GenotypeAssignmentMethod.SET_TO_NO_CALL;
         for (final VariantContext vc : vcs) {
             for (final Genotype g : vc.getGenotypes()) {
                 final GenotypeBuilder gBuilder = new GenotypeBuilder(g);
-                if (makeGenotypeCalls) {
-                    GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
-                            gBuilder, GenotypeAssignmentMethod.PREFER_PLS,
+                GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
+                            gBuilder, assignmentMethod,
                             g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null, allelesToUse, g.getAlleles(), null);
-                } else {
-                    gBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy()));
-                }
                 genotypes.add(gBuilder.make());
             }
         }

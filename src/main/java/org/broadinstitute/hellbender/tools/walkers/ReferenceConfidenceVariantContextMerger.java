@@ -598,13 +598,11 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
             }
             genotypeBuilder.name(name);
-            if (callGTAlleles) {
+            final GenotypeAssignmentMethod assignmentMethod = callGTAlleles ? GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL :
+                    GenotypeAssignmentMethod.SET_TO_NO_CALL;
                 GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
-                        genotypeBuilder, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL,
+                        genotypeBuilder, assignmentMethod,
                         g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null, targetAlleles, g.getAlleles(), null);
-            } else {
-                genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy()));
-            }
             mergedGenotypes.add(genotypeBuilder.make());
         }
 

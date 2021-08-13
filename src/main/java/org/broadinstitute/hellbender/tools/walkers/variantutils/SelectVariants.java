@@ -422,11 +422,6 @@ public final class SelectVariants extends VariantWalker {
             doc="Suppress reference path in output for test result differencing")
     private boolean suppressReferencePath = false;
 
-    @Hidden
-    @Argument(fullName="call-genotypes-from-gdb", optional=true,
-            doc="Output called genotypes from GenomicsDB-derived GVCF")
-    private boolean callGenotypesInGDB = false;
-
     @ArgumentCollection
     private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
 
@@ -463,9 +458,6 @@ public final class SelectVariants extends VariantWalker {
 
     @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
-        if (callGenotypesInGDB) {
-            genomicsdbArgs.callGenotypes = true;
-        }
         if (genomicsDBOptions == null) {
             genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs);
         }
@@ -1031,16 +1023,22 @@ public final class SelectVariants extends VariantWalker {
         // strip out the alternate alleles that aren't being used
         final VariantContext sub = vc.subContextFromSamples(samples, removeUnusedAlternates);
 
-        // If no subsetting happened, exit now
+        // If no subsetting of samples or alleles happened, exit now
         if (sub.getNSamples() == vc.getNSamples() && sub.getNAlleles() == vc.getNAlleles()) {
             return vc;
         }
 
-        // fix the PL and AD values if sub has fewer alleles than original vc and remove a fraction of the genotypes if needed
-        final GenotypesContext oldGs = sub.getGenotypes();
-        GenotypesContext newGC = sub.getNAlleles() == vc.getNAlleles() ? oldGs :
-                AlleleSubsettingUtils.subsetAlleles(oldGs, 0, vc.getAlleles(), sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);
+        GenotypesContext newGC;
+        if (sub.getNAlleles() != vc.getNAlleles()) {
+            // fix the PL and AD values if sub has fewer alleles than original vc
+            final GenotypesContext subGenotypesWithOldAlleles = sub.getGenotypes();  //we need sub for the right samples, but PLs still go with old alleles
+            newGC = sub.getNAlleles() == vc.getNAlleles() ? subGenotypesWithOldAlleles :
+                    AlleleSubsettingUtils.subsetAlleles(subGenotypesWithOldAlleles, 0, vc.getAlleles(), sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);
+        } else {
+            newGC = sub.getGenotypes();
+        }
 
+        //remove a fraction of the genotypes if requested
         if (fractionGenotypes > 0) {
             final List<Genotype> genotypes = newGC.stream().map(genotype -> randomGenotypes.nextDouble() > fractionGenotypes ? genotype :
                     new GenotypeBuilder(genotype).alleles(getNoCallAlleles(genotype.getPloidy())).noGQ().make()).collect(Collectors.toList());

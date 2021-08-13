@@ -49,10 +49,9 @@ public final class GenotypeUtils {
         double genotypesWithNoRefsCount = 0;  //e.g. 1/1, 1/2, 2/2, etc.
 
         for (final Genotype g : genotypes) {
-            if (!roundContributionFromEachGenotype && !isDiploidWithLikelihoods(g)){
-                continue;
-            }
-            if (!isDiploidWithLikelihoodsOrCalledWithGQ(g)) {
+            //if we don't have the data we need then skip this genotype (equivalent to no-call)
+            if ((!roundContributionFromEachGenotype && !isDiploidWithLikelihoods(g))
+                    || !isDiploidWithLikelihoodsOrCalledWithGQ(g)) {
                 continue;
             }
 
@@ -121,5 +120,9 @@ public final class GenotypeUtils {
             }
         }
         return new GenotypeCounts(genotypeWithTwoRefsCount, genotypesWithOneRefCount, genotypesWithNoRefsCount);
+    }
+
+    public static boolean genotypeIsUsableForAFCalculation(Genotype g) {
+        return g.hasLikelihoods() || g.hasGQ() || g.getAlleles().stream().anyMatch(a -> a.isCalled() && a.isNonReference() && !a.isSymbolic());
     }
 }

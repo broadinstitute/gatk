@@ -58,5 +58,4 @@ public enum GenotypeAssignmentMethod {
      * Use PLs unless they are unavailable, in which case use best match to original
      */
     PREFER_PLS
-
 }

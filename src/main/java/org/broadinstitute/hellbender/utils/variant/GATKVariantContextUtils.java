@@ -284,7 +284,7 @@ public final class GATKVariantContextUtils {
             throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
         }
         if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL) {
-            gb.alleles(noCallAlleles(ploidy)).noGQ();
+            gb.alleles(noCallAlleles(ploidy));
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN ||
                     assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
             if ( genotypeLikelihoods == null || !isInformative(genotypeLikelihoods) ) {

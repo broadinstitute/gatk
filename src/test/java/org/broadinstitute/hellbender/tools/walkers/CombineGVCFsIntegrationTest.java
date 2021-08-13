@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection.CALL_GENOTYPES_LONG_NAME;
+
 public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     // If true, update the expected outputs in tests that assert an exact match vs. prior output,
     // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=HaplotypeCallerIntegrationTest"
@@ -565,7 +567,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         .addOutput(output)
         .addVCF("src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.hiRes.g.vcf")
         .addVCF(getTestFile("NA12892.test.rb.g.vcf"))
-        .add(CombineGVCFs.CALL_GENOTYPES_LONG_NAME, true);
+        .add(CALL_GENOTYPES_LONG_NAME, true);
         runCommandLine(args);
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(output).collect(Collectors.toList());
 
@@ -578,8 +580,8 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(g1.isHet());
         Assert.assertTrue(g1.getAlleles().contains(Allele.create("CAGAGAG")));
 
-        //variant is 0/0 and ./.
-        variantIndex = 10;
+        //variant should be ./. and 0/0
+        variantIndex = 11;
         g0 = variants.get(variantIndex).getGenotype(0);
         g1 = variants.get(variantIndex).getGenotype(1);
         Assert.assertTrue(g0.isNoCall());
@@ -592,7 +594,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(g1.getAnyAttribute(VCFConstants.DEPTH_KEY), 34);
 
         //third variant is 0/0 and 0/0
-        variantIndex = 2;
+        variantIndex = 3;
         g0 = variants.get(variantIndex).getGenotype(0);
         g1 = variants.get(variantIndex).getGenotype(1);
         Assert.assertTrue(g0.isHomRef());

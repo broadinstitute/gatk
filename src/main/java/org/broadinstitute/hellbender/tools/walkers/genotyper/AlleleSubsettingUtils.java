@@ -75,7 +75,7 @@ public final class AlleleSubsettingUtils {
             final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(originalAlleles.size(), ploidy);
             // create the new likelihoods array from the alleles we are allowed to use
             double[] newLikelihoods = null;
-            double newLog10GQ = -1;
+            double newLog10GQ = Double.NEGATIVE_INFINITY;
             if (g.hasLikelihoods()) {
                 final double[] originalLikelihoods = g.getLikelihoods().getAsVector();
                 newLikelihoods = originalLikelihoods.length == expectedNumLikelihoods ?
@@ -94,19 +94,17 @@ public final class AlleleSubsettingUtils {
                     (newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods)));
 
             final GenotypeBuilder gb = new GenotypeBuilder(g);
-            if (newLog10GQ != -1) {
-                final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+            final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+            attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+            //TODO: remove other G-length attributes, although that may require header parsing
+            attributes.remove(VCFConstants.GENOTYPE_POSTERIORS_KEY);
+            attributes.remove(GATKVCFConstants.GENOTYPE_PRIOR_KEY);
+            gb.noAttributes().attributes(attributes);
+            if (newLog10GQ != Double.NEGATIVE_INFINITY) {
                 gb.log10PError(newLog10GQ);
-                attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
-                //TODO: remove other G-length attributes, although that may require header parsing
-                attributes.remove(VCFConstants.GENOTYPE_POSTERIORS_KEY);
-                attributes.remove(GATKVCFConstants.GENOTYPE_PRIOR_KEY);
-                gb.noAttributes().attributes(attributes);
             }
             if (useNewLikelihoods) {
                 gb.PL(newLikelihoods);
-            } else {
-                gb.noPL().noGQ();
             }
 
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles(), gpc);

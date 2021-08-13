@@ -8,15 +8,12 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.MathArrays;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
-import org.broadinstitute.hellbender.utils.Dirichlet;
-import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -32,6 +29,7 @@ public final class AlleleFrequencyCalculator {
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
     private static final double THRESHOLD_FOR_ALLELE_COUNT_CONVERGENCE = 0.1;
     private static final int HOM_REF_GENOTYPE_INDEX = 0;
+    private static final int TYPICAL_BASE_QUALITY = 30;
 
     private final double refPseudocount;
     private final double snpPseudocount;
@@ -81,13 +79,15 @@ public final class AlleleFrequencyCalculator {
             log10Likelihoods = g.getLikelihoods().getAsVector();
         } else if ( g.isHomRef() || g.isNoCall()) {
             if (g.hasGQ()) {
-                int[] perSampleIndexesOfRelevantAlleles = new int[log10AlleleFrequencies.length];
-                for (int i = 1; i < perSampleIndexesOfRelevantAlleles.length; i++) {
-                    perSampleIndexesOfRelevantAlleles[i] = 1;
-                }
+                //for a hom-ref, as long as we have GQ we can make a very accurate QUAL calculation
+                // since the hom-var likelihood should make a minuscule contribution
+                final int[] perSampleIndexesOfRelevantAlleles = new int[log10AlleleFrequencies.length];
+                Arrays.fill(perSampleIndexesOfRelevantAlleles, 1);
+                perSampleIndexesOfRelevantAlleles[0] = 0;  //ref still maps to ref
                 final int gq = g.getGQ();
                 final int ploidy = g.getPloidy();
-                final int[] approxLikelihoods = {0, gq, 15*gq};
+                final int scaleFactor = (int)Math.round(TYPICAL_BASE_QUALITY/-10.0/Math.log10(ploidy));  //from the genotype likelihoods equations assuming the SNP ref conf model with no mismatches
+                final int[] approxLikelihoods = {0, gq, scaleFactor*gq};
                 final int[] genotypeIndexMapByPloidy = GL_CALCS.getInstance(ploidy, log10AlleleFrequencies.length).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, GL_CALCS); //probably horribly slow
                 final int[] PLs = new int[genotypeIndexMapByPloidy.length];
                 for (int i = 0; i < PLs.length; i++) {
@@ -180,7 +180,7 @@ public final class AlleleFrequencyCalculator {
         // re-usable buffers of the log10 genotype posteriors of genotypes missing each allele
         final List<DoubleArrayList> log10AbsentPosteriors = IntStream.range(0,numAlleles).mapToObj(n -> new DoubleArrayList()).collect(Collectors.toList());
         for (final Genotype g : vc.getGenotypes()) {
-            if (!g.hasLikelihoods() && !g.hasGQ() && (!g.getAlleles().stream().anyMatch(a -> a.isCalled() && a.isNonReference() && !a.isSymbolic()))) {
+            if (!GenotypeUtils.genotypeIsUsableForAFCalculation(g)) {
                 continue;
             }
             final int ploidy = g.getPloidy() == 0 ? defaultPloidy : g.getPloidy();
@@ -272,7 +272,7 @@ public final class AlleleFrequencyCalculator {
         final double[] log10Result = new double[numAlleles];
         Arrays.fill(log10Result, Double.NEGATIVE_INFINITY);
         for (final Genotype g : vc.getGenotypes()) {
-            if (!g.hasLikelihoods() && !g.hasGQ() && (!g.getAlleles().stream().anyMatch(a -> a.isCalled() && a.isNonReference() && !a.isSymbolic()))) {
+            if (!GenotypeUtils.genotypeIsUsableForAFCalculation(g)) {
                 continue;
             }
             final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(g.getPloidy(), numAlleles);
