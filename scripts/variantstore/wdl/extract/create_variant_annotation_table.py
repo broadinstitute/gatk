@@ -151,7 +151,7 @@ def get_gnomad_subpop(gnomad_obj):
       row["_".join(["gnomad", gnomad_subpop, "an"])] = subpop_an_val
       row["_".join(["gnomad", gnomad_subpop, "ac"])] = subpop_ac_val
       row["_".join(["gnomad", gnomad_subpop, "af"])] = subpop_af_val
-      if subpop_af_val != None and (subpop_af_val > max_af or max_af == None): # this will also set the first max_af value
+      if subpop_af_val != None and (max_af == None or subpop_af_val > max_af): # this will also set the first max_af value
         max_subpop = gnomad_subpop
         max_ac = subpop_ac_val
         max_an = subpop_an_val
@@ -180,7 +180,7 @@ def get_subpopulation_calculations(variant_obj):
         row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
         row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
         row["_".join(["gvs", gvs_subpop, "af"])] = subpop_af_val
-        if subpop_af_val != None and(subpop_af_val > max_af or max_af == None): # this will also set the first max_af value
+        if subpop_af_val != None and(max_af == None or subpop_af_val > max_af): # this will also set the first max_af value
           max_subpop = gvs_subpop
           max_ac = subpop_ac_val
           max_an = subpop_an_val
