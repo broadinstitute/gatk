@@ -14,6 +14,8 @@ task SNPsVariantRecalibratorCreateModel {
         File sites_only_variant_filtered_vcf
         File sites_only_variant_filtered_vcf_index
 
+        File? excluded_sites_bed
+
         File hapmap_resource_vcf
         File omni_resource_vcf
         File one_thousand_genomes_resource_vcf

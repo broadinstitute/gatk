@@ -166,6 +166,7 @@ workflow GvsCreateFilterSet {
                 tranches_filename = filter_set_name + ".snps.tranches",
                 recalibration_tranche_values = snp_recalibration_tranche_values,
                 recalibration_annotation_values = snp_recalibration_annotation_values,
+                excluded_sites_bed = excluded_sites_bed,
                 downsampleFactor = SNP_VQSR_downsampleFactor,
                 model_report_filename = filter_set_name + ".snps.model.report",
                 hapmap_resource_vcf = hapmap_resource_vcf,
@@ -177,7 +178,8 @@ workflow GvsCreateFilterSet {
                 dbsnp_resource_vcf = dbsnp_resource_vcf,
                 dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
                 use_allele_specific_annotations = true,
-                disk_size = large_disk
+                disk_size = large_disk,
+                machine_mem_gb = SNP_VQSR_machine_mem_gb
         }
 
         scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
