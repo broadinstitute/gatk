@@ -59,7 +59,7 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
 
         if (dropLowQuals && (!genotype.hasGQ() || genotype.getGQ() < rgqThreshold || genotype.getGQ() == 0)) {
             return null;
-        } else if (genotype.isHomRef()) {
+        } else if (isHomRef(g)) {
             if (!genotype.hasPL()) {
                 if (genotype.hasGQ()) {
                     logger.warn("PL is missing for hom ref genotype at at least one position for sample " + genotype.getSampleName() + ": " + vc.getContig() + ":" + vc.getStart() +
@@ -110,7 +110,7 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
         } else if (!variantContextToOutput.getContig().equals(currentContig)) {
             flushRefBlockBuffer();
             currentContig = variantContextToOutput.getContig();
-            vcfOutputEnd = 1;  //must be one to be a valid SimpleInterval
+            vcfOutputEnd = 0;
         }
         final VariantContextBuilder newHomRefBlock = new VariantContextBuilder(variantContextToOutput);
 
@@ -130,7 +130,7 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
             final int blockStart = (int)builder.getStart();
             final int variantEnd = variantContextToOutput.getEnd();
             if (blockStart > variantEnd) {
-                if ((!g.isHomRef() || (g.hasPL() && g.getPL()[0] != 0))) {
+                if (!isHomRef(g)) {
                     super.submit(variantContextToOutput);
                     vcfOutputEnd = Math.max(vcfOutputEnd, variantEnd);
                 } else {
@@ -147,7 +147,7 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
                 blockEnd = trimBlockToVariant(variantContextToOutput, completedBlocks, tailBuffer, builder);
             }
             //only flush ref blocks if we're outputting a variant, otherwise ref blocks can be out of order
-            if (blockStart < variantStart && !g.isHomRef()) {
+            if (blockStart < variantStart && !isHomRef(g)) {
                 super.submit(builder.make());
                 vcfOutputEnd = blockEnd;
                 completedBlocks.add(builder);
@@ -171,7 +171,8 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
 
     //funky logic for DRAGEN GVCFs where call may not match PLs
     private boolean isHomRef(final Genotype g) {
-        return (g.isHomRef() && !g.hasPL()) || (g.hasPL() && g.getPL()[0] == 0);
+        //consider ./. with no PL a GQ0 hom ref, as if for [0,0,0] PLs
+        return (g.hasPL() && g.getPL()[0] == 0) || (!g.hasPL() && (g.isHomRef() || g.isNoCall()));
     }
 
     /**
@@ -260,7 +261,12 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
 
     public int getBufferEnd() { return bufferEnd; }
 
+    public boolean isBufferEmpty() {return homRefBlockBuffer.isEmpty();}
+
     public int getBufferStart() {
+        if (homRefBlockBuffer.isEmpty()) {
+            return 0;
+        }
         return (int)homRefBlockBuffer.get(0).getStart();
     }
 

@@ -48,6 +48,7 @@ public class ReblockingGVCFWriter extends GVCFWriter {
      */
     public boolean siteOverlapsBuffer(final VariantContext vc) {
         final ReblockingGVCFBlockCombiner combiner = ((ReblockingGVCFBlockCombiner)gvcfBlockCombiner);
+        if (combiner.isBufferEmpty()) { return false;}
         return vc.getContig().equals(combiner.getCurrentContig())
             && vc.getStart() <= combiner.getBufferEnd()
             && vc.getStart() >= combiner.getBufferStart(); }  //we need the start too in case there's a tail block from a trimmed deletion, but the deletion still overlaps
