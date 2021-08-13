@@ -46,7 +46,8 @@ workflow GvsExtractCallset {
           ref_fasta = reference,
           ref_fai = reference_index,
           ref_dict = reference_dict,
-          scatter_count = scatter_count
+          scatter_count = scatter_count,
+          service_account_json_path = service_account_json_path
     }
 
     call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
@@ -230,9 +231,12 @@ task ExtractTask {
         File ref_dict
         Int scatter_count
         String? split_intervals_extra_args
+        String? service_account_json_path
 
         File? gatk_override
     }
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     parameter_meta {
         intervals: {
@@ -252,6 +256,11 @@ task ExtractTask {
      command {
          set -e
          export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+         if [ ~{has_service_account_file} = 'true' ]; then
+             gsutil cp ~{service_account_json_path} local.service_account.json
+             export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+             gcloud auth activate-service-account --key-file=local.service_account.json
+         fi
 
          mkdir interval-files
          gatk --java-options "-Xmx2g" SplitIntervals \
