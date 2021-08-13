@@ -14,13 +14,10 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
 
+import java.io.*;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.FileWriter;
-import java.io.BufferedWriter;
 import java.time.LocalDate;
 import java.time.Month;
 
@@ -79,6 +76,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
     protected String dsFastaReadMeURL;
     protected Path dsGtfReadMePath;
     protected Path dsFastaReadMePath;
+    protected Path dsFastaDictPath;
 
     // Copy buffer:
     public static byte copyBuffer[] = new byte[BUFFER_SIZE_BYTES];
@@ -117,7 +115,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
         this.dsGtfReadMeURL         = setGtfReadMeURL(this.baseURL, this.speciesName);
         this.dsFastaReadMeURL       = setFastaReadMeURL(this.baseFastaURL, this.speciesName);
         this.dsGtfReadMePath        = setGtfReadMePath(this.speciesName, this.fileName);
-        this.dsFastaReadMePath      = setFastaReadMePath(this.speciesName, this.fileName);
+        this.dsFastaReadMePath      = setFastaReadMePath(this.speciesName);
+        this.dsFastaDictPath        = setFastaDictPath(this.speciesName, this.fastaFileName);
     }
 
     //==================================================================================================================
@@ -194,13 +193,23 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * Build an index file for the fasta data source file.
      * @param dsFastaUnzipPath The {@link Path} representing the path to the unzipped fasta file of the data source we have downloaded.
      */
-    public static void buildFastaIndexFile(Path dsFastaUnzipPath) {
-        FastaReferenceWriterBuilder fastaIndexer = new FastaReferenceWriterBuilder();
+    public static void buildFastaIndexFile(Path dsFastaUnzipPath, FuncotatorDataSourceBundlerHttpClient bundler) {
+        FastaIndexDictWriterBuilder fastaIndexer = new FastaIndexDictWriterBuilder();
         fastaIndexer.setFastaFile(dsFastaUnzipPath);
         fastaIndexer.setMakeFaiOutput(true);
         fastaIndexer.setMakeDictOutput(true);
+        fastaIndexer.setIndexFile(IOUtils.getPath(dsFastaUnzipPath.toString() + ".fai"));
+        fastaIndexer.setDictFile(bundler.getFastaDictPath());
         try {
-            fastaIndexer.build();
+            FastaIndexDictWriter writer = fastaIndexer.build();
+            String line;
+            try {
+                BufferedReader reader = new BufferedReader(new FileReader(dsFastaUnzipPath.toString()));
+                while ((line = reader.readLine()) != null) {
+                    writer.startSequence(line);
+                }
+            } catch (Exception e) {
+                }
         } catch (IOException e) {
             throw new IllegalArgumentException("Error: ", e);
         }
@@ -527,6 +536,11 @@ public class FuncotatorDataSourceBundlerHttpClient {
     }
 
     /**
+     * @return A copy of the {@link Path} which is the path to the fasta .dict file for this {@link FuncotatorDataSourceBundlerHttpClient}.
+     */
+    public Path getFastaDictPath() { return this.dsFastaDictPath; }
+
+    /**
      * Constructs the url for the data source file.
      * @param baseURL The {@link String} representing the base url where the data source will be found
      * @param speciesName The {@link String} representing the chosen species to gather data sources for.
@@ -611,10 +625,9 @@ public class FuncotatorDataSourceBundlerHttpClient {
     /**
      * Constructs the path where the fasta ReadMe file for the data source to be copied is found.
      * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @param fileName The {@link String} representing the file name for the data source we need to download.
      * @return A path to the fasta data source.
      */
-    public Path setFastaReadMePath(String speciesName, String fileName) {
+    public Path setFastaReadMePath(String speciesName) {
         return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.FASTA_README_EXTENSION);
     }
 
@@ -654,6 +667,15 @@ public class FuncotatorDataSourceBundlerHttpClient {
      */
     public Path setMetadataFilePath(String speciesName) {
         return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/");
+    }
+
+    /**
+     * Constructs the path where the fasta dict file should go.
+     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
+     * @return The path where the fasta.dict file will be found.
+     */
+    public Path setFastaDictPath(String speciesName, String fileName) {
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_DICT_EXTENSION);
     }
 
 }
