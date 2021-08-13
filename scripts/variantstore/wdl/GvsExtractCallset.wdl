@@ -47,6 +47,7 @@ workflow GvsExtractCallset {
           ref_fai = reference_index,
           ref_dict = reference_dict,
           scatter_count = scatter_count,
+          read_project_id = query_project,
           service_account_json_path = service_account_json_path
     }
 
@@ -225,6 +226,7 @@ task ExtractTask {
 
  task SplitIntervals {
     input {
+        String read_project_id
         File intervals
         File ref_fasta
         File ref_fai
@@ -260,6 +262,7 @@ task ExtractTask {
              gsutil cp ~{service_account_json_path} local.service_account.json
              export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
              gcloud auth activate-service-account --key-file=local.service_account.json
+             gcloud config set project ~{read_project_id}
          fi
 
          mkdir interval-files
