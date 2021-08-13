@@ -73,8 +73,8 @@ workflows:
        - /scripts/variantstore/wdl/GvsExtractCallset.example.inputs.json
      filters:
        branches:
+         - master
          - ah_var_store
-         - ah_filter_fixes
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
