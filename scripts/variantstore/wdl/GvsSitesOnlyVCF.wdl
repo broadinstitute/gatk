@@ -400,7 +400,6 @@ task PrepAnnotationJson {
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
-    String output_annotations_gcp_path = output_path + 'annotations/'
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -418,7 +417,6 @@ task PrepAnnotationJson {
             gcloud auth activate-service-account --key-file=local.service_account.json
         fi
 
-        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
