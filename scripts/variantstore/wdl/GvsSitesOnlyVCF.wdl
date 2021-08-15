@@ -17,10 +17,15 @@ workflow GvsSitesOnlyVCF {
         String? service_account_json_path
         File? gatk_override
         File AnAcAf_annotations_template
-        File sample_list
+        File ancestry_file
     }
 
     Array[String] subpopulations = [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"] # gvs
+
+    call MakeSubpopulationFile {
+        input:
+            input_ancestry_file = ancestry_file
+    }
 
     ## Scatter across the shards from the GVS jointVCF
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
@@ -30,7 +35,7 @@ workflow GvsSitesOnlyVCF {
             input:
               input_vcf = gvs_extract_cohort_filtered_vcfs[i],
               input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
-              sample_list = sample_list,
+              subpopulation_mapping = MakeSubpopulationFile.ancestry_mapping,
               subpopulation = subpopulations[j]
           }
 
@@ -105,11 +110,40 @@ workflow GvsSitesOnlyVCF {
 
 ################################################################################
 
+task MakeSubpopulationFile {
+    input {
+        File input_ancestry_file
+    }
+    String output_ancestry_filename =  "ancestry_mapping"
+    command <<<
+        set -e
+
+        python3 /app/extract_subpop.py \
+        --input_path ~{input_ancestry_file} \
+        --output_path ~{output_ancestry_filename}
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210812"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File ancestry_mapping="~{output_ancestry_filename}"
+    }
+}
+
+
 task GetSubpopulationCalculations {
     input {
         File input_vcf
         File input_vcf_index
-        File sample_list
+        File subpopulation_mapping
         String subpopulation
     }
     String output_filename = subpopulation + ".vcf"
@@ -127,8 +161,8 @@ task GetSubpopulationCalculations {
     command <<<
         set -e
 
-        # get all the sub-sample lists for each subpopulation
-        grep ~{subpopulation} ~{sample_list} | cut -d " " -f1 > ~{subpopulation_sample_list}
+        # get a list of all samples in this subpopulation
+        grep ~{subpopulation} ~{subpopulation_mapping} | cut -d " " -f1 > ~{subpopulation_sample_list}
 
         ## TODO we need a check that if there's NOTHING in this subpop we dont bother with the rest of this!
 
