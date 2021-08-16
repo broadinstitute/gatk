@@ -48,6 +48,60 @@ workflow GvsExtractCallset {
           ref_dict = reference_dict,
           scatter_count = scatter_count
     }
+#
+#    call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
+#        input:
+#            query_project = query_project,
+#            fq_table = fq_cohort_extract_table,
+#            service_account_json_path = service_account_json_path
+#    }
+#
+#    call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
+#        input:
+#            query_project = query_project,
+#            fq_table = fq_samples_to_extract_table,
+#            service_account_json_path = service_account_json_path
+#    }
+#
+#    scatter(i in range(scatter_count) ) {
+#        call ExtractTask {
+#            input:
+#                gatk_override                   = gatk_override,
+#                reference                       = reference,
+#                reference_index                 = reference_index,
+#                reference_dict                  = reference_dict,
+#                fq_samples_to_extract_table     = fq_samples_to_extract_table,
+#                intervals                       = SplitIntervals.interval_files[i],
+#                fq_cohort_extract_table         = fq_cohort_extract_table,
+#                read_project_id                 = query_project,
+#                do_not_filter_override          = do_not_filter_override,
+#                fq_filter_set_info_table        = fq_filter_set_info_table,
+#                fq_filter_set_site_table        = fq_filter_set_site_table,
+#                fq_filter_set_tranches_table    = fq_filter_set_tranches_table,
+#                filter_set_name                 = filter_set_name,
+#                vqslod_filter_by_site           = vqslod_filter_by_site,
+#                snps_truth_sensitivity_filter_level = snps_truth_sensitivity_filter_level_override,
+#                indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level_override,
+#                excluded_intervals              = excluded_intervals,
+#                emit_pls                        = emit_pls,
+#                service_account_json_path       = service_account_json_path,
+#                output_file                     = "${output_file_base_name}_${i}.vcf.gz",
+#                output_gcs_dir                  = output_gcs_dir,
+#                local_disk                      = local_disk_for_extract,
+#                last_modified_timestamps        = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp]
+#        }
+#    }
+#
+#    call SumBytes {
+#      input:
+#        file_sizes_bytes = flatten([ExtractTask.output_vcf_bytes, ExtractTask.output_vcf_index_bytes])
+#    }
+#
+#    output {
+#      Array[File] output_vcfs = ExtractTask.output_vcf
+#      Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
+#      Float total_vcfs_size_mb = SumBytes.total_mb
+#    }
 }
 
 ################################################################################
