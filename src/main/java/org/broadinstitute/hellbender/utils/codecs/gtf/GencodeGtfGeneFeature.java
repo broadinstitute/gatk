@@ -25,6 +25,10 @@ final public class GencodeGtfGeneFeature extends GencodeGtfFeature {
 
     private GencodeGtfGeneFeature(final GencodeGtfFeatureBaseData baseData) {
         super(baseData);
+
+        if (baseData.geneName == null) {
+            this.baseData.geneName = this.baseData.geneId;
+        }
     }
 
     public static GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {

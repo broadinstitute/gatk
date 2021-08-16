@@ -415,12 +415,20 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertTrue(output.length() > 0);
     }
 
-    @Test
-    public void testEnsemblGtfIndex() {
-        final File outName = createTempFile("Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.44.gtf.", ".idx");
+    @DataProvider
+    Object[][] provideForTestEnsemblGtfIndex() {
+        return new Object[][] {
+                { ENSEMBL_GTF_TEST_FILE },
+                { new File(largeFileTestDir + "funcotator/Acyrthosiphon_pisum.Acyr_2.0.51.PARTIAL.gtf") },
+        };
+    }
+
+    @Test(dataProvider = "provideForTestEnsemblGtfIndex")
+    public void testEnsemblGtfIndex(final File ensemblGtfFile) {
+        final File outName = createTempFile("tmp_ensembl_gtf", ".idx");
 
         final String[] args = {
-                "-I" ,  ENSEMBL_GTF_TEST_FILE.getAbsolutePath(),
+                "-I" ,  ensemblGtfFile.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
         };
         final Object res = this.runCommandLine(args);

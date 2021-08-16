@@ -7,6 +7,7 @@ import htsjdk.samtools.util.LocationAware;
 import htsjdk.tribble.AbstractFeatureCodec;
 import htsjdk.tribble.FeatureCodecHeader;
 import htsjdk.tribble.readers.*;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -379,38 +380,40 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
      */
     private static boolean validateBaseGtfFeatureFields(final GencodeGtfFeature feature) {
 
+        final Level logLevel = Level.FATAL;
+
         if ( feature == null ) {
+            logger.log(logLevel, "Feature is null.");
             return false;
         }
 
         final GencodeGtfFeature.FeatureType featureType = feature.getFeatureType();
-        String chromName = feature.getChromosomeName();
         if (feature.getChromosomeName() == null) {
+            logger.log(logLevel, "Feature chromosome name is null.");
             return false;
         }
-        String annotationSource = feature.getAnnotationSource();
         if (feature.getAnnotationSource() == null) {
+            logger.log(logLevel, "Feature annotation source is null.");
             return false;
         }
         if (feature.getFeatureType() == null) {
+            logger.log(logLevel, "Feature type is null.");
             return false;
         }
         if (feature.getGenomicStrand() == null) {
+            logger.log(logLevel, "Feature genomic strand is null.");
             return false;
         }
         if (feature.getGenomicPhase() == null) {
+            logger.log(logLevel, "Feature genomic phase is null.");
             return false;
         }
-        String geneID = feature.getGeneId();
         if (feature.getGeneId() == null) {
+            logger.log(logLevel, "Feature gene ID is null.");
             return false;
         }
-        String geneType = feature.getGeneType();
         if (feature.getGeneType() == null) {
-            return false;
-        }
-        String geneName = feature.getGeneName();
-        if (feature.getGeneName() == null) {
+            logger.log(logLevel, "Feature gene type is null.");
             return false;
         }
         if ( (featureType != GencodeGtfFeature.FeatureType.GENE) &&
@@ -420,9 +423,13 @@ public abstract class AbstractGtfCodec extends AbstractFeatureCodec<GencodeGtfFe
                 (featureType != GencodeGtfFeature.FeatureType.THREE_PRIME_UTR) ) {
 
             if (feature.getExonNumber() == GencodeGtfFeature.NO_EXON_NUMBER) {
+                logger.log(logLevel, "Presumptive exon Feature (type: "  + featureType + ") has no exon number.");
                 return false;
             }
-            return feature.getExonId() != null;
+            if (feature.getExonId() == null) {
+                logger.log(logLevel, "Presumptive exon Feature (type: "  + featureType + ") has null exon id.");
+                return false;
+            }
         }
 
         return true;

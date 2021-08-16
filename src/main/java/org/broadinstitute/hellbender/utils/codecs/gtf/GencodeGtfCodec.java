@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.AbstractFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -174,13 +175,22 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
                     " must be above: " + GencodeGtfCodec.GENCODE_GTF_MIN_VERSION_NUM_INCLUSIVE);
         }
 
+        final Level logLevel = Level.FATAL;
+
+        if (feature.getGeneName() == null) {
+            logger.log(logLevel, "Feature gene name is null.");
+            return false;
+        }
+
         final GencodeGtfFeature.FeatureType featureType = feature.getFeatureType();
 
         if ( gtfVersion < 26 ) {
             if (feature.getGeneStatus() == null) {
+                logger.log(logLevel, "Gencode version < 26 and feature gene status is null.");
                 return false;
             }
             if (feature.getTranscriptStatus() == null) {
+                logger.log(logLevel, "Gencode version < 26 and feature transcript status is null.");
                 return false;
             }
         }
@@ -188,19 +198,27 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
         if ( (featureType != GencodeGtfFeature.FeatureType.GENE) ||
                 (gtfVersion < 21) ) {
             if (feature.getTranscriptId() == null) {
+                logger.log(logLevel, "Gencode version < 21 and feature transcript ID is null.");
                 return false;
             }
             if (feature.getTranscriptType() == null) {
+                logger.log(logLevel, "Gencode version < 21 and feature transcript type is null.");
                 return false;
             }
             if (feature.getTranscriptName() == null) {
+                logger.log(logLevel, "Gencode version < 21 and feature transcript name is null.");
                 return false;
             }
         }
 
         // Gencode can only have 2 feature types:
-        return feature.getAnnotationSource().equals(GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL) ||
-                feature.getAnnotationSource().equals(GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA);
+        if (!feature.getAnnotationSource().equals(GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL) &&
+                !feature.getAnnotationSource().equals(GencodeGtfFeature.ANNOTATION_SOURCE_HAVANA) ) {
+            logger.log(logLevel, "Gencode data came from an unexpected source: " + feature.getAnnotationSource());
+            return false;
+        }
+
+        return true;
     }
 
     @Override
