@@ -112,8 +112,9 @@ if __name__ == "__main__":
 
         # Go through and print our prioritized contig list first:
         for contig in CONTIG_PRINT_ORDER_LIST:
-            write_contig(contig, contig_dictionary, out_writer)
-            contigs.remove(contig)
+            if contig in contigs:
+                write_contig(contig, contig_dictionary, out_writer)
+                contigs.remove(contig)
 
         # Print the remaining ones:
         for contig in sorted(contigs, key=str.lower):

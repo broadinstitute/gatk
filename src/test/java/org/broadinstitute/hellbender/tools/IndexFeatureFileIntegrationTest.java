@@ -418,13 +418,16 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @DataProvider
     Object[][] provideForTestEnsemblGtfIndex() {
         return new Object[][] {
-                { ENSEMBL_GTF_TEST_FILE },
-                { new File(largeFileTestDir + "funcotator/Acyrthosiphon_pisum.Acyr_2.0.51.PARTIAL.gtf") },
+                { ENSEMBL_GTF_TEST_FILE, Collections.singletonList("Chromosome") },
+                {
+                    new File(largeFileTestDir + "funcotator/Acyrthosiphon_pisum.Acyr_2.0.51.PARTIAL.gtf"),
+                    Collections.singletonList("GL349630")
+                },
         };
     }
 
     @Test(dataProvider = "provideForTestEnsemblGtfIndex")
-    public void testEnsemblGtfIndex(final File ensemblGtfFile) {
+    public void testEnsemblGtfIndex(final File ensemblGtfFile, final List<String> expectedContigs) {
         final File outName = createTempFile("tmp_ensembl_gtf", ".idx");
 
         final String[] args = {
@@ -436,8 +439,8 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
 
         final Index index = IndexFactory.loadIndex(res.toString());
         Assert.assertTrue(index instanceof LinearIndex);
-        Assert.assertEquals(index.getSequenceNames(), Collections.singletonList("Chromosome"));
-        checkIndex(index, Collections.singletonList("Chromosome"));
+        Assert.assertEquals(index.getSequenceNames(), expectedContigs);
+        checkIndex(index, expectedContigs);
     }
 
     @DataProvider
