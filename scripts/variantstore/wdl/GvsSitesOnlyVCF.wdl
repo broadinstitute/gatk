@@ -188,7 +188,7 @@ task GetSubpopulationCalculations {
         set -e
 
         # get a list of all samples in this subpopulation
-        grep ~{subpopulation} ~{subpopulation_mapping} | cut -d " " -f1 > ~{subpopulation_sample_list}
+        grep ~{subpopulation} ~{subpopulation_mapping} | awk '{ print $1 }' > ~{subpopulation_sample_list}
 
 
         if [ ~{has_service_account_file} = 'true' ]; then
@@ -213,9 +213,9 @@ task GetSubpopulationCalculations {
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
                 -V ~{updated_input_vcf} \
-                --add-output-vcf-command-line false \
                 -sn ~{subpopulation_sample_list} \
                 --add-output-vcf-command-line false \
+                --allow-nonoverlapping-command-line-samples \
                 --exclude-filtered \
                 -O ~{output_filename}
 
