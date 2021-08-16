@@ -36,9 +36,11 @@ workflow GvsSitesOnlyVCF {
             input:
               input_vcf = gvs_extract_cohort_filtered_vcfs[i],
               input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+              service_account_json_path = service_account_json_path,
               subpopulation_mapping = MakeSubpopulationFile.ancestry_mapping,
               subpopulation = subpopulations[j]
           }
+          ## add an if statement to see if we want to run the next task
 
           call ExtractAcAnAfFromSubpopulationVCFs {
             input:
@@ -135,6 +137,11 @@ task MakeSubpopulationFile {
         python3 /app/extract_subpop.py \
         --input_path ~{updated_input_file} \
         --output_path ~{output_ancestry_filename}
+
+
+        # get a list of all samples in each subpopulation-- lets do this in the python
+        ## TODO we need a check that if there's NOTHING in this subpop we dont bother with the rest of this!
+
     >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -157,12 +164,17 @@ task GetSubpopulationCalculations {
     input {
         File input_vcf
         File input_vcf_index
+        String? service_account_json_path
         File subpopulation_mapping
         String subpopulation
     }
     String output_filename = subpopulation + ".vcf"
-    String output_vcf_idx = output_filename + ".idx"
+    String output_vcf_idx = basename(output_filename) + ".idx"
     String subpopulation_sample_list = "~{subpopulation}.args"
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    String input_vcf_basename = basename(input_vcf)
+    String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
 
     parameter_meta {
         input_vcf: {
@@ -178,7 +190,15 @@ task GetSubpopulationCalculations {
         # get a list of all samples in this subpopulation
         grep ~{subpopulation} ~{subpopulation_mapping} | cut -d " " -f1 > ~{subpopulation_sample_list}
 
-        ## TODO we need a check that if there's NOTHING in this subpop we dont bother with the rest of this!
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
+
+          gsutil cp ~{input_vcf} .
+          gsutil cp ~{input_vcf_index} .
+        fi
 
 
         # Hacky method to get the subpopulation AC/AN/AF
@@ -188,11 +208,12 @@ task GetSubpopulationCalculations {
         # The sample names input:  This argument can be specified multiple times in order to provide multiple sample names, or to specify
         # the name of one or more files containing sample names. File names must use the extension ".args", and the
         # expected file format is simply plain text with one sample name per line. Note that sample exclusion takes
-        #precedence over inclusion, so that if a sample is in both lists it will be excluded.
+        # precedence over inclusion, so that if a sample is in both lists it will be excluded.
 
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
-                -V ~{input_vcf} \
+                -V ~{updated_input_vcf} \
+                --add-output-vcf-command-line false \
                 -sn ~{subpopulation_sample_list} \
                 --add-output-vcf-command-line false \
                 --exclude-filtered \
