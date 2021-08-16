@@ -121,11 +121,6 @@ task MakeSubpopulationFile {
     String input_file_basename = basename(input_ancestry_file)
     String updated_input_file = if (defined(service_account_json_path)) then input_file_basename else input_ancestry_file
 
-    parameter_meta {
-        input_ancestry_file: {
-          localization_optional: true
-        }
-    }
     command <<<
         set -e
 
