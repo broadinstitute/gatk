@@ -24,7 +24,8 @@ workflow GvsSitesOnlyVCF {
 
     call MakeSubpopulationFile {
         input:
-            input_ancestry_file = ancestry_file
+            input_ancestry_file = ancestry_file,
+            service_account_json_path = service_account_json_path
     }
 
     ## Scatter across the shards from the GVS jointVCF
@@ -113,13 +114,31 @@ workflow GvsSitesOnlyVCF {
 task MakeSubpopulationFile {
     input {
         File input_ancestry_file
+        String? service_account_json_path
     }
     String output_ancestry_filename =  "ancestry_mapping"
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    String input_file_basename = basename(input_ancestry_file)
+    String updated_input_file = if (defined(service_account_json_path)) then input_file_basename else input_ancestry_file
+
+    parameter_meta {
+        input_ancestry_file: {
+          localization_optional: true
+        }
+    }
     command <<<
         set -e
 
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+
+            gsutil cp ~{input_ancestry_file} .
+        fi
+
         python3 /app/extract_subpop.py \
-        --input_path ~{input_ancestry_file} \
+        --input_path ~{updated_input_file} \
         --output_path ~{output_ancestry_filename}
     >>>
     # ------------------------------------------------
