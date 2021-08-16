@@ -2,7 +2,7 @@ language: java
 dist: bionic
 group: travis_lts
 git:
-  depth: 9999999
+  depth: 3
   lfs_skip_smudge: true
 jdk:
   - openjdk8
