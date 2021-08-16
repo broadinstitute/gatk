@@ -140,6 +140,7 @@ final public class DataSourceUtils {
     public static final String OTHER_FASTA_EXTENSION                       = "current_fasta/";
 //    public static final String BUNDLER_FOLDER_EXTENSION                    = "_dataSources.v0.0."
     public static final String FASTA_DICT_EXTENSION                        = ".dict";
+    public static final String REORDERED_EXTENSION                         = ".REORDERED";
 
     //==================================================================================================================
     // Public Static Methods:

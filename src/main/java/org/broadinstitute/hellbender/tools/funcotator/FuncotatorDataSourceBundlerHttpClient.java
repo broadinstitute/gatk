@@ -41,6 +41,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
     public static final String MANIFEST_FILE_NAME           = "MANIFEST.txt";
     public static final String TEMPLATE_CONFIG_FILE_NAME    = "template.config";
     public static final String README_FILE_NAME             = "README.txt";
+    public static final String SCRIPT_PATH                  = "./scripts/funcotator/data_sources/fixGencodeOrdering.py";
 
     //==================================================================================================================
     // Private Static Members:
@@ -77,6 +78,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
     protected Path dsGtfReadMePath;
     protected Path dsFastaReadMePath;
     protected Path dsFastaDictPath;
+    protected Path dsReorderedGtfPath;
 
     // Copy buffer:
     public static byte copyBuffer[] = new byte[BUFFER_SIZE_BYTES];
@@ -117,6 +119,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
         this.dsGtfReadMePath        = setGtfReadMePath(this.speciesName, this.fileName);
         this.dsFastaReadMePath      = setFastaReadMePath(this.speciesName);
         this.dsFastaDictPath        = setFastaDictPath(this.speciesName, this.fastaFileName);
+        this.dsReorderedGtfPath     = setReorderedGtfPath(this.speciesName, this.fileName);
     }
 
     //==================================================================================================================
@@ -184,9 +187,10 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @param gtfFilePath The {@link Path} representing the path to the gtf data source file we have downloaded.
      * @param idxFilePath The {@link Path} representing the path where we want our indexed file to be.
      */
-    public static void buildIndexFile(Path gtfFilePath, Path idxFilePath) {
+    public static void buildIndexFile(Path gtfFilePath, Path idxFilePath, FuncotatorDataSourceBundlerHttpClient bundler) {
+        readBashScript(gtfFilePath, bundler);
         IndexFeatureFile indexer = new IndexFeatureFile();
-        indexer.indexGTF(gtfFilePath.toAbsolutePath(), idxFilePath.toAbsolutePath());
+        indexer.indexGTF(bundler.dsReorderedGtfPath.toAbsolutePath(), idxFilePath.toAbsolutePath());
     }
 
     /**
@@ -423,6 +427,34 @@ public class FuncotatorDataSourceBundlerHttpClient {
             buffer.close();
         } catch (IOException e) {
             throw new UserException("Error. Unable to make manifest file in location: " + bundler.metadataFilePath.toString() + "/" + MANIFEST_FILE_NAME);
+        }
+    }
+
+    public static void readBashScript(Path gtfFilePath, FuncotatorDataSourceBundlerHttpClient bundler) {
+        try {
+            Runtime rt = Runtime.getRuntime();
+            String[] commands = {"./scripts/funcotator/data_sources/fixGencodeOrdering.py", "./" + gtfFilePath.toString()};
+            Process proc = rt.exec(commands);
+            BufferedReader stdIn = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+            BufferedReader stdErr = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+
+            FileWriter fWriter = new FileWriter(bundler.dsReorderedGtfPath.toString());
+            BufferedWriter writer = new BufferedWriter(fWriter);
+
+//            try {
+//                proc.waitFor();
+//            } catch (InterruptedException e) {
+//                throw new UserException("Error. Unable to access script!", e);
+//            }
+            String line;
+            while ((line = stdIn.readLine()) != null) {
+                writer.write(line);
+            }
+            stdIn.close();
+            stdErr.close();
+            writer.close();
+        } catch (IOException e) {
+            throw new UserException("Error. Unable to reorder gtf file.", e);
         }
     }
 
@@ -678,4 +710,12 @@ public class FuncotatorDataSourceBundlerHttpClient {
         return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_DICT_EXTENSION);
     }
 
+    /**
+     * Constructs the path where the reordered gtf file should go.
+     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
+     * @return The path where the reordered gtf file will be found.
+     */
+    public Path setReorderedGtfPath(String speciesName, String fileName) {
+        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.REORDERED_EXTENSION + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
+    }
 }

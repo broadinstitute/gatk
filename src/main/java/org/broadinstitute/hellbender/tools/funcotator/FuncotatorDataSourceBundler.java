@@ -241,7 +241,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
 //        // Extract data sources if requested:
         if ( extractDataSourcesAfterDownload ) {
-            FuncotatorDataSourceBundlerUtils.extractGzFile(bundler.getOutputDestination().toString(), bundler.getDSUnzipPath().toString(), overwriteOutputFile);
+//            FuncotatorDataSourceBundlerUtils.extractGzFile(bundler.getOutputDestination().toString(), bundler.getDSUnzipPath().toString(), overwriteOutputFile);
 //            FuncotatorDataSourceBundlerUtils.extractGzFile(bundler.getFastaOutputDestination().toString(), bundler.getFastaUnzipPath().toString(), overwriteOutputFile);
         }
         else {
@@ -275,7 +275,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 //        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaReadMeURL(), bundler.getFastaReadMePath());
 
 //        // Index the gtf file:
-//        FuncotatorDataSourceBundlerHttpClient.buildIndexFile(bundler.getDSUnzipPath(), bundler.getIndexPath());
+        FuncotatorDataSourceBundlerHttpClient.buildIndexFile(bundler.getDSUnzipPath(), bundler.getIndexPath(), bundler);
 
     }
 
