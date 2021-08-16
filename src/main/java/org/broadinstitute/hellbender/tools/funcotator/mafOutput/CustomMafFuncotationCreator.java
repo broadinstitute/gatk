@@ -10,6 +10,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorConstants;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.TumorNormalPair;
@@ -27,6 +28,8 @@ import java.util.stream.Collectors;
 public class CustomMafFuncotationCreator {
 
     public final static List<String> COUNT_FIELD_NAMES = Arrays.asList(
+            MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele1,
+            MafOutputRendererConstants.FieldName_Match_Norm_Seq_Allele2,
             MafOutputRendererConstants.FieldName_t_alt_count,
             MafOutputRendererConstants.FieldName_t_ref_count,
             MafOutputRendererConstants.FieldName_n_alt_count,
@@ -94,7 +97,56 @@ public class CustomMafFuncotationCreator {
             final String nAltCount = hasNormalAD ? Integer.toString(normalGenotype.getAD()[i + 1]) : "";
             final String nRefCount = hasNormalAD ? Integer.toString(normalGenotype.getAD()[0]) : "";
 
+            // Add in Match_Norm_Seq_Allele1 and Match_Norm_Seq_Allele2 given the tnPair:
+            final boolean isInsertion = variant.isIndel() && variant.getReference().length() < allele.length();
+            final boolean isDeletion = variant.isIndel() && variant.getReference().length() > allele.length();
+
+            final String matchNormSeqAllele1;
+            final String matchNormSeqAllele2;
+            if (normalGenotype == null) {
+                // NOTE: This is an error case.
+                matchNormSeqAllele1 = FuncotatorConstants.UNKNOWN_VALUE_STRING;
+                matchNormSeqAllele2 = FuncotatorConstants.UNKNOWN_VALUE_STRING;
+            }
+            else if (normalGenotype.getAlleles().size() < 2) {
+                // NOTE: This is an error case.
+                matchNormSeqAllele1 = FuncotatorConstants.UNKNOWN_VALUE_STRING;
+                matchNormSeqAllele2 = FuncotatorConstants.UNKNOWN_VALUE_STRING;
+            }
+            else if (isInsertion) {
+                // NOTE: We have to calculate what the correct string is here, Aaccording to TCGA MAF v2.2 definition:
+                //
+                // Primary data. Matched normal sequencing allele 1. "-" for deletions;
+                // novel inserted sequence for INS not including flanking reference bases.
+
+                // For insertions, just check to see if the first base in the alt allele is the same as the
+                // ref base, and if it is, we remove it:
+                final String refBase = variant.getReference().getBaseString();
+                final String altBaseNoRef = allele.getBaseString().startsWith(refBase) ?
+                        allele.getBaseString().substring(refBase.length()) :
+                        allele.getBaseString();
+
+                // NOTE: in this context, the tumor genotype should be the inserted bases:
+                matchNormSeqAllele1 = normalGenotype.getAllele(0).getBaseString().equals(variant.getReference().getBaseString()) ?
+                        altBaseNoRef :
+                        normalGenotype.getAllele(0).getBaseString();
+
+                matchNormSeqAllele2 = normalGenotype.getAllele(1).getBaseString().equals(variant.getReference().getBaseString()) ?
+                        altBaseNoRef :
+                        normalGenotype.getAllele(1).getBaseString();
+            }
+            else if (isDeletion) {
+                matchNormSeqAllele1 = "-";
+                matchNormSeqAllele2 = "-";
+            }
+            else {
+                matchNormSeqAllele1 = normalGenotype.getAllele(0).getBaseString();
+                matchNormSeqAllele2 = normalGenotype.getAllele(1).getBaseString();
+            }
+
             final List<String> fieldValues = Arrays.asList(
+                    matchNormSeqAllele1,
+                    matchNormSeqAllele2,
                     tAltCount,
                     tRefCount,
                     nAltCount,
@@ -109,11 +161,13 @@ public class CustomMafFuncotationCreator {
 
     private static FuncotationMetadata createCustomMafCountFieldsMetadata() {
         return VcfFuncotationMetadata.create(Arrays.asList(
-                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(0), VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of alternate reads in the tumor."),
-                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(1), VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of reference reads in the tumor."),
-                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(2), VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of alternate reads in the normal."),
-                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(3), VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of reference reads in the normal."),
-                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(4), VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele fractions of alternate alleles in the tumor.")
+                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(0), VCFHeaderLineCount.A, VCFHeaderLineType.String, "Primary data. Matched normal sequencing allele 1. \"-\" for deletions; novel inserted sequence for INS not including flanking reference bases."),
+                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(1), VCFHeaderLineCount.A, VCFHeaderLineType.String, "Primary data. Matched normal sequencing allele 2. \"-\" for deletions; novel inserted sequence for INS not including flanking reference bases."),
+                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(2), VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of alternate reads in the tumor."),
+                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(3), VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of reference reads in the tumor."),
+                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(4), VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of alternate reads in the normal."),
+                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(5), VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Number of reference reads in the normal."),
+                new VCFInfoHeaderLine(COUNT_FIELD_NAMES.get(6), VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele fractions of alternate alleles in the tumor.")
         ));
     }
 
