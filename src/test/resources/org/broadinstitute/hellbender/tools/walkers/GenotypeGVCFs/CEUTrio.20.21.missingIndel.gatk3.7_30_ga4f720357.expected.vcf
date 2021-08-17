@@ -36,4 +36,4 @@
 ##contig=<ID=21,length=48129895,assembly=b37>
 ##reference=file:///Users/louisb/Workspace/gatk-protected/src/test/resources/large/human_g1k_v37.20.21.fasta
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
-20	10156378	rs35304411	A	AT	92.60	.	AC=1;AF=0.500;AN=2;BaseQRankSum=-2.850e-01;ClippingRankSum=-1.900e-02;DB;DP=83;ExcessHet=3.0103;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=53.72;MQRankSum=-1.159e+00;QD=3.86;ReadPosRankSum=0.218;SOR=0.807	GT:AD:DP:GQ:PL	0/1:14,10:32:99:100,0,285
+20	10156378	rs35304411	A	AT	92.60	.	AC=1;AF=0.500;AN=2;BaseQRankSum=-2.850e-01;ClippingRankSum=-1.900e-02;DB;DP=83;ExcessHet=0.0000;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=53.72;MQRankSum=-1.159e+00;QD=3.86;ReadPosRankSum=0.218;SOR=0.807	GT:AD:DP:GQ:PL	0/1:14,10:32:99:100,0,285
