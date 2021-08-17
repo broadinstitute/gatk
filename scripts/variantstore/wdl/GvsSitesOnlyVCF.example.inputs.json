@@ -7,10 +7,10 @@
   "GvsSitesOnlyVCF.vat_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json",
   "GvsSitesOnlyVCF.variant_transcript_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json",
   "GvsSitesOnlyVCF.genes_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json",
-  "GvsSitesOnlyVCF.output_path": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/output/aug09/",
-  "GvsSitesOnlyVCF.table_suffix": "aug09",
+  "GvsSitesOnlyVCF.output_path": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/output/aug12/",
+  "GvsSitesOnlyVCF.table_suffix": "aug12",
   "GvsSitesOnlyVCF.project_id": "spec-ops-aou",
   "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing",
   "GvsSitesOnlyVCF.AnAcAf_annotations_template": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/custom_annotations_template.tsv",
-  "GvsSitesOnlyVCF.sample_list": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/subpop.tsv"
+  "GvsSitesOnlyVCF.ancestry_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/subpop.tsv"
 }
