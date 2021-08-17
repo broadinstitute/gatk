@@ -208,7 +208,25 @@ public class CustomMafFuncotationCreator {
         final List<Funcotation> result = new ArrayList<>();
 
         for (final Allele allele : alleles) {
-            result.add(TableFuncotation.create(COUNT_FIELD_NAMES, Collections.nCopies(COUNT_FIELD_NAMES.size(), ""), allele, MafOutputRendererConstants.MAF_COUNT_RENDERING_DATASOURCE_DUMMY_NAME, createCustomMafCountFieldsMetadata()));
+
+            final List<String> fieldDefaults = new ArrayList<>();
+
+            // Add two entries for FieldName_Match_Norm_Seq_Allele1/2
+            fieldDefaults.add(FuncotatorConstants.UNKNOWN_VALUE_STRING);
+            fieldDefaults.add(FuncotatorConstants.UNKNOWN_VALUE_STRING);
+
+            // Add the rest as empty strings:
+            fieldDefaults.addAll(Collections.nCopies(COUNT_FIELD_NAMES.size() - 2, ""));
+
+            result.add(
+                    TableFuncotation.create(
+                            COUNT_FIELD_NAMES,
+                            fieldDefaults,
+                            allele,
+                            MafOutputRendererConstants.MAF_COUNT_RENDERING_DATASOURCE_DUMMY_NAME,
+                            createCustomMafCountFieldsMetadata()
+                    )
+            );
         }
         return result;
     }
