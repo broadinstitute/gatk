@@ -115,6 +115,12 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Argument(fullName = "fc-batch-normalize", shortName = "fc-batch-normalize", doc = "Batch normalize fully-connected layers", optional = true)
     private boolean fcBatchNormalize = false;
 
+    @Argument(fullName = "batch-size", shortName = "batch-size", doc = "Size of batches to use during training", optional = true)
+    private int batchSize = 32;
+
+    @Argument(fullName = "annotations", shortName = "annotations", doc = "Which annotations to use.", optional = true)
+    private List<String> annotations = new ArrayList<String>();
+
     @Argument(fullName = "annotation-units", shortName = "annotation-units", doc = "Number of units connected to the annotation input layer", optional = true)
     private int annotationUnits = 16;
 
@@ -153,6 +159,7 @@ public class CNNVariantTrain extends CommandLineProgram {
                 "--fc_dropout", Float.toString(fcDropout),
                 "--annotation_units", Integer.toString(annotationUnits),
                 "--epochs", Integer.toString(epochs),
+                "--batch_size", Integer.toString(batchSize),
                 "--training_steps", Integer.toString(trainingSteps),
                 "--validation_steps", Integer.toString(validationSteps),
                 "--gatk_version", this.getVersion(),
@@ -200,14 +207,11 @@ public class CNNVariantTrain extends CommandLineProgram {
             for(Integer fl : fcLayers){
                 arguments.add(Integer.toString(fl));
             }
-
-            if (tensorType == TensorType.reference) {
-                arguments.addAll(Arrays.asList("--mode", "train_args_model_on_reference_and_annotations"));
-            } else if (tensorType == TensorType.read_tensor) {
-                arguments.addAll(Arrays.asList("--mode", "train_from_tensor_maps"));
-            } else {
-                throw new GATKException("Unknown tensor mapping mode:"+ tensorType.name());
+            arguments.add("--annotations");
+            for(String annotation : annotations){
+                arguments.add(annotation);
             }
+            arguments.addAll(Arrays.asList("--mode", "train_from_tensor_maps"));
         }
 
         logger.info("Args are:"+ Arrays.toString(arguments.toArray()));

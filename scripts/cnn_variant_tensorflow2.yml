@@ -69,6 +69,8 @@ dependencies:
     - keras-nightly==2.5.0.dev2021032900
     - keras-preprocessing==1.1.2
     - markdown==3.3.4
+    - ml4h
+    - ml4ht
     - numpy==1.19.5
     - oauthlib==3.1.1
     - opt-einsum==3.3.0
@@ -89,4 +91,3 @@ dependencies:
     - urllib3==1.26.6
     - werkzeug==2.0.1
     - wrapt==1.12.1
-prefix: /Users/sam/miniconda3/envs/tf2

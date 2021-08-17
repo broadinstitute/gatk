@@ -14,14 +14,9 @@ from collections import Counter
 import keras.backend as K
 
 # ml4h Imports
-from ml4h.TensorMap import TensorMap
+from ml4h.recipes import train_block
 from ml4h.arguments import parse_args
-from ml4h.metrics import coefficient_of_determination
-from ml4h.explorations import latent_space_dataframe
-from ml4h.recipes import train_multimodal_multitask
-from ml4h.models.model_factory import block_make_multimodal_multitask_model
-from ml4h.tensor_generators import TensorGenerator, big_batch_from_minibatch_generator, test_train_valid_tensor_generators
-from ml4h.recipes import plot_predictions, infer_hidden_layer_multimodal_multitask
+
 
 def run():
     args = vqsr_cnn.parse_args()
@@ -46,15 +41,27 @@ def run():
 
 
 def train_from_tensor_maps(args):
+    input_tensors = [args.tensor_name] + [a.lower() for a in args.annotations]
+    if len(input_tensors) > 1:
+        encoder_blocks = ['conv_encode', 'dense_encode']
+        merge_blocks = ['concat']
+    else:
+        encoder_blocks = ['conv_encode']
+        merge_blocks = []
     sys.argv = ['train', '--tensors', args.data_dir,
-                '--input_tensors', args.tensor_name,
+                '--input_tensors' ] + input_tensors + [
                 '--output_tensors', 'variant_label',
+                '--encoder_blocks'] + encoder_blocks + [
+                '--merge_blocks'] + merge_blocks + [
+                '--decoder_blocks', 'dense_decode',
+                '--output_folder', args.output_dir,
                 '--batch_size', f'{args.batch_size}',
                 '--epochs', f'{args.epochs}',
+                '--num_workers', '0',
                 '--logging_level', 'DEBUG',
                 '--tensormap_prefix', 'ml4h.tensormap.gatk']
     args = parse_args()
-    train_multimodal_multitask(args)
+    train_block(args)
 
 
 
@@ -303,8 +310,8 @@ def write_all_tensors_tf2(args):
             reference_sequence_into_tensor(args, reference_seq, read_tensor)
 
             tensor_prefix = f'{plain_name(args.input_vcf)}_{plain_name(args.train_vcf)}_allele_{str(allele)[:12]}'
-            #tensor_path = f'{args.data_dir}/{tensor_prefix}-{variant.CHROM}_{variant.POS}{vqsr_cnn.TENSOR_SUFFIX}'
-            tensor_path = f'{args.data_dir}/{v}{vqsr_cnn.TENSOR_SUFFIX}'
+            tensor_path = f'{args.data_dir}/{tensor_prefix}-{variant.CHROM}_{variant.POS}{vqsr_cnn.TENSOR_SUFFIX}'
+            #tensor_path = f'{args.data_dir}/{v}{vqsr_cnn.TENSOR_SUFFIX}'
             stats[cur_label_key] += 1
 
             if not os.path.exists(os.path.dirname(tensor_path)):

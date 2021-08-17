@@ -46,7 +46,7 @@ def parse_args():
                         help='Store the channels in the first axis of tensors, tensorflow->false, theano->true')
 
     # Annotation arguments
-    parser.add_argument('--annotations', help='Array of annotation names, initialised via annotation_set argument')
+    parser.add_argument('--annotations', nargs='*', help='Array of annotation names, initialised via annotation_set argument')
     parser.add_argument('--annotation_set', default='best_practices', choices=defines.ANNOTATIONS_SETS.keys(),
                         help='Key which maps to an annotations list (or _ to ignore annotations).')
 
@@ -182,7 +182,9 @@ def annotations_from_args(args):
     Returns:
         list: Annotation strings as they appear in a VCF info/format field or None.
     """
-    if args.annotation_set and args.annotation_set in defines.ANNOTATIONS_SETS:
+    if args.annotations is not None and len(args.annotations) > 0:
+        return args.annotations
+    elif args.annotation_set and args.annotation_set in defines.ANNOTATIONS_SETS:
         return defines.ANNOTATIONS_SETS[args.annotation_set]
     return None
 
@@ -208,6 +210,6 @@ def weight_path_from_args(args):
         args.output_dir: The directory where the file will be saved
         args.id: The name of the file is this run's id with tensor suffix as file extension
     """
-    save_weight_hd5 = args.output_dir + args.id + defines.TENSOR_SUFFIX
+    save_weight_hd5 = args.output_dir + args.id + defines.MODEL_SUFFIX
     return save_weight_hd5
 

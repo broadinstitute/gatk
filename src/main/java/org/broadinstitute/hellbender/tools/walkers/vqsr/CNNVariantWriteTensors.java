@@ -106,6 +106,9 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
     @Argument(fullName = "downsample-indels", shortName = "downsample-indels", doc = "Fraction of INDELs to write tensors for.", optional = true)
     private float downsampleIndels = 0.5f;
 
+    @Argument(fullName = "annotations", shortName = "annotations", doc = "Which annotations to use.", optional = true)
+    private List<String> annotations = new ArrayList<String>();
+
     @Advanced
     @Argument(fullName = "channels-last", shortName = "channels-last", doc = "Store the channels in the last axis of tensors, tensorflow->true, theano->false", optional = true)
     private boolean channelsLast = true;
@@ -140,7 +143,11 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
                 "--downsample_snps", Float.toString(downsampleSnps),
                 "--downsample_indels", Float.toString(downsampleIndels),
                 "--data_dir", outputTensorsDir));
-
+        // Add list arguments
+        arguments.add("--annotations");
+        for(String annotation : annotations){
+            arguments.add(annotation);
+        }
         if(channelsLast){
             arguments.add("--channels_last");
         } else{
