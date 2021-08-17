@@ -256,15 +256,12 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
       row["revel"] = variant_line.get("revel").get("score")
 
     gvs_annotations = variant_line["gvsAnnotations"]
-    if gvs_annotations.get("AC") < 20: # if AC is between 1-19, make the value 20 and then recalculate AF as 20 / AN (we already checked for AC=0)
-      row["gvs_all_ac"] = 20
-      row["gvs_all_an"] = gvs_annotations.get("AN")
-      row["gvs_all_af"] = 20 / gvs_annotations.get("AN")
-    else:
-      for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
-        nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
-        gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
-        row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
+
+    for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
+      nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
+      gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
+      row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
+
     subpopulation_info = get_subpopulation_calculations(variant_line)
     row.update(subpopulation_info)
 
