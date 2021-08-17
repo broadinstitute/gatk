@@ -132,21 +132,21 @@ script:
     echo "Can't run cloud tests without keys so don't run tests";
   elif [[ $RUN_CNV_GERMLINE_COHORT_WDL == true ]]; then
     echo "Running CNV germline cohort workflow";
-    travis_wait 60 bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh COHORT;
+ bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh COHORT;
   elif [[ $RUN_CNV_GERMLINE_CASE_WDL == true ]]; then
     echo "Running CNV germline case workflow";
-    travis_wait 60 bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh CASE;
+ bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh CASE;
   elif [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
     echo "Running CNV somatic workflows";
-    travis_wait 60 bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+ bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
     echo "Deleting some unused files before running M2 WDL...";
     rm -Rf src/test/resources/large/VQSR;
     echo "Running M2 WDL";
-    travis_wait 60 sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
+ sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $RUN_CNN_WDL == true ]]; then
     echo "Running CNN WDL";
-    travis_wait 60 sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
+ sudo bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image and running appropriate tests..." ;
     if [ ${TRAVIS_PULL_REQUEST} != false ]; then
@@ -174,7 +174,7 @@ script:
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     export GATK_LAUNCH_SCRIPT="$(pwd)/gatk";
-    travis_wait 50 ./gradlew -Dscala.version=${SCALA_VERSION} jacocoTestReport;
+ ./gradlew -Dscala.version=${SCALA_VERSION} jacocoTestReport;
   fi;
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
 # This also constructs the Docker image and uploads it to https://cloud.docker.com/u/broadinstitute/repository/docker/broadinstitute/gatk-nightly/
@@ -220,4 +220,3 @@ after_script:
       python scripts/travis/Reporter.py https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html;
     fi
   fi;
-
