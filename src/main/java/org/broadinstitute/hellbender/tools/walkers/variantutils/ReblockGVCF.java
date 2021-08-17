@@ -49,7 +49,8 @@ import java.util.stream.IntStream;
  *
  * <p>
  * ReblockGVCF compresses a GVCF by merging hom-ref blocks that were produced using the '-ERC GVCF' or '-ERC BP_RESOLUTION' mode of the
- * HaplotypeCaller according to new GQ band parameters.  A joint callset produced with GVCFs reprocessed by ReblockGVCF will have
+ * HaplotypeCaller according to new GQ band parameters.  Uncalled alleles and associated data will also be dropped unless --keep-all-alts is specified.
+ * A joint callset produced with GVCFs reprocessed by ReblockGVCF will have
  * lower precision for hom-ref genotype qualities at variant sites, but the input data footprint can be greatly reduced
  * if the default GQ band parameters are used.</p>
  *
@@ -66,12 +67,13 @@ import java.util.stream.IntStream;
  * <h3>Usage example</h3>
  * <pre>
  * gatk ReblockGVCF \
+ *   -GQB 20 -GQB 30 -GQB 40 --floor-blocks \
  *   -R reference.fasta \
  *   -V sample1.g.vcf \
- *   -O sample1.reblocked.g.vcf
+ *   -O sample1.rb.g.vcf
  * </pre>
  *
- * Invocation as for use with GnarlyGenotyper in the "Biggest Practices"
+ * Invocation as for smallest GVCFs to use with GnarlyGenotyper
  * <pre>
  *  gatk ReblockGVCF \
  *    -R reference.fasta \
@@ -84,14 +86,14 @@ import java.util.stream.IntStream;
  *
  * <h3>Caveats</h3>
  * <p>Only single-sample GVCF files produced by HaplotypeCaller can be used as input for this tool.</p>
+ * <p>Annotations and header lines that are uninformative for single-sample will be dropped: 
+ *       MLEAC, MLEAF, DS, ExcessHet, HaplotypeScore, InbreedingCoeff, AS_InbreedingCoeff
  * <p>Note that when uncalled alleles are dropped, the original GQ may increase.  Use --keep-all-alts if GQ accuracy is a concern.</p>
  *
  */
-@BetaFeature
 @CommandLineProgramProperties(summary = "Compress a single-sample GVCF from HaplotypeCaller by merging homRef blocks using new GQ band parameters",
         oneLineSummary = "Condenses homRef blocks in a single-sample GVCF",
-        programGroup = OtherProgramGroup.class,
-        omitFromCommandLine = true)
+        programGroup = OtherProgramGroup.class)
 @DocumentedFeature
 public final class ReblockGVCF extends MultiVariantWalker {
 
