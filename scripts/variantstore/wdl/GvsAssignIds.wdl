@@ -7,7 +7,7 @@ workflow GvsAssignIds {
     String project_id
     String dataset_name
     String sample_info_table = "sample_info"
-    String sample_info_schema = "sample_name:STRING,sample_id:INTEGER"
+    String sample_info_schema = "sample_name:STRING,sample_id:INTEGER,is_loaded:BOOLEAN"
     String? service_account_json
     Int? preemptible_tries
     File? gatk_override
@@ -120,7 +120,7 @@ task AssignIds {
   }
 }
 
-# Creates all the tables necessary for the LoadData operation
+# Creates the necessary sample_info table
 task CreateTables {
   meta {
     volatile: true
