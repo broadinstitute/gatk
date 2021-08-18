@@ -13,13 +13,20 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtil
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
+import org.broadinstitute.hellbender.utils.python.PythonExecutorBase;
+import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
+import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 
 import java.io.*;
 
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.Month;
+import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
 
 
 /**
@@ -158,7 +165,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
 
             // Extracting the data from the entity object:
             try( final InputStream inputStream = entity.getContent();
-                 final OutputStream outputStream = Files.newOutputStream(outputDestination) ) {
+                 final OutputStream outputStream = Files.newOutputStream(outputDestination) )
+            {
 
                 // Perform the copy:
                 while (true) {
@@ -188,7 +196,9 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @param idxFilePath The {@link Path} representing the path where we want our indexed file to be.
      */
     public static void buildIndexFile(Path gtfFilePath, Path idxFilePath, FuncotatorDataSourceBundlerHttpClient bundler) {
+        // Reorder gtf file:
         readBashScript(gtfFilePath, bundler);
+
         IndexFeatureFile indexer = new IndexFeatureFile();
         indexer.indexGTF(bundler.dsReorderedGtfPath.toAbsolutePath(), idxFilePath.toAbsolutePath());
     }
@@ -207,16 +217,20 @@ public class FuncotatorDataSourceBundlerHttpClient {
         try {
             FastaIndexDictWriter writer = fastaIndexer.build();
             String line;
-            try {
-                BufferedReader reader = new BufferedReader(new FileReader(dsFastaUnzipPath.toString()));
+            try (BufferedReader reader = new BufferedReader(new FileReader(dsFastaUnzipPath.toString()))) {
+                int count = 0;
                 while ((line = reader.readLine()) != null) {
-                    writer.startSequence(line);
+                    if (line.substring(0, 1).equals(">")) {
+                        writer.startSequence(line);
+                    }
                 }
-            } catch (Exception e) {
+
+                } catch(Exception e){
+                    throw new UserException("Error. Unable to read file.", e);
                 }
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Error: ", e);
-        }
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Error: ", e);
+            }
     }
 
     /**
@@ -224,9 +238,10 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
      */
     public static void buildConfigFile(FuncotatorDataSourceBundlerHttpClient bundler) {
-        try {
-            FileWriter writer = new FileWriter(bundler.configFilePath.toAbsolutePath().toString());
-            BufferedWriter buffer = new BufferedWriter(writer);
+        try ( FileWriter writer = new FileWriter(bundler.configFilePath.toAbsolutePath().toString());
+              BufferedWriter buffer = new BufferedWriter(writer) )
+        {
+
             buffer.write(
                     "name = Ensembl\n" +
                             "version = 104\n" +
@@ -278,7 +293,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
                             "# The 0-based index of the column containing the end position for each row\n" +
                             "end_column =\n"
             );
-            buffer.close();
         } catch (IOException e) {
             throw new UserException("Error. Unable to build file: " + bundler.configFilePath);
         }
@@ -289,9 +303,9 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
      */
     public static void buildTemplateConfigFile(FuncotatorDataSourceBundlerHttpClient bundler) {
-        try {
-            FileWriter writer = new FileWriter(bundler.metadataFilePath.toAbsolutePath() + "/" + TEMPLATE_CONFIG_FILE_NAME);
-            BufferedWriter buffer = new BufferedWriter(writer);
+        try ( FileWriter writer = new FileWriter(bundler.metadataFilePath.toAbsolutePath() + "/" + TEMPLATE_CONFIG_FILE_NAME);
+              BufferedWriter buffer = new BufferedWriter(writer) ) {
+
             buffer.write(
                     "name = Achilles\n" +
                             "version = 110303\n" +
@@ -343,7 +357,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
                             "# The 0-based index of the column containing the end position for each row\n" +
                             "end_column ="
             );
-            buffer.close();
 
         } catch (IOException e) {
             throw new UserException("Error. Unable to make template config file in location: " + bundler.metadataFilePath + "/" + TEMPLATE_CONFIG_FILE_NAME);
@@ -355,9 +368,10 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
      */
     public static void buildReadMeFile(FuncotatorDataSourceBundlerHttpClient bundler) {
-        try {
-            FileWriter writer = new FileWriter(bundler.metadataFilePath.toAbsolutePath().toString() + "/" + README_FILE_NAME);
-            BufferedWriter buffer = new BufferedWriter(writer);
+        try ( FileWriter writer = new FileWriter(bundler.metadataFilePath.toAbsolutePath().toString() + "/" + README_FILE_NAME);
+              BufferedWriter buffer = new BufferedWriter(writer) )
+        {
+
             buffer.write(
                     "################################################################################\n" +
                             "# Funcotator Data Sources Bundler Package README\n" +
@@ -404,7 +418,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
                             "--------------------\n" +
                             "  The ENSEMBL Project produces high quality reference gene annotation and experimental validation for over 50,000 genomes. \n"
             );
-            buffer.close();
         } catch (IOException e) {
             throw new UserException("Error. Unable to make ReadMe file in location: " + bundler.metadataFilePath + "/" + README_FILE_NAME);
         }
@@ -415,47 +428,52 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
      */
     public static void buildManifestFile(FuncotatorDataSourceBundlerHttpClient bundler) {
-        try {
-            FileWriter writer = new FileWriter(bundler.metadataFilePath.toAbsolutePath().toString() + "/" + MANIFEST_FILE_NAME);
-            BufferedWriter buffer = new BufferedWriter(writer);
+        try ( FileWriter writer = new FileWriter(bundler.metadataFilePath.toAbsolutePath().toString() + "/" + MANIFEST_FILE_NAME);
+              BufferedWriter buffer = new BufferedWriter(writer) )
+        {
+
             buffer.write(
                     "Version:          0.0." + bundler.getDate() + "\n" +
                             "Use Case:         " + bundler.speciesName + "\n" +
                             "Source:           ./gatk FuncotatorDataSourceBundler -" + bundler.dsOrganism + "-species-name " + bundler.speciesName + "\n" +
                             "Alternate Source: ./gatk FuncotatorDataSourceBundler -" + bundler.dsOrganism + "-species-name " + bundler.speciesName + "\n"
             );
-            buffer.close();
+
         } catch (IOException e) {
             throw new UserException("Error. Unable to make manifest file in location: " + bundler.metadataFilePath.toString() + "/" + MANIFEST_FILE_NAME);
         }
     }
 
+    /**
+     * Run the fixGencodeOrdering.py script to put gtf file in correct genomic coordinate order.
+     * @param gtfFilePath The {@link Path} to the gtf file we want to reorder.
+     * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
+     */
     public static void readBashScript(Path gtfFilePath, FuncotatorDataSourceBundlerHttpClient bundler) {
-        try {
-            Runtime rt = Runtime.getRuntime();
-            String[] commands = {"./scripts/funcotator/data_sources/fixGencodeOrdering.py", "./" + gtfFilePath.toString()};
-            Process proc = rt.exec(commands);
-            BufferedReader stdIn = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-            BufferedReader stdErr = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
+        //executescriptandgetoutput
+        //returns a process object read lines from that into another file
+        PythonScriptExecutor executor = new PythonScriptExecutor(true);
+//        final boolean ret = executor.executeArgs(new ArrayList<String>(Arrays.asList("-c", "Users/hfox/fixGencodeOrdering.py", ">", "./"+gtfFilePath.toString())));
+        final List<String> args = new ArrayList<>();
 
-            FileWriter fWriter = new FileWriter(bundler.dsReorderedGtfPath.toString());
-            BufferedWriter writer = new BufferedWriter(fWriter);
+        args.add("./" + gtfFilePath.toString());
+        args.add(">");
+        args.add("./" + bundler.getIndexPath());
+        ProcessOutput pythonProcessOutput = executor.executeScriptAndGetOutput("./scripts/funcotator/data_sources/fixGencodeOrdering.py", null, args);
+        String file = pythonProcessOutput.getStdout().toString();
+        String line = "hey";
+        String fire = "fire";
+        //BufferedReader stdIn = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(pythonProcessOutput.getStdout().getBufferString().getBytes(Charset.forName("UTF-8")))))
+//        try (
+//             BufferedWriter writer = new BufferedWriter(new FileWriter(bundler.dsReorderedGtfPath.toString())) )
+//        {
+//                    String line;
+//                    writer.write(pythonProcessOutput.getStdout().getBufferString());
 
-//            try {
-//                proc.waitFor();
-//            } catch (InterruptedException e) {
-//                throw new UserException("Error. Unable to access script!", e);
-//            }
-            String line;
-            while ((line = stdIn.readLine()) != null) {
-                writer.write(line);
-            }
-            stdIn.close();
-            stdErr.close();
-            writer.close();
-        } catch (IOException e) {
-            throw new UserException("Error. Unable to reorder gtf file.", e);
-        }
+//        } catch (Exception e) {
+//            throw new UserException("Error. Unable to write to reordered file.", e);
+//        }
+
     }
 
     //==================================================================================================================

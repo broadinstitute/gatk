@@ -406,11 +406,12 @@ public class FastaIndexDictWriter implements AutoCloseable{
         //checkSequenceName(sequenceName);
         final String nonNullDescription = checkDescription(description);
         checkBasesPerLine(basesPerLine);
+        currentSequenceName = sequenceName;
+        currentBasesCount = basesPerLine;
         closeSequence();
         if (sequenceNames.contains(sequenceName)) {
             throw new IllegalStateException("the input sequence name '" + sequenceName + "' has already been added");
         }
-        currentSequenceName = sequenceName;
         currentBasesPerLine = basesPerLine;
         final StringBuilder builder = new StringBuilder(sequenceName.length() + nonNullDescription.length() + 2);
         builder.append(HEADER_START_CHAR).append(sequenceName);
@@ -633,7 +634,7 @@ public class FastaIndexDictWriter implements AutoCloseable{
                 }
             } finally {
                 closed = true;
-                fastaStream.close();
+//                fastaStream.close();
                 faiIndexWriter.close();
                 dictWriter.close();
             }
