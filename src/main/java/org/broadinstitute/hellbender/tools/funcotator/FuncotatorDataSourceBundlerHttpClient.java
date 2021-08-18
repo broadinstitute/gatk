@@ -245,7 +245,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
             buffer.write(
                     "name = Ensembl\n" +
                             "version = 104\n" +
-                            "src_file = " + bundler.fileName + "\n" +
+                            "src_file = " + bundler.fileName + ".REORDERED.gtf"+ "\n" +
                             "origin_location = " + bundler.dsURL + " \n" +
                             "preprocessing_script = FuncotatorDataSourceBundler \n" +
                             "\n" +

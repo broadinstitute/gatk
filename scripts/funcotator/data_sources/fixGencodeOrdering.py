@@ -63,7 +63,7 @@ if __name__ == "__main__":
     out_dest = sys.stdout
     if args.output_file is not None:
         if os.path.exists(args.output_file):
-            sys.stderr.write(f"ERROR: Output file already exists: {args.output_file}")
+            sys.stderr.write("ERROR: Output file already exists: " + args.output_file)
             sys.exit(1)
         out_dest = open(args.output_file, 'w')
 
