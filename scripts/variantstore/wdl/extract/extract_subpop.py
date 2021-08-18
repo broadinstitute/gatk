@@ -21,14 +21,14 @@ def extract_subpopulation(input_path):
       if row_subpopulation in expected_subpopulations:
         if row_subpopulation in seen_subpopulations:
           # open the correct output file
-          output_file = open(row_subpopulation + "_subpopulation.tsv", 'a', newline='')
+          output_file = open(row_subpopulation + "_subpopulation.args", 'a', newline='')
           csvout = csv.writer(output_file, delimiter='\t')
           # add sample name to the subpopulation file
           csvout.writerow([row[0]])
         else:
           seen_subpopulations.append(row_subpopulation)
           # Create a new file for this subpopulation
-          output_file = open(row_subpopulation + "_subpopulation.tsv", 'w', newline='')
+          output_file = open(row_subpopulation + "_subpopulation.args", 'w', newline='')
           csvout = csv.writer(output_file, delimiter='\t')
           # add sample name to the subpopulation file
           csvout.writerow([row[0]])
