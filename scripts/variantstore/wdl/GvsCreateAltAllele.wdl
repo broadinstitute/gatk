@@ -22,10 +22,10 @@ workflow GvsCreateAltAllele {
       service_account_json_path = service_account_json_path
   }
 
-  scatter (vet_table in range(length(GetVetTableNames.vet_tables))) {
+  scatter (idx in range(length(GetVetTableNames.vet_tables))) {
     call PopulateAltAlleleTable {
       input:
-        vet_table_name = vet_table,
+        vet_table_name = GetVetTableNames.vet_tables[idx],
         query_project_id = query_project_id,
         dataset_project_id = dataset_project_id,
         dataset_name = dataset_name,
