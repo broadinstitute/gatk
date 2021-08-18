@@ -1,3 +1,5 @@
+import time
+
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
 from google.oauth2 import service_account
@@ -21,7 +23,6 @@ def execute_with_retry(label, sql):
             query = client.query(sql, job_config=job_config)
 
             print(f"STARTING - {label}")
-            JOB_IDS.add((label, query.job_id))
             results = query.result()
             print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label}")
             return results
@@ -34,7 +35,7 @@ def execute_with_retry(label, sql):
                 print(f"Error {err} running query {label}, sleeping for {t}")
                 time.sleep(t)
 
-def make_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_path):
+def populate_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_path):
     global client
     default_config = QueryJobConfig(priority="INTERACTIVE", use_query_cache=True)
 
@@ -58,8 +59,8 @@ def make_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_path
                     RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000000, 1000000000000)) \
                     CLUSTER BY location, sample_id AS \n"
     if not first:
-        query_beginning = f"INSERT INTO {fq_dataset}.alt_allele \m"
-    fq_vet_table = f"~{fq_dataset}.{vet_table_name}"
+        query_beginning = f"INSERT INTO {fq_dataset}.alt_allele \n"
+    fq_vet_table = f"{fq_dataset}.{vet_table_name}"
     query_with = f"""WITH 
                   position1 as (select * from {fq_vet_table} WHERE call_GT IN ('0/1', '1/0', '1/1', '0|1', '1|0', '1|1', '0/2', '0|2','2/0', '2|0')), 
                   position2 as (select * from {fq_vet_table} WHERE call_GT IN ('1/2', '1|2', '2/1', '2|1'))"""
@@ -80,4 +81,4 @@ if __name__ == '__main__':
     # Execute the parse_args() method
     args = parser.parse_args()
 
-    make_alt_allele_table(args.query_project, args.vet_table_name, args.fq_dataset, args.sa_key_path)
+    populate_alt_allele_table(args.query_project, args.vet_table_name, args.fq_dataset, args.sa_key_path)
