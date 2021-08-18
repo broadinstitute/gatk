@@ -253,26 +253,26 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 //        FuncotatorDataSourceBundlerHttpClient.buildFastaIndexFile(bundler.getFastaUnzipPath(), bundler);
 //
         // Delete gtf and fasta zip files:
-        FuncotatorDataSourceBundlerUtils.deleteZipFiles(bundler.getOutputDestination().toString());
-        FuncotatorDataSourceBundlerUtils.deleteZipFiles(bundler.getFastaOutputDestination().toString());
+//        FuncotatorDataSourceBundlerUtils.deleteZipFiles(bundler.getOutputDestination().toString());
+//        FuncotatorDataSourceBundlerUtils.deleteZipFiles(bundler.getFastaOutputDestination().toString());
 
         // Build the config file for the new data source directory:
-        FuncotatorDataSourceBundlerHttpClient.buildConfigFile(bundler);
+//        FuncotatorDataSourceBundlerHttpClient.buildConfigFile(bundler);
 
         // Create a manifest file:
-        FuncotatorDataSourceBundlerHttpClient.buildManifestFile(bundler);
+//        FuncotatorDataSourceBundlerHttpClient.buildManifestFile(bundler);
 
         // Create the template config file:
-        FuncotatorDataSourceBundlerHttpClient.buildTemplateConfigFile(bundler);
+//        FuncotatorDataSourceBundlerHttpClient.buildTemplateConfigFile(bundler);
 
         // Create ReadMe file:
-        FuncotatorDataSourceBundlerHttpClient.buildReadMeFile(bundler);
+//        FuncotatorDataSourceBundlerHttpClient.buildReadMeFile(bundler);
 
         // Download the gtf ReadMe file for specific data source file:
-        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getGtfReadMeURL(), bundler.getGtfReadMePath());
+//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getGtfReadMeURL(), bundler.getGtfReadMePath());
 
 //        // Download the fasta ReadMe file for specific data source file:
-        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaReadMeURL(), bundler.getFastaReadMePath());
+//        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaReadMeURL(), bundler.getFastaReadMePath());
 
 //        // Index the gtf file:
         FuncotatorDataSourceBundlerHttpClient.buildIndexFile(bundler.getDSUnzipPath(), bundler.getIndexPath(), bundler);

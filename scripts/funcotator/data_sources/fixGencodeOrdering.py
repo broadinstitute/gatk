@@ -8,7 +8,6 @@
 import sys
 import argparse
 import csv
-import os
 
 ########################################################################
 # Constants:
@@ -26,7 +25,6 @@ CONTIG_PRINT_ORDER_LIST = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7
 parser = argparse.ArgumentParser(description="Creates a new file with each Gene in the given GENCODE_GTF_FILE in "
                                              "increasing order by location.")
 parser.add_argument("GENCODE_GTF_FILE", help="Gencode GTF file to read and reorder")
-parser.add_argument("--output-file", help="Output file into which to place the sorted GTF records.", required=False)
 
 ########################################################################
 # Functions:
@@ -60,14 +58,7 @@ if __name__ == "__main__":
         parser.print_usage()
         sys.exit(1)
 
-    out_dest = sys.stdout
-    if args.output_file is not None:
-        if os.path.exists(args.output_file):
-            sys.stderr.write(f"ERROR: Output file already exists: {args.output_file}")
-            sys.exit(1)
-        out_dest = open(args.output_file, 'w')
-
-    out_writer = csv.writer(out_dest, delimiter=DELIMITER, quoting=csv.QUOTE_NONE, quotechar='', lineterminator='\n')
+    out_writer = csv.writer(sys.stdout, delimiter=DELIMITER, quoting=csv.QUOTE_NONE, quotechar='', lineterminator='\n')
 
     sys.stderr.write("Processing file: " + args.GENCODE_GTF_FILE + " ...\n")
 
