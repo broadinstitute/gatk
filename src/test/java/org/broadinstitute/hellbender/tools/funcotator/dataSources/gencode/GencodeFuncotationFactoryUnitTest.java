@@ -207,6 +207,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 //        final String expectedCDnaChange,
 //        final String expectedCodonChange,
 //        final String expectedProteinChange,
+//        final String geneTranscriptType,
 
         final List<Object[]> outList = new ArrayList<>(unitTestData.size());
 
@@ -1485,6 +1486,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                                 final String expectedCDnaChange,
                                 final String expectedCodonChange,
                                 final String expectedProteinChange,
+                                final String expectedGeneTranscriptType,
                                 final String referenceFileName,
                                 final FeatureReader<GencodeGtfFeature> featureReader,
                                 final ReferenceDataSource referenceDataSource,
@@ -1554,6 +1556,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             final boolean cDnaChangeCorrect            = Objects.equals( funcotation.getcDnaChange(), expectedCDnaChange );
             final boolean codonChangeCorrect           = Objects.equals( funcotation.getCodonChange(), expectedCodonChange );
             final boolean proteinChangeCorrect         = Objects.equals( funcotation.getProteinChange(), expectedProteinChange );
+            final boolean geneTranscriptTypeCorrect    = Objects.equals( funcotation.getGeneTranscriptType(), expectedGeneTranscriptType );
 
             final StringBuilder errorMessageStringBuilder = new StringBuilder();
 
@@ -1613,12 +1616,19 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 errorMessageStringBuilder.append(funcotation.getProteinChange());
                 errorMessageStringBuilder.append("]");
             }
+            if (!geneTranscriptTypeCorrect) {
+                errorMessageStringBuilder.append("\n\tGene Transcript Type is not correct!\n\t\tExpected:  [");
+                errorMessageStringBuilder.append(expectedGeneTranscriptType);
+                errorMessageStringBuilder.append("]\n\t\tBut found: [");
+                errorMessageStringBuilder.append(funcotation.getGeneTranscriptType());
+                errorMessageStringBuilder.append("]");
+            }
             errorMessageStringBuilder.append("\n");
             errorMessageStringBuilder.append(funcotation.getAnnotationTranscript());
 
             Assert.assertTrue(
                     geneNameCorrect && variantClassificationCorrect && variantTypeCorrect &&
-                    genomeChangeCorrect && strandCorrect && cDnaChangeCorrect && codonChangeCorrect && proteinChangeCorrect,
+                    genomeChangeCorrect && strandCorrect && cDnaChangeCorrect && codonChangeCorrect && proteinChangeCorrect && geneTranscriptTypeCorrect,
                     errorMessageStringBuilder.toString() + "\n"
             );
 
@@ -2600,7 +2610,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @Test
     public void testFivePrimeFlankSorting() {
-        // This variant context would get a sorting that was different than the ground truth in FuncotatorIntegrationTest#nonTrivialLargeDataValidationTest
+        // This variant context would get a sorting that was different than the ground truth in FuncotatorIntegrationTest#nonTrivialDataValidationTest
         final VariantContext variantContext = new VariantContextBuilder("", "1", 871276, 871276,
                 Arrays.asList(Allele.create("G", true), Allele.create("A"))).make();
         final String transcriptGtfFile = GENCODE_HG19_BIG_GTF_FILE;
