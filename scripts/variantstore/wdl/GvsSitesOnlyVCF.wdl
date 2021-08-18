@@ -15,36 +15,34 @@ workflow GvsSitesOnlyVCF {
         String table_suffix
 
         String? service_account_json_path
+        String? service_account_json_pathx
+        String? service_account_json_pathy
+        String? service_account_json_pathz
         File? gatk_override
         File AnAcAf_annotations_template
         File ancestry_file
     }
 
-    Array[String] subpopulations = [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"] # gvs
-
-    call MakeSubpopulationFile {
+    call MakeSubpopulationFiles {
         input:
-            input_ancestry_file = ancestry_file,
-            service_account_json_path = service_account_json_path
+            input_ancestry_file = ancestry_file
     }
 
     ## Scatter across the shards from the GVS jointVCF
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
-        scatter(j in range(length(subpopulations)) ) {
+        scatter(j in range(length(MakeSubpopulationFiles.ancestry_mapping_list)) ) {
         ## Calculate AC/AN/AF for subpopulations
           call GetSubpopulationCalculations {
             input:
               input_vcf = gvs_extract_cohort_filtered_vcfs[i],
               input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
-              service_account_json_path = service_account_json_path,
-              subpopulation_mapping = MakeSubpopulationFile.ancestry_mapping,
-              subpopulation = subpopulations[j]
+              service_account_json_path = service_account_json_pathx,
+              subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list[j],
+              subpopulation = basename(MakeSubpopulationFiles.ancestry_mapping_list[j], "_subpopulation.tsv")
           }
-          ## add an if statement to see if we want to run the next task
-
           call ExtractAcAnAfFromSubpopulationVCFs {
             input:
-              subpopulation = subpopulations[j],
+              subpopulation = GetSubpopulationCalculations.subpopulation_name,
               input_vcf = GetSubpopulationCalculations.subpopulation_output_vcf,
               input_vcf_index = GetSubpopulationCalculations.subpopulation_output_vcf_idx,
               custom_annotations_template = AnAcAf_annotations_template
@@ -83,7 +81,7 @@ workflow GvsSitesOnlyVCF {
             annotation_json = AnnotateVCF.annotation_json,
             output_file_suffix = "${i}.json.gz",
             output_path = output_path,
-            service_account_json_path = service_account_json_path
+            service_account_json_path = service_account_json_pathy
         }
     }
 
@@ -106,47 +104,29 @@ workflow GvsSitesOnlyVCF {
          dataset_name = dataset_name,
          counts_variants = ExtractAnAcAfFromVCF.count_variants,
          table_suffix = table_suffix,
-         service_account_json_path = service_account_json_path,
+         service_account_json_path = service_account_json_pathz,
          load_jsons_done = BigQueryLoadJson.done
    }
 }
 
 ################################################################################
 
-task MakeSubpopulationFile {
+task MakeSubpopulationFiles {
     input {
         File input_ancestry_file
-        String? service_account_json_path
     }
     String output_ancestry_filename =  "ancestry_mapping"
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String input_file_basename = basename(input_ancestry_file)
-    String updated_input_file = if (defined(service_account_json_path)) then input_file_basename else input_ancestry_file
-
     command <<<
         set -e
 
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-
-            gsutil cp ~{input_ancestry_file} .
-        fi
-
         python3 /app/extract_subpop.py \
-        --input_path ~{updated_input_file} \
-        --output_path ~{output_ancestry_filename}
-
-
-        # get a list of all samples in each subpopulation-- lets do this in the python
-        ## TODO we need a check that if there's NOTHING in this subpop we dont bother with the rest of this!
+        --input_path ~{input_ancestry_file}
 
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210812"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210817"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -155,7 +135,7 @@ task MakeSubpopulationFile {
     # ------------------------------------------------
     # Outputs:
     output {
-        File ancestry_mapping="~{output_ancestry_filename}"
+        Array[File] ancestry_mapping_list = glob("*_subpopulation.tsv")
     }
 }
 
@@ -165,16 +145,17 @@ task GetSubpopulationCalculations {
         File input_vcf
         File input_vcf_index
         String? service_account_json_path
-        File subpopulation_mapping
+        File subpopulation_sample_list
         String subpopulation
     }
-    String output_filename = subpopulation + ".vcf"
-    String output_vcf_idx = basename(output_filename) + ".idx"
+    String output_filename = "~{subpopulation}.vcf"
+    String output_vcf_idx = output_filename + ".idx"
     String subpopulation_sample_list = "~{subpopulation}.args"
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String input_vcf_basename = basename(input_vcf)
     String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
+    String test = if (defined(service_account_json_path)) then service_account_json_path else ""
 
     parameter_meta {
         input_vcf: {
@@ -186,10 +167,6 @@ task GetSubpopulationCalculations {
     }
     command <<<
         set -e
-
-        # get a list of all samples in this subpopulation
-        grep ~{subpopulation} ~{subpopulation_mapping} | awk '{ print $1 }' > ~{subpopulation_sample_list}
-
 
         if [ ~{has_service_account_file} = 'true' ]; then
           gsutil cp ~{service_account_json_path} local.service_account.json
@@ -232,9 +209,9 @@ task GetSubpopulationCalculations {
     # ------------------------------------------------
     # Outputs:
     output {
-        File subpopulation_subset_samples="~{subpopulation_sample_list}"
-        File subpopulation_output_vcf="~{output_filename}"
-        File subpopulation_output_vcf_idx="~{output_vcf_idx}"
+        File subpopulation_output_vcf = "~{output_filename}"
+        File subpopulation_output_vcf_idx = "~{output_vcf_idx}"
+        String subpopulation_name = subpopulation
     }
 }
 
@@ -259,7 +236,7 @@ task ExtractAcAnAfFromSubpopulationVCFs {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210812"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210817"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -359,7 +336,7 @@ task ExtractAnAcAfFromVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210812"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210817"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -438,7 +415,6 @@ task AnnotateVCF {
              -i ~{input_vcf} \
              -o ~{output_annotated_file_name}
 
-
     >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -497,7 +473,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210812"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210817"
         memory: "3 GB"
         preemptible: 5
         cpu: "1"
