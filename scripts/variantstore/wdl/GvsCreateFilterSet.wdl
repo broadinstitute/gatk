@@ -166,7 +166,6 @@ workflow GvsCreateFilterSet {
                 tranches_filename = filter_set_name + ".snps.tranches",
                 recalibration_tranche_values = snp_recalibration_tranche_values,
                 recalibration_annotation_values = snp_recalibration_annotation_values,
-                excluded_sites_bed = excluded_sites_bed,
                 downsampleFactor = SNP_VQSR_downsampleFactor,
                 model_report_filename = filter_set_name + ".snps.model.report",
                 hapmap_resource_vcf = hapmap_resource_vcf,

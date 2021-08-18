@@ -233,20 +233,20 @@ task ExtractTask {
         File? gatk_override
     }
 
-#    parameter_meta {
-#        intervals: {
-#            localization_optional: true
-#        }
-#        ref_fasta: {
-#            localization_optional: true
-#        }
-#        ref_fai: {
-#            localization_optional: true
-#        }
-#        ref_dict: {
-#            localization_optional: true
-#        }
-#     }
+    parameter_meta {
+        intervals: {
+            localization_optional: true
+        }
+        ref_fasta: {
+            localization_optional: true
+        }
+        ref_fai: {
+            localization_optional: true
+        }
+        ref_dict: {
+            localization_optional: true
+        }
+     }
 
      command {
          set -e
