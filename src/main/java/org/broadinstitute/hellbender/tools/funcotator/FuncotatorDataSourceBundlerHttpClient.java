@@ -456,13 +456,12 @@ public class FuncotatorDataSourceBundlerHttpClient {
 //        final boolean ret = executor.executeArgs(new ArrayList<String>(Arrays.asList("-c", "Users/hfox/fixGencodeOrdering.py", ">", "./"+gtfFilePath.toString())));
         final List<String> args = new ArrayList<>();
 
+        args.add("--output-file");
+//        args.add("./" + bundler.dsReorderedGtfPath);
+        args.add("sorted.gtf");
         args.add("./" + gtfFilePath.toString());
-        args.add(">");
-        args.add("./" + bundler.getIndexPath());
-        ProcessOutput pythonProcessOutput = executor.executeScriptAndGetOutput("./scripts/funcotator/data_sources/fixGencodeOrdering.py", null, args);
-        String file = pythonProcessOutput.getStdout().toString();
-        String line = "hey";
-        String fire = "fire";
+        boolean success = executor.executeScript("./scripts/funcotator/data_sources/fixGencodeOrdering.py", null, args);
+//        String file = pythonProcessOutput.getStdout().toString();
         //BufferedReader stdIn = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(pythonProcessOutput.getStdout().getBufferString().getBytes(Charset.forName("UTF-8")))))
 //        try (
 //             BufferedWriter writer = new BufferedWriter(new FileWriter(bundler.dsReorderedGtfPath.toString())) )
