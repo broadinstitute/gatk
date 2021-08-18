@@ -326,59 +326,6 @@ task GetMaxTableIdLegacy {
   }
 }
 
-task GetSampleIds {
-  input {
-    Array[String] external_sample_names
-    String project_id
-    String dataset_name
-    String table_name
-    String? service_account_json_path
-    Int samples_per_table = 4000
-
-    # runtime
-    Int? preemptible_tries
-  }
-
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-  Int num_samples = length(external_sample_names)
-
-  command <<<
-      set -ex
-      if [ ~{has_service_account_file} = 'true' ]; then
-        gsutil cp ~{service_account_json_path} local.service_account.json
-        gcloud auth activate-service-account --key-file=local.service_account.json
-      fi
-
-      echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-      # get the current maximum id, or 0 if there are none
-      bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > results
-
-      # prep for being able to return min table id
-      min_sample_id=$(tail -1 results | cut -d, -f1)
-      max_sample_id=$(tail -1 results | cut -d, -f2)
-
-      python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
-      python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
-
-      bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
-        "SELECT sample_id, sample_name FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > sample_map
-
-  >>>
-  runtime {
-      docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
-      memory: "1 GB"
-      disks: "local-disk 10 HDD"
-      preemptible: select_first([preemptible_tries, 5])
-      cpu: 1
-  }
-  output {
-      Int max_table_id = ceil(read_float("max_sample_id"))
-      Int min_table_id = ceil(read_float("min_sample_id"))
-      File sample_map = "sample_map"
-  }
-}
 
 task CheckForDuplicateData {
     input{
@@ -404,6 +351,8 @@ task CheckForDuplicateData {
       gcloud auth activate-service-account --key-file=local.service_account.json
       gcloud config set project ~{project_id}
     fi
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # check for existence of the correct lockfile
     LOCKFILE="~{output_directory}/LOCKFILE"
@@ -664,6 +613,8 @@ task CreateTables {
       gcloud config set project ~{project_id}
     fi
 
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
     PREFIX=""
     if [ -n "~{uuid}" ]; then
       PREFIX="~{uuid}_"
@@ -747,6 +698,8 @@ task LoadTable {
       gcloud auth activate-service-account --key-file=local.service_account.json
       gcloud config set project ~{project_id}
     fi
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     DIR="~{storage_location}/~{datatype}_tsvs/"
     # check for existence of the correct lockfile
@@ -881,13 +834,11 @@ task AddIsLoadedColumn {
       gcloud config set project ~{project_id}
     fi
 
-    # add is_loaded column
-    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "ALTER TABLE ~{dataset_name}.sample_info ADD COLUMN is_loaded BOOLEAN"
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # set is_loaded to true if there is a corresponding pet table partition with rows for that sample_id
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE total_logical_bytes > 0 AND table_name LIKE \"pet_%\")"
+    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE partition_id != '__UNPARTITIONED__' AND total_logical_bytes > 0 AND table_name LIKE \"pet_%\")"
   >>>
 
   runtime {
@@ -900,5 +851,59 @@ task AddIsLoadedColumn {
 
   output {
     String done = "done"
+  }
+}
+
+task GetSampleIds {
+  input {
+    Array[String] external_sample_names
+    String project_id
+    String dataset_name
+    String table_name
+    String? service_account_json_path
+    Int samples_per_table = 4000
+
+    # runtime
+    Int? preemptible_tries
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  Int num_samples = length(external_sample_names)
+
+  command <<<
+      set -ex
+      if [ ~{has_service_account_file} = 'true' ]; then
+        gsutil cp ~{service_account_json_path} local.service_account.json
+        gcloud auth activate-service-account --key-file=local.service_account.json
+      fi
+
+      echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+      # get the current maximum id, or 0 if there are none
+      bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > results
+
+      # prep for being able to return min table id
+      min_sample_id=$(tail -1 results | cut -d, -f1)
+      max_sample_id=$(tail -1 results | cut -d, -f2)
+
+      python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
+      python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
+
+      bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
+        "SELECT sample_id, sample_name FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > sample_map
+
+  >>>
+  runtime {
+      docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+      memory: "1 GB"
+      disks: "local-disk 10 HDD"
+      preemptible: select_first([preemptible_tries, 5])
+      cpu: 1
+  }
+  output {
+      Int max_table_id = ceil(read_float("max_sample_id"))
+      Int min_table_id = ceil(read_float("min_sample_id"))
+      File sample_map = "sample_map"
   }
 }
