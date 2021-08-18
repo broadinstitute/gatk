@@ -211,7 +211,6 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                 .collect(Collectors.toList());
         final String[] firstTokens = alleleTokens.get(0);
         int alleleSize = 0;
-        outerloop:
         for (int i = 0; i < firstTokens.length; i++) {
             final String subtype = firstTokens[i];
             for (int j = 1; j < alleleTokens.size(); j++) {
@@ -219,7 +218,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                 if (i < tokens.length && subtype.equals(tokens[i])) {
                     alleleSize = i + 1;
                 } else {
-                    break outerloop;
+                    return Arrays.copyOf(firstTokens, alleleSize);
                 }
             }
         }

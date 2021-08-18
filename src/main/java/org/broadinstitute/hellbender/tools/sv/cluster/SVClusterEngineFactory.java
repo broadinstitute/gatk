@@ -22,7 +22,7 @@ public class SVClusterEngineFactory {
                                                                 final ClusteringParameters depthParameters,
                                                                 final ClusteringParameters mixedParameters,
                                                                 final ClusteringParameters pesrParameters) {
-        final CanonicalSVLinkage linkage = new CanonicalSVLinkage<>(dictionary, enableCNV);
+        final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<SVCallRecord>(dictionary, enableCNV);
         linkage.setDepthOnlyParams(depthParameters);
         linkage.setMixedParams(mixedParameters);
         linkage.setEvidenceParams(pesrParameters);
@@ -35,9 +35,9 @@ public class SVClusterEngineFactory {
                                                                       final double paddingFraction,
                                                                       final double minSampleOverlap,
                                                                       final ClusteringParameters depthParameters) {
-        final CanonicalSVLinkage linkage = new CNVLinkage(dictionary, paddingFraction, minSampleOverlap);
+        final CanonicalSVLinkage<SVCallRecord> linkage = new CNVLinkage(dictionary, paddingFraction, minSampleOverlap);
         linkage.setDepthOnlyParams(depthParameters);
-        final SVCollapser collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+        final SVCollapser<SVCallRecord> collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
         return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, collapser, linkage);
     }
 
@@ -48,9 +48,9 @@ public class SVClusterEngineFactory {
                                                                             final double minSampleOverlap,
                                                                             final List<GenomeLoc> coverageIntervals,
                                                                             final ClusteringParameters depthParameters) {
-        final CanonicalSVLinkage linkage = new BinnedCNVLinkage(dictionary, paddingFraction, minSampleOverlap, coverageIntervals);
+        final CanonicalSVLinkage<SVCallRecord> linkage = new BinnedCNVLinkage(dictionary, paddingFraction, minSampleOverlap, coverageIntervals);
         linkage.setDepthOnlyParams(depthParameters);
-        final SVCollapser collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+        final SVCollapser<SVCallRecord> collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
         return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, collapser, linkage);
     }
 }

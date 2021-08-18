@@ -95,8 +95,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private SortedSet<String> samples;
     private VariantContextWriter vcfWriter;
     private SAMSequenceDictionary dictionary;
-    private SVClusterEngine defragmenter;
-    private SVClusterEngine clusterEngine;
+    private SVClusterEngine<SVCallRecord> defragmenter;
+    private SVClusterEngine<SVCallRecord> clusterEngine;
     private List<GenomeLoc> callIntervals;
     private String currentContig;
     private SampleDB sampleDB;

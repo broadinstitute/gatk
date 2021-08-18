@@ -248,10 +248,28 @@ public final class SVCallRecordUtils {
 
         final StructuralVariantType type = inferStructuralVariantType(variant);
         final List<String> algorithms = getAlgorithms(variant);
-        final String strands = getStrands(variant, type);
+
+        final String strands;
+        if (type.equals(StructuralVariantType.DEL) || type.equals(StructuralVariantType.INS) ||
+                type.equals(StructuralVariantType.CNV) || type.equals(StructuralVariantType.DUP)) {
+            // SVCallRecord class can resolve these
+            strands = null;
+        } else {
+            strands = getStrands(variant, type);
+        }
         final Boolean strand1 = strands == null ? null : strands.startsWith(SVCallRecord.STRAND_PLUS);
         final Boolean strand2 = strands == null ? null : strands.endsWith(SVCallRecord.STRAND_PLUS);
-        final Integer length = getLength(variant, type);
+
+        final Integer length;
+        if (type.equals(StructuralVariantType.BND) || type.equals(StructuralVariantType.DEL) ||
+                type.equals(StructuralVariantType.DUP) || type.equals(StructuralVariantType.CNV) ||
+                type.equals(StructuralVariantType.INV)) {
+            // SVCallRecord class can resolve these
+            length = null;
+        } else {
+            length = getLength(variant, type);
+        }
+
         final Map<String, Object> attributes = keepVariantAttributes ? variant.getAttributes() : Collections.emptyMap();
 
         final String contigB;
@@ -289,19 +307,13 @@ public final class SVCallRecordUtils {
 
     private static Integer getLength(final VariantContext variant, final StructuralVariantType type) {
         Utils.nonNull(variant);
-        // SVCallRecord class can resolve these
-        if (type.equals(StructuralVariantType.BND) || type.equals(StructuralVariantType.DEL) || type.equals(StructuralVariantType.DUP)
-                || type.equals(StructuralVariantType.CNV) || type.equals(StructuralVariantType.INV)) {
+        Utils.validateArg(variant.hasAttribute(GATKSVVCFConstants.SVLEN), "Expected " + GATKSVVCFConstants.SVLEN + " field" + " for variant " + variant.getID());
+        final int length = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, UNDEFINED_LENGTH);
+        if (length == UNDEFINED_LENGTH) {
             return null;
-        } else {
-            Utils.validateArg(variant.hasAttribute(GATKSVVCFConstants.SVLEN), "Expected " + GATKSVVCFConstants.SVLEN + " field" + " for variant " + variant.getID());
-            final int length = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, UNDEFINED_LENGTH);
-            if (length == UNDEFINED_LENGTH) {
-                return null;
-            }
-            Utils.validate(length >= 0, "Length must be non-negative or " + UNDEFINED_LENGTH + " for variant " + variant.getID());
-            return length;
         }
+        Utils.validate(length >= 0, "Length must be non-negative or " + UNDEFINED_LENGTH + " for variant " + variant.getID());
+        return length;
     }
 
     public static List<String> getAlgorithms(final VariantContext variant) {
@@ -313,10 +325,6 @@ public final class SVCallRecordUtils {
     private static String getStrands(final VariantContext variant, final StructuralVariantType type) {
         Utils.nonNull(variant);
         Utils.nonNull(type);
-        // SVCallRecord class can resolve these
-        if (type.equals(StructuralVariantType.DEL) || type.equals(StructuralVariantType.INS) || type.equals(StructuralVariantType.CNV) || type.equals(StructuralVariantType.DUP)) {
-            return null;
-        }
         final String strandsAttr = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
         Utils.validateArg(strandsAttr != null, "Strands field not found for variant " + variant.getID() + " of type " + type);
         if (strandsAttr.length() != 2) {

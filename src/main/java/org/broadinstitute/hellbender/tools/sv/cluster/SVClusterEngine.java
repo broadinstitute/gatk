@@ -48,7 +48,7 @@ public class SVClusterEngine<T extends SVLocatable> {
      * @param collapser function that ingests a collection of clustered items and returns a single representative item
      */
     public SVClusterEngine(final CLUSTERING_TYPE clusteringType,
-                           final SVCollapser collapser,
+                           final SVCollapser<T> collapser,
                            final SVClusterLinkage<T> linkage) {
         this.clusteringType = clusteringType;
         this.collapser = Utils.nonNull(collapser);
