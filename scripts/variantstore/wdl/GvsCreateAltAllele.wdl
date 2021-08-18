@@ -59,7 +59,7 @@ task GetVetTableNames {
     fi
 
     echo "query_project_id = ~{query_project_id}" > ~/.bigqueryrc
-    bq query --location=US --query_project_id=~{query_project_id} --format=csv --use_legacy_sql=false \
+    bq query --location=US --project_id=~{query_project_id} --format=csv --use_legacy_sql=false \
     "SELECT table_name FROM ~{dataset_project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES WHERE table_name LIKE 'vet_%' ORDER BY table_name" > vet_tables.csv
 
     sed -i 1d vet_tables.csv
