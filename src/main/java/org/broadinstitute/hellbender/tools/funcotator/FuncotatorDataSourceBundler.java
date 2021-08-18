@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.Defaults;
+import htsjdk.samtools.reference.FastaSequenceIndexCreator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bdgenomics.adam.models.SequenceDictionary;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -12,8 +15,10 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
+import picard.sam.CreateSequenceDictionary;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.Month;
@@ -90,6 +95,8 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     //==================================================================================================================
     // Private Static Members:
     protected static final int BUFFER_SIZE_BYTES    = 1024 * 1024;
+
+    protected File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
 
     //==================================================================================================================
@@ -248,8 +255,18 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");
         }
 
+        try {
+            // Index the fasta file and build the dict file:
+            FastaSequenceIndexCreator.create(bundler.getFastaUnzipPath(), true);
+        } catch (IOException e) {
+            throw new UserException("Error. Unable to create index for fasta file.", e);
+        }
+        final CreateSequenceDictionary csd_tool = new CreateSequenceDictionary();
 
-        // Index the fasta file and build the dict file:
+        csd_tool.instanceMain(new String[] {"-R", bundler.getFastaUnzipPath().toString()});
+
+
+//        SequenceDictionary seqDict = makeSequenceDictionary(bundler.getFastaUnzipPath());
 //        FuncotatorDataSourceBundlerHttpClient.buildFastaIndexFile(bundler.getFastaUnzipPath(), bundler);
 //
         // Delete gtf and fasta zip files:
@@ -275,7 +292,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 //        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaReadMeURL(), bundler.getFastaReadMePath());
 
 //        // Index the gtf file:
-        FuncotatorDataSourceBundlerHttpClient.buildIndexFile(bundler.getDSUnzipPath(), bundler.getIndexPath(), bundler);
+//        FuncotatorDataSourceBundlerHttpClient.buildIndexFile(bundler.getDSUnzipPath(), bundler.getIndexPath(), bundler);
 
     }
 
