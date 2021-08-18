@@ -100,7 +100,7 @@ task PopulateAltAlleleTable {
       SERVICE_ACCOUNT_STANZA="--sa_key_path local.service_account.json "
     fi
 
-    python3 /app/populate_alt_allele_table.py \
+    python3 populate_alt_allele_table.py \
       --query_project ~{query_project_id} \
       --vet_table_name ~{vet_table_name} \
       --fq_dataset ~{dataset_project_id}.~{dataset_name} \
