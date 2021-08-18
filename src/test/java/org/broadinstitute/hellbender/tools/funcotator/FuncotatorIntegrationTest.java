@@ -37,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -139,7 +140,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                                                   final String referencePath,
                                                   final String referenceVersion,
                                                   final String dataSourcesPath,
-                                                  final String expectedOutputPath ) {
+                                                  final String expectedOutputPath,
+                                                  final List<String> excludedFields,
+                                                  final boolean reannotate) {
 
         for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType : FuncotatorArgumentDefinitions.OutputFormatType.values() ) {
             if (outputFormatType.equals(FuncotatorArgumentDefinitions.OutputFormatType.SEG)) {
@@ -629,10 +632,12 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "provideForNonTrivialLargeDataValidationTest")
     public void nonTrivialLargeDataValidationTest(final String inputVcfName,
-                               final String referencePath,
-                               final String referenceVersion,
-                               final String dataSourcesPath,
-                               final String expectedOutputPath, final List<String>excludedFields, final boolean reannotate) {
+                                                  final String referencePath,
+                                                  final String referenceVersion,
+                                                  final String dataSourcesPath,
+                                                  final String expectedOutputPath,
+                                                  final List<String> excludedFields,
+                                                  final boolean reannotate) {
 
         for ( final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType : FuncotatorArgumentDefinitions.OutputFormatType.values()) {
             // The CLI for Funcotator does not support SEG output.  Must use FuncotateSegments for that.

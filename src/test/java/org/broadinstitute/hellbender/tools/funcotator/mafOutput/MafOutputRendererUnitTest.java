@@ -87,7 +87,9 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Helper Methods:
 
-    private List<String> createFieldValuesFromNameList(final String prefix, final List<String> baseFieldList, final int fieldSize) {
+    private List<String> createFieldValuesFromNameList(final String prefix,
+                                                       final List<String> baseFieldList,
+                                                       final int fieldSize) {
         final List<String> outList = new ArrayList<>(baseFieldList.size());
 
         for ( int i = 0; i < baseFieldList.size() ; ++i ) {
