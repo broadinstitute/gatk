@@ -55,16 +55,10 @@ workflow GvsCreateFilterSet {
 
         # Runtime attributes
         Int? small_disk_override
-        Int small_disk = select_first([small_disk_override, "100"])
         Int? medium_disk_override
-        Int medium_disk = select_first([medium_disk_override, "200"])
         Int? large_disk_override
-        Int large_disk = select_first([large_disk_override, "300"])
         Int? huge_disk_override
-        Int huge_disk = select_first([huge_disk_override, "400"])
-
         String? preemptible_tries_override
-        Int preemptible_tries = select_first([preemptible_tries_override, "3"])
 
         String? service_account_json_path
 
@@ -77,6 +71,12 @@ workflow GvsCreateFilterSet {
     }
 
     # don't need to make these inputs because they should be created (based on inputs) and used only within this workflow
+    Int small_disk = select_first([small_disk_override, "100"])
+    Int medium_disk = select_first([medium_disk_override, "200"])
+    Int large_disk = select_first([large_disk_override, "300"])
+    Int huge_disk = select_first([huge_disk_override, "400"])
+    Int preemptible_tries = select_first([preemptible_tries_override, "3"])
+
     String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
     String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
     String fq_info_destination_table = "~{data_project}.~{default_dataset}.filter_set_info"
