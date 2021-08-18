@@ -64,7 +64,6 @@ workflows:
      filters:
          branches:
              - master
-             - ah_remove_mito_filters
    - name: mutect2
      subclass: WDL
      primaryDescriptorPath: /scripts/mutect2_wdl/mutect2.wdl
