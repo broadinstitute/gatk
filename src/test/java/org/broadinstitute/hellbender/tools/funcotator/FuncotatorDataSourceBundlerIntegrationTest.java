@@ -86,8 +86,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
         return new Object[][]{
                 {
                     FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
-                        "acyrthosiphon_pisum",
-//                        "aedes_albopictus",
+                        "octopus_bimaculoides",
                         false,
                         true
 

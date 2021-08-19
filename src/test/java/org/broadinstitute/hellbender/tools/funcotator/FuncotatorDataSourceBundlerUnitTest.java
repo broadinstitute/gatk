@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.nio.file.Path;
 
 /**
  * Class to test the {@link FuncotatorDataSourceBundler}.

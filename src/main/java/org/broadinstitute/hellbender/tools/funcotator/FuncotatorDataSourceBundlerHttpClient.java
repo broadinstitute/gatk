@@ -12,19 +12,14 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
-import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
-import org.broadinstitute.hellbender.utils.python.PythonExecutorBase;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
-import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 
 import java.io.*;
 
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -203,35 +198,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
         indexer.indexGTF(bundler.dsReorderedGtfPath.toAbsolutePath(), idxFilePath.toAbsolutePath());
     }
 
-    /**
-     * Build an index file for the fasta data source file.
-     * @param dsFastaUnzipPath The {@link Path} representing the path to the unzipped fasta file of the data source we have downloaded.
-     */
-    public static void buildFastaIndexFile(Path dsFastaUnzipPath, FuncotatorDataSourceBundlerHttpClient bundler) {
-        FastaIndexDictWriterBuilder fastaIndexer = new FastaIndexDictWriterBuilder();
-        fastaIndexer.setFastaFile(dsFastaUnzipPath);
-        fastaIndexer.setMakeFaiOutput(true);
-        fastaIndexer.setMakeDictOutput(true);
-        fastaIndexer.setIndexFile(IOUtils.getPath(dsFastaUnzipPath.toString() + ".fai"));
-        fastaIndexer.setDictFile(bundler.getFastaDictPath());
-        try {
-            FastaIndexDictWriter writer = fastaIndexer.build();
-            String line;
-            try (BufferedReader reader = new BufferedReader(new FileReader(dsFastaUnzipPath.toString()))) {
-                int count = 0;
-                while ((line = reader.readLine()) != null) {
-                    if (line.substring(0, 1).equals(">")) {
-                        writer.startSequence(line);
-                    }
-                }
-
-                } catch(Exception e){
-                    throw new UserException("Error. Unable to read file.", e);
-                }
-            } catch (IOException e) {
-                throw new IllegalArgumentException("Error: ", e);
-            }
-    }
 
     /**
      * Build a config file for the data source we have downloaded.
@@ -450,30 +416,16 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
      */
     public static void readBashScript(Path gtfFilePath, FuncotatorDataSourceBundlerHttpClient bundler) {
-        //executescriptandgetoutput
-        //returns a process object read lines from that into another file
         PythonScriptExecutor executor = new PythonScriptExecutor(true);
-//        final boolean ret = executor.executeArgs(new ArrayList<String>(Arrays.asList("-c", "Users/hfox/fixGencodeOrdering.py", ">", "./"+gtfFilePath.toString())));
         final List<String> args = new ArrayList<>();
 
-
-//        args.add("sorted.gtf");
         args.add("./" + gtfFilePath.toString());
         args.add("--output-file");
         args.add("./" + bundler.dsReorderedGtfPath);
         boolean success = executor.executeScript("./scripts/funcotator/data_sources/fixGencodeOrdering.py", null, args);
-//        String file = pythonProcessOutput.getStdout().toString();
-        //BufferedReader stdIn = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(pythonProcessOutput.getStdout().getBufferString().getBytes(Charset.forName("UTF-8")))))
-//        try (
-//             BufferedWriter writer = new BufferedWriter(new FileWriter(bundler.dsReorderedGtfPath.toString())) )
-//        {
-//                    String line;
-//                    writer.write(pythonProcessOutput.getStdout().getBufferString());
-
-//        } catch (Exception e) {
-//            throw new UserException("Error. Unable to write to reordered file.", e);
-//        }
-
+        if (!success) {
+            throw new UserException("Error. Unable to create index for gtf file.");
+        }
     }
 
     //==================================================================================================================

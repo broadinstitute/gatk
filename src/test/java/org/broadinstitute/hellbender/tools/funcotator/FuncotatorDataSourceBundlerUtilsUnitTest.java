@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import org.apache.hadoop.yarn.webapp.hamlet2.Hamlet;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.annotations.DataProvider;
