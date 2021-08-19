@@ -1,4 +1,5 @@
 import time
+import os
 
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
@@ -51,8 +52,9 @@ def populate_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_
         client = bigquery.Client(project=query_project,
                                  default_query_job_config=default_config)
 
-    alt_allele_temp_function = Path('/app/alt_allele_temp_function.sql').read_text()
-    alt_allele_positions = Path('/app/alt_allele_positions.sql').read_text()
+    os.chdir(os.path.dirname(__file__))
+    alt_allele_temp_function = Path('alt_allele_temp_function.sql').read_text()
+    alt_allele_positions = Path('alt_allele_positions.sql').read_text()
     first = True if vet_table_name == "vet_001" else False
 
     query_beginning = f"CREATE OR REPLACE TABLE {fq_dataset}.alt_allele PARTITION BY \
