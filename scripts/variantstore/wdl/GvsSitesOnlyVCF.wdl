@@ -15,9 +15,6 @@ workflow GvsSitesOnlyVCF {
         String table_suffix
 
         String? service_account_json_path
-        String? service_account_json_pathx
-        String? service_account_json_pathy
-        String? service_account_json_pathz
         File? gatk_override
         File AnAcAf_annotations_template
         File ancestry_file
@@ -30,12 +27,14 @@ workflow GvsSitesOnlyVCF {
 
     ## Scatter across the shards from the GVS jointVCF
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
-        scatter(j in range(length(MakeSubpopulationFiles.ancestry_mapping_list)) ) {
+        String? service_account_json_optional = if (defined(service_account_json_path)) then service_account_json_path else ''
+    scatter(j in range(length(MakeSubpopulationFiles.ancestry_mapping_list)) ) {
         ## Calculate AC/AN/AF for subpopulations
           call GetSubpopulationCalculations {
             input:
               input_vcf = gvs_extract_cohort_filtered_vcfs[i],
               input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+              service_account_json = service_account_json_optional,
               subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list[j],
               subpopulation = basename(MakeSubpopulationFiles.ancestry_mapping_list[j], "_subpopulation.args")
           }
@@ -80,7 +79,7 @@ workflow GvsSitesOnlyVCF {
             annotation_json = AnnotateVCF.annotation_json,
             output_file_suffix = "${i}.json.gz",
             output_path = output_path,
-            service_account_json_path = service_account_json_pathy
+            service_account_json_path = service_account_json_path
         }
     }
 
@@ -103,7 +102,7 @@ workflow GvsSitesOnlyVCF {
          dataset_name = dataset_name,
          counts_variants = ExtractAnAcAfFromVCF.count_variants,
          table_suffix = table_suffix,
-         service_account_json_path = service_account_json_pathz,
+         service_account_json_path = service_account_json_path,
          load_jsons_done = BigQueryLoadJson.done
    }
 }
@@ -143,15 +142,16 @@ task GetSubpopulationCalculations {
     input {
         File input_vcf
         File input_vcf_index
+        String? service_account_json
         File subpopulation_sample_list
         String subpopulation
     }
     String output_filename = "~{subpopulation}.vcf"
     String output_vcf_idx = output_filename + ".idx"
 
-    String has_service_account_file = 'false' # if (defined(service_account_json_path)) then 'true' else 'false'
+    String has_service_account_file = if (service_account_json != '') then 'true' else 'false'
     String input_vcf_basename = basename(input_vcf)
-    String updated_input_vcf = input_vcf # if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
+    String updated_input_vcf = if (service_account_json != '') then input_vcf_basename else input_vcf
 
     parameter_meta {
         input_vcf: {
@@ -165,6 +165,7 @@ task GetSubpopulationCalculations {
         set -e
 
         if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json} local.service_account.json
           export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
           gcloud auth activate-service-account --key-file=local.service_account.json
 
