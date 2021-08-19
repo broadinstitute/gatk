@@ -207,18 +207,17 @@ task ExtractTask {
         memory: "12 GB"
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
-        preemptible: 3
+        preemptible: 2
         maxRetries: 3
         cpu: 2
     }
 
-    # ------------------------------------------------
-    # Outputs:
+    # files sizes are floats instead of ints because they can be larger
     output {
         File output_vcf = "~{output_file}"
-        Int output_vcf_bytes = read_int("vcf_bytes.txt")
+        Float output_vcf_bytes = read_float("vcf_bytes.txt")
         File output_vcf_index = "~{output_file}.tbi"
-        Int output_vcf_index_bytes = read_int("vcf_index_bytes.txt")
+        Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
     }
  }
 
@@ -331,7 +330,7 @@ task GetBQTableLastModifiedDatetime {
 task SumBytes {
 
   input {
-    Array[Int] file_sizes_bytes
+    Array[Float] file_sizes_bytes
   }
 
   command <<<
