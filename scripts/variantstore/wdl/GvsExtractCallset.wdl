@@ -207,7 +207,7 @@ task ExtractTask {
         memory: "12 GB"
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
-        preemptible: 3
+        preemptible: 2
         maxRetries: 3
         cpu: 2
     }
