@@ -71,10 +71,10 @@ workflow GvsCreateFilterSet {
     }
 
     # don't need to make these inputs because they should be created (based on inputs) and used only within this workflow
-    Int small_disk = select_first([small_disk_override, "100"])
-    Int medium_disk = select_first([medium_disk_override, "200"])
-    Int large_disk = select_first([large_disk_override, "300"])
-    Int huge_disk = select_first([huge_disk_override, "400"])
+    Int small_disk = select_first([small_disk_override, "200"])
+    Int medium_disk = select_first([medium_disk_override, "500"])
+    Int large_disk = select_first([large_disk_override, "1000"])
+    Int huge_disk = select_first([huge_disk_override, "2000"])
     Int preemptible_tries = select_first([preemptible_tries_override, "3"])
 
     String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
