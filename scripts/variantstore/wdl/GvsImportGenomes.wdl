@@ -303,8 +303,8 @@ task ReleaseLock {
 task GetMaxTableIdLegacy {
   input {
     File sample_map
-    Int? samples_per_table = 4000
-
+    Int samples_per_table = 4000
+ 
     # runtime
     Int? preemptible_tries
   }
@@ -626,7 +626,7 @@ task CreateTables {
       if [ ~{partitioned} == "true" ]; then
         # assume clustering as well
         let "PARTITION_START=(${TABLE_ID}-1)*4000+1"
-        let "PARTITION_END=$PARTITION_START+3999"
+        let "PARTITION_END=$PARTITION_START+4000"
         let "PARTITION_STEP=1"
         PARTITION_FIELD="sample_id"
         CLUSTERING_FIELD="location"
