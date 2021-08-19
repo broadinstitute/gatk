@@ -40,18 +40,20 @@ These are the required parameters which must be supplied to the workflow:
 
 **NOTE**: if your workflow fails, you will need to manually remove a lockfile from the output directory.  It is called LOCKFILE, and can be removed with `gsutil rm`
 
-## 1.1 Create Alt Allele Table
-**NOTE:** This is a bit of a kludge until we gain more confidence that the data loaded into the ALT_ALLELE table for feature training are optimal and we can automate this process
+## 2. Create Alt Allele Table
 
-You'll need to run this from the BigQuery Console for your dataset.
+This step loads data into the ALT_ALLELE table from the `vet_*` tables.
 
-Load the SQL script you can find here in the [GATK GitHub Repository](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/bq/alt_allele_creation.example.sql)
+This is done by running the `GvsCreateAltAllele` workflow with the following parameters:
 
-There are three places where you need to replace the string `spec-ops-aou.gvs_tieout_acmg_v1` with your project and dataset name in the form `PROJECT.DATASET`
+| Parameter      | Description |
+| ----------------- | ----------- |
+| data_project | The name of the google project containing the dataset |
+| default_dataset      | The name of the dataset  |
 
-Execute the script, it should take 30-60 seconds to run resulting in the creation of the `ALT_ALLELE` table in your dataset
+**Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
-## 2. Create Filter Set
+## 3. Create Filter Set
 
 This step calculates features from the ALT_ALLELE table, and trains the VQSR filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.  
 
@@ -65,7 +67,7 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
-## 3. Prepare Callset
+## 4. Prepare Callset
 This step performs the heavy lifting in BigQuery to gather all the data required to create a jointly called VCF.  
 
 This is done by running the `GvsPrepareCallset` workflow with the following parameters:
@@ -81,7 +83,7 @@ This is done by running the `GvsPrepareCallset` workflow with the following para
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
-## 4. Extract Cohort
+## 5. Extract Cohort
 
 This step extracts the data in BigQuery, prepared by `GvsPrepareCallset` and transforms it into a sharded joint called VCF 
 
@@ -98,7 +100,7 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
-## 5. Your VCF is ready!!
+## 6. Your VCF is ready!!
 
 The sharded VCF outut files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`
 

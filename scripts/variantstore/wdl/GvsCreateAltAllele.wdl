@@ -2,9 +2,9 @@ version 1.0
 
 workflow GvsCreateAltAllele {
   input {
-    String query_project_id
-    String dataset_project_id = query_project_id
-    String dataset_name
+    String dataset_project
+    String query_project_id = dataset_project
+    String default_dataset
 
     String? service_account_json_path
     Int? preemptible_tries
@@ -17,8 +17,8 @@ workflow GvsCreateAltAllele {
   call GetVetTableNames {
     input:
       query_project_id = query_project_id,
-      dataset_project_id = dataset_project_id,
-      dataset_name = dataset_name,
+      dataset_project_id = dataset_project,
+      dataset_name = default_dataset,
       service_account_json_path = service_account_json_path
   }
 
@@ -27,8 +27,8 @@ workflow GvsCreateAltAllele {
       input:
         vet_table_name = GetVetTableNames.vet_tables[idx],
         query_project_id = query_project_id,
-        dataset_project_id = dataset_project_id,
-        dataset_name = dataset_name,
+        dataset_project_id = dataset_project,
+        dataset_name = default_dataset,
         service_account_json_path = service_account_json_path
     }
   }
