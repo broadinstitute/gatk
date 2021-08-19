@@ -36,9 +36,8 @@ workflow GvsSitesOnlyVCF {
             input:
               input_vcf = gvs_extract_cohort_filtered_vcfs[i],
               input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
-              service_account_json_path = service_account_json_pathx,
               subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list[j],
-              subpopulation = basename(MakeSubpopulationFiles.ancestry_mapping_list[j], "_subpopulation.tsv")
+              subpopulation = basename(MakeSubpopulationFiles.ancestry_mapping_list[j], "_subpopulation.args")
           }
           call ExtractAcAnAfFromSubpopulationVCFs {
             input:
@@ -111,7 +110,7 @@ workflow GvsSitesOnlyVCF {
 
 ################################################################################
 
-task MakeSubpopulationFiles {
+task MakeSubpopulationFiles { ## TODO why am I seemingly able to get the ancestry file in Terra? is it cached? I should need the SA for it---so actually, but me worth trying the SA use sooner
     input {
         File input_ancestry_file
     }
@@ -135,7 +134,7 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Outputs:
     output {
-        Array[File] ancestry_mapping_list = glob("*_subpopulation.tsv")
+        Array[File] ancestry_mapping_list = glob("*_subpopulation.args")
     }
 }
 
@@ -144,18 +143,15 @@ task GetSubpopulationCalculations {
     input {
         File input_vcf
         File input_vcf_index
-        String? service_account_json_path
         File subpopulation_sample_list
         String subpopulation
     }
     String output_filename = "~{subpopulation}.vcf"
     String output_vcf_idx = output_filename + ".idx"
-    String subpopulation_sample_list = "~{subpopulation}.args"
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    String has_service_account_file = 'false' # if (defined(service_account_json_path)) then 'true' else 'false'
     String input_vcf_basename = basename(input_vcf)
-    String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
-    String test = if (defined(service_account_json_path)) then service_account_json_path else ""
+    String updated_input_vcf = input_vcf # if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
 
     parameter_meta {
         input_vcf: {
@@ -169,7 +165,6 @@ task GetSubpopulationCalculations {
         set -e
 
         if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json_path} local.service_account.json
           export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
           gcloud auth activate-service-account --key-file=local.service_account.json
 
