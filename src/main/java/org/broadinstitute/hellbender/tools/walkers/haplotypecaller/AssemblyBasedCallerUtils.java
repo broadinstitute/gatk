@@ -50,7 +50,7 @@ public final class AssemblyBasedCallerUtils {
 //    static final int REFERENCE_PADDING_FOR_ASSEMBLY = 200;
 //    public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 5;
     // AH & BG edit
-    public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 20;
+    public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 5;
     public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
@@ -318,8 +318,12 @@ public final class AssemblyBasedCallerUtils {
         try {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
                     paddedReferenceLoc, readErrorCorrector, header, aligner);
-            if (!givenAlleles.isEmpty()) {
-                addGivenAlleles(region, givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
+            if (!givenAlleles.isEmpty() && !argumentCollection.usePileupDetection) {
+                addGivenAlleles(region.getPaddedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
+            }
+
+            if (!givenAlleles.isEmpty() && argumentCollection.usePileupDetection) {
+                processPileupAlleles(region, givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
             }
 
 
@@ -340,8 +344,7 @@ public final class AssemblyBasedCallerUtils {
     }
 
     @VisibleForTesting
-    static void addGivenAlleles(final AssemblyRegion region, final List<VariantContext> givenAlleles, final int maxMnpDistance,
-                                final SmithWatermanAligner aligner, final Haplotype refHaplotype, final AssemblyResultSet assemblyResultSet) {
+    static void processPileupAlleles(AssemblyRegion region, List<VariantContext> givenAlleles, int maxMnpDistance, SmithWatermanAligner aligner, Haplotype refHaplotype, AssemblyResultSet assemblyResultSet) {
         final int assemblyRegionStart = region.getPaddedSpan().getStart();
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
         final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
@@ -414,7 +417,7 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
 
-            baseHaplotypes.addAll(filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts, 10));
+            baseHaplotypes.addAll(filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts, 5));
 
         }
 //        Set<Haplotype> filteredPileupHaplotypes = filterPileupHaplotypes(assemblyResultSet.getHaplotypeList(), assembledAndNewHaplotypes, region.getHardClippedPileupReads(), givenAlleles.size()*10);
@@ -422,6 +425,62 @@ public final class AssemblyBasedCallerUtils {
         baseHaplotypes.forEach(haplotype -> assemblyResultSet.add(haplotype));
         assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
     }
+
+    static void addGivenAlleles(final int assemblyRegionStart, final List<VariantContext> givenAlleles, final int maxMnpDistance,
+                                final SmithWatermanAligner aligner, final Haplotype refHaplotype, final AssemblyResultSet assemblyResultSet) {
+        final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
+        final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
+                .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
+
+        final List<Haplotype> assembledHaplotypes = assemblyResultSet.getHaplotypeList();
+        for (final VariantContext givenVC : givenAlleles) {
+            final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
+            final int givenVCRefLength = givenVC.getReference().length();
+            final Allele longerRef = (assembledVC == null || givenVCRefLength > assembledVC.getReference().length()) ? givenVC.getReference() : assembledVC.getReference();
+            final List<Allele> unassembledGivenAlleles;
+            if (assembledVC == null) {
+                unassembledGivenAlleles = givenVC.getAlternateAlleles();
+            } else {
+                // map all alleles to the longest common reference
+                final Set<Allele> assembledAlleleSet = new HashSet<>(longerRef.length() == assembledVC.getReference().length() ? assembledVC.getAlternateAlleles() :
+                        ReferenceConfidenceVariantContextMerger.remapAlleles(assembledVC, longerRef));
+                final Set<Allele> givenAlleleSet = new HashSet<>(longerRef.length() == givenVCRefLength ? givenVC.getAlternateAlleles() :
+                        ReferenceConfidenceVariantContextMerger.remapAlleles(givenVC, longerRef));
+                unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).collect(Collectors.toList());
+            }
+
+            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream().filter(a -> {
+                final byte[] bases = a.getBases();
+                return !(Allele.wouldBeNoCallAllele(bases) || Allele.wouldBeNullAllele(bases) || Allele.wouldBeStarAllele(bases) || Allele.wouldBeSymbolicAllele(bases));
+            }).collect(Collectors.toList());
+
+            // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
+            final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledHaplotypes.stream()
+                    .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
+                    .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
+                    .collect(Collectors.toList());
+
+            for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
+                for (final Haplotype baseHaplotype : baseHaplotypes) {
+                    // make sure this allele doesn't collide with a variant on the haplotype
+                    if (baseHaplotype.getEventMap()!= null && baseHaplotype.getEventMap().getVariantContexts().stream().anyMatch(vc -> vc.overlaps(givenVC))) {
+                        continue;
+                    }
+
+                    final Haplotype insertedHaplotype = baseHaplotype.insertAllele(longerRef, givenAllele, activeRegionStart + givenVC.getStart() - assemblyRegionStart, givenVC.getStart());
+                    if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
+                        final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, SWOverhangStrategy.INDEL);
+                        insertedHaplotype.setCigar(cigar);
+                        insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
+                        insertedHaplotype.setAlignmentStartHapwrtRef(activeRegionStart);
+                        assemblyResultSet.add(insertedHaplotype);
+                    }
+                }
+            }
+        }
+        assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
+    }
+
 
 
     static Map<Kmer, Integer>  getKmerReadCounts(final List<GATKRead> hardClippedPileupReads, int kmerSize) {
