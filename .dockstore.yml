@@ -74,7 +74,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_sum_files_fix
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
