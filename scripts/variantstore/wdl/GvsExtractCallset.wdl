@@ -337,7 +337,7 @@ task SumBytes {
     set -e
     echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python -c "
     import sys;
-    total_bytes = sum(int(i.strip()) for i in sys.stdin);
+    total_bytes = sum(float(i.strip()) for i in sys.stdin);
     total_mb = total_bytes/10**6;
     print(total_mb);"
   >>>
