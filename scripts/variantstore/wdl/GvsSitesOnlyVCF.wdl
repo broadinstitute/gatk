@@ -109,7 +109,7 @@ workflow GvsSitesOnlyVCF {
 
 ################################################################################
 
-task MakeSubpopulationFiles { ## TODO why am I seemingly able to get the ancestry file in Terra? is it cached? I should need the SA for it---so actually, but me worth trying the SA use sooner
+task MakeSubpopulationFiles {
     input {
         File input_ancestry_file
     }
@@ -512,6 +512,8 @@ task BigQueryLoadJson {
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
+
+       echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
        if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json_path} local.service_account.json
