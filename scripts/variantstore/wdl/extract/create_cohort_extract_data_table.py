@@ -46,7 +46,7 @@ def dump_job_stats():
     bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
     total = total + bytes_billed
 
-    print(jobid[0], " <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
+    print(jobid[0] (jobid[1]), " <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
 
   print(" Total GBs billed ", total/(1024 * 1024 * 1024), " GBs")
 
@@ -66,7 +66,7 @@ def execute_with_retry(label, sql):
       print(f"STARTING - {label}")
       JOB_IDS.add((label, query.job_id))
       results = query.result()
-      print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label}")
+      print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label} ({query.job_id})")
       return results
     except Exception as err:
       # if there are no retries left... raise
@@ -74,7 +74,7 @@ def execute_with_retry(label, sql):
         raise err
       else:
         t = retry_delay.pop(0)
-        print(f"Error {err} running query {label}, sleeping for {t}")
+        print(f"Error {err} running query {label} ({query.job_id}), sleeping for {t}")
         time.sleep(t)
 
 def get_partition_range(i):
@@ -112,7 +112,7 @@ def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
   return fq_sample_table
 
 def get_all_sample_ids(fq_destination_table_samples):
-  sql = f"select sample_id from `{fq_destination_table_samples}`"
+  sql = f"select sample_id from `{fq_destination_table_samples}` where is_loaded is TRUE"
 
   results = execute_with_retry("read cohort sample table", sql)
   sample_ids = [row.sample_id for row in list(results)]
@@ -121,7 +121,8 @@ def get_all_sample_ids(fq_destination_table_samples):
 
 def create_extract_samples_table(fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table):
   sql = f"CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (" \
-        f"SELECT m.sample_id, m.sample_name FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) )"
+        f"SELECT m.sample_id, m.sample_name FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m  " \
+        f"ON (s.sample_name = m.sample_name) WHERE m.is_loaded is TRUE)"
 
   results = execute_with_retry("create extract sample table", sql)
   return results
