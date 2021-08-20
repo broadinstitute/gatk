@@ -167,7 +167,7 @@ workflow GvsImportGenomes {
       load_vet_done = LoadVetTable.done,
       load_pet_done = LoadPetTable.done,
       dataset_name = dataset_name,
-      gvs_ids = GetSampleIds.gvs_ids,
+      gvs_ids = select_first([GetSampleIds.gvs_ids, GetMaxTableIdLegacy.gvs_ids]),
       service_account_json_path = service_account_json_path,
       project_id = project_id,
       preemptible_tries = preemptible_tries
@@ -177,7 +177,7 @@ workflow GvsImportGenomes {
     input:
       run_uuid = SetLock.run_uuid,
       output_directory = output_directory,
-      load_sample_info_done = AddIsLoadedColumn.done,
+      load_sample_info_done = SetIsLoadedColumn.done,
       load_pet_done = LoadPetTable.done,
       load_vet_done = LoadVetTable.done,
       service_account_json_path = service_account_json_path,
@@ -312,7 +312,8 @@ task GetMaxTableIdLegacy {
 
   command <<<
       set -e
-      max_sample_id=$(cat ~{sample_map} | cut -d"," -f1 | sort -rn | head -1)
+      cat ~{sample_map} | cut -d"," -f1 > gvs_ids
+      max_sample_id=$(cat gvs_ids | sort -rn | head -1)
       python -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))"
   >>>
   runtime {
@@ -324,6 +325,7 @@ task GetMaxTableIdLegacy {
   }
   output {
       Int max_table_id = read_int(stdout())
+      File gvs_ids = "gvs_ids"
   }
 }
 
