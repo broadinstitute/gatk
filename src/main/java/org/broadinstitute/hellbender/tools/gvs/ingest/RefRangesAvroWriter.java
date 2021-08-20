@@ -13,7 +13,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 
-public class RefRangesAvroWriter implements Closeable {
+public class RefRangesAvroWriter implements RefRangesWriter {
     private DataFileWriter<GenericData.Record> writer;
     private Schema schema;
 
@@ -37,7 +37,8 @@ public class RefRangesAvroWriter implements Closeable {
 	
     }
 
-    public void write(long location, long sampleId, long length, String state) throws IOException {
+    @Override
+    public void write(long location, long sampleId, int length, String state) throws IOException {
         GenericData.Record record = new GenericData.Record(schema);
         record.put("location", location);
         record.put("sample_id", sampleId);

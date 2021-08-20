@@ -14,11 +14,13 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.SampleList;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.common.ExtractTool;
 import org.broadinstitute.hellbender.tools.gvs.common.FilterSensitivityTools;
+import org.broadinstitute.hellbender.tools.gvs.ingest.PetTsvCreator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -74,7 +76,31 @@ public class ExtractCohort extends ExtractTool {
             mutex = {"cohort-extract-table"},
             optional = true
     )
-    private String cohortAvroFileName = null;
+    private GATKPath cohortAvroFileName = null;
+
+    @Argument(
+            fullName = "vet-ranges-fq-dataset",
+            doc = "Fully qualified name for the dataset (<project>.<dataset>) that contains the VET and REF_RANGES data for extract",
+            mutex = {"cohort-extract-table"},
+            optional = true
+    )
+    private String vetRangesFQDataSet = null;
+
+    @Argument(
+            fullName = "vet-avro-file-name",
+            doc = "Path to unsorted data from Vet table in Avro format",
+            mutex = {"cohort-extract-table"},
+            optional = true
+    )
+    private GATKPath vetAvroFileName = null;
+
+    @Argument(
+            fullName = "ref-ranges-avro-file-name",
+            doc = "Path to unsorted data from Vet table in Avro format",
+            mutex = {"cohort-extract-table"},
+            optional = true
+    )
+    private GATKPath refRangesAvroFileName = null;
 
     @Argument(
             fullName = "filter-set-name",
@@ -141,6 +167,12 @@ public class ExtractCohort extends ExtractTool {
             doc="Don't include filtered sites in the final jointVCF",
             optional=true)
     private boolean excludeFilteredSites = false;
+
+    @Argument(fullName = "inferred-reference-state",
+            shortName = "irs",
+            doc = "Reference state to be inferred from GVS, must match what was used during loading",
+            optional = true)
+    public PetTsvCreator.GQStateEnum inferredReferenceState = PetTsvCreator.GQStateEnum.SIXTY;
 
     protected static VCFHeader generateVcfHeader(Set<String> sampleNames,
                                                  final SAMSequenceDictionary sequenceDictionary,
@@ -245,11 +277,11 @@ public class ExtractCohort extends ExtractTool {
             throw new UserException("min-location and max-location should not be used together with intervals (-L).");
         }
 
-        // if there is a avro file, the BQ specific parameters are unnecessary,
+        // if there is an avro file, the BQ specific parameters are unnecessary,
         // but they all are required if there is no avro file
-        if (cohortAvroFileName == null && (projectID == null || cohortTable == null)) {
+        if ((cohortAvroFileName == null && vetAvroFileName == null && refRangesAvroFileName == null) && (projectID == null || (cohortTable == null && vetRangesFQDataSet == null))) {
             throw new UserException("Project id (--project-id) and cohort table (--cohort-extract-table) are required " +
-                "if no avro file (--cohort-avro-file-name) is provided.");
+                "if no avro file (--cohort-avro-file-name or --vet-avro-file-name and --ref-ranges-avro-file-name) is provided.");
         }
 
         // if there is a sample file, the BQ specific parameters are unnecessary,
@@ -269,6 +301,9 @@ public class ExtractCohort extends ExtractTool {
                 mode,
                 cohortTable,
                 cohortAvroFileName,
+                vetRangesFQDataSet,
+                vetAvroFileName,
+                refRangesAvroFileName,
                 traversalIntervals,
                 minLocation,
                 maxLocation,
@@ -282,7 +317,8 @@ public class ExtractCohort extends ExtractTool {
                 filterSetName,
                 emitPLs,
                 vqslodfilteringType,
-                excludeFilteredSites);
+                excludeFilteredSites,
+                inferredReferenceState);
 
         vcfWriter.writeHeader(header);
     }

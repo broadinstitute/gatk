@@ -19,9 +19,9 @@ public class SchemaUtils {
     public static final String BASIC_ARRAY_DATA_FIELD_NAME = "basic_array_data";
     public static final String RAW_ARRAY_DATA_FIELD_NAME = "raw_array_data";
 
-    // TODO remove this one - we should not have this ambiguous field
-//    public static final String SAMPLE_FIELD_NAME = "sample";
     public static final String STATE_FIELD_NAME = "state";
+    public static final String LENGTH_FIELD_NAME = "length";
+
     public static final String REF_ALLELE_FIELD_NAME = "ref";
     public static final String ALT_ALLELE_FIELD_NAME = "alt";
 
@@ -76,6 +76,9 @@ public class SchemaUtils {
     // Site filtering table
     public static final String FILTERS = "filters";
     public static final List<String> FILTER_SET_SITE_FIELDS = Arrays.asList(FILTER_SET_NAME,LOCATION_FIELD_NAME,FILTERS);
+
+    public static final List<String> EXTRACT_VET_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, AS_QUALapprox, QUALapprox, CALL_PL);
+    public static final List<String> EXTRACT_REF_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, "length", STATE_FIELD_NAME);
 
     public static final List<String> COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, CALL_RGQ, QUALapprox, AS_QUALapprox, CALL_PL);
     public static final List<String> COHORT_FIELDS_NO_PL = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, CALL_RGQ, QUALapprox, AS_QUALapprox);

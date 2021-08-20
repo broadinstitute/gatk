@@ -70,10 +70,10 @@ public abstract class ExtractTool extends GATKTool {
 
     @Argument(
             fullName = "mode",
-            doc = "Source of genomic data. Valid options are one of ARRAYS, EXOMES, GENOMES",
+            doc = "Reference representation mode.  Valid values are PET or RANGES",
             optional = false
     )
-    protected CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
+    protected CommonCode.ModeEnum mode = CommonCode.ModeEnum.PET;
 
     @Argument(
             fullName = "ref-version",

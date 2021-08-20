@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.util.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
@@ -103,4 +104,31 @@ public class SampleList {
         return result;
     }
 
+    public static Map<Integer, LinkedList<Set<Long>>> mapSampleIdsToTableIndexes(Set<Long> sampleIds) {
+        Map<Integer, LinkedList<Set<Long>>> tableMap = new HashMap<>();
+
+        Long maxSampleId = sampleIds.stream().max(Long::compare).orElseThrow(
+                () -> new GATKException("Unable to calculate max sample id, sample list may be empty")
+        );
+
+        IngestUtils.getTableNumber(maxSampleId, IngestConstants.partitionPerTable);
+
+        for (Long sampleId : sampleIds) {
+            int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
+
+            if (!tableMap.containsKey(sampleTableNumber)) {
+                tableMap.put(sampleTableNumber, new LinkedList<>());
+            }
+
+            // add the sample id to the end of the last element unless it is over
+            // 1000 elements in which case make a new list
+            if (tableMap.get(sampleTableNumber).size() == 0 || tableMap.get(sampleTableNumber).getLast().size() > 1000) {
+                TreeSet<Long> ts = new TreeSet<>();
+                tableMap.get(sampleTableNumber).addLast(ts);
+            }
+
+            tableMap.get(sampleTableNumber).getLast().add(sampleId);
+        }
+        return tableMap;
+    }
 }

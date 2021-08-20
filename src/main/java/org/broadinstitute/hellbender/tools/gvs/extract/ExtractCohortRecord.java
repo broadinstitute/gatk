@@ -14,6 +14,7 @@ public class ExtractCohortRecord implements Locatable {
     private final String contig;
     private final Integer start;
     private final Integer end;
+    private final Long endLocation;
 
     private final String state;
     private final String refAllele;
@@ -44,18 +45,55 @@ public class ExtractCohortRecord implements Locatable {
         this.sampleId = Long.parseLong(genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME).toString());
         this.contig = SchemaUtils.decodeContig(location);
         this.start = SchemaUtils.decodePosition(location);
-        this.end = start;
-        this.state = genericRecord.get(SchemaUtils.STATE_FIELD_NAME).toString();
+
+        if (genericRecord.get("length") != null) {
+            this.end = this.start + Integer.parseInt(genericRecord.get("length").toString()) - 1;
+            this.endLocation = this.location + + Integer.parseInt(genericRecord.get("length").toString()) - 1;
+        } else {
+            this.end = start;
+            this.endLocation = location;
+        }
+        this.state = Objects.toString(genericRecord.get(SchemaUtils.STATE_FIELD_NAME), "v");
 
         // the rest are nullable
         this.refAllele = Objects.toString(genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME), null);
         this.altAllele = Objects.toString(genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME), null);
         this.callGT = Objects.toString(genericRecord.get(SchemaUtils.CALL_GT), null);
         this.callGQ = Objects.toString(genericRecord.get(SchemaUtils.CALL_GQ), null);
-        this.callRGQ = Objects.toString(genericRecord.get(SchemaUtils.CALL_RGQ), null);
         this.qualapprox = Objects.toString(genericRecord.get(SchemaUtils.QUALapprox), null);
         this.asQualapprox = Objects.toString(genericRecord.get(SchemaUtils.AS_QUALapprox), null);
         this.callPL = Objects.toString(genericRecord.get(SchemaUtils.CALL_PL), null);
+
+        // to keep callRGQ final...
+        String tmpRGQ = Objects.toString(genericRecord.get(SchemaUtils.CALL_RGQ), null);
+
+        // if we don't get RGQ from the database, we can calculate it from the PLs
+        if (tmpRGQ != null) {
+            this.callRGQ = tmpRGQ;
+        } else if (this.callPL != null) {
+            this.callRGQ = this.callPL.split(",")[0];
+        } else {
+            this.callRGQ = null;
+        }
+    }
+
+    public ExtractCohortRecord(long location, int length, long sampleId, String state) {
+        this.location = location;
+        this.sampleId = sampleId;
+        this.contig = SchemaUtils.decodeContig(location);
+        this.start = SchemaUtils.decodePosition(location);
+        this.end = start + length - 1;
+        this.endLocation = location + length - 1;
+        this.state = state;
+
+        this.refAllele = null;
+        this.altAllele = null;
+        this.callGT = null;
+        this.callGQ = null;
+        this.callRGQ = null;
+        this.qualapprox = null;
+        this.asQualapprox = null;
+        this.callPL = null;
     }
 
     @Override
@@ -68,6 +106,7 @@ public class ExtractCohortRecord implements Locatable {
     public int getEnd() { return this.end; }
 
     public long getLocation() { return this.location; }
+    public long getEndLocation() { return this.endLocation; }
 
     public Long getSampleId() { return this.sampleId; }
 

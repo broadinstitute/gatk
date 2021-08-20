@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.gvs.extract;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.bigquery.AvroFileReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -11,7 +12,7 @@ public class ExtractCohortFilterRecordUnitTest extends GATKBaseTest {
 
     @Test
     public void testExtractCohortFilterRecord() {
-        GenericRecord inputGenericRecord = new AvroFileReader(getToolTestDataDir() + "test_input.avro").next();
+        GenericRecord inputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "test_input.avro")).next();
         ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord);
 
         Assert.assertEquals(allDefinedRecord.getContig(), "chr1");

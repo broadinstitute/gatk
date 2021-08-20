@@ -34,6 +34,8 @@ workflow GvsExtractCallset {
         Int? extract_maxretries_override
         Int? split_intervals_disk_size_override
 
+        String mode = "PET"
+       
         String? service_account_json_path
 
         String output_file_base_name
@@ -83,6 +85,7 @@ workflow GvsExtractCallset {
                 intervals                       = SplitIntervals.interval_files[i],
                 fq_cohort_extract_table         = fq_cohort_extract_table,
                 read_project_id                 = query_project,
+                mode                            = mode,
                 do_not_filter_override          = do_not_filter_override,
                 fq_filter_set_info_table        = fq_filter_set_info_table,
                 fq_filter_set_site_table        = fq_filter_set_site_table,
@@ -142,6 +145,8 @@ task ExtractTask {
         String output_file
         String? output_gcs_dir
 
+        String mode
+
         Boolean do_not_filter_override
         String fq_filter_set_info_table
         String fq_filter_set_site_table
@@ -198,7 +203,7 @@ task ExtractTask {
 
         gatk --java-options "-Xmx9g" \
             ExtractCohort \
-                --mode GENOMES --ref-version 38 \
+                --mode ~{mode} --ref-version 38 \
                 -R ~{reference} \
                 -O ~{output_file} \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
