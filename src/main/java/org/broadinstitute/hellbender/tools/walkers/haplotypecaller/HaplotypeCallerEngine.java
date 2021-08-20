@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
 import org.broadinstitute.hellbender.transformers.IUPACReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -568,8 +569,16 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
+        List<VariantContext> forcedPileupAlleles = Collections.EMPTY_LIST;
+        if(hcArgs.usePileupDetection){
+            forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(region.getAlignmentData());
+        }
+
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, forcedPileupAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
+
+
         // run the local assembler, getting back a collection of information on how we should proceed
-        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
+//        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
 
         if (assemblyDebugOutStream != null) {
             try {

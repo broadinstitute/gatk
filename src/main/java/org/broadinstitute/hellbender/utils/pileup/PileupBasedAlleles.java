@@ -1,16 +1,17 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect;
+package org.broadinstitute.hellbender.utils.pileup;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.tools.walkers.mutect.AlignmentData;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import scala.Char;
 
 import java.util.*;
 
 
-final class PileupBasedAlleles {
+public final class PileupBasedAlleles {
 
 
     ArrayList<VariantContext> forcedPileupAlleles;

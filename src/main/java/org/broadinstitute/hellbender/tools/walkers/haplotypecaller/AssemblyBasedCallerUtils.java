@@ -289,6 +289,7 @@ public final class AssemblyBasedCallerUtils {
      */
     public static AssemblyResultSet assembleReads(final AssemblyRegion region,
                                                   final List<VariantContext> givenAlleles,
+                                                  final List<VariantContext> forcedPileupAlleles,
                                                   final AssemblyBasedCallerArgumentCollection argumentCollection,
                                                   final SAMFileHeader header,
                                                   final SampleList sampleList,
@@ -318,12 +319,12 @@ public final class AssemblyBasedCallerUtils {
         try {
             final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
                     paddedReferenceLoc, readErrorCorrector, header, aligner);
-            if (!givenAlleles.isEmpty() && !argumentCollection.usePileupDetection) {
+            if (!givenAlleles.isEmpty()) {
                 addGivenAlleles(region.getPaddedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
             }
 
-            if (!givenAlleles.isEmpty() && argumentCollection.usePileupDetection) {
-                processPileupAlleles(region, givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
+            if (!forcedPileupAlleles.isEmpty()) {
+                processPileupAlleles(region, forcedPileupAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
             }
 
 
