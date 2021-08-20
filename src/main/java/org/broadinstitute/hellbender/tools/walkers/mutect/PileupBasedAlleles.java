@@ -42,7 +42,7 @@ final class PileupBasedAlleles {
             alleles.add(Allele.create(referenceContext.getBase(), true));
             // TODO: AH & BG add an option to deal with multiple alt alleles
             Optional<Map.Entry<Byte, Integer>> maxAlt = altCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
-            if (maxAlt.isPresent() && ((float)maxAlt.get().getValue() / (float)numOfBases) > 0.12 && numOfBases >= 5 ) {
+            if (maxAlt.isPresent() && ((float)maxAlt.get().getValue() / (float)numOfBases) > 0.10 && numOfBases >= 5 ) {
 //            if (maxAlt.isPresent() && ((float)maxAlt.get().getValue() / (float)numOfBases) > 0.1 && maxAlt.get().getValue() > 10 ) {
                     alleles.add(Allele.create(maxAlt.get().getKey()));
                     VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
