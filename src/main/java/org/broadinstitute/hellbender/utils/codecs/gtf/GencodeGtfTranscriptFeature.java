@@ -62,7 +62,7 @@ final public class GencodeGtfTranscriptFeature extends GencodeGtfFeature {
     public void addUtr( final GencodeGtfUTRFeature utr ) { utrs.add(utr); }
 
     @Override
-    protected List<GencodeGtfFeature> getAllFeatures() {
+    public List<GencodeGtfFeature> getAllFeatures() {
         final ArrayList<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
 

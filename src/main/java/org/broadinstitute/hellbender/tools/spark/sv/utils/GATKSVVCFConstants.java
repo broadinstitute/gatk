@@ -101,6 +101,17 @@ public final class GATKSVVCFConstants {
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
 
+    // functional annotations
+    public static final String LOF = "PREDICTED_LOF";
+    public static final String INT_EXON_DUP = "PREDICTED_INTRAGENIC_EXON_DUP";
+    public static final String COPY_GAIN = "PREDICTED_COPY_GAIN";
+    public static final String DUP_PARTIAL = "PREDICTED_DUP_PARTIAL";
+    public static final String PARTIAL_EXON_DUP = "PREDICTED_PARTIAL_EXON_DUP";
+    public static final String INTRONIC = "PREDICTED_INTRONIC";
+    public static final String INV_SPAN = "PREDICTED_INV_SPAN";
+    public static final String UTR = "PREDICTED_UTR";
+    public static final String MSV_EXON_OVERLAP = "PREDICTED_MSV_EXON_OVERLAP";
+    public static final String PROMOTER = "PREDICTED_PROMOTER";
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
