@@ -420,7 +420,7 @@ public final class SVDDenoisingUtils {
     /**
      * Given standardized read counts specified by a row vector S (dimensions {@code 1 x M})
      * and all eigensample vectors U (dimensions {@code M x K}),
-     * returns s - s U<sub>k</sub> U<sub>k</sub><sup>T</sup>,
+     * returns s - s<sup>T</sup> U<sub>k</sub> U<sub>k</sub><sup>T</sup>,
      * where U<sub>k</sub> contains the first {@code numEigensamples}.
      */
     private static RealMatrix subtractProjection(final RealMatrix standardizedValues,

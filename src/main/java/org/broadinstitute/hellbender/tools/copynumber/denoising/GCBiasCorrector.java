@@ -67,7 +67,7 @@ public final class GCBiasCorrector {
 
     /**
      * Corrects GC bias of read counts in place.
-     * @param readCounts            samples x intervals, assumed to be integer counts
+     * @param readCounts            samples x intervals, assumed to be per-target fractional coverage
      * @param intervalGCContent     GC content (assumed to be from 0.0 to 1.0) of genomic intervals for {@code readCounts}
      */
     public static void correctGCBias(final RealMatrix readCounts,
@@ -79,7 +79,7 @@ public final class GCBiasCorrector {
                 "Number of intervals in read-counts matrix and GC-content array do not match.");
         final double[] totalCoveragePerSample = IntStream.range(0, readCounts.getRowDimension())
                 .mapToDouble(r -> readCounts.getRowVector(r).getL1Norm())
-                .toArray();
+                .toArray(); // ts: this should always be an array of 1
         // each row (sample) has its own GC-bias curve, hence its own GC-bias corrector
         final List<GCBiasCorrector> gcBiasCorrectors = IntStream.range(0, readCounts.getRowDimension())
                 .mapToObj(n -> new GCBiasCorrector(readCounts.getRowVector(n), intervalGCContent))
