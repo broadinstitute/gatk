@@ -22,8 +22,6 @@ workflow GvsPrepareCallset {
         Int temp_table_ttl_in_hours = 72
         String? service_account_json_path
         String? docker
-        File? gatk_override
-
     }
 
     String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210806"])
