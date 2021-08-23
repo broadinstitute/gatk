@@ -355,11 +355,19 @@ public class SVTestUtils {
     }
 
     public static SVCallRecord newCallRecordWithAlleles(final List<Allele> genotypeAlleles, final List<Allele> variantAlleles,
-                                                        final StructuralVariantType svtype) {
+                                                        final StructuralVariantType svtype, final Integer expectedCopyNumber,
+                                                        final Integer copyNumber) {
+        GenotypeBuilder builder = new GenotypeBuilder("sample").alleles(genotypeAlleles);
+        if (expectedCopyNumber != null) {
+            builder = builder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, expectedCopyNumber);
+        }
+        if (copyNumber != null) {
+            builder = builder.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, copyNumber);
+        }
         return new SVCallRecord("", "chr1", 100, getValidTestStrandA(svtype), "chr1", 199, getValidTestStrandB(svtype),
                 svtype, 100, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 variantAlleles,
-                Collections.singletonList(new GenotypeBuilder().alleles(genotypeAlleles).make()),
+                Collections.singletonList(builder.make()),
                 Collections.emptyMap());
     }
 

@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.sv.cluster.PloidyTable;
 import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -63,7 +64,6 @@ public class SVCallRecordUtilsUnitTest {
                                 .genotypes(GENOTYPE_DEL_1, GENOTYPE_DEL_2)
                                 .attribute(VCFConstants.END_KEY, 1999)
                                 .attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST)
-                                .attribute(GATKSVVCFConstants.SVLEN, 1000)
                                 .attribute(GATKSVVCFConstants.SVTYPE, StructuralVariantType.DEL)
                                 .make(),
                         Collections.emptyList()
@@ -80,7 +80,6 @@ public class SVCallRecordUtilsUnitTest {
                                 .genotypes(GENOTYPE_DEL_3)
                                 .attribute(VCFConstants.END_KEY, 1999)
                                 .attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST)
-                                .attribute(GATKSVVCFConstants.SVLEN, 1000)
                                 .attribute(GATKSVVCFConstants.SVTYPE, StructuralVariantType.DEL)
                                 .make(),
                         Collections.emptyList()
@@ -97,7 +96,6 @@ public class SVCallRecordUtilsUnitTest {
                                 .genotypes(GENOTYPE_INS_1)
                                 .attribute(VCFConstants.END_KEY, 1000)
                                 .attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, SVTestUtils.PESR_ONLY_ALGORITHM_LIST)
-                                .attribute(GATKSVVCFConstants.SVLEN, 500)
                                 .attribute(GATKSVVCFConstants.SVTYPE, StructuralVariantType.INS)
                                 .make(),
                         Collections.emptyList()
@@ -155,14 +153,31 @@ public class SVCallRecordUtilsUnitTest {
         final Set<String> samplesNoMissing = Sets.newHashSet(GENOTYPE_DEL_1.getSampleName(), GENOTYPE_DEL_2.getSampleName());
         final Set<String> samples = Sets.newHashSet(GENOTYPE_DEL_1.getSampleName(), GENOTYPE_DEL_2.getSampleName(),
                 "sample3", "sample4");
-        final List<Allele> alleles = Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL);
-        final Map<String, Object> attributes = new HashMap<>();
-        attributes.put(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM));
 
-        final GenotypesContext resultNoMissing = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(genotypesContext, samplesNoMissing, alleles, attributes);
-        Assert.assertEquals(resultNoMissing, genotypesContext);
+        final Map<String, Integer> sample1PloidyMap = Collections.singletonMap("chr20", 2);
+        final Map<String, Integer> sample2PloidyMap = Collections.singletonMap("chr20", 2);
+        final Map<String, Integer> sample3PloidyMap = Collections.singletonMap("chr20", 2);
+        final Map<String, Integer> sample4PloidyMap = Collections.singletonMap("chr20", 3);
+        final Map<String, Map<String, Integer>> rawPloidyMap = new HashMap<>();
+        rawPloidyMap.put("sample1", sample1PloidyMap);
+        rawPloidyMap.put("sample2", sample2PloidyMap);
+        rawPloidyMap.put("sample3", sample3PloidyMap);
+        rawPloidyMap.put("sample4", sample4PloidyMap);
+        final PloidyTable ploidyTable = new PloidyTable(rawPloidyMap);
 
-        final GenotypesContext result = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(genotypesContext, samples, alleles, attributes);
+        final GenotypeBuilder builder1a = new GenotypeBuilder("sample1");
+        final SVCallRecord record1 = SVTestUtils.makeRecord("record1", "chr20", 1000, true,
+                "chr20", 2000, false, StructuralVariantType.DEL, null,
+                Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                Lists.newArrayList(new GenotypeBuilder(GENOTYPE_DEL_1), new GenotypeBuilder(GENOTYPE_DEL_2)));
+        final GenotypesContext resultNoMissing = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(
+                record1, samplesNoMissing, true, ploidyTable);
+        Assert.assertEquals(resultNoMissing.size(), 2);
+        for (final Genotype g : genotypesContext) {
+            VariantContextTestUtils.assertGenotypesAreEqual(g, genotypesContext.get(g.getSampleName()));
+        }
+
+        final GenotypesContext result = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(record1, samples, true, ploidyTable);
         Assert.assertEquals(result.size(), 4);
 
         final Genotype g1 = result.get(GENOTYPE_DEL_1.getSampleName());
@@ -170,8 +185,16 @@ public class SVCallRecordUtilsUnitTest {
         final Genotype g3 = result.get("sample3");
         final Genotype g4 = result.get("sample4");
 
-        final Genotype g3Expected = new GenotypeBuilder("sample3", alleles).attributes(attributes).make();
-        final Genotype g4Expected = new GenotypeBuilder("sample4", alleles).attributes(attributes).make();
+        final List<Allele> alleles3 = Collections.nCopies(2, record1.getRefAllele());
+        final Genotype g3Expected = new GenotypeBuilder("sample3", alleles3)
+                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                .attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 2)
+                .make();
+        final List<Allele> alleles4 = Collections.nCopies(3, record1.getRefAllele());
+        final Genotype g4Expected = new GenotypeBuilder("sample4", alleles4)
+                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 3)
+                .attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 3)
+                .make();
 
         VariantContextTestUtils.assertGenotypesAreEqual(g1, GENOTYPE_DEL_1);
         VariantContextTestUtils.assertGenotypesAreEqual(g2, GENOTYPE_DEL_2);

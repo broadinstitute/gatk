@@ -38,7 +38,7 @@ public class BinnedCNVDefragmenterTest {
         Assert.assertEquals(testGenotype1.getExtendedAttributes(), expectedGenotype1.getExtendedAttributes());
 
         final Genotype testGenotype2 = sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample2.make().getSampleName());
-        final Genotype expectedGenotype2 = SVTestUtils.sample2.alleles(Collections.nCopies(2, Allele.NO_CALL)).make();
+        final Genotype expectedGenotype2 = SVTestUtils.sample2.alleles(Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)).make();
         Assert.assertEquals(testGenotype2.getAlleles(), expectedGenotype2.getAlleles());
         Assert.assertEquals(testGenotype2.getExtendedAttributes(), expectedGenotype2.getExtendedAttributes());
 
@@ -98,7 +98,7 @@ public class BinnedCNVDefragmenterTest {
         temp1.add(SVTestUtils.call1);
         //force new cluster by adding a non-overlapping event
         temp1.add(SVTestUtils.call3);
-        final List<SVCallRecord> output1 = temp1.getOutput(); //flushes all clusters
+        final List<SVCallRecord> output1 = temp1.forceFlushAndGetOutput(); //flushes all clusters
         Assert.assertEquals(output1.size(), 2);
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call3, output1.get(1));
@@ -108,7 +108,7 @@ public class BinnedCNVDefragmenterTest {
         temp2.add(SVTestUtils.call2);  //should overlap after padding
         //force new cluster by adding a call on another contig
         temp2.add(SVTestUtils.call4_chr10);
-        final List<SVCallRecord> output2 = temp2.getOutput();
+        final List<SVCallRecord> output2 = temp2.forceFlushAndGetOutput();
         Assert.assertEquals(output2.size(), 2);
         Assert.assertEquals(output2.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
         Assert.assertEquals(output2.get(0).getPositionB(), SVTestUtils.call2.getPositionB());
@@ -118,7 +118,7 @@ public class BinnedCNVDefragmenterTest {
         final SVClusterEngine<SVCallRecord> temp3 = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, CNVLinkage.DEFAULT_PADDING_FRACTION, CNVLinkage.DEFAULT_SAMPLE_OVERLAP);
         temp3.add(SVTestUtils.call1);
         temp3.add(SVTestUtils.sameBoundsSampleMismatch);
-        final List<SVCallRecord> output3 = temp3.getOutput();
+        final List<SVCallRecord> output3 = temp3.forceFlushAndGetOutput();
         Assert.assertEquals(output3.size(), 2);
     }
 }

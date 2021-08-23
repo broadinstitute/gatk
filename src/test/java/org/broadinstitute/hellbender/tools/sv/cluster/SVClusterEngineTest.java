@@ -41,11 +41,32 @@ public class SVClusterEngineTest {
         Assert.assertTrue(flattened.getAlgorithms().containsAll(SVTestUtils.depthAndStuff.getAlgorithms()));
         Assert.assertTrue(flattened.getAlgorithms().containsAll(SVTestUtils.depthOnly.getAlgorithms()));
         Assert.assertTrue(flattened.getAlgorithms().containsAll(SVTestUtils.call2.getAlgorithms()));
-        //should have all the genotypes
+
         SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.depthAndStuff.getGenotypes(), true);
         SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.depthOnly.getGenotypes(), true);
         SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.call2.getGenotypes(), true);
-        //TODO: add test for insertion cluster
+
+        // Test subtyped insertions
+        final List<SVCallRecord> subtypedRecords = Lists.newArrayList(
+                SVTestUtils.newCallRecordWithAlleles(
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                        StructuralVariantType.INS,
+                        2,
+                        null),
+                SVTestUtils.newCallRecordWithAlleles(
+                        Lists.newArrayList(Allele.REF_N, Allele.create("<INS:MEI>")),
+                        Lists.newArrayList(Allele.REF_N, Allele.create("<INS:MEI>")),
+                        StructuralVariantType.INS,
+                        2,
+                        null)
+        );
+        final SVCallRecord subtypedFlattened = engine.getCollapser().collapse(subtypedRecords);
+        Assert.assertEquals(subtypedFlattened.getAlleles().size(), 2);
+        Assert.assertEquals(subtypedFlattened.getAltAlleles().size(), 1);
+        final List<Allele> collapsedAlleles = subtypedFlattened.getGenotypes().stream().map(Genotype::getAlleles)
+                .flatMap(Collection::stream).distinct().sorted().collect(Collectors.toList());
+        Assert.assertEquals(subtypedFlattened.getAlleles(), collapsedAlleles);
     }
 
     @Test
@@ -315,7 +336,7 @@ public class SVClusterEngineTest {
         engine.add(call1);
         engine.add(call2);
         engine.add(call3);
-        Assert.assertEquals(engine.getOutput().size(), result);
+        Assert.assertEquals(engine.forceFlushAndGetOutput().size(), result);
     }
 
     @Test
@@ -327,7 +348,7 @@ public class SVClusterEngineTest {
         Assert.assertFalse(temp1.isEmpty());
         //force new cluster by adding a non-overlapping event
         temp1.add(SVTestUtils.call3);
-        final List<SVCallRecord> output1 = temp1.getOutput(); //flushes all clusters
+        final List<SVCallRecord> output1 = temp1.forceFlushAndGetOutput(); //flushes all clusters
         Assert.assertTrue(temp1.isEmpty());
         Assert.assertEquals(output1.size(), 2);
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
@@ -338,7 +359,7 @@ public class SVClusterEngineTest {
         temp2.add(SVTestUtils.overlapsCall1);
         //force new cluster by adding a call on another contig
         temp2.add(SVTestUtils.call4_chr10);
-        final List<SVCallRecord> output2 = temp2.getOutput();
+        final List<SVCallRecord> output2 = temp2.forceFlushAndGetOutput();
         Assert.assertEquals(output2.size(), 2);
         //median of two items ends up being the second item here
         Assert.assertEquals(output2.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
@@ -349,7 +370,7 @@ public class SVClusterEngineTest {
         final SVClusterEngine<SVCallRecord> temp3 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         temp3.add(SVTestUtils.call1);
         temp3.add(SVTestUtils.sameBoundsSampleMismatch);
-        final List<SVCallRecord> output3 = temp3.getOutput();
+        final List<SVCallRecord> output3 = temp3.forceFlushAndGetOutput();
         Assert.assertEquals(output3.size(), 1);
         Assert.assertEquals(output3.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
         Assert.assertEquals(output3.get(0).getPositionB(), SVTestUtils.call1.getPositionB());
@@ -367,7 +388,7 @@ public class SVClusterEngineTest {
             final int end = start + length - 1;
             engine.add(SVTestUtils.newCallRecordWithIntervalAndType(start, end, StructuralVariantType.DEL));
         }
-        final List<SVCallRecord> result = engine.getOutput();
+        final List<SVCallRecord> result = engine.forceFlushAndGetOutput();
         Assert.assertEquals(result.size(), 50);
         for (final SVCallRecord resultRecord : result) {
             Assert.assertTrue(resultRecord.getAttributes().containsKey(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
@@ -441,7 +462,7 @@ public class SVClusterEngineTest {
                 "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 alleles, GenotypesContext.copy(genotypesWithCopyNumber), Collections.emptyMap());
-        final Set<String> resultWithCopyNumber =  recordWithCopyNumber.getCarrierSamples();
+        final Set<String> resultWithCopyNumber =  recordWithCopyNumber.getCarrierSampleSet();
 
         Assert.assertEquals(resultWithCopyNumber, expectedResult);
 
@@ -456,7 +477,7 @@ public class SVClusterEngineTest {
                 "chr1", 1999, SVTestUtils.getValidTestStrandB(svtype), svtype,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 alleles, GenotypesContext.copy(genotypesWithGenotype), Collections.emptyMap());
-        final Set<String> resultWithGenotype = recordWithGenotype.getCarrierSamples();
+        final Set<String> resultWithGenotype = recordWithGenotype.getCarrierSampleSet();
 
         Assert.assertEquals(resultWithGenotype, expectedResult);
     }
@@ -472,7 +493,7 @@ public class SVClusterEngineTest {
         }
         final SVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
         records.stream().sorted(SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict)).forEach(engine::add);
-        final List<SVCallRecord> output = engine.getOutput();
+        final List<SVCallRecord> output = engine.forceFlushAndGetOutput();
         Assert.assertEquals(output.size(), 2926);
     }
 }

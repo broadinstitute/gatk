@@ -169,7 +169,8 @@ public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProg
         final Pair<VCFHeader, List<VariantContext>> defragmentedEvents = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
         //events get combined into a single event of 62113369 bp
         Assert.assertEquals(defragmentedEvents.getRight().size(), 1);
-        Assert.assertEquals(defragmentedEvents.getRight().get(0).getAttributeAsInt(GATKSVVCFConstants.SVLEN,0), 62113369);
+        final VariantContext testEvent = defragmentedEvents.getRight().get(0);
+        Assert.assertEquals(testEvent.getEnd() - testEvent.getStart() + 1, 62113369);
 
         final File output2 = createTempFile("notDefragmented",".vcf");
         final ArgumentsBuilder args2 = new ArgumentsBuilder()
@@ -227,8 +228,8 @@ public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProg
             Assert.assertTrue(vc.getAlternateAlleles().size() == 1 && vc.getAlternateAllele(0).equals(GATKSVVCFConstants.DEL_ALLELE));
             Assert.assertTrue(vc.hasAttribute(VCFConstants.ALLELE_COUNT_KEY));
             Assert.assertFalse(vc.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, "").contains(",")); //no zero ACs for uncalled alts
-            Assert.assertTrue(vc.hasAttribute(GATKSVVCFConstants.SVTYPE) && vc.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals("DEL"));
-            Assert.assertTrue(vc.hasAttribute(GATKSVVCFConstants.SVLEN));
+            Assert.assertTrue(vc.hasAttribute(GATKSVVCFConstants.SVTYPE));
+            Assert.assertEquals(vc.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null), "DEL");
         }
 
         //in NA11829 variant events are not overlapping, so there should be a CN2 homRef in between

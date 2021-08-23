@@ -6,8 +6,8 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.StructuralVariantType;
-import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
@@ -109,33 +109,187 @@ public class SVCollapserTest {
         Assert.assertEquals(collapser.collapseRefAlleles("chr1", pos), result);
     }
 
+    @DataProvider(name = "harmonizeAltAllelesTestData")
+    public Object[][] harmonizeAltAllelesTestData() {
+        return new Object[][]{
+                // Basic cases
+                {Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_DEL)).make()),
+                        null},
+                {Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.REF_A)).make()),
+                        null},
+                {Collections.emptyList(),
+                        Collections.singletonList(new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.REF_A)).make()),
+                        null},
+                // Multiallelic, without subtypes
+                {Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        Collections.singletonList(new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_DEL)).make()),
+                        null},
+                {Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        Collections.singletonList(new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.REF_A)).make()),
+                        null},
+                {Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        Lists.newArrayList(
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_DEL)).make(),
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_DUP)).make()
+                        ),
+                        null},
+                // Biallelic, with subtypes
+                {Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        Collections.singletonList(new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.create("<DUP:TANDEM>"))).make()),
+                        Collections.singletonList(new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_DUP)).make())},
+                {Collections.singletonList(Allele.create("<DUP:TANDEM>")),
+                        Collections.singletonList(new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_DUP)).make()),
+                        Collections.singletonList(new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.create("<DUP:TANDEM>"))).make())},
+                {Collections.singletonList(Allele.create("<DUP:TANDEM>")),
+                        Lists.newArrayList(
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_DUP)).make(),
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.create("<DUP:TANDEM>"))).make()
+                        ),
+                        Lists.newArrayList(
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.create("<DUP:TANDEM>"))).make(),
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.create("<DUP:TANDEM>"))).make()
+                        )},
+                {Lists.newArrayList(Allele.create("<INS:MEI>")),
+                        Lists.newArrayList(
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_INS)).make(),
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.create("<INS:MEI>"))).make()
+                        ),
+                        Lists.newArrayList(
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.create("<INS:MEI>"))).make(),
+                                new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_A, Allele.create("<INS:MEI>"))).make()
+                        )},
+        };
+    }
+
+    @Test(dataProvider= "harmonizeAltAllelesTestData")
+    public void testHarmonizeAltAlleles(final List<Allele> altAlleles, final List<Genotype> genotypes,
+                                        final List<Genotype> expectedOrNull) {
+        final List<Genotype> result = collapser.harmonizeAltAlleles(altAlleles, genotypes);
+        // If null input, just expect the original genotypes
+        final List<Genotype> expected = expectedOrNull == null ? genotypes : expectedOrNull;
+        Assert.assertEquals(result.size(), expected.size());
+        for (int i = 0; i < expected.size(); i++) {
+            VariantContextTestUtils.assertGenotypesAreEqual(result.get(i), expected.get(i));
+        }
+    }
+
     @DataProvider(name = "collapseAltAllelesTestData")
     public Object[][] collapseAltAllelesTestData() {
         return new Object[][]{
-                {Collections.singletonList(Collections.emptyList()), StructuralVariantType.DEL, Collections.emptyList(), Collections.emptyList()},
-                {Collections.singletonList(Collections.singletonList(Allele.REF_N)), StructuralVariantType.DEL, Collections.emptyList(), Collections.emptyList()},
-                {Collections.singletonList(Collections.singletonList(Allele.REF_A)), StructuralVariantType.DEL, Collections.emptyList(), Collections.emptyList()},
-                {Collections.singletonList(Collections.singletonList(Allele.NO_CALL)), StructuralVariantType.DEL, Collections.emptyList(), Collections.emptyList()},
-                {Collections.singletonList(Collections.singletonList(Allele.ALT_A)), StructuralVariantType.INS, Collections.singletonList(Allele.ALT_A), Collections.singletonList(Allele.ALT_A)},
-                {Collections.singletonList(Collections.singletonList(Allele.SV_SIMPLE_DEL)), StructuralVariantType.DEL, Collections.singletonList(Allele.SV_SIMPLE_DEL), Collections.singletonList(Allele.SV_SIMPLE_DEL)},
-                {Lists.newArrayList(Collections.singletonList(Allele.REF_N), Collections.singletonList(Allele.SV_SIMPLE_DEL)), StructuralVariantType.DEL, Collections.singletonList(Allele.SV_SIMPLE_DEL), Collections.singletonList(Allele.SV_SIMPLE_DEL)},
-                {Lists.newArrayList(Lists.newArrayList(Allele.REF_N, Allele.REF_N), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)), StructuralVariantType.DEL, Collections.singletonList(Allele.SV_SIMPLE_DEL), Collections.singletonList(Allele.SV_SIMPLE_DEL)},
-                {Lists.newArrayList(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)), StructuralVariantType.CNV, Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP), Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP)},
-                {Lists.newArrayList(Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(MEI_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(MEI_INSERTION_ALLELE)},
-                {Lists.newArrayList(Collections.singletonList(Allele.SV_SIMPLE_INS), Collections.singletonList(MEI_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(Allele.SV_SIMPLE_INS), Collections.singletonList(MEI_INSERTION_ALLELE)},
-                {Lists.newArrayList(Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(SVA_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(SVA_INSERTION_ALLELE)},
-                {Lists.newArrayList(Collections.singletonList(LINE_INSERTION_ALLELE), Collections.singletonList(SVA_INSERTION_ALLELE)), StructuralVariantType.INS, Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(MEI_INSERTION_ALLELE)},
+                {
+                    Collections.singletonList(Collections.emptyList()),
+                        StructuralVariantType.DEL,
+                        new Integer[]{0},
+                        new Integer[]{0},
+                        Collections.emptyList(),
+                        Collections.emptyList()
+                },
+                {
+                    Collections.singletonList(Collections.singletonList(Allele.REF_N)),
+                        StructuralVariantType.DEL,
+                        new Integer[]{1},
+                        new Integer[]{1},
+                        Collections.emptyList(),
+                        Collections.emptyList()
+                },
+                {
+                    Collections.singletonList(Collections.singletonList(Allele.REF_A)),
+                        StructuralVariantType.DEL,
+                        new Integer[]{1},
+                        new Integer[]{1},
+                        Collections.emptyList(),
+                        Collections.emptyList()
+                },
+                {
+                    Collections.singletonList(Collections.singletonList(Allele.NO_CALL)),
+                        StructuralVariantType.DEL,
+                        new Integer[]{1},
+                        new Integer[]{1},
+                        Collections.emptyList(),
+                        Collections.emptyList()
+                },
+                {
+                    Collections.singletonList(Collections.singletonList(Allele.ALT_A)),
+                        StructuralVariantType.INS,
+                        new Integer[]{1},
+                        new Integer[]{null},
+                        Collections.singletonList(Allele.ALT_A),
+                        Collections.singletonList(Allele.ALT_A)
+                },
+                {
+                    Collections.singletonList(Collections.singletonList(Allele.SV_SIMPLE_DEL)),
+                        StructuralVariantType.DEL,
+                        new Integer[]{1},
+                        new Integer[]{0},
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                },
+                {
+                    Lists.newArrayList(Collections.singletonList(Allele.REF_N), Collections.singletonList(Allele.SV_SIMPLE_DEL)),
+                        StructuralVariantType.DEL,
+                        new Integer[]{1, 1},
+                        new Integer[]{1, 0},
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                },
+                {
+                    Lists.newArrayList(Lists.newArrayList(Allele.REF_N, Allele.REF_N), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)),
+                        StructuralVariantType.DEL,
+                        new Integer[]{2, 2},
+                        new Integer[]{2, 1},
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                },
+                {
+                    Lists.newArrayList(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)),
+                        StructuralVariantType.CNV,
+                        new Integer[]{2, 2},
+                        new Integer[]{3, 1},
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP)},
+                {
+                    Lists.newArrayList(Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(MEI_INSERTION_ALLELE)),
+                        StructuralVariantType.INS,
+                        new Integer[]{1, 1},
+                        new Integer[]{null, null},
+                        Collections.singletonList(MEI_INSERTION_ALLELE),
+                        Collections.singletonList(MEI_INSERTION_ALLELE)},
+                {
+                    Lists.newArrayList(Collections.singletonList(Allele.SV_SIMPLE_INS), Collections.singletonList(MEI_INSERTION_ALLELE)),
+                        StructuralVariantType.INS,
+                        new Integer[]{1, 1},
+                        new Integer[]{null, null},
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        Collections.singletonList(MEI_INSERTION_ALLELE)},
+                {
+                    Lists.newArrayList(Collections.singletonList(MEI_INSERTION_ALLELE), Collections.singletonList(SVA_INSERTION_ALLELE)),
+                        StructuralVariantType.INS,
+                        new Integer[]{1, 1},
+                        new Integer[]{null, null},
+                        Collections.singletonList(MEI_INSERTION_ALLELE),
+                        Collections.singletonList(SVA_INSERTION_ALLELE)},
+                {
+                    Lists.newArrayList(Collections.singletonList(LINE_INSERTION_ALLELE), Collections.singletonList(SVA_INSERTION_ALLELE)),
+                        StructuralVariantType.INS,
+                        new Integer[]{1, 1},
+                        new Integer[]{null, null},
+                        Collections.singletonList(MEI_INSERTION_ALLELE),
+                        Collections.singletonList(MEI_INSERTION_ALLELE)},
         };
     }
 
     @Test(dataProvider= "collapseAltAllelesTestData")
     public void collapseAltAllelesTest(final List<List<Allele>> recordGenotypeAlleles,
                                        final StructuralVariantType svtype,
+                                       final Integer[] expectedCopyNumber,
+                                       final Integer[] copyNumber,
                                        final List<Allele> resultCommon,
                                        final List<Allele> resultSpecific) {
         final List<Allele> variantAlleles = recordGenotypeAlleles.stream().flatMap(List::stream).distinct().collect(Collectors.toList());
-        final List<SVCallRecord> records = recordGenotypeAlleles.stream()
-                .map(a -> SVTestUtils.newCallRecordWithAlleles(a, variantAlleles, svtype))
+        final List<SVCallRecord> records = IntStream.range(0, recordGenotypeAlleles.size())
+                .mapToObj(i -> SVTestUtils.newCallRecordWithAlleles(recordGenotypeAlleles.get(i), variantAlleles, svtype, expectedCopyNumber[i], copyNumber[i]))
                 .collect(Collectors.toList());
 
         final List<Allele> sortedTestCommon = SVCallRecordUtils.sortAlleles(collapser.collapseAltAlleles(records));
@@ -147,203 +301,8 @@ public class SVCollapserTest {
         Assert.assertEquals(sortedTestSpecific, sortedExpectedSpecific);
     }
 
-    @DataProvider(name = "collapseSampleAllelesTestData")
-    public Object[][] collapseSampleAllelesTestData() {
-        return new Object[][]{
-                // empty
-                {
-                        Collections.singletonList(
-                                Collections.emptyList()
-                        ),
-                        Collections.emptyList(),
-                        0,
-                        Collections.emptyList()
-                },
-                // null
-                {
-                        Collections.singletonList(
-                                Collections.singletonList(null)
-                        ),
-                        Collections.emptyList(),
-                        1,
-                        Collections.singletonList(Allele.REF_N)
-                },
-                // REF
-                {
-                        Collections.singletonList(
-                                Collections.singletonList(Allele.REF_N)
-                        ),
-                        Collections.emptyList(),
-                        1,
-                        Collections.singletonList(Allele.REF_N)
-                },
-                // INS
-                {
-                    Collections.singletonList(
-                            Collections.singletonList(Allele.SV_SIMPLE_INS)
-                    ),
-                        Collections.singletonList(Allele.SV_SIMPLE_INS),
-                        1,
-                        Collections.singletonList(Allele.SV_SIMPLE_INS)
-                },
-                // INS, INS
-                {
-                        Lists.newArrayList(
-                                Collections.singletonList(Allele.SV_SIMPLE_INS),
-                                Collections.singletonList(Allele.SV_SIMPLE_INS)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_INS),
-                        1,
-                        Collections.singletonList(Allele.SV_SIMPLE_INS)
-                },
-                // INS, REF
-                {
-                        Lists.newArrayList(
-                                Collections.singletonList(Allele.SV_SIMPLE_INS),
-                                Collections.singletonList(Allele.REF_N)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_INS),
-                        1,
-                        Collections.singletonList(Allele.SV_SIMPLE_INS)
-                },
-                // REF/INS, REF/REF
-                {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
-                                Lists.newArrayList(Allele.REF_N, Allele.REF_N)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_INS),
-                        2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                },
-                // INS/INS, REF/REF
-                {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
-                                Lists.newArrayList(Allele.REF_N, Allele.REF_N)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_INS),
-                        2,
-                        Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS)
-                },
-                // REF/INS, REF/INS
-                {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_INS),
-                        2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                },
-                // REF/INS, REF/INS, INS/INS
-                {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_INS),
-                        2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                },
-                // REF/INS, INS/INS, INS/INS
-                {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
-                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_INS),
-                        2,
-                        Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS)
-                },
-                // REF/INS, REF
-                {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
-                                Collections.singletonList(Allele.REF_N)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_INS),
-                        2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                },
-                {
-                        Collections.singletonList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
-                        ),
-                        Lists.newArrayList(Allele.SV_SIMPLE_DEL),
-                        2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
-                },
-                // DEL should have GT filled out
-                {
-                        Collections.singletonList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
-                        2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
-                },
-                {
-                        Collections.singletonList(
-                                Collections.singletonList(Allele.SV_SIMPLE_DEL)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
-                        1,
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL)
-                },
-                // If collapsed ploidy > 1, fill out GT with REF calls
-                {
-                        Collections.singletonList(
-                                Collections.singletonList(Allele.SV_SIMPLE_DEL)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
-                        2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
-                },
-                // DUPs with ploidy 1 should have GT filled out
-                {
-                        Lists.newArrayList(
-                                Collections.singletonList(Allele.SV_SIMPLE_DUP),
-                                Collections.singletonList(Allele.REF_N)
-                        ),
-                        Lists.newArrayList(Allele.SV_SIMPLE_DUP),
-                        1,
-                        Lists.newArrayList(Allele.SV_SIMPLE_DUP)
-                },
-                // DUPs with ploidy >1 should be converted to no-call GTs
-                {
-                        Collections.singletonList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP)
-                        ),
-                        Lists.newArrayList(Allele.SV_SIMPLE_DUP),
-                        2,
-                        Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
-                },
-                // CNVs should get converted to no-call GTs with correct ploidy, preferring higher ploidy
-                {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP)
-                        ),
-                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
-                        2,
-                        Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
-                },
-        };
-    }
-
-    @Test(dataProvider= "collapseSampleAllelesTestData")
-    public void collapseSampleAllelesTest(final List<List<Allele>> alleles,
-                                          final List<Allele> sampleAltAlleles,
-                                          final int expectedCopyNumber,
-                                          final List<Allele> result) {
-        final Collection<Genotype> genotypes = alleles.stream().map(a -> new GenotypeBuilder().alleles(a).make()).collect(Collectors.toList());
-        final List<Allele> sortedTest = SVCallRecordUtils.sortAlleles(collapser.collapseSampleGenotypeAlleles(genotypes, expectedCopyNumber, Allele.REF_N, sampleAltAlleles));
-        final List<Allele> sortedResult = SVCallRecordUtils.sortAlleles(result);
-        Assert.assertEquals(sortedTest, sortedResult);
-    }
+    private static final String TEST_KEY_1 = "TEST_KEY_1";
+    private static final String TEST_KEY_2 = "TEST_KEY_2";
 
     @DataProvider(name = "collapseAttributesTestData")
     public Object[][] collapseAttributesTestData() {
@@ -351,173 +310,77 @@ public class SVCollapserTest {
                 // Null value
                 {
                         Collections.singletonList("var1"),
-                        Collections.singletonList(new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}),
+                        Collections.singletonList(new String[]{TEST_KEY_1}),
                         Collections.singletonList(new Object[]{null}),
                         2,
-                        new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{null},
-                        false
+                        new String[]{TEST_KEY_1},
+                        new Object[]{null}
                 },
                 // Single key / value
                 {
                         Collections.singletonList("var1"),
-                        Collections.singletonList(new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}),
+                        Collections.singletonList(new String[]{TEST_KEY_1}),
                         Collections.singletonList(new Object[]{30}),
                         2,
-                        new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{30},
-                        false
+                        new String[]{TEST_KEY_1},
+                        new Object[]{30}
                 },
                 // Two samples, null values
                 {
                         Lists.newArrayList("var1", "var2"),
                         Lists.newArrayList(
-                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}
+                                new String[]{TEST_KEY_1},
+                                new String[]{TEST_KEY_1}
                         ),
                         Lists.newArrayList(
                                 new Object[]{null},
                                 new Object[]{null}),
                         2,
-                        new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{null},
-                        false
+                        new String[]{TEST_KEY_1},
+                        new Object[]{null}
                 },
                 // Two samples, same key/value
                 {
                         Lists.newArrayList("var1", "var2"),
                         Lists.newArrayList(
-                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}
+                                new String[]{TEST_KEY_1},
+                                new String[]{TEST_KEY_1}
                                 ),
                         Lists.newArrayList(
                                 new Object[]{30},
                                 new Object[]{30}),
                         2,
-                        new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{30},
-                        false
+                        new String[]{TEST_KEY_1},
+                        new Object[]{30}
                 },
                 // Two samples, same key / different value
                 {
                         Lists.newArrayList("var1", "var2"),
                         Lists.newArrayList(
-                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}
+                                new String[]{TEST_KEY_1},
+                                new String[]{TEST_KEY_1}
                         ),
                         Lists.newArrayList(
                                 new Object[]{30},
                                 new Object[]{45}),
                         2,
-                        new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{null},
-                        false
+                        new String[]{TEST_KEY_1},
+                        new Object[]{null}
                 },
                 // Two samples, one with an extra key
                 {
                         Lists.newArrayList("var1", "var2"),
                         Lists.newArrayList(
-                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY, "KEY2"},
-                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}
+                                new String[]{TEST_KEY_1, TEST_KEY_2},
+                                new String[]{TEST_KEY_1}
                         ),
                         Lists.newArrayList(
                                 new Object[]{30, "VALUE2"},
                                 new Object[]{30}),
                         2,
-                        new String[]{VCFConstants.GENOTYPE_QUALITY_KEY, "KEY2"},
-                        new Object[]{30, "VALUE2"},
-                        false
+                        new String[]{TEST_KEY_1, TEST_KEY_2},
+                        new Object[]{30, "VALUE2"}
                 },
-                // CNVs
-                {
-                        Lists.newArrayList("var1", "var2"),
-                        Lists.newArrayList(
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
-                        ),
-                        Lists.newArrayList(
-                                new Object[]{2},
-                                new Object[]{2}),
-                        2,
-                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                        new Object[]{2},
-                        true
-                },
-                {
-                        Lists.newArrayList("var1", "var2"),
-                        Lists.newArrayList(
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
-                        ),
-                        Lists.newArrayList(
-                                new Object[]{1},
-                                new Object[]{2}),
-                        2,
-                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                        new Object[]{1},
-                        true
-                },
-                {
-                        Lists.newArrayList("var1", "var2"),
-                        Lists.newArrayList(
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
-                        ),
-                        Lists.newArrayList(
-                                new Object[]{3},
-                                new Object[]{2}),
-                        2,
-                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                        new Object[]{3},
-                        true
-                },
-                // Tie by frequency goes to het
-                {
-                        Lists.newArrayList("var1", "var2"),
-                        Lists.newArrayList(
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
-                        ),
-                        Lists.newArrayList(
-                                new Object[]{1},
-                                new Object[]{0}),
-                        2,
-                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                        new Object[]{1},
-                        true
-                },
-                // Hom wins by freq
-                {
-                        Lists.newArrayList("var1", "var2"),
-                        Lists.newArrayList(
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
-                        ),
-                        Lists.newArrayList(
-                                new Object[]{1},
-                                new Object[]{0},
-                                new Object[]{0}),
-                        2,
-                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                        new Object[]{0},
-                        true
-                },
-                // Mixed DEL/DUP cancel out
-                {
-                        Lists.newArrayList("var1", "var2"),
-                        Lists.newArrayList(
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
-                        ),
-                        Lists.newArrayList(
-                                new Object[]{1},
-                                new Object[]{3}),
-                        2,
-                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                        new Object[]{2},
-                        true
-                }
         };
     }
 
@@ -527,8 +390,7 @@ public class SVCollapserTest {
                                        final List<Object[]> values,
                                        final int expectedCopyNumber,
                                        final String[] expectedKeys,
-                                       final Object[] expectedValues,
-                                       final boolean isCNVTest) {
+                                       final Object[] expectedValues) {
         final List<Map<String, Object>> inputAttributesList = IntStream.range(0, keys.size())
                 .mapToObj(i -> SVTestUtils.keyValueArraysToMap(keys.get(i), values.get(i)))
                 .collect(Collectors.toList());
@@ -539,18 +401,991 @@ public class SVCollapserTest {
         final List<Genotype> genotypes = inputAttributesList.stream()
                 .map(m -> new GenotypeBuilder().attributes(m).make())
                 .collect(Collectors.toList());
-        Assert.assertEquals(collapser.collapseGenotypeAttributes(genotypes, expectedCopyNumber), expectedAttributes);
+        final Map<String, Object> testGenotypeMap = collapser.collapseGenotypeAttributes(genotypes, expectedCopyNumber);
+        Assert.assertEquals(testGenotypeMap, expectedAttributes);
 
-        if (!isCNVTest) {
-            // Test as variant attributes
-            final List<SVCallRecord> variants = IntStream.range(0, inputAttributesList.size())
-                    .mapToObj(i -> SVTestUtils.newNamedDeletionRecordWithAttributes(variantIds.get(i), inputAttributesList.get(i)))
-                    .collect(Collectors.toList());
-            final Map<String, Object> expectedAttributesWithMembers = new HashMap<>(expectedAttributes);
-            expectedAttributesWithMembers.put(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, variantIds);
-            expectedAttributesWithMembers.remove(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
-            Assert.assertEquals(collapser.collapseVariantAttributes(variants), expectedAttributesWithMembers);
-        }
+        // Test as variant attributes
+        final List<SVCallRecord> variants = IntStream.range(0, inputAttributesList.size())
+                .mapToObj(i -> SVTestUtils.newNamedDeletionRecordWithAttributes(variantIds.get(i), inputAttributesList.get(i)))
+                .collect(Collectors.toList());
+        final Map<String, Object> expectedAttributesWithMembers = new HashMap<>(expectedAttributes);
+        expectedAttributesWithMembers.put(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, variantIds);
+        expectedAttributesWithMembers.remove(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
+        final Map<String, Object> testVariantMap = collapser.collapseVariantAttributes(variants);
+        Assert.assertEquals(testVariantMap, expectedAttributesWithMembers);
+    }
+
+    private Map<String, Object> createGenotypeTestAttributes(final Integer expectedCopyNumber, final Integer copyNumber, final String testVal) {
+        final String[] keys = new String[]{
+                GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT,
+                GATKSVVCFConstants.COPY_NUMBER_FORMAT,
+                TEST_KEY_1
+        };
+        final Object[] vals = new Object[]{expectedCopyNumber, copyNumber, testVal};
+        return SVTestUtils.keyValueArraysToMap(keys, vals);
+    }
+
+    private Map<String, Object> createGenotypeTestAttributes(final Integer expectedCopyNumber, final String testVal) {
+        final String[] keys = new String[]{
+                GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT,
+                TEST_KEY_1
+        };
+        final Object[] vals = new Object[]{expectedCopyNumber, testVal};
+        return SVTestUtils.keyValueArraysToMap(keys, vals);
+    }
+
+    private Map<String, Object> createGenotypeTestAttributes(final Integer expectedCopyNumber, final Integer copyNumber) {
+        final String[] keys = new String[]{
+                GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT,
+                GATKSVVCFConstants.COPY_NUMBER_FORMAT
+        };
+        final Object[] vals = new Object[]{expectedCopyNumber, copyNumber};
+        return SVTestUtils.keyValueArraysToMap(keys, vals);
+    }
+
+    private Map<String, Object> createGenotypeTestAttributes(final Integer expectedCopyNumber) {
+        return Collections.singletonMap(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, expectedCopyNumber);
+    }
+
+    @DataProvider(name = "collapseSampleGenotypesTestData")
+    public Object[][] collapseSampleGenotypesTestData() {
+        return new Object[][]{
+                // Empty case
+                {
+                        "sample1",
+                        new List[]{Collections.emptyList()},
+                        new Map[]{createGenotypeTestAttributes(0)},
+                        Allele.REF_N,
+                        Collections.emptyList(),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Collections.emptyList(),
+                                createGenotypeTestAttributes(0)
+                        )
+                },
+                // Extra attribute
+                {
+                        "sample1",
+                        new List[]{Collections.emptyList()},
+                        new Map[]{createGenotypeTestAttributes(0, "test")},
+                        Allele.REF_N,
+                        Collections.emptyList(),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Collections.emptyList(),
+                                createGenotypeTestAttributes(0, "test")
+                        )
+                },
+                // Haploid no-call
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.NO_CALL),
+                                Collections.singletonList(Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1),
+                                createGenotypeTestAttributes(1)
+                        },
+                        Allele.REF_N,
+                        Collections.emptyList(),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Collections.singletonList(Allele.NO_CALL),
+                                createGenotypeTestAttributes(1)
+                        )
+                },
+                // Simple ref haploid
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1),
+                                createGenotypeTestAttributes(1)
+                        },
+                        Allele.REF_N,
+                        Collections.emptyList(),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Collections.singletonList(Allele.REF_N),
+                                createGenotypeTestAttributes(1)
+                        )
+                },
+                // Simple ref haploid, different ref allele
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_T),
+                                Collections.singletonList(Allele.REF_T)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1),
+                                createGenotypeTestAttributes(1)
+                        },
+                        Allele.REF_T,
+                        Collections.emptyList(),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Collections.singletonList(Allele.REF_T),
+                                createGenotypeTestAttributes(1)
+                        )
+                },
+                // Simple ref haploid, with no-call
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_T),
+                                Collections.singletonList(Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1),
+                                createGenotypeTestAttributes(1)
+                        },
+                        Allele.REF_T,
+                        Collections.emptyList(),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Collections.singletonList(Allele.REF_T),
+                                createGenotypeTestAttributes(1)
+                        )
+                },
+                // Simple ref diploid
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2)
+                        },
+                        Allele.REF_N,
+                        Collections.emptyList(),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                createGenotypeTestAttributes(2)
+                        )
+                },
+                // Simple ref diploid, with no-call
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2)
+                        },
+                        Allele.REF_N,
+                        Collections.emptyList(),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                createGenotypeTestAttributes(2)
+                        )
+                },
+                // Simple INS cases
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.SV_SIMPLE_INS)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1),
+                                createGenotypeTestAttributes(1)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(1)
+                        )
+                },
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.NO_CALL),
+                                Collections.singletonList(Allele.SV_SIMPLE_INS)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1),
+                                createGenotypeTestAttributes(1)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(1)
+                        )
+                },
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.SV_SIMPLE_INS),
+                                Collections.singletonList(Allele.SV_SIMPLE_INS)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1),
+                                createGenotypeTestAttributes(1)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(1)
+                        )
+                },
+                // het preferred over hom ref
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(2)
+                        )
+                },
+                // het preferred over hom var
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(2)
+                        )
+                },
+                // hom more frequent
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(2)
+                        )
+                },
+                // het preferred over both hom ref always and hom var when tied
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(2)
+                        )
+                },
+                // hom is most frequent non-ref
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2),
+                                createGenotypeTestAttributes(2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(2)
+                        )
+                },
+                // triploid - 1 alt
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(3)
+                        )
+                },
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(3)
+                        )
+                },
+                // triploid - 2 alt
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(3)
+                        )
+                },
+                // triploid - 3 alt
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3),
+                                createGenotypeTestAttributes(3)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                createGenotypeTestAttributes(3)
+                        )
+                },
+                // Simple DEL
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1, 1),
+                                createGenotypeTestAttributes(1, 0)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_DEL),
+                                createGenotypeTestAttributes(1, 0)
+                        )
+                },
+                // Simple DEL, falling back on copy number info when GT not available
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1, 1),
+                                createGenotypeTestAttributes(1, 0)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_DEL),
+                                createGenotypeTestAttributes(1, 0)
+                        )
+                },
+                // Simple DEL diploid het
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 1)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                createGenotypeTestAttributes(2, 1)
+                        )
+                },
+                // Simple DEL diploid hom var
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 0)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL),
+                                createGenotypeTestAttributes(2, 0)
+                        )
+                },
+                // Simple DEL diploid hom ref
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                createGenotypeTestAttributes(2, 2)
+                        )
+                },
+                // Simple DEL triploid with 1 alt
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DEL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(3, 3),
+                                createGenotypeTestAttributes(3, 2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                createGenotypeTestAttributes(3, 2)
+                        )
+                },
+
+                // Simple DUP, haploid
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.SV_SIMPLE_DUP)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1, 1),
+                                createGenotypeTestAttributes(1, 2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_DUP),
+                                createGenotypeTestAttributes(1, 2)
+                        )
+                },
+                // Simple DUP, haploid, falling back on copy number info when GT not available and inferring the GT
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1, 1),
+                                createGenotypeTestAttributes(1, 2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_DUP),
+                                createGenotypeTestAttributes(1, 2)
+                        )
+                },
+                // Simple DUP, haploid, copy number 3 but phasing is still unambiguous
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.SV_SIMPLE_DUP)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1, 1),
+                                createGenotypeTestAttributes(1, 3)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_DUP),
+                                createGenotypeTestAttributes(1, 3)
+                        )
+                },
+                // Simple DUP diploid het
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 3)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP),
+                                createGenotypeTestAttributes(2, 3)
+                        )
+                },
+                // Simple DUP diploid hom var - has ambiguous alleles
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 4)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributes(2, 4)
+                        )
+                },
+                // Simple DUP diploid hom ref
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 2)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                createGenotypeTestAttributes(2, 2)
+                        )
+                },
+                // Simple DUP triploid with 1 alt - unambiguous alleles
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DUP)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(3, 3),
+                                createGenotypeTestAttributes(3, 4)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DUP),
+                                createGenotypeTestAttributes(3, 4)
+                        )
+                },
+                // Simple DUP triploid with 2 alts - ambiguous alleles
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(3, 3),
+                                createGenotypeTestAttributes(3, 5)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributes(3, 5)
+                        )
+                },
+                // Simple DUP triploid where 1-alt genotype should be prioritized
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DUP),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(3, 3),
+                                createGenotypeTestAttributes(3, 4),
+                                createGenotypeTestAttributes(3, 5)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DUP),
+                                createGenotypeTestAttributes(3, 4)
+                        )
+                },
+                // Simple DUP triploid where 2-alt genotype should be prioritized
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DUP),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(3, 3),
+                                createGenotypeTestAttributes(3, 4),
+                                createGenotypeTestAttributes(3, 5),
+                                createGenotypeTestAttributes(3, 5)
+                        },
+                        Allele.REF_N,
+                        Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributes(3, 5)
+                        )
+                },
+
+
+                // Multi-allelic CNV, haploid hom ref
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.REF_N)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1, 1),
+                                createGenotypeTestAttributes(1, 1)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N),
+                                createGenotypeTestAttributes(1, 1)
+                        )
+                },
+                // Multi-allelic CNV, haploid del
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1, 1),
+                                createGenotypeTestAttributes(1, 0)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_DEL),
+                                createGenotypeTestAttributes(1, 0)
+                        )
+                },
+                // Multi-allelic CNV, haploid dup
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.REF_N),
+                                Collections.singletonList(Allele.SV_SIMPLE_DUP)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1, 1),
+                                createGenotypeTestAttributes(1, 2)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_DUP),
+                                createGenotypeTestAttributes(1, 2)
+                        )
+                },
+                // Multi-allelic CNV, diploid hom ref (ambiguous alleles)
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 2)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributes(2, 2)
+                        )
+                },
+                // Multi-allelic CNV, diploid del het
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 1)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                createGenotypeTestAttributes(2, 1)
+                        )
+                },
+                // Multi-allelic CNV, diploid del hom
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 0)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL),
+                                createGenotypeTestAttributes(2, 0)
+                        )
+                },
+                // Multi-allelic CNV, diploid dup het (ambiguous alleles)
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 3)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributes(2, 3)
+                        )
+                },
+                // Multi-allelic CNV, diploid dup hom (ambiguous alleles)
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 2),
+                                createGenotypeTestAttributes(2, 4)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributes(2, 4)
+                        )
+                },
+                // Multi-allelic CNV, conflicting del and dup genotypes should result in non-call, haploid
+                {
+                        "sample1",
+                        new List[]{
+                                Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                                Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(1, 2),
+                                createGenotypeTestAttributes(1, 0)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.NO_CALL),
+                                createGenotypeTestAttributes(1, (Integer) null)
+                        )
+                },
+                // Multi-allelic CNV, conflicting del and dup genotypes should result in non-call, diploid
+                {
+                        "sample1",
+                        new List[]{
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
+                        },
+                        new Map[]{
+                                createGenotypeTestAttributes(2, 1),
+                                createGenotypeTestAttributes(2, 3)
+                        },
+                        Allele.REF_N,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        GenotypeBuilder.create(
+                                "sample1",
+                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                createGenotypeTestAttributes(2, (Integer) null)
+                        )
+                }
+        };
+    }
+
+    @Test(dataProvider="collapseSampleGenotypesTestData")
+    public void collapseSampleGenotypesTest(final String sampleId,
+                                            final List<Allele>[] alleles,
+                                            final Map<String, Object>[] attributes,
+                                            final Allele refAllele,
+                                            final List<Allele> altAlleles,
+                                            final Genotype expected) {
+        final List<Genotype> genotypes = IntStream.range(0, alleles.length)
+                .mapToObj(i -> GenotypeBuilder.create(sampleId, alleles[i], attributes[i]))
+                .collect(Collectors.toList());
+        final Genotype test = collapser.collapseSampleGenotypes(genotypes, refAllele, altAlleles);
+        VariantContextTestUtils.assertGenotypesAreEqual(test, expected);
+    }
+
+    @DataProvider(name = "makeBiallelicListTestData")
+    public Object[][] makeBiallelicListTestData() {
+        return new Object[][]{
+                // No alleles
+                {Allele.SV_SIMPLE_DEL, Allele.REF_A, 0, 0, Collections.emptyList()},
+                {Allele.SV_SIMPLE_DEL, Allele.REF_A, 0, 1, Collections.singletonList(Allele.REF_A)},
+                {Allele.SV_SIMPLE_DEL, Allele.REF_A, 1, 1, Collections.singletonList(Allele.SV_SIMPLE_DEL)},
+                {Allele.SV_SIMPLE_INS, Allele.REF_A, 1, 1, Collections.singletonList(Allele.SV_SIMPLE_INS)},
+                {Allele.SV_SIMPLE_DEL, Allele.REF_A, 1, 2, Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_DEL)},
+                {Allele.SV_SIMPLE_DEL, Allele.REF_A, 2, 2, Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)},
+                {Allele.SV_SIMPLE_DEL, Allele.REF_A, 2, 2, Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)},
+                {Allele.SV_SIMPLE_DEL, Allele.REF_A, 2, 3, Lists.newArrayList(Allele.REF_A, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)},
+        };
+    }
+
+    @Test(dataProvider="makeBiallelicListTestData")
+    public void makeBiallelicListTest(final Allele alt, final Allele ref, final int numAlt,
+                                      final int ploidy, final List<Allele> result) {
+        final List<Allele> test = CanonicalSVCollapser.makeBiallelicList(alt, ref, numAlt, ploidy);
+        Assert.assertEquals(test.stream().sorted().collect(Collectors.toList()),
+                result.stream().sorted().collect(Collectors.toList()));
     }
 
     @DataProvider(name = "collapseLengthTestData")
@@ -560,35 +1395,27 @@ public class SVCollapserTest {
                         new Integer[]{1000},
                         new String[]{"chr1"},
                         new StructuralVariantType[]{StructuralVariantType.DEL},
-                        1,
-                        1000,
                         StructuralVariantType.DEL,
-                        1000
+                        null
                 },
                 {
                         new Integer[]{1000, 1000},
                         new String[]{"chr1", "chr1"},
                         new StructuralVariantType[]{StructuralVariantType.DUP, StructuralVariantType.DUP},
-                        1,
-                        1000,
                         StructuralVariantType.DUP,
-                        1000
+                        null
                 },
                 {
                         new Integer[]{300, 400},
                         new String[]{"chr1", "chr1"},
                         new StructuralVariantType[]{StructuralVariantType.DEL, StructuralVariantType.DUP},
-                        1001,
-                        1350,
                         StructuralVariantType.CNV,
-                        350
+                        null
                 },
                 {
                         new Integer[]{300, 400},
                         new String[]{"chr1", "chr1"},
                         new StructuralVariantType[]{StructuralVariantType.INS, StructuralVariantType.INS},
-                        1,
-                        1,
                         StructuralVariantType.INS,
                         300
                 },
@@ -596,8 +1423,6 @@ public class SVCollapserTest {
                         new Integer[]{300, 400, 500},
                         new String[]{"chr1", "chr1", "chr1"},
                         new StructuralVariantType[]{StructuralVariantType.INS, StructuralVariantType.INS, StructuralVariantType.INS},
-                        1,
-                        1,
                         StructuralVariantType.INS,
                         400
                 },
@@ -605,28 +1430,24 @@ public class SVCollapserTest {
                         new Integer[]{null},
                         new String[]{"chr2"},
                         new StructuralVariantType[]{StructuralVariantType.BND},
-                        1,
-                        1,
                         StructuralVariantType.BND,
-                        -1
+                        null
                 },
                 {
                         new Integer[]{null, null},
                         new String[]{"chr2", "chr2"},
                         new StructuralVariantType[]{StructuralVariantType.BND, StructuralVariantType.BND},
-                        1,
-                        1,
                         StructuralVariantType.BND,
-                        -1
+                        null
                 }
         };
     }
 
     @Test(dataProvider= "collapseLengthTestData")
     public void collapseLengthTest(final Integer[] lengths, final String[] chrom2, final StructuralVariantType[] svtypes,
-                                   final int newStart, final int newEnd, final StructuralVariantType newType, final int expectedLength) {
+                                   final StructuralVariantType newType, final Integer expectedLength) {
         final List<SVCallRecord> records = IntStream.range(0, lengths.length).mapToObj(i -> SVTestUtils.newCallRecordWithLengthAndTypeAndChrom2(lengths[i], svtypes[i], chrom2[i])).collect(Collectors.toList());
-        Assert.assertEquals(collapser.collapseLength(records, newStart, newEnd, newType), expectedLength);
+        Assert.assertEquals(collapser.collapseLength(records, newType), expectedLength);
     }
 
     @DataProvider(name = "collapseInsertionLengthTestData")
@@ -839,20 +1660,20 @@ public class SVCollapserTest {
                         new int[]{1001, 1011, 1021},
                         new int[]{1001, 1011, 1021},
                         StructuralVariantType.INS,
-                        new int[]{1011, 1011},
-                        new int[]{1011, 1011},
-                        new int[]{1011, 1011},
-                        new int[]{1011, 1011}
+                        new int[]{1011, 1012},
+                        new int[]{1011, 1012},
+                        new int[]{1011, 1012},
+                        new int[]{1011, 1012}
                 },
                 // INS, different start/end
                 {
                         new int[]{1001, 1011, 1021},
                         new int[]{1011, 1021, 1031},
                         StructuralVariantType.INS,
-                        new int[]{1016, 1016},
-                        new int[]{1016, 1016},
-                        new int[]{1016, 1016},
-                        new int[]{1016, 1016}
+                        new int[]{1016, 1017},
+                        new int[]{1016, 1017},
+                        new int[]{1016, 1017},
+                        new int[]{1016, 1017}
                 }
         };
     }
