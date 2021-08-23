@@ -6,15 +6,13 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.Assert;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class MannWhitneyUUnitTest extends GATKBaseTest {
     private static double DELTA_PRECISION = 0.00001;
 
     private static final MannWhitneyU rst = new MannWhitneyU();
+    private static final Random rand = new Random(74839493L);
 
     @DataProvider(name="rankSumTestData")
     public Object[][] dataProvider() {
@@ -67,6 +65,23 @@ public class MannWhitneyUUnitTest extends GATKBaseTest {
     public void testOnesidedP(String name, double[] series1, double[] series2, double P) {
         MannWhitneyU.Result test = rst.test(series1, series2, MannWhitneyU.TestType.FIRST_DOMINATES);
         Assert.assertEquals(test.getP(), P, DELTA_PRECISION, name);
+    }
+
+    /**
+     * Regression test for precision issues
+     */
+    @Test
+    public void testLargeSampleSize() {
+        final int n = 1000000;
+        final int bound = 1000000;
+        final double[] series1 = new double[n];
+        final double[] series2 = new double[n];
+        for (int i = 0; i < n; i++) {
+            series1[i] = rand.nextInt(bound);
+            series2[i] = rand.nextInt(bound);
+        }
+        MannWhitneyU.Result test = rst.test(series1, series2, MannWhitneyU.TestType.TWO_SIDED);
+        Assert.assertTrue(test.getP() <= 1d);
     }
 
     @DataProvider(name="oneSidedZTestData")

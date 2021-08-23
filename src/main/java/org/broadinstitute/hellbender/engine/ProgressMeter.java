@@ -310,6 +310,21 @@ public final class ProgressMeter {
     }
 
     /**
+     * Resets the number of processed records and current locus. Useful when performing multiple passes of the data.
+     * @throws IllegalStateException if the meter has not been started yet or has been stopped already
+     */
+    public void reset() {
+        if ( disabled ) {
+            return;
+        }
+
+        Utils.validate(started, "the progress meter has not been started yet");
+        Utils.validate( !stopped, "the progress meter has been stopped already");
+        numRecordsProcessed = 0L;
+        currentLocus = null;
+    }
+
+    /**
      * Print column headings labelling the output from {@link #printProgress}
      */
     private void printHeader() {
