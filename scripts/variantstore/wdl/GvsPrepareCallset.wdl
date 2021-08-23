@@ -5,7 +5,7 @@ workflow GvsPrepareCallset {
         String data_project
         String default_dataset
         String destination_cohort_table_prefix
-        File sample_names_to_extract
+        File? sample_names_to_extract
         Boolean localize_sample_names_with_service_account = false
 
         # inputs with defaults
@@ -63,7 +63,7 @@ task PrepareCallsetTask {
 
     input {
         String destination_cohort_table_prefix
-        File sample_names_to_extract
+        File? sample_names_to_extract
         String query_project
         Array[String]? query_labels
 
@@ -94,7 +94,7 @@ task PrepareCallsetTask {
             --fq_temp_table_dataset ~{fq_temp_table_dataset} \
             --fq_destination_dataset ~{fq_destination_dataset} \
             --destination_cohort_table_prefix ~{destination_cohort_table_prefix} \
-            --sample_names_to_extract ~{sample_names_to_extract} \
+            ~{"--sample_names_to_extract " + sample_names_to_extract} \
             --query_project ~{query_project} \
             ~{sep=" " query_label_args} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
