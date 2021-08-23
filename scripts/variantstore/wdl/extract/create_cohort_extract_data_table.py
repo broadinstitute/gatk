@@ -112,7 +112,7 @@ def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
   return fq_sample_table
 
 def get_all_sample_ids(fq_destination_table_samples):
-  sql = f"select sample_id from `{fq_destination_table_samples}` where is_loaded is TRUE"
+  sql = f"select sample_id from `{fq_destination_table_samples}`"
 
   results = execute_with_retry("read cohort sample table", sql)
   sample_ids = [row.sample_id for row in list(results)]
@@ -121,8 +121,7 @@ def get_all_sample_ids(fq_destination_table_samples):
 
 def create_extract_samples_table(fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table):
   sql = f"CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (" \
-        f"SELECT m.sample_id, m.sample_name FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m  " \
-        f"ON (s.sample_name = m.sample_name) WHERE m.is_loaded is TRUE)"
+        f"SELECT m.sample_id, m.sample_name FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) )"
 
   results = execute_with_retry("create extract sample table", sql)
   return results
