@@ -92,6 +92,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ah_use_is_loaded
    - name: GvsSitesOnlyVCF
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsSitesOnlyVCF.wdl
