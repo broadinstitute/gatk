@@ -113,7 +113,8 @@ public class SVCallRecord implements SVLocatable {
         final List<Allele> refAllelesList = alleles.stream().filter(allele -> !allele.isNoCall() && allele.isReference()).collect(Collectors.toList());
         Utils.validate(refAllelesList.size() <= 1, "Encountered multiple reference alleles");
         this.refAllele = refAllelesList.isEmpty() ? null : refAllelesList.get(0);
-        this.genotypes = GenotypesContext.copy(genotypes).immutable();
+        this.genotypes = GenotypesContext.create();
+        this.genotypes.addAll(genotypes);
         this.attributes = validateAttributes(attributes);
         this.length = inferLength(type, positionA, positionB, length);
         final Pair<Boolean, Boolean> strands = inferStrands(type, strandA, strandB);

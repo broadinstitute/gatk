@@ -42,6 +42,7 @@ public abstract class MultiplePassVariantWalker extends VariantWalker {
 
             // Process the data accumulated during the nth pass
             afterNthPass(n);
+            progressMeter.reset();
         }
 
         logger.info(countingVariantFilter.getSummaryLine());

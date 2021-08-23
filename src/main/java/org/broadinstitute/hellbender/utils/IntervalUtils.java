@@ -27,22 +27,10 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BinaryOperator;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Parse text representations of interval strings that
@@ -1562,6 +1550,24 @@ public final class IntervalUtils {
     }
 
     /**
+     * Given a collection of {@link SimpleInterval} instances returns a stream of sorted, merged intervals.
+     *
+     * @param input input collection of lacatables, may contain duplicates.
+     * @param dictionary the reference dictionary.
+     * @param <L> the locatable type.
+     * @throws IllegalArgumentException if input is {@code null}.
+     * @return sorted, merged interval stream
+     */
+    public static <L extends Locatable> Stream<SimpleInterval> sortAndMergeIntervalsToStream(final Collection<SimpleInterval> input,
+                                                                                                final SAMSequenceDictionary dictionary,
+                                                                                                final IntervalMergingRule rule) {
+        final GenomeLocParser parser = new GenomeLocParser(dictionary);
+        final List<GenomeLoc> locs = input.stream().map(parser::createGenomeLoc).collect(Collectors.toList());
+        final GenomeLocSortedSet resultSet = sortAndMergeIntervals(parser, locs, rule);
+        return resultSet.stream().map(loc -> new SimpleInterval(loc.contigName, loc.start, loc.stop));
+    }
+
+    /**
      * Given a collection of {@link SimpleInterval} instances returns a map where the key is the enclosing contig name and the value is the
      * list of the intervals  on that contig that result from sorting and then merging those that are contiguous or overlap.
      *
@@ -1576,10 +1582,9 @@ public final class IntervalUtils {
      * @return never {@code null}, but perhaps an empty map. It is guarantee that no value in the map is an empty list upon return.
      */
     public static <L extends Locatable> Map<String, List<SimpleInterval>> sortAndMergeIntervals(final Collection<SimpleInterval> input,
-                                                                                                final SAMSequenceDictionary dictionary, final IntervalMergingRule rule) {
-        final GenomeLocParser parser = new GenomeLocParser(dictionary);
-        final List<GenomeLoc> locs = input.stream().map(parser::createGenomeLoc).collect(Collectors.toList());
-        final GenomeLocSortedSet resultSet = sortAndMergeIntervals(parser, locs, rule);
-        return resultSet.stream().map(loc -> new SimpleInterval(loc.contigName, loc.start, loc.stop)).collect(Collectors.groupingBy(SimpleInterval::getContig));
+                                                                                                final SAMSequenceDictionary dictionary,
+                                                                                                final IntervalMergingRule rule) {
+        return sortAndMergeIntervalsToStream(input, dictionary, rule)
+                .collect(Collectors.groupingBy(SimpleInterval::getContig));
     }
 }

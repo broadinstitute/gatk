@@ -480,6 +480,15 @@ public class SVTestUtils {
                 Collections.emptyMap(), Collections.emptySet(), null);
     }
 
+    public static SVCallRecord newBndCallRecordWithPositionAndStrands(final String chrA, final int posA, final boolean strandA,
+                                                                      final String chrB, final int posB, final boolean strandB) {
+        return new SVCallRecord("", chrA, posA, strandA, chrB, posB, strandB, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, null,
+                Collections.singletonList(PESR_ALGORITHM),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap());
+    }
+
     public static SVCallRecord newCnvCallRecordWithStrands(final Boolean strandA, final Boolean strandB) {
         return new SVCallRecord("", "chr1", 1000, strandA, "chr1", 1999, strandB, GATKSVVCFConstants.StructuralVariantAnnotationType.CNV, null, 1000,
                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),

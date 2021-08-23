@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.sv;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
@@ -186,6 +187,7 @@ public final class SVCallRecordUtils {
                 record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
                 genotypes, record.getAttributes(), record.getFilters(), record.getLog10PError());
     }
+
     public static SVCallRecord copyCallWithNewAttributes(final SVCallRecord record, final Map<String, Object> attr) {
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
                 record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
@@ -202,8 +204,8 @@ public final class SVCallRecordUtils {
     /**
      * Get string representation for a single strand.
      */
-    private static String getStrandString(final boolean forwardStrand) {
-        return forwardStrand ? SVCallRecord.STRAND_PLUS : SVCallRecord.STRAND_MINUS;
+    private static String getStrandString(final Boolean forwardStrand) {
+        return forwardStrand ==  null ? null : forwardStrand ? SVCallRecord.STRAND_PLUS : SVCallRecord.STRAND_MINUS;
     }
 
     /**
@@ -519,5 +521,44 @@ public final class SVCallRecordUtils {
             throw new IllegalArgumentException("Encountered missing " +
                     GATKSVVCFConstants.COPY_NUMBER_FORMAT + " attribute in " + "genotype: " + genotype);
         }
+    }
+
+    public static SVCallRecord assignDiscordantPairCountsToGenotypes(final SVCallRecord call,
+                                                                     final List<DiscordantPairEvidence> evidence) {
+        final Map<String, Integer> evidenceCounts = evidence.stream()
+                .collect(Collectors.groupingBy(DiscordantPairEvidence::getSample,
+                        Collectors.collectingAndThen(Collectors.toList(), List::size)));
+        final List<Genotype> genotypes = call.getGenotypes();
+        final GenotypesContext newGenotypes = GenotypesContext.create(genotypes.size());
+        for (final Genotype genotype : genotypes) {
+            final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
+            genotypeBuilder.attribute(GATKSVVCFConstants.DISCORDANT_PAIR_COUNT_ATTRIBUTE,
+                    evidenceCounts.getOrDefault(genotype.getSampleName(), 0));
+            newGenotypes.add(genotypeBuilder.make());
+        }
+        return SVCallRecordUtils.copyCallWithNewGenotypes(call, newGenotypes);
+    }
+
+    // TODO for a future pr
+    public static void validateCoordinates(final SVCallRecord call) {
+        Utils.nonNull(call);
+        Utils.validateArg(call.getPositionA() >= 1, "Call start non-positive");
+        if (call.isIntrachromosomal()) {
+            Utils.validateArg(call.getPositionA() <= call.getPositionB(), "Second position before end on same contig");
+        } else {
+            Utils.validateArg(call.getPositionB() >= 1, "Call second position non-positive");
+        }
+    }
+
+    // TODO for a future pr
+    public static void validateCoordinatesWithDictionary(final SVCallRecord call, final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(dictionary);
+        validateCoordinates(call);
+        final SAMSequenceRecord contigARecord = dictionary.getSequence(call.getContigA());
+        Utils.validateArg(contigARecord != null, "Call first contig " + call.getContigA() + " not in dictionary");
+        final SAMSequenceRecord contigBRecord = dictionary.getSequence(call.getContigB());
+        Utils.validateArg(contigBRecord != null, "Call second contig " + call.getContigB() + " not in dictionary");
+        Utils.validateArg(call.getPositionA() <= contigARecord.getSequenceLength(), "Call first position greater than contig length");
+        Utils.validateArg(call.getPositionB() <= contigBRecord.getSequenceLength(), "Call second position greater than contig length");
     }
 }
