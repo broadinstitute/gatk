@@ -26,21 +26,21 @@ workflow GvsPrepareCallset {
 
     String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210806"])
 
-    if (defined(sample_names_to_extract)) {
-      if (localize_sample_names_with_service_account && defined(service_account_json_path)) {
-          call LocalizeFile {
-              input:
-                file = "~{sample_names_to_extract}",
-                service_account_json_path = select_first([service_account_json_path])
-          }
-      }
-    }
+    # if (defined(sample_names_to_extract)) {
+    #   if (localize_sample_names_with_service_account && defined(service_account_json_path)) {
+    #       call LocalizeFile {
+    #           input:
+    #             file = "~{sample_names_to_extract}",
+    #             service_account_json_path = select_first([service_account_json_path])
+    #       }
+    #   }
+    # }
 
-    File? name_file = select_first([LocalizeFile.localized_file, sample_names_to_extract])
+    # File? name_file = select_first([LocalizeFile.localized_file, sample_names_to_extract])
     call PrepareCallsetTask {
         input:
             destination_cohort_table_prefix = destination_cohort_table_prefix,
-            sample_names_to_extract         = select_first([name_file]),
+            sample_names_to_extract         = sample_names_to_extract,
             query_project                   = query_project,
             query_labels                    = query_labels,
             fq_petvet_dataset               = fq_petvet_dataset,
