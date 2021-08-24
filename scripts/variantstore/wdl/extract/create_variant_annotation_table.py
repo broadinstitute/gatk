@@ -177,20 +177,24 @@ def get_subpopulation_calculations(variant_obj):
         subpop_ac_val = subpop_annotations.get("AC") # note that these can be null if there is no value in the annotations. They will be null in the VAT
         subpop_an_val = subpop_annotations.get("AN")
         subpop_af_val = subpop_annotations.get("AF")
+        subpop_sc_val = (subpop_annotations.get("AC_Hom") + subpop_annotations.get('AC_Het')) * .5
         # here we set the subpopulation ac/an/af values
         row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
         row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
         row["_".join(["gvs", gvs_subpop, "af"])] = subpop_af_val
+        row["_".join(["gvs", gvs_subpop, "sc"])] = subpop_sc_val
         if subpop_af_val != None and(max_af == None or subpop_af_val > max_af): # this will also set the first max_af value
           max_subpop = gvs_subpop
           max_ac = subpop_ac_val
           max_an = subpop_an_val
           max_af = subpop_af_val
+          max_sc = subpop_sc_val
     # here we set the MAX subpopulation ac/an/af values
     row["gvs_max_subpop"] = max_subpop
     row["gvs_max_ac"] = max_ac
     row["gvs_max_an"] = max_an
     row["gvs_max_af"] = max_af
+    row["gvs_max_sc"] = max_sc
     return row
 
 def make_annotated_json_row(row_position, variant_line, transcript_line):
