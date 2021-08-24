@@ -42,6 +42,7 @@ vat_nirvana_gvs_alleles_dictionary = {
   "gvs_all_af": "AF" # required
 }
 
+
 vat_nirvana_revel_dictionary = {
   "revel": "score" # nullable
 }
@@ -262,9 +263,13 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
       gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
       row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
 
+    n_het = gvs_annotations.get('AC_Het') * .5
+    n_hom = gvs_annotations.get('AC_Hom') * .5
+    row["gvs_all_sc"] = n_het + n_hom
+    row["gvs_all_s_hom"] = n_hom
+    row["gvs_all_s_het"] = n_het
     subpopulation_info = get_subpopulation_calculations(variant_line)
     row.update(subpopulation_info)
-
     return row
 
 
