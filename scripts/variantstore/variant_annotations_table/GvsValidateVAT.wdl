@@ -737,8 +737,6 @@ task SubpopulationAlleleCount {
         FROM
             ~{fq_vat_table}
         WHERE
-            gvs_all_ac != 20
-        AND
             gvs_all_ac != gvs_afr_ac + gvs_amr_ac + gvs_eas_ac + gvs_eur_ac + gvs_mid_ac + gvs_oth_ac + gvs_sas_ac'
 
         # if the result of the query has any rows, that means gvs_all_ac has not been calulated correctly/
