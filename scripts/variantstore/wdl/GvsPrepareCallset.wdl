@@ -97,7 +97,7 @@ task PrepareCallsetTask {
             --fq_temp_table_dataset ~{fq_temp_table_dataset} \
             --fq_destination_dataset ~{fq_destination_dataset} \
             --destination_cohort_table_prefix ~{destination_cohort_table_prefix} \
-            ~{"--sample_names_to_extract " + sample_names_to_extract} \
+            ~{"--sample_names_to_extract " + sample_names_to_extract} \     #how do i make this either or next line?
             --fq_cohort_sample_names ~{fq_sample_mapping_table} \
             --query_project ~{query_project} \
             ~{sep=" " query_label_args} \
