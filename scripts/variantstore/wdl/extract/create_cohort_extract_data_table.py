@@ -147,22 +147,28 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
       # KCIBUL -- grr, should be fixed width
     fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
     if len(partition_samples) > 0:
+      subs = {}
+      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i == 1 \
+      else f"\nINSERT INTO `{fq_temp_table_dataset}.{VET_NEW_TABLE}` \n WITH \n"
+      fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
       j = 1
+
       for samples in split_lists(partition_samples, 1000):
         id = f"{i}_{j}"
         subs[id] = get_subselect(fq_vet_table, samples, id)
         j = j + 1
 
-  sql = f"CREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n" + \
-        "WITH\n" + \
-        ("\n".join(subs.values())) + "\n" \
-        "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
-        f" (SELECT * FROM q_all)"
+      sql = create_or_insert + ("\n".join(subs.values())) + "\n" + \
+      "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
+      f" (SELECT * FROM q_all)"
 
   print(sql)
   print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")
-  results = execute_with_retry("insert vet new table", sql)
-  return results
+  if i == 1:
+    execute_with_retry("create and populate vet new table", sql)
+  else:
+    execute_with_retry("populate vet new table", sql)
+  return 
 
 
 
