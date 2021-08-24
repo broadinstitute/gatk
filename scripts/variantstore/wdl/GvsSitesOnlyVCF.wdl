@@ -327,7 +327,7 @@ task ExtractAnAcAfFromVCF {
         ### for validation of the pipeline
         bcftools norm -m- ~{input_vcf} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
         # I find this ^ clearer, but could also do a regex like:  grep "AC=[1-9][0-9]*;A[N|F]=[.0-9]*;A[N|F]=[.0-9]*"
-        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python? still have the <20 issue...?
+        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
     >>>
     # ------------------------------------------------
     # Runtime settings:
