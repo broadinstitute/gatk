@@ -25,6 +25,7 @@ def extract_subpopulation(input_path):
           csvout = csv.writer(output_file, delimiter='\t')
           # add sample name to the subpopulation file
           csvout.writerow([row[0]])
+          output_file.close()
         else:
           seen_subpopulations.append(row_subpopulation)
           # Create a new file for this subpopulation
@@ -32,10 +33,9 @@ def extract_subpopulation(input_path):
           csvout = csv.writer(output_file, delimiter='\t')
           # add sample name to the subpopulation file
           csvout.writerow([row[0]])
-          print(seen_subpopulations)
+          output_file.close()
       else:
         print("WARNING: This list had an unexpected subpopulation", row_subpopulation)
-      ## TODO do I need to close these?
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract subpopulation per sample data out of a callset TSV')
