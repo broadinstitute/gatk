@@ -6,7 +6,7 @@ workflow GvsPrepareCallset {
         String default_dataset
         String destination_cohort_table_prefix
         File? sample_names_to_extract
-        Boolean localize_sample_names_with_service_account = false
+        # Boolean localize_sample_names_with_service_account = false
 
         # inputs with defaults
         String query_project = data_project
