@@ -87,29 +87,29 @@ public final class SVAnnotate extends VariantWalker {
         vcfWriter.writeHeader(header);
     }
 
-    private boolean variantSpansFeature(SimpleInterval variantInterval, GencodeGtfFeature gtfFeature) {
-        if (!variantInterval.getContig().equals(gtfFeature.getContig())) {
+    protected final static boolean variantSpansFeature(SimpleInterval variantInterval, SimpleInterval featureInterval) {
+        if (!variantInterval.getContig().equals(featureInterval.getContig())) {
             return false;
         } else {
-            return variantInterval.getStart() <= gtfFeature.getStart() && variantInterval.getEnd() >= gtfFeature.getEnd();
+            return variantInterval.getStart() <= featureInterval.getStart() && variantInterval.getEnd() >= featureInterval.getEnd();
         }
     }
 
-    private int countBreakpointsInsideFeature(SimpleInterval variantInterval, GencodeGtfFeature gtfFeature) {
+    protected final static int countBreakpointsInsideFeature(SimpleInterval variantInterval, SimpleInterval featureInterval) {
         int count = 0;
-        if (variantInterval.getContig().equals(gtfFeature.getContig())) {
-            if (variantInterval.getStart() >= gtfFeature.getStart() && variantInterval.getStart() <= gtfFeature.getEnd()) {
+        if (variantInterval.getContig().equals(featureInterval.getContig())) {
+            if (variantInterval.getStart() >= featureInterval.getStart() && variantInterval.getStart() <= featureInterval.getEnd()) {
                 count++;
             }
-            if (variantInterval.getEnd() >= gtfFeature.getStart() && variantInterval.getEnd() <= gtfFeature.getEnd()) {
+            if (variantInterval.getEnd() >= featureInterval.getStart() && variantInterval.getEnd() <= featureInterval.getEnd()) {
                 count++;
             }
         }
         return count;
     }
 
-    private boolean variantOverlapsFeature(SimpleInterval variantInterval, GencodeGtfFeature gtfFeature) {
-        return IntervalUtils.overlaps(variantInterval, gtfFeature);
+    protected final static boolean variantOverlapsFeature(SimpleInterval variantInterval, SimpleInterval featureInterval) {
+        return IntervalUtils.overlaps(variantInterval, featureInterval);
     }
 
     private void updateVariantConsequenceDict(Map<String, Set<String>> variantConsequenceDict, String key, String value) {
@@ -123,7 +123,8 @@ public final class SVAnnotate extends VariantWalker {
         List<GencodeGtfFeature> gtfFeaturesForTranscript = gtfTranscript.getAllFeatures();
         String consequence = GATKSVVCFConstants.INTRONIC;
         for (GencodeGtfFeature gtfFeature : gtfFeaturesForTranscript) {
-            if (!variantOverlapsFeature(variantInterval, gtfFeature)) {
+            SimpleInterval featureInterval = new SimpleInterval(gtfFeature);
+            if (!variantOverlapsFeature(variantInterval, featureInterval)) {
                 continue;
             }
             if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.CDS) {
@@ -142,9 +143,10 @@ public final class SVAnnotate extends VariantWalker {
 
     private String annotateDUP(SimpleInterval variantInterval, GencodeGtfTranscriptFeature gtfTranscript) {
         String consequence = GATKSVVCFConstants.INTRONIC;
-        if (variantSpansFeature(variantInterval, gtfTranscript)) {
+        SimpleInterval transcriptInterval = new SimpleInterval(gtfTranscript);
+        if (variantSpansFeature(variantInterval, transcriptInterval)) {
             consequence = GATKSVVCFConstants.COPY_GAIN;
-        } else if (countBreakpointsInsideFeature(variantInterval, gtfTranscript) == 1) {
+        } else if (countBreakpointsInsideFeature(variantInterval, transcriptInterval) == 1) {
             consequence = GATKSVVCFConstants.DUP_PARTIAL;
         } else {
             // both breakpoints inside transcript
@@ -153,17 +155,18 @@ public final class SVAnnotate extends VariantWalker {
             int numBreakpointsInUTR = 0;
             int numExonsSpanned = 0;
             for (GencodeGtfFeature gtfFeature : gtfFeaturesForTranscript) {
-                if (!variantOverlapsFeature(variantInterval, gtfFeature)) {
+                SimpleInterval featureInterval = new SimpleInterval(gtfFeature);
+                if (!variantOverlapsFeature(variantInterval, featureInterval)) {
                     continue;
                 }
                 if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.EXON) {
-                    if (variantSpansFeature(variantInterval, gtfFeature)) {
+                    if (variantSpansFeature(variantInterval, featureInterval)) {
                         numExonsSpanned++;  // TODO: CDS or exon? may differ from breakpoints
                     } else {
-                        numBreakpointsInExon = numBreakpointsInExon + countBreakpointsInsideFeature(variantInterval, gtfFeature);
+                        numBreakpointsInExon = numBreakpointsInExon + countBreakpointsInsideFeature(variantInterval, featureInterval);
                     }
                 } else if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.UTR) {
-                    numBreakpointsInUTR = numBreakpointsInUTR + countBreakpointsInsideFeature(variantInterval, gtfFeature);
+                    numBreakpointsInUTR = numBreakpointsInUTR + countBreakpointsInsideFeature(variantInterval, featureInterval);
                 }
             }
             if (numBreakpointsInExon == 2) {
@@ -190,22 +193,24 @@ public final class SVAnnotate extends VariantWalker {
 
     private String annotateINV(SimpleInterval variantInterval, GencodeGtfTranscriptFeature gtfTranscript) {
         String consequence = GATKSVVCFConstants.INTRONIC;
-        if (variantSpansFeature(variantInterval, gtfTranscript)) {
+        SimpleInterval transcriptInterval = new SimpleInterval(gtfTranscript);
+        if (variantSpansFeature(variantInterval, transcriptInterval)) {
             consequence = GATKSVVCFConstants.INV_SPAN;
-        } else if (countBreakpointsInsideFeature(variantInterval, gtfTranscript) == 1) {
+        } else if (countBreakpointsInsideFeature(variantInterval, transcriptInterval) == 1) {
             consequence = GATKSVVCFConstants.LOF;
         } else {
             // both breakpoints inside transcript
             List<GencodeGtfFeature> gtfFeaturesForTranscript = gtfTranscript.getAllFeatures();
             for (GencodeGtfFeature gtfFeature : gtfFeaturesForTranscript) {
-                if (!variantOverlapsFeature(variantInterval, gtfFeature)) {
+                SimpleInterval featureInterval = new SimpleInterval(gtfFeature);
+                if (!variantOverlapsFeature(variantInterval, featureInterval)) {
                     continue;
                 }
                 // TODO: if overlaps exon, it's LOF unless both breakpoints are in the same UTR?
                 if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.EXON) {
                     consequence = GATKSVVCFConstants.LOF;  // TODO: CDS or exon here?
                 } else if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.UTR) {
-                    if (countBreakpointsInsideFeature(variantInterval, gtfFeature) == 2) {
+                    if (countBreakpointsInsideFeature(variantInterval, featureInterval) == 2) {
                         consequence = GATKSVVCFConstants.UTR;
                     }
                 }
@@ -215,6 +220,9 @@ public final class SVAnnotate extends VariantWalker {
     }
 
     private void annotateTranscript(SimpleInterval variantInterval, String svType, GencodeGtfTranscriptFeature transcript, Map<String, Set<String>> variantConsequenceDict) {
+        if (!variantOverlapsFeature(variantInterval, new SimpleInterval(transcript))) {
+            return;
+        }
         String consequence = null;
         if (svType.equals("DEL")) {
             consequence = annotateDEL(variantInterval, transcript);
@@ -257,14 +265,12 @@ public final class SVAnnotate extends VariantWalker {
         for (GencodeGtfGeneFeature geneOverlapped : gtfGenesForVariant) {
             List<GencodeGtfTranscriptFeature> transcriptsForGene = geneOverlapped.getTranscripts();
             for (GencodeGtfTranscriptFeature transcript : transcriptsForGene) {
-                if (variantOverlapsFeature(variantInterval, transcript)) {
-                    annotateTranscript(variantInterval, svType, transcript, variantConsequenceDict);
-                }
+                annotateTranscript(variantInterval, svType, transcript, variantConsequenceDict);
             }
         }
     }
 
-    private List<Pair<String, SimpleInterval>> getCPXIntervals(VariantContext variant, String overallSVType) {
+    private List<Pair<String, SimpleInterval>> getCPXIntervals(VariantContext variant) {
         // TODO: assert CPX only? checked before calling function so maybe unnecessary
         List<Pair<String, SimpleInterval>> intervals = new ArrayList<>();
         List<String> cpxIntervalsString = variant.getAttributeAsStringList("CPX_INTERVALS", "NONE");
@@ -285,7 +291,7 @@ public final class SVAnnotate extends VariantWalker {
         Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
         String overallSVType = getSVType(variant);
         if (overallSVType.equals("CPX")) {
-            List<Pair<String, SimpleInterval>> svIntervals = getCPXIntervals(variant, overallSVType);
+            List<Pair<String, SimpleInterval>> svIntervals = getCPXIntervals(variant);
             for (Pair<String, SimpleInterval> typeIntervalPair : svIntervals) {
                 annotateSVInterval(typeIntervalPair.getRight(), typeIntervalPair.getLeft(), variantConsequenceDict);
             }
