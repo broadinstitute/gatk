@@ -1455,6 +1455,21 @@ public final class IntervalUtils {
         }
     }
 
+    public SimpleInterval intersection(final Locatable a, final Locatable b){
+        // This way we can assume start(x) <= start(y)
+        final Locatable x;
+        final Locatable y;
+
+        if (a.getStart() <= b.getStart()){
+            x = a;
+            y = b;
+        } else {
+            x = b;
+            y = a;
+        }
+        return null;
+    }
+
     /**
      * Sort by the contig then position as specified by the index order in the given sequence dictionary.
      *
