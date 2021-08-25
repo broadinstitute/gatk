@@ -63,10 +63,10 @@ def execute_with_retry(label, sql):
       job_config = bigquery.QueryJobConfig(labels=job_labels)
       query = client.query(sql, job_config=job_config)
 
-      print(f"STARTING - {label}")
+      print(f"STARTING - {label} (jobid: {query.job_id})")
       JOB_IDS.add((label, query.job_id))
       results = query.result()
-      print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label} ({query.job_id})")
+      print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label} (jobid: {query.job_id})")
       return results
     except Exception as err:
       # if there are no retries left... raise
@@ -74,7 +74,7 @@ def execute_with_retry(label, sql):
         raise err
       else:
         t = retry_delay.pop(0)
-        print(f"Error {err} running query {label} ({query.job_id}), sleeping for {t}")
+        print(f"Error {err} running query {label} (jobid: {query.job_id}), sleeping for {t}")
         time.sleep(t)
 
 def get_partition_range(i):
