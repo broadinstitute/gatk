@@ -107,7 +107,7 @@ workflow GvsValidateVatTable {
             SchemaPrimaryKey.result,
             SchemaEnsemblTranscripts.result,
             SchemaNonzeroAcAn.result,
-            SubpopulationMax.result.
+            SubpopulationMax.result,
             SubpopulationAlleleCount.result
         ]
     }
