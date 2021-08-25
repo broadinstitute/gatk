@@ -141,7 +141,6 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
     return sql
 
   subs = {}
-  created = False
   for i in range(1, PET_VET_TABLE_COUNT+1):
     partition_samples = get_samples_for_partition(sample_ids, i)
 
@@ -149,10 +148,9 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
     fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
     if len(partition_samples) > 0:
       subs = {}
-      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if not created \
+      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i == 1 \
       else f"\nINSERT INTO `{fq_temp_table_dataset}.{VET_NEW_TABLE}` \n WITH \n"
       fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
-      created = True
       j = 1
 
       for samples in split_lists(partition_samples, 1000):
@@ -164,12 +162,12 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
       "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
       f" (SELECT * FROM q_all)"
 
-  print(sql)
-  print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")
-  if i == 1:
-    execute_with_retry("create and populate vet new table", sql)
-  else:
-    execute_with_retry("populate vet new table", sql)
+      print(sql)
+      print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")
+      if i == 1:
+        execute_with_retry("create and populate vet new table", sql)
+      else:
+        execute_with_retry("populate vet new table", sql)
   return 
 
 
@@ -206,16 +204,14 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
           f"        JOIN `{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}` v ON (p.location = v.location) \n WHERE p.sample_id IN ({sample_stanza})), "
     return sql
 
-  created = False
   for i in range(1, PET_VET_TABLE_COUNT+1):
     partition_samples = get_samples_for_partition(sample_ids, i)  #sample ids for the partition
 
     if len(partition_samples) > 0:
       subs = {}
-      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{PET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if not created \
+      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{PET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i==1 \
       else f"\nINSERT INTO `{fq_temp_table_dataset}.{PET_NEW_TABLE}` \n WITH \n"
       fq_pet_table = f"{fq_pet_vet_dataset}.{PET_TABLE_PREFIX}{i:03}"
-      created = True
       j = 1
 
       for samples in split_lists(partition_samples, 1000):
