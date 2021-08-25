@@ -237,7 +237,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         ArrayList<VariantContext> forcedPileupAlleles = new ArrayList<>(Arrays.asList(firstSNP.make(), secondSNP.make()));
 */
 
-        List<VariantContext> forcedPileupAlleles = Collections.EMPTY_LIST;
+        List<VariantContext> forcedPileupAlleles = Collections.emptyList();
         if(MTAC.usePileupDetection){
             forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData());
         }

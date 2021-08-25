@@ -569,7 +569,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
-        List<VariantContext> forcedPileupAlleles = Collections.EMPTY_LIST;
+        List<VariantContext> forcedPileupAlleles = Collections.emptyList();
         if(hcArgs.usePileupDetection){
             forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(region.getAlignmentData());
         }
