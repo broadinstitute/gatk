@@ -132,6 +132,18 @@
     "mode": "Required"
   },
   {
+    "description": "Sample Count of hetvar",
+    "name": "gvs_all_s_het",
+    "type": "Integer",
+    "mode": "Required"
+  },
+  {
+    "description": "Sample Count of homvar",
+    "name": "gvs_all_s_hom",
+    "type": "Integer",
+    "mode": "Required"
+  },
+  {
     "description": "AoU: Max subpopulation frequency",
     "name": "gvs_max_af",
     "type": "Float",
