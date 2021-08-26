@@ -92,7 +92,7 @@ task PrepareCallsetTask {
         fi
 
         if [ ~{use_sample_names_file} = 'true' ]; then
-            gsutil cp  ~{use_sample_names_file} sample_names_file
+            gsutil cp  ~{sample_names_to_extract} sample_names_file
         fi
 
         python3 /app/create_cohort_extract_data_table.py \
