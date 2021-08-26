@@ -177,7 +177,7 @@ def get_subpopulation_calculations(variant_obj):
         subpop_ac_val = subpop_annotations.get("AC") # note that these can be null if there is no value in the annotations. They will be null in the VAT
         subpop_an_val = subpop_annotations.get("AN")
         subpop_af_val = subpop_annotations.get("AF")
-        subpop_sc_val = (subpop_annotations.get("AC_Hom") + subpop_annotations.get('AC_Het')) * .5
+        subpop_sc_val = int(subpop_annotations.get("AC_Hom") / 2 ) + subpop_annotations.get('AC_Het')
         # here we set the subpopulation ac/an/af values
         row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
         row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
@@ -267,8 +267,8 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
       gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
       row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
 
-    n_het = gvs_annotations.get('AC_Het') * .5
-    n_hom = gvs_annotations.get('AC_Hom') * .5
+    n_het = gvs_annotations.get('AC_Het')
+    n_hom = int(gvs_annotations.get('AC_Hom') / 2)
     row["gvs_all_sc"] = n_het + n_hom
     row["gvs_all_s_hom"] = n_hom
     row["gvs_all_s_het"] = n_het
