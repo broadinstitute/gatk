@@ -124,7 +124,7 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210825"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210826"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -233,7 +233,7 @@ task ExtractAcAnAfFromSubpopulationVCFs {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210825"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210826"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -271,7 +271,7 @@ task ExtractAnAcAfFromVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210825"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210826"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -470,7 +470,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210825"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210826"
         memory: "3 GB"
         preemptible: 5
         cpu: "1"
