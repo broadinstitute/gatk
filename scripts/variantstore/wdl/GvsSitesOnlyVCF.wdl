@@ -47,6 +47,13 @@ workflow GvsSitesOnlyVCF {
           }
         }
 
+        call ExtractAnAcAfFromVCF {
+          input:
+              input_vcf = gvs_extract_cohort_filtered_vcfs[i],
+              input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+              custom_annotations_template = AnAcAf_annotations_template
+        }
+
       ## Create a sites-only VCF from the original GVS jointVCF
         call SitesOnlyVcf {
           input:
@@ -54,13 +61,6 @@ workflow GvsSitesOnlyVCF {
             input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
             service_account_json_path = service_account_json_path,
             output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz"
-        }
-
-        call ExtractAnAcAfFromVCF {
-          input:
-            input_vcf = SitesOnlyVcf.output_vcf,
-            input_vcf_index = SitesOnlyVcf.output_vcf_idx,
-            custom_annotations_template = AnAcAf_annotations_template
         }
 
       ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
@@ -124,7 +124,7 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210825"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -233,7 +233,7 @@ task ExtractAcAnAfFromSubpopulationVCFs {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210825"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -243,6 +243,45 @@ task ExtractAcAnAfFromSubpopulationVCFs {
     # Outputs:
     output {
         File annotations_file = "~{custom_annotations_file_name}"
+    }
+}
+
+task ExtractAnAcAfFromVCF {
+    input {
+        File input_vcf
+        File input_vcf_index
+        File custom_annotations_template
+    }
+
+    String custom_annotations_file_name = "an_ac_af.tsv"
+
+    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
+    command <<<
+        set -e
+
+        cp ~{custom_annotations_template} ~{custom_annotations_file_name}
+
+        bcftools norm -m- ~{input_vcf} |  bcftools plugin fill-tags  |  bcftools query -f'%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\n' | grep -v "*" >>  ~{custom_annotations_file_name}
+
+        ### for validation of the pipeline
+        bcftools norm -m- ~{input_vcf} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
+        # I find this ^ clearer, but could also do a regex like:  grep "AC=[1-9][0-9]*;A[N|F]=[.0-9]*;A[N|F]=[.0-9]*"
+        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210825"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File annotations_file = "~{custom_annotations_file_name}"
+        Int count_variants = read_int("count.txt")
     }
 }
 
@@ -305,45 +344,6 @@ task SitesOnlyVcf {
     output {
         File output_vcf="~{output_filename}"
         File output_vcf_idx="~{output_vcf_idx}"
-    }
-}
-
-task ExtractAnAcAfFromVCF {
-    input {
-        File input_vcf
-        File input_vcf_index
-        File custom_annotations_template
-    }
-
-    String custom_annotations_file_name = "an_ac_af.tsv"
-
-    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
-    command <<<
-        set -e
-
-        cp ~{custom_annotations_template} ~{custom_annotations_file_name}
-
-        bcftools norm -m- ~{input_vcf} |  bcftools plugin fill-tags  |  bcftools query -f'%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\n' | grep -v "*" >>  ~{custom_annotations_file_name}
-
-        ### for validation of the pipeline
-        bcftools norm -m- ~{input_vcf} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
-        # I find this ^ clearer, but could also do a regex like:  grep "AC=[1-9][0-9]*;A[N|F]=[.0-9]*;A[N|F]=[.0-9]*"
-        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
-    >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
-        memory: "1 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        File annotations_file = "~{custom_annotations_file_name}"
-        Int count_variants = read_int("count.txt")
     }
 }
 
@@ -470,7 +470,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210825"
         memory: "3 GB"
         preemptible: 5
         cpu: "1"
