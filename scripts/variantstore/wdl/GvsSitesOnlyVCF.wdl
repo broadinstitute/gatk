@@ -227,7 +227,7 @@ task ExtractAcAnAfFromSubpopulationVCFs {
 
         sed 's/gvsAnnotations/~{subpopulation}SubpopulationAnnotations/g' ~{custom_annotations_template} > ~{custom_annotations_file_name}
 
-        bcftools norm -m- ~{input_vcf} |  bcftools plugin fill-tags  |  bcftools query -f'%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\n' >>  ~{custom_annotations_file_name}
+        bcftools norm -m- ~{input_vcf} |  bcftools plugin fill-tags  |  bcftools query -f'%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\n' | grep -v "*" >>  ~{custom_annotations_file_name}
 
     >>>
     # ------------------------------------------------
@@ -323,7 +323,7 @@ task ExtractAnAcAfFromVCF {
 
         cp ~{custom_annotations_template} ~{custom_annotations_file_name}
 
-        bcftools norm -m- ~{input_vcf} |  bcftools plugin fill-tags  |  bcftools query -f'%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\n' >>  ~{custom_annotations_file_name}
+        bcftools norm -m- ~{input_vcf} |  bcftools plugin fill-tags  |  bcftools query -f'%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\n' | grep -v "*" >>  ~{custom_annotations_file_name}
 
         ### for validation of the pipeline
         bcftools norm -m- ~{input_vcf} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
