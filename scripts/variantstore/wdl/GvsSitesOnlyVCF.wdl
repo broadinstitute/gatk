@@ -51,6 +51,7 @@ workflow GvsSitesOnlyVCF {
           input:
               input_vcf = gvs_extract_cohort_filtered_vcfs[i],
               input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+              service_account_json_path = service_account_json_path,
               custom_annotations_template = AnAcAf_annotations_template
         }
 
@@ -250,14 +251,37 @@ task ExtractAnAcAfFromVCF {
     input {
         File input_vcf
         File input_vcf_index
+        String? service_account_json_path
         File custom_annotations_template
     }
 
     String custom_annotations_file_name = "an_ac_af.tsv"
 
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    String input_vcf_basename = basename(input_vcf)
+    String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
+
+    parameter_meta {
+        input_vcf: {
+          localization_optional: true
+        }
+        input_vcf_index: {
+          localization_optional: true
+        }
+    }
+
     # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
     command <<<
         set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+        gsutil cp ~{service_account_json_path} local.service_account.json
+        export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+        gcloud auth activate-service-account --key-file=local.service_account.json
+
+        gsutil cp ~{input_vcf} .
+        gsutil cp ~{input_vcf_index} .
+        fi
 
         cp ~{custom_annotations_template} ~{custom_annotations_file_name}
 
