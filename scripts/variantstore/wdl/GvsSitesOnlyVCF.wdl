@@ -269,23 +269,22 @@ task ExtractAnAcAfFromVCF {
           localization_optional: true
         }
     }
-
     # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
     command <<<
         set -e
 
         if [ ~{has_service_account_file} = 'true' ]; then
-        gsutil cp ~{service_account_json_path} local.service_account.json
-        export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-        gcloud auth activate-service-account --key-file=local.service_account.json
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
 
-        gsutil cp ~{input_vcf} .
-        gsutil cp ~{input_vcf_index} .
+          gsutil cp ~{input_vcf} .
+          gsutil cp ~{input_vcf_index} .
         fi
 
         cp ~{custom_annotations_template} ~{custom_annotations_file_name}
 
-        bcftools norm -m- ~{input_vcf} |  bcftools plugin fill-tags  |  bcftools query -f'%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\n' | grep -v "*" >>  ~{custom_annotations_file_name}
+        bcftools norm -m- ~{updated_input_vcf} |  bcftools plugin fill-tags  |  bcftools query -f'%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\n' | grep -v "*" >>  ~{custom_annotations_file_name}
 
         ### for validation of the pipeline
         bcftools norm -m- ~{input_vcf} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
