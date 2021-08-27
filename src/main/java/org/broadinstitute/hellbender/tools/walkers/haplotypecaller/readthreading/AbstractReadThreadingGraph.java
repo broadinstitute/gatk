@@ -656,7 +656,6 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * @param vertex      the sink of the dangling chain
      * @param pruneFactor the prune factor to use in ignoring chain pieces if edge multiplicity is < pruneFactor
      * @param recoverAll  recover even branches with forks
-     * @param danglingTailSWParameters
      * @return a SmithWaterman object which can be null if no proper alignment could be generated
      */
     @VisibleForTesting

@@ -304,8 +304,8 @@ public final class ReadThreadingAssembler {
      * @param refLoc                location of reference haplotype
      * @param activeRegionWindow    window of the active region (without padding)
      * @param resultSet             (can be null) the results set into which to deposit discovered haplotypes
-     * @param aligner               SmithWaterman aligner to use for aligning the discovered haplotype to the reference haplotype
-     * @param haplotypeToReferenceSWParameters SmithWaterman parameters to use for aligning the discovered haplotype to the reference haplotype
+     * @param aligner               {@link SmithWatermanAligner} to use for aligning the discovered haplotype to the reference haplotype
+     * @param haplotypeToReferenceSWParameters {@link SWParameters} to use for aligning the discovered haplotype to the reference haplotype
      * @return A list of discovered haplotyes (note that this is not currently used for anything)
      */
     @SuppressWarnings({"unchecked"})
