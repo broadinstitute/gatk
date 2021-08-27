@@ -342,7 +342,7 @@ public final class BigQueryUtils {
 
         // Wait for the query to complete.
         try {
-            logger.info("Waiting for query to complete...");
+            logger.info("Waiting for query " + queryJob.getJobId() + " to complete...");
             queryJob = queryJob.waitFor();
         }
         catch (final InterruptedException ex) {
@@ -371,7 +371,7 @@ public final class BigQueryUtils {
             result = queryJob.getQueryResults();
 
             long bytesProcessed = ((JobStatistics.QueryStatistics) queryJob.getStatistics()).getTotalBytesProcessed();
-            logger.info(String.format("%.2f MB actually scanned", bytesProcessed / 1000000.0));
+            logger.info(String.format("%.2f MB actually scanned for job: %s", bytesProcessed / 1000000.0, queryJob.getJobId()));
 
         }
         catch (final InterruptedException ex) {

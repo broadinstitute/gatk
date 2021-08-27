@@ -5,8 +5,7 @@ workflow GvsPrepareCallset {
         String data_project
         String default_dataset
         String destination_cohort_table_prefix
-        File sample_names_to_extract
-        Boolean localize_sample_names_with_service_account = false
+        File? sample_names_to_extract
 
         # inputs with defaults
         String query_project = data_project
@@ -26,18 +25,10 @@ workflow GvsPrepareCallset {
 
     String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210806"])
 
-    if (localize_sample_names_with_service_account && defined(service_account_json_path)) {
-        call LocalizeFile {
-            input:
-              file = "~{sample_names_to_extract}",
-              service_account_json_path = select_first([service_account_json_path])
-        }
-    }
-
     call PrepareCallsetTask {
         input:
             destination_cohort_table_prefix = destination_cohort_table_prefix,
-            sample_names_to_extract         = select_first([LocalizeFile.localized_file, sample_names_to_extract]),
+            sample_names_to_extract         = sample_names_to_extract,
             query_project                   = query_project,
             query_labels                    = query_labels,
             fq_petvet_dataset               = fq_petvet_dataset,
@@ -63,7 +54,7 @@ task PrepareCallsetTask {
 
     input {
         String destination_cohort_table_prefix
-        File sample_names_to_extract
+        File? sample_names_to_extract
         String query_project
         Array[String]? query_labels
 
@@ -80,13 +71,27 @@ task PrepareCallsetTask {
     Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    String use_sample_names_file = if (defined(sample_names_to_extract)) then 'true' else 'false'
+    String python_option = if (defined(sample_names_to_extract)) then '--sample_names_to_extract sample_names_file' else '--fq_cohort_sample_names ' + fq_sample_mapping_table
+
+    parameter_meta {
+      sample_names_to_extract: {
+        localization_optional: true
+      }
+    }
 
     command <<<
         set -e
 
+        echo ~{python_option}
+
         if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json_path} local.service_account.json
             SERVICE_ACCOUNT_STANZA="--sa_key_path local.service_account.json "
+        fi
+
+        if [ ~{use_sample_names_file} = 'true' ]; then
+            gsutil cp  ~{sample_names_to_extract} sample_names_file
         fi
 
         python3 /app/create_cohort_extract_data_table.py \
@@ -94,7 +99,7 @@ task PrepareCallsetTask {
             --fq_temp_table_dataset ~{fq_temp_table_dataset} \
             --fq_destination_dataset ~{fq_destination_dataset} \
             --destination_cohort_table_prefix ~{destination_cohort_table_prefix} \
-            --sample_names_to_extract ~{sample_names_to_extract} \
+            ~{python_option} \
             --query_project ~{query_project} \
             ~{sep=" " query_label_args} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
