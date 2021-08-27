@@ -46,7 +46,7 @@ def dump_job_stats():
     bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
     total = total + bytes_billed
 
-    print(jobid[0] (jobid[1]), " <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
+    print(jobid[0], "jobid:  (", jobid[1], ") <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
 
   print(" Total GBs billed ", total/(1024 * 1024 * 1024), " GBs")
 
