@@ -770,8 +770,12 @@ task LoadTable {
         # combine load status and wait status into final report
         paste bq_load_details.tmp bq_wait_details.tmp > bq_final_job_statuses.txt
 
-        # move files from each set into set-level "done" directories
-        gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/" 2> gsutil_mv_done.log
+        for set in $(sed 1d ~{datatype}_du_sets.txt | cut -f4 | sort | uniq)
+        do
+          # move files from each set into set-level "done" directories
+          echo "Moving set $set data into done directory."
+          gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/" 2> gsutil_mv_done.log
+        done
 
     else
         echo "no ${FILES} files to process in $DIR"
@@ -790,6 +794,7 @@ task LoadTable {
     String done = "true"
     File? manifest_file = "~{datatype}_du_sets.txt"
     File? final_job_statuses = "bq_final_job_statuses.txt"
+    File? mv_log = "gsutil_mv_done.log"
   }
 }
 
