@@ -103,6 +103,8 @@ workflows:
    - name: GvsValidateVatTable
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
+     testParameterFiles:
+       - /scripts/variantstore/variant_annotations_table/GvsValidateVat.example.inputs.json
      filters:
        branches:
          - ah_var_store
