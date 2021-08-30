@@ -1,8 +1,8 @@
 version 1.0
 workflow GvsSitesOnlyVCF {
    input {
-        Array[File] gvs_extract_cohort_filtered_vcfs
-        Array[File] gvs_extract_cohort_filtered_vcf_indices
+        File inputFileofFileNames
+        File inputFileofIndexFileNames
         String output_sites_only_file_name
         String output_annotated_file_name
         String project_id
@@ -19,6 +19,8 @@ workflow GvsSitesOnlyVCF {
         File AnAcAf_annotations_template
         File ancestry_file
     }
+    Array[File] gvs_extract_cohort_filtered_vcfs = read_lines(inputFileofFileNames)
+    Array[File] gvs_extract_cohort_filtered_vcf_indices  = read_lines(inputFileofIndexFileNames)
 
     call MakeSubpopulationFiles {
         input:
