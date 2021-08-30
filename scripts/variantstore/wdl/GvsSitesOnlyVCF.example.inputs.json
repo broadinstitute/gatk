@@ -1,6 +1,6 @@
 {
-  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcfs": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz"],
-  "GvsSitesOnlyVCF.gvs_extract_cohort_filtered_vcf_indices": ["gs://broad-dsp-spec-ops/kcibul/ft/gvs.chr20.vcf.gz.tbi"],
+  "GvsSitesOnlyVCF.inputFileofFileNames": "GS_PATH_TO_FILE_OF_FILE_NAMES",
+  "GvsSitesOnlyVCF.inputFileofIndexFileNames": "GS_PATH_TO_FILE_OF_FILE_INDICES",
   "GvsSitesOnlyVCF.output_sites_only_file_name": "hello_did_I_sites_only",
   "GvsSitesOnlyVCF.output_annotated_file_name": "hello_did_I_annotate",
   "GvsSitesOnlyVCF.nirvana_data_directory": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz",
