@@ -1,6 +1,6 @@
 version 1.0
 
-workflow GvsValidateVatTable {
+workflow GvsValidateVat {
     input {
         String query_project_id
         String default_dataset
