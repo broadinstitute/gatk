@@ -105,7 +105,8 @@ class SampleDenoisingAndCallingPosteriorsWriter:
                  denoising_calling_workspace: DenoisingCallingWorkspace,
                  denoising_model: DenoisingModel,
                  denoising_model_approx: pm.MeanField,
-                 output_path: str):
+                 output_path: str,
+                 num_samples_for_cr_approx: int):
         io_commons.assert_output_path_writable(output_path)
         self.denoising_config = denoising_config
         self.calling_config = calling_config
@@ -113,6 +114,7 @@ class SampleDenoisingAndCallingPosteriorsWriter:
         self.denoising_model = denoising_model
         self.denoising_model_approx = denoising_model_approx
         self.output_path = output_path
+        self.num_samples_for_cr_approx = num_samples_for_cr_approx
 
     @staticmethod
     def write_ndarray_tc_with_copy_number_header(sample_posterior_path: str,
@@ -155,7 +157,8 @@ class SampleDenoisingAndCallingPosteriorsWriter:
         # compute approximate denoised copy ratios
         _logger.info("Sampling and approximating posteriors for denoised copy ratios...")
         denoising_copy_ratios_st_approx_generator = commons.get_sampling_generator_for_model_approximation(
-            model_approx=self.denoising_model_approx, node=self.denoising_model['denoised_copy_ratio_st'])
+            model_approx=self.denoising_model_approx, node=self.denoising_model['denoised_copy_ratio_st'],
+            num_samples=self.num_samples_for_cr_approx)
         mu_denoised_copy_ratio_st, var_denoised_copy_ratio_st =\
             math.calculate_mean_and_variance_online(denoising_copy_ratios_st_approx_generator)
         std_denoised_copy_ratio_st = np.sqrt(var_denoised_copy_ratio_st)
