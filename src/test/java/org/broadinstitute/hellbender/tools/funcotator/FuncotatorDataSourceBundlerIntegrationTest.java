@@ -87,9 +87,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
                 {
                     FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
                         "octopus_bimaculoides",
-                        false,
-                        true
-
+                        true,
                 }
 //                {
 //                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
@@ -113,7 +111,6 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
                     FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
                         "absiella_dolichum_dsm_3991_gca_000154285",
                         false,
-                        true
                 }
         };
     }
@@ -122,12 +119,14 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     // Tests:
 
     @Test( dataProvider = "provideForTestDownload")
-    void testDownloadRealDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite, final boolean doExtract) {
+    void testDownloadRealDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.add(dsOrgArg, true);
         arguments.add("species-name", dsSpeciesArg);
         arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
-        arguments.add(FuncotatorDataSourceBundler.EXTRACT_AFTER_DOWNLOAD, doExtract);
+
+        final Path basePath = getSafeNonExistentPath(dsSpeciesArg);
+        arguments.add(FuncotatorDataSourceBundler.OUTPUT_DATASOURCES_FOLDER_ARG_NAME, basePath.toUri().toString());
 
         runCommandLine(arguments);
 
@@ -139,11 +138,14 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     // To do: need to make some integration tests for running with incorrect input arguments
 
     @Test( dataProvider = "provideForTestDownloadWrong", expectedExceptions = UserException.BadInput.class)
-    void testDownloadWrongDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite, final boolean doExtract) {
+    void testDownloadWrongDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.add(dsOrgArg, true);
+        arguments.add("species-name", dsSpeciesArg);
         arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
-        arguments.add(FuncotatorDataSourceBundler.EXTRACT_AFTER_DOWNLOAD, doExtract);
+
+        final Path basePath = getSafeNonExistentPath(dsSpeciesArg);
+        arguments.add(FuncotatorDataSourceBundler.OUTPUT_DATASOURCES_FOLDER_ARG_NAME, basePath.toUri().toString());
 
         runCommandLine(arguments);
     }

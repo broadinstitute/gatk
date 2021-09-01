@@ -18,8 +18,6 @@ import java.io.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDate;
-import java.time.Month;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -38,7 +36,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
 
     //==================================================================================================================
     // Public Static Members:
-    public static final String ENSEMBL_TEMPLATE_CONFIG      = "src/test/resources/large/funcotator/funcotator_dataSources/ensembl.template.config";
     public static final String ENSEMBL_CONFIG_NAME          = "ensembl.config";
     public static final String MANIFEST_FILE_NAME           = "MANIFEST.txt";
     public static final String TEMPLATE_CONFIG_FILE_NAME    = "template.config";
@@ -53,6 +50,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
     // Private Members:
 
     // Data variables:
+    protected Path outputFolder;
+
     protected String dsOrganism;
     protected String fileName;
     protected String fastaFileName;
@@ -73,8 +72,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
     protected Path outputIndexDest;
     protected Path configFilePath;
     protected Path metadataFilePath;
-    protected boolean overwriteOutputFile;
-    protected boolean extractAfterDownload;
     protected String dsGtfReadMeURL;
     protected String dsFastaReadMeURL;
     protected Path dsGtfReadMePath;
@@ -83,7 +80,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
     protected Path dsReorderedGtfPath;
 
     // Copy buffer:
-    public static byte copyBuffer[] = new byte[BUFFER_SIZE_BYTES];
+    public static byte[] copyBuffer = new byte[BUFFER_SIZE_BYTES];
 
     //==================================================================================================================
     // Constructors:
@@ -91,76 +88,339 @@ public class FuncotatorDataSourceBundlerHttpClient {
     /**
      * {@link FuncotatorDataSourceBundlerHttpClient}
      * This internal constructor is to be used by the class itself.
+     * @param outputFolder The {@link Path} into which to place the new data source supporting files.
      * @param dsOrganism The {@link String} representing the chosen organism.
      * @param speciesName The {@link String} representing the chosen division.
      * @param baseURL The {@link String} representing the base url for the chosen organism.
+     * @param baseFastaURL The {@link String} representing the base url for the fasta file for the chosen organism.
      */
-    protected FuncotatorDataSourceBundlerHttpClient(final String dsOrganism, final String speciesName, final String baseURL, final String baseFastaURL) {
+    protected FuncotatorDataSourceBundlerHttpClient(final Path outputFolder, final String dsOrganism, final String speciesName, final String baseURL, final String baseFastaURL) {
+
+        this.outputFolder  = outputFolder;
+
         this.dsOrganism             = dsOrganism;
         this.speciesName            = speciesName;
         this.baseURL                = baseURL;
         this.baseFastaURL           = baseFastaURL;
+
         this.fileName               = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(this.dsOrganism, this.speciesName, false);
         this.fastaFileName          = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(this.dsOrganism, this.speciesName, true);
-        this.dsURL                  = setURL(this.baseURL, this.speciesName, this.fileName);
-        this.dsPath                 = setPath(this.speciesName, this.fileName);
-        this.dsUnzipPath            = setUnzipPath(this.speciesName, this.fileName);
-        this.dsFastaURL             = setFastaUrl(this.baseFastaURL, this.speciesName, this.fastaFileName);
-        this.dsFastaPath            = setFastaPath(this.speciesName, this.fastaFileName);
-        this.dsFastaUnzipPath       = setFastaUnzipPath(this.speciesName, this.fastaFileName);
-        this.indexFilePath          = setIndexFilePath(this.speciesName, this.fileName);
+
+        this.dsURL                  = baseURL + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION;
+        this.dsFastaURL             = baseFastaURL + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + fileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION;
+
+        this.dsPath                 = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION);
+        this.dsUnzipPath            = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
+        this.dsFastaPath            = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION);
+        this.dsFastaUnzipPath       = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_UNZIPPED_EXTENSION);
+        this.indexFilePath          = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION + DataSourceUtils.IDX_EXTENSION);
+
         this.outputDestination      = this.dsPath.toAbsolutePath();
         this.outputUnzippedDest     = this.dsUnzipPath.toAbsolutePath();
         this.outputFastaDest        = this.dsFastaPath.toAbsolutePath();
         this.outputFastaUnzipDest   = this.dsFastaUnzipPath.toAbsolutePath();
         this.outputIndexDest        = this.indexFilePath.toAbsolutePath();
-        this.configFilePath         = setConfigFilePath(this.speciesName);
-        this.metadataFilePath       = setMetadataFilePath(this.speciesName);
-        this.dsGtfReadMeURL         = setGtfReadMeURL(this.baseURL, this.speciesName);
-        this.dsFastaReadMeURL       = setFastaReadMeURL(this.baseFastaURL, this.speciesName);
-        this.dsGtfReadMePath        = setGtfReadMePath(this.speciesName, this.fileName);
-        this.dsFastaReadMePath      = setFastaReadMePath(this.speciesName);
-        this.dsFastaDictPath        = setFastaDictPath(this.speciesName, this.fastaFileName);
-        this.dsReorderedGtfPath     = setReorderedGtfPath(this.speciesName, this.fileName);
+
+        this.configFilePath         = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + ENSEMBL_CONFIG_NAME);
+        this.metadataFilePath       = IOUtils.getPath(outputFolder + "/");
+
+        this.dsGtfReadMeURL         = baseURL + speciesName + "/" + DataSourceUtils.README_EXTENSION;
+        this.dsFastaReadMeURL       = baseURL + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + DataSourceUtils.README_EXTENSION;
+
+        this.dsGtfReadMePath        = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.GTF_README_EXTENSION);
+        this.dsFastaReadMePath      = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.FASTA_README_EXTENSION);
+        this.dsFastaDictPath        = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_DICT_EXTENSION);
+        this.dsReorderedGtfPath     = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.REORDERED_EXTENSION + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
+    }
+
+    /**
+     * Extract the Gzipped files that were downloaded for these datasources.
+     * @param doOverwrite If {@code True} will overwrite output files.
+     *                    Otherwise will throw an exception if output files already exist.
+     */
+    public void extractGzippedFiles(final boolean doOverwrite) {
+        FuncotatorDataSourceBundlerUtils.extractGzFile(outputDestination.toString(), dsUnzipPath.toString(), doOverwrite);
+        FuncotatorDataSourceBundlerUtils.extractGzFile(outputFastaDest.toString(), dsFastaUnzipPath.toString(), doOverwrite);
+    }
+
+    /**
+     * Download all remote files required to create datasources for this {@link FuncotatorDataSourceBundlerHttpClient}.
+     */
+    public void downloadDataSources() {
+        // Download the gtf file:
+        downloadFile(dsURL, outputDestination);
+
+        // Download the fasta file:
+        downloadFile(dsFastaURL, outputFastaDest);
+
+        // Download the gtf ReadMe file for specific data source file:
+        downloadFile(dsGtfReadMeURL, dsGtfReadMePath);
+
+        // Download the fasta ReadMe file for specific data source file:
+        downloadFile(dsFastaReadMeURL, dsFastaReadMePath);
+    }
+
+    /**
+     * Build a config file for the data source we have downloaded.
+     */
+    public void buildConfigFile() {
+        try ( FileWriter writer = new FileWriter(configFilePath.toAbsolutePath().toString());
+              BufferedWriter buffer = new BufferedWriter(writer) )
+        {
+            buffer.write(
+                "name = Ensembl\n" +
+                "version = 104\n" +
+                "src_file = " + fileName + ".REORDERED.gtf"+ "\n" +
+                "origin_location = " + dsURL + " \n" +
+                "preprocessing_script = FuncotatorDataSourceBundler \n" +
+                "\n" +
+                "# Supported types:\n" +
+                "# simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR Transcript ID\n" +
+                "# locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location\n" +
+                "# gencode      -- Custom datasource class for GENCODE\n" +
+                "#\tcosmic       -- Custom datasource class for COSMIC\n" +
+                "type = gencode\n" +
+                "\n" +
+                "# Required field for GENCODE files.\n" +
+                "# Path to the FASTA file from which to load the sequences for GENCODE transcripts:\n" +
+                "gencode_fasta_path = " + fastaFileName + ".fasta" + "\n" +
+                "\n" +
+                "# Required field for simpleXSV files.\n" +
+                "# Valid values:\n" +
+                "#     GENE_NAME\n" +
+                "#     TRANSCRIPT_ID\n" +
+                "xsv_key = GENE_NAME\n" +
+                "\n" +
+                "# Required field for simpleXSV files.\n" +
+                "# The 0-based index of the column containing the key on which to match\n" +
+                "xsv_key_column = 0\n" +
+                "\n" +
+                "# Required field for simpleXSV AND locatableXSV files.\n" +
+                "# The delimiter by which to split the XSV file into columns.\n" +
+                "xsv_delimiter = ,\n" +
+                "\n" +
+                "# Required field for simpleXSV files.\n" +
+                "# Whether to permissively match the number of columns in the header and data rows\n" +
+                "# Valid values:\n" +
+                "#     true\n" +
+                "#     false\n" +
+                "xsv_permissive_cols = true\n" +
+                "\n" +
+                "# Required field for locatableXSV files.\n" +
+                "# The 0-based index of the column containing the contig for each row\n" +
+                "contig_column =\n" +
+                "\n" +
+                "# Required field for locatableXSV files.\n" +
+                "# The 0-based index of the column containing the start position for each row\n" +
+                "start_column =\n" +
+                "\n" +
+                "# Required field for locatableXSV files.\n" +
+                "# The 0-based index of the column containing the end position for each row\n" +
+                "end_column =\n"
+            );
+        } catch (IOException e) {
+            throw new UserException("Error. Unable to build file: " + configFilePath);
+        }
+    }
+
+    /**
+     * Build the template config file in the correct folder.
+     */
+    public void buildTemplateConfigFile() {
+        try ( FileWriter writer = new FileWriter(metadataFilePath.toAbsolutePath() + "/" + TEMPLATE_CONFIG_FILE_NAME);
+              BufferedWriter buffer = new BufferedWriter(writer) ) {
+
+            buffer.write(
+            "name = Achilles\n" +
+                "version = 110303\n" +
+                "src_file = achilles_lineage_results.import.txt\n" +
+                "origin_location = UNKNOWN\n" +
+                "preprocessing_script =\n" +
+                "\n" +
+                "# Supported types:\n" +
+                "# simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR Transcript ID\n" +
+                "# locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location\n" +
+                "# gencode      -- Custom datasource class for GENCODE\n" +
+                "#\tcosmic       -- Custom datasource class for COSMIC\n" +
+                "type = simpleXSV\n" +
+                "\n" +
+                "# Required field for GENCODE files.\n" +
+                "# Path to the FASTA file from which to load the sequences for GENCODE transcripts:\n" +
+                "gencode_fasta_path =\n" +
+                "\n" +
+                "# Required field for simpleXSV files.\n" +
+                "# Valid values:\n" +
+                "#     GENE_NAME\n" +
+                "#     TRANSCRIPT_ID\n" +
+                "xsv_key = GENE_NAME\n" +
+                "\n" +
+                "# Required field for simpleXSV files.\n" +
+                "# The 0-based index of the column containing the key on which to match\n" +
+                "xsv_key_column = 0\n" +
+                "\n" +
+                "# Required field for simpleXSV AND locatableXSV files.\n" +
+                "# The delimiter by which to split the XSV file into columns.\n" +
+                "xsv_delimiter = ,\n" +
+                "\n" +
+                "# Required field for simpleXSV files.\n" +
+                "# Whether to permissively match the number of columns in the header and data rows\n" +
+                "# Valid values:\n" +
+                "#     true\n" +
+                "#     false\n" +
+                "xsv_permissive_cols = true\n" +
+                "\n" +
+                "# Required field for locatableXSV files.\n" +
+                "# The 0-based index of the column containing the contig for each row\n" +
+                "contig_column =\n" +
+                "\n" +
+                "# Required field for locatableXSV files.\n" +
+                "# The 0-based index of the column containing the start position for each row\n" +
+                "start_column =\n" +
+                "\n" +
+                "# Required field for locatableXSV files.\n" +
+                "# The 0-based index of the column containing the end position for each row\n" +
+                "end_column ="
+            );
+
+        } catch (IOException e) {
+            throw new UserException("Error. Unable to make template config file in location: " + metadataFilePath + "/" + TEMPLATE_CONFIG_FILE_NAME);
+        }
+    }
+    /**
+     * Build a ReadMe file in the correct folder.
+     */
+    public void buildReadMeFile() {
+        try ( FileWriter writer = new FileWriter(metadataFilePath.toAbsolutePath() + "/" + README_FILE_NAME);
+              BufferedWriter buffer = new BufferedWriter(writer) )
+        {
+            buffer.write(
+            "################################################################################\n" +
+                "# Funcotator Data Sources Bundler Package README\n" +
+                "################################################################################\n" +
+                "\n" +
+                "+---------------------------------------------+ \n" +
+                "| Data Source Version Information             |\n" +
+                "+---------------------------------------------+ \n" +
+                "\n" +
+                "Version:          0.0." + FuncotatorDataSourceBundlerUtils.getCurrentDateString() + "\n" +
+                "Use Case:         species name\n" +
+                "Source:           ./gatk -bundler.dsOrganism -species-name bundler.speciesName \n" +
+                "Alternate Source: ./gatk -bundler.dsOrganism -species-name bundler.speciesName \n" +
+                "\n" +
+                "################################################################################\n" +
+                "\n" +
+                "+---------------------------------------------+ \n" +
+                "| README                                      | \n" +
+                "+---------------------------------------------+ \n" +
+                "\n" +
+                "This is a collection of data sources to be used in conjunction with Funcotator\n" +
+                "to annotate data samples for a variety of species. \n" +
+                "\n" +
+                "This folder is a top-level Data Sources Folder for The Broad Institute's \n" +
+                "Funcotator Data Source Bundler tool.  When running Funcotator, pass the path to this directory in\n" +
+                "as a command-line argument:\n" +
+                "\n" +
+                "   ./gatk Funcotator --data-sources-path PATH/TO/THIS/FOLDER ...\n" +
+                "\n" +
+                "For more information on Funcotator, see the GATK development github site:\n" +
+                "\n" +
+                "\thttps://github.com/broadinstitute/gatk\n" +
+                "\n" +
+                "################################################################################\n" +
+                "\n" +
+                "+---------------------------------------------+ \n" +
+                "| Data Sources                                |\n" +
+                "+---------------------------------------------+ \n" +
+                "\n" +
+                "Using this Data Sources Folder will enable the following data sources:\n" +
+                "--------------------\n" +
+                "\n" +
+                "  ensembl\n" +
+                "--------------------\n" +
+                "  The ENSEMBL Project produces high quality reference gene annotation and experimental validation for over 50,000 genomes. \n"
+            );
+        } catch (IOException e) {
+            throw new UserException("Error. Unable to make ReadMe file in location: " + metadataFilePath + "/" + README_FILE_NAME);
+        }
+    }
+
+    /**
+     * Build a manifest file in the correct folder.
+     */
+    public void buildManifestFile() {
+        try ( FileWriter writer = new FileWriter(metadataFilePath.toAbsolutePath() + "/" + MANIFEST_FILE_NAME);
+              BufferedWriter buffer = new BufferedWriter(writer) )
+        {
+            buffer.write(
+            "Version:          0.0." + FuncotatorDataSourceBundlerUtils.getCurrentDateString() + "\n" +
+                "Use Case:         " + speciesName + "\n" +
+                "Source:           ./gatk FuncotatorDataSourceBundler -" + dsOrganism + "-species-name " + speciesName + "\n" +
+                "Alternate Source: ./gatk FuncotatorDataSourceBundler -" + dsOrganism + "-species-name " + speciesName + "\n"
+            );
+
+        } catch (IOException e) {
+            throw new UserException("Error. Unable to make manifest file in location: " + metadataFilePath.toString() + "/" + MANIFEST_FILE_NAME);
+        }
+    }
+
+    /**
+     * Build an index file for the gtf data source file.
+     */
+    public void sortAndIndexGtfFile() {
+        // Reorder gtf file:
+        sortGtfFileByGenomicCoordinates(dsUnzipPath);
+
+        // Index the GTF File
+        // TODO: Fix this:
+        IndexFeatureFile indexer = new IndexFeatureFile();
+        indexer.indexGTF(dsReorderedGtfPath.toAbsolutePath(), indexFilePath.toAbsolutePath());
+    }
+
+    /**
+     * Run the fixGencodeOrdering.py script to put gtf file in correct genomic coordinate order.
+     * @param gtfFilePath The {@link Path} to the gtf file we want to reorder.
+     */
+    private void sortGtfFileByGenomicCoordinates(final Path gtfFilePath) {
+        PythonScriptExecutor executor = new PythonScriptExecutor(true);
+        final List<String> args = new ArrayList<>();
+
+        args.add("./" + gtfFilePath.toString());
+        args.add("--output-file");
+        args.add("./" + dsReorderedGtfPath);
+        boolean success = executor.executeScript("./scripts/funcotator/data_sources/fixGencodeOrdering.py", null, args);
+        if (!success) {
+            throw new UserException("Error. Unable to sort gtf file by genomic coordinates.");
+        }
     }
 
     //==================================================================================================================
     // Static Methods:
 
     /**
-     * Create an {@link FuncotatorDataSourceBundlerHttpClient}.
-     * @param dsOrganism The {@link String} representing the chosen organism to bundle data sources for.
-     * @param speciesName The {@link String} representing the specific division of the organism to bundle data sources for.
-     * @param baseURL The {@link String} base url for the specific organism which was chosen.
-     * @param baseFastaURL The {@link String} base url for the fasta file for the specific organism which was chosen.
-     * @return An {@link FuncotatorDataSourceBundlerHttpClient} initialized to copy the file for the species name to the user's computer.
+     * Download a file at the given URL to the given destination.
+     * @param url {@link String} containing the url at which the source file is located.
+     * @param dest {@link Path} representing the destination of the downloaded file.
      */
-    public static FuncotatorDataSourceBundlerHttpClient create(final String dsOrganism, final String speciesName, final String baseURL, final String baseFastaURL) {
-        return new FuncotatorDataSourceBundlerHttpClient(dsOrganism, speciesName, baseURL, baseFastaURL);
-    }
+    private static void downloadFile(final String url, final Path dest) {
 
-    /**
-     * Download the data source given by {@code dsURL} to {@code outputDestination}.
-     * @param dsURL The {@link String} representing the url at which the file to download is found.
-     * @param outputDestination The {@link Path} representing the output path for the copied file to be put.
-     */
-    public static void downloadDataSources(final String dsURL, final Path outputDestination) {
+        logger.info("Downloading file: " + url + " -> " + dest.toUri());
 
         // Creating CloseableHttpClient object to access the webpage and retrieve the file:
-        CloseableHttpClient client = HttpClientBuilder.create().build();
+        final CloseableHttpClient client = HttpClientBuilder.create().build();
 
         // Creating an HttpGet object to send the request to the server:
-        HttpGet request = new HttpGet(dsURL);
+        final HttpGet request = new HttpGet(url);
 
         try {
             // Using an HttpResponse class object to catch the response from the server
-            HttpResponse response = client.execute(request);
+            final HttpResponse response = client.execute(request);
+
             // The data sent by the server is obtained in this getEntity() function:
-            HttpEntity entity = response.getEntity();
+            final HttpEntity entity = response.getEntity();
 
             // Extracting the data from the entity object:
             try( final InputStream inputStream = entity.getContent();
-                 final OutputStream outputStream = Files.newOutputStream(outputDestination) )
+                 final OutputStream outputStream = Files.newOutputStream(dest) )
             {
 
                 // Perform the copy:
@@ -177,254 +437,11 @@ public class FuncotatorDataSourceBundlerHttpClient {
                 }
             }
             catch (final IOException ex) {
-                throw new UserException("Could not copy file: " + dsURL + " -> " + outputDestination.toUri().toString(), ex);
+                throw new UserException("Could not copy file: " + url + " -> " + dest.toUri(), ex);
             }
         }
         catch (final IOException ex) {
-            throw new UserException("Could not obtain data from "+ dsURL, ex);
-        }
-    }
-
-    /**
-     * Build an index file for the gtf data source file.
-     * @param gtfFilePath The {@link Path} representing the path to the gtf data source file we have downloaded.
-     * @param idxFilePath The {@link Path} representing the path where we want our indexed file to be.
-     */
-    public static void buildIndexFile(Path gtfFilePath, Path idxFilePath, FuncotatorDataSourceBundlerHttpClient bundler) {
-        // Reorder gtf file:
-        readBashScript(gtfFilePath, bundler);
-
-        IndexFeatureFile indexer = new IndexFeatureFile();
-        indexer.indexGTF(bundler.dsReorderedGtfPath.toAbsolutePath(), idxFilePath.toAbsolutePath());
-    }
-
-
-    /**
-     * Build a config file for the data source we have downloaded.
-     * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
-     */
-    public static void buildConfigFile(FuncotatorDataSourceBundlerHttpClient bundler) {
-        try ( FileWriter writer = new FileWriter(bundler.configFilePath.toAbsolutePath().toString());
-              BufferedWriter buffer = new BufferedWriter(writer) )
-        {
-
-            buffer.write(
-                    "name = Ensembl\n" +
-                            "version = 104\n" +
-                            "src_file = " + bundler.fileName + ".REORDERED.gtf"+ "\n" +
-                            "origin_location = " + bundler.dsURL + " \n" +
-                            "preprocessing_script = FuncotatorDataSourceBundler \n" +
-                            "\n" +
-                            "# Supported types:\n" +
-                            "# simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR Transcript ID\n" +
-                            "# locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location\n" +
-                            "# gencode      -- Custom datasource class for GENCODE\n" +
-                            "#\tcosmic       -- Custom datasource class for COSMIC\n" +
-                            "type = gencode\n" +
-                            "\n" +
-                            "# Required field for GENCODE files.\n" +
-                            "# Path to the FASTA file from which to load the sequences for GENCODE transcripts:\n" +
-                            "gencode_fasta_path = " + bundler.fastaFileName + ".fasta" + "\n" +
-                            "\n" +
-                            "# Required field for simpleXSV files.\n" +
-                            "# Valid values:\n" +
-                            "#     GENE_NAME\n" +
-                            "#     TRANSCRIPT_ID\n" +
-                            "xsv_key = GENE_NAME\n" +
-                            "\n" +
-                            "# Required field for simpleXSV files.\n" +
-                            "# The 0-based index of the column containing the key on which to match\n" +
-                            "xsv_key_column = 0\n" +
-                            "\n" +
-                            "# Required field for simpleXSV AND locatableXSV files.\n" +
-                            "# The delimiter by which to split the XSV file into columns.\n" +
-                            "xsv_delimiter = ,\n" +
-                            "\n" +
-                            "# Required field for simpleXSV files.\n" +
-                            "# Whether to permissively match the number of columns in the header and data rows\n" +
-                            "# Valid values:\n" +
-                            "#     true\n" +
-                            "#     false\n" +
-                            "xsv_permissive_cols = true\n" +
-                            "\n" +
-                            "# Required field for locatableXSV files.\n" +
-                            "# The 0-based index of the column containing the contig for each row\n" +
-                            "contig_column =\n" +
-                            "\n" +
-                            "# Required field for locatableXSV files.\n" +
-                            "# The 0-based index of the column containing the start position for each row\n" +
-                            "start_column =\n" +
-                            "\n" +
-                            "# Required field for locatableXSV files.\n" +
-                            "# The 0-based index of the column containing the end position for each row\n" +
-                            "end_column =\n"
-            );
-        } catch (IOException e) {
-            throw new UserException("Error. Unable to build file: " + bundler.configFilePath);
-        }
-    }
-
-    /**
-     * Build the template config file in the correct folder.
-     * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
-     */
-    public static void buildTemplateConfigFile(FuncotatorDataSourceBundlerHttpClient bundler) {
-        try ( FileWriter writer = new FileWriter(bundler.metadataFilePath.toAbsolutePath() + "/" + TEMPLATE_CONFIG_FILE_NAME);
-              BufferedWriter buffer = new BufferedWriter(writer) ) {
-
-            buffer.write(
-                    "name = Achilles\n" +
-                            "version = 110303\n" +
-                            "src_file = achilles_lineage_results.import.txt\n" +
-                            "origin_location = UNKNOWN\n" +
-                            "preprocessing_script =\n" +
-                            "\n" +
-                            "# Supported types:\n" +
-                            "# simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR Transcript ID\n" +
-                            "# locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location\n" +
-                            "# gencode      -- Custom datasource class for GENCODE\n" +
-                            "#\tcosmic       -- Custom datasource class for COSMIC\n" +
-                            "type = simpleXSV\n" +
-                            "\n" +
-                            "# Required field for GENCODE files.\n" +
-                            "# Path to the FASTA file from which to load the sequences for GENCODE transcripts:\n" +
-                            "gencode_fasta_path =\n" +
-                            "\n" +
-                            "# Required field for simpleXSV files.\n" +
-                            "# Valid values:\n" +
-                            "#     GENE_NAME\n" +
-                            "#     TRANSCRIPT_ID\n" +
-                            "xsv_key = GENE_NAME\n" +
-                            "\n" +
-                            "# Required field for simpleXSV files.\n" +
-                            "# The 0-based index of the column containing the key on which to match\n" +
-                            "xsv_key_column = 0\n" +
-                            "\n" +
-                            "# Required field for simpleXSV AND locatableXSV files.\n" +
-                            "# The delimiter by which to split the XSV file into columns.\n" +
-                            "xsv_delimiter = ,\n" +
-                            "\n" +
-                            "# Required field for simpleXSV files.\n" +
-                            "# Whether to permissively match the number of columns in the header and data rows\n" +
-                            "# Valid values:\n" +
-                            "#     true\n" +
-                            "#     false\n" +
-                            "xsv_permissive_cols = true\n" +
-                            "\n" +
-                            "# Required field for locatableXSV files.\n" +
-                            "# The 0-based index of the column containing the contig for each row\n" +
-                            "contig_column =\n" +
-                            "\n" +
-                            "# Required field for locatableXSV files.\n" +
-                            "# The 0-based index of the column containing the start position for each row\n" +
-                            "start_column =\n" +
-                            "\n" +
-                            "# Required field for locatableXSV files.\n" +
-                            "# The 0-based index of the column containing the end position for each row\n" +
-                            "end_column ="
-            );
-
-        } catch (IOException e) {
-            throw new UserException("Error. Unable to make template config file in location: " + bundler.metadataFilePath + "/" + TEMPLATE_CONFIG_FILE_NAME);
-        }
-    }
-
-    /**
-     * Build a ReadMe file in the correct folder.
-     * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
-     */
-    public static void buildReadMeFile(FuncotatorDataSourceBundlerHttpClient bundler) {
-        try ( FileWriter writer = new FileWriter(bundler.metadataFilePath.toAbsolutePath().toString() + "/" + README_FILE_NAME);
-              BufferedWriter buffer = new BufferedWriter(writer) )
-        {
-
-            buffer.write(
-                    "################################################################################\n" +
-                            "# Funcotator Data Sources Bundler Package README\n" +
-                            "################################################################################\n" +
-                            "\n" +
-                            "+---------------------------------------------+ \n" +
-                            "| Data Source Version Information             |\n" +
-                            "+---------------------------------------------+ \n" +
-                            "\n" +
-                            "Version:          0.0." + bundler.getDate() + "\n" +
-                            "Use Case:         species name\n" +
-                            "Source:           ./gatk -bundler.dsOrganism -species-name bundler.speciesName \n" +
-                            "Alternate Source: ./gatk -bundler.dsOrganism -species-name bundler.speciesName \n" +
-                            "\n" +
-                            "################################################################################\n" +
-                            "\n" +
-                            "+---------------------------------------------+ \n" +
-                            "| README                                      | \n" +
-                            "+---------------------------------------------+ \n" +
-                            "\n" +
-                            "This is a collection of data sources to be used in conjunction with Funcotator\n" +
-                            "to annotate data samples for a variety of species. \n" +
-                            "\n" +
-                            "This folder is a top-level Data Sources Folder for The Broad Institute's \n" +
-                            "Funcotator Data Source Bundler tool.  When running Funcotator, pass the path to this directory in\n" +
-                            "as a command-line argument:\n" +
-                            "\n" +
-                            "   ./gatk Funcotator --data-sources-path PATH/TO/THIS/FOLDER ...\n" +
-                            "\n" +
-                            "For more information on Funcotator, see the GATK development github site:\n" +
-                            "\n" +
-                            "\thttps://github.com/broadinstitute/gatk\n" +
-                            "\n" +
-                            "################################################################################\n" +
-                            "\n" +
-                            "+---------------------------------------------+ \n" +
-                            "| Data Sources                                |\n" +
-                            "+---------------------------------------------+ \n" +
-                            "\n" +
-                            "Using this Data Sources Folder will enable the following data sources:\n" +
-                            "--------------------\n" +
-                            "\n" +
-                            "  ensembl\n" +
-                            "--------------------\n" +
-                            "  The ENSEMBL Project produces high quality reference gene annotation and experimental validation for over 50,000 genomes. \n"
-            );
-        } catch (IOException e) {
-            throw new UserException("Error. Unable to make ReadMe file in location: " + bundler.metadataFilePath + "/" + README_FILE_NAME);
-        }
-    }
-
-    /**
-     * Build a manifest file in the correct folder.
-     * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
-     */
-    public static void buildManifestFile(FuncotatorDataSourceBundlerHttpClient bundler) {
-        try ( FileWriter writer = new FileWriter(bundler.metadataFilePath.toAbsolutePath().toString() + "/" + MANIFEST_FILE_NAME);
-              BufferedWriter buffer = new BufferedWriter(writer) )
-        {
-
-            buffer.write(
-                    "Version:          0.0." + bundler.getDate() + "\n" +
-                            "Use Case:         " + bundler.speciesName + "\n" +
-                            "Source:           ./gatk FuncotatorDataSourceBundler -" + bundler.dsOrganism + "-species-name " + bundler.speciesName + "\n" +
-                            "Alternate Source: ./gatk FuncotatorDataSourceBundler -" + bundler.dsOrganism + "-species-name " + bundler.speciesName + "\n"
-            );
-
-        } catch (IOException e) {
-            throw new UserException("Error. Unable to make manifest file in location: " + bundler.metadataFilePath.toString() + "/" + MANIFEST_FILE_NAME);
-        }
-    }
-
-    /**
-     * Run the fixGencodeOrdering.py script to put gtf file in correct genomic coordinate order.
-     * @param gtfFilePath The {@link Path} to the gtf file we want to reorder.
-     * @param bundler The {@link FuncotatorDataSourceBundlerHttpClient} which holds all of the variables we will need.
-     */
-    public static void readBashScript(Path gtfFilePath, FuncotatorDataSourceBundlerHttpClient bundler) {
-        PythonScriptExecutor executor = new PythonScriptExecutor(true);
-        final List<String> args = new ArrayList<>();
-
-        args.add("./" + gtfFilePath.toString());
-        args.add("--output-file");
-        args.add("./" + bundler.dsReorderedGtfPath);
-        boolean success = executor.executeScript("./scripts/funcotator/data_sources/fixGencodeOrdering.py", null, args);
-        if (!success) {
-            throw new UserException("Error. Unable to create index for gtf file.");
+            throw new UserException("Could not obtain data from "+ url, ex);
         }
     }
 
@@ -443,20 +460,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
      */
     public Path getOutputDestination() {
         return this.outputDestination;
-    }
-
-    /**
-     * @return A copy of the {@link Path} used as the output destination for the unzipped gtf file for this {@link FuncotatorDataSourceBundlerHttpClient}.
-     */
-    public Path getOutputUnzippedDest() {
-        return this.outputUnzippedDest;
-    }
-
-    /**
-     * @return A copy of the {@link String} used as the fasta data source URL for this {@link FuncotatorDataSourceBundlerHttpClient}.
-     */
-    public String getFastaURL() {
-        return this.dsFastaURL;
     }
 
     /**
@@ -492,200 +495,5 @@ public class FuncotatorDataSourceBundlerHttpClient {
      */
     public Path getIndexPath() {
         return this.indexFilePath;
-    }
-
-    /**
-     * @return A copy of the {@link Path} which is the path to the config file for this {@link FuncotatorDataSourceBundlerHttpClient}.
-     */
-    public Path getConfigPath() {
-        return this.configFilePath;
-    }
-
-    /**
-     * @return A copy of the {@link String} which is the url for the gtf ReadMe for this {@link FuncotatorDataSourceBundlerHttpClient}.
-     */
-    public String getGtfReadMeURL() {
-        return this.dsGtfReadMeURL;
-    }
-
-    /**
-     * @return A copy of the {@link String} which is the url for the fasta ReadMe for this {@link FuncotatorDataSourceBundlerHttpClient}.
-     */
-    public String getFastaReadMeURL() {
-        return this.dsFastaReadMeURL;
-    }
-
-    /**
-     * @return A copy of the {@link Path} which is the path to the gtf ReadMe file for this {@link FuncotatorDataSourceBundlerHttpClient}.
-     */
-    public Path getGtfReadMePath() {
-        return this.dsGtfReadMePath;
-    }
-
-    /**
-     * @return A copy of the {@link Path} which is the path to the fasta ReadMe file for this {@link FuncotatorDataSourceBundlerHttpClient}.
-     */
-    public Path getFastaReadMePath() {
-        return this.dsFastaReadMePath;
-    }
-
-    /**
-     * @return A copy of the {@link String} which is the date for this {@link FuncotatorDataSourceBundlerHttpClient}.
-     */
-    public String getDate() {
-        final LocalDate date = LocalDate.of(2021, Month.AUGUST, 10);
-        return String.format("%d%02d%02d", date.getYear(), date.getMonthValue(), date.getDayOfMonth());
-    }
-
-    /**
-     * @return A copy of the {@link Path} which is the path to the fasta .dict file for this {@link FuncotatorDataSourceBundlerHttpClient}.
-     */
-    public Path getFastaDictPath() { return this.dsFastaDictPath; }
-
-    /**
-     * Constructs the url for the data source file.
-     * @param baseURL The {@link String} representing the base url where the data source will be found
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @param fileName The {@link String} representing the file name for the data source we need to download.
-     * @return The url constructed using the base URL, the species name, and the file name.
-     */
-    public String setURL(String baseURL, String speciesName, String fileName) {
-        return baseURL + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION;
-    }
-
-    /**
-     * Constructs the url for the gtf ReadMe file.
-     * @param baseURL The {@link String} representing the base url where the data source will be found.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @return The url constructed using the base URL, the species name, and the ReadMe extension.
-     */
-    public String setGtfReadMeURL(String baseURL, String speciesName) {
-        return baseURL + speciesName + "/" + DataSourceUtils.README_EXTENSION;
-    }
-
-    /**
-     * Constructs the url for the fasta ReadMe file.
-     * @param baseURL The {@link String} representing the base url where the data source will be found.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @return The url constructed using the base URL, the species name, the cdna extension, and the ReadMe extension.
-     */
-    public String setFastaReadMeURL(String baseURL, String speciesName) {
-        return baseURL + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + DataSourceUtils.README_EXTENSION;
-    }
-
-    /**
-     * Constructs the path where the data source to be copied is found.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @param fileName The {@link String} representing the file name for the data source we need to download.
-     * @return A path to the data source.
-     */
-    public Path setPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() +  "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION);
-    }
-
-    /**
-     * Constructs the path where the gtf ReadMe for the data source is found.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @param fileName The {@link String} representing the file name for the data source we need to download.
-     * @return A path to the data source.
-     */
-    public Path setGtfReadMePath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.GTF_README_EXTENSION);
-    }
-
-    /**
-     * Constructs the path for where the unzipped gtf file should go.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @param fileName The {@link String} representing the file name for the data source we need to download.
-     * @return A path to the unzipped gtf file.
-     */
-    public Path setUnzipPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
-    }
-
-    /**
-     * Constructs the url for the fasta file of the data source.
-     * @param baseUrl The {@link String} representing the base URL for the fasta file.
-     * @param speciesName The {@link String} reprsenting the chosen species to gather data soruces for.
-     * @param fileName The {@link String} representing the file name for the data source we need to download.
-     * @return The url at which the fasta file can be found.
-     */
-    public String setFastaUrl(String baseUrl, String speciesName, String fileName) {
-        return baseUrl + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + fileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION;
-    }
-
-    /**
-     * Constructs the path where the fasta file for the data source to be copied is found.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @param fileName The {@link String} representing the file name for the data source we need to download.
-     * @return A path to the fasta data source.
-     */
-    public Path setFastaPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION);
-    }
-
-    /**
-     * Constructs the path where the fasta ReadMe file for the data source to be copied is found.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @return A path to the fasta data source.
-     */
-    public Path setFastaReadMePath(String speciesName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.FASTA_README_EXTENSION);
-    }
-
-    /**
-     * Constructs the path for where the unzipped fasta file should go.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @param fileName The {@link String} representing the file name for the data source we need to download.
-     * @return A path to the unzipped fasta file.
-     */
-    public Path setFastaUnzipPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_UNZIPPED_EXTENSION);
-    }
-
-    /**
-     * Constructs the path for where the index file should go.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @param fileName The {@link String} representing the file name for the data source we need to download.
-     * @return A path to the index file for this data source.
-     */
-    public Path setIndexFilePath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION + DataSourceUtils.IDX_EXTENSION);
-    }
-
-    /**
-     * Constructs the path where the config file should go.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @return The path where the config file will be found.
-     */
-    public Path setConfigFilePath(String speciesName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + ENSEMBL_CONFIG_NAME);
-    }
-
-    /**
-     * Constructs the path where the manifest file should go.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @return The path where the manifest file will be found.
-     */
-    public Path setMetadataFilePath(String speciesName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/");
-    }
-
-    /**
-     * Constructs the path where the fasta dict file should go.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @return The path where the fasta.dict file will be found.
-     */
-    public Path setFastaDictPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_DICT_EXTENSION);
-    }
-
-    /**
-     * Constructs the path where the reordered gtf file should go.
-     * @param speciesName The {@link String} representing the chosen species to gather data sources for.
-     * @return The path where the reordered gtf file will be found.
-     */
-    public Path setReorderedGtfPath(String speciesName, String fileName) {
-        return IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate() + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.REORDERED_EXTENSION + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
     }
 }

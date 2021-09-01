@@ -6,6 +6,10 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 
 /**
  * Class to test the {@link FuncotatorDataSourceBundler}.
@@ -15,60 +19,29 @@ import org.testng.annotations.Test;
 public class FuncotatorDataSourceBundlerUnitTest extends CommandLineProgramTest{
 
     //==================================================================================================================
-    // Static Variables:
-    private static final String speciesName     = "speciesName";
-    private static final String speciesName2    = "speciesName2";
-    private static final String speciesName3    = "speciesName3";
-
-    //==================================================================================================================
     // Data Providers:
 
     @DataProvider
-    Object[][] provideForTestMakeFolder1() {
+    Object[][] provideForTestMakeDataSourcesFolderStructure() {
         return new Object[][] {
-                {
-                    IOUtils.getPath(speciesName)
-                },
-                {
-                    IOUtils.getPath("")
-                }
+                { "speciesName" },
+                { "test1" },
+                { "test2" },
+                { "an_octopus" },
         };
     }
 
-    @DataProvider
-    Object[][] provideForTestMakeFolder2() {
-        return new Object[][] {
-                {
-                    IOUtils.getPath(speciesName2).toAbsolutePath().toString(),
-                        speciesName2
-                }
-        };
-    }
+    @Test(dataProvider = "provideForTestMakeDataSourcesFolderStructure")
+    public void testMakeDataSourcesFolderStructure(final String speciesName) {
 
-    @DataProvider
-    Object[][] provideForTestMakeFolder3() {
-        return new Object[][] {
-                {
-                    IOUtils.getPath(speciesName3).toAbsolutePath().toString(),
-                        speciesName3
-                }
-        };
-    }
-    @Test(dataProvider = "provideForTestMakeFolder1")
-    public void testMakeFolder1(String folderName) {
-        FuncotatorDataSourceBundler.makeFolders(folderName);
-    }
+        try {
+            final Path   tempDir    = Files.createTempDirectory(speciesName);
+            final String folderName = tempDir.toString() + "data_sources_" + speciesName;
 
-    @Test(dataProvider = "provideForTestMakeFolder2", expectedExceptions = UserException.BadInput.class)
-    public void testMakeFolder2(String pathName, String speciesName) {
-        // Assuming we haven't run testMakeFolder1 yet, this test should cause an exception to be thrown:
-        FuncotatorDataSourceBundler.makeFolder2(pathName, speciesName);
+            FuncotatorDataSourceBundler.makeDataSourcesFolderStructure(folderName, speciesName);
+        }
+        catch ( final IOException ex ) {
+            throw new UserException("Could not complete test!", ex);
+        }
     }
-
-    @Test(dataProvider = "provideForTestMakeFolder3", expectedExceptions = UserException.BadInput.class)
-    public void testMakeFolder3(String pathName, String speciesName) {
-        // Assuming we haven't run testMakeFolder1 or testMakeFolder2 yet, this test should cause an exception to be thrown:
-        FuncotatorDataSourceBundler.makeFolder3(pathName, speciesName);
-    }
-
 }

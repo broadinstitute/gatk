@@ -5,7 +5,9 @@ import htsjdk.samtools.reference.FastaSequenceIndexCreator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -18,8 +20,8 @@ import picard.sam.CreateSequenceDictionary;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.LocalDate;
-import java.time.Month;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 
 /**
@@ -54,6 +56,7 @@ import java.time.Month;
         programGroup = VariantEvaluationProgramGroup.class //Need to make a new program group
 )
 @DocumentedFeature
+@BetaFeature
 public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
     private static final Logger logger = LogManager.getLogger(FuncotatorDataSourceBundler.class);
@@ -67,8 +70,9 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     public static final String PLANTS_ARG_LONG_NAME     = "plants";
     public static final String PROTISTS_ARG_LONG_NAME   = "protists";
     public static final String SPECIES_ARG_LONG_NAME    = "species-name";
-    public static final String OVERWRITE_ARG_LONG_NAME  = "overwrite-output-file";
-    public static final String EXTRACT_AFTER_DOWNLOAD   = "extract-after-download";
+    public static final String OVERWRITE_ARG_LONG_NAME            = "overwrite-output-file";
+    public static final String OUTPUT_DATASOURCES_FOLDER_ARG_NAME = "output-datasources-folder";
+    public static final String EXTRACT_AFTER_DOWNLOAD             = "extract-after-download";
 
     //==================================================================================================================
     // Private Static Members:
@@ -151,12 +155,11 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             optional = true)
     private boolean overwriteOutputFile = false;
 
-    @Argument(
-            shortName = EXTRACT_AFTER_DOWNLOAD,
-            fullName  = EXTRACT_AFTER_DOWNLOAD,
-            doc = "Extract the data sources to a sibling folder after they have been downloaded.",
+    @Argument(fullName = OUTPUT_DATASOURCES_FOLDER_ARG_NAME,
+            shortName  = OUTPUT_DATASOURCES_FOLDER_ARG_NAME,
+            doc = "Location in which to put the output datasources.",
             optional = true)
-    protected boolean extractDataSourcesAfterDownload = false;
+    private String outputDatasourcesFolder = null;
 
     //==================================================================================================================
     // Constructors:
@@ -195,18 +198,22 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             dataSourceOrganism = "bacteria";
             baseURL = BACTERIA_BASE_URL;
             baseFastaURL = BACTERIA_BASE_FASTA;
+
         } else if ( getFungiDataSources ) {
             dataSourceOrganism = "fungi";
             baseURL = FUNGI_BASE_URL;
             baseFastaURL = FUNGI_BASE_FASTA;
+
         } else if ( getMetazoaDataSources ) {
             dataSourceOrganism = "metazoa";
             baseURL = METAZOA_BASE_URL;
             baseFastaURL = METAZOA_BASE_FASTA;
+
         } else if ( getPlantsDataSources ) {
             dataSourceOrganism = "plants";
             baseURL = PLANTS_BASE_URL;
             baseFastaURL = PLANTS_BASE_FASTA;
+
         } else {
             dataSourceOrganism = "protists";
             baseURL = PROTISTS_BASE_URL;
@@ -229,29 +236,38 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
         logger.info(dsOrganism + ":" + dsSpecies + " data sources selected.");
 
-        // Make folders to put data sources in:
-        makeFolders(speciesName);
-
-        // Make the bundler object:
-        final FuncotatorDataSourceBundlerHttpClient bundler = FuncotatorDataSourceBundlerHttpClient.create(dsOrganism, speciesName, baseURL, baseFastaURL);
-
-        // Download the gtf file:
-        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getDSUrl(), bundler.getOutputDestination());
-
-        // Download the fasta file:
-        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaURL(), bundler.getFastaOutputDestination());
-
-
-        // Extract data sources if requested:
-        if ( extractDataSourcesAfterDownload ) {
-            FuncotatorDataSourceBundlerUtils.extractGzFile(bundler.getOutputDestination().toString(), bundler.getDSUnzipPath().toString(), overwriteOutputFile);
-            FuncotatorDataSourceBundlerUtils.extractGzFile(bundler.getFastaOutputDestination().toString(), bundler.getFastaUnzipPath().toString(), overwriteOutputFile);
+        // Get or create a named location to put our data sources:
+        final String outputFolder;
+        if (outputDatasourcesFolder != null) {
+            outputFolder = outputDatasourcesFolder;
         }
         else {
-            logger.info("IMPORTANT: You must unzip the downloaded data sources prior to using them with Funcotator.");
+            outputFolder = speciesName + "_dataSources.v0.0." + FuncotatorDataSourceBundlerUtils.getCurrentDateString();
         }
 
+        // Make folders to put data sources in:
+        logger.info("Creating output folder for datasources: " + outputFolder);
+        makeDataSourcesFolderStructure(outputFolder, speciesName);
+
+        // Make the bundler object:
+        final FuncotatorDataSourceBundlerHttpClient bundler = new FuncotatorDataSourceBundlerHttpClient(
+                IOUtils.getPath(outputFolder), dsOrganism, speciesName, baseURL, baseFastaURL
+        );
+
+        // ===================================
+        // Download the data sources:
+        logger.info("Downloading data files...");
+        bundler.downloadDataSources();
+
+        // ===================================
+        // Process downloaded files:
+
+        // Extract our data:
+        logger.info("Extracting gzipped data...");
+        bundler.extractGzippedFiles(overwriteOutputFile);
+
         // Build the fasta index file:
+        logger.info("Indexing FASTA file...");
         try {
             FastaSequenceIndexCreator.create(bundler.getFastaUnzipPath(), true);
         } catch (IOException e) {
@@ -259,97 +275,68 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         }
 
         // Build the fasta .dict file:
+        logger.info("Creating sequence dictionary...");
         final CreateSequenceDictionary csd_tool = new CreateSequenceDictionary();
         csd_tool.instanceMain(new String[] {"-R", bundler.getFastaUnzipPath().toString()});
 
         // Index the gtf file:
-        FuncotatorDataSourceBundlerHttpClient.buildIndexFile(bundler.getDSUnzipPath(), bundler.getIndexPath(), bundler);
+        logger.info("Indexing GTF file...");
+        bundler.sortAndIndexGtfFile();
 
-        // Delete gtf and fasta zip files:
+        // Build the config file for the new data source directory:
+        logger.info("Building GTF data source config file...");
+        bundler.buildConfigFile();
+
+        // Create a manifest file:
+        logger.info("Building datasources manifest file...");
+        bundler.buildManifestFile();
+
+        // Create the template config file:
+        logger.info("Creating template config file...");
+        bundler.buildTemplateConfigFile();
+
+        // Create README file:
+        logger.info("Creating high-level README file...");
+        bundler.buildReadMeFile();
+
+        // ===================================
+        // CLEANUP:
+        logger.info("Cleaning up intermediate files...");
+
+        // Delete gtf and fasta zip files
         FuncotatorDataSourceBundlerUtils.deleteFile(bundler.getOutputDestination().toString());
         FuncotatorDataSourceBundlerUtils.deleteFile(bundler.getFastaOutputDestination().toString());
 
         // Delete gtf file:
         FuncotatorDataSourceBundlerUtils.deleteFile(bundler.getDSUnzipPath().toString());
-
-        // Build the config file for the new data source directory:
-        FuncotatorDataSourceBundlerHttpClient.buildConfigFile(bundler);
-
-        // Create a manifest file:
-        FuncotatorDataSourceBundlerHttpClient.buildManifestFile(bundler);
-
-        // Create the template config file:
-        FuncotatorDataSourceBundlerHttpClient.buildTemplateConfigFile(bundler);
-
-        // Create ReadMe file:
-        FuncotatorDataSourceBundlerHttpClient.buildReadMeFile(bundler);
-
-        // Download the gtf ReadMe file for specific data source file:
-        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getGtfReadMeURL(), bundler.getGtfReadMePath());
-
-        // Download the fasta ReadMe file for specific data source file:
-        FuncotatorDataSourceBundlerHttpClient.downloadDataSources(bundler.getFastaReadMeURL(), bundler.getFastaReadMePath());
-
     }
 
     /**
-     * Helper function which builds the first folder for the funcotator data sources.
-     * First folder is the outermost folder and will be named "speciesName".
-     * @param speciesName The name of the species to download data sources for.
+     * Create a folder with the given path or raise an exception.
+     * @param baseFolder The name of the base folder for the new data sources.
      */
-    public static void makeFolders(String speciesName) {
-        Path folderName = IOUtils.getPath(speciesName + "_dataSources.v0.0." + getDate());
-        String path = folderName.toAbsolutePath().toString();
-        File newFolder = new File(path);
-        boolean bool = newFolder.mkdir();
-        if (!bool) {
-            throw new UserException("Unable to make file.");
-        }
-        makeFolder2(path, speciesName);
-    }
-
-    /**
-     * Helper function which builds the second folder for the funcotator data sources.
-     * Second folder is the middle folder and is named "ensembl" and goes inside the "speciesName" folder.
-     * @param pathName The destination path for this folder.
-     * @param speciesName The name of the species to download data sources for.
-     */
-    public static void makeFolder2(String pathName, String speciesName) {
-        String path = pathName + "/" + DataSourceUtils.ENSEMBL_EXTENSION;
-        File newFolder = new File(path);
-        boolean bool = newFolder.mkdir();
-        if (!bool) {
-            throw new UserException("Unable to make file.");
-        }
-        makeFolder3(path, speciesName);
-    }
-
-    /**
-     * Helper function which builds the third folder for the funcotator data sources.
-     * The third folder is the innermost folder and is named "speciesName" and goes inside the "ensembl" folder.
-     * @param pathName The destination path for this folder.
-     * @param speciesName The name of the species to download data sources for.
-     */
-    public static void makeFolder3(String pathName, String speciesName) {
-        String path = pathName + "/" + speciesName;
-        File newFolder = new File(path);
-        boolean bool = newFolder.mkdir();
-        if (!bool) {
+    private static void makeFolderOrFail(final Path baseFolder) {
+        boolean success = baseFolder.toAbsolutePath().toFile().mkdir();
+        if (!success) {
             throw new UserException("Unable to make file.");
         }
     }
 
     /**
-     * @return A copy of the {@link String} which is the date for this {@link FuncotatorDataSourceBundler}.
+     * Method which builds the folder structure for the funcotator data sources.
+     * @param baseFolder The name of the base folder for the new data sources.
+     * @param speciesName The name of the species for which to create data sources.
      */
-    public static String getDate() {
-        final LocalDate date = LocalDate.of(2021, Month.AUGUST, 10);
-        return String.format("%d%02d%02d", date.getYear(), date.getMonthValue(), date.getDayOfMonth());
+    public static void makeDataSourcesFolderStructure(final String baseFolder, final String speciesName) {
+        // Base folder:
+        makeFolderOrFail(IOUtils.getPath(baseFolder));
+
+        // Subfolder for GTF:
+        makeFolderOrFail(IOUtils.getPath(baseFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION));
+
+        // Subfolder for species:
+        makeFolderOrFail(IOUtils.getPath(baseFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName));
     }
-
-
-    //==================================================================================================================
-    // Helper Data Types:
 }
 
 

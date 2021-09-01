@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.net.MalformedURLException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -106,6 +107,12 @@ public class FuncotatorDataSourceBundlerUtils {
         haveInitializedMaps = true;
     }
 
+    /**
+     * @return The current date in numerical string format (YearMonthDay / yyyyMMdd).
+     */
+    public static String getCurrentDateString(){
+        return new SimpleDateFormat("yyyyMMdd").format(Calendar.getInstance().getTime());
+    }
 
     /**
      * Builds a map for the specified organism and then returns the file name associated with the given species name.
@@ -233,27 +240,9 @@ public class FuncotatorDataSourceBundlerUtils {
      * @param decompressedFilePath {@link String} path where the unzipped gtf or fasta file will go.
      * @param doOverwrite {@link boolean} which determine if a pre-existing file should be overwritten or not.
      */
-    public static void extractGzFile(String gzFilePath, String decompressedFilePath, boolean doOverwrite) {
-        byte[] buffer = new byte[1024];
-
+    public static void extractGzFile(final String gzFilePath, final String decompressedFilePath, final boolean doOverwrite) {
         IOUtils.ensurePathIsOkForOutput(IOUtils.getPath(decompressedFilePath), doOverwrite);
-        try {
-            FileInputStream inputStream = new FileInputStream(gzFilePath);
-            GZIPInputStream gZIPInputStream = new GZIPInputStream(inputStream);
-            FileOutputStream fileOutputStream = new FileOutputStream(decompressedFilePath);
-
-            int bytes_read;
-
-            while ((bytes_read = gZIPInputStream.read(buffer)) > 0) {
-                fileOutputStream.write(buffer, 0, bytes_read);
-            }
-            inputStream.close();
-            gZIPInputStream.close();
-            fileOutputStream.close();
-        } catch (IOException ex) {
-            throw new UserException("Could not obtain data from " + gzFilePath, ex);
-        }
-
+        IOUtils.gunzip(IOUtils.getPath(gzFilePath).toFile(), IOUtils.getPath(decompressedFilePath).toFile());
     }
 
     /**
