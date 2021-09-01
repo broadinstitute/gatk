@@ -24,9 +24,8 @@ else
   echo "using travis commit:"$HASH_TO_USE
 fi
 echo "Docker build done =========="
-sleep 10
 
-cd $WORKING_DIR/gatk/scripts/read
+cd $WORKING_DIR/gatk/scripts/
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" cnn_variant_wdl/jsons/cnn_score_variants_travis.json >$WORKING_DIR/cnn_score_variants_travis.json
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" cnn_variant_wdl/jsons/cnn_score_variants_travis_1d.json >$WORKING_DIR/cnn_score_variants_travis_1d.json
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" cnn_variant_wdl/jsons/cram2filtered_travis.json >$WORKING_DIR/cram2filtered_travis.json

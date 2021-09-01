@@ -600,9 +600,10 @@ public final class ReferenceConfidenceVariantContextMerger {
             genotypeBuilder.name(name);
             final GenotypeAssignmentMethod assignmentMethod = callGTAlleles ? GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL :
                     GenotypeAssignmentMethod.SET_TO_NO_CALL;
-                GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
-                        genotypeBuilder, assignmentMethod,
-                        g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null, targetAlleles, g.getAlleles(), null);
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
+                    genotypeBuilder, assignmentMethod,
+                    g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null,
+                    targetAlleles, g.getAlleles(), null);
             mergedGenotypes.add(genotypeBuilder.make());
         }
 

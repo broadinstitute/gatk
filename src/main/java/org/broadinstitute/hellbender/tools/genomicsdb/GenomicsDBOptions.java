@@ -28,9 +28,10 @@ public final class GenomicsDBOptions {
         this(reference, genomicsdbArgs, new GenotypeCalculationArgumentCollection(), false);
     }
 
-    public GenomicsDBOptions(final Path reference, GenomicsDBArgumentCollection genomicsdbArgs, GenotypeCalculationArgumentCollection genotypeCalcArgs, boolean callGenotypesToolOverride) {
+    public GenomicsDBOptions(final Path reference, final GenomicsDBArgumentCollection genomicsdbArgs,
+                             final GenotypeCalculationArgumentCollection genotypeCalcArgs, final boolean forceCallGenotypes) {
         this.reference = reference;
-        this.callGenotypes = genomicsdbArgs.callGenotypes || callGenotypesToolOverride;
+        this.callGenotypes = genomicsdbArgs.callGenotypes || forceCallGenotypes;
         this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
         this.maxGenotypeCount = genotypeCalcArgs.MAX_GENOTYPE_COUNT;
         this.useBCFCodec = genomicsdbArgs.useBCFCodec;

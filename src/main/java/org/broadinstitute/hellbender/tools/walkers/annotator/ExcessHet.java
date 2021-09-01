@@ -64,9 +64,8 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
-        Utils.validate(vc.hasGenotypes(), "Cannot calculate ExcessHet without genotypes");
         GenotypesContext genotypes = getFounderGenotypes(vc);
-        if (genotypes == null || !vc.isVariant()) {
+        if (genotypes == null || genotypes.isEmpty() || !vc.isVariant()) {
             return Collections.emptyMap();
         }
         final Pair<Integer, Double> sampleCountEH = calculateEH(vc, genotypes);
