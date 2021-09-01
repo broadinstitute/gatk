@@ -1,8 +1,8 @@
 version 1.0
 workflow GvsSitesOnlyVCF {
    input {
-        Array[File] gvs_extract_cohort_filtered_vcfs
-        Array[File] gvs_extract_cohort_filtered_vcf_indices
+        File inputFileofFileNames
+        File inputFileofIndexFileNames
         String output_sites_only_file_name
         String output_annotated_file_name
         String project_id
@@ -17,9 +17,39 @@ workflow GvsSitesOnlyVCF {
         String? service_account_json_path
         File? gatk_override
         File AnAcAf_annotations_template
+        File ancestry_file
+    }
+    Array[File] gvs_extract_cohort_filtered_vcfs = read_lines(inputFileofFileNames)
+    Array[File] gvs_extract_cohort_filtered_vcf_indices  = read_lines(inputFileofIndexFileNames)
+
+    call MakeSubpopulationFiles {
+        input:
+            input_ancestry_file = ancestry_file
     }
 
+    ## Scatter across the shards from the GVS jointVCF
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
+        String? service_account_json_optional = if (defined(service_account_json_path)) then service_account_json_path else ''
+    scatter(j in range(length(MakeSubpopulationFiles.ancestry_mapping_list)) ) {
+        ## Calculate AC/AN/AF for subpopulations
+          call GetSubpopulationCalculations {
+            input:
+              input_vcf = gvs_extract_cohort_filtered_vcfs[i],
+              input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+              service_account_json = service_account_json_optional,
+              subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list[j],
+              subpopulation = basename(MakeSubpopulationFiles.ancestry_mapping_list[j], "_subpopulation.args")
+          }
+          call ExtractAcAnAfFromSubpopulationVCFs {
+            input:
+              subpopulation = GetSubpopulationCalculations.subpopulation_name,
+              input_vcf = GetSubpopulationCalculations.subpopulation_output_vcf,
+              input_vcf_index = GetSubpopulationCalculations.subpopulation_output_vcf_idx,
+              custom_annotations_template = AnAcAf_annotations_template
+          }
+        }
+
+      ## Create a sites-only VCF from the original GVS jointVCF
         call SitesOnlyVcf {
           input:
             input_vcf = gvs_extract_cohort_filtered_vcfs[i],
@@ -35,49 +65,188 @@ workflow GvsSitesOnlyVCF {
             custom_annotations_template = AnAcAf_annotations_template
         }
 
+      ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
         call AnnotateVCF {
           input:
             input_vcf = SitesOnlyVcf.output_vcf,
             input_vcf_index = SitesOnlyVcf.output_vcf_idx,
             output_annotated_file_name = "${output_annotated_file_name}_${i}",
             nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file
+            custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
+            subpopulation_calculations_files = ExtractAcAnAfFromSubpopulationVCFs.annotations_file
         }
 
-       call PrepAnnotationJson {
-         input:
-           annotation_json = AnnotateVCF.annotation_json,
-           output_file_suffix = "${i}.json.gz",
-           output_path = output_path,
-           service_account_json_path = service_account_json_path,
-       }
+        call PrepAnnotationJson {
+          input:
+            annotation_json = AnnotateVCF.annotation_json,
+            output_file_suffix = "${i}.json.gz",
+            output_path = output_path,
+            service_account_json_path = service_account_json_path
+        }
     }
 
-     call BigQueryLoadJson {
-         input:
-             nirvana_schema = vat_schema_json_file,
-             vt_schema = variant_transcript_schema_json_file,
-             genes_schema = genes_schema_json_file,
-             project_id = project_id,
-             dataset_name = dataset_name,
-             output_path = output_path,
-             table_suffix = table_suffix,
-             service_account_json_path = service_account_json_path,
-             prep_jsons_done = PrepAnnotationJson.done
-         }
+    call BigQueryLoadJson {
+       input:
+         nirvana_schema = vat_schema_json_file,
+         vt_schema = variant_transcript_schema_json_file,
+         genes_schema = genes_schema_json_file,
+         project_id = project_id,
+         dataset_name = dataset_name,
+         output_path = output_path,
+         table_suffix = table_suffix,
+         service_account_json_path = service_account_json_path,
+         prep_jsons_done = PrepAnnotationJson.done
+  }
 
-     call BigQuerySmokeTest {
-         input:
-             project_id = project_id,
-             dataset_name = dataset_name,
-             counts_variants = ExtractAnAcAfFromVCF.count_variants,
-             table_suffix = table_suffix,
-             service_account_json_path = service_account_json_path,
-             load_jsons_done = BigQueryLoadJson.done
-         }
+    call BigQuerySmokeTest {
+       input:
+         project_id = project_id,
+         dataset_name = dataset_name,
+         counts_variants = ExtractAnAcAfFromVCF.count_variants,
+         table_suffix = table_suffix,
+         service_account_json_path = service_account_json_path,
+         load_jsons_done = BigQueryLoadJson.done
+   }
 }
 
 ################################################################################
+
+task MakeSubpopulationFiles {
+    input {
+        File input_ancestry_file
+    }
+    String output_ancestry_filename =  "ancestry_mapping"
+    command <<<
+        set -e
+
+        python3 /app/extract_subpop.py \
+        --input_path ~{input_ancestry_file}
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        Array[File] ancestry_mapping_list = glob("*_subpopulation.args")
+    }
+}
+
+
+task GetSubpopulationCalculations {
+    input {
+        File input_vcf
+        File input_vcf_index
+        String? service_account_json
+        File subpopulation_sample_list
+        String subpopulation
+    }
+    String output_filename = "~{subpopulation}.vcf"
+    String output_vcf_idx = output_filename + ".idx"
+
+    String has_service_account_file = if (service_account_json != '') then 'true' else 'false'
+    String input_vcf_basename = basename(input_vcf)
+    String updated_input_vcf = if (service_account_json != '') then input_vcf_basename else input_vcf
+
+    parameter_meta {
+        input_vcf: {
+            localization_optional: true
+        }
+        input_vcf_index: {
+            localization_optional: true
+        }
+    }
+    command <<<
+        set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json} local.service_account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
+
+          gsutil cp ~{input_vcf} .
+          gsutil cp ~{input_vcf_index} .
+        fi
+
+
+        # Hacky method to get the subpopulation AC/AN/AF
+        # The input here will be a list of samples for a given subpopulation
+        # for now, we aren't gonna scatter, let's get them all
+
+        # The sample names input:  This argument can be specified multiple times in order to provide multiple sample names, or to specify
+        # the name of one or more files containing sample names. File names must use the extension ".args", and the
+        # expected file format is simply plain text with one sample name per line. Note that sample exclusion takes
+        # precedence over inclusion, so that if a sample is in both lists it will be excluded.
+
+        gatk --java-options "-Xmx2048m" \
+            SelectVariants \
+                -V ~{updated_input_vcf} \
+                -sn ~{subpopulation_sample_list} \
+                --add-output-vcf-command-line false \
+                --allow-nonoverlapping-command-line-samples \
+                --exclude-filtered \
+                -O ~{output_filename}
+
+     >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "broadinstitute/gatk:4.2.0.0"
+        memory: "3 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File subpopulation_output_vcf = "~{output_filename}"
+        File subpopulation_output_vcf_idx = "~{output_vcf_idx}"
+        String subpopulation_name = subpopulation
+    }
+}
+
+task ExtractAcAnAfFromSubpopulationVCFs {
+    input {
+        String subpopulation
+        File input_vcf
+        File input_vcf_index
+        File custom_annotations_template
+    }
+
+    String custom_annotations_file_name = subpopulation + "_an_ac_af.tsv"
+
+    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
+    command <<<
+        set -e
+
+        sed 's/gvsAnnotations/~{subpopulation}SubpopulationAnnotations/g' ~{custom_annotations_template} > ~{custom_annotations_file_name}
+
+        bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' | grep -v "*" >> ~{custom_annotations_file_name}
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File annotations_file = "~{custom_annotations_file_name}"
+    }
+}
+
 task SitesOnlyVcf {
     input {
         File input_vcf
@@ -160,12 +329,12 @@ task ExtractAnAcAfFromVCF {
         ### for validation of the pipeline
         bcftools norm -m- ~{input_vcf} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
         # I find this ^ clearer, but could also do a regex like:  grep "AC=[1-9][0-9]*;A[N|F]=[.0-9]*;A[N|F]=[.0-9]*"
-        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python? still have the <20 issue...?
+        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210726"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -186,6 +355,7 @@ task AnnotateVCF {
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
+        Array[File] subpopulation_calculations_files
     }
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String annotation_json_name_jsi = annotation_json_name + ".jsi"
@@ -194,6 +364,7 @@ task AnnotateVCF {
     String path = "/Cache/GRCh38/Both"
     String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
+
     command <<<
         set -e
 
@@ -213,12 +384,22 @@ task AnnotateVCF {
         mkdir customannotations_dir
         CUSTOM_ANNOTATIONS_FOLDER="$PWD/customannotations_dir"
 
+        # Start with the subpopulations
+        # Create an array in path of the paths and loop through them
+        subpopulation_array=(~{sep=" " subpopulation_calculations_files})
+        for val in ${subpopulation_array[@]}; do
+          echo $val
+          dotnet ~{custom_creation_location} customvar\
+             -r $DATA_SOURCES_FOLDER~{path_reference} \
+             -i $val \
+             -o $CUSTOM_ANNOTATIONS_FOLDER
+        done
 
+        # Then do the full set of samples
         dotnet ~{custom_creation_location} customvar\
              -r $DATA_SOURCES_FOLDER~{path_reference} \
              -i ~{custom_annotations_file} \
              -o $CUSTOM_ANNOTATIONS_FOLDER
-
 
         # =======================================
         # Create Nirvana annotations:
@@ -231,7 +412,6 @@ task AnnotateVCF {
              -r $DATA_SOURCES_FOLDER~{path_reference} \
              -i ~{input_vcf} \
              -o ~{output_annotated_file_name}
-
 
     >>>
     # ------------------------------------------------
@@ -263,6 +443,7 @@ task PrepAnnotationJson {
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
+    String output_annotations_gcp_path = output_path + 'annotations/'
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -283,11 +464,14 @@ task PrepAnnotationJson {
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
+        # for debugging only
+        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
+
      >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210808"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
         memory: "3 GB"
         preemptible: 5
         cpu: "1"
@@ -330,6 +514,8 @@ task BigQueryLoadJson {
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
+
+       echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
        if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json_path} local.service_account.json
@@ -403,6 +589,31 @@ task BigQueryLoadJson {
               v.gvs_all_ac,
               v.gvs_all_an,
               v.gvs_all_af,
+              v.gvs_max_af,
+              v.gvs_max_ac,
+              v.gvs_max_an,
+              v.gvs_max_subpop,
+              v.gvs_afr_ac,
+              v.gvs_afr_an,
+              v.gvs_afr_af,
+              v.gvs_amr_ac,
+              v.gvs_amr_an,
+              v.gvs_amr_af,
+              v.gvs_eas_ac,
+              v.gvs_eas_an,
+              v.gvs_eas_af,
+              v.gvs_eur_ac,
+              v.gvs_eur_an,
+              v.gvs_eur_af,
+              v.gvs_mid_ac,
+              v.gvs_mid_an,
+              v.gvs_mid_af,
+              v.gvs_oth_ac,
+              v.gvs_oth_an,
+              v.gvs_oth_af,
+              v.gvs_sas_ac,
+              v.gvs_sas_an,
+              v.gvs_sas_af,
               v.gene_symbol,
               v.transcript_source,
               v.aa_change,

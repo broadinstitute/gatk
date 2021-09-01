@@ -19,12 +19,28 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
     - BigQuery data editor
     - BigQuery job user
     - BigQuery Read Session User
+4. These tools expect reblocked gvcf files as input. 
 
 ## 1. Import Data
+In order to load data into BigQuery without hitting daily load limits, we recommend you group your input files into samples sets and follow these steps for each sample set.
 
-First, we have to import your reblocked gVCF files into GVS by running the `GvsImportGenomes` workflow.  
+## 1.1 Assign Gvs Ids 
+To optimize the internal queries, each sample must have a unique and consecutive integer id assigned. Run the `GvsAssignIds` workflow. This will create an appropiate id for each sample in the sample set and update the BigQuery data set with the sample name to id mapping info.
 
-The workflow should be run against a sample set indicating the samples to load.  The sample table should have a columns for the gVCFs (`hg38_reblocked_gvcf`) and their indexes (`hg38_reblocked_gvcf_index`)
+These are the required parameters which must be supplied to the workflow:
+
+| Parameter      | Description |
+| ----------------- | ----------- |
+| project_id | The name of the google project containing the dataset |
+| dataset_name      | The name of the dataset you created above       |
+| external\_sample_names | Use `this.samples.sample_id` |
+
+
+## 1.2 Load data
+
+Next, your reblocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.  
+
+The workflow should be run against a sample set indicating the samples to load.  The sample table should have a column for the reblocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files need to be in the same location.
 
 A sample set for the quickstart (`gvs_demo-10`) has already been created with 10 samples.
 
@@ -34,14 +50,13 @@ These are the required parameters which must be supplied to the workflow:
 | ----------------- | ----------- |
 | project_id | The name of the google project containing the dataset |
 | dataset_name      | The name of the dataset you created above       |
-| sample_map | Use `"gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvs_demo_10_sample_map.csv"` |
+| external\_sample_names | Use `this.samples.sample_id` |
 | output_directory | A unique GCS path to be used for loading, can be in the workspace bucket.  E.g. `gs://fc-124-12-132-123-31/gvs/demo1`)
 
 
 **NOTE**: if your workflow fails, you will need to manually remove a lockfile from the output directory.  It is called LOCKFILE, and can be removed with `gsutil rm`
 
 ## 2. Create Alt Allele Table
-
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.
 
 This is done by running the `GvsCreateAltAllele` workflow with the following parameters:
@@ -63,7 +78,7 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| filter_set_name | A unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 4  |
+| filter\_set_name | A unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 4  |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
@@ -77,8 +92,8 @@ This is done by running the `GvsPrepareCallset` workflow with the following para
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| destination_cohort_table_prefix | A unique, descriptive name for the tables containing the callset (e.g. `demo_10_wgs_callset`); you will want to make note of this for use in the next step |
-| sample_names_to_extract | A file of sample names to be extracted in the callset (use `gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvs_quickstart_10_samples.txt`) |
+| destination\_cohort\_table_prefix | A unique, descriptive name for the tables containing the callset (e.g. `demo_10_wgs_callset`); you will want to make note of this for use in the next step |
+| sample\_names\_to_extract | A file of sample names to be extracted in the callset (use `gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvs_quickstart_10_samples.txt`) |
 
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
@@ -94,9 +109,9 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| filter_set_name | the name of the filter set identifier created in step #2 |
-| fq_cohort_extract_table_prefix | the fully qualified name of the `destination_cohort_table_prefix` from step #3, of the form `<project>.<dataset>.<destination_cohort_table_prefix>` |
-| output_file_base_name | Base name for generated VCFs |
+| filter\_set_name | the name of the filter set identifier created in step #2 |
+| fq_cohort\_extract\_table\_prefix | the fully qualified name of the `destination_cohort_table_prefix` from step #3, of the form `<project>.<dataset>.<destination_cohort_table_prefix>` |
+| output_file\_base\_name | Base name for generated VCFs |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 

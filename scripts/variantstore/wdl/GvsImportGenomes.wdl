@@ -162,11 +162,12 @@ workflow GvsImportGenomes {
     }
   }
 
-  call AddIsLoadedColumn {
+  call SetIsLoadedColumn {
     input:
       load_vet_done = LoadVetTable.done,
       load_pet_done = LoadPetTable.done,
       dataset_name = dataset_name,
+      gvs_ids = select_first([GetSampleIds.gvs_ids, GetMaxTableIdLegacy.gvs_ids]),
       service_account_json_path = service_account_json_path,
       project_id = project_id,
       preemptible_tries = preemptible_tries
@@ -176,7 +177,7 @@ workflow GvsImportGenomes {
     input:
       run_uuid = SetLock.run_uuid,
       output_directory = output_directory,
-      load_sample_info_done = AddIsLoadedColumn.done,
+      load_sample_info_done = SetIsLoadedColumn.done,
       load_pet_done = LoadPetTable.done,
       load_vet_done = LoadVetTable.done,
       service_account_json_path = service_account_json_path,
@@ -311,7 +312,8 @@ task GetMaxTableIdLegacy {
 
   command <<<
       set -e
-      max_sample_id=$(cat ~{sample_map} | cut -d"," -f1 | sort -rn | head -1)
+      cat ~{sample_map} | cut -d"," -f1 > gvs_ids
+      max_sample_id=$(cat gvs_ids | sort -rn | head -1)
       python -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))"
   >>>
   runtime {
@@ -323,6 +325,7 @@ task GetMaxTableIdLegacy {
   }
   output {
       Int max_table_id = read_int(stdout())
+      File gvs_ids = "gvs_ids"
   }
 }
 
@@ -767,8 +770,12 @@ task LoadTable {
         # combine load status and wait status into final report
         paste bq_load_details.tmp bq_wait_details.tmp > bq_final_job_statuses.txt
 
-        # move files from each set into set-level "done" directories
-        gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/" 2> gsutil_mv_done.log
+        for set in $(sed 1d ~{datatype}_du_sets.txt | cut -f4 | sort | uniq)
+        do
+          # move files from each set into set-level "done" directories
+          echo "Moving set $set data into done directory."
+          gsutil -m mv "${DIR}set_${set}/${FILES}" "${DIR}set_${set}/done/" 2> gsutil_mv_done.log
+        done
 
     else
         echo "no ${FILES} files to process in $DIR"
@@ -787,6 +794,7 @@ task LoadTable {
     String done = "true"
     File? manifest_file = "~{datatype}_du_sets.txt"
     File? final_job_statuses = "bq_final_job_statuses.txt"
+    File? mv_log = "gsutil_mv_done.log"
   }
 }
 
@@ -809,7 +817,7 @@ task TerminateWorkflow {
   }
 }
 
-task AddIsLoadedColumn {
+task SetIsLoadedColumn {
   meta {
     volatile: true
   }
@@ -819,11 +827,13 @@ task AddIsLoadedColumn {
     Array[String] load_pet_done
     String dataset_name
     String project_id
+    File gvs_ids
     String? service_account_json_path
     Int? preemptible_tries
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  Array[String] gvs_id_array = read_lines(gvs_ids)
 
   command <<<
     set -ex
@@ -838,7 +848,7 @@ task AddIsLoadedColumn {
 
     # set is_loaded to true if there is a corresponding pet table partition with rows for that sample_id
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE partition_id != '__UNPARTITIONED__' AND total_logical_bytes > 0 AND table_name LIKE \"pet_%\")"
+    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE partition_id in ('~{sep="\',\'" gvs_id_array}') AND total_logical_bytes > 0 AND table_name LIKE \"pet_%\")"
   >>>
 
   runtime {
@@ -893,6 +903,8 @@ task GetSampleIds {
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
         "SELECT sample_id, sample_name FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > sample_map
 
+      cut -d, -f1 sample_map > gvs_ids
+
   >>>
   runtime {
       docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
@@ -905,5 +917,6 @@ task GetSampleIds {
       Int max_table_id = ceil(read_float("max_sample_id"))
       Int min_table_id = ceil(read_float("min_sample_id"))
       File sample_map = "sample_map"
+      File gvs_ids = "gvs_ids"
   }
 }

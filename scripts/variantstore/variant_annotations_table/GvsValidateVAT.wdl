@@ -81,6 +81,22 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
+    call SubpopulationMax {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
+    call SubpopulationAlleleCount {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
     output {
         Array[Map[String, String]] validation_results = [
             EnsureVatTableHasVariants.result,
@@ -90,7 +106,9 @@ workflow GvsValidateVatTable {
             SchemaNoNullRequiredFields.result,
             SchemaPrimaryKey.result,
             SchemaEnsemblTranscripts.result,
-            SchemaNonzeroAcAn.result
+            SchemaNonzeroAcAn.result,
+            SubpopulationMax.result,
+            SubpopulationAlleleCount.result
         ]
     }
 }
@@ -594,9 +612,9 @@ task SchemaNullTranscriptsExist {
         set -e
 
         if [ ~{has_service_account_file} = 'true' ]; then
-        gsutil cp ~{service_account_json_path} local.service_account.json
-        gcloud auth activate-service-account --key-file=local.service_account.json
-        gcloud config set project ~{query_project_id}
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
         fi
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
@@ -631,5 +649,115 @@ task SchemaNullTranscriptsExist {
     # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
         Map[String, String] result = {"SchemaNullTranscriptsExist": read_string('validation_results.txt')}
+    }
+}
+
+task SubpopulationMax {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+    # gvs_max_af is actually the max
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+        set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+            vid
+        FROM
+            ~{fq_vat_table}
+        WHERE
+            gvs_max_af < gvs_afr_af OR
+            gvs_max_af < gvs_amr_af OR
+            gvs_max_af < gvs_eas_af OR
+            gvs_max_af < gvs_eur_af OR
+            gvs_max_af < gvs_mid_af OR
+            gvs_max_af < gvs_oth_af OR
+            gvs_max_af < gvs_sas_af'
+
+        # if the result of the query has any rows, that means gvs_max_af is not in fact the max af
+        if [[ $NUMRESULTS != "0" ]]; then
+          echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for subpopulation" > validation_results.txt
+        else
+          echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect calculation for subpopulation" > validation_results.txt
+        fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
+    output {
+        Map[String, String] result = {"SubpopulationMax": read_string('validation_results.txt')}
+    }
+}
+
+task SubpopulationAlleleCount {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+    # sum of subpop ACs equal the gvs_all ACs
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+        set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+            vid
+        FROM
+            ~{fq_vat_table}
+        WHERE
+            gvs_all_ac != gvs_afr_ac + gvs_amr_ac + gvs_eas_ac + gvs_eur_ac + gvs_mid_ac + gvs_oth_ac + gvs_sas_ac'
+
+        # if the result of the query has any rows, that means gvs_all_ac has not been calulated correctly/
+        if [[ $NUMRESULTS != "0" ]]; then
+            echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for AC and the AC of subpopulations" > validation_results.txt
+            else
+            echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect calculation for AC and the AC of subpopulations" > validation_results.txt
+        fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
+    output {
+        Map[String, String] result = {"SubpopulationAlleleCount": read_string('validation_results.txt')}
     }
 }

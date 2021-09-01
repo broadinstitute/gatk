@@ -126,9 +126,159 @@
     "mode": "Required"
   },
   {
+    "description": "AoU: Max subpopulation frequency",
+    "name": "gvs_max_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: Max subpopulation allele count",
+    "name": "gvs_max_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: Max subpopulation allele number",
+    "name": "gvs_max_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: Max subpopulation ancestry",
+    "name": "gvs_max_subpop",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele count in the afr subpop",
+    "name": "gvs_afr_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele number in the afr subpop",
+    "name": "gvs_afr_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele frequency in the afr subpop",
+    "name": "gvs_afr_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele count in the amr subpop",
+    "name": "gvs_amr_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele number in the amr subpop",
+    "name": "gvs_amr_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele frequency in the amr subpop",
+    "name": "gvs_amr_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele count in the eas subpop",
+    "name": "gvs_eas_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele number in the eas subpop",
+    "name": "gvs_eas_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele frequency in the eas subpop",
+    "name": "gvs_eas_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele count in the eur subpop",
+    "name": "gvs_eur_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele number in the eur subpop",
+    "name": "gvs_eur_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele frequency in the eur subpop",
+    "name": "gvs_eur_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele count in the mid subpop",
+    "name": "gvs_mid_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele number in the mid subpop",
+    "name": "gvs_mid_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele frequency in the mid subpop",
+    "name": "gvs_mid_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele count in the oth subpop",
+    "name": "gvs_oth_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele number in the oth subpop",
+    "name": "gvs_oth_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele frequency in the oth subpop",
+    "name": "gvs_oth_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele count in the sas subpop",
+    "name": "gvs_sas_ac",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele number in the sas subpop",
+    "name": "gvs_sas_an",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "AoU: allele frequency in the sas subpop",
+    "name": "gvs_sas_af",
+    "type": "Float",
+    "mode": "Nullable"
+  },
+  {
     "description": "REVEL",
     "name": "revel",
-    "type": "FLOAT",
+    "type": "Float",
     "mode": "Nullable"
   },
   {

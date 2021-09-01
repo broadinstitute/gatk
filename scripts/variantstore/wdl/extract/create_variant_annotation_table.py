@@ -102,6 +102,15 @@ gnomad_ordering = [
  "sas"
 ]
 
+gvs_subpopulations = [
+  "afr",
+  "amr",
+  "eas",
+  "eur",
+  "mid",
+  "oth",
+  "sas"
+]
 
 def check_filtering(variant):
     # skip any row (with a warning) if no gvsAnnotations exist
@@ -127,9 +136,9 @@ def check_filtering(variant):
 
 def get_gnomad_subpop(gnomad_obj):
     row = {}
-    max_af = None
     max_ac = None
     max_an = None
+    max_af = None
     max_subpop = ""
     for gnomad_subpop in gnomad_ordering: # since we cycle through this in order, if there is a tie, we just ignore it because we wouldn't chose it anyway based on order
       subpop_af_key = "".join([gnomad_subpop, "Af"])
@@ -142,9 +151,7 @@ def get_gnomad_subpop(gnomad_obj):
       row["_".join(["gnomad", gnomad_subpop, "an"])] = subpop_an_val
       row["_".join(["gnomad", gnomad_subpop, "ac"])] = subpop_ac_val
       row["_".join(["gnomad", gnomad_subpop, "af"])] = subpop_af_val
-      if subpop_af_val != None and max_af == None: # this will set the first max_af value
-        max_af = subpop_af_val
-      if subpop_af_val != None and subpop_af_val > max_af:
+      if subpop_af_val != None and (max_af == None or subpop_af_val > max_af): # this will also set the first max_af value
         max_subpop = gnomad_subpop
         max_ac = subpop_ac_val
         max_an = subpop_an_val
@@ -156,6 +163,34 @@ def get_gnomad_subpop(gnomad_obj):
     row["gnomad_max_af"] = max_af
     return row
 
+
+def get_subpopulation_calculations(variant_obj):
+    row = {}
+    max_ac = None
+    max_an = None
+    max_af = None
+    max_subpop = ""
+    for gvs_subpop in gvs_subpopulations: # TODO check with Lee on order
+      subpop_annotations = variant_obj.get("".join([gvs_subpop, "SubpopulationAnnotations"]))
+      if subpop_annotations != None:
+        subpop_ac_val = subpop_annotations.get("AC") # note that these can be null if there is no value in the annotations. They will be null in the VAT
+        subpop_an_val = subpop_annotations.get("AN")
+        subpop_af_val = subpop_annotations.get("AF")
+        # here we set the subpopulation ac/an/af values
+        row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
+        row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
+        row["_".join(["gvs", gvs_subpop, "af"])] = subpop_af_val
+        if subpop_af_val != None and(max_af == None or subpop_af_val > max_af): # this will also set the first max_af value
+          max_subpop = gvs_subpop
+          max_ac = subpop_ac_val
+          max_an = subpop_an_val
+          max_af = subpop_af_val
+    # here we set the MAX subpopulation ac/an/af values
+    row["gvs_max_subpop"] = max_subpop
+    row["gvs_max_ac"] = max_ac
+    row["gvs_max_an"] = max_an
+    row["gvs_max_af"] = max_af
+    return row
 
 def make_annotated_json_row(row_position, variant_line, transcript_line):
     row = {}
@@ -221,15 +256,14 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
       row["revel"] = variant_line.get("revel").get("score")
 
     gvs_annotations = variant_line["gvsAnnotations"]
-    if gvs_annotations.get("AC") < 20: # if AC is between 1-19, make the value 20 and then recalculate AF as 20 / AN (we already checked for AC=0)
-      row["gvs_all_ac"] = 20
-      row["gvs_all_an"] = gvs_annotations.get("AN")
-      row["gvs_all_af"] = 20 / gvs_annotations.get("AN")
-    else:
-      for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
-        nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
-        gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
-        row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
+
+    for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
+      nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
+      gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
+      row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
+
+    subpopulation_info = get_subpopulation_calculations(variant_line)
+    row.update(subpopulation_info)
 
     return row
 

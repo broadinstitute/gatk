@@ -46,7 +46,7 @@ def dump_job_stats():
     bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
     total = total + bytes_billed
 
-    print(jobid[0], " <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
+    print(jobid[0], "jobid:  (", jobid[1], ") <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
 
   print(" Total GBs billed ", total/(1024 * 1024 * 1024), " GBs")
 
@@ -63,10 +63,10 @@ def execute_with_retry(label, sql):
       job_config = bigquery.QueryJobConfig(labels=job_labels)
       query = client.query(sql, job_config=job_config)
 
-      print(f"STARTING - {label}")
+      print(f"STARTING - {label} (jobid: {query.job_id})")
       JOB_IDS.add((label, query.job_id))
       results = query.result()
-      print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label}")
+      print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label} (jobid: {query.job_id})")
       return results
     except Exception as err:
       # if there are no retries left... raise
@@ -74,7 +74,7 @@ def execute_with_retry(label, sql):
         raise err
       else:
         t = retry_delay.pop(0)
-        print(f"Error {err} running query {label}, sleeping for {t}")
+        print(f"Error {err} running query {label} (jobid: {query.job_id}), sleeping for {t}")
         time.sleep(t)
 
 def get_partition_range(i):
@@ -121,7 +121,8 @@ def get_all_sample_ids(fq_destination_table_samples):
 
 def create_extract_samples_table(fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table):
   sql = f"CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (" \
-        f"SELECT m.sample_id, m.sample_name FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) )"
+        f"SELECT m.sample_id, m.sample_name FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) " \
+        f"WHERE m.is_loaded is TRUE)"
 
   results = execute_with_retry("create extract sample table", sql)
   return results
@@ -146,22 +147,28 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
       # KCIBUL -- grr, should be fixed width
     fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
     if len(partition_samples) > 0:
+      subs = {}
+      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i == 1 \
+      else f"\nINSERT INTO `{fq_temp_table_dataset}.{VET_NEW_TABLE}` \n WITH \n"
+      fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
       j = 1
+
       for samples in split_lists(partition_samples, 1000):
         id = f"{i}_{j}"
         subs[id] = get_subselect(fq_vet_table, samples, id)
         j = j + 1
 
-  sql = f"CREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n" + \
-        "WITH\n" + \
-        ("\n".join(subs.values())) + "\n" \
-        "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
-        f" (SELECT * FROM q_all)"
+      sql = create_or_insert + ("\n".join(subs.values())) + "\n" + \
+      "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
+      f" (SELECT * FROM q_all)"
 
-  print(sql)
-  print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")
-  results = execute_with_retry("insert vet new table", sql)
-  return results
+      print(sql)
+      print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")
+      if i == 1:
+        execute_with_retry("create and populate vet new table", sql)
+      else:
+        execute_with_retry("populate vet new table", sql)
+  return 
 
 
 
@@ -202,7 +209,7 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
 
     if len(partition_samples) > 0:
       subs = {}
-      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{PET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i == 1 \
+      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{PET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i==1 \
       else f"\nINSERT INTO `{fq_temp_table_dataset}.{PET_NEW_TABLE}` \n WITH \n"
       fq_pet_table = f"{fq_pet_vet_dataset}.{PET_TABLE_PREFIX}{i:03}"
       j = 1
