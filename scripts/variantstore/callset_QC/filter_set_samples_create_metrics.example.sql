@@ -66,7 +66,7 @@ SELECT "$NAME_OF_FILTER_SET" filter_set_name,
                CASE WHEN INSTR(call_GT, "0") > 0 THEN "het" ELSE "homvar" END as gt_type, -- if GT contains a zero, its a het
                titv(ref, alt) as titv,
                CASE WHEN gnomad.location IS NULL THEN false ELSE true END in_gnomad
-        FROM `$FQ_DATASET.vet_all` v
+        FROM `$FQ_VET_ALL` v
         LEFT JOIN `spec-ops-aou.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
         WHERE call_GT != "./." -- for safety
         AND v.location < 23000000000000 -- autosomal only
