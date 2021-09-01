@@ -45,7 +45,7 @@ if (alt_lengths.size > 1) {
 
 -- TODO Do we eventually want to support multiple filter sets in this table? 
 -- If so have separate 'create table if not exists' statement and make this an insert
-CREATE OR REPLACE TABLE `$FQ_DATASET.sample_metrics` AS    
+CREATE OR REPLACE TABLE `$FQ_PREFIX_sample_metrics` AS
 SELECT "$NAME_OF_FILTER_SET" filter_set_name,
        sample_id, 
        count(1) variant_entries,

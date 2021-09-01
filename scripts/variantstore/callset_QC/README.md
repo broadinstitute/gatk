@@ -24,7 +24,7 @@ and `prefix` is the "cohort_extract_table_prefix" from `GvsExtractCallset` and t
 
 - Copy the contents of `filter_set_samples_create_metrics.example.sql` to the BQ console
 - Replace `$FQ_DATASET` with `<project>.<dataset>` 
-- Replace `$FQ_VET_ALL` with `<project>.<dataset>.<prefix>_vet_all`
+- Replace `$FQ_PREFIX` with `<project>.<dataset>.<prefix>`
 - Replace `$NAME_OF_FILTER_SET` with the name of the filter set you used to filter the callset
 - Execute the query
 
@@ -33,7 +33,7 @@ This will currently create/overwrite the sample_metrics table in the dataset. (T
 ## Evaluate and extract the qc data
 
 - Copy the contents of `filter_set_samples_calculate_threshold.example.sql` to the BQ console
-- Replace `$FQ_DATASET` with `<project>.<dataset>`
+- Replace `$FQ_PREFIX` with `<project>.<dataset>.<prefix>`
 - Replace `$NAME_OF_FILTER_SET` with the name of the filter set you used to filter the callset
 - Execute the query
 - Click save results to export the results
