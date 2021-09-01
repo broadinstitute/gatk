@@ -1,8 +1,11 @@
 version 1.0
 
 import "AlignAndCall.wdl" as AlignAndCall
-
 #import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:AlignAndCall/versions/23/plain-WDL/descriptor" as AlignAndCall
+
+import "MitoTasks.wdl" as MitoTasks
+#import "https://personal.broadinstitute.org/scalvo/WDL/MitoTasks.wdl" as MitoTasks
+#import "https://api.firecloud.org/ga4gh/v1/tools/mitochondria:MitoTasks/versions/1/plain-WDL/descriptor" as MitoTasks
 
 workflow MitochondriaPipeline {
 
@@ -77,7 +80,7 @@ workflow MitochondriaPipeline {
     contig_name: "Name of mitochondria contig in reference that wgs_aligned_input_bam_or_cram is aligned to"
   }
 
-  call SubsetBamToChrM {
+  call MitoTasks.SubsetBamToChrM as SubsetBamToChrM {
     input:
       input_bam = wgs_aligned_input_bam_or_cram,
       input_bai = wgs_aligned_input_bam_or_cram_index,
@@ -156,7 +159,7 @@ workflow MitochondriaPipeline {
       shifted_ref_dict = mt_shifted_dict
   }
   
-  call SplitMultiAllelicSites {
+  call MitoTasks.SplitMultiAllelicSites as SplitMultiAllelicSites {
     input:
       input_vcf = AlignAndCall.out_vcf,
       base_name = base_name,
@@ -187,64 +190,6 @@ workflow MitochondriaPipeline {
     Float median_coverage = AlignAndCall.median_coverage
     String major_haplogroup = AlignAndCall.major_haplogroup
     Float contamination = AlignAndCall.contamination
-  }
-}
-
-task SubsetBamToChrM {
-  input {
-    File input_bam
-    File input_bai
-    String contig_name
-    String basename = basename(basename(input_bam, ".cram"), ".bam")
-    String? requester_pays_project
-    File? ref_fasta
-    File? ref_fasta_index
-    File? ref_dict
-
-    File? gatk_override
-    String? gatk_docker_override
-
-    # runtime
-    Int? preemptible_tries
-  }
-  Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
-  Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
-
-  meta {
-    description: "Subsets a whole genome bam to just Mitochondria reads"
-  }
-  parameter_meta {
-    ref_fasta: "Reference is only required for cram input. If it is provided ref_fasta_index and ref_dict are also required."
-    input_bam: {
-      localization_optional: true
-    }
-    input_bai: {
-      localization_optional: true
-    }
-  }
-  command <<<
-    set -e
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-    gatk PrintReads \
-      ~{"-R " + ref_fasta} \
-      -L ~{contig_name} \
-      --read-filter MateOnSameContigOrNoMappedMateReadFilter \
-      --read-filter MateUnmappedAndUnmappedReadFilter \
-      ~{"--gcs-project-for-requester-pays " + requester_pays_project} \
-      -I ~{input_bam} \
-      --read-index ~{input_bai} \
-      -O ~{basename}.bam
-  >>>
-  runtime {
-    memory: "3 GB"
-    disks: "local-disk " + disk_size + " HDD"
-    docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
-    preemptible: select_first([preemptible_tries, 5])
-  }
-  output {
-    File output_bam = "~{basename}.bam"
-    File output_bai = "~{basename}.bai"
   }
 }
 
@@ -366,40 +311,3 @@ task CoverageAtEveryBase {
   }
 }
 
-task SplitMultiAllelicSites {
-  input {
-    File ref_fasta
-    File ref_fasta_index
-    File ref_dict
-    File input_vcf
-    String base_name
-    Int? preemptible_tries
-    File? gatk_override
-    String? gatk_docker_override
-  }
-
-  String output_vcf = base_name + ".final.split.vcf"
-  String output_vcf_index = output_vcf + ".idx"
-
-  command {
-    set -e
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-    gatk LeftAlignAndTrimVariants \
-      -R ~{ref_fasta} \
-      -V ~{input_vcf} \
-      -O ~{output_vcf} \
-      --split-multi-allelics \
-      --dont-trim-alleles \
-      --keep-original-ac
-  }
-  output {
-    File split_vcf = "~{output_vcf}"
-    File split_vcf_index = "~{output_vcf}"
-  }
-  runtime {
-      docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
-      memory: "3 MB"
-      disks: "local-disk 20 HDD"
-      preemptible: select_first([preemptible_tries, 5])
-  } 
-}
