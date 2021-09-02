@@ -56,6 +56,16 @@ workflows:
      filters:
        branches:
          - master
+   - name: GvsAssignIds
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsAssignIds.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - rsa_quickstart_updates
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
