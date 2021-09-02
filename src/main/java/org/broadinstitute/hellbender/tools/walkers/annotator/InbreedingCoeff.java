@@ -88,13 +88,14 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements InfoFie
 
     @VisibleForTesting
     static Pair<Integer, Double> calculateIC(final VariantContext vc, final GenotypesContext genotypes) {
+        Utils.validate(!genotypes.isEmpty(), "Must provide genotypes to calculate InbreedingCoeff");
         final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, ROUND_GENOTYPE_COUNTS);
 
         final double refCount = t.getRefs();
         final double hetCount = t.getHets();
         final double homCount = t.getHoms();
         // number of samples that have likelihoods
-        final int sampleCount = (int) genotypes.stream().filter(g-> GenotypeUtils.isDiploidWithLikelihoods(g)).count();
+        final int sampleCount = (int) genotypes.stream().filter(g-> GenotypeUtils.isDiploidWithLikelihoodsOrCalledWithGQ(g)).count();
 
         final double p = ( 2.0 * refCount + hetCount ) / ( 2.0 * (refCount + hetCount + homCount) ); // expected reference allele frequency
         final double q = 1.0 - p; // expected alternative allele frequency

@@ -14,6 +14,13 @@ public final class GenotypeUtils {
     }
 
     /**
+     * Returns true if the genotype is a diploid genotype with likelihoods.
+     */
+    public static boolean isDiploidWithLikelihoodsOrCalledWithGQ(final Genotype g) {
+        return (Utils.nonNull(g).hasLikelihoods() || (g.isCalled() && g.hasGQ())) && g.getPloidy() == 2;
+    }
+
+    /**
      * Returns a triple of ref/het/hom genotype "counts".
      *
      * The exact meaning of the count is dependent on the rounding behavior.
@@ -42,8 +49,22 @@ public final class GenotypeUtils {
         double genotypesWithNoRefsCount = 0;  //e.g. 1/1, 1/2, 2/2, etc.
 
         for (final Genotype g : genotypes) {
-            if (! isDiploidWithLikelihoods(g)){
+            //if we don't have the data we need then skip this genotype (equivalent to no-call)
+            if ((!roundContributionFromEachGenotype && !isDiploidWithLikelihoods(g))
+                    || !isDiploidWithLikelihoodsOrCalledWithGQ(g)) {
                 continue;
+            }
+
+            if (!g.hasLikelihoods() && g.isHomRef()) {
+                if (roundContributionFromEachGenotype) {
+                    genotypeWithTwoRefsCount += 1;
+                    continue;
+                } else {
+                    genotypeWithTwoRefsCount += 1 - QualityUtils.qualToProb(g.getGQ());
+                    genotypesWithOneRefCount += QualityUtils.qualToProb(g.getGQ());
+                    //assume last likelihood is negligible
+                    continue;
+                }
             }
 
             // Genotype::getLikelihoods returns a new array, so modification in-place is safe
@@ -99,5 +120,9 @@ public final class GenotypeUtils {
             }
         }
         return new GenotypeCounts(genotypeWithTwoRefsCount, genotypesWithOneRefCount, genotypesWithNoRefsCount);
+    }
+
+    public static boolean genotypeIsUsableForAFCalculation(Genotype g) {
+        return g.hasLikelihoods() || g.hasGQ() || g.getAlleles().stream().anyMatch(a -> a.isCalled() && a.isNonReference() && !a.isSymbolic());
     }
 }

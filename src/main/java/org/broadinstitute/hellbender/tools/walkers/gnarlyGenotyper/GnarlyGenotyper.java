@@ -173,9 +173,8 @@ public final class GnarlyGenotyper extends VariantWalker {
     @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
         if (genomicsDBOptions == null) {
-            genomicsdbArgs.callGenotypes = CALL_GENOTYPES;
             genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped = PIPELINE_MAX_ALT_COUNT;
-            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs);
+            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs, CALL_GENOTYPES);
         }
         return genomicsDBOptions;
     }
