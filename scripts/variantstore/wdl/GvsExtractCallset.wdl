@@ -97,6 +97,11 @@ workflow GvsExtractCallset {
         file_sizes_bytes = flatten([ExtractTask.output_vcf_bytes, ExtractTask.output_vcf_index_bytes])
     }
 
+    call CreateManifest {
+      input:
+        manifest_lines = ExtractTask.manifest
+    }
+
     output {
       Array[File] output_vcfs = ExtractTask.output_vcf
       Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
@@ -188,8 +193,11 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
-        du -b ~{output_file} | cut -f1 > vcf_bytes.txt
-        du -b ~{output_file}.tbi | cut -f1 > vcf_index_bytes.txt
+        OUTPUT_FILE_BYTES=$(du -b ~{output_file} | cut -f1)
+        echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
+
+        OUTPUT_FILE_INDEX_BYTES=$(du -b ~{output_file}.tbi | cut -f1)
+        echo ${OUTPUT_FILE_INDEX_BYTES} > vcf_index_bytes.txt
 
         # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
@@ -197,7 +205,16 @@ task ExtractTask {
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
           gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
           gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
+          OUTPUT_FILE_DEST=${OUTPUT_GCS_DIR}/~{output_file}
+          OUTPUT_FILE_INDEX_DEST=${OUTPUT_GCS_DIR}/~{output_file}.tbi
+        else
+          OUTPUT_FILE_DEST=~{output_file}
+          OUTPUT_FILE_INDEX_DEST=~{output_file}.tbi
         fi
+
+        # Parent Task will collect manifest files and create a summary
+        # Currently, the schema is `[output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
+        echo ${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
     >>>
 
     # ------------------------------------------------
@@ -218,6 +235,7 @@ task ExtractTask {
         Float output_vcf_bytes = read_float("vcf_bytes.txt")
         File output_vcf_index = "~{output_file}.tbi"
         Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
+        String manifest = read_string("manifest.txt")
     }
  }
 
@@ -353,4 +371,30 @@ task SumBytes {
     preemptible: 3
     cpu: 1
   }
+}
+
+task CreateManifest {
+
+    input {
+        Array[String] manifest_lines
+    }
+
+    command <<<
+        set -e
+        MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
+        echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
+        sort ${MANIFEST_LINES_TXT} >> manifest.txt
+    >>>
+
+    output {
+        File manifest = "manifest.txt"
+    }
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
 }
