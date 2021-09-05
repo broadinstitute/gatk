@@ -168,7 +168,7 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
         execute_with_retry("create and populate vet new table", sql)
       else:
         execute_with_retry("populate vet new table", sql)
-  return 
+  return
 
 
 
@@ -333,6 +333,9 @@ def make_extract_table(fq_pet_vet_dataset,
 
           if not (bool(re.match(r"[a-z0-9_-]+$", key)) & bool(re.match(r"[a-z0-9_-]+$", value))):
             raise ValueError(f"label key or value did not pass validation--format should be 'key1=val1, key2=val2'")
+
+    print(query_labels_map)
+    exit
 
     #Default QueryJobConfig will be merged into job configs passed in
     #but if a specific default config is being updated (eg labels), new config must be added

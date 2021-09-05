@@ -193,6 +193,8 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
+        INTERVAL_NUMBER=$(echo ~{output_file} | grep -oEi '\d+\.vcf\.gz' | cut -d'.' -f1)
+
         OUTPUT_FILE_BYTES=$(du -b ~{output_file} | cut -f1)
         echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
 
@@ -213,8 +215,8 @@ task ExtractTask {
         fi
 
         # Parent Task will collect manifest files and create a summary
-        # Currently, the schema is `[output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
-        echo ${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
+        # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
+        echo ${INTERVAL_NUMBER},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
     >>>
 
     # ------------------------------------------------
@@ -382,8 +384,8 @@ task CreateManifest {
     command <<<
         set -e
         MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
-        echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
-        sort ${MANIFEST_LINES_TXT} >> manifest.txt
+        echo "interval_number, vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
+        sort -n ${MANIFEST_LINES_TXT} >> manifest.txt
     >>>
 
     output {
