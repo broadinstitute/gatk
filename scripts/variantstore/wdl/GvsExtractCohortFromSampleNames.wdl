@@ -48,7 +48,7 @@ workflow GvsExtractCohortFromSampleNames {
       destination_cohort_table_prefix = extraction_uuid,
       sample_names_to_extract         = cohort_sample_names,
       data_project                    = gvs_project,
-      query_labels                    = ["extraction_uuid=~{extraction_uuid}", "wdl_task=GvsPrepareCallset"],
+      query_labels                    = ["extraction_uuid=~{extraction_uuid}"],
       query_project                   = query_project,
       default_dataset                 = gvs_dataset, # unused if fq_* args are given
       fq_petvet_dataset               = "~{gvs_project}.~{gvs_dataset}",
