@@ -68,7 +68,7 @@ task PrepareCallsetTask {
         String docker
     }
     # Note the coercion of optional query_labels using select_first([expr, default])
-    Array[String] query_label_args = prefix("--query_labels ", select_first([query_labels, []]))
+    Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String use_sample_names_file = if (defined(sample_names_to_extract)) then 'true' else 'false'
