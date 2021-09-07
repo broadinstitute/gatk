@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreadin
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
@@ -11,6 +12,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -20,6 +22,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class JunctionTreeLinkedDeBruijnGraphUnitTest extends BaseTest {
+    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentConstants.STANDARD_NGS;
 
     @DataProvider (name = "loopingReferences")
     public static Object[][] loopingReferences() {
@@ -60,7 +63,7 @@ public class JunctionTreeLinkedDeBruijnGraphUnitTest extends BaseTest {
         assembler.buildGraphIfNecessary();
 
         //Try dangling head recovery (this might have infinitely looped if we are not careful)
-        assembler.recoverDanglingHeads(2, 0, true, SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA));
+        assembler.recoverDanglingHeads(2, 0, true, SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA), DANGLING_END_SW_PARAMETERS);
 
         Assert.assertTrue(true, "If we reached here than the above code didn't infinitely loop");
     }
@@ -85,7 +88,7 @@ public class JunctionTreeLinkedDeBruijnGraphUnitTest extends BaseTest {
         assembler.buildGraphIfNecessary();
 
         //Try dangling head recovery (this might have infinitely looped if we are not careful)
-        assembler.recoverDanglingHeads(3, 0, true, SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA));
+        assembler.recoverDanglingHeads(3, 0, true, SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA), DANGLING_END_SW_PARAMETERS);
 
         Assert.assertTrue(true, "If we reached here than the above code didn't infinitely loop");
     }
@@ -875,7 +878,7 @@ public class JunctionTreeLinkedDeBruijnGraphUnitTest extends BaseTest {
 
         // confirm that the SW alignment agrees with our expectations
         final JunctionTreeLinkedDeBruijnGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink, 0, 4, false, SmithWatermanJavaAligner
-                .getInstance());
+                .getInstance(), DANGLING_END_SW_PARAMETERS);
 
         if ( result == null ) {
             Assert.assertFalse(cigarIsGood);
@@ -939,7 +942,7 @@ public class JunctionTreeLinkedDeBruijnGraphUnitTest extends BaseTest {
 
             // confirm that the SW alignment agrees with our expectations
             final JunctionTreeLinkedDeBruijnGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink,
-                    0, 4, true, SmithWatermanJavaAligner.getInstance());
+                    0, 4, true, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
             Assert.assertNotNull(result);
             Assert.assertTrue(JunctionTreeLinkedDeBruijnGraph.cigarIsOkayToMerge(result.cigar, false, true));
 
@@ -1039,7 +1042,7 @@ public class JunctionTreeLinkedDeBruijnGraphUnitTest extends BaseTest {
 
         // confirm that the SW alignment agrees with our expectations
         final JunctionTreeLinkedDeBruijnGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstUpwardsReferencePath(altSource, 0, 1, false, SmithWatermanJavaAligner
-                .getInstance());
+                .getInstance(), DANGLING_END_SW_PARAMETERS);
 
         if ( result == null ) {
             Assert.assertFalse(shouldBeMerged);
@@ -1091,7 +1094,7 @@ public class JunctionTreeLinkedDeBruijnGraphUnitTest extends BaseTest {
 
         // confirm that the SW alignment agrees with our expectations
         final JunctionTreeLinkedDeBruijnGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstUpwardsReferencePath(altSource, 0, 1, false, SmithWatermanJavaAligner
-                .getInstance());
+                .getInstance(), DANGLING_END_SW_PARAMETERS);
 
         if ( result == null ) {
             Assert.assertFalse(shouldBeMerged);

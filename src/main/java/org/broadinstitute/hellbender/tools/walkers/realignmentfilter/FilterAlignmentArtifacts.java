@@ -15,6 +15,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -217,7 +218,8 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
 
             final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
             readLikelihoods.switchToNaturalLog();
-            final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), ALIGNER);
+            final SWParameters readToHaplotypeSWParameters = MTAC.getReadToHaplotypeSWParameters();
+            final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), ALIGNER, readToHaplotypeSWParameters);
             readLikelihoods.changeEvidence(readRealignments);
             writeBamOutput(assemblyResult, readLikelihoods, new HashSet<>(readLikelihoods.alleles()), regionForGenotyping.getSpan());
 
