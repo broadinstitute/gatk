@@ -214,7 +214,7 @@ task ExtractTask {
           OUTPUT_FILE_INDEX_DEST=~{output_file}.tbi
         fi
 
-        # Parent Task will collect manifest files and create a summary
+        # Parent Task will collect manifest lines and create a joined file
         # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
         echo ${INTERVAL_NUMBER},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
     >>>
