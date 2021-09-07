@@ -121,9 +121,12 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  *     <dt>CASE mode:</dt>
  *     <dd><p>The tool will be run in CASE mode using the argument {@code run-mode CASE}. The path to a previously
  *     obtained model directory must be provided via the {@code model} argument in this mode. The modeled intervals are
- *     then specified by a file contained in the model directory, all interval-related arguments are ignored in this
- *     mode, and all model intervals must be present in all of the input count files. The tool output in CASE mode
- *     is only the "-calls" subdirectory and is organized similarly to that in COHORT mode.</p>
+ *     then specified by a file contained in the model directory,and all model intervals must be present in all of the
+ *     input count files. All interval-related arguments (e.g. {@code interval-psi-scale} argument) are ignored in this
+ *     mode, however an advanced user can adjust various sample-related (e.g. {@code sample-psi-scale}) and global
+ *     (e.g. {@code p_alt}) arguments for custom applications of the tool. Inference-related (e.g.
+ *     {@code min_training_epochs}) arguments can be adjusted as well. The tool output in CASE mode is only the "-calls"
+ *     subdirectory and is organized similarly to that in COHORT mode.</p>
  *
  *      <p>Note that at the moment, this tool does not automatically verify the compatibility of the provided parametrization
  *      with the provided count files. Model compatibility may be assessed a posteriori by inspecting the magnitude of
