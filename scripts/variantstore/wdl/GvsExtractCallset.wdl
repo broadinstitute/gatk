@@ -193,7 +193,7 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
-        INTERVAL_NUMBER=$(echo ~{output_file} | grep -oEi '\d+\.vcf\.gz' | cut -d'.' -f1)
+        INTERVAL_NUMBER=$(echo ~{output_file} | grep -oEi '[0-9]+\.vcf\.gz' | cut -d'.' -f1)
 
         OUTPUT_FILE_BYTES=$(du -b ~{output_file} | cut -f1)
         echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
