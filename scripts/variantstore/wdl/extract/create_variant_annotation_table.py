@@ -94,10 +94,10 @@ significance_ordering = [
 gnomad_ordering = [
  "afr",
  "amr",
+ "asj",
  "eas",
  "fin",
  "nfr",
- "asj",
  "oth",
  "sas"
 ]
