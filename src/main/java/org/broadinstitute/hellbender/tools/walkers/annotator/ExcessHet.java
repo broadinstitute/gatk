@@ -33,7 +33,7 @@ import java.util.*;
  * <p>This annotation uses the implementation from
  * <a href='https://doi.org/10.1086/429864'>Wigginton, Cutler, and Abecasis 2005.</a>
  * to calculate a right-sided p-value (the probability of getting the observed number of heterozygotes or higher).
- * <p>However, note that in releases prior to and including GATK 4.2.1.0, an additional mid-p correction
+ * <p>However, note that in releases prior to and including GATK 4.2.2.0, an additional mid-p correction
  * not discussed in that reference was applied. That is, if n_{AB} is the observed number of heterozygous genotypes,
  * N is the total number of samples, and n_A is the number of minor alleles, then the p-value was previously reported as:
  * \sum_{N_{AB} = n_{AB}}^{N} P(N_{AB} | N, n_A) - P(n_{AB} | N, n_A) / 2.
