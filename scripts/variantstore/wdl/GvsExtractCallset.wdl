@@ -99,13 +99,15 @@ workflow GvsExtractCallset {
 
     call CreateManifest {
       input:
-        manifest_lines = ExtractTask.manifest
+        manifest_lines = ExtractTask.manifest,
+        output_gcs_dir = output_gcs_dir
     }
 
     output {
       Array[File] output_vcfs = ExtractTask.output_vcf
       Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
       Float total_vcfs_size_mb = SumBytes.total_mb
+      File manifest = CreateManifest.manifest
     }
 }
 
@@ -379,6 +381,7 @@ task CreateManifest {
 
     input {
         Array[String] manifest_lines
+        String? output_gcs_dir
     }
 
     command <<<
@@ -386,6 +389,13 @@ task CreateManifest {
         MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
         echo "interval_number, vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
         sort -n ${MANIFEST_LINES_TXT} >> manifest.txt
+
+        # Drop trailing slash if one exists
+        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+        if [ -n "${OUTPUT_GCS_DIR}" ]; then
+          gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
+        fi
     >>>
 
     output {
