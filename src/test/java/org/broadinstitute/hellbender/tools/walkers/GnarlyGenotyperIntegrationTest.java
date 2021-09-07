@@ -55,13 +55,11 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         return new Object[][]{
                 // Simple Test, spanning deletions; standard calling confidence
                 //No variants outside requested intervals; no SNPs with QUAL < 60, no INDELs with QUAL < 69?; has star alleles after deletion at chr20:263497; has AC, AF, AN, DP, ExcessHet, FS, MQ, (MQRankSum), (ReadPosRankSum), SOR, QD; has called genotypes
- /*               {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
+                {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
                          getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
                 // Same as above, but with GenomicsDB using BCF2Codec for interchange
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
                          getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals", "--genomicsdb-use-bcf-codec"), b38_reference_20_21},
-
-
                 //lower calling confidence
                 //same as above except (different intervals and) with SNPs with 40 < QUAL < 60 and INDELs with 49 < QUAL < 69
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
@@ -69,7 +67,6 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
                 // Same as above, but with GenomicsDB using BCF2Codec for interchange
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
                          getTestFile("fiveSampleTest.lowerCallThreshold.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 250865, 348163)), Arrays.asList("-stand-call-conf 10", "--genomicsdb-use-bcf-codec"), b38_reference_20_21},
-*/
                 //using latest reblocking output with allele-specific annotations
                 //has all of the above plus AS_AltDP, AS_FS, AS_MQ, AS_MQRankSum, AS_QD, AS_ReadPosRankSum
                 {new File[]{new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf"),
@@ -79,7 +76,6 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
                 {new File[]{new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12878.AS.chr20snippet.reblocked.g.vcf"),
                         new File(getToolTestDataDir() + "/../variantutils/ReblockGVCF/expected.NA12892.AS.chr20snippet.reblocked.g.vcf")},
                         getTestFile("twoSampleAS.vcf"), getTestFile("twoSampleASDB.vcf"), Arrays.asList(new SimpleInterval("20")), Arrays.asList("--genomicsdb-use-bcf-codec"), b37_reference_20_21},
-
                 //using legacy reblocking data with no raw GT count values
                 //has ExcessHet, calculated from genotypes
                 {new File[]{new File(getToolTestDataDir() + "noGTCount.sample1.chr20snippet.vcf"),
