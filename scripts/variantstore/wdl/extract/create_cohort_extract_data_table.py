@@ -334,9 +334,6 @@ def make_extract_table(fq_pet_vet_dataset,
           if not (bool(re.match(r"[a-z0-9_-]+$", key)) & bool(re.match(r"[a-z0-9_-]+$", value))):
             raise ValueError(f"label key or value did not pass validation--format should be 'key1=val1, key2=val2'")
 
-    print(query_labels_map)
-    exit
-
     #Default QueryJobConfig will be merged into job configs passed in
     #but if a specific default config is being updated (eg labels), new config must be added
     #to the client._default_query_job_config that already exists
