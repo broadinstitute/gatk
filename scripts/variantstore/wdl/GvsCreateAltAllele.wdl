@@ -109,7 +109,34 @@ task CreateAltAlleleTable {
 
     echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{query_project_id} --format=csv --use_legacy_sql=false \
-    "CREATE OR REPLACE TABLE ~{dataset_project_id}.~{dataset_name}.alt_allele PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000000, 1000000000000)) CLUSTER BY location, sample_id"
+    "CREATE OR REPLACE TABLE ~{dataset_project_id}.~{dataset_name}.alt_allele (
+      location INT64,
+      sample_id INT64,
+      ref STRING,
+      allele STRING,
+      allele_pos INT64,
+      call_GT STRING,
+      call_GQ INT64,
+      as_raw_mq STRING,
+      raw_mq INT64,
+      as_raw_mqranksum STRING,
+      raw_mqranksum_x_10 INT64,
+      as_qualapprox STRING,
+      qualapprox STRING,
+      qual INT64,
+      as_raw_readposranksum STRING,
+      raw_readposranksum_x_10 INT64,
+      as_sb_table STRING,
+      sb_ref_plus INT64,
+      sb_ref_minus INT64,
+      sb_alt_plus INT64,
+      sb_alt_minus INT64,
+      call_AD STRING,
+      ref_ad INT64,
+      ad INT64
+    ) PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000000, 1000000000000))
+    CLUSTER BY location, sample_id;"
+
   >>>
 
   output {
