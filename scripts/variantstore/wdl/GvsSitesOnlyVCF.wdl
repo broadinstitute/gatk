@@ -224,36 +224,15 @@ task SitesOnlyVcf {
     }
     String output_vcf_idx = basename(output_filename) + ".tbi"
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String input_vcf_basename = basename(input_vcf)
-    String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
-
-    parameter_meta {
-        input_vcf: {
-            localization_optional: true
-        }
-        input_vcf_index: {
-            localization_optional: true
-        }
-    }
     command <<<
         set -e
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-
-            gsutil cp ~{input_vcf} .
-            gsutil cp ~{input_vcf_index} .
-        fi
 
         # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
         # in it so that downstream steps can call cache
 
         gatk --java-options "-Xmx2048m" \
             SelectVariants \
-                -V ~{updated_input_vcf} \
+                -V ~{input_vcf} \
                 --add-output-vcf-command-line false \
                 --exclude-filtered \
                 --sites-only-vcf-output \
