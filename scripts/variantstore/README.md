@@ -1,8 +1,10 @@
 # Running the Genome Variant Store (GVS) Pipeline for AoU
 
 ## Steps
-1. If you haven't already, clone the [QuickStart Workspace](https://app.terra.bio/#workspaces/broad-dsde-firecloud-billing/Genomic%20Variant%20Store%20-%20GVS%20Quickstart)
-2. In that cloned workspace, run the workflows outlined in the Workspace description; using the same “data_project” and “default_dataset” throughout
+1. If this is the first time running the pipeline in a particular Google project, submit a ticket requesting the following changes to enable read API clustering:
+   - TBD
+2. If you haven't already, clone the [QuickStart Workspace](https://app.terra.bio/#workspaces/broad-dsde-firecloud-billing/Genomic%20Variant%20Store%20-%20GVS%20Quickstart)
+3. In that cloned workspace, run the workflows outlined in the Workspace description; using the same “data_project” and “default_dataset” throughout
    1. GvsAssignIds
    2. GvsImportGenomes
    3. GvsCreateAltAllele
