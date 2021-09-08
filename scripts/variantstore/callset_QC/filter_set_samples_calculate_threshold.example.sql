@@ -4,7 +4,7 @@ WITH fss AS (
          (ti_count / tv_count) as ti_tv_ratio, 
          (snp_het_count / snp_homvar_count) snp_het_homvar_ratio, 
          (indel_het_count / indel_homvar_count) as indel_het_homvar_ratio
-  FROM `$FQ_DATASET.sample_metrics`
+  FROM `$FQ_PREFIX_sample_metrics`
   WHERE filter_set_name = '$NAME_OF_FILTER_SET'),
 medians AS ( 
     SELECT 
@@ -58,7 +58,7 @@ SELECT
     indel_het_homvar_ratio, m_indel_het_homvar_ratio, mad_indel_het_homvar_ratio,
     CASE WHEN indel_het_homvar_ratio BETWEEN m_indel_het_homvar_ratio - 4*mad_indel_het_homvar_ratio AND m_indel_het_homvar_ratio + 4*mad_indel_het_homvar_ratio THEN true ELSE false END pass_indel_het_homvar_ratio,    
 FROM fss
-JOIN `$FQ_DATASET.sample_info` si ON (fss.sample_id = si.sample_id)
+JOIN `$FQ_PREFIX__SAMPLES` si ON (fss.sample_id = si.sample_id)
 CROSS JOIN medians 
 CROSS JOIN mads
 order by 1
