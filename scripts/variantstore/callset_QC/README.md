@@ -25,7 +25,6 @@ and `prefix` is the "cohort_extract_table_prefix" from `GvsExtractCallset` and t
 ## Create the sample_metrics table
 
 - Copy the contents of `filter_set_samples_create_metrics.example.sql` to the BQ console
-- Replace `$FQ_DATASET` with `<project>.<dataset>` 
 - Replace `$FQ_PREFIX` with `<project>.<dataset>.<prefix>`
 - Replace `$NAME_OF_FILTER_SET` with the name of the filter set you used to filter the callset
 - Execute the query

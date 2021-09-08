@@ -1,20 +1,20 @@
 CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
-RETURNS STRING 
+RETURNS STRING
   LANGUAGE js AS """
      if ( ref.length > 1 || allele.length > 1) {
          return "other";
      } else if ( (ref == "A" && allele == "G") ||
-                 (ref == "G" && allele == "A") || 
-                 (ref == "C" && allele == "T") || 
+                 (ref == "G" && allele == "A") ||
+                 (ref == "C" && allele == "T") ||
                  (ref == "T" && allele == "C") ) {
-          return "ti";    
+          return "ti";
      } else {
           return "tv";
-     }     
+     }
     """;
-    
+
 CREATE TEMPORARY FUNCTION type(ref STRING, allele STRING, gt_str STRING)
-RETURNS STRING 
+RETURNS STRING
   LANGUAGE js AS """
 
 alts = allele.split(",")
@@ -37,20 +37,20 @@ if (alt_lengths.size > 1) {
          return "del"
      } else if (ref.length < al) {
          return "ins"
-     } else {         
+     } else {
          return "other"
-     }   
-}     
+     }
+}
     """;
 
--- TODO Do we eventually want to support multiple filter sets in this table? 
+-- TODO Do we eventually want to support multiple filter sets in this table?
 -- If so have separate 'create table if not exists' statement and make this an insert
 CREATE OR REPLACE TABLE `$FQ_PREFIX_sample_metrics` AS
 SELECT "$NAME_OF_FILTER_SET" filter_set_name,
-       sample_id, 
+       sample_id,
        count(1) variant_entries,
        SUM(CASE WHEN type = "del" THEN 1 ELSE 0 END) del_count,
-       SUM(CASE WHEN type = "ins" THEN 1 ELSE 0 END) ins_count,       
+       SUM(CASE WHEN type = "ins" THEN 1 ELSE 0 END) ins_count,
        SUM(CASE WHEN type = "snp" THEN 1 ELSE 0 END) snp_count,
        SUM(CASE WHEN type = "snp" AND titv = "ti" THEN 1 ELSE 0 END) ti_count, # TODO: minimize alleles
        SUM(CASE WHEN type = "snp" AND titv = "tv" THEN 1 ELSE 0 END) tv_count, # TODO: minimize alleles
@@ -60,13 +60,13 @@ SELECT "$NAME_OF_FILTER_SET" filter_set_name,
        SUM(CASE WHEN type IN ("ins","del") AND gt_type = "homvar" THEN 1 ELSE 0 END) indel_homvar_count,
        COUNTIF(not in_gnomad) singleton,
        null AS pass_qc  -- placeholder
-    FROM (    
-        SELECT sample_id, 
-               type(ref, alt, call_GT) as type, 
+    FROM (
+        SELECT sample_id,
+               type(ref, alt, call_GT) as type,
                CASE WHEN INSTR(call_GT, "0") > 0 THEN "het" ELSE "homvar" END as gt_type, -- if GT contains a zero, its a het
                titv(ref, alt) as titv,
                CASE WHEN gnomad.location IS NULL THEN false ELSE true END in_gnomad
-        FROM `$FQ_VET_ALL` v
+        FROM `$FQ_PREFIX_vet_all` v
         LEFT JOIN `spec-ops-aou.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
         WHERE call_GT != "./." -- for safety
         AND v.location < 23000000000000 -- autosomal only
