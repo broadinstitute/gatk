@@ -50,14 +50,19 @@ public final class GenotypeUtils {
 
         for (final Genotype g : genotypes) {
             //if we don't have the data we need then skip this genotype (equivalent to no-call)
-            if ((!roundContributionFromEachGenotype && !isDiploidWithLikelihoods(g))
-                    || !isDiploidWithLikelihoodsOrCalledWithGQ(g)) {
+            if (!isDiploidWithLikelihoods(g)
+                    && !isDiploidWithLikelihoodsOrCalledWithGQ(g)) {
                 continue;
             }
 
             if (!g.hasLikelihoods() && g.isHomRef()) {
                 if (roundContributionFromEachGenotype) {
                     genotypeWithTwoRefsCount += 1;
+                    continue;
+                } else if (g.getGQ() == 0) {
+                    genotypeWithTwoRefsCount += 1.0/3;
+                    genotypesWithOneRefCount += 1.0/3;
+                    genotypesWithNoRefsCount += 1.0/3;
                     continue;
                 } else {
                     genotypeWithTwoRefsCount += 1 - QualityUtils.qualToProb(g.getGQ());

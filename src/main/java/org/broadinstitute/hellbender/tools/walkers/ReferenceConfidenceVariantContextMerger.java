@@ -546,6 +546,11 @@ public final class ReferenceConfidenceVariantContextMerger {
                     final int[] PLs = generatePL(g, genotypeIndexMapByPloidy);
                     final int[] AD = g.hasAD() ? AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles) : null;
                     genotypeBuilder.PL(PLs).AD(AD);
+                //clean up low confidence hom refs for better annotations later
+                } else if (g.isHomRef()) {
+                    if (g.hasGQ() && g.getGQ() == 0 && g.hasDP() && g.getDP() == 0) {
+                        genotypeBuilder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
+                    }
                 }
             }
             else {  //doSomaticMerge
@@ -598,8 +603,12 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
             }
             genotypeBuilder.name(name);
-            final GenotypeAssignmentMethod assignmentMethod = callGTAlleles ? GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL :
-                    GenotypeAssignmentMethod.SET_TO_NO_CALL;
+            final GenotypeAssignmentMethod assignmentMethod;
+            if (callGTAlleles && hasData(g)) {
+                assignmentMethod = GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL;
+            } else {
+                assignmentMethod = GenotypeAssignmentMethod.SET_TO_NO_CALL;
+            }
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
                     genotypeBuilder, assignmentMethod,
                     g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null,
@@ -608,6 +617,10 @@ public final class ReferenceConfidenceVariantContextMerger {
         }
 
         return mergedGenotypes;
+    }
+
+    private boolean hasData(final Genotype g) {
+        return g.hasGQ() && g.hasDP() && g.getDP() > 0;
     }
 
     /**

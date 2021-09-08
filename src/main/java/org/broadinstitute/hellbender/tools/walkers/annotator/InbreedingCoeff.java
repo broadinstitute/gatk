@@ -99,7 +99,7 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements InfoFie
 
         final double p = ( 2.0 * refCount + hetCount ) / ( 2.0 * (refCount + hetCount + homCount) ); // expected reference allele frequency
         final double q = 1.0 - p; // expected alternative allele frequency
-        final double expectedHets = 2.0 * p * q * sampleCount; //numbers of hets that would be expected based on the allele frequency (asuming Hardy Weinberg Equilibrium)
+        final double expectedHets = 2.0 * p * q * sampleCount; //numbers of hets that would be expected based on the allele frequency (assuming Hardy Weinberg Equilibrium)
         final double F = 1.0 - ( hetCount / expectedHets ); // inbreeding coefficient
 
         return Pair.of(sampleCount, F);
