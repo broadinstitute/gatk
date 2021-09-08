@@ -71,6 +71,7 @@ workflow GvsExtractCallset {
                 reference_index                 = reference_index,
                 reference_dict                  = reference_dict,
                 fq_samples_to_extract_table     = fq_samples_to_extract_table,
+                interval_index                  = i,
                 intervals                       = SplitIntervals.interval_files[i],
                 fq_cohort_extract_table         = fq_cohort_extract_table,
                 read_project_id                 = query_project,
@@ -122,6 +123,7 @@ task ExtractTask {
 
         String fq_samples_to_extract_table
 
+        Int interval_index
         File intervals
 
         String fq_cohort_extract_table
@@ -195,8 +197,6 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
-        INTERVAL_NUMBER=$(echo ~{output_file} | grep -oEi '[0-9]+\.vcf\.gz' | cut -d'.' -f1)
-
         OUTPUT_FILE_BYTES=$(du -b ~{output_file} | cut -f1)
         echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
 
@@ -218,7 +218,7 @@ task ExtractTask {
 
         # Parent Task will collect manifest lines and create a joined file
         # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
-        echo ${INTERVAL_NUMBER},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
+        echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
     >>>
 
     # ------------------------------------------------
@@ -239,7 +239,8 @@ task ExtractTask {
         Float output_vcf_bytes = read_float("vcf_bytes.txt")
         File output_vcf_index = "~{output_file}.tbi"
         Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
-        String manifest = read_string("manifest.txt")
+#        String manifest = read_string("manifest.txt")
+        Pair[Int, String] manifest = (interval_index, read_string("manifest.txt"))
     }
  }
 
@@ -380,13 +381,14 @@ task SumBytes {
 task CreateManifest {
 
     input {
-        Array[String] manifest_lines
+        Array[Pair[Int, String]] manifest_intervals
         String? output_gcs_dir
     }
 
     command <<<
         set -e
-        MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
+        MANIFEST_LINES_TXT=~{write_object(manifest_intervals)}
+        cat ${MANIFEST_LINES_TXT}
         echo "interval_number, vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
         sort -n ${MANIFEST_LINES_TXT} >> manifest.txt
 
