@@ -1,8 +1,10 @@
 version 1.0
 workflow GvsSitesOnlyVCF {
    input {
-        File inputFileofFileNames
-        File inputFileofIndexFileNames
+        File? inputFileofFileNames
+        File? inputFileofIndexFileNames
+        Array[File] gvs_extract_cohort_filtered_vcfs
+        Array[File] gvs_extract_cohort_filtered_vcf_indices
         String output_sites_only_file_name
         String output_annotated_file_name
         String project_id
@@ -19,8 +21,13 @@ workflow GvsSitesOnlyVCF {
         File AnAcAf_annotations_template
         File ancestry_file
     }
-    Array[File] gvs_extract_cohort_filtered_vcfs = read_lines(inputFileofFileNames)
-    Array[File] gvs_extract_cohort_filtered_vcf_indices  = read_lines(inputFileofIndexFileNames)
+
+    Array[File] input_vcfs = gvs_extract_cohort_filtered_vcfs
+    Array[File] input_vcf_indices = gvs_extract_cohort_filtered_vcf_indices
+
+
+    #Array[File] input_vcfs = if (defined(gvs_extract_cohort_filtered_vcfs)) then gvs_extract_cohort_filtered_vcfs else read_lines(inputFileofFileNames)
+    #Array[File] input_vcf_indices  = if (defined(gvs_extract_cohort_filtered_vcf_indices)) then gvs_extract_cohort_filtered_vcf_indices else read_lines(inputFileofIndexFileNames)
 
     call MakeSubpopulationFiles {
         input:
@@ -31,8 +38,8 @@ workflow GvsSitesOnlyVCF {
     scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
         call ExtractAnAcAfFromVCF {
             input:
-              input_vcf = gvs_extract_cohort_filtered_vcfs[i],
-              input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+              input_vcf = input_vcfs[i],
+              input_vcf_index = input_vcf_indices[i],
               service_account_json_path = service_account_json_path,
               subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list,
               custom_annotations_template = AnAcAf_annotations_template
@@ -41,8 +48,8 @@ workflow GvsSitesOnlyVCF {
       ## Create a sites-only VCF from the original GVS jointVCF
         call SitesOnlyVcf {
           input:
-            input_vcf = gvs_extract_cohort_filtered_vcfs[i],
-            input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+            input_vcf = ExtractAnAcAfFromVCF.output_vcf,
+            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
             service_account_json_path = service_account_json_path,
             output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz"
         }
@@ -130,23 +137,24 @@ task ExtractAnAcAfFromVCF {
         File subpopulation_sample_list
         File custom_annotations_template
     }
+    parameter_meta {
+        input_vcf: {
+          localization_optional: true
+        }
+        input_vcf_index: {
+          localization_optional: true
+        }
+    }
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String input_vcf_basename = basename(input_vcf)
     String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
-
-    parameter_meta {
-        input_vcf: {
-            localization_optional: true
-        }
-        input_vcf_index: {
-            localization_optional: true
-        }
-    }
-
+    String updated_input_vcf_index = if (defined(service_account_json_path)) then basename(input_vcf_index) else input_vcf_index
     String custom_annotations_file_name = "an_ac_af.tsv"
+    String local_input_vcf = "local.vcf.gz" #Todo I am making an assumption herecustom_annotations_template.tsv
+    String local_input_vcf_index = "local.vcf.gz.tbi"
 
-    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
+    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af & sc
     command <<<
         set -e
 
@@ -161,6 +169,11 @@ task ExtractAnAcAfFromVCF {
 
         cp ~{custom_annotations_template} ~{custom_annotations_file_name}
 
+        gsutil cp ~{updated_input_vcf} ~{local_input_vcf}
+        gsutil cp ~{updated_input_vcf_index} ~{local_input_vcf_index}
+
+        awk '{print $2}' ~{subpopulation_sample_list} | sort -u > collected_subpopulations.txt
+
         # expected_subpopulations = [
         # "afr",
         # "amr",
@@ -171,21 +184,15 @@ task ExtractAnAcAfFromVCF {
         # "sas"
         #]
 
-        gunzip ~{input_vcf} > uncompressed.vcf
-
-        bcftools norm -m- uncompressed.vcf | bcftools plugin fill-tags -- -S ~{subpopulation_sample_list} \
-        | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het \
-        \t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr \
-        \t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr \
-        \t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas \
-        \t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur \
-        \t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid \
-        \t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth \
-        \t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
+        bcftools norm -m- ~{local_input_vcf} | bcftools plugin fill-tags -- -S ~{subpopulation_sample_list} \
+        | bcftools query -f \
+        '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\n' \
         | grep -v "*" >> ~{custom_annotations_file_name}
 
+        # \t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas
+
         ### for validation of the pipeline
-        bcftools norm -m-  uncompressed.vcf | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
+        bcftools norm -m-  ~{local_input_vcf}  | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
         # I find this ^ clearer, but could also do a regex like:  grep "AC=[1-9][0-9]*;A[N|F]=[.0-9]*;A[N|F]=[.0-9]*"
         # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
     >>>
@@ -203,6 +210,8 @@ task ExtractAnAcAfFromVCF {
     output {
         File annotations_file = "~{custom_annotations_file_name}"
         Int count_variants = read_int("count.txt")
+        File output_vcf = local_input_vcf
+        File output_vcf_index = local_input_vcf_index
     }
 }
 
