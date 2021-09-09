@@ -1,4 +1,4 @@
-version 1.1
+version 1.0
 
 workflow GvsExtractCallset {
    input {
@@ -239,8 +239,7 @@ task ExtractTask {
         Float output_vcf_bytes = read_float("vcf_bytes.txt")
         File output_vcf_index = "~{output_file}.tbi"
         Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
-#        String manifest = read_string("manifest.txt")
-        Pair[Int, String] manifest = (interval_index, read_string("manifest.txt"))
+        String manifest = read_string("manifest.txt")
     }
  }
 
@@ -381,16 +380,15 @@ task SumBytes {
 task CreateManifest {
 
     input {
-        Array[Pair[Int, String]] manifest_intervals
+        Array[String] manifest_lines
         String? output_gcs_dir
     }
 
     command <<<
         set -e
-        MANIFEST_LINES_TXT=~{write_map(as_map(manifest_intervals))}
-        cat ${MANIFEST_LINES_TXT}
-        echo "interval_number, vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
-        sort -n ${MANIFEST_LINES_TXT} >> manifest.txt
+        MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
+        echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
+        sort -n ${MANIFEST_LINES_TXT} | cut -d',' -f 2- >> manifest.txt
 
         # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
