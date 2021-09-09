@@ -387,7 +387,7 @@ task CreateManifest {
 
     command <<<
         set -e
-        MANIFEST_LINES_TXT=~{write_object(manifest_intervals)}
+        MANIFEST_LINES_TXT=~{write_map(as_map(manifest_intervals))}
         cat ${MANIFEST_LINES_TXT}
         echo "interval_number, vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
         sort -n ${MANIFEST_LINES_TXT} >> manifest.txt
