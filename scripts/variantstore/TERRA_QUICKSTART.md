@@ -26,8 +26,8 @@ In order to load data into BigQuery without hitting daily load limits, we recomm
 
 A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Run the two import workflows against this sample set by selecting "sample_set" as the root entity type ("Step 1") and `gvs_demo-10` for the data ("Step 2").  If you are creating your own sample set, note that the sample table should have a column for the re-blocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files need to be in the same location.
 
-## 1.1 Assign Gvs Ids 
-To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set and update the BigQuery dataset with the sample name to id mapping info.
+## 1.1 Assign Gvs IDs
+To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set and update the BigQuery dataset with the sample name to ID mapping info.
 
 These are the required parameters which must be supplied to the workflow:
 
@@ -39,7 +39,7 @@ These are the required parameters which must be supplied to the workflow:
 
 ## 1.2 Load data
 
-Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.  
+Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.
 
 These are the required parameters which must be supplied to the workflow:
 
