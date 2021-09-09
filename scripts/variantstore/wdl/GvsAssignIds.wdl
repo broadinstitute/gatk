@@ -115,7 +115,7 @@ task AssignIds {
         "UPDATE ~{dataset_name}.~{sample_info_table} m SET m.sample_id = id_assign.id FROM (SELECT sample_name, $offset + ROW_NUMBER() OVER() as id FROM ~{dataset_name}.~{sample_info_table} WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;"
 
       # remove the lock table
-      bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
+      # bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
 
   >>>
   runtime {
