@@ -172,7 +172,7 @@ task ExtractAnAcAfFromVCF {
         gsutil cp ~{updated_input_vcf} ~{local_input_vcf}
         gsutil cp ~{updated_input_vcf_index} ~{local_input_vcf_index}
 
-        awk '{print $2}' ~{subpopulation_sample_list} | sort -u > collected_subpopulations.txt
+        awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
 
         # expected_subpopulations = [
         # "afr",
@@ -186,10 +186,10 @@ task ExtractAnAcAfFromVCF {
 
         bcftools norm -m- ~{local_input_vcf} | bcftools plugin fill-tags -- -S ~{subpopulation_sample_list} \
         | bcftools query -f \
-        '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\n' \
+        '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t.\t.\t.\t.\t.\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
         | grep -v "*" >> ~{custom_annotations_file_name}
 
-        # \t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas
+        # \t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid
 
         ### for validation of the pipeline
         bcftools norm -m-  ~{local_input_vcf}  | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
