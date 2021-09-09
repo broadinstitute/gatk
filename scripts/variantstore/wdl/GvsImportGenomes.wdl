@@ -865,6 +865,10 @@ task SetIsLoadedColumn {
 }
 
 task GetSampleIds {
+  meta {
+    volatile: true
+  }
+
   input {
     Array[String] external_sample_names
     String project_id
