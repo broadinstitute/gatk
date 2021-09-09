@@ -70,8 +70,8 @@ workflows:
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
      filters:
        branches:
+         - master
          - ah_var_store
-         - rsa_alt_allele_script
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
