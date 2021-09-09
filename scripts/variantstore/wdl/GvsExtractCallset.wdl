@@ -160,7 +160,7 @@ task ExtractTask {
     # Run our command:
     command <<<
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
 
         if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json_path} local.service_account.json
@@ -197,23 +197,23 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
-        OUTPUT_FILE_BYTES=$(du -b ~{output_file} | cut -f1)
+        OUTPUT_FILE_BYTES="$(du -b ~{output_file} | cut -f1)"
         echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
 
-        OUTPUT_FILE_INDEX_BYTES=$(du -b ~{output_file}.tbi | cut -f1)
+        OUTPUT_FILE_INDEX_BYTES="$(du -b ~{output_file}.tbi | cut -f1)"
         echo ${OUTPUT_FILE_INDEX_BYTES} > vcf_index_bytes.txt
 
         # Drop trailing slash if one exists
-        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+        OUTPUT_GCS_DIR="$(echo ~{output_gcs_dir} | sed 's/\/$//')"
 
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
           gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
           gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
-          OUTPUT_FILE_DEST=${OUTPUT_GCS_DIR}/~{output_file}
-          OUTPUT_FILE_INDEX_DEST=${OUTPUT_GCS_DIR}/~{output_file}.tbi
+          OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/~{output_file}"
+          OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/~{output_file}.tbi"
         else
-          OUTPUT_FILE_DEST=~{output_file}
-          OUTPUT_FILE_INDEX_DEST=~{output_file}.tbi
+          OUTPUT_FILE_DEST="~{output_file}"
+          OUTPUT_FILE_INDEX_DEST="~{output_file}.tbi"
         fi
 
         # Parent Task will collect manifest lines and create a joined file
