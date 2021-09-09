@@ -69,6 +69,12 @@ task AssignIds {
   command <<<
       set -e
 
+      # make sure that sample names were actually passed
+      if [ ~{length(sample_names)} -eq 0 ]; then
+        echo "No sample names passed. Exiting"
+        exit 1
+      fi
+
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
       if [ ~{has_service_account_file} = 'true' ]; then
@@ -92,10 +98,8 @@ task AssignIds {
       bq --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
 
       NAMES_FILE=~{write_lines(sample_names)}
-      echo "NAMES_FILE contents:" && cat $NAMES_FILE
 
       # first load name into the lock table - will check for dupes when adding to sample_info table
-      echo "bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE \"sample_name:STRING\""
       bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
 
       # add sample_name to sample_info_table
@@ -106,16 +110,12 @@ task AssignIds {
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false "SELECT IFNULL(MAX(sample_id),0) FROM ~{dataset_name}.~{sample_info_table}" > maxid
       offset=$(tail -1 maxid)
 
-      echo "offset = $offset"
-
-      echo "maxid contents:" && cat maxid
-
       # perform actual id assignment
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
         "UPDATE ~{dataset_name}.~{sample_info_table} m SET m.sample_id = id_assign.id FROM (SELECT sample_name, $offset + ROW_NUMBER() OVER() as id FROM ~{dataset_name}.~{sample_info_table} WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;"
 
       # remove the lock table
-      # bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
+      bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
 
   >>>
   runtime {
