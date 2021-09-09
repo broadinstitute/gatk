@@ -39,7 +39,7 @@ workflow GvsAssignIds {
       service_account_json = service_account_json,
       docker = docker_final,
   }
-  
+
   output {
     Boolean gvs_ids_created = true
   }
@@ -92,6 +92,7 @@ task AssignIds {
       bq --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
 
       NAMES_FILE=~{write_lines(sample_names)}
+      echo "NAMES_FILE = $NAMES_FILE"
 
       # first load name into the lock table - will check for dupes when adding to sample_info table
       bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
@@ -104,10 +105,14 @@ task AssignIds {
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false "SELECT IFNULL(MAX(sample_id),0) FROM ~{dataset_name}.~{sample_info_table}" > maxid
       offset=$(tail -1 maxid)
 
+      echo "offset = $offset"
+
+      cat maxid
+
       # perform actual id assignment
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
         "UPDATE ~{dataset_name}.~{sample_info_table} m SET m.sample_id = id_assign.id FROM (SELECT sample_name, $offset + ROW_NUMBER() OVER() as id FROM ~{dataset_name}.~{sample_info_table} WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;"
-      
+
       # remove the lock table
       bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
 
@@ -151,7 +156,7 @@ task CreateTables {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     TABLE="~{dataset_name}.~{datatype}"
-      
+
     # Check that the table has not been created yet
     set +e
     bq show --project_id ~{project_id} $TABLE > /dev/null
