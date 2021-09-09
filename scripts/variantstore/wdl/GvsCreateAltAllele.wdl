@@ -156,6 +156,10 @@ task CreateAltAlleleTable {
 }
 
 task PopulateAltAlleleTable {
+  meta {
+    volatile: true
+  }
+
   input {
     String create_table_done
     String vet_table_name
