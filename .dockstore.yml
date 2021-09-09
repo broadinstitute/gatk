@@ -82,6 +82,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_quickstart_updates
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
