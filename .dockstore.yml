@@ -56,11 +56,29 @@ workflows:
      filters:
        branches:
          - master
+   - name: GvsAssignIds
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsAssignIds.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
      testParameterFiles:
        - /scripts/variantstore/wdl/GvsCreateFilterSet.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsCreateAltAllele
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateAltAllele.example.inputs.json
      filters:
        branches:
          - master
@@ -99,12 +117,16 @@ workflows:
        - /scripts/variantstore/wdl/GvsSitesOnlyVCF.example.inputs.json
      filters:
        branches:
+         - master
          - ah_var_store
-   - name: GvsValidateVatTable
+   - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
+     testParameterFiles:
+       - /scripts/variantstore/variant_annotations_table/GvsValidateVat.example.inputs.json
      filters:
        branches:
+         - master
          - ah_var_store
    - name: MitochondriaPipeline
      subclass: WDL
