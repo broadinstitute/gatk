@@ -92,9 +92,10 @@ task AssignIds {
       bq --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
 
       NAMES_FILE=~{write_lines(sample_names)}
-      echo "NAMES_FILE = $NAMES_FILE"
+      echo "NAMES_FILE contents:" && cat $NAMES_FILE
 
       # first load name into the lock table - will check for dupes when adding to sample_info table
+      echo "bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE \"sample_name:STRING\""
       bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
 
       # add sample_name to sample_info_table
@@ -107,7 +108,7 @@ task AssignIds {
 
       echo "offset = $offset"
 
-      cat maxid
+      echo "maxid contents:" && cat maxid
 
       # perform actual id assignment
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
