@@ -57,15 +57,16 @@ These are the required parameters which must be supplied to the workflow:
 **NOTE**: if your workflow fails, you will need to manually remove a lockfile from the output directory.  It is called LOCKFILE, and can be removed with `gsutil rm`
 
 ## 2. Create Alt Allele Table
-**NOTE:** This is a bit of a kludge until we gain more confidence that the data loaded into the ALT_ALLELE table for feature training are optimal and we can automate this process
+This step loads data into the ALT_ALLELE table from the `vet_*` tables.
 
-You'll need to run this from the BigQuery Console for your dataset.
+This is done by running the `GvsCreateAltAllele` workflow with the following parameters:
 
-Load the SQL script you can find here in the [GATK GitHub Repository](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/bq/alt_allele_creation.example.sql)
+| Parameter      | Description |
+| ----------------- | ----------- |
+| data_project | The name of the google project containing the dataset |
+| default_dataset      | The name of the dataset  |
 
-There are three places where you need to replace the string `spec-ops-aou.gvs_tieout_acmg_v1` with your project and dataset name in the form `PROJECT.DATASET`
-
-Execute the script, it should take 30-60 seconds to run resulting in the creation of the `ALT_ALLELE` table in your dataset
+**Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
 ## 3. Create Filter Set
 

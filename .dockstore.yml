@@ -65,6 +65,13 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsCreateAltAllele
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
