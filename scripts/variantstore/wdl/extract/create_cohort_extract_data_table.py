@@ -168,7 +168,7 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
         execute_with_retry("create and populate vet new table", sql)
       else:
         execute_with_retry("populate vet new table", sql)
-  return 
+  return
 
 
 

@@ -71,6 +71,7 @@ workflow GvsExtractCallset {
                 reference_index                 = reference_index,
                 reference_dict                  = reference_dict,
                 fq_samples_to_extract_table     = fq_samples_to_extract_table,
+                interval_index                  = i,
                 intervals                       = SplitIntervals.interval_files[i],
                 fq_cohort_extract_table         = fq_cohort_extract_table,
                 read_project_id                 = query_project,
@@ -97,10 +98,17 @@ workflow GvsExtractCallset {
         file_sizes_bytes = flatten([ExtractTask.output_vcf_bytes, ExtractTask.output_vcf_index_bytes])
     }
 
+    call CreateManifest {
+      input:
+        manifest_lines = ExtractTask.manifest,
+        output_gcs_dir = output_gcs_dir
+    }
+
     output {
       Array[File] output_vcfs = ExtractTask.output_vcf
       Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
       Float total_vcfs_size_mb = SumBytes.total_mb
+      File manifest = CreateManifest.manifest
     }
 }
 
@@ -115,6 +123,7 @@ task ExtractTask {
 
         String fq_samples_to_extract_table
 
+        Int interval_index
         File intervals
 
         String fq_cohort_extract_table
@@ -151,7 +160,7 @@ task ExtractTask {
     # Run our command:
     command <<<
         set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
 
         if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json_path} local.service_account.json
@@ -188,16 +197,28 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
-        du -b ~{output_file} | cut -f1 > vcf_bytes.txt
-        du -b ~{output_file}.tbi | cut -f1 > vcf_index_bytes.txt
+        OUTPUT_FILE_BYTES="$(du -b ~{output_file} | cut -f1)"
+        echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
+
+        OUTPUT_FILE_INDEX_BYTES="$(du -b ~{output_file}.tbi | cut -f1)"
+        echo ${OUTPUT_FILE_INDEX_BYTES} > vcf_index_bytes.txt
 
         # Drop trailing slash if one exists
-        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+        OUTPUT_GCS_DIR="$(echo ~{output_gcs_dir} | sed 's/\/$//')"
 
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
           gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
           gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
+          OUTPUT_FILE_DEST="${OUTPUT_GCS_DIR}/~{output_file}"
+          OUTPUT_FILE_INDEX_DEST="${OUTPUT_GCS_DIR}/~{output_file}.tbi"
+        else
+          OUTPUT_FILE_DEST="~{output_file}"
+          OUTPUT_FILE_INDEX_DEST="~{output_file}.tbi"
         fi
+
+        # Parent Task will collect manifest lines and create a joined file
+        # Currently, the schema is `[interval_number], [output_file_location], [output_file_size_bytes], [output_file_index_location], [output_file_size_bytes]`
+        echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
     >>>
 
     # ------------------------------------------------
@@ -218,6 +239,7 @@ task ExtractTask {
         Float output_vcf_bytes = read_float("vcf_bytes.txt")
         File output_vcf_index = "~{output_file}.tbi"
         Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
+        String manifest = read_string("manifest.txt")
     }
  }
 
@@ -353,4 +375,38 @@ task SumBytes {
     preemptible: 3
     cpu: 1
   }
+}
+
+task CreateManifest {
+
+    input {
+        Array[String] manifest_lines
+        String? output_gcs_dir
+    }
+
+    command <<<
+        set -e
+        MANIFEST_LINES_TXT=~{write_lines(manifest_lines)}
+        echo "vcf_file_location, vcf_file_bytes, vcf_index_location, vcf_index_bytes" >> manifest.txt
+        sort -n ${MANIFEST_LINES_TXT} | cut -d',' -f 2- >> manifest.txt
+
+        # Drop trailing slash if one exists
+        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+        if [ -n "${OUTPUT_GCS_DIR}" ]; then
+          gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
+        fi
+    >>>
+
+    output {
+        File manifest = "manifest.txt"
+    }
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
 }
