@@ -70,10 +70,10 @@ task AssignIds {
       set -e
 
       # make sure that sample names were actually passed
-      if [ ~{length(sample_names)} -eq 0 ]; then
-        echo "No sample names passed. Exiting"
-        exit 1
-      fi
+#      if [ ~{length(sample_names)} -eq 0 ]; then
+#        echo "No sample names passed. Exiting"
+#        exit 1
+#      fi
 
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
