@@ -7,7 +7,7 @@ Through this QuickStart you will learn how to use the Broad Genomic Variant Stor
 
 The sequencing data in this quickstart came from the [AnVIL 1000G High Coverage workspace](https://app.terra.bio/#workspaces/anvil-datastorage/1000G-high-coverage-2019)
 
-**Note:** VQSR dies with the default/recommended configuration, so we set SNP max-gaussians to 4 here...
+**Note:** VQSR dies with the default/recommended configuration, so we set SNP max-gaussians to 4 here.
 
 ## Prerequisites
 
@@ -19,13 +19,15 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
     - BigQuery data editor
     - BigQuery job user
     - BigQuery Read Session User
-4. These tools expect reblocked gvcf files as input. 
+4. These tools expect re-blocked gVCF files as input.
 
 ## 1. Import Data
 In order to load data into BigQuery without hitting daily load limits, we recommend you group your input files into samples sets and follow these steps for each sample set.
 
-## 1.1 Assign Gvs Ids 
-To optimize the internal queries, each sample must have a unique and consecutive integer id assigned. Run the `GvsAssignIds` workflow. This will create an appropiate id for each sample in the sample set and update the BigQuery data set with the sample name to id mapping info.
+A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Run the two import workflows against this sample set by selecting "sample_set" as the root entity type ("Step 1") and `gvs_demo-10` for the data ("Step 2").  If you are creating your own sample set, note that the sample table should have a column for the re-blocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files need to be in the same location.
+
+## 1.1 Assign Gvs IDs
+To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set and update the BigQuery dataset with the sample name to ID mapping info.
 
 These are the required parameters which must be supplied to the workflow:
 
@@ -33,16 +35,11 @@ These are the required parameters which must be supplied to the workflow:
 | ----------------- | ----------- |
 | project_id | The name of the google project containing the dataset |
 | dataset_name      | The name of the dataset you created above       |
-| external\_sample_names | Use `this.samples.sample_id` |
 
 
 ## 1.2 Load data
 
-Next, your reblocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.  
-
-The workflow should be run against a sample set indicating the samples to load.  The sample table should have a column for the reblocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files need to be in the same location.
-
-A sample set for the quickstart (`gvs_demo-10`) has already been created with 10 samples.
+Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.
 
 These are the required parameters which must be supplied to the workflow:
 
@@ -50,7 +47,6 @@ These are the required parameters which must be supplied to the workflow:
 | ----------------- | ----------- |
 | project_id | The name of the google project containing the dataset |
 | dataset_name      | The name of the dataset you created above       |
-| external\_sample_names | Use `this.samples.sample_id` |
 | output_directory | A unique GCS path to be used for loading, can be in the workspace bucket.  E.g. `gs://fc-124-12-132-123-31/gvs/demo1`)
 
 

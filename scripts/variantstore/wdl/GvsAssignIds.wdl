@@ -39,7 +39,7 @@ workflow GvsAssignIds {
       service_account_json = service_account_json,
       docker = docker_final,
   }
-  
+
   output {
     Boolean gvs_ids_created = true
   }
@@ -68,6 +68,12 @@ task AssignIds {
 
   command <<<
       set -e
+
+      # make sure that sample names were actually passed, fail if empty
+      if [ ~{length(sample_names)} -eq 0 ]; then
+        echo "No sample names passed. Exiting"
+        exit 1
+      fi
 
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -107,7 +113,7 @@ task AssignIds {
       # perform actual id assignment
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
         "UPDATE ~{dataset_name}.~{sample_info_table} m SET m.sample_id = id_assign.id FROM (SELECT sample_name, $offset + ROW_NUMBER() OVER() as id FROM ~{dataset_name}.~{sample_info_table} WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;"
-      
+
       # remove the lock table
       bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
 
@@ -151,7 +157,7 @@ task CreateTables {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     TABLE="~{dataset_name}.~{datatype}"
-      
+
     # Check that the table has not been created yet
     set +e
     bq show --project_id ~{project_id} $TABLE > /dev/null

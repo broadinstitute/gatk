@@ -88,6 +88,10 @@ task GetVetTableNames {
 }
 
 task CreateAltAlleleTable {
+  meta {
+    volatile: true
+  }
+
   input {
     String query_project_id
     String dataset_project_id
@@ -152,6 +156,10 @@ task CreateAltAlleleTable {
 }
 
 task PopulateAltAlleleTable {
+  meta {
+    volatile: true
+  }
+
   input {
     String create_table_done
     String vet_table_name
