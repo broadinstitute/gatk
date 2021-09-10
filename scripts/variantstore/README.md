@@ -1,30 +1,33 @@
 # Running the Genome Variant Store (GVS) Pipeline for AoU
 
 ## Steps
-1. If this is the first time running the pipeline in a particular Google project, submit a ticket requesting the following changes to enable read API clustering:
+1. If this is the first time running the pipeline in a particular Google billing project, submit a ticket requesting the following changes to enable read API clustering:
    - TBD
-2. If you haven't already, clone the [QuickStart Workspace](https://app.terra.bio/#workspaces/broad-dsde-firecloud-billing/Genomic%20Variant%20Store%20-%20GVS%20Quickstart)
-3. In that cloned workspace, run the workflows outlined in the Workspace description; using the same “data_project” and “default_dataset” throughout
+2. If you haven't already, clone the [QuickStart Workspace](https://app.terra.bio/#workspaces/broad-dsde-firecloud-billing/Genomic%20Variant%20Store%20-%20GVS%20Quickstart), selecting the AoU authorization domain.
+3. Re-block gVCFs and put into cloned Quickstart workspace.
+4. In that cloned workspace, run the workflows outlined in the Workspace description; using the same “data_project” and “default_dataset” throughout
    1. GvsAssignIds
    2. GvsImportGenomes
    3. GvsCreateAltAllele
    4. GvsCreateFilterSet
       - make note of the “filter_set_name” input used
    5. GvsPrepareCallset
+      - if the callset has more than 20K genomes, you will want to reserve flex slots for this step and then release them once it has completed
    6. GvsExtractCallset
        - include a valid (and secure) “output_gcs_dir” parameter, this is where the VCF files will go
        - after `SplitIntervals` task has completed, make note of location of interval_list files (e.g. “fc-secure-…./…/GvsExtractCallset/…/call-SplitIntervals/.../*.interval_list”
        - make note of the “cohort_extract_table_prefix”
-
-## Deliverables
-1. location of the VCF files (“output_gcs_dir” input from GvsExtractCallset)
-2. location of the interval_list files (output of `SplitIntervals` task in `GvsExtractCallset`)
-3. results of [running QC](callset_QC/README.md), for which you need
+5. Run [callset QC](callset_QC/README.md), for which you need
    1. permission to query table `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites`
    2. the data_project you used for all the Quickstart WDLs
    3. the default_dataset you used for all the Quickstart WDLs
    4. the “cohort_extract_table_prefix” input from `GvsExtractCallset` step
    5. the “filter_set_name” input from `GvsCreateFilterSet` step
+
+## Deliverables
+1. location of the VCF files (“output_gcs_dir” input from GvsExtractCallset)
+2. location of the interval_list files (output of `SplitIntervals` task in `GvsExtractCallset`)
+3. results of running callset QC
 
 ## Cost estimation for BQ queries
 To get cost information for the AoU queries, only the AoU Service account has access. 
