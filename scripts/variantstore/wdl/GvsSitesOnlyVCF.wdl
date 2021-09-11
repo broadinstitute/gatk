@@ -103,6 +103,14 @@ task MakeSubpopulationFiles {
         File inputFileofFileNames
         File inputFileofIndexFileNames
     }
+    parameter_meta {
+        inputFileofFileNames: {
+          localization_optional: true
+        }
+        inputFileofIndexFileNames: {
+          localization_optional: true
+        }
+    }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String updated_input_vcfs_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
