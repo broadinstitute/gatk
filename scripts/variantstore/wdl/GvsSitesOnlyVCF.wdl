@@ -24,7 +24,7 @@ workflow GvsSitesOnlyVCF {
 
     Array[File] input_vcfs = gvs_extract_cohort_filtered_vcfs
     Array[File] input_vcf_indices = gvs_extract_cohort_filtered_vcf_indices
-    
+
 
     #Array[File] input_vcfs = if (defined(gvs_extract_cohort_filtered_vcfs)) then gvs_extract_cohort_filtered_vcfs else read_lines(inputFileofFileNames)
     #Array[File] input_vcf_indices  = if (defined(gvs_extract_cohort_filtered_vcf_indices)) then gvs_extract_cohort_filtered_vcf_indices else read_lines(inputFileofIndexFileNames)
@@ -186,10 +186,8 @@ task ExtractAnAcAfFromVCF {
 
         bcftools norm -m- ~{local_input_vcf} | bcftools plugin fill-tags -- -S ~{subpopulation_sample_list} \
         | bcftools query -f \
-        '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t.\t.\t.\t.\t.\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
+        '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
         | grep -v "*" >> ~{custom_annotations_file_name}
-
-        # \t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid
 
         ### for validation of the pipeline
         bcftools norm -m-  ~{local_input_vcf}  | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
