@@ -1,10 +1,10 @@
 version 1.0
 workflow GvsSitesOnlyVCF {
    input {
-        File inputFileofFileNames
-        File inputFileofIndexFileNames
-        Array[File]? gvs_extract_cohort_filtered_vcfs
-        Array[File]? gvs_extract_cohort_filtered_vcf_indices
+        File? inputFileofFileNames
+        File? inputFileofIndexFileNames
+        Array[File] gvs_extract_cohort_filtered_vcfs
+        Array[File] gvs_extract_cohort_filtered_vcf_indices
         String output_sites_only_file_name
         String output_annotated_file_name
         String project_id
@@ -22,8 +22,9 @@ workflow GvsSitesOnlyVCF {
         File ancestry_file
     }
 
-    Array[File] input_vcfs = read_lines(inputFileofFileNames)
-    Array[File] input_vcf_indices = read_lines(inputFileofIndexFileNames)
+    Array[File] input_vcfs = gvs_extract_cohort_filtered_vcfs
+    Array[File] input_vcf_indices = gvs_extract_cohort_filtered_vcf_indices
+    
 
     #Array[File] input_vcfs = if (defined(gvs_extract_cohort_filtered_vcfs)) then gvs_extract_cohort_filtered_vcfs else read_lines(inputFileofFileNames)
     #Array[File] input_vcf_indices  = if (defined(gvs_extract_cohort_filtered_vcf_indices)) then gvs_extract_cohort_filtered_vcf_indices else read_lines(inputFileofIndexFileNames)
