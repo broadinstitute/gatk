@@ -1,10 +1,10 @@
 version 1.0
 workflow GvsSitesOnlyVCF {
    input {
-        File? inputFileofFileNames
-        File? inputFileofIndexFileNames
-        Array[File] gvs_extract_cohort_filtered_vcfs
-        Array[File] gvs_extract_cohort_filtered_vcf_indices
+        File inputFileofFileNames
+        File inputFileofIndexFileNames
+        Array[File]? gvs_extract_cohort_filtered_vcfs
+        Array[File]? gvs_extract_cohort_filtered_vcf_indices
         String output_sites_only_file_name
         String output_annotated_file_name
         String project_id
@@ -22,20 +22,20 @@ workflow GvsSitesOnlyVCF {
         File ancestry_file
     }
 
-    Array[File] input_vcfs = gvs_extract_cohort_filtered_vcfs
-    Array[File] input_vcf_indices = gvs_extract_cohort_filtered_vcf_indices
-
-
-    #Array[File] input_vcfs = if (defined(gvs_extract_cohort_filtered_vcfs)) then gvs_extract_cohort_filtered_vcfs else read_lines(inputFileofFileNames)
-    #Array[File] input_vcf_indices  = if (defined(gvs_extract_cohort_filtered_vcf_indices)) then gvs_extract_cohort_filtered_vcf_indices else read_lines(inputFileofIndexFileNames)
+    Array[File] input_vcfs = read_lines(inputFileofFileNames)
+    Array[File] input_vcf_indices = read_lines(inputFileofIndexFileNames)
 
     call MakeSubpopulationFiles {
         input:
-            input_ancestry_file = ancestry_file
+            input_ancestry_file = ancestry_file,
+            service_account_json_path = service_account_json_path,
+            inputFileofFileNames = inputFileofFileNames,
+            inputFileofIndexFileNames = inputFileofIndexFileNames
+
     }
 
     ## Scatter across the shards from the GVS jointVCF
-    scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
+    scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
         call ExtractAnAcAfFromVCF {
             input:
               input_vcf = input_vcfs[i],
@@ -102,16 +102,33 @@ workflow GvsSitesOnlyVCF {
 task MakeSubpopulationFiles {
     input {
         File input_ancestry_file
+        String? service_account_json_path
+        File inputFileofFileNames
+        File inputFileofIndexFileNames
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
     command <<<
         set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
+
+          ## gsutil cp ~{input_ancestry_file} .
+          gsutil cp ~{inputFileofFileNames} .
+          gsutil cp ~{inputFileofIndexFileNames} .
+       fi
+
 
         python3 /app/extract_subpop.py \
           --input_path ~{input_ancestry_file} \
           --output_path ~{output_ancestry_filename}
 
     >>>
+
     # ------------------------------------------------
     # Runtime settings:
     runtime {
@@ -125,6 +142,8 @@ task MakeSubpopulationFiles {
     # Outputs:
     output {
         File ancestry_mapping_list = "~{output_ancestry_filename}"
+        Array[File] input_vcfs = read_lines(inputFileofFileNames)
+        Array[File] input_vcf_indices = read_lines(inputFileofIndexFileNames)
     }
 }
 
@@ -147,11 +166,10 @@ task ExtractAnAcAfFromVCF {
     }
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String input_vcf_basename = basename(input_vcf)
-    String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
+    String updated_input_vcf = if (defined(service_account_json_path)) then basename(input_vcf) else input_vcf
     String updated_input_vcf_index = if (defined(service_account_json_path)) then basename(input_vcf_index) else input_vcf_index
     String custom_annotations_file_name = "an_ac_af.tsv"
-    String local_input_vcf = "local.vcf.gz" #Todo I am making an assumption herecustom_annotations_template.tsv
+    String local_input_vcf = "local.vcf.gz" #Todo I am making an assumption here
     String local_input_vcf_index = "local.vcf.gz.tbi"
 
     # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af & sc
@@ -163,14 +181,12 @@ task ExtractAnAcAfFromVCF {
           export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
           gcloud auth activate-service-account --key-file=local.service_account.json
 
-          gsutil cp ~{input_vcf} .
-          gsutil cp ~{input_vcf_index} .
         fi
 
         cp ~{custom_annotations_template} ~{custom_annotations_file_name}
 
-        gsutil cp ~{updated_input_vcf} ~{local_input_vcf}
-        gsutil cp ~{updated_input_vcf_index} ~{local_input_vcf_index}
+        gsutil cp ~{input_vcf} ~{local_input_vcf}
+        gsutil cp ~{input_vcf_index} ~{local_input_vcf_index}
 
         awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
 
