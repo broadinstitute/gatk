@@ -108,6 +108,8 @@ task MakeSubpopulationFiles {
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    String updated_inputvcfs_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
+    String updated_input_indices_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofIndexFileNames
 
     command <<<
         set -e
@@ -142,8 +144,8 @@ task MakeSubpopulationFiles {
     # Outputs:
     output {
         File ancestry_mapping_list = "~{output_ancestry_filename}"
-        Array[File] input_vcfs = read_lines(inputFileofFileNames)
-        Array[File] input_vcf_indices = read_lines(inputFileofIndexFileNames)
+        Array[File] input_vcfs = read_lines(updated_inputvcfs_file)
+        Array[File] input_vcf_indices = read_lines(updated_input_indices_file)
     }
 }
 
