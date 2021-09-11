@@ -22,9 +22,6 @@ workflow GvsSitesOnlyVCF {
         File ancestry_file
     }
 
-    Array[File] input_vcfs = read_lines(inputFileofFileNames)
-    Array[File] input_vcf_indices = read_lines(inputFileofIndexFileNames)
-
     call MakeSubpopulationFiles {
         input:
             input_ancestry_file = ancestry_file,
@@ -38,8 +35,8 @@ workflow GvsSitesOnlyVCF {
     scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
         call ExtractAnAcAfFromVCF {
             input:
-              input_vcf = input_vcfs[i],
-              input_vcf_index = input_vcf_indices[i],
+              input_vcf = MakeSubpopulationFiles.input_vcfs[i],
+              input_vcf_index = MakeSubpopulationFiles.input_vcfs[i],
               service_account_json_path = service_account_json_path,
               subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list,
               custom_annotations_template = AnAcAf_annotations_template
@@ -108,7 +105,7 @@ task MakeSubpopulationFiles {
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String updated_inputvcfs_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
+    String updated_input_vcfs_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
     String updated_input_indices_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofIndexFileNames
 
     command <<<
@@ -144,7 +141,7 @@ task MakeSubpopulationFiles {
     # Outputs:
     output {
         File ancestry_mapping_list = "~{output_ancestry_filename}"
-        Array[File] input_vcfs = read_lines(updated_inputvcfs_file)
+        Array[File] input_vcfs = read_lines(updated_input_vcfs_file)
         Array[File] input_vcf_indices = read_lines(updated_input_indices_file)
     }
 }
