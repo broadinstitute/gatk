@@ -368,20 +368,21 @@ task CheckForDuplicateData {
     fi
 
     INFO_SCHEMA_TABLE="~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS"
-    touch duplicates
-    cat ~{write_lines(sample_names)} | sort > sorted_names.txt
+    TEMP_TABLE="~{dataset_name}.sample_dupe_check"
+    SAMPLE_INFO_TABLE="~{dataset_name}.sample_info"
 
-    # Check that the table has been created yet
-    set +e
-    bq show --project_id ~{project_id} $TABLE > /dev/null
-    BQ_SHOW_RC=$?
-    set -e
-    if [ $BQ_SHOW_RC -eq 0 ]; then
-      bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-        "SELECT s.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN ~{dataset_name}.sample_info s ON (p.partition_id = CAST(s.sample_id AS STRING)) WHERE table_name like 'pet_%'" | \
-        sed -e '/sample_name/d' | sort > bq_sorted_names.txt
-      comm -12 sorted_names.txt bq_sorted_names.txt > duplicates
-    fi
+    # create a temp table with the sample_names
+    bq --project_id=~{project_id} mk ${TEMP_TABLE} "sample_name:STRING"
+    NAMES_FILE=~{write_lines(sample_names)}
+    bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
+
+    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+      "WITH items as (SELECT s.sample_id, s.sample_name FROM ${TEMP_TABLE} t left outer join ${SAMPLE_INFO_TABLE} s on (s.sample_name = t.sample_name) " \
+      "SELECT i.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND table_name like 'pet_%'" | \
+      sed -e '/sample_name/d' > duplicates
+
+      # remove the temp table
+      bq --project_id=~{project_id} rm -f -t ${TEMP_TABLE}
 
     # true if there is data in results
     if [ -s duplicates ]; then
