@@ -39,5 +39,4 @@ This will currently create/overwrite the sample_metrics table in the dataset. (T
 - Execute the query
 - Click the SAVE RESULTS button to export the results, or you can save the query as a SQL file and then run this command locally to get a CSV file in your local environment:
 
-
-    bq --project_id=<project> --use_legacy_sql=false query --format=csv --use_legacy_sql=false "$(cat <path to SQL file>)" > <path to destination CSV file>
+	`bq --project_id=<project> --use_legacy_sql=false query --format=csv --use_legacy_sql=false "$(cat <path to SQL file>)" > <path to destination CSV file>`
