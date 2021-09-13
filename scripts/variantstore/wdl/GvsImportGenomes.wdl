@@ -377,7 +377,7 @@ task CheckForDuplicateData {
     bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
 
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-      "WITH items as (SELECT s.sample_id, s.sample_name FROM ${TEMP_TABLE} t left outer join ${SAMPLE_INFO_TABLE} s on (s.sample_name = t.sample_name) " \
+      "WITH items as (SELECT s.sample_id, s.sample_name FROM ${TEMP_TABLE} t left outer join ${SAMPLE_INFO_TABLE} s on (s.sample_name = t.sample_name)) " \
       "SELECT i.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND table_name like 'pet_%'" | \
       sed -e '/sample_name/d' > duplicates
 
