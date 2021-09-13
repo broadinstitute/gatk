@@ -7,7 +7,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVSegmentVariantComposer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -363,41 +362,6 @@ public final class SVCallRecordUtils {
         return StructuralVariantType.valueOf(allele.getDisplayString().replace("<", "").replace(">", ""));
     }
 
-    /**
-     * Attempts to create a new record from the given variant produced by
-     * {@link org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller}. If the variant contains only one
-     * genotype, then null is returned if either the genotype is hom-ref, is a no-call but does not have
-     * a CN value, does not meet the min QS value, or is a null call (see {@link SVCallRecordUtils#isNullCall(Genotype)}.
-     * Genotypes that are hom-ref or are both a no-call and missing a CN value are filtered in the resulting record.
-     *
-     * This currently provides legacy support for older GermlineCNVCaller records that were not spec-compliant, although
-     * this may be deprecated in the future.
-     *
-     * @param variant single-sample variant from a gCNV segments VCF
-     * @param minQuality drop events with quality lower than this
-     * @return a new record or null
-     */
-    public static SVCallRecord createDepthOnlyFromGCNVWithOriginalGenotypes(final VariantContext variant, final double minQuality) {
-        Utils.nonNull(variant);
-        if (variant.getGenotypes().size() == 1) {
-            //only cluster good variants
-            final Genotype g = variant.getGenotypes().get(0);
-            if (g.isHomRef() || (g.isNoCall() && !g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT))
-                    || VariantContextGetters.getAttributeAsInt(g, GermlineCNVSegmentVariantComposer.QS, 0) < minQuality
-                    || isNullCall(g)) {
-                return null;
-            }
-        }
-
-        final VariantContextBuilder svBuilder = new VariantContextBuilder(variant);
-        svBuilder.attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM));
-        final SVCallRecord baseRecord = create(svBuilder.make(), true);
-        final List<Genotype> nonRefGenotypes = baseRecord.getGenotypes().stream()
-                .filter(g -> !(g.isHomRef() || (g.isNoCall() && !g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT))))
-                .collect(Collectors.toList());
-        return copyCallWithNewGenotypes(baseRecord, GenotypesContext.copy(nonRefGenotypes));
-    }
-
     private static SVCallRecord createVariantFromLegacyGCNV(final VariantContext variant) {
         boolean isDel = false;
         for (final Genotype g : variant.getGenotypes()) {
@@ -439,17 +403,6 @@ public final class SVCallRecordUtils {
         final int length = end - start;
         final List<String> algorithms = Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM);
         return new SVCallRecord(id, startContig, start, startStrand, startContig, end, endStrand, type, length, algorithms, alleles, variant.getGenotypes(), variant.getAttributes());
-    }
-
-    /**
-     * @param g
-     * @return true if this is a call on a missing contig
-     */
-    private static boolean isNullCall(final Genotype g) {
-        return g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)
-                && VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0) == 0
-                && g.isNoCall();
-
     }
 
     public static boolean containsAltAllele(final Genotype g) {

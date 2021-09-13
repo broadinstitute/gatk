@@ -125,20 +125,19 @@ public class SVTestUtils {
                                                  final List<Allele> alleles,
                                                  final List<GenotypeBuilder> genotypeBuilders) {
         final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(hg38Reference, contigA, positionA), true);
-        final List<Allele> newAlleles = replaceAllele(alleles, Allele.REF_N, refAllele);
+        final List<Allele> newAlleles = replaceRefAlleles(alleles, refAllele);
         final List<Genotype> genotypes = new ArrayList<>(genotypeBuilders.size());
         for (final GenotypeBuilder builder : genotypeBuilders) {
-            final GenotypeBuilder newBuilder = new GenotypeBuilder(builder.make());
-            newBuilder.alleles(replaceAllele(builder.make().getAlleles(), Allele.REF_N, refAllele));
-            genotypes.add(newBuilder.make());
+            genotypes.add(makeGenotypeWithRefAllele(builder, refAllele));
         }
         return new SVCallRecord(id, contigA, positionA, strandA, contigB, positionB, strandB, type, length, algorithms,
                 newAlleles, genotypes);
     }
 
-    public static final Genotype makeGenotypeWithRefAllele(final GenotypeBuilder builder, final String contig, final int position) {
-        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(hg38Reference, contig, position), true);
-        builder.alleles(replaceAllele(builder.make().getAlleles(), Allele.REF_N, refAllele));
+    public static final Genotype makeGenotypeWithRefAllele(final GenotypeBuilder builder, final Allele refAllele) {
+        final List<Allele> alleles = replaceRefAlleles(builder.make().getAlleles(), refAllele);
+        builder.alleles(alleles);
+        builder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, alleles.size());
         return builder.make();
     }
 
@@ -297,12 +296,11 @@ public class SVTestUtils {
         return alleles.stream().map(a -> a.isReference() ? replace : a).collect(Collectors.toList());
     }
 
-    public static List<Allele> replaceAllele(final List<Allele> alleles, final Allele find, final Allele replace) {
-        return alleles.stream().map(a -> a.equals(find) ? replace : a).collect(Collectors.toList());
-    }
-
     public static Genotype buildHomGenotypeWithPloidy(final Allele allele, final int ploidy) {
-        return new GenotypeBuilder().alleles(buildHomAlleleListWithPloidy(allele, ploidy)).make();
+        return new GenotypeBuilder()
+                .alleles(buildHomAlleleListWithPloidy(allele, ploidy))
+                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy)
+                .make();
     }
 
     public static List<Allele> buildHomAlleleListWithPloidy(final Allele allele, final int ploidy) {
@@ -378,12 +376,19 @@ public class SVTestUtils {
     // Note strands and length may not be set properly
     public static SVCallRecord newCallRecordWithIntervalAndType(final int start, final int end, final StructuralVariantType svtype) {
         return new SVCallRecord("", "chr1", start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
-                svtype, end - start + 1, Collections.singletonList("pesr"), Collections.emptyList(),
+                svtype, getLength(start, end, svtype), Collections.singletonList("pesr"), Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyMap());
     }
 
+    public static Integer getLength(final int start, final int end, final StructuralVariantType type) {
+        if (type.equals(StructuralVariantType.BND) || type.equals(StructuralVariantType.INS)) {
+            return null;
+        }
+        return end - start + 1;
+    }
+
     public static SVCallRecord newBndCallRecordWithStrands(final boolean strandA, final boolean strandB) {
-        return new SVCallRecord("", "chr1", 1000, strandA, "chr1", 1999, strandB, StructuralVariantType.BND, 1000,
+        return new SVCallRecord("", "chr1", 1000, strandA, "chr1", 1999, strandB, StructuralVariantType.BND, null,
                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
@@ -399,7 +404,7 @@ public class SVTestUtils {
     }
 
     public static SVCallRecord newCallRecordWithCoordinates(final String id, final String chrA, final int posA, final String chrB, final int posB) {
-        return new SVCallRecord(id, chrA, posA, true, chrB, posB, false, StructuralVariantType.BND, chrA.equals(chrB) ? posB - posA + 1 : -1,
+        return new SVCallRecord(id, chrA, posA, true, chrB, posB, false, StructuralVariantType.BND, null,
                 Collections.singletonList("peser"),
                 Collections.emptyList(),
                 Collections.emptyList(),
@@ -407,7 +412,7 @@ public class SVTestUtils {
     }
 
     public static SVCallRecord newCallRecordWithCoordinatesAndType(final String id, final String chrA, final int posA, final String chrB, final int posB, final StructuralVariantType type) {
-        return new SVCallRecord(id, chrA, posA, true, chrB, posB, false, type, chrA.equals(chrB) ? posB - posA + 1 : -1,
+        return new SVCallRecord(id, chrA, posA, true, chrB, posB, false, type, getLength(posA, posB, type),
                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
@@ -462,6 +467,8 @@ public class SVTestUtils {
             return Boolean.FALSE;
         } else if (type == StructuralVariantType.CNV) {
             return null;
+        } else if (type == StructuralVariantType.INV) {
+            return Boolean.TRUE;
         }
         return Boolean.TRUE;
     }
@@ -471,6 +478,8 @@ public class SVTestUtils {
             return Boolean.TRUE;
         } else if (type == StructuralVariantType.CNV) {
             return null;
+        } else if (type == StructuralVariantType.INV) {
+            return Boolean.TRUE;
         }
         return Boolean.FALSE;
     }

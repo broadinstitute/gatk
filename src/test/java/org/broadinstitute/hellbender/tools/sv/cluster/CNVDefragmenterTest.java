@@ -101,49 +101,71 @@ public class CNVDefragmenterTest {
                                    final GenotypeBuilder altGenotypeMaker2,
                                    final String name) {
         // alt - ref - ref
-        final SVCallRecord deletionARR1 = new SVCallRecord("test_del_arr1", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
+        final SVCallRecord deletionARR1 = SVTestUtils.makeRecord("test_del_arr1", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Lists.newArrayList(altGenotypeMaker1.name("sample1").make(), refGenotypeMaker.name("sample2").make(), refGenotypeMaker.name("sample3").make()),
-                Collections.emptyMap());
+                Lists.newArrayList(
+                        new GenotypeBuilder(altGenotypeMaker1.name("sample1").make()),
+                        new GenotypeBuilder(refGenotypeMaker.name("sample2").make()),
+                        new GenotypeBuilder(refGenotypeMaker.name("sample3").make())
+                ));
         // identical to above
-        final SVCallRecord deletionARR1Copy = new SVCallRecord("test_del_arr1_copy", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
+        final SVCallRecord deletionARR1Copy = SVTestUtils.makeRecord("test_del_arr1_copy", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Lists.newArrayList(altGenotypeMaker1.name("sample1").make(), refGenotypeMaker.name("sample2").make(), refGenotypeMaker.name("sample3").make()),
-                Collections.emptyMap());
+                Lists.newArrayList(
+                    new GenotypeBuilder(altGenotypeMaker1.name("sample1").make()),
+                    new GenotypeBuilder(refGenotypeMaker.name("sample2").make()),
+                    new GenotypeBuilder(refGenotypeMaker.name("sample3").make())
+                ));
         // second alt genotype - single-sample case will not cluster with ARR1
-        final SVCallRecord deletionARR2 = new SVCallRecord("test_del_arr2", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
+        final SVCallRecord deletionARR2 = SVTestUtils.makeRecord("test_del_arr2", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Lists.newArrayList(altGenotypeMaker2.name("sample1").make(), refGenotypeMaker.name("sample2").make(), refGenotypeMaker.name("sample3").make()),
-                Collections.emptyMap());
+                Lists.newArrayList(
+                        new GenotypeBuilder(altGenotypeMaker2.name("sample1").make()),
+                        new GenotypeBuilder(refGenotypeMaker.name("sample2").make()),
+                        new GenotypeBuilder(refGenotypeMaker.name("sample3").make())
+                ));
 
         // ref - alt - ref
-        final SVCallRecord deletionRAR = new SVCallRecord("test_del_rar", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
+        final SVCallRecord deletionRAR = SVTestUtils.makeRecord("test_del_rar", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Lists.newArrayList(refGenotypeMaker.name("sample1").make(), altGenotypeMaker1.name("sample2").make(), refGenotypeMaker.name("sample3").make()),
-                Collections.emptyMap());
+                Lists.newArrayList(
+                        new GenotypeBuilder(refGenotypeMaker.name("sample1").make()),
+                        new GenotypeBuilder(altGenotypeMaker1.name("sample2").make()),
+                        new GenotypeBuilder(refGenotypeMaker.name("sample3").make())
+                ));
+
         // alt - alt - ref
-        final SVCallRecord deletionAAR = new SVCallRecord("test_del_aar", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
+        final SVCallRecord deletionAAR = SVTestUtils.makeRecord("test_del_aar", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Lists.newArrayList(altGenotypeMaker1.name("sample1").make(), altGenotypeMaker1.name("sample2").make(), refGenotypeMaker.name("sample3").make()),
-                Collections.emptyMap());
+                Lists.newArrayList(
+                        new GenotypeBuilder(altGenotypeMaker1.name("sample1").make()),
+                        new GenotypeBuilder(altGenotypeMaker1.name("sample2").make()),
+                        new GenotypeBuilder(refGenotypeMaker.name("sample3").make())
+                ));
         // identical to above but second alt genotype - will cluster because there are multiple samples
-        final SVCallRecord deletionAAR2 = new SVCallRecord("test_del_aar", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
+        final SVCallRecord deletionAAR2 = SVTestUtils.makeRecord("test_del_aar", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Lists.newArrayList(altGenotypeMaker1.name("sample1").make(), altGenotypeMaker1.name("sample2").make(), refGenotypeMaker.name("sample3").make()),
-                Collections.emptyMap());
+                Lists.newArrayList(
+                        new GenotypeBuilder(altGenotypeMaker1.name("sample1").make()),
+                        new GenotypeBuilder(altGenotypeMaker1.name("sample2").make()),
+                        new GenotypeBuilder(refGenotypeMaker.name("sample3").make())
+                ));
 
         // alt - alt - alt
-        final SVCallRecord deletionAAA = new SVCallRecord("test_del_aaa", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
+        final SVCallRecord deletionAAA = SVTestUtils.makeRecord("test_del_aaa", "chr1", 1000, true, "chr1", 1999, false, StructuralVariantType.DEL,
                 1000, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Lists.newArrayList(altGenotypeMaker1.name("sample1").make(), altGenotypeMaker1.name("sample2").make(), altGenotypeMaker1.name("sample3").make()),
-                Collections.emptyMap());
+                Lists.newArrayList(
+                        new GenotypeBuilder(altGenotypeMaker1.name("sample1").make()),
+                        new GenotypeBuilder(altGenotypeMaker1.name("sample2").make()),
+                        new GenotypeBuilder(altGenotypeMaker1.name("sample3").make())
+                ));
         Assert.assertFalse(defragmenter.areClusterable(deletionARR1, deletionARR2));
         Assert.assertFalse(defragmenter.areClusterable(deletionARR1, deletionRAR));
         Assert.assertFalse(defragmenter.areClusterable(deletionARR1, deletionAAR));

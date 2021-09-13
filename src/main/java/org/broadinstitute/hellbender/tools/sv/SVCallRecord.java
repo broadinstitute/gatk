@@ -111,19 +111,44 @@ public class SVCallRecord implements SVLocatable {
         return attributes;
     }
 
-    private static Integer inferLength(final StructuralVariantType type, final int positionA, final int positionB,
+    /**
+     * Determines length annotation for the variant. For CNV and INV, length is calculated based on positions and
+     * cross-checked with the length if provided. For INS, the provided length is used. In all other cases the
+     * inferred length is null.
+     * @param type SV type
+     * @param positionA first position
+     * @param positionB second position
+     * @param inputLength assumed length, may be null
+     * @return variant length, may be null
+     */
+    private static Integer inferLength(final StructuralVariantType type,
+                                       final int positionA,
+                                       final int positionB,
                                        final Integer inputLength) {
-        if (type.equals(StructuralVariantType.CNV) || type.equals(StructuralVariantType.DEL) || type.equals(StructuralVariantType.DUP) || type.equals(StructuralVariantType.INV)) {
+        if (type.equals(StructuralVariantType.CNV) || type.equals(StructuralVariantType.DEL)
+                || type.equals(StructuralVariantType.DUP) || type.equals(StructuralVariantType.INV)) {
+            // Intrachromosomal classes
             final int length = CoordMath.getLength(positionA, positionB);
             if (inputLength != null) {
                 Utils.validateArg(inputLength.intValue() == length, "Input length does not match calculated length");
             }
             return length;
         } else {
+            Utils.validate(type.equals(StructuralVariantType.INS) || inputLength == null,
+                    "Input length should be null for type " + type.name() + " but found " + inputLength);
             return inputLength;
         }
     }
 
+    /**
+     * Determines strands for the variant. For SV classes with implicit strand orientations (e.g. DEL, DUP) or that have
+     * multiple strand types on each end (i.e. CNVs which are either DEL/DUP which are +/- and -/+), inferred strands
+     * are null. For INV and BND both input strands must be non-null. Additionally, INV types must have equal strands.
+     * @param type SV type
+     * @param inputStrandA assumed first strand, may be null
+     * @param inputStrandB assumed second strand, may be null
+     * @return pair containing (first strand, second strand), which may contain null values
+     */
     private static Pair<Boolean, Boolean> inferStrands(final StructuralVariantType type,
                                                        final Boolean inputStrandA,
                                                        final Boolean inputStrandB) {
@@ -147,87 +172,67 @@ public class SVCallRecord implements SVLocatable {
             }
             return Pair.of(Boolean.FALSE, Boolean.TRUE);
         } else {
+            if (type.equals(StructuralVariantType.INV)) {
             Utils.validateArg(inputStrandA != null && inputStrandB != null, "Cannot create variant of type " + type + " with null strands");
+                Utils.validateArg(inputStrandA.equals(inputStrandB), "Inversions must have matching strands but found " +
+                        inputStrandA + " / " + inputStrandB);
+            }
             return Pair.of(inputStrandA, inputStrandB);
         }
     }
 
-    /**
-     * Gets genotypes with non-ref copy number states for a CNV record, as defined by the CN field
-     */
-    private Collection<Genotype> getCNVCarrierGenotypesByCopyNumber() {
-        Utils.validate(isSimpleCNV(), "Cannot determine carriers of non-CNV using copy number attribute.");
-        Utils.validate(altAlleles.size() <= 1,
-                "Carrier samples cannot be determined by copy number for multi-allelic sites. Set sample overlap threshold to 0.");
-        if (altAlleles.isEmpty()) {
-            return Collections.emptyList();
-        }
-        final Allele altAllele = altAlleles.get(0);
-        return genotypes.stream()
-                .filter(g -> isCNVCarrierByCopyNumber(g, altAllele))
-                .collect(Collectors.toList());
-    }
 
     /**
-     * Returns true if the copy number is non-ref. Note that ploidy is determined using the number of entries in the GT
-     * field.
+     * Determines whether the given genotype represents a carrier of the alt allele. Specifically, returns false iff:
+     *   (a) there are no alt alleles for this variant,
+     *   (b) the sample is ploidy 0,
+     *   (c) the GT field contains calls but no alt alleles,
+     *   (d) the GT field is not called but the variant is a biallelic CNV with a non-ref CN field (e.g. less than the
+     *       ploidy for deletions).
+     * Throws an exception if the carrier status cannot be determined from available information.
      */
-    private static boolean isCNVCarrierByCopyNumber(final Genotype genotype, final Allele altAllele) {
-        final int ploidy = genotype.getPloidy();
-        if (ploidy == 0 || !genotype.hasExtendedAttribute(COPY_NUMBER_FORMAT)) {
+    private boolean isCarrier(final Genotype genotype) {
+
+        // No alts exist, so can't be a carrier
+        if (altAlleles.isEmpty()) {
             return false;
         }
-        final int copyNumber = VariantContextGetters.getAttributeAsInt(genotype, COPY_NUMBER_FORMAT, 0);
-        if (altAllele.equals(Allele.SV_SIMPLE_DEL)) {
-            return copyNumber < ploidy;
-        } else {
-            // DUP
-            return copyNumber > ploidy;
+
+        // Retrieve and check non-zero ploidy
+        final int expectedCopyNumber = getExpectedCopyNumber(genotype);
+        if (expectedCopyNumber == 0) {
+            return false;
         }
+
+        // If a genotype call exists, use it
+        if (genotype.isCalled()) {
+            return genotype.getAlleles().stream().filter(SVCallRecordUtils::isAltAllele).count() > 0;
+        }
+
+        // Otherwise, try to infer status if it's a biallelic CNV with a copy number call
+        if (isSimpleCNV() && altAlleles.size() == 1 && genotype.hasExtendedAttribute(COPY_NUMBER_FORMAT)) {
+            final int copyNumber = VariantContextGetters.getAttributeAsInt(genotype, COPY_NUMBER_FORMAT, 0);
+            final Allele allele = altAlleles.get(0);
+            if (allele.equals(Allele.SV_SIMPLE_DEL)) {
+                return copyNumber < expectedCopyNumber;
+            } else if (allele.equals(Allele.SV_SIMPLE_DUP)) {
+                return copyNumber > expectedCopyNumber;
+            }
+        }
+
+        // No-calls (that aren't bi-allelic CNVs)
+        throw new IllegalArgumentException("Cannot determine carrier status for sample " + genotype.getSampleName() +
+                " in record " + id);
     }
 
-    /**
-     * Returns sample IDs of carriers using copy number
-     */
-    private Set<String> getCarrierSamplesByCopyNumber() {
-        return getCNVCarrierGenotypesByCopyNumber().stream().map(Genotype::getSampleName).collect(Collectors.toSet());
+    public static int getExpectedCopyNumber(final Genotype genotype) {
+        Utils.validateArg(genotype.hasExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT),
+                "Genotype missing required field " + GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
+        return VariantContextGetters.getAttributeAsInt(genotype, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
     }
 
-    /**
-     * Returns true if any given genotype has a defined copy number
-     */
-    private boolean hasDefinedCopyNumbers() {
-        return genotypes.stream().anyMatch(g -> g.getExtendedAttribute(COPY_NUMBER_FORMAT, null) != null);
-    }
-
-    /**
-     * Returns true if any of the given genotypes is called
-     */
-    private boolean hasExplicitGenotypes() {
-        return genotypes.stream().anyMatch(Genotype::isCalled);
-    }
-
-    /**
-     * Gets sample IDs of called non-ref genotypes
-     */
-    private Set<String> getCarrierSamplesByGenotype() {
-        return genotypes.stream()
-                .filter(g -> g.getAlleles().stream().anyMatch(altAlleles::contains))
-                .map(Genotype::getSampleName)
-                .collect(Collectors.toSet());
-    }
-
-    /**
-     * Gets carrier sample IDs based on called GT fields. If there are no called genotypes and the record is a CNV and
-     * has defined copy number fields, determines carrier status based on copy number state. Returns an empty set if
-     * neither is available.
-     */
     public Set<String> getCarrierSamples() {
-        if (isSimpleCNV() && !hasExplicitGenotypes() && hasDefinedCopyNumbers()) {
-            return getCarrierSamplesByCopyNumber();
-        } else {
-            return getCarrierSamplesByGenotype();
-        }
+        return genotypes.stream().filter(this::isCarrier).map(Genotype::getSampleName).collect(Collectors.toSet());
     }
 
     public boolean isDepthOnly() {

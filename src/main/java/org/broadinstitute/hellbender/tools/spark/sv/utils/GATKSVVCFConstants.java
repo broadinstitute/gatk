@@ -89,6 +89,7 @@ public final class GATKSVVCFConstants {
 
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
+    public static final String EXPECTED_COPY_NUMBER_FORMAT = "ECN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
     // filter block

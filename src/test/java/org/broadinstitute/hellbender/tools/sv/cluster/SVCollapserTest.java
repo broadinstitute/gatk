@@ -75,21 +75,21 @@ public class SVCollapserTest {
     private static final Allele SVA_INSERTION_ALLELE = Allele.create("<INS:MEI:SVA>");
     private static final Allele LINE_INSERTION_ALLELE = Allele.create("<INS:MEI:LINE>");
 
-    @DataProvider(name = "ploidyTestData")
-    public Object[][] ploidyTestData() {
+    @DataProvider(name = "expectedCopyNumberTestData")
+    public Object[][] expectedCopyNumberTestData() {
         return new Object[][]{
-                // Result should be max value
+                // Result should be same value
                 {new int[]{0}, 0},
-                {new int[]{1, 0, 1}, 1},
-                {new int[]{2, 1, 1}, 2},
-                {new int[]{2, 2, 3, 1}, 3}
+                {new int[]{1, 1, 1}, 1},
+                {new int[]{2, 2, 2}, 2},
+                {new int[]{3, 3, 3, 3}, 3}
         };
     }
 
-    @Test(dataProvider= "ploidyTestData")
-    public void testCollapsePloidy(final int[] ploidy, final int result) {
-        final Collection<Genotype> genotypes = IntStream.of(ploidy).mapToObj(p -> SVTestUtils.buildHomGenotypeWithPloidy(Allele.REF_N, p)).collect(Collectors.toList());
-        Assert.assertEquals(collapser.collapsePloidy(genotypes), result);
+    @Test(dataProvider= "expectedCopyNumberTestData")
+    public void testCollapseExpectedCopyNumber(final int[] input, final int result) {
+        final Collection<Genotype> genotypes = IntStream.of(input).mapToObj(p -> SVTestUtils.buildHomGenotypeWithPloidy(Allele.REF_N, p)).collect(Collectors.toList());
+        Assert.assertEquals(collapser.collapseExpectedCopyNumber(genotypes), result);
     }
 
     @DataProvider(name = "collapseRefAllelesTestData")
@@ -171,6 +171,7 @@ public class SVCollapserTest {
                                 Collections.emptyList()
                         ),
                         Collections.emptyList(),
+                        0,
                         Collections.emptyList()
                 },
                 // null
@@ -179,6 +180,7 @@ public class SVCollapserTest {
                                 Collections.singletonList(null)
                         ),
                         Collections.emptyList(),
+                        1,
                         Collections.singletonList(Allele.REF_N)
                 },
                 // REF
@@ -187,6 +189,7 @@ public class SVCollapserTest {
                                 Collections.singletonList(Allele.REF_N)
                         ),
                         Collections.emptyList(),
+                        1,
                         Collections.singletonList(Allele.REF_N)
                 },
                 // DEL
@@ -195,6 +198,7 @@ public class SVCollapserTest {
                             Collections.singletonList(Allele.SV_SIMPLE_DEL)
                     ),
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        1,
                         Collections.singletonList(Allele.SV_SIMPLE_DEL)
                 },
                 // DEL, DEL
@@ -204,6 +208,7 @@ public class SVCollapserTest {
                                 Collections.singletonList(Allele.SV_SIMPLE_DEL)
                         ),
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        1,
                         Collections.singletonList(Allele.SV_SIMPLE_DEL)
                 },
                 // DEL, REF
@@ -213,6 +218,7 @@ public class SVCollapserTest {
                                 Collections.singletonList(Allele.REF_N)
                         ),
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        1,
                         Collections.singletonList(Allele.SV_SIMPLE_DEL)
                 },
                 // REF/DEL, REF/REF
@@ -222,6 +228,7 @@ public class SVCollapserTest {
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
                         ),
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        2,
                         Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
                 },
                 // DEL/DEL, REF/REF
@@ -231,6 +238,7 @@ public class SVCollapserTest {
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
                         ),
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        2,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
                 },
                 // REF/DEL, REF/DEL
@@ -240,6 +248,7 @@ public class SVCollapserTest {
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
                         ),
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        2,
                         Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
                 },
                 // REF/DEL, REF/DEL, DEL/DEL
@@ -250,6 +259,7 @@ public class SVCollapserTest {
                                 Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
                         ),
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        2,
                         Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
                 },
                 // REF/DEL, DEL/DEL, DEL/DEL
@@ -260,6 +270,7 @@ public class SVCollapserTest {
                                 Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
                         ),
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        2,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
                 },
                 // REF/DEL, REF
@@ -269,6 +280,7 @@ public class SVCollapserTest {
                                 Collections.singletonList(Allele.REF_N)
                         ),
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        2,
                         Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
                 },
                 // DUP/DEL, REF/REF
@@ -278,6 +290,7 @@ public class SVCollapserTest {
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
                         ),
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
+                        2,
                         Lists.newArrayList(Allele.SV_SIMPLE_DUP, Allele.SV_SIMPLE_DEL)
                 },
         };
@@ -286,9 +299,10 @@ public class SVCollapserTest {
     @Test(dataProvider= "collapseSampleAllelesTestData")
     public void collapseSampleAllelesTest(final List<List<Allele>> alleles,
                                           final List<Allele> sampleAltAlleles,
+                                          final int expectedCopyNumber,
                                           final List<Allele> result) {
         final Collection<Genotype> genotypes = alleles.stream().map(a -> new GenotypeBuilder().alleles(a).make()).collect(Collectors.toList());
-        final List<Allele> sortedTest = SVCallRecordUtils.sortAlleles(collapser.collapseSampleGenotypeAlleles(genotypes, Allele.REF_N, sampleAltAlleles));
+        final List<Allele> sortedTest = SVCallRecordUtils.sortAlleles(collapser.collapseSampleGenotypeAlleles(genotypes, expectedCopyNumber, Allele.REF_N, sampleAltAlleles));
         final List<Allele> sortedResult = SVCallRecordUtils.sortAlleles(result);
         Assert.assertEquals(sortedTest, sortedResult);
     }
@@ -301,16 +315,22 @@ public class SVCollapserTest {
                         Collections.singletonList("var1"),
                         Collections.singletonList(new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}),
                         Collections.singletonList(new Object[]{null}),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                        2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{null}
+                        new Object[]{null},
+                        false
                 },
                 // Single key / value
                 {
                         Collections.singletonList("var1"),
                         Collections.singletonList(new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}),
                         Collections.singletonList(new Object[]{30}),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                        2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{30}
+                        new Object[]{30},
+                        false
                 },
                 // Two samples, null values
                 {
@@ -322,8 +342,11 @@ public class SVCollapserTest {
                         Lists.newArrayList(
                                 new Object[]{null},
                                 new Object[]{null}),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                        2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{null}
+                        new Object[]{null},
+                        false
                 },
                 // Two samples, same key/value
                 {
@@ -335,8 +358,11 @@ public class SVCollapserTest {
                         Lists.newArrayList(
                                 new Object[]{30},
                                 new Object[]{30}),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                        2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{30}
+                        new Object[]{30},
+                        false
                 },
                 // Two samples, same key / different value
                 {
@@ -348,8 +374,11 @@ public class SVCollapserTest {
                         Lists.newArrayList(
                                 new Object[]{30},
                                 new Object[]{45}),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                        2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
-                        new Object[]{null}
+                        new Object[]{null},
+                        false
                 },
                 // Two samples, one with an extra key
                 {
@@ -361,8 +390,73 @@ public class SVCollapserTest {
                         Lists.newArrayList(
                                 new Object[]{30, "VALUE2"},
                                 new Object[]{30}),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                        2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY, "KEY2"},
-                        new Object[]{30, "VALUE2"}
+                        new Object[]{30, "VALUE2"},
+                        false
+                },
+                // CNVs
+                {
+                        Lists.newArrayList("var1", "var2"),
+                        Lists.newArrayList(
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
+                        ),
+                        Lists.newArrayList(
+                                new Object[]{0},
+                                new Object[]{0}),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                        2,
+                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                        new Object[]{1},
+                        true
+                },
+                {
+                        Lists.newArrayList("var1", "var2"),
+                        Lists.newArrayList(
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
+                        ),
+                        Lists.newArrayList(
+                                new Object[]{0},
+                                new Object[]{0}),
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP),
+                        2,
+                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                        new Object[]{3},
+                        true
+                },
+                {
+                        Lists.newArrayList("var1", "var2"),
+                        Lists.newArrayList(
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
+                        ),
+                        Lists.newArrayList(
+                                new Object[]{0},
+                                new Object[]{0}),
+                        Lists.newArrayList(Allele.SV_SIMPLE_DUP, Allele.SV_SIMPLE_DEL),
+                        2,
+                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                        new Object[]{2},
+                        true
+                },
+                // Edge case with mixed ploidy
+                {
+                        Lists.newArrayList("var1", "var2"),
+                        Lists.newArrayList(
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
+                        ),
+                        Lists.newArrayList(
+                                new Object[]{2},
+                                new Object[]{1}),
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL),
+                        1,
+                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                        new Object[]{0},
+                        true
                 }
         };
     }
@@ -371,33 +465,40 @@ public class SVCollapserTest {
     public void collapseAttributesTest(final List<String> variantIds,
                                        final List<String[]> keys,
                                        final List<Object[]> values,
+                                       final List<Allele> collapsedAlleles,
+                                       final int expectedCopyNumber,
                                        final String[] expectedKeys,
-                                       final Object[] expectedValues) {
+                                       final Object[] expectedValues,
+                                       final boolean isCNVTest) {
         final List<Map<String, Object>> inputAttributesList = IntStream.range(0, keys.size())
                 .mapToObj(i -> SVTestUtils.keyValueArraysToMap(keys.get(i), values.get(i)))
                 .collect(Collectors.toList());
         final Map<String, Object> expectedAttributes = SVTestUtils.keyValueArraysToMap(expectedKeys, expectedValues);
+        expectedAttributes.put(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, expectedCopyNumber);
 
         // Test as genotype attributes
         final List<Genotype> genotypes = inputAttributesList.stream()
                 .map(m -> new GenotypeBuilder().attributes(m).make())
                 .collect(Collectors.toList());
-        Assert.assertEquals(collapser.collapseGenotypeAttributes(genotypes), expectedAttributes);
+        Assert.assertEquals(collapser.collapseGenotypeAttributes(genotypes, collapsedAlleles, expectedCopyNumber), expectedAttributes);
 
-        // Test as variant attributes
-        final List<SVCallRecord> variants = IntStream.range(0, inputAttributesList.size())
-                .mapToObj(i -> SVTestUtils.newNamedDeletionRecordWithAttributes(variantIds.get(i), inputAttributesList.get(i)))
-                .collect(Collectors.toList());
-        final Map<String, Object> expectedAttributesWithMembers = new HashMap<>(expectedAttributes);
-        expectedAttributesWithMembers.put(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, variantIds);
-        Assert.assertEquals(collapser.collapseVariantAttributes(variants), expectedAttributesWithMembers);
+        if (!isCNVTest) {
+            // Test as variant attributes
+            final List<SVCallRecord> variants = IntStream.range(0, inputAttributesList.size())
+                    .mapToObj(i -> SVTestUtils.newNamedDeletionRecordWithAttributes(variantIds.get(i), inputAttributesList.get(i)))
+                    .collect(Collectors.toList());
+            final Map<String, Object> expectedAttributesWithMembers = new HashMap<>(expectedAttributes);
+            expectedAttributesWithMembers.put(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, variantIds);
+            expectedAttributesWithMembers.remove(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
+            Assert.assertEquals(collapser.collapseVariantAttributes(variants), expectedAttributesWithMembers);
+        }
     }
 
     @DataProvider(name = "collapseLengthTestData")
     public Object[][] collapseLengthTestData() {
         return new Object[][]{
                 {
-                        new int[]{1000},
+                        new Integer[]{1000},
                         new String[]{"chr1"},
                         new StructuralVariantType[]{StructuralVariantType.DEL},
                         1,
@@ -406,7 +507,7 @@ public class SVCollapserTest {
                         1000
                 },
                 {
-                        new int[]{1000, 1000},
+                        new Integer[]{1000, 1000},
                         new String[]{"chr1", "chr1"},
                         new StructuralVariantType[]{StructuralVariantType.DUP, StructuralVariantType.DUP},
                         1,
@@ -415,7 +516,7 @@ public class SVCollapserTest {
                         1000
                 },
                 {
-                        new int[]{300, 400},
+                        new Integer[]{300, 400},
                         new String[]{"chr1", "chr1"},
                         new StructuralVariantType[]{StructuralVariantType.DEL, StructuralVariantType.DUP},
                         1001,
@@ -424,7 +525,7 @@ public class SVCollapserTest {
                         350
                 },
                 {
-                        new int[]{300, 400},
+                        new Integer[]{300, 400},
                         new String[]{"chr1", "chr1"},
                         new StructuralVariantType[]{StructuralVariantType.INS, StructuralVariantType.INS},
                         1,
@@ -433,7 +534,7 @@ public class SVCollapserTest {
                         300
                 },
                 {
-                        new int[]{300, 400, 500},
+                        new Integer[]{300, 400, 500},
                         new String[]{"chr1", "chr1", "chr1"},
                         new StructuralVariantType[]{StructuralVariantType.INS, StructuralVariantType.INS, StructuralVariantType.INS},
                         1,
@@ -442,7 +543,7 @@ public class SVCollapserTest {
                         400
                 },
                 {
-                        new int[]{-1},
+                        new Integer[]{null},
                         new String[]{"chr2"},
                         new StructuralVariantType[]{StructuralVariantType.BND},
                         1,
@@ -454,7 +555,7 @@ public class SVCollapserTest {
     }
 
     @Test(dataProvider= "collapseLengthTestData")
-    public void collapseLengthTest(final int[] lengths, final String[] chrom2, final StructuralVariantType[] svtypes,
+    public void collapseLengthTest(final Integer[] lengths, final String[] chrom2, final StructuralVariantType[] svtypes,
                                    final int newStart, final int newEnd, final StructuralVariantType newType, final int expectedLength) {
         final List<SVCallRecord> records = IntStream.range(0, lengths.length).mapToObj(i -> SVTestUtils.newCallRecordWithLengthAndTypeAndChrom2(lengths[i], svtypes[i], chrom2[i])).collect(Collectors.toList());
         Assert.assertEquals(collapser.collapseLength(records, newStart, newEnd, newType), expectedLength);

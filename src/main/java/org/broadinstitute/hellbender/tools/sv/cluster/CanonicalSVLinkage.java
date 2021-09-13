@@ -187,7 +187,9 @@ public class CanonicalSVLinkage<T extends SVCallRecord> implements SVClusterLink
     private static int getLengthForOverlap(final SVCallRecord record) {
         Utils.validate(record.isIntrachromosomal(), "Record even must be intra-chromosomal");
         if (record.getType() == StructuralVariantType.INS) {
-            return record.getLength() < 1 ? INSERTION_ASSUMED_LENGTH_FOR_OVERLAP : record.getLength();
+            return record.getLength() == null ? INSERTION_ASSUMED_LENGTH_FOR_OVERLAP : record.getLength();
+        } else if (record.getType() == StructuralVariantType.BND) {
+            return record.getPositionB() - record.getPositionA() + 1;
         } else {
             // TODO lengths less than 1 shouldn't be valid
             return Math.max(record.getLength(), 1);

@@ -131,15 +131,21 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
     }
 
     /**
-     * Finds representative ploidy for a sample. Note the ploidy of each genotype is determined by the number of alleles.
-     * The maximum ploidy is returned, as in most cases this is likely to be the best result.
+     * Finds representative expected copy number for a sample. This method simply checks whether this is defined in all
+     * genotypes and verifies that there is only one unique value and returns it.
      * @param sampleGenotypes genotypes belonging to a single sample
-     * @return ploidy
+     * @return representative copy number for the reference state
      */
-    protected int collapsePloidy(final Collection<Genotype> sampleGenotypes) {
+    protected int collapseExpectedCopyNumber(final Collection<Genotype> sampleGenotypes) {
         Utils.nonNull(sampleGenotypes);
         Utils.nonEmpty(sampleGenotypes);
-        return sampleGenotypes.stream().mapToInt(Genotype::getPloidy).max().getAsInt();
+        final List<Integer> expectedCopyNumberValues = sampleGenotypes.stream()
+                .map(SVCallRecord::getExpectedCopyNumber)
+                .distinct()
+                .collect(Collectors.toList());
+        Utils.validate(expectedCopyNumberValues.size() == 1,
+                "Expected 1 unique expected copy number but found " + expectedCopyNumberValues.size());
+        return expectedCopyNumberValues.get(0);
     }
 
     /**
@@ -267,7 +273,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
 
     /**
      * Collapses a set of genotypes from a single sample into a list of alleles for a representative genotype. Ploidy
-     * is determined with the {@link #collapsePloidy(Collection)} method. The result is the most common non-ref genotype
+     * is determined with the {@link #collapseExpectedCopyNumber(Collection)} method. The result is the most common non-ref genotype
      * alleles list, potentially augmented with additional ref alleles to match the ploidy.
      * @param genotypes genotypes from a single variant and single sample
      * @param refAllele ref allele for the genotype
@@ -276,21 +282,21 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
      */
     @VisibleForTesting
     protected List<Allele> collapseSampleGenotypeAlleles(final Collection<Genotype> genotypes,
+                                                         final int expectedCopyNumber,
                                                          final Allele refAllele,
                                                          final List<Allele> sampleAltAlleles) {
         Utils.nonNull(genotypes);
         Utils.nonEmpty(genotypes);
-        final int inferredPloidy = collapsePloidy(genotypes);
 
         // Ploidy 0
-        if (inferredPloidy == 0) {
+        if (expectedCopyNumber == 0) {
             return Collections.emptyList();
         }
 
         // No alt alleles, so return all ref
-        if (sampleAltAlleles.isEmpty()) {
-            return Collections.nCopies(inferredPloidy, refAllele);
-        }
+        //if (sampleAltAlleles.isEmpty()) {
+        //    return Collections.nCopies(expectedCopyNumber, refAllele);
+        //}
 
         // Determine frequency of each genotype
         final Map<List<Allele>, Integer> genotypeCounts = genotypes.stream().map(Genotype::getAlleles)
@@ -312,9 +318,9 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         }
 
         // Create alleles list with the selected alt alleles, and fill in remaining with ref
-        final List<Allele> alleles = new ArrayList<>(inferredPloidy);
-        final int numCollapsedRefAlleles = inferredPloidy - bestGenotypeAltAlleles.size();
-        Utils.validate(numCollapsedRefAlleles >= 0, "Ploidy is less than number of alt alleles");
+        final List<Allele> alleles = new ArrayList<>(expectedCopyNumber);
+        final int numCollapsedRefAlleles = expectedCopyNumber - bestGenotypeAltAlleles.size();
+        Utils.validate(numCollapsedRefAlleles >= 0, "Expected copy number is less than number of alt alleles");
         for (int i = 0; i < numCollapsedRefAlleles; i++) {
             alleles.add(refAllele);
         }
@@ -330,32 +336,60 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                 .filter(SVCallRecordUtils::isAltAllele)
                 .distinct()
                 .collect(Collectors.toList());
-        builder.alleles(collapseSampleGenotypeAlleles(genotypes, refAllele, sampleAltAlleles));
+        final int expectedCopyNumber = collapseExpectedCopyNumber(genotypes);
+        final List<Allele> collapsedAlleles = collapseSampleGenotypeAlleles(genotypes, expectedCopyNumber, refAllele, sampleAltAlleles);
+        builder.alleles(collapsedAlleles);
         builder.noAttributes();
-        builder.attributes(collapseGenotypeAttributes(genotypes));
+        builder.attributes(collapseGenotypeAttributes(genotypes, collapsedAlleles, expectedCopyNumber));
         return builder.make();
     }
 
-    protected Map<String, Object> collapseGenotypeAttributes(final Collection<Genotype> genotypes) {
+    protected Map<String, Object> collapseGenotypeAttributes(final Collection<Genotype> genotypes,
+                                                             final List<Allele> collapsedAlleles,
+                                                             final int expectedCopyNumber) {
         Utils.nonNull(genotypes);
         Utils.nonEmpty(genotypes);
+        final List<Allele> collapsedAltAlleles = collapsedAlleles.stream().filter(SVCallRecordUtils::isAltAllele).collect(Collectors.toList());
         final Map<String, Object> collapsedAttributes = new HashMap<>();
         final Map<String, Set<Object>> genotypeFields = genotypes.stream().map(Genotype::getExtendedAttributes)
                 .map(Map::entrySet)
                 .flatMap(Set::stream)
                 .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toSet())));
         for (final Map.Entry<String, Set<Object>> entry : genotypeFields.entrySet()) {
-            collapsedAttributes.put(entry.getKey(), collapseSampleGenotypeAttribute(entry.getValue()));
+            if (entry.getKey().equals(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
+                collapsedAttributes.put(entry.getKey(), collapseSampleCopyNumber(expectedCopyNumber, collapsedAltAlleles));
+            } else if (entry.getKey().equals(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT)) {
+                continue;
+            } else {
+                collapsedAttributes.put(entry.getKey(), collapseSampleGenotypeAttribute(entry.getKey(), entry.getValue()));
+            }
         }
+        collapsedAttributes.put(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, expectedCopyNumber);
         return collapsedAttributes;
     }
 
-    protected Object collapseSampleGenotypeAttribute(final Set<Object> values) {
+    protected Object collapseSampleGenotypeAttribute(final String key, final Set<Object> values) {
         if (values.size() == 1) {
             return values.iterator().next();
         } else {
             return null;
         }
+    }
+
+    /**
+     * Special handling for CNV copy number attribute
+     */
+    protected Object collapseSampleCopyNumber(final int expectedCopyNumber,
+                                              final List<Allele> collapsedAltAlleles) {
+        int copyNumber = expectedCopyNumber;
+        for (final Allele allele : collapsedAltAlleles) {
+            if (allele.equals(Allele.SV_SIMPLE_DEL)) {
+                copyNumber--;
+            } else if (allele.equals(Allele.SV_SIMPLE_DUP)) {
+                copyNumber++;
+            }
+        }
+        return new Integer(copyNumber);
     }
 
     protected Map<String, Object> collapseVariantAttributes(final Collection<SVCallRecord> items) {

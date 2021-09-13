@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.tools.copynumber.PostprocessGermlineCNVCalls;
+import org.broadinstitute.hellbender.tools.copynumber.gcnv.GermlineCNVSegmentVariantComposer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
@@ -273,7 +274,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
             currentContig = variantContexts.get(0).getContig();
         }
         for (final VariantContext vc : variantContexts) {
-            final SVCallRecord record = SVCallRecordUtils.createDepthOnlyFromGCNVWithOriginalGenotypes(vc, minQS);
+            final SVCallRecord record = createDepthOnlyFromGCNVWithOriginalGenotypes(vc, minQS, allosomalContigs, refAutosomalCopyNumber, sampleDB);
             if (record != null) {
                 if (!isMultiSampleInput) {
                     defragmenter.add(record);
@@ -566,6 +567,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         final List<Genotype> genotypes = new ArrayList<>(call.getGenotypes().size());
         for (final Genotype g : call.getGenotypes()) {
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(g);
+            genotypeBuilder.noAttributes();
+            final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
             //update reference alleles
             final List<Allele> newGenotypeAlleles = new ArrayList<>(g.getAlleles().size());
             for (final Allele a : g.getAlleles()) {
@@ -577,8 +580,10 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
             }
             genotypeBuilder.alleles(newGenotypeAlleles);
              if (g.hasAnyAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
-                genotypeBuilder.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, g.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT));
+                 attributes.put(GATKSVVCFConstants.COPY_NUMBER_FORMAT, g.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT));
             }
+            // Strip this for gCNV pipeline
+            attributes.remove(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
             genotypes.add(genotypeBuilder.make());
         }
         builder.genotypes(genotypes);
@@ -590,5 +595,68 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         if (vcfWriter != null) {
             vcfWriter.close();
         }
+    }
+
+    /**
+     * Attempts to create a new record from the given variant produced by
+     * {@link org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller}. If the variant contains only one
+     * genotype, then null is returned if either the genotype is hom-ref, is a no-call but does not have
+     * a CN value, does not meet the min QS value, or is a null call (see {@link #isNullCall(Genotype)}.
+     * Genotypes that are hom-ref or are both a no-call and missing a CN value are filtered in the resulting record.
+     *
+     * This currently provides legacy support for older GermlineCNVCaller records that were not spec-compliant, although
+     * this may be deprecated in the future.
+     *
+     * @param variant single-sample variant from a gCNV segments VCF
+     * @param minQuality drop events with quality lower than this
+     * @return a new record or null
+     */
+    public static SVCallRecord createDepthOnlyFromGCNVWithOriginalGenotypes(final VariantContext variant,
+                                                                            final double minQuality,
+                                                                            final Set<String> allosomalContigs,
+                                                                            final int refAutosomalCopyNumber,
+                                                                            final SampleDB sampleDB) {
+        Utils.nonNull(variant);
+        if (variant.getGenotypes().size() == 1) {
+            //only cluster good variants
+            final Genotype g = variant.getGenotypes().get(0);
+            if (g.isHomRef() || (g.isNoCall() && !g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT))
+                    || VariantContextGetters.getAttributeAsInt(g, GermlineCNVSegmentVariantComposer.QS, 0) < minQuality
+                    || isNullCall(g)) {
+                return null;
+            }
+        }
+
+        final VariantContextBuilder svBuilder = new VariantContextBuilder(variant);
+        svBuilder.attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM));
+
+        // Add expected copy number, assume diploid
+        final List<Genotype> genotypesWithECN = variant.getGenotypes().stream()
+                .map(g -> addExpectedCopyNumber(g, allosomalContigs, refAutosomalCopyNumber, sampleDB, variant.getContig()))
+                .collect(Collectors.toList());
+        svBuilder.genotypes(genotypesWithECN);
+
+        final SVCallRecord baseRecord = SVCallRecordUtils.create(svBuilder.make(), true);
+        final List<Genotype> nonRefGenotypes = baseRecord.getGenotypes().stream()
+                .filter(g -> !(g.isHomRef() || (g.isNoCall() && !g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT))))
+                .collect(Collectors.toList());
+        return SVCallRecordUtils.copyCallWithNewGenotypes(baseRecord, GenotypesContext.copy(nonRefGenotypes));
+    }
+
+    private static Genotype addExpectedCopyNumber(final Genotype g, final Set<String> allosomalContigs, final int refAutosomalCopyNumber,
+                                                  final SampleDB sampleDB, final String contig) {
+        final int ploidy = getSamplePloidy(allosomalContigs, refAutosomalCopyNumber, sampleDB, g.getSampleName(), contig, g);
+        return new GenotypeBuilder(g).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy).make();
+    }
+
+    /**
+     * @param g
+     * @return true if this is a call on a missing contig
+     */
+    private static boolean isNullCall(final Genotype g) {
+        return g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)
+                && VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0) == 0
+                && g.isNoCall();
+
     }
 }

@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
+import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -28,9 +30,10 @@ public class BinnedCNVDefragmenterTest {
         final SVCallRecord sameBoundsThreeSamples = binnedDefragmenter.getCollapser().collapse(Arrays.asList(SVTestUtils.call1, SVTestUtils.sameBoundsSampleMismatch));
         Assert.assertEquals(sameBoundsThreeSamples.getPositionA(), SVTestUtils.call1.getPositionA());
         Assert.assertEquals(sameBoundsThreeSamples.getPositionB(), SVTestUtils.call1.getPositionB());
-        Assert.assertTrue(sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample1.make().getSampleName()).sameGenotype(SVTestUtils.makeGenotypeWithRefAllele(SVTestUtils.sample1, sameBoundsThreeSamples.getContigA(), sameBoundsThreeSamples.getPositionA())));
-        Assert.assertTrue(sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample2.make().getSampleName()).sameGenotype(SVTestUtils.makeGenotypeWithRefAllele(SVTestUtils.sample2, sameBoundsThreeSamples.getContigA(), sameBoundsThreeSamples.getPositionA())));
-        Assert.assertTrue(sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample3.make().getSampleName()).sameGenotype(SVTestUtils.makeGenotypeWithRefAllele(SVTestUtils.sample3, sameBoundsThreeSamples.getContigA(), sameBoundsThreeSamples.getPositionA())));
+        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(SVTestUtils.hg38Reference, sameBoundsThreeSamples.getContigA(), sameBoundsThreeSamples.getPositionA()), true);
+        Assert.assertTrue(sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample1.make().getSampleName()).sameGenotype(SVTestUtils.makeGenotypeWithRefAllele(SVTestUtils.sample1, refAllele)));
+        Assert.assertTrue(sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample2.make().getSampleName()).sameGenotype(SVTestUtils.makeGenotypeWithRefAllele(SVTestUtils.sample2, refAllele)));
+        Assert.assertTrue(sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample3.make().getSampleName()).sameGenotype(SVTestUtils.makeGenotypeWithRefAllele(SVTestUtils.sample3, refAllele)));
 
         final SVCallRecord overlapping = binnedDefragmenter.getCollapser().collapse(Arrays.asList(SVTestUtils.call1, SVTestUtils.call2));
         Assert.assertEquals(overlapping.getPositionA(), SVTestUtils.call1.getPositionA());
