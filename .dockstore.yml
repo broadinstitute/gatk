@@ -101,6 +101,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ah_fix_dupes
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
