@@ -121,7 +121,7 @@ def get_all_sample_ids(fq_destination_table_samples):
 
 def create_extract_samples_table(fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table):
   sql = f"CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (" \
-        f"SELECT m.sample_id, m.sample_name, s.is_loaded FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) " \
+        f"SELECT m.sample_id, m.sample_name, m.is_loaded FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) " \
         f"WHERE m.is_loaded is TRUE)"
 
   results = execute_with_retry("create extract sample table", sql)
