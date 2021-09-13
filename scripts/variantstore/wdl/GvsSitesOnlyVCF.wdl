@@ -251,7 +251,7 @@ task SitesOnlyVcf {
         # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
         # in it so that downstream steps can call cache
 
-        gatk --java-options "-Xmx2048m" \
+        gatk --java-options "-Xmx12288m" \
             SelectVariants \
                 -V ~{input_vcf} \
                 --add-output-vcf-command-line false \
@@ -264,7 +264,7 @@ task SitesOnlyVcf {
     # Runtime settings:
     runtime {
         docker: "broadinstitute/gatk:4.2.0.0"
-        memory: "20 GB"
+        memory: "15 GB"
         preemptible: 3
         cpu: "2"
         disks: "local-disk 250 HDD"
