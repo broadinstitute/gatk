@@ -101,6 +101,9 @@ task MakeSubpopulationFiles {
         File inputFileofIndexFileNames
     }
     parameter_meta {
+        input_ancestry_file: {
+          localization_optional: true
+        }
         inputFileofFileNames: {
           localization_optional: true
         }
@@ -110,6 +113,7 @@ task MakeSubpopulationFiles {
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    String updated_input_ancestry_file = if (defined(service_account_json_path)) then basename(input_ancestry_file) else input_ancestry_file
     String updated_input_vcfs_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
     String updated_input_indices_file = if (defined(service_account_json_path)) then basename(inputFileofIndexFileNames) else inputFileofIndexFileNames
 
@@ -121,14 +125,14 @@ task MakeSubpopulationFiles {
           export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
           gcloud auth activate-service-account --key-file=local.service_account.json
 
-          ## gsutil cp ~{input_ancestry_file} .
+          gsutil cp ~{input_ancestry_file} .
           gsutil cp ~{inputFileofFileNames} .
           gsutil cp ~{inputFileofIndexFileNames} .
        fi
 
 
         python3 /app/extract_subpop.py \
-          --input_path ~{input_ancestry_file} \
+          --input_path ~{updated_input_ancestry_file} \
           --output_path ~{output_ancestry_filename}
 
     >>>
