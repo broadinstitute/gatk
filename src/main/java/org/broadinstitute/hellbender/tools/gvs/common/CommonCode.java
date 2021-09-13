@@ -67,14 +67,6 @@ public class CommonCode {
         return header;
     }
 
-    public static VCFHeader generateVcfHeader(Set<String> sampleNames,
-                                        final SAMSequenceDictionary sequenceDictionary) {
-
-        Set<VCFHeaderLine> noExtraHeaders = new HashSet<>();
-        return generateVcfHeader(sampleNames, sequenceDictionary, noExtraHeaders);
-    }
-
-
     // TODO is this specific for cohort extract? if so name it such
     public static Set<VCFHeaderLine> getEvoquerVcfHeaderLines() {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
