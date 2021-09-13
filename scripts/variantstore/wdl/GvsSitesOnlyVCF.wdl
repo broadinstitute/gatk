@@ -221,10 +221,10 @@ task ExtractAnAcAfFromVCF {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210910"
-        memory: "1 GB"
+        memory: "12 GB"
         preemptible: 3
-        cpu: "1"
-        disks: "local-disk 200 HDD"
+        cpu: "2"
+        disks: "local-disk 500 HDD"
     }
     # ------------------------------------------------
     # Outputs:
@@ -264,7 +264,7 @@ task SitesOnlyVcf {
     # Runtime settings:
     runtime {
         docker: "broadinstitute/gatk:4.2.0.0"
-        memory: "3 GB"
+        memory: "12 GB"
         preemptible: 3
         cpu: "1"
         disks: "local-disk 100 HDD"
@@ -335,7 +335,7 @@ task AnnotateVCF {
     # Runtime settings:
     runtime {
         docker: "annotation/nirvana:3.14"
-        memory: "5 GB"
+        memory: "20 GB"
         cpu: "2"
         preemptible: 5
         disks: "local-disk 250 SSD"
@@ -389,7 +389,7 @@ task PrepAnnotationJson {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210910"
-        memory: "3 GB"
+        memory: "8 GB"
         preemptible: 5
         cpu: "1"
         disks: "local-disk 250 SSD"
