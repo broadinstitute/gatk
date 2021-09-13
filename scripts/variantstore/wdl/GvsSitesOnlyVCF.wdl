@@ -213,7 +213,7 @@ task ExtractAnAcAfFromVCF {
         | grep -v "*" >> ~{custom_annotations_file_name}
 
         ### for validation of the pipeline
-        bcftools norm -m-  ~{local_input_vcf}  | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
+        tail -n +7 ~{custom_annotations_file_name} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
         # I find this ^ clearer, but could also do a regex like:  grep "AC=[1-9][0-9]*;A[N|F]=[.0-9]*;A[N|F]=[.0-9]*"
         # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
     >>>
@@ -224,7 +224,7 @@ task ExtractAnAcAfFromVCF {
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
-        disks: "local-disk 100 HDD"
+        disks: "local-disk 200 HDD"
     }
     # ------------------------------------------------
     # Outputs:
