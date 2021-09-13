@@ -36,7 +36,7 @@ workflow GvsSitesOnlyVCF {
         call ExtractAnAcAfFromVCF {
             input:
               input_vcf = MakeSubpopulationFiles.input_vcfs[i],
-              input_vcf_index = MakeSubpopulationFiles.input_vcfs[i],
+              input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
               service_account_json_path = service_account_json_path,
               subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list,
               custom_annotations_template = AnAcAf_annotations_template
@@ -114,7 +114,7 @@ task MakeSubpopulationFiles {
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String updated_input_vcfs_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
-    String updated_input_indices_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofIndexFileNames
+    String updated_input_indices_file = if (defined(service_account_json_path)) then basename(inputFileofIndexFileNames) else inputFileofIndexFileNames
 
     command <<<
         set -e
@@ -224,7 +224,7 @@ task ExtractAnAcAfFromVCF {
         memory: "12 GB"
         preemptible: 3
         cpu: "2"
-        disks: "local-disk 500 HDD"
+        disks: "local-disk 500 SSD"
     }
     # ------------------------------------------------
     # Outputs:
@@ -264,10 +264,10 @@ task SitesOnlyVcf {
     # Runtime settings:
     runtime {
         docker: "broadinstitute/gatk:4.2.0.0"
-        memory: "12 GB"
+        memory: "20 GB"
         preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
+        cpu: "2"
+        disks: "local-disk 250 HDD"
     }
     # ------------------------------------------------
     # Outputs:
