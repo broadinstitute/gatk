@@ -3,8 +3,6 @@ workflow GvsSitesOnlyVCF {
    input {
         File inputFileofFileNames
         File inputFileofIndexFileNames
-        Array[File]? gvs_extract_cohort_filtered_vcfs
-        Array[File]? gvs_extract_cohort_filtered_vcf_indices
         String output_sites_only_file_name
         String output_annotated_file_name
         String project_id
@@ -28,7 +26,6 @@ workflow GvsSitesOnlyVCF {
             service_account_json_path = service_account_json_path,
             inputFileofFileNames = inputFileofFileNames,
             inputFileofIndexFileNames = inputFileofIndexFileNames
-
     }
 
     ## Scatter across the shards from the GVS jointVCF
@@ -173,11 +170,9 @@ task ExtractAnAcAfFromVCF {
     }
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String updated_input_vcf = if (defined(service_account_json_path)) then basename(input_vcf) else input_vcf
-    String updated_input_vcf_index = if (defined(service_account_json_path)) then basename(input_vcf_index) else input_vcf_index
     String custom_annotations_file_name = "an_ac_af.tsv"
-    String local_input_vcf = "local.vcf.gz" #Todo I am making an assumption here
-    String local_input_vcf_index = "local.vcf.gz.tbi"
+    String local_input_vcf = basename(input_vcf)
+    String local_input_vcf_index = basename(input_vcf_index)
 
     # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af & sc
     command <<<
