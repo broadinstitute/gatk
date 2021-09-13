@@ -4,10 +4,27 @@
 1. If this is the first time running the pipeline in a particular Google billing project, submit a ticket requesting the following changes to enable read API clustering:
    - TBD
 2. If you haven't already, clone the [QuickStart Workspace](https://app.terra.bio/#workspaces/broad-dsde-firecloud-billing/Genomic%20Variant%20Store%20-%20GVS%20Quickstart), selecting the AoU authorization domain.
+
+[comment]: <> (The genome center will deliver the manifests and load the samples into the datamodel in a Terra workspace and create sample sets.  Anyhing up to a certain date goes into a release AoU_DRCV_SEQ_2021_08_06)
+
+[comment]: <> (Run the re-blocking workflow ReblockGVCF on the sample &#40;step 1&#41; and then select the sample sets &#40;step 2&#41;)
+
+[comment]: <> (allofus-drc-wgs-dev-prod/AoU_DRC_WGS is the place where AoU samples are getting loaded/re-blocked)
+
+[comment]: <> (do we need to support case where path to VCF file is null after re-blocking?)
+
+[comment]: <> (why does re-blocking fail?)
+
+[comment]: <> (- the path to the file&#40;s&#41; is wrong)
+
+[comment]: <> (- because index that's provided with the cram needs to be re-generated &#40;we add the GC to do this&#41;)
+
+[comment]: <> (- there may be an error in the re-blocking WF &#40;Laura&#41;)
+
 3. Re-block gVCFs and put into cloned Quickstart workspace.
 4. In that cloned workspace, run the workflows outlined in the Workspace description; using the same “data_project” and “default_dataset” throughout
-   1. GvsAssignIds
-   2. GvsImportGenomes
+   1. GvsAssignIds at the sample set level
+   2. GvsImportGenomes at the sample set level
    3. GvsCreateAltAllele
    4. GvsCreateFilterSet
       - make note of the “filter_set_name” input used
