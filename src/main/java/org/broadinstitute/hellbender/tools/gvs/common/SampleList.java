@@ -80,7 +80,7 @@ public class SampleList {
         // Get the query string:
         final String sampleListQueryString =
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
-                " FROM `" + fqSampleTableName + "` " + whereClause;
+                " FROM `" + fqSampleTableName + "` " + ((whereClause!=null)?" WHERE ":"") + whereClause;
 
         Map<String, String> labelForQuery = new HashMap<String, String>();
         if (originTool.isPresent()) {
