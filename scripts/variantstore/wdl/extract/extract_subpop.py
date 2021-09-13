@@ -15,6 +15,7 @@ def extract_subpopulation(input_path, output_path):
   with open(input_path, newline='') as tsvin, open(output_path, 'w', newline='') as csvout:
     tsvin = csv.reader(tsvin, delimiter='\t')
     csvout = csv.writer(csvout, delimiter='\t')
+    next(tsvin)  # Skip header row
 
     for row in tsvin:
       csvout.writerow([row[0], row[4]])
