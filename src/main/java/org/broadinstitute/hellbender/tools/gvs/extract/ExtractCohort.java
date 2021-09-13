@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
-import htsjdk.variant.vcf.VCFFormatHeaderLine;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
@@ -140,6 +138,45 @@ public class ExtractCohort extends ExtractTool {
             optional=true)
     private boolean excludeFilteredSites = false;
 
+    protected static VCFHeader generateVcfHeader(Set<String> sampleNames,
+                                                 final SAMSequenceDictionary sequenceDictionary,
+                                                 final Set<VCFHeaderLine> extraHeaders) {
+        final Set<VCFHeaderLine> headerLines = new HashSet<>();
+
+        // Filter fields
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NAY_FROM_YNG));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_HET_KEY));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_ALLELES));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NO_HQ_GENOTYPES));
+
+        // Info fields
+        VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
+                VCFConstants.ALLELE_COUNT_KEY,
+                VCFConstants.ALLELE_FREQUENCY_KEY,
+                VCFConstants.ALLELE_NUMBER_KEY,
+                VCFConstants.END_KEY
+        );
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_QUAL_APPROX_KEY));
+
+        VCFStandardHeaderLines.addStandardFormatLines(headerLines, true,
+                VCFConstants.GENOTYPE_KEY,
+                VCFConstants.GENOTYPE_QUALITY_KEY
+        );
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
+
+
+        headerLines.addAll( extraHeaders );
+
+        final VCFHeader header = new VCFHeader(headerLines, sampleNames);
+        header.setSequenceDictionary(sequenceDictionary);
+
+        return header;
+    }
 
     @Override
     protected void onStartup() {
@@ -177,8 +214,6 @@ public class ExtractCohort extends ExtractTool {
           }
         }
 
-        extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
-
         if (vqslodfilteringType.equals(VQSLODFilteringType.GENOTYPE)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
@@ -186,7 +221,7 @@ public class ExtractCohort extends ExtractTool {
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
         Map<Long, String> sampleIdToName = sampleList.getMap();
 
-        VCFHeader header = CommonCode.generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
+        VCFHeader header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 
