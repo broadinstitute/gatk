@@ -169,7 +169,7 @@ public class ExtractCohort extends ExtractTool {
                 VCFConstants.GENOTYPE_QUALITY_KEY
         );
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
-
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
@@ -220,6 +220,12 @@ public class ExtractCohort extends ExtractTool {
 
         if (vqslodfilteringType.equals(VQSLODFilteringType.GENOTYPE)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
+        }
+
+        if (emitPLs) {
+            VCFStandardHeaderLines.addStandardFormatLines(extraHeaderLines, true,
+                    VCFConstants.GENOTYPE_PL_KEY
+            );
         }
 
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
