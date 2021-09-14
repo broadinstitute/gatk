@@ -92,6 +92,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_add_interval_list_to_wf_outputs
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
