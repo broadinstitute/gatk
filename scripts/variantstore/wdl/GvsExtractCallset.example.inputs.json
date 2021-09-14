@@ -10,7 +10,6 @@
   "GvsExtractCallset.reference_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
   "GvsExtractCallset.reference_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
   "GvsExtractCallset.wgs_intervals": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
-  "GvsExtractCallset.scatter_count": 50,
+  "GvsExtractCallset.scatter_count": 50
 
-  "GvsExtractCallset.gatk_override": "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20210914/gatk-package-4.2.0.0-406-ga9206a2-SNAPSHOT-local.jar"
 }
