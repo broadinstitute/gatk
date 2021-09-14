@@ -297,7 +297,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(numVariantsBeforeFiltering > 15);
 
         // every variant on this interval in this sample is in gnomAD
-        Assert.assertTrue(numVariantsPassingFilters < 2);
+        Assert.assertTrue(numVariantsPassingFilters < 4);
     }
     
     // run tumor-only using our mini gnomAD on NA12878, which is not a tumor
@@ -426,9 +426,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     public void testDontUseSoftClips() {
         Utils.resetRandomGenerator();
         final File tumor = new File(NA12878_20_21_WGS_bam);
-        final int start = 10050000;
+        final int start = 10135000;
 
-        final SimpleInterval interval = new SimpleInterval("20", start, start + 25000);
+        final SimpleInterval interval = new SimpleInterval("21", start, start + 25000);
 
         final File calls1 = createTempFile("unfiltered", ".vcf");
         runMutect2(tumor, calls1, interval.toString(), b37Reference, Optional.of(GNOMAD));
@@ -442,8 +442,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(indelsWithoutSoftClips.size() < indelsWithSoftClips.size());
 
-        final int startOfDroppedVariant = 10068160;
-        final int endOfDroppedVariant = 10068174;
+        final int startOfDroppedVariant = 10136237;
+        final int endOfDroppedVariant = 10136242;
         Assert.assertTrue(indelsWithSoftClips.stream().anyMatch(vc -> vc.getStart() == startOfDroppedVariant && vc.getEnd() == endOfDroppedVariant));
         Assert.assertFalse(indelsWithoutSoftClips.stream().anyMatch(vc -> vc.getStart() == startOfDroppedVariant && vc.getEnd() == endOfDroppedVariant));
 
