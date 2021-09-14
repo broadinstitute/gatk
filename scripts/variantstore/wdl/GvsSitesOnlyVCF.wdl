@@ -662,7 +662,7 @@ task BigQuerySmokeTest {
         # if the result of the bq call and the csv parsing is a series of digits, then check that it matches the input
         if [[ $VAT_COUNT =~ ^[0-9]+$ ]]; then
             if [[ $INITIAL_VARIANT_COUNT -ne $VAT_COUNT ]]; then
-                echo "FAIL: The VAT table ~{vat_table} and the input files had mismatched variant counts."
+                echo "FAIL: The VAT table ~{vat_table} has $VAT_COUNT variants in it, and the input files had $INITIAL_VARIANT_COUNT."
             else
                 echo "PASS: The VAT table ~{vat_table} has $VAT_COUNT variants in it, which is the expected number."
             fi
