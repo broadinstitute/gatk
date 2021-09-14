@@ -344,6 +344,7 @@ task CheckForDuplicateData {
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  Int num_samples = length(sample_names)
 
 
   command <<<
@@ -376,7 +377,7 @@ task CheckForDuplicateData {
     NAMES_FILE=~{write_lines(sample_names)}
     bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
 
-    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    bq --location=US --project_id=~{project_id} query --format=csv -n ~{num_samples} --use_legacy_sql=false \
       "WITH items as (SELECT s.sample_id, s.sample_name FROM ${TEMP_TABLE} t left outer join ${SAMPLE_INFO_TABLE} s on (s.sample_name = t.sample_name)) " \
       "SELECT i.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND table_name like 'pet_%'" | \
       sed -e '/sample_name/d' > duplicates
@@ -401,6 +402,7 @@ task CheckForDuplicateData {
   }
   output {
       Boolean done = true
+      File? duplicates = "duplicates"
   }
 }
 
