@@ -205,7 +205,6 @@ task ExtractTask {
         OUTPUT_FILE_INDEX_BYTES="$(du -b ~{output_file}.tbi | cut -f1)"
         echo ${OUTPUT_FILE_INDEX_BYTES} > vcf_index_bytes.txt
 
-      OUTPUT_GCS_DIR
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
           gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
           gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
