@@ -169,13 +169,14 @@ def get_subpopulation_calculations(subpop_annotations):
     max_ac = None
     max_an = None
     max_af = None
+    max_sc = None
     max_subpop = ""
     for gvs_subpop in gvs_subpopulations:
       subpop_ac_val = subpop_annotations.get("_".join(["AC", gvs_subpop]))
       subpop_an_val = subpop_annotations.get("_".join(["AN", gvs_subpop]))
       subpop_af_val = subpop_annotations.get("_".join(["AF", gvs_subpop]))
        # note the assumption is made that AC_Hom must be even because by it's nature it means there are two, but there could be an error
-      subpop_sc_val = int(subpop_annotations.get("AC_Hom") / 2 ) + subpop_annotations.get('AC_Het')
+      subpop_sc_val = int(subpop_annotations.get("_".join(["AC_Hom", gvs_subpop])) / 2 ) + subpop_annotations.get("_".join(["AC_Het", gvs_subpop]))
       # here we set the subpopulation ac/an/af values
       row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
       row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
