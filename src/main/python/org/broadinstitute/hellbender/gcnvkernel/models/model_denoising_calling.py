@@ -49,7 +49,8 @@ class DenoisingModelConfig:
                  active_class_padding_hybrid_mode: int = 50000,
                  enable_bias_factors: bool = True,
                  enable_explicit_gc_bias_modeling: bool = False,
-                 disable_bias_factors_in_active_class: bool = False):
+                 disable_bias_factors_in_active_class: bool = False,
+                 num_samples_copy_ratio_approx: int = 200):
         """See `expose_args` for the description of arguments"""
         self.max_bias_factors = max_bias_factors
         self.mapping_error_rate = mapping_error_rate
@@ -65,6 +66,7 @@ class DenoisingModelConfig:
         self.enable_bias_factors = enable_bias_factors
         self.enable_explicit_gc_bias_modeling = enable_explicit_gc_bias_modeling
         self.disable_bias_factors_in_active_class = disable_bias_factors_in_active_class
+        self.num_samples_copy_ratio_approx = num_samples_copy_ratio_approx
 
     @staticmethod
     def expose_args(args: argparse.ArgumentParser,
@@ -168,6 +170,12 @@ class DenoisingModelConfig:
         process_and_maybe_add("disable_bias_factors_in_active_class",
                               type=str_to_bool,
                               help="Disable novel bias factor discovery CNV-active regions")
+
+        process_and_maybe_add("num_samples_copy_ratio_approx",
+                              type=int,
+                              help="Number of samples to draw from the final model approximation to estimate denoised "
+                                   "copy number ratios. Note that this argument will not affect inference of the "
+                                   "model")
 
     @staticmethod
     def from_args_dict(args_dict: Dict) -> 'DenoisingModelConfig':

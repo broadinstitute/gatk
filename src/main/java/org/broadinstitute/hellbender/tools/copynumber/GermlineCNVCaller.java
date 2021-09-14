@@ -219,8 +219,6 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     public static final String CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME = "contig-ploidy-calls";
     public static final String RUN_MODE_LONG_NAME = "run-mode";
 
-    public static final String NUM_SAMPLES_CR_APPROX_LONG_NAME = "num-samples-for-copy-ratio-approx";
-
     // Starting gCNV random seed
     private static final int STARTING_SEED = 1984;
 
@@ -285,14 +283,6 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     private File outputDir;
-
-    @Argument(
-            doc = "Number of samples to draw from the precomputed model approximation " +
-                    "to estimate denoised copy number ratios.",
-            fullName = NUM_SAMPLES_CR_APPROX_LONG_NAME,
-            optional = true
-    )
-    private int numSampleCrApprox = 20;
 
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection
@@ -456,8 +446,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         final List<String> arguments = new ArrayList<>(Arrays.asList(
                 "--ploidy_calls_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(inputContigPloidyCallsDir),
                 "--output_calls_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputDirArg + outputPrefix + CALLS_PATH_SUFFIX),
-                "--output_tracking_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputDirArg + outputPrefix + TRACKING_PATH_SUFFIX),
-                "--num_samples_for_copy_ratio_approx=" + numSampleCrApprox));
+                "--output_tracking_path=" + CopyNumberArgumentValidationUtils.getCanonicalPath(outputDirArg + outputPrefix + TRACKING_PATH_SUFFIX)));
 
         //if a model path is given, add it to the argument (both COHORT and CASE modes)
         if (inputModelDir != null) {

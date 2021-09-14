@@ -84,13 +84,6 @@ group.add_argument("--input_opt_path",
                    default=argparse.SUPPRESS,
                    help="(advanced) Path to saved optimizer state to take as the starting point")
 
-group.add_argument("--num_samples_for_copy_ratio_approx",
-                   type=int,
-                   required=True,
-                   default=argparse.SUPPRESS,
-                   help="(advanced) Number of samples to draw from the precomputed model approximation "
-                        "to estimate denoised copy number ratios.")
-
 # add denoising config args
 gcnvkernel.DenoisingModelConfig.expose_args(parser)
 
@@ -215,7 +208,7 @@ if __name__ == "__main__":
     # save calls
     gcnvkernel.io_denoising_calling.SampleDenoisingAndCallingPosteriorsWriter(
         main_denoising_config, main_calling_config, shared_workspace, main_task.continuous_model,
-        main_task.continuous_model_approx, args.output_calls_path, args.num_samples_for_copy_ratio_approx)()
+        main_task.continuous_model_approx, args.output_calls_path)()
 
     # save optimizer state
     if hasattr(args, 'output_opt_path'):
