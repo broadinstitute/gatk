@@ -296,7 +296,7 @@ task ExtractTask {
                  gsutil cp ~{service_account_json_path} local.service_account.json
                  gcloud auth activate-service-account --key-file=local.service_account.json
              fi
-             gsutil cp *.interval_list $OUTPUT_GCS_DIR/
+             gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
          fi
      }
 
