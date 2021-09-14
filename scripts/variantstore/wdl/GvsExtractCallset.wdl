@@ -205,9 +205,7 @@ task ExtractTask {
         OUTPUT_FILE_INDEX_BYTES="$(du -b ~{output_file}.tbi | cut -f1)"
         echo ${OUTPUT_FILE_INDEX_BYTES} > vcf_index_bytes.txt
 
-        # Drop trailing slash if one exists
-        OUTPUT_GCS_DIR="$(echo ~{output_gcs_dir} | sed 's/\/$//')"
-
+      OUTPUT_GCS_DIR
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
           gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
           gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
@@ -293,12 +291,12 @@ task ExtractTask {
          # Drop trailing slash if one exists
          OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-         if [ -n "${OUTPUT_GCS_DIR}" ]; then
+         if [ -n "$OUTPUT_GCS_DIR" ]; then
              if [ ~{has_service_account_file} = 'true' ]; then
                  gsutil cp ~{service_account_json_path} local.service_account.json
                  gcloud auth activate-service-account --key-file=local.service_account.json
              fi
-             gsutil cp -m *.interval_list ${OUTPUT_GCS_DIR}/
+             gsutil cp *.interval_list $OUTPUT_GCS_DIR/
          fi
      }
 
