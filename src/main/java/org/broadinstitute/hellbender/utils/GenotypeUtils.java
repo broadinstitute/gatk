@@ -65,8 +65,8 @@ public final class GenotypeUtils {
                     genotypesWithNoRefsCount += 1.0/3;
                     continue;
                 } else {
-                    genotypeWithTwoRefsCount += 1 - QualityUtils.qualToProb(g.getGQ());
-                    genotypesWithOneRefCount += QualityUtils.qualToProb(g.getGQ());
+                    genotypeWithTwoRefsCount += QualityUtils.qualToProb(g.getGQ());
+                    genotypesWithOneRefCount += 1 - QualityUtils.qualToProb(g.getGQ());
                     //assume last likelihood is negligible
                     continue;
                 }
