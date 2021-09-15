@@ -56,6 +56,7 @@ public class ExtractCohortEngine {
     private final ProgressMeter progressMeter;
     private final String projectID;
     private final CommonCode.ModeEnum mode;
+    private final boolean emitPLs;
 
     /** List of sample names seen in the variant data from BigQuery. */
     private Set<String> sampleNames;
@@ -110,6 +111,7 @@ public class ExtractCohortEngine {
         this.sampleIdToName = sampleIdToName;
         this.sampleNames = new HashSet<>(sampleIdToName.values());
         this.mode = mode;
+        this.emitPLs = emitPLs;
 
         this.cohortTableRef = cohortTableName == null || "".equals(cohortTableName) ? null :
                 new TableReference(cohortTableName, emitPLs ? SchemaUtils.COHORT_FIELDS : SchemaUtils.COHORT_FIELDS_NO_PL);
@@ -667,7 +669,7 @@ public class ExtractCohortEngine {
         }
 
         final String callPL = sampleRecord.getCallPL();
-        if ( callPL != null ) {
+        if ( this.emitPLs && callPL != null ) {
             genotypeBuilder.PL(Arrays.stream(callPL.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
         }
 
