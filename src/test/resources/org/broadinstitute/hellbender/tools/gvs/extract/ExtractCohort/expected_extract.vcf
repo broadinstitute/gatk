@@ -4,40 +4,19 @@
 ##FILTER=<ID=LowQual,Description="Low quality">
 ##FILTER=<ID=NAY,Description="Considered a NAY in the Yay, Nay, Grey table">
 ##FILTER=<ID=NO_HQ_GENOTYPES,Description="Site has no high quality variant genotypes">
-##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
-##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another; will always be heterozygous and is not intended to describe called alleles">
-##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
 ##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
 ##FORMAT=<ID=RGQ,Number=1,Type=Integer,Description="Unconditional reference genotype confidence, encoded as a phred quality -10*log10 p(genotype call is wrong)">
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
-##INFO=<ID=AS_FS,Number=A,Type=Float,Description="allele specific phred-scaled p-value using Fisher's exact test to detect strand bias of each alt allele">
-##INFO=<ID=AS_MQ,Number=A,Type=Float,Description="Allele-specific RMS Mapping Quality">
-##INFO=<ID=AS_MQRankSum,Number=A,Type=Float,Description="Allele-specific Mapping Quality Rank Sum">
-##INFO=<ID=AS_QD,Number=A,Type=Float,Description="Allele-specific Variant Confidence/Quality by Depth">
 ##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
-##INFO=<ID=AS_RAW_MQ,Number=1,Type=String,Description="Allele-specfic raw data for RMS Mapping Quality">
-##INFO=<ID=AS_RAW_MQRankSum,Number=1,Type=String,Description="Allele-specfic raw data for Mapping Quality Rank Sum">
-##INFO=<ID=AS_RAW_ReadPosRankSum,Number=1,Type=String,Description="allele specific raw data for rank sum test of read position bias">
-##INFO=<ID=AS_ReadPosRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt vs. Ref read position bias">
-##INFO=<ID=AS_SB_TABLE,Number=1,Type=String,Description="Allele-specific forward/reverse read counts for strand bias tests. Includes the reference and alleles separated by |.">
-##INFO=<ID=AS_SOR,Number=A,Type=Float,Description="Allele specific strand Odds Ratio of 2x|Alts| contingency table to detect allele specific strand bias">
 ##INFO=<ID=AS_VQSLOD,Number=A,Type=String,Description="For each alt allele, the log odds of being a true variant versus being false under the trained gaussian mixture model">
-##INFO=<ID=AS_VarDP,Number=1,Type=String,Description="Allele-specific (informative) depth over variant genotypes -- including ref, RAW format">
 ##INFO=<ID=AS_YNG,Number=A,Type=String,Description="For each alt allele, the yay/nay/grey status (yay are known good alleles, nay are known false positives, grey are unknown)">
-##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
 ##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
-##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
-##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
 ##INFO=<ID=QUALapprox,Number=1,Type=Integer,Description="Sum of PL[0] values; used to approximate the QUAL score">
-##INFO=<ID=SB,Number=1,Type=Float,Description="Strand Bias">
-##INFO=<ID=SB_TABLE,Number=4,Type=Integer,Description="Forward/reverse read counts for strand bias tests">
-##INFO=<ID=VarDP,Number=1,Type=Integer,Description="(informative) depth over variant genotypes">
 ##contig=<ID=chr1,length=248956422,assembly=38>
 ##contig=<ID=chr2,length=242193529,assembly=38>
 ##contig=<ID=chr3,length=198295559,assembly=38>
