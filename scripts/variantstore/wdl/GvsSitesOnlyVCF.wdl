@@ -194,7 +194,8 @@ task ExtractAnAcAfFromVCF {
         gsutil cp ~{input_vcf} ~{local_input_vcf}
         gsutil cp ~{input_vcf_index} ~{local_input_vcf_index}
 
-        awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
+        # TODO Compare the ancestry list with the sample list and throw an error (but dont fail the job) if there are samples that are in one, but not the other. Two different errors.
+        # awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
 
         # expected_subpopulations = [
         # "afr",
@@ -212,8 +213,7 @@ task ExtractAnAcAfFromVCF {
         | grep -v "*" >> ~{custom_annotations_file_name}
 
         ### for validation of the pipeline
-        tail -n +7 ~{custom_annotations_file_name} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
-        # I find this ^ clearer, but could also do a regex like:  grep "AC=[1-9][0-9]*;A[N|F]=[.0-9]*;A[N|F]=[.0-9]*"
+        bcftools norm -m- ~{local_input_vcf}  | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
         # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
     >>>
     # ------------------------------------------------
@@ -362,6 +362,8 @@ task PrepAnnotationJson {
     String output_annotations_gcp_path = output_path + 'annotations/'
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    ## TODO these temp files do not currently get cleaned up. Some of them may be helpful for recovery.
 
     command <<<
         set -e
