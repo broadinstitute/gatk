@@ -3,6 +3,7 @@
 ## Steps
 1. If this is the first time running the GVS pipeline in a particular Google billing project, submit a ticket requesting the following changes to enable read API clustering:
    - TBD
+   - compressed pricing?
 2. This list assumes you are starting off with a Terra workspace that contains the re-blocked gVCFs for your callset as "sample sets" in the "Data" tab.  For workflows, you will be following the steps outlined in the [GVS Quickstart workspace](https://app.terra.bio/#workspaces/broad-dsde-firecloud-billing/Genomic%20Variant%20Store%20-%20GVS%20Quickstart).  Make special note of the "Prerequisites" section.
 3. Run the workflows outlined in the Quickstart description in the workspace that contains the data by using the "Copy to Another Workspace" function.  The first two steps (GvsAssignIds and GvsImportGenomes) can be run multiple times to load all necessary sample sets into one "instance" of GVS.  The rest of the steps are only run once, in order, and only after all the samples for the callset are loaded.
    1. GvsAssignIds at the sample set level ("Step 2")
