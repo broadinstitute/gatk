@@ -46,7 +46,9 @@ workflow GvsExtractCallset {
           ref_fasta = reference,
           ref_fai = reference_index,
           ref_dict = reference_dict,
-          scatter_count = scatter_count
+          scatter_count = scatter_count,
+          output_gcs_dir = output_gcs_dir,
+          service_account_json_path = service_account_json_path
     }
 
     call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
@@ -203,9 +205,6 @@ task ExtractTask {
         OUTPUT_FILE_INDEX_BYTES="$(du -b ~{output_file}.tbi | cut -f1)"
         echo ${OUTPUT_FILE_INDEX_BYTES} > vcf_index_bytes.txt
 
-        # Drop trailing slash if one exists
-        OUTPUT_GCS_DIR="$(echo ~{output_gcs_dir} | sed 's/\/$//')"
-
         if [ -n "${OUTPUT_GCS_DIR}" ]; then
           gsutil cp ~{output_file} ${OUTPUT_GCS_DIR}/
           gsutil cp ~{output_file}.tbi ${OUTPUT_GCS_DIR}/
@@ -251,9 +250,13 @@ task ExtractTask {
         File ref_dict
         Int scatter_count
         String? split_intervals_extra_args
+        String? output_gcs_dir
 
         File? gatk_override
+        String? service_account_json_path
     }
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     parameter_meta {
         intervals: {
@@ -283,6 +286,17 @@ task ExtractTask {
              -O interval-files \
              ~{split_intervals_extra_args}
          cp interval-files/*.interval_list .
+
+         # Drop trailing slash if one exists
+         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+         if [ -n "$OUTPUT_GCS_DIR" ]; then
+             if [ ~{has_service_account_file} = 'true' ]; then
+                 gsutil cp ~{service_account_json_path} local.service_account.json
+                 gcloud auth activate-service-account --key-file=local.service_account.json
+             fi
+             gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
+         fi
      }
 
      runtime {
