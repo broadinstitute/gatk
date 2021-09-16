@@ -91,6 +91,16 @@ workflow GvsSitesOnlyVCF {
          service_account_json_path = service_account_json_path,
          load_jsons_done = BigQueryLoadJson.done
    }
+
+    call BigQueryExportVat {
+       input:
+         project_id = project_id,
+         dataset_name = dataset_name,
+         output_path = output_path,
+         table_suffix = table_suffix,
+         service_account_json_path = service_account_json_path,
+         validate_jsons_done = BigQuerySmokeTest.done
+     }
 }
 
 ################################################################################
@@ -713,20 +723,13 @@ task BigQuerySmokeTest {
 }
 
 task BigQueryExportVat {
-    meta { # since the WDL will not see the updated data (its getting put in a gcp bucket)
-        volatile: true
-    }
-
     input {
-        File nirvana_schema
-        File vt_schema
-        File genes_schema
         String project_id
         String dataset_name
         String output_path
         String table_suffix
         String? service_account_json_path
-        Array[String] prep_jsons_done
+        Boolean validate_jsons_done
     }
 
     # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
@@ -736,7 +739,6 @@ task BigQueryExportVat {
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     ## TODO partition VAT by contig and cluster by position for a cheaper export (which is done by contig--do I need to make contig an int instead of a string?)
-
 
     command <<<
 
