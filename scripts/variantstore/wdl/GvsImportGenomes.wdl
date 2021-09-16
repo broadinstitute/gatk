@@ -377,6 +377,8 @@ task CheckForDuplicateData {
     NAMES_FILE=~{write_lines(sample_names)}
     bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
 
+    # check the INFORMATION_SCHEMA.PARTITIONS table to see if any of input sample names/ids have data loaded into their partitions
+    # this returns the list of sample names that do already have data loaded
     bq --location=US --project_id=~{project_id} query --format=csv -n ~{num_samples} --use_legacy_sql=false \
       "WITH items as (SELECT s.sample_id, s.sample_name FROM ${TEMP_TABLE} t left outer join ${SAMPLE_INFO_TABLE} s on (s.sample_name = t.sample_name)) " \
       "SELECT i.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND table_name like 'pet_%'" | \
@@ -522,7 +524,7 @@ task CreateImportTsvs {
           if [ ~{call_cache_tsvs} = 'true' ]; then
             echo "Checking for files to call cache"
 
-            declare -a TABLETYPES=("sample_info" "pet" "vet")
+            declare -a TABLETYPES=("pet" "vet")
             ALL_FILES_EXIST='true'
             for TABLETYPE in ${TABLETYPES[@]}; do
                 FILEPATH="~{output_directory}/${TABLETYPE}_tsvs/**${TABLETYPE}_*_${input_vcf_basename}.tsv"
@@ -565,7 +567,6 @@ task CreateImportTsvs {
                 -SNM ~{sample_map} \
                 --ref-version 38
 
-              gsutil -m mv sample_info_*.tsv ~{output_directory}/sample_info_tsvs/
               gsutil -m mv pet_*.tsv ~{output_directory}/pet_tsvs/
               gsutil -m mv vet_*.tsv ~{output_directory}/vet_tsvs/
           fi
@@ -849,9 +850,9 @@ task SetIsLoadedColumn {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    # set is_loaded to true if there is a corresponding pet table partition with rows for that sample_id
+    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE partition_id in ('~{sep="\',\'" gvs_id_array}') AND total_logical_bytes > 0 AND table_name LIKE \"pet_%\")"
+    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE partition_id in ('~{sep="\',\'" gvs_id_array}') AND total_logical_bytes > 0 AND table_name LIKE \"vet_%\")"
   >>>
 
   runtime {
