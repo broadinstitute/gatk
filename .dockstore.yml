@@ -81,7 +81,6 @@ workflows:
        - /scripts/variantstore/wdl/GvsCreateAltAllele.example.inputs.json
      filters:
        branches:
-         - master
          - ah_var_store
    - name: GvsExtractCallset
      subclass: WDL

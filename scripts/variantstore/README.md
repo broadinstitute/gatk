@@ -23,7 +23,8 @@
 
 ## Deliverables
 1. location of the VCF and interval_list files (“output_gcs_dir” input from GvsExtractCallset)
-2. results of running callset QC
+2. fully qualified name of the BigQuery dataset (input "dataset_name" in the workflows)
+3. results of running callset QC
 
 ## Cost estimation for BQ queries
 To get cost information for the AoU queries, only the AoU Service account has access. 
