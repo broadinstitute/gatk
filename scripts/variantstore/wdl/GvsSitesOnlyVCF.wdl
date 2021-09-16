@@ -491,9 +491,11 @@ task BigQueryLoadJson {
        echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
        bq --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
 
+       ## TODO partition by contig and cluster by position for a cheaper export (which is done by contig--do I need to make contig an int instead of a string?)
+
        # create the final vat table with the correct fields
-       PARTITION_FIELD="position"
-       CLUSTERING_FIELD="vid"
+       PARTITION_FIELD="contig" ## Can I do this yet, since it's not a number?
+       CLUSTERING_FIELD="position"
        PARTITION_STRING="" #--range_partitioning=$PARTITION_FIELD,0,4000,4000"
        CLUSTERING_STRING="" #--clustering_fields=$CLUSTERING_FIELD"
 
@@ -699,6 +701,181 @@ task BigQuerySmokeTest {
     runtime {
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
         memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        Boolean done = true
+    }
+}
+
+task BigQueryExportVat {
+    meta { # since the WDL will not see the updated data (its getting put in a gcp bucket)
+        volatile: true
+    }
+
+    input {
+        File nirvana_schema
+        File vt_schema
+        File genes_schema
+        String project_id
+        String dataset_name
+        String output_path
+        String table_suffix
+        String? service_account_json_path
+        Array[String] prep_jsons_done
+    }
+
+    # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
+    String vat_table = "vat_" + table_suffix
+    String export_path = output_path + "export/"
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    ## TODO partition VAT by contig and cluster by position for a cheaper export (which is done by contig--do I need to make contig an int instead of a string?)
+
+
+    command <<<
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
+          gcloud config set project ~{project_id}
+        fi
+
+        COUNTER=22 ## TODO add X & Y
+        CONTIG=chr$COUNTER
+        until [  $COUNTER -lt 1 ]; do
+          echo contig $COUNTER
+        bq query --nouse_legacy_sql --project_id=~{project_id} \
+        'EXPORT DATA OPTIONS(
+        uri="~{export_path}$CONTIG/*.tsv.gz",
+        format="CSV",
+        compression="GZIP",
+        overwrite=true,
+        header=true,
+        field_delimiter=" ") AS
+        SELECT
+        vid,
+        transcript,
+        contig,
+        position,
+        ref_allele,
+        alt_allele,
+        gvs_all_ac,
+        gvs_all_an,
+        gvs_all_af,
+        gvs_all_sc,
+        gvs_max_af,
+        gvs_max_ac,
+        gvs_max_an,
+        gvs_max_sc,
+        gvs_max_subpop,
+        gvs_afr_ac,
+        gvs_afr_an,
+        gvs_afr_af,
+        gvs_afr_sc,
+        gvs_amr_ac,
+        gvs_amr_an,
+        gvs_amr_af,
+        gvs_amr_sc,
+        gvs_eas_ac,
+        gvs_eas_an,
+        gvs_eas_af,
+        gvs_eas_sc,
+        gvs_eur_ac,
+        gvs_eur_an,
+        gvs_eur_af,
+        gvs_eur_sc,
+        gvs_mid_ac,
+        gvs_mid_an,
+        gvs_mid_af,
+        gvs_mid_sc,
+        gvs_oth_ac,
+        gvs_oth_an,
+        gvs_oth_af,
+        gvs_oth_sc,
+        gvs_sas_ac,
+        gvs_sas_an,
+        gvs_sas_af,
+        gvs_sas_sc,
+        gene_symbol,
+        transcript_source,
+        aa_change,
+        (SELECT STRING_AGG(c, ", ") FROM UNNEST(ARRAY(SELECT x FROM UNNEST(consequence) AS x ORDER BY x)) as c) AS consequence,
+        dna_change_in_transcript,
+        variant_type,
+        exon_number,
+        intron_number,
+        genomic_location,
+        (SELECT STRING_AGG(d, ", ") FROM UNNEST(ARRAY(SELECT x FROM UNNEST(dbsnp_rsid) AS x ORDER BY x)) as d) AS dbsnp_rsid,
+        gene_id,
+        gene_omim_id,
+        is_canonical_transcript,
+        gnomad_all_af,
+        gnomad_all_ac,
+        gnomad_all_an,
+        gnomad_max_af,
+        gnomad_max_ac,
+        gnomad_max_an,
+        gnomad_max_subpop,
+        gnomad_afr_ac,
+        gnomad_afr_an,
+        gnomad_afr_af,
+        gnomad_amr_ac,
+        gnomad_amr_an,
+        gnomad_amr_af,
+        gnomad_asj_ac,
+        gnomad_asj_an,
+        gnomad_asj_af,
+        gnomad_eas_ac,
+        gnomad_eas_an,
+        gnomad_eas_af,
+        gnomad_fin_ac,
+        gnomad_fin_an,
+        gnomad_fin_af,
+        gnomad_nfr_ac,
+        gnomad_nfr_an,
+        gnomad_nfr_af,
+        gnomad_sas_ac,
+        gnomad_sas_an,
+        gnomad_sas_af,
+        gnomad_oth_ac,
+        gnomad_oth_an,
+        gnomad_oth_af,
+        revel,
+        splice_ai_acceptor_gain_score,
+        splice_ai_acceptor_gain_distance,
+        splice_ai_acceptor_loss_score,
+        splice_ai_acceptor_loss_distance,
+        splice_ai_donor_gain_score,
+        splice_ai_donor_gain_distance,
+        splice_ai_donor_loss_score,
+        splice_ai_donor_loss_distance,
+        (SELECT STRING_AGG(CAST(id AS STRING), ", ") FROM UNNEST(omim_phenotypes_id) id) as omim_phenotypes_id,
+        ARRAY_TO_STRING(omim_phenotypes_name, ", ") as omim_phenotypes_name,
+        ARRAY_TO_STRING(clinvar_classification, ", ") as clinvar_classification,
+        clinvar_last_updated,
+        ARRAY_TO_STRING(clinvar_phenotype, ", ") as clinvar_phenotype,
+        FROM `~{dataset_name}.~{vat_table}`
+        WHERE contig=$CONTIG ## so I'm going to want to partition by contig!!!
+        ORDER BY position  ## and then cluster by position
+        '
+          let COUNTER-=1
+        done
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "openbridge/ob_google-bigquery:latest"
+        memory: "2 GB"
         preemptible: 3
         cpu: "1"
         disks: "local-disk 100 HDD"
