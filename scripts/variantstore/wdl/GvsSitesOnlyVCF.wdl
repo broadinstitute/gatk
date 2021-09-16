@@ -94,8 +94,8 @@ workflow GvsSitesOnlyVCF {
          service_account_json_path = service_account_json_path,
          load_jsons_done = BigQueryLoadJson.done
     }
-    scatter(i in range(length(contig_array)) ) {
 
+    scatter(i in range(length(contig_array)) ) {
       call BigQueryExportVat {
         input:
             contig = contig_array[i],
