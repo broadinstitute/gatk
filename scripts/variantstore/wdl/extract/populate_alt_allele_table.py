@@ -23,7 +23,7 @@ def execute_with_retry(label, sql):
             job_config = bigquery.QueryJobConfig(labels=job_labels)
             query = client.query(sql, job_config=job_config)
 
-            print(f"STARTING - {label}")
+            print(f"STARTING - {label} (jobid: {query.job_id})")
             results = query.result()
             print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label}")
             return results

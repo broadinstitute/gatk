@@ -83,6 +83,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_alt_allele_job_id
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
