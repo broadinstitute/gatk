@@ -32,15 +32,17 @@ import java.util.Set;
  *
  * <h3>Details</h3>
  * <p>The output is the inbreeding coefficient 'F' (fixation) statistic, which for large sample sizes converges to the probability
- * that an individual's two alleles are identical by descent, provided that cosanguinity is the only source of deviation from Hardy-Weinberg equilibrium.
+ * that an individual's two alleles are identical by descent, provided that consanguinity is the only source of deviation from Hardy-Weinberg equilibrium.
  * If this assumption is not true F may be negative and the excess heterozygosity often indicates an artifactual variant.
- * It is calculated as F = 1 - (# of het genotypes)/(# of het genotypes expected under Hardy-Weinberg equilibrium).  The number of het genotypes expeced under Hardy-Weinberg equilibrium
+ * It is calculated as F = 1 - (# of het genotypes)/(# of het genotypes expected under Hardy-Weinberg equilibrium).  The number of het genotypes expected under Hardy-Weinberg equilibrium
  * is 2*(# of samples)*(ref allele frequency)*(alt allele frequency), where allele frequencies are calculated from the samples' genotypes.</p>
  *
  * <h3>Caveats</h3>
  * <ul>
  * <li>The Inbreeding Coefficient annotation can only be calculated for cohorts containing at least 10 founder samples.</li>
  * <li>The Inbreeding Coefficient annotation can only be calculated for diploid samples.</li>
+ * <li>The implementation here uses likelihoods rather than counts, so computed InbreedingCoeff values can be sensitive to small
+ * changes in the low GQ range, as might happen after "reblocking" low coverage sites, as well as GQ0 versus no-call changes</li>
  * </ul>
  *
  * <h3>Related annotations</h3>
@@ -51,7 +53,7 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements InfoFie
 
     private static final OneShotLogger oneShotLogger = new OneShotLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;
-    private static final boolean ROUND_GENOTYPE_COUNTS = false;
+    private static final boolean ROUND_GENOTYPE_COUNTS = false;  //if this changes update the caveats above
 
     public InbreedingCoeff(){
         super((Set<String>) null);
