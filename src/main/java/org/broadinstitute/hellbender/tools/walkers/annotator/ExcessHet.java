@@ -82,7 +82,7 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
     static Pair<Integer, Double> calculateEH(final VariantContext vc, final GenotypesContext genotypes) {
         final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, ROUND_GENOTYPE_COUNTS);
         // number of samples that have likelihoods
-        final int sampleCount = (int) genotypes.stream().filter(g->GenotypeUtils.isDiploidWithLikelihoodsOrCalledWithGQ(g)).count();
+        final int sampleCount = (int) genotypes.stream().filter(g->GenotypeUtils.isCalledAndDiploidWithLikelihoodsOrWithGQ(g)).count();
 
         return calculateEH(vc, t, sampleCount);
     }

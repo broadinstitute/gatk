@@ -1,9 +1,18 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.variant.variantcontext.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import picard.util.MathUtil;
 
+import java.util.Arrays;
+
 public final class GenotypeUtils {
+    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
+    final static int TYPICAL_BASE_QUALITY = 30;
+    //from the genotype likelihoods equations assuming the SNP ref conf model with no mismatches
+    //PL[2] = GQ; scaleFactor = PL[3]/GQ ~ -10 * DP * log10(P_error) / (-10 * DP * log10(1/ploidy)) where BASE_QUALITY = -10 * log10(P_error)
+    final static int PLOIDY_2_HOM_VAR_SCALE_FACTOR = (int)Math.round(TYPICAL_BASE_QUALITY /-10.0/Math.log10(.5));
+
     private GenotypeUtils(){}
 
     /**
@@ -16,8 +25,8 @@ public final class GenotypeUtils {
     /**
      * Returns true if the genotype is a diploid genotype with likelihoods.
      */
-    public static boolean isDiploidWithLikelihoodsOrCalledWithGQ(final Genotype g) {
-        return (Utils.nonNull(g).hasLikelihoods() || (g.isCalled() && g.hasGQ())) && g.getPloidy() == 2;
+    public static boolean isCalledAndDiploidWithLikelihoodsOrWithGQ(final Genotype g) {
+        return g.isCalled() && (Utils.nonNull(g).hasLikelihoods() || g.hasGQ()) && g.getPloidy() == 2;
     }
 
     /**
@@ -51,7 +60,7 @@ public final class GenotypeUtils {
         for (final Genotype g : genotypes) {
             //if we don't have the data we need then skip this genotype (equivalent to no-call)
             if (!isDiploidWithLikelihoods(g)
-                    && !isDiploidWithLikelihoodsOrCalledWithGQ(g)) {
+                    && !isCalledAndDiploidWithLikelihoodsOrWithGQ(g)) {
                 continue;
             }
 
@@ -129,5 +138,29 @@ public final class GenotypeUtils {
 
     public static boolean genotypeIsUsableForAFCalculation(Genotype g) {
         return g.hasLikelihoods() || g.hasGQ() || g.getAlleles().stream().anyMatch(a -> a.isCalled() && a.isNonReference() && !a.isSymbolic());
+    }
+
+    /**
+     * For a hom-ref, as long as we have GQ we can make a very accurate QUAL calculation
+     * since the hom-var likelihood should make a minuscule contribution
+     * @param g
+     * @param nAlleles
+     * @return log10 likelihoods
+     */
+    public static double[] makeApproximateLog10LikelihoodsFromGQ(Genotype g, int nAlleles) {
+        final int[] perSampleIndexesOfRelevantAlleles = new int[nAlleles];
+        Arrays.fill(perSampleIndexesOfRelevantAlleles, 1);
+        perSampleIndexesOfRelevantAlleles[0] = 0;  //ref still maps to ref
+        //use these values for diploid ref/ref, ref/alt, alt/alt likelihoods
+        final int gq = g.getGQ();
+        final int ploidy = g.getPloidy();
+        final int[] approxLikelihoods = {0, gq, PLOIDY_2_HOM_VAR_SCALE_FACTOR*gq};
+        //map likelihoods for any other alts to biallelic ref/alt likelihoods above
+        final int[] genotypeIndexMapByPloidy = GL_CALCS.getInstance(ploidy, nAlleles).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, GL_CALCS); //probably horribly slow
+        final int[] PLs = new int[genotypeIndexMapByPloidy.length];
+        for (int i = 0; i < PLs.length; i++) {
+            PLs[i] = approxLikelihoods[genotypeIndexMapByPloidy[i]];
+        }
+        return GenotypeLikelihoods.fromPLs(PLs).getAsVector();  //fromPLs converts from Phred-space back to log10-space
     }
 }

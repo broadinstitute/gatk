@@ -620,7 +620,7 @@ public final class ReferenceConfidenceVariantContextMerger {
     }
 
     private boolean hasData(final Genotype g) {
-        return g.hasGQ() && g.hasDP() && g.getDP() > 0;
+        return g.hasPL() || (g.hasGQ() && g.hasDP() && g.getDP() > 0);
     }
 
     /**
