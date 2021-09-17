@@ -97,7 +97,7 @@ public final class InbreedingCoeff extends PedigreeAnnotation implements InfoFie
         final double hetCount = t.getHets();
         final double homCount = t.getHoms();
         // number of samples that have likelihoods
-        final int sampleCount = (int) genotypes.stream().filter(g-> GenotypeUtils.isCalledAndDiploidWithLikelihoodsOrWithGQ(g)).count();
+        final int sampleCount = (int) genotypes.stream().filter(g-> GenotypeUtils.isCalledAndDiploidWithLikelihoodsOrWithGQ(g) || GenotypeUtils.isDiploidWithLikelihoods(g)).count();
 
         final double p = ( 2.0 * refCount + hetCount ) / ( 2.0 * (refCount + hetCount + homCount) ); // expected reference allele frequency
         final double q = 1.0 - p; // expected alternative allele frequency

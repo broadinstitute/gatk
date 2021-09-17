@@ -26,7 +26,7 @@ public final class GenotypeUtils {
      * Returns true if the genotype is a diploid genotype with likelihoods.
      */
     public static boolean isCalledAndDiploidWithLikelihoodsOrWithGQ(final Genotype g) {
-        return g.isCalled() && (Utils.nonNull(g).hasLikelihoods() || g.hasGQ()) && g.getPloidy() == 2;
+        return Utils.nonNull(g).isCalled() && g.getPloidy() == 2 && (Utils.nonNull(g).hasLikelihoods() || g.hasGQ()) ;
     }
 
     /**
@@ -162,5 +162,27 @@ public final class GenotypeUtils {
             PLs[i] = approxLikelihoods[genotypeIndexMapByPloidy[i]];
         }
         return GenotypeLikelihoods.fromPLs(PLs).getAsVector();  //fromPLs converts from Phred-space back to log10-space
+    }
+
+    public static boolean hasData(final Genotype g) {
+        if (g.hasPL() && !g.isNonInformative()) {
+            return true;
+        }
+        else if (g.hasGQ() && g.getGQ() > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public static boolean shouldBeCalled(final Genotype g) {
+        if (g.hasPL() && !g.isNonInformative()) {
+            return true;
+        }
+        else if (g.hasGQ()) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }

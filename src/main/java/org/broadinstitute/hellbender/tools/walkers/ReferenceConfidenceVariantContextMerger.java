@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUti
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
+import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -604,7 +605,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             }
             genotypeBuilder.name(name);
             final GenotypeAssignmentMethod assignmentMethod;
-            if (callGTAlleles && hasData(g)) {
+            if (callGTAlleles && GenotypeUtils.shouldBeCalled(g)) {
                 assignmentMethod = GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL;
             } else {
                 assignmentMethod = GenotypeAssignmentMethod.SET_TO_NO_CALL;
@@ -617,10 +618,6 @@ public final class ReferenceConfidenceVariantContextMerger {
         }
 
         return mergedGenotypes;
-    }
-
-    private boolean hasData(final Genotype g) {
-        return g.hasPL() || (g.hasGQ() && g.hasDP() && g.getDP() > 0);
     }
 
     /**
