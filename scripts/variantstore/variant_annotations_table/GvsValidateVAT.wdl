@@ -761,3 +761,55 @@ task SubpopulationAlleleCount {
         Map[String, String] result = {"SubpopulationAlleleCount": read_string('validation_results.txt')}
     }
 }
+
+task SubpopulationAlleleNumber {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+    # sum of subpop ACs equal the gvs_all ACs
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+        set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+        gsutil cp ~{service_account_json_path} local.service_account.json
+        gcloud auth activate-service-account --key-file=local.service_account.json
+        gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        vid
+        FROM
+        ~{fq_vat_table}
+        WHERE
+        gvs_all_ac != gvs_afr_an + gvs_amr_an + gvs_eas_an + gvs_eur_an + gvs_mid_an + gvs_oth_an + gvs_sas_an'
+
+        # if the result of the query has any rows, that means gvs_all_an has not been calulated correctly/
+        if [[ $NUMRESULTS != "0" ]]; then
+          echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for AN and the AN of subpopulations" > validation_results.txt
+        else
+          echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect calculation for AN and the AN of subpopulations" > validation_results.txt
+        fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
+    output {
+        Map[String, String] result = {"SubpopulationAlleleCount": read_string('validation_results.txt')}
+    }
+}
