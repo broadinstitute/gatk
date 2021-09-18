@@ -98,7 +98,7 @@ WITH
            IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS
     FROM `@altAllele` as aa
     WHERE allele != '*'
-    AND sample_id in (SELECT sample_id from `@sample` )
+    AND sample_id in (SELECT sample_id from `@sample` WHERE is_loaded is TRUE)
     @locationStanza
     GROUP BY 1,2,3
     ) ai
