@@ -93,6 +93,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_extract_preemptible_override
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
