@@ -7,7 +7,7 @@ WITH
         FROM (
                SELECT location, sample_id, MAX(ref_ad) ref_ad
                FROM `@altAllele`
-               WHERE sample_id IN (SELECT sample_id FROM `@sample`)
+               WHERE sample_id IN (SELECT sample_id FROM `@sample` WHERE is_loaded is TRUE)
                @locationStanza
                GROUP BY 1,2 HAVING SUM(ad) > 1
         )
@@ -20,7 +20,7 @@ WITH
         FROM (
                SELECT DISTINCT location, sample_id, sb_ref_plus, sb_ref_minus
                FROM `@altAllele`
-               WHERE sample_id IN (SELECT sample_id FROM `@sample`)
+               WHERE sample_id IN (SELECT sample_id FROM `@sample` WHERE is_loaded is TRUE)
                @locationStanza
         )
         GROUP BY location),
@@ -33,7 +33,7 @@ WITH
         FROM (
                SELECT DISTINCT location, sample_id, qualapprox, call_GT
                FROM `@altAllele`
-               WHERE sample_id IN (SELECT sample_id FROM `@sample`)
+               WHERE sample_id IN (SELECT sample_id FROM `@sample` WHERE is_loaded is TRUE)
                @locationStanza
         )
         GROUP BY location),
@@ -42,13 +42,13 @@ WITH
                COUNT(DISTINCT ref || "," || allele) distinct_alleles,
                COUNTIF(length(ref) = length(allele)) num_snp_alleles
         FROM `@altAllele`
-        WHERE sample_id IN (SELECT sample_id FROM `@sample`)
+        WHERE sample_id IN (SELECT sample_id FROM `@sample` WHERE is_loaded is TRUE)
         @locationStanza
         GROUP BY location),
    hq_genotype_qc AS (
         SELECT location, COUNT(DISTINCT sample_id) hq_genotype_samples
         FROM `@altAllele`
-        WHERE sample_id IN (SELECT sample_id FROM `@sample`)
+        WHERE sample_id IN (SELECT sample_id FROM `@sample` WHERE is_loaded is TRUE)
         @locationStanza
         AND   call_GQ >= @hqGenotypeGQThreshold
         AND   (SELECT SUM(CAST(x AS INT64)) FROM UNNEST(SPLIT(call_AD,",")) x) >= @hqGenotypeDepthThreshold
@@ -98,7 +98,7 @@ WITH
            IFNULL(SUM(SB_ALT_MINUS),0) as SB_ALT_MINUS
     FROM `@altAllele` as aa
     WHERE allele != '*'
-    AND sample_id in (SELECT sample_id from `@sample` )
+    AND sample_id in (SELECT sample_id from `@sample` WHERE is_loaded is TRUE)
     @locationStanza
     GROUP BY 1,2,3
     ) ai
