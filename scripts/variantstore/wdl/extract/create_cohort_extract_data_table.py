@@ -197,11 +197,11 @@ def create_position_table(fq_temp_table_dataset, min_variant_samples):
   JOB_IDS.add((f"create positions table {dest}", create_vet_distinct_pos_query.job_id))
   return
 
-def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids):
+def populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_dataset, fq_destination_table_data, sample_ids):
   def get_pet_subselect(fq_pet_table, samples, id):
     sample_stanza = ','.join([str(s) for s in samples])
-    sql = f"    q_{id} AS (SELECT p.location, p.sample_id, p.state FROM `{fq_pet_table}` p \n" \
-          f"        JOIN `{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}` v ON (p.location = v.location) \n WHERE p.sample_id IN ({sample_stanza})), "
+    sql = f"    q_{id} AS (SELECT p.location, p.sample_id, p.state FROM \n" \
+          f" `{fq_pet_table}` p JOIN `{fq_temp_table_dataset}.{VET_DISTINCT_POS_TABLE}` v ON (p.location = v.location) \n WHERE p.state != 'v' AND p.sample_id IN ({sample_stanza})), "
     return sql
 
   for i in range(1, PET_VET_TABLE_COUNT+1):
@@ -209,8 +209,7 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
 
     if len(partition_samples) > 0:
       subs = {}
-      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{PET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i==1 \
-      else f"\nINSERT INTO `{fq_temp_table_dataset}.{PET_NEW_TABLE}` \n WITH \n"
+      insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, state) \n WITH \n"
       fq_pet_table = f"{fq_pet_vet_dataset}.{PET_TABLE_PREFIX}{i:03}"
       j = 1
 
@@ -219,20 +218,17 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
         subs[id] = get_pet_subselect(fq_pet_table, samples, id)
         j = j + 1
 
-      sql = create_or_insert + ("\n".join(subs.values())) + "\n" + \
+      sql = insert + ("\n".join(subs.values())) + "\n" + \
       "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
       f" (SELECT * FROM q_all)"
 
       print(sql)
       print(f"{fq_pet_table} query is {utf8len(sql)/(1024*1024)} MB in length")
-      if i == 1:
-        execute_with_retry("create and populate pet new table", sql)
-      else:
-        execute_with_retry("populate pet new table", sql)
+      execute_with_retry("populate destination table with pet data", sql)
 
   return
 
-def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_data, fq_sample_mapping_table):
+def create_final_extract_table(fq_destination_table_data):
   # first, create the table structure
   sql = f"""
         CREATE OR REPLACE TABLE `{fq_destination_table_data}` 
@@ -256,6 +252,7 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_dat
   print(sql)
   results = execute_with_retry("create-final-export-table", sql)
 
+def populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destination_table_data):
   sql = f"""
         INSERT INTO `{fq_destination_table_data}`
             SELECT
@@ -275,28 +272,6 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_dat
         """
   print(sql)
   results = execute_with_retry("populate-final-export-vet", sql)
-
-  # NOTE: once this has stabilized, we could filter out 'v' rows when creating PET_NEW
-  sql = f"""
-        INSERT INTO `{fq_destination_table_data}`
-            SELECT
-              location,
-              sample_id,
-              state,
-              NULL as ref,
-              NULL as alt,
-              NULL as call_GT,
-              NULL as call_GQ,
-              NULL as  call_RGQ,
-              NULL as QUALapprox,
-              NULL as AS_QUALapprox,
-              NULL as call_PL
-            FROM
-              `{fq_temp_table_dataset}.{PET_NEW_TABLE}`
-            WHERE state != 'v'
-        """
-  print(sql)
-  results = execute_with_retry("populate-final-export-pet", sql)
   return
 
 def make_extract_table(fq_pet_vet_dataset,
@@ -381,8 +356,9 @@ def make_extract_table(fq_pet_vet_dataset,
     make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids)
 
     create_position_table(fq_temp_table_dataset, min_variant_samples)
-    make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids)
-    populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_data, fq_destination_table_samples)
+    create_final_extract_table(fq_destination_table_data)
+    populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_dataset, fq_destination_table_data, sample_ids)
+    populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destination_table_data)
   finally:
     dump_job_stats()
 
