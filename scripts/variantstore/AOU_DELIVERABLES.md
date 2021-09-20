@@ -2,14 +2,15 @@
 
 ## Steps
 1. If this is the first time running the GVS pipeline in a particular Google billing project, use your GCP account team to create a support ticket for the BigQuery team that includes "enabling cluster metadata pruning support for the BQ Read API." This enables a pre-GA feature that dramatically reduces the amount of data scanned reducing both cost and runtime.
-2. This list assumes you are starting off with a Terra workspace that contains the re-blocked gVCFs for your callset as "sample sets" in the "Data" tab.  For workflows, you will be following the steps outlined in the [GVS Quickstart workspace](https://app.terra.bio/#workspaces/broad-dsde-firecloud-billing/Genomic%20Variant%20Store%20-%20GVS%20Quickstart).  Make special note of the "Prerequisites" section.
-3. Run the workflows outlined in the Quickstart description in the workspace that contains the data by using the "Copy to Another Workspace" function.  In addition to having to pass a GCP project ID and BigQuery dataset to all workflows, you will also need to know the path to a service account JSON file with permissions to AoU-specific projects and data. The first two steps (GvsAssignIds and GvsImportGenomes) can be run multiple times to load all necessary sample sets into one "instance" of GVS.  The rest of the steps are only run once, in order, and only after all the samples for the callset are loaded.
+2. This list assumes you are starting off with a Terra workspace that contains the re-blocked gVCFs for your callset as "sample sets" in the "Data" tab. For workflows, you will be following the steps outlined in the [GVS Quickstart workspace](https://app.terra.bio/#workspaces/broad-dsde-firecloud-billing/Genomic%20Variant%20Store%20-%20GVS%20Quickstart).  Make special note of the "Prerequisites" section.
+3. Run the workflows outlined in the Quickstart description in the workspace that contains the data by using the "Copy to Another Workspace" function.  In addition to having to pass a GCP project ID and BigQuery dataset to all workflows, you will also need to know the path to a service account JSON file with permissions to AoU-specific projects and data. The first two steps (GvsAssignIds and GvsImportGenomes) can be run multiple times to load all necessary sample sets into one "instance" of GVS (if there are control samples included, they should be assigned IDs of 50 or fewer).  The rest of the steps are only run once, in order, and only after all the samples for the callset are loaded.
     1. GvsAssignIds at the sample set level ("Step 1" in workflow submission)
     2. GvsImportGenomes at the sample set level ("Step 1" in workflow submission)
     3. GvsCreateAltAllele
     4. GvsCreateFilterSet
         - make note of the “filter_set_name” input used
     5. GvsPrepareCallset
+        - if the ```sample_info``` table contains control samples, create a view in your dataset called ```sample_info_without_controls``` populated bby the query ```SELECT * FROM `aou-genomics-curation-prod.beta_release.sample_info` where sample_id > 50```.
         - if the callset has more than 20K genomes, you will want to reserve GCP flex slots for this step and then release them once it has completed
     6. GvsExtractCallset
         - include a valid (and secure) “output_gcs_dir” parameter that the service account (see above) has access to, this is where the VCF and interval list files  will go
