@@ -740,6 +740,8 @@ task BigQueryExportVat {
 
     ## TODO partition VAT by contig and cluster by position for a cheaper export (which is done by contig--do I need to make contig an int instead of a string?)
 
+    Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
+
     command <<<
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
@@ -755,7 +757,7 @@ task BigQueryExportVat {
         CONTIG=chr$COUNTER
         until [  $COUNTER -lt 1 ]; do
           echo contig $COUNTER
-        bq query --nouse_legacy_sql --project_id=~{project_id} \
+           bq query --nouse_legacy_sql --project_id=~{project_id} \
         'EXPORT DATA OPTIONS(
         uri="~{export_path}$CONTIG/*.tsv.gz",
         format="CSV",
