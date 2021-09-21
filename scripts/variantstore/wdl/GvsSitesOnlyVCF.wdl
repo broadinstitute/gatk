@@ -18,6 +18,7 @@ workflow GvsSitesOnlyVCF {
         File? gatk_override
         File AnAcAf_annotations_template
         File ancestry_file
+        File reference
     }
 
     call MakeSubpopulationFiles {
@@ -36,7 +37,8 @@ workflow GvsSitesOnlyVCF {
               input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
               service_account_json_path = service_account_json_path,
               subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list,
-              custom_annotations_template = AnAcAf_annotations_template
+              custom_annotations_template = AnAcAf_annotations_template,
+              ref = reference
         }
 
       ## Create a sites-only VCF from the original GVS jointVCF
@@ -163,6 +165,7 @@ task ExtractAnAcAfFromVCF {
         String? service_account_json_path
         File subpopulation_sample_list
         File custom_annotations_template
+        File ref
     }
     parameter_meta {
         input_vcf: {
@@ -193,6 +196,7 @@ task ExtractAnAcAfFromVCF {
 
         gsutil cp ~{input_vcf} ~{local_input_vcf}
         gsutil cp ~{input_vcf_index} ~{local_input_vcf_index}
+        gsutil cp ~{ref} Homo_sapiens_assembly38.fasta
 
         # TODO Compare the ancestry list with the sample list and throw an error (but dont fail the job) if there are samples that are in one, but not the other. Two different errors.
         # awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
@@ -207,7 +211,7 @@ task ExtractAnAcAfFromVCF {
         # "sas"
         #]
 
-        bcftools norm -m- ~{local_input_vcf} | bcftools plugin fill-tags  -- -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom | bcftools query -f \
+        bcftools norm -m- -f Homo_sapiens_assembly38.fasta ~{local_input_vcf}  | bcftools plugin fill-tags  -- -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom | bcftools query -f \
         '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
         | grep -v "*" >> ~{custom_annotations_file_name}
 
