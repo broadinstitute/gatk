@@ -83,7 +83,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_alt_allele_job_id
+         - rsa_handle_prepare_error
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -111,6 +111,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_handle_prepare_error
    - name: GvsSitesOnlyVCF
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsSitesOnlyVCF.wdl

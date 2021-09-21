@@ -23,7 +23,7 @@ workflow GvsPrepareCallset {
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210806"])
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210921"])
 
     call PrepareCallsetTask {
         input:

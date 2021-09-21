@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import uuid
-import time
 import datetime
+import argparse
+import re
 
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
 from google.oauth2 import service_account
 
-import argparse
-import re
+import utils
 
 JOB_IDS = set()
 
@@ -50,33 +50,6 @@ def dump_job_stats():
 
   print(" Total GBs billed ", total/(1024 * 1024 * 1024), " GBs")
 
-def execute_with_retry(label, sql):
-  retry_delay = [30, 60, 90] # 3 retries with incremental backoff
-  start = time.time()
-  while len(retry_delay) > 0:
-    try:
-      query_label = label.replace(" ","-").strip().lower()
-
-      existing_labels = client._default_query_job_config.labels
-      job_labels = existing_labels
-      job_labels["gvs_query_name"] = query_label
-      job_config = bigquery.QueryJobConfig(labels=job_labels)
-      query = client.query(sql, job_config=job_config)
-
-      print(f"STARTING - {label} (jobid: {query.job_id})")
-      JOB_IDS.add((label, query.job_id))
-      results = query.result()
-      print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label} (jobid: {query.job_id})")
-      return results
-    except Exception as err:
-      # if there are no retries left... raise
-      if (len(retry_delay) == 0):
-        raise err
-      else:
-        t = retry_delay.pop(0)
-        print(f"Error {err} running query {label} (jobid: {query.job_id}), sleeping for {t}")
-        time.sleep(t)
-
 def get_partition_range(i):
   if i < 1 or i > PET_VET_TABLE_COUNT:
     raise ValueError(f"out of partition range")
@@ -114,7 +87,7 @@ def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
 def get_all_sample_ids(fq_destination_table_samples):
   sql = f"select sample_id from `{fq_destination_table_samples}`"
 
-  results = execute_with_retry("read cohort sample table", sql)
+  results = utils.execute_with_retry(client, "read cohort sample table", sql)
   sample_ids = [row.sample_id for row in list(results)]
   sample_ids.sort()
   return sample_ids
@@ -124,14 +97,14 @@ def create_extract_samples_table(fq_destination_table_samples, fq_sample_name_ta
         f"SELECT m.sample_id, m.sample_name, m.is_loaded FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) " \
         f"WHERE m.is_loaded is TRUE)"
 
-  results = execute_with_retry("create extract sample table", sql)
+  results = utils.execute_with_retry(client, "create extract sample table", sql)
   return results
 
 def get_table_count(fq_pet_vet_dataset):
   sql = f"SELECT MAX(CAST(SPLIT(table_name, '_')[OFFSET(1)] AS INT64)) max_table_number " \
         f"FROM `{fq_pet_vet_dataset}.INFORMATION_SCHEMA.TABLES` " \
         f"WHERE REGEXP_CONTAINS(lower(table_name), r'^(pet_[0-9]+)$') "
-  results = execute_with_retry("get max table", sql)
+  results = utils.execute_with_retry(client, "get max table", sql)
   return int([row.max_table_number for row in list(results)][0])
 
 def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids):
@@ -165,9 +138,9 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
       print(sql)
       print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")
       if i == 1:
-        execute_with_retry("create and populate vet new table", sql)
+        utils.execute_with_retry(client, "create and populate vet new table", sql)
       else:
-        execute_with_retry("populate vet new table", sql)
+        utils.execute_with_retry(client, "populate vet new table", sql)
   return
 
 
@@ -226,9 +199,9 @@ def make_new_pet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
       print(sql)
       print(f"{fq_pet_table} query is {utf8len(sql)/(1024*1024)} MB in length")
       if i == 1:
-        execute_with_retry("create and populate pet new table", sql)
+        utils.execute_with_retry(client, "create and populate pet new table", sql)
       else:
-        execute_with_retry("populate pet new table", sql)
+        utils.execute_with_retry(client, "populate pet new table", sql)
 
   return
 
@@ -254,7 +227,7 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_dat
           {FINAL_TABLE_TTL}        
         """
   print(sql)
-  results = execute_with_retry("create-final-export-table", sql)
+  results = utils.execute_with_retry(client, "create-final-export-table", sql)
 
   sql = f"""
         INSERT INTO `{fq_destination_table_data}`
@@ -274,7 +247,7 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_dat
               `{fq_temp_table_dataset}.{VET_NEW_TABLE}`
         """
   print(sql)
-  results = execute_with_retry("populate-final-export-vet", sql)
+  results = utils.execute_with_retry(client, "populate-final-export-vet", sql)
 
   # NOTE: once this has stabilized, we could filter out 'v' rows when creating PET_NEW
   sql = f"""
@@ -296,7 +269,7 @@ def populate_final_extract_table(fq_temp_table_dataset, fq_destination_table_dat
             WHERE state != 'v'
         """
   print(sql)
-  results = execute_with_retry("populate-final-export-pet", sql)
+  results = utils.execute_with_retry(client, "populate-final-export-pet", sql)
   return
 
 def make_extract_table(fq_pet_vet_dataset,

@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
-import sys
-import uuid
-import time
+import argparse
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
 
-import argparse
+import utils
 
 JOB_IDS = set()
 
@@ -36,29 +33,6 @@ def dump_job_stats():
 
   print(" Total GBs billed ", total/(1024 * 1024 * 1024), " GBs")
 
-def execute_with_retry(label, sql):
-  retry_delay = [30, 60, 90] # 3 retries with incremental backoff
-
-  start = time.time()
-  while True:
-    try:
-      query = client.query(sql)
-      print(f"STARTING - {label}")
-      JOB_IDS.add((label, query.job_id))
-      results = query.result()
-      print(f"COMPLETED ({time.time() - start} s, {3-len(retry_delay)} retries) - {label}")
-      return results
-    except Exception as err:
-
-      # if there are no retries left... raise
-      if (len(retry_delay) == 0):
-        print(f"Error {err} running query {label}, but no retries left.  RAISING!")
-        raise err
-      else:
-        t = retry_delay.pop(0)
-        print(f"Error {err} running query {label}, sleeping for {t}")
-        time.sleep(t)
-  
 def get_partition_range(i):
   if i < 1 or i > RAW_ARRAY_TABLE_COUNT:
     raise ValueError(f"out of partition range")
@@ -76,8 +50,8 @@ def get_all_samples(fq_sample_mapping_table, cohort_sample_names_file, sample_ma
   joined_sample_names = ",".join('"' + s + '"' for s in sample_names)
 
   sql = f"select sample_id,sample_name from `{fq_sample_mapping_table}` WHERE sample_name IN ({joined_sample_names})"
-      
-  results = execute_with_retry("read cohort table", sql)    
+
+  results = utils.execute_with_retry(client, "read cohort table", sql)
 
   cohort = []
   csv_str = ""
@@ -85,7 +59,7 @@ def get_all_samples(fq_sample_mapping_table, cohort_sample_names_file, sample_ma
   for row in list(results):
     cohort.append(row.sample_id)
     csv_str = csv_str + str(row.sample_id) + "," + row.sample_name + "\n"
-  
+
   cohort.sort()
 
   if sample_map_outfile is not None:
@@ -100,7 +74,7 @@ def populate_extract_table(fq_dataset, cohort, fq_destination_table, ttl, number
     sample_stanza = ','.join([str(s) for s in samples])
     sql = f"    q_{id} AS (SELECT {fields_to_extract} from `{fq_array_table}` WHERE sample_id IN ({sample_stanza})), "
     return sql
-   
+
   subs = {}
   for i in range(1, RAW_ARRAY_TABLE_COUNT+1):
     partition_samples = get_samples_for_partition(cohort, i)
@@ -139,9 +113,9 @@ def populate_extract_table(fq_dataset, cohort, fq_destination_table, ttl, number
         f"{select_sql}"
         )
 
-  print(sql) 
-  print(f"Extract Query is {utf8len(sql)/(1024*1024)} MB in length")  
-  results = execute_with_retry("create extract table table", sql)    
+  print(sql)
+  print(f"Extract Query is {utf8len(sql)/(1024*1024)} MB in length")
+  results = utils.execute_with_retry(client, "create extract table table", sql)
   return results
 
 def do_extract(fq_dataset,
@@ -156,9 +130,9 @@ def do_extract(fq_dataset,
                probes_per_partition,
                extract_genotype_counts_only
               ):
-  try:  
+  try:
     global client
-    client = bigquery.Client(project=query_project, 
+    client = bigquery.Client(project=query_project,
                              default_query_job_config=QueryJobConfig(priority="INTERACTIVE", use_query_cache=False ))
 
     global RAW_ARRAY_TABLE_COUNT
@@ -179,7 +153,7 @@ def do_extract(fq_dataset,
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a raw array cohort from BigQuery Variant Store ')
-  
+
   parser.add_argument('--dataset',type=str, help='project.dataset location of raw array data', required=True)
   parser.add_argument('--fq_destination_table',type=str, help='fully qualified destination table', required=True)
   parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
@@ -203,7 +177,7 @@ if __name__ == '__main__':
              args.cohort_sample_names_file,
              args.sample_map_outfile,
              args.ttl,
-             args.number_of_partitions, 
+             args.number_of_partitions,
              args.probes_per_partition,
              args.extract_genotype_counts_only)
-             
+
