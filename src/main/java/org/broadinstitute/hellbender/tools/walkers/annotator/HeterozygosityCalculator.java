@@ -71,7 +71,7 @@ public final class HeterozygosityCalculator {
                     if (g.hasLikelihoods()) {
                         normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(g.getLikelihoods().getAsVector());
                     } else {
-                        final double[] log10Likelihoods = GenotypeUtils.makeApproximateLog10LikelihoodsFromGQ(g, vc.getNAlleles());
+                        final double[] log10Likelihoods = GenotypeUtils.makeApproximateDiploidLog10LikelihoodsFromGQ(g, vc.getNAlleles());
                         normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(log10Likelihoods);
                     }
                         if (returnRounded) {

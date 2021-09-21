@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -152,6 +154,15 @@ public class GenotypeUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(actual.getRefs(), expected.getRefs(), DELTA_PRECISION);
         Assert.assertEquals(actual.getHets(), expected.getHets(), DELTA_PRECISION);
         Assert.assertEquals(actual.getHoms(), expected.getHoms(), DELTA_PRECISION);
+    }
+
+    @Test
+    public void testMultiallelicFakePLs() {
+        final Genotype g  = VariantContextTestUtils.makeG("sample1", Aref, Aref, 17);
+        final double[] fakePLs = GenotypeUtils.makeApproximateDiploidLog10LikelihoodsFromGQ(g, 3);
+        Assert.assertTrue(fakePLs[0] == 0);
+        Assert.assertTrue(fakePLs.length == );
+        Assert.assertTrue(MathUtils.maxElementIndex(fakePLs))
     }
 
 }

@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
@@ -82,7 +81,7 @@ public final class AlleleFrequencyCalculator {
                         "but were not found for genotype " + g + " with ploidy " + g.getPloidy());
             }
             if (g.hasGQ()) {
-                log10Likelihoods = GenotypeUtils.makeApproximateLog10LikelihoodsFromGQ(g, log10AlleleFrequencies.length);
+                log10Likelihoods = GenotypeUtils.makeApproximateDiploidLog10LikelihoodsFromGQ(g, log10AlleleFrequencies.length);
             } else {
                 throw new IllegalStateException("Genotype " + g + " does not contain GQ necessary to calculate posteriors.");
             }

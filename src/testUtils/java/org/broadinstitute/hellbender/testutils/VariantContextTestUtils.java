@@ -585,17 +585,8 @@ public final class VariantContextTestUtils {
         }
     }
 
-    public static Genotype makeGwithPLs(final String sample, final Allele a1, final Allele a2, final double[] pls) {
-        final Genotype gt = new GenotypeBuilder(sample, Arrays.asList(a1, a2)).PL(pls).make();
-        if ( pls != null && pls.length > 0 ) {
-            Assert.assertNotNull(gt.getPL());
-            Assert.assertTrue(gt.getPL().length > 0);
-            for ( final int i : gt.getPL() ) {
-                Assert.assertTrue(i >= 0);
-            }
-            Assert.assertNotEquals(Arrays.toString(gt.getPL()),"[0]");
-        }
-        return gt;
+    public static Genotype makeG(final String sample, final Allele a1, final Allele a2, final int gq) {
+        return new GenotypeBuilder(sample, Arrays.asList(a1, a2)).GQ(gq).make();
     }
 
     public static Genotype makeG(final String sample, final Allele a1, final Allele a2) {

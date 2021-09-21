@@ -143,11 +143,14 @@ public final class GenotypeUtils {
     /**
      * For a hom-ref, as long as we have GQ we can make a very accurate QUAL calculation
      * since the hom-var likelihood should make a minuscule contribution
+     * Here we supply likelihoods for ref/ref, ref/alt, and alt/alt
      * @param g
-     * @param nAlleles
+     * @param nAlleles number of alleles (including reference)
      * @return log10 likelihoods
      */
-    public static double[] makeApproximateLog10LikelihoodsFromGQ(Genotype g, int nAlleles) {
+    public static double[] makeApproximateDiploidLog10LikelihoodsFromGQ(Genotype g, int nAlleles) {
+        Utils.validate(g.getPloidy() == 2, "This method can only be used to approximate likelihoods for diploid genotypes");
+        Utils.validate(g.hasGQ(), "Genotype must have GQ in order to approximate PLs");
         final int[] perSampleIndexesOfRelevantAlleles = new int[nAlleles];
         Arrays.fill(perSampleIndexesOfRelevantAlleles, 1);
         perSampleIndexesOfRelevantAlleles[0] = 0;  //ref still maps to ref
