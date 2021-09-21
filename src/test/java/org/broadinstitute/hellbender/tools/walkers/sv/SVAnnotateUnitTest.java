@@ -30,7 +30,7 @@ public class SVAnnotateUnitTest {
         final boolean actualVariantSpansFeature = SVAnnotate.variantSpansFeature(variantInterval, featureInterval);
         Assert.assertEquals(expectedVariantSpansFeature, actualVariantSpansFeature);
 
-        final int actualNumBreakpointsInsideFeature = SVAnnotate.countBreakpointsInsideFeature(variantInterval, featureInterval);
+        final int actualNumBreakpointsInsideFeature = SVAnnotate.countBreakendsInsideFeature(variantInterval, featureInterval);
         Assert.assertEquals(expectedNumBreakpointsInsideFeature, actualNumBreakpointsInsideFeature);
 
         final boolean actualVariantOverlapsFeature = SVAnnotate.variantOverlapsFeature(variantInterval, featureInterval);

@@ -73,6 +73,7 @@ public final class GATKSVVCFConstants {
     public static final String CPX_EVENT_ALT_ARRANGEMENTS = "ALT_ARRANGEMENT";
     public static final String CPX_SV_REF_SEGMENTS = "SEGMENTS";
     public static final String CPX_EVENT_KEY = "CPX_EVENT";
+    public static final String CPX_INTERVALS = "CPX_INTERVALS";
 
     // not defined in output vcf header but used in internal id that is currently output in the ID column
     public static final String INTERVAL_VARIANT_ID_FIELD_SEPARATOR = "_";
@@ -112,6 +113,10 @@ public final class GATKSVVCFConstants {
     public static final String UTR = "PREDICTED_UTR";
     public static final String MSV_EXON_OVERLAP = "PREDICTED_MSV_EXON_OVERLAP";
     public static final String PROMOTER = "PREDICTED_PROMOTER";
+    public static final String BREAKEND_EXON = "PREDICTED_BREAKEND_EXONIC";
+    public static final String INTERGENIC = "PREDICTED_INTERGENIC";
+    public static final String NONCODING_SPAN = "PREDICTED_NONCODING_SPAN";
+    public static final String NONCODING_BREAKPOINT = "PREDICTED_NONCODING_BREAKPOINT";
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
