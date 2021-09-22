@@ -461,10 +461,8 @@ public class GenotypeGVCFsEngine
             }
 
             //convert GQ0s that were reblocked back to no-calls for better AN and InbreedingCoeff annotations
-            if (oldGT.isHomRef() && !oldGT.hasPL()) {
-                if (depth == 0 && oldGT.hasGQ() && oldGT.getGQ() == 0) {
+            if (excludeFromAnnotations(oldGT)) {
                     builder.alleles(Collections.nCopies(oldGT.getPloidy(), Allele.NO_CALL));
-                }
             }
 
             if ( createRefGTs ) {
@@ -487,6 +485,12 @@ public class GenotypeGVCFsEngine
             recoveredGs.add(builder.noAttributes().attributes(attrs).make());
         }
         return recoveredGs;
+    }
+
+    static boolean excludeFromAnnotations(Genotype oldGT) {
+        return oldGT.isHomRef() && !oldGT.hasPL()
+                && ((oldGT.hasDP() && oldGT.getDP() == 0) || !oldGT.hasDP())
+                && oldGT.hasGQ() && oldGT.getGQ() == 0;
     }
 
 

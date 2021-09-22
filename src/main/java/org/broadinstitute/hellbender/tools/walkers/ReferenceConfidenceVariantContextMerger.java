@@ -548,10 +548,8 @@ public final class ReferenceConfidenceVariantContextMerger {
                     final int[] AD = g.hasAD() ? AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles) : null;
                     genotypeBuilder.PL(PLs).AD(AD);
                 //clean up low confidence hom refs for better annotations later
-                } else if (g.isHomRef()) {
-                    if (g.hasGQ() && g.getGQ() == 0 && g.hasDP() && g.getDP() == 0) {
-                        genotypeBuilder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
-                    }
+                } else if (GenotypeGVCFsEngine.excludeFromAnnotations(g)) {
+                    genotypeBuilder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
                 }
             }
             else {  //doSomaticMerge

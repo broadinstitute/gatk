@@ -161,8 +161,8 @@ public class GenotypeUtilsUnitTest extends GATKBaseTest {
         final Genotype g  = VariantContextTestUtils.makeG("sample1", Aref, Aref, 17);
         final double[] fakePLs = GenotypeUtils.makeApproximateDiploidLog10LikelihoodsFromGQ(g, 3);
         Assert.assertTrue(fakePLs[0] == 0);
-        Assert.assertTrue(fakePLs.length == );
-        Assert.assertTrue(MathUtils.maxElementIndex(fakePLs))
+        Assert.assertTrue(fakePLs.length == GenotypeLikelihoods.numLikelihoods(3, 2));
+        Assert.assertTrue(fakePLs[1] > fakePLs[fakePLs.length-1]);  //het likelihood should be less than hom var likelihood (but great in log10-sapce)
     }
 
 }
