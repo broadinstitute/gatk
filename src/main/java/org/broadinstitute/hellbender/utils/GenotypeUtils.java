@@ -141,10 +141,10 @@ public final class GenotypeUtils {
     }
 
     /**
+     * Make approximate likelihoods for a diploid genotype without PLs.
      * For a hom-ref, as long as we have GQ we can make a very accurate QUAL calculation
      * since the hom-var likelihood should make a minuscule contribution
-     * Here we supply likelihoods for ref/ref, ref/alt, and alt/alt
-     * @param g
+     * @param g a diploid genotype with GQ
      * @param nAlleles number of alleles (including reference)
      * @return log10 likelihoods
      */
@@ -157,6 +157,7 @@ public final class GenotypeUtils {
         //use these values for diploid ref/ref, ref/alt, alt/alt likelihoods
         final int gq = g.getGQ();
         final int ploidy = g.getPloidy();
+        //here we supply likelihoods for ref/ref, ref/alt, and alt/alt and then generalize to multiallic PLs if necessary
         final int[] approxLikelihoods = {0, gq, PLOIDY_2_HOM_VAR_SCALE_FACTOR*gq};
         //map likelihoods for any other alts to biallelic ref/alt likelihoods above
         final int[] genotypeIndexMapByPloidy = GL_CALCS.getInstance(ploidy, nAlleles).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, GL_CALCS); //probably horribly slow
@@ -167,25 +168,7 @@ public final class GenotypeUtils {
         return GenotypeLikelihoods.fromPLs(PLs).getAsVector();  //fromPLs converts from Phred-space back to log10-space
     }
 
-    public static boolean hasData(final Genotype g) {
-        if (g.hasPL() && !g.isNonInformative()) {
-            return true;
-        }
-        else if (g.hasGQ() && g.getGQ() > 0) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     public static boolean shouldBeCalled(final Genotype g) {
-        if (g.hasPL() && !g.isNonInformative()) {
-            return true;
-        }
-        else if (g.hasGQ()) {
-            return true;
-        } else {
-            return false;
-        }
+        return !g.isNonInformative() || g.hasGQ();
     }
 }
