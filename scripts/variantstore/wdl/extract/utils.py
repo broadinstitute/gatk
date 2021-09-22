@@ -45,3 +45,7 @@ def execute_with_retry(client, label, sql):
                 raise err
         except Exception:
             raise
+
+
+def utf8len(s):
+    return len(s.encode('utf-8'))

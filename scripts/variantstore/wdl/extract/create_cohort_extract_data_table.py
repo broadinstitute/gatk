@@ -34,9 +34,6 @@ PET_NEW_TABLE = f"{output_table_prefix}_pet_new"
 VET_NEW_TABLE = f"{output_table_prefix}_vet_new"
 EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
 
-def utf8len(s):
-  return len(s.encode('utf-8'))
-
 def dump_job_stats():
   total = 0
 
@@ -136,7 +133,7 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
             f" (SELECT * FROM q_all)"
 
       print(sql)
-      print(f"VET Query is {utf8len(sql)/(1024*1024)} MB in length")
+      print(f"VET Query is {utils.utf8len(sql)/(1024*1024)} MB in length")
       if i == 1:
         utils.execute_with_retry(client, "create and populate vet new table", sql)
       else:
@@ -196,7 +193,7 @@ def populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_data
             f" (SELECT * FROM q_all)"
 
       print(sql)
-      print(f"{fq_pet_table} query is {utf8len(sql)/(1024*1024)} MB in length")
+      print(f"{fq_pet_table} query is {utils.utf8len(sql)/(1024*1024)} MB in length")
       utils.execute_with_retry(client, "populate destination table with pet data", sql)
 
   return

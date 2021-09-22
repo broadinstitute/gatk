@@ -17,8 +17,6 @@ SAMPLES_PER_PARTITION = 4000
 RAW_ARRAY_TABLE_COUNT = -1
 client = None
 
-def utf8len(s):
-    return len(s.encode('utf-8'))
 
 def dump_job_stats():
   total = 0
@@ -114,7 +112,7 @@ def populate_extract_table(fq_dataset, cohort, fq_destination_table, ttl, number
         )
 
   print(sql)
-  print(f"Extract Query is {utf8len(sql)/(1024*1024)} MB in length")
+  print(f"Extract Query is {utils.utf8len(sql)/(1024*1024)} MB in length")
   results = utils.execute_with_retry(client, "create extract table table", sql)
   return results
 

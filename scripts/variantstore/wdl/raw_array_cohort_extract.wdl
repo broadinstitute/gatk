@@ -4,16 +4,16 @@ workflow RawArrayCohortExtract {
    input {
         Int number_of_partitions = 2
         Int max_probe_id = 1914822
-        
+
         Int probes_per_partition = ceil ( max_probe_id / number_of_partitions)
-        
+
         File reference
         File reference_index
         File reference_dict
-    
+
         String? fq_probe_info_table
         File? probe_info_file
-        
+
         String fq_dataset
         Int max_tables
         String fq_destination_dataset
@@ -21,11 +21,11 @@ workflow RawArrayCohortExtract {
         String fq_cohort_mapping_table
         File cohort_sample_names_file
         Int ttl = 24
-        
+
         String output_file_base_name
         String? gatk_override
     }
-    
+
     call CreateExtractTable {
         input:
             fq_dataset                = fq_dataset,
@@ -38,8 +38,8 @@ workflow RawArrayCohortExtract {
             number_of_partitions      = number_of_partitions,
             probes_per_partition      = probes_per_partition
     }
-  
-    
+
+
     scatter(i in range(number_of_partitions)) {
         call ExtractTask {
             input:
@@ -58,14 +58,14 @@ workflow RawArrayCohortExtract {
         }
     }
 
-    call MergeVCFs { 
+    call MergeVCFs {
        input:
            input_vcfs = ExtractTask.output_vcf,
            input_vcfs_indexes = ExtractTask.output_vcf_index,
            output_vcf_name = "${output_file_base_name}.vcf.gz",
            preemptible_tries = 3
     }
-    
+
     output {
         File output_vcf = MergeVCFs.output_vcf
         File output_vcf_idx = MergeVCFs.output_vcf_index
@@ -101,7 +101,7 @@ task CreateExtractTable {
         uuid=$(cat /proc/sys/kernel/random/uuid | sed s/-/_/g)
         export_table="~{fq_destination_dataset}.${uuid}"
         echo "Exporting to ${export_table}"
-        
+
         python /app/raw_array_cohort_extract.py \
           --dataset ~{fq_dataset} \
           --max_tables ~{max_tables} \
@@ -112,7 +112,7 @@ task CreateExtractTable {
           --ttl ~{ttl} \
           --number_of_partitions ~{number_of_partitions} \
           --probes_per_partition ~{probes_per_partition}
-          
+
         echo ${export_table} > cohort_extract_table.txt
 
     >>>
@@ -120,7 +120,7 @@ task CreateExtractTable {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore-export:091920"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210922"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         bootDiskSizeGb: 15
@@ -131,7 +131,7 @@ task CreateExtractTable {
     # Outputs:
     output {
         String cohort_extract_table = read_string("cohort_extract_table.txt")
-    }    
+    }
 }
 
 task ExtractTask {
@@ -146,8 +146,8 @@ task ExtractTask {
         File reference
         File reference_index
         File reference_dict
-    
-        String? fq_probe_info_table 
+
+        String? fq_probe_info_table
         File? probe_info_file
         String probe_info_clause = if defined(probe_info_file) then "--probe-info-csv ${probe_info_file}" else "--probe-info-table ${fq_probe_info_table}"
 
@@ -157,7 +157,7 @@ task ExtractTask {
         String cohort_extract_table
         String read_project_id
         String output_file
-        
+
         # Runtime Options:
         File? gatk_override
     }
@@ -203,7 +203,7 @@ task ExtractTask {
         File output_vcf_index = "~{output_file}.tbi"
     }
  }
- 
+
  task MergeVCFs {
    meta {
      volatile: true
