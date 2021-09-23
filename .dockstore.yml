@@ -74,6 +74,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_split_intervals
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -92,6 +93,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_split_intervals
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
