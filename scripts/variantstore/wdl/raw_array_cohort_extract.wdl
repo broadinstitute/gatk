@@ -120,7 +120,7 @@ task CreateExtractTable {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210922"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210923"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         bootDiskSizeGb: 15
