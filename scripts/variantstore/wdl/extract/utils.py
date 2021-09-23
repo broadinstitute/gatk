@@ -43,6 +43,13 @@ def execute_with_retry(client, label, sql):
                 time.sleep(t)
             else:
                 raise err
+        except google.api_core.exceptions.BadRequest as err:
+            if len(retry_delay) > 0:
+                t = retry_delay.pop(0)
+                print(f"Error {err} running query {label}, sleeping for {t}")
+                time.sleep(t)
+            else:
+                raise err
         except Exception:
             raise
 
