@@ -185,7 +185,7 @@ task ExtractTask {
                 ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
 
-        gatk --java-options "-Xmx9g" \
+        gatk --java-options "-Xmx${MEM_SIZE}${MEM_UNIT}" \
             ExtractCohort \
                 --mode GENOMES --ref-version 38 \
                 -R ~{reference} \
@@ -228,6 +228,7 @@ task ExtractTask {
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
         preemptible: 2
+        maxRetries: 3
         cpu: 2
     }
 
