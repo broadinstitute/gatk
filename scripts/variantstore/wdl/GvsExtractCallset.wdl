@@ -223,12 +223,11 @@ task ExtractTask {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+        docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
         memory: "12 GB"
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
         preemptible: 2
-        maxRetries: 3
         cpu: 2
     }
 
