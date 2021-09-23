@@ -258,20 +258,20 @@ task ExtractTask {
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
-    parameter_meta {
-        intervals: {
-            localization_optional: true
-        }
-        ref_fasta: {
-            localization_optional: true
-        }
-        ref_fai: {
-            localization_optional: true
-        }
-        ref_dict: {
-            localization_optional: true
-        }
-     }
+#    parameter_meta {
+#        intervals: {
+#            localization_optional: true
+#        }
+#        ref_fasta: {
+#            localization_optional: true
+#        }
+#        ref_fai: {
+#            localization_optional: true
+#        }
+#        ref_dict: {
+#            localization_optional: true
+#        }
+#     }
 
      command {
          set -e
