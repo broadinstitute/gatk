@@ -730,7 +730,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final double ic1 = vcWithPLs.getAttributeAsDouble(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, 0);
         final double ic2 = vcWithoutPLs.getAttributeAsDouble(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, 0);
         Assert.assertTrue(ic1 > 0);  //make sure lookup worked, otherwise 0 == 0
+        Assert.assertTrue(ic2 > 0); //if GQ0s with no data are output as hom-ref, then ic2 is ~0.7
         Assert.assertEquals(ic1, ic2, 0.1); //there will be some difference because the old version zeros out low depth hom-refs and makes them no-calls
-        Assert.assertTrue(ic1 > ic2); //if GQ0s with no data are output as hom-ref, then ic2 is ~0.7, which is a lot more than ic1
+        Assert.assertEquals(vcWithoutPLs.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0), 114);  //don't count no-calls that are PL=[0,0,0] in classic VCF
     }
 }
