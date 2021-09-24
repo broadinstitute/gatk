@@ -97,6 +97,14 @@ workflow GvsValidateVatTable {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
+    call SubpopulationAlleleNumber {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
     output {
         Array[Map[String, String]] validation_results = [
             EnsureVatTableHasVariants.result,
@@ -108,7 +116,8 @@ workflow GvsValidateVatTable {
             SchemaEnsemblTranscripts.result,
             SchemaNonzeroAcAn.result,
             SubpopulationMax.result,
-            SubpopulationAlleleCount.result
+            SubpopulationAlleleCount.result,
+            SubpopulationAlleleNumber.result
         ]
     }
 }
@@ -789,9 +798,9 @@ task SubpopulationAlleleNumber {
         FROM
         ~{fq_vat_table}
         WHERE
-        gvs_all_ac != gvs_afr_an + gvs_amr_an + gvs_eas_an + gvs_eur_an + gvs_mid_an + gvs_oth_an + gvs_sas_an'
+        gvs_all_an != gvs_afr_an + gvs_amr_an + gvs_eas_an + gvs_eur_an + gvs_mid_an + gvs_oth_an + gvs_sas_an'
 
-        # if the result of the query has any rows, that means gvs_all_an has not been calulated correctly/
+        # if the result of the query has any rows, that means gvs_all_an has not been calculated correctly
         if [[ $NUMRESULTS != "0" ]]; then
           echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for AN and the AN of subpopulations" > validation_results.txt
         else
@@ -810,6 +819,6 @@ task SubpopulationAlleleNumber {
     # ------------------------------------------------
     # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SubpopulationAlleleCount": read_string('validation_results.txt')}
+        Map[String, String] result = {"SubpopulationAlleleNumber": read_string('validation_results.txt')}
     }
 }
