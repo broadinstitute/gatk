@@ -179,16 +179,12 @@ public class GenotypeGVCFsEngine
         // We could theoretically make 2 passes to re-create the genotypes, but that gets extremely expensive with large sample sizes.
         if (result.isPolymorphicInSamples()) {
             // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
-            //final VariantContext reannotated = annotationEngine.annotateContext(result, features, ref, null, a -> true);
-            //return new VariantContextBuilder(reannotated).genotypes(cleanupGenotypeAnnotations(reannotated, false)).make();
-            VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, false)).make();
-            reannotated = annotationEngine.annotateContext(reannotated, features, ref, null, a -> true);
-            return reannotated;
+            VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, false)).make();
+            return annotationEngine.annotateContext(preannotated, features, ref, null, a -> true);
         } else if (includeNonVariants) {
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
-            VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
-            reannotated = annotationEngine.annotateContext(reannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
-            return reannotated;
+            VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
+            return annotationEngine.annotateContext(preannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
         } else {
             return null;
         }
