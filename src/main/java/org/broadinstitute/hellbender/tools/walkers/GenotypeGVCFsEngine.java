@@ -179,8 +179,11 @@ public class GenotypeGVCFsEngine
         // We could theoretically make 2 passes to re-create the genotypes, but that gets extremely expensive with large sample sizes.
         if (result.isPolymorphicInSamples()) {
             // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
-            VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, false)).make();
-            return annotationEngine.annotateContext(preannotated, features, ref, null, a -> true);
+            final VariantContextBuilder vcBuilder = new VariantContextBuilder(result);
+            //don't count sites with no depth and no confidence towards things like AN and InbreedingCoeff
+            vcBuilder.genotypes(assignNoCalls(result.getGenotypes()));
+            VariantContext annotated = annotationEngine.annotateContext(vcBuilder.make(), features, ref, null, a -> true);
+            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(result, false)).make();
         } else if (includeNonVariants) {
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
             VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
@@ -459,11 +462,6 @@ public class GenotypeGVCFsEngine
                 builder.AD(AD);
             }
 
-            //convert GQ0s that were reblocked back to no-calls for better AN and InbreedingCoeff annotations
-            if (excludeFromAnnotations(oldGT)) {
-                    builder.alleles(Collections.nCopies(oldGT.getPloidy(), Allele.NO_CALL));
-            }
-
             if ( createRefGTs ) {
                 // move the GQ to RGQ
                 if (oldGT.hasGQ()) {
@@ -490,6 +488,19 @@ public class GenotypeGVCFsEngine
         return oldGT.isHomRef() && !oldGT.hasPL()
                 && ((oldGT.hasDP() && oldGT.getDP() == 0) || !oldGT.hasDP())
                 && oldGT.hasGQ() && oldGT.getGQ() == 0;
+    }
+
+    private List<Genotype> assignNoCalls(final GenotypesContext genotypes) {
+        final List<Genotype> returnList = new ArrayList<>();
+        for (final Genotype oldGT : genotypes) {
+            final GenotypeBuilder builder = new GenotypeBuilder(oldGT);
+            //convert GQ0s that were reblocked back to no-calls for better AN and InbreedingCoeff annotations
+            if (excludeFromAnnotations(oldGT)) {
+                builder.alleles(Collections.nCopies(oldGT.getPloidy(), Allele.NO_CALL));
+            }
+            returnList.add(builder.make());
+        }
+        return returnList;
     }
 
 
