@@ -185,7 +185,10 @@ task ExtractTask {
                 ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
 
-        gatk --java-options "-Xmx${MEM_SIZE}${MEM_UNIT}" \
+        mem_size_int=${MEM_SIZE%.*}
+        mem_unit_lc=$(echo $MEM_UNIT | sed -e 's/\(.\).*/\L\1/')
+
+        gatk --java-options "-Xmx${mem_size_int}${mem_unit_lc}" \
             ExtractCohort \
                 --mode GENOMES --ref-version 38 \
                 -R ~{reference} \
