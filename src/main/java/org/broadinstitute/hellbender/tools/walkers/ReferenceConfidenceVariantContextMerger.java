@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUti
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
+import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -546,6 +547,9 @@ public final class ReferenceConfidenceVariantContextMerger {
                     final int[] PLs = generatePL(g, genotypeIndexMapByPloidy);
                     final int[] AD = g.hasAD() ? AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles) : null;
                     genotypeBuilder.PL(PLs).AD(AD);
+                //clean up low confidence hom refs for better annotations later
+                } else if (GenotypeGVCFsEngine.excludeFromAnnotations(g)) {
+                    genotypeBuilder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
                 }
             }
             else {  //doSomaticMerge
@@ -598,8 +602,12 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
             }
             genotypeBuilder.name(name);
-            final GenotypeAssignmentMethod assignmentMethod = callGTAlleles ? GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL :
-                    GenotypeAssignmentMethod.SET_TO_NO_CALL;
+            final GenotypeAssignmentMethod assignmentMethod;
+            if (callGTAlleles && GenotypeUtils.shouldBeCalled(g)) {
+                assignmentMethod = GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL;
+            } else {
+                assignmentMethod = GenotypeAssignmentMethod.SET_TO_NO_CALL;
+            }
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
                     genotypeBuilder, assignmentMethod,
                     g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null,

@@ -11,7 +11,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
@@ -179,13 +178,15 @@ public class GenotypeGVCFsEngine
         // We could theoretically make 2 passes to re-create the genotypes, but that gets extremely expensive with large sample sizes.
         if (result.isPolymorphicInSamples()) {
             // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
-            final VariantContext reannotated = annotationEngine.annotateContext(result, features, ref, null, a -> true);
-            return new VariantContextBuilder(reannotated).genotypes(cleanupGenotypeAnnotations(reannotated, false)).make();
+            final VariantContextBuilder vcBuilder = new VariantContextBuilder(result);
+            //don't count sites with no depth and no confidence towards things like AN and InbreedingCoeff
+            vcBuilder.genotypes(assignNoCallsAnnotationExcludedGenotypes(result.getGenotypes()));
+            VariantContext annotated = annotationEngine.annotateContext(vcBuilder.make(), features, ref, null, a -> true);
+            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(result, false)).make();
         } else if (includeNonVariants) {
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
-            VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
-            reannotated = annotationEngine.annotateContext(reannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
-            return reannotated;
+            VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
+            return annotationEngine.annotateContext(preannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
         } else {
             return null;
         }
@@ -480,6 +481,28 @@ public class GenotypeGVCFsEngine
             recoveredGs.add(builder.noAttributes().attributes(attrs).make());
         }
         return recoveredGs;
+    }
+
+    static boolean excludeFromAnnotations(Genotype oldGT) {
+        return oldGT.isHomRef() && !oldGT.hasPL()
+                && ((oldGT.hasDP() && oldGT.getDP() == 0) || !oldGT.hasDP())
+                && oldGT.hasGQ() && oldGT.getGQ() == 0;
+    }
+
+    private List<Genotype> assignNoCallsAnnotationExcludedGenotypes(final GenotypesContext genotypes) {
+        final List<Genotype> returnList = new ArrayList<>();
+        for (final Genotype oldGT : genotypes) {
+            //convert GQ0s that were reblocked back to no-calls for better AN and InbreedingCoeff annotations
+            if (excludeFromAnnotations(oldGT)) {
+                final GenotypeBuilder builder = new GenotypeBuilder(oldGT);
+                builder.alleles(Collections.nCopies(oldGT.getPloidy(), Allele.NO_CALL));
+                returnList.add(builder.make());
+            } else {
+                returnList.add(oldGT);
+            }
+
+        }
+        return returnList;
     }
 
 

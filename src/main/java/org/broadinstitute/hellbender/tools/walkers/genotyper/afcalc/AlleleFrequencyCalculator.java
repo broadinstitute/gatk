@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
@@ -29,11 +28,6 @@ public final class AlleleFrequencyCalculator {
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
     private static final double THRESHOLD_FOR_ALLELE_COUNT_CONVERGENCE = 0.1;
     private static final int HOM_REF_GENOTYPE_INDEX = 0;
-    private static final int TYPICAL_BASE_QUALITY = 30;
-    //from the genotype likelihoods equations assuming the SNP ref conf model with no mismatches
-    //PL[2] = GQ; scaleFactor = PL[3]/GQ ~ -10 * DP * log10(P_error) / (-10 * DP * log10(1/ploidy)) where BASE_QUALITY = -10 * log10(P_error)
-    private static final int PLOIDY_2_HOM_VAR_SCALE_FACTOR = (int)Math.round(TYPICAL_BASE_QUALITY/-10.0/Math.log10(.5));
-
 
     private final double refPseudocount;
     private final double snpPseudocount;
@@ -87,22 +81,7 @@ public final class AlleleFrequencyCalculator {
                         "but were not found for genotype " + g + " with ploidy " + g.getPloidy());
             }
             if (g.hasGQ()) {
-                //for a hom-ref, as long as we have GQ we can make a very accurate QUAL calculation
-                // since the hom-var likelihood should make a minuscule contribution
-                final int[] perSampleIndexesOfRelevantAlleles = new int[log10AlleleFrequencies.length];
-                Arrays.fill(perSampleIndexesOfRelevantAlleles, 1);
-                perSampleIndexesOfRelevantAlleles[0] = 0;  //ref still maps to ref
-                final int gq = g.getGQ();
-                final int ploidy = g.getPloidy();
-                //use these values for diploid ref/ref, ref/alt, alt/alt likelihoods
-                final int[] approxLikelihoods = {0, gq, PLOIDY_2_HOM_VAR_SCALE_FACTOR*gq};
-                //map likelihoods for any other alts to biallelic ref/alt likelihoods above
-                final int[] genotypeIndexMapByPloidy = GL_CALCS.getInstance(ploidy, log10AlleleFrequencies.length).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, GL_CALCS); //probably horribly slow
-                final int[] PLs = new int[genotypeIndexMapByPloidy.length];
-                for (int i = 0; i < PLs.length; i++) {
-                        PLs[i] = approxLikelihoods[genotypeIndexMapByPloidy[i]];
-                    }
-                log10Likelihoods = GenotypeLikelihoods.fromPLs(PLs).getAsVector();
+                log10Likelihoods = GenotypeUtils.makeApproximateDiploidLog10LikelihoodsFromGQ(g, log10AlleleFrequencies.length);
             } else {
                 throw new IllegalStateException("Genotype " + g + " does not contain GQ necessary to calculate posteriors.");
             }
@@ -115,16 +94,6 @@ public final class AlleleFrequencyCalculator {
                     + gac.sumOverAlleleIndicesAndCounts((index, count) -> count * log10AlleleFrequencies[index]);
         });
         return MathUtils.normalizeLog10(log10Posteriors);
-    }
-
-    private static double[] approximateHomRefPLsFromGQ(final int genotypeCount, final int gq, final GenotypeLikelihoodCalculator glCalc) {
-        final int[] newPLs = new int[genotypeCount];
-        for (int i = 0; i < genotypeCount; i++) {
-            final GenotypeAlleleCounts gac = glCalc.genotypeAlleleCountsAt(i);
-            final int refCount = gac.alleleCountFor(0);
-                newPLs[i] = (glCalc.ploidy() - refCount) * gq;
-        }
-        return GenotypeLikelihoods.fromPLs(newPLs).getAsVector();
     }
 
     private static int[] genotypeIndicesWithOnlyRefAndSpanDel(final int ploidy, final List<Allele> alleles) {

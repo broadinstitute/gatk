@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.variantcontext.*;
+import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -56,7 +57,7 @@ public final class HeterozygosityCalculator {
 
             //for each sample
             for (final Genotype g : genotypes) {
-                if (g.isCalled() && g.hasLikelihoods() && g.getPloidy() == 2){  // only work for diploid samples
+                if (GenotypeUtils.isCalledAndDiploidWithLikelihoodsOrWithGQ(g)){  // only work for diploid samples
                     sampleCount++;
                 } else {
                     continue;
@@ -66,8 +67,13 @@ public final class HeterozygosityCalculator {
                 for(final Allele a : vc.getAlternateAlleles()) {
                     //for each alt allele index from 1 to N
                     altIndex++;
-
-                        final double[] normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(g.getLikelihoods().getAsVector());
+                    final double[] normalizedLikelihoods;
+                    if (g.hasLikelihoods()) {
+                        normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(g.getLikelihoods().getAsVector());
+                    } else {
+                        final double[] log10Likelihoods = GenotypeUtils.makeApproximateDiploidLog10LikelihoodsFromGQ(g, vc.getNAlleles());
+                        normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(log10Likelihoods);
+                    }
                         if (returnRounded) {
                             MathUtils.applyToArrayInPlace(normalizedLikelihoods, Math::round);
                         }

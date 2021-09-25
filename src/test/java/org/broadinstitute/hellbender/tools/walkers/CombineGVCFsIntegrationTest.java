@@ -571,7 +571,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
         final List<VariantContext> variants = VariantContextTestUtils.streamVcf(output).collect(Collectors.toList());
 
-        //first variant is a 0/1 and 0/2 call
+        //first variant is a 0/1 and 0/2 call -- should be called because of extra arg above
         int variantIndex = 0;
         Genotype g0 = variants.get(variantIndex).getGenotype(0);
         Genotype g1 = variants.get(variantIndex).getGenotype(1);
