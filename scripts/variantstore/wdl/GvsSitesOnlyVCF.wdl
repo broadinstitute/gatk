@@ -221,14 +221,16 @@ task ExtractAnAcAfFromVCF {
         ## check it for duplicates and put them in a new file
         sort check_duplicates.tsv | uniq -d | cut -f1,2  > duplicates.tsv
         ## remove those rows (this will be ALL rows with this position--so good rows too, potentially we want to grab f1,4 to do this with)
-        grep -v -wFf duplicates.tsv normalized.vcf > deduplicated.vcf
+        grep -v -wFf duplicates.tsv normalized.vcf | grep -v "AC=0;"  > deduplicated.vcf
+
+        wc -l duplicates.tsv
 
         bcftools plugin fill-tags  -- deduplicated.vcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom | bcftools query -f \
         '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
         | grep -v "*" >> ~{custom_annotations_file_name}
 
         ### for validation of the pipeline
-        grep -v "*" normalized_input.vcf | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | wc -l > count.txt
+        wc -l ~{custom_annotations_file_name} > count.txt
         # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
 
     >>>
