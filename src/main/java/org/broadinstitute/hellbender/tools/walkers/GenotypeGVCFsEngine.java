@@ -11,7 +11,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
@@ -181,7 +180,7 @@ public class GenotypeGVCFsEngine
             // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
             final VariantContextBuilder vcBuilder = new VariantContextBuilder(result);
             //don't count sites with no depth and no confidence towards things like AN and InbreedingCoeff
-            vcBuilder.genotypes(assignNoCalls(result.getGenotypes()));
+            vcBuilder.genotypes(assignNoCallsAnnotationExcludedGenotypes(result.getGenotypes()));
             VariantContext annotated = annotationEngine.annotateContext(vcBuilder.make(), features, ref, null, a -> true);
             return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(result, false)).make();
         } else if (includeNonVariants) {
@@ -490,15 +489,18 @@ public class GenotypeGVCFsEngine
                 && oldGT.hasGQ() && oldGT.getGQ() == 0;
     }
 
-    private List<Genotype> assignNoCalls(final GenotypesContext genotypes) {
+    private List<Genotype> assignNoCallsAnnotationExcludedGenotypes(final GenotypesContext genotypes) {
         final List<Genotype> returnList = new ArrayList<>();
         for (final Genotype oldGT : genotypes) {
-            final GenotypeBuilder builder = new GenotypeBuilder(oldGT);
             //convert GQ0s that were reblocked back to no-calls for better AN and InbreedingCoeff annotations
             if (excludeFromAnnotations(oldGT)) {
+                final GenotypeBuilder builder = new GenotypeBuilder(oldGT);
                 builder.alleles(Collections.nCopies(oldGT.getPloidy(), Allele.NO_CALL));
+                returnList.add(builder.make());
+            } else {
+                returnList.add(oldGT);
             }
-            returnList.add(builder.make());
+
         }
         return returnList;
     }
