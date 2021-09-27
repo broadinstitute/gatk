@@ -188,10 +188,7 @@ task ExtractTask {
                 ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
 
-        mem_size_int=${MEM_SIZE%.*}
-        mem_unit_lc=$(echo $MEM_UNIT | sed -e 's/\(.\).*/\L\1/')
-
-        gatk --java-options "-Xmx${mem_size_int}${mem_unit_lc}" \
+        gatk --java-options "-Xmx9g" \
             ExtractCohort \
                 --mode GENOMES --ref-version 38 \
                 -R ~{reference} \
@@ -229,7 +226,7 @@ task ExtractTask {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "12 GB"
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
