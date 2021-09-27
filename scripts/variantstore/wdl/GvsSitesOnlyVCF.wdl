@@ -190,6 +190,9 @@ task ExtractAnAcAfFromVCF {
     String custom_annotations_file_name = "ac_an_af.tsv"
     String local_input_vcf = basename(input_vcf)
     String local_input_vcf_index = basename(input_vcf_index)
+    String normalized_vcf = "normalized.vcf"
+    String normalized_vcf_compressed = "normalized.vcf.gz"
+    String normalized_vcf_indexed = "normalized.vcf.gz.tbi"
 
     # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af & sc
     command <<<
@@ -223,15 +226,15 @@ task ExtractAnAcAfFromVCF {
 
 
         bcftools norm -m-any ~{local_input_vcf} | \
-        bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta > normalized.vcf
+        bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta > ~{normalized_vcf}
 
 
         ## make a file of just the first 4 columns of the tsv (maybe I could just bcftools query it?)
-        bcftools query normalized.vcf -f '%CHROM\t%POS\t%REF\t%ALT\n' > check_duplicates.tsv
+        bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
         sort check_duplicates.tsv | uniq -d | cut -f1,2  > duplicates.tsv
         ## remove those rows (this will be ALL rows with this position--so good rows too, potentially we want to grab f1,4 to do this with)
-        grep -v -wFf duplicates.tsv normalized.vcf | grep -v "AC=0;"  > deduplicated.vcf
+        grep -v -wFf duplicates.tsv ~{normalized_vcf} | grep -v "AC=0;"  > deduplicated.vcf
 
         wc -l duplicates.tsv
 
@@ -242,6 +245,10 @@ task ExtractAnAcAfFromVCF {
         ### for validation of the pipeline
         wc -l ~{custom_annotations_file_name} | awk '{print $1}'  > count.txt
         # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
+
+        ### compress the vcf and index it
+        bcftools view -I deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
+        bcftools index --tbi  ~{normalized_vcf_compressed}
 
     >>>
     # ------------------------------------------------
@@ -258,8 +265,8 @@ task ExtractAnAcAfFromVCF {
     output {
         File annotations_file = "~{custom_annotations_file_name}"
         Int count_variants = read_int("count.txt")
-        File output_vcf = local_input_vcf
-        File output_vcf_index = local_input_vcf_index
+        File output_vcf = "~{normalized_vcf_compressed}"
+        File output_vcf_index = "~{normalized_vcf_indexed}"
     }
 }
 
