@@ -230,7 +230,7 @@ task ExtractAnAcAfFromVCF {
         | grep -v "*" >> ~{custom_annotations_file_name}
 
         ### for validation of the pipeline
-        wc -l ~{custom_annotations_file_name} > count.txt
+        wc -l ~{custom_annotations_file_name} | awk '{print $1}'  > count.txt
         # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
 
     >>>
