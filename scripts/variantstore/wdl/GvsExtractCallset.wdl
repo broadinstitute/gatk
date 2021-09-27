@@ -29,6 +29,7 @@ workflow GvsExtractCallset {
         File? excluded_intervals
         Boolean? emit_pls = false
         Int? extract_preemptible_override
+        Int? split_intervals_disk_size_override
 
         String? service_account_json_path
 
@@ -49,6 +50,7 @@ workflow GvsExtractCallset {
           ref_dict = reference_dict,
           scatter_count = scatter_count,
           output_gcs_dir = output_gcs_dir,
+          split_intervals_disk_size_override = split_intervals_disk_size_override,
           service_account_json_path = service_account_json_path
     }
 
@@ -253,6 +255,7 @@ task ExtractTask {
         File ref_dict
         Int scatter_count
         String? split_intervals_extra_args
+        Int? split_intervals_disk_size_override
         String? output_gcs_dir
 
         File? gatk_override
@@ -304,7 +307,7 @@ task ExtractTask {
 
      runtime {
          docker: "us.gcr.io/broad-gatk/gatk:4.2.0.0"
-         bootDiskSizeGb: 15
+         bootDiskSizeGb: select_first([split_intervals_disk_size_override, 15])
          memory: "3 GB"
          disks: "local-disk 10 HDD"
          preemptible: 3
