@@ -263,21 +263,22 @@ task ExtractTask {
     }
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    Int disk_size = if (defined(split_intervals_disk_size_override)) then split_intervals_disk_size_override else 10
 
-#    parameter_meta {
-#        intervals: {
-#            localization_optional: true
-#        }
-#        ref_fasta: {
-#            localization_optional: true
-#        }
-#        ref_fai: {
-#            localization_optional: true
-#        }
-#        ref_dict: {
-#            localization_optional: true
-#        }
-#     }
+    parameter_meta {
+        intervals: {
+            localization_optional: true
+        }
+        ref_fasta: {
+            localization_optional: true
+        }
+        ref_fai: {
+            localization_optional: true
+        }
+        ref_dict: {
+            localization_optional: true
+        }
+     }
 
      command {
          set -e
@@ -307,9 +308,9 @@ task ExtractTask {
 
      runtime {
          docker: "us.gcr.io/broad-gatk/gatk:4.2.0.0"
-         bootDiskSizeGb: select_first([split_intervals_disk_size_override, 15])
+         bootDiskSizeGb: 15
          memory: "3 GB"
-         disks: "local-disk 10 HDD"
+         disks: "local-disk ~{disk_size} HDD"
          preemptible: 3
          cpu: 1
      }
