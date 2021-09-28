@@ -16,12 +16,14 @@ import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
@@ -29,9 +31,10 @@ import java.util.stream.IntStream;
 public final class BayesianGaussianMixture {
 
     private static final double LOG_2_PI = Math.log(2. * Math.PI);
+    private static final double EPSILON = 1E-10;
 
     public enum InitMethod {
-        K_MEANS, RANDOM
+        K_MEANS, RANDOM, TEST
     }
 
     protected static final Logger logger = LogManager.getLogger(BayesianGaussianMixture.class);
@@ -199,26 +202,34 @@ public final class BayesianGaussianMixture {
         final int nSamples = X.getRowDimension();
         rng.setSeed(seed);
 
-        final RealMatrix resp = X.createMatrix(nSamples, nComponents);
-        resp.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
-            @Override
-            public double visit(int sampleIndex, int componentIndex, double value) {
-                return rng.nextDouble();
-            }
-        });
-        final RealVector respSumOverComponents = new ArrayRealVector(nSamples);
-        IntStream.range(0, nSamples).forEach(
-                i -> respSumOverComponents.setEntry(i, Arrays.stream(resp.getRow(i)).sum()));
-        IntStream.range(0, nSamples).forEach(
-                i -> resp.setRowVector(i, resp.getRowVector(i).mapDivide(respSumOverComponents.getEntry(i))));
-        initialize(X, resp);
-
-//        if (initMethod == InitMethod.K_MEANS) {
-//            // TODO add implementation of K-means
-//        } else if (initMethod == InitMethod.RANDOM) {
-//        } else {
-//            throw new GATKException.ShouldNeverReachHereException("An initialization method must be implemented for each InitMethod.");
-//        }
+        if (initMethod == InitMethod.K_MEANS) {
+            // TODO add implementation of K-means
+        } else if (initMethod == InitMethod.RANDOM) {
+            final RealMatrix resp = X.createMatrix(nSamples, nComponents);
+            resp.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+                @Override
+                public double visit(int sampleIndex, int componentIndex, double value) {
+                    return rng.nextDouble();
+                }
+            });
+            final RealVector respSumOverComponents = new ArrayRealVector(nSamples);
+            IntStream.range(0, nSamples).forEach(
+                    i -> respSumOverComponents.setEntry(i, Arrays.stream(resp.getRow(i)).sum()));
+            IntStream.range(0, nSamples).forEach(
+                    i -> resp.setRowVector(i, resp.getRowVector(i).mapDivide(respSumOverComponents.getEntry(i))));
+            initialize(X, resp);
+        } else if (initMethod == InitMethod.TEST) {
+            final RealMatrix resp = X.createMatrix(nSamples, nComponents);
+            resp.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+                @Override
+                public double visit(int sampleIndex, int componentIndex, double value) {
+                    return componentIndex == 0 ? 1. : 0.;
+                }
+            });
+            initialize(X, resp);
+        } else {
+            throw new GATKException.ShouldNeverReachHereException("An initialization method must be implemented for each InitMethod.");
+        }
     }
 
     private void initialize(final RealMatrix X,
@@ -262,11 +273,13 @@ public final class BayesianGaussianMixture {
     private void estimateMeans(final RealVector nk,
                                final List<RealVector> xk) {
         meanPrecision = nk.mapAdd(meanPrecisionPrior);
+        final List<RealVector> means = new ArrayList<>(Collections.nCopies(nComponents, meanPrior));
         IntStream.range(0, nComponents).forEach(
                 k -> means.set(k,
                         meanPrior.mapMultiply(meanPrecisionPrior)
                                 .add(xk.get(k).mapMultiply(nk.getEntry(k)))
                                 .mapDivide(meanPrecision.getEntry(k))));
+        this.means = means;
     }
 
     private void estimatePrecisions(final RealVector nk,
@@ -283,7 +296,7 @@ public final class BayesianGaussianMixture {
         // `degrees_of_freedom_k = degrees_of_freedom_0 + N_k` is the correct formula
         degreesOfFreedom = nk.mapAdd(degreesOfFreedomPrior);
 
-        covariances = new ArrayList<>(nComponents);
+        covariances = new ArrayList<>(Collections.nCopies(nComponents, covariancePrior));
         for (int k = 0; k < nComponents; k++) {
             final RealVector diff = xk.get(k).subtract(meanPrior);
             final RealMatrix cov = covariancePrior
@@ -386,7 +399,7 @@ public final class BayesianGaussianMixture {
         final int nComponents = covariances.size();
         final int nFeatures = covariances.get(0).getRowDimension();
 
-        final List<RealMatrix> precisionsChol = new ArrayList<>(nComponents);
+        final List<RealMatrix> precisionsChol = new ArrayList<>(Collections.nCopies(nComponents, covariances.get(0).copy()));
         for (int k = 0; k < nComponents; k++) {
             final RealMatrix cov = covariances.get(k);
             try {
@@ -411,7 +424,7 @@ public final class BayesianGaussianMixture {
     }
 
     private static RealVector computeLogDetCholesky(final List<RealMatrix> matrixChol) {
-        final int nComponents = matrixChol.get(0).getRowDimension();
+        final int nComponents = matrixChol.size();
         final RealVector logDetChol = new ArrayRealVector(nComponents);
         IntStream.range(0, nComponents).forEach(
                 k -> logDetChol.setEntry(k, sum(diag(matrixChol.get(k)).map(Math::log))));
@@ -448,16 +461,16 @@ public final class BayesianGaussianMixture {
         return result;
     }
 
-    private static Triple<RealVector, List<RealVector>, List<RealMatrix>> estimateGaussianParameters(final RealMatrix X,
-                                                                                                     final RealMatrix resp,
-                                                                                                     final double regCovar) {
+    private Triple<RealVector, List<RealVector>, List<RealMatrix>> estimateGaussianParameters(final RealMatrix X,
+                                                                                              final RealMatrix resp,
+                                                                                              final double regCovar) {
         final int nComponents = resp.getColumnDimension();
 
         final RealVector nk = new ArrayRealVector(nComponents);
         IntStream.range(0, nComponents).forEach(
-                k -> nk.setEntry(k, sum(resp.getColumnVector(k))));
+                k -> nk.setEntry(k, sum(resp.getColumnVector(k)) + EPSILON));
 
-        final List<RealVector> means = new ArrayList<>(nComponents);
+        final List<RealVector> means = new ArrayList<>(Collections.nCopies(nComponents, meanPrior));
         final RealMatrix respTDotX = resp.transpose().multiply(X);
         IntStream.range(0, nComponents).forEach(
                 k -> means.set(k, respTDotX.getRowVector(k).mapDivide(nk.getEntry(k))));
@@ -467,16 +480,16 @@ public final class BayesianGaussianMixture {
         return Triple.of(nk, means, covariances);
     }
 
-    private static List<RealMatrix> estimateGaussianCovariances(final RealMatrix X,
-                                                                final RealMatrix resp,
-                                                                final RealVector nk,
-                                                                final List<RealVector> means,
-                                                                final double regCovar) {
+    private List<RealMatrix> estimateGaussianCovariances(final RealMatrix X,
+                                                         final RealMatrix resp,
+                                                         final RealVector nk,
+                                                         final List<RealVector> means,
+                                                         final double regCovar) {
         final int nSamples = X.getRowDimension();
         final int nComponents = means.size();
         final int nFeatures = means.get(0).getDimension();
 
-        final List<RealMatrix> covariances = new ArrayList<>(nComponents);
+        final List<RealMatrix> covariances = new ArrayList<>(Collections.nCopies(nComponents, covariancePrior));
         for (int k = 0; k < nComponents; k++) {
             final RealMatrix diff = X.copy();
             final RealVector mean = means.get(k);
