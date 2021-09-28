@@ -28,7 +28,7 @@ public class BayesianGaussianMixtureUnitTest {
         final double weightConcentrationPrior = 0.01;
         final double meanPrecisionPrior = 10.;
         final double[] meanPrior = new double[]{0., 0.};
-        final double degreesOfFreedomPrior = 1.;
+        final double degreesOfFreedomPrior = 2.;
         final double[][] covariancePrior = new double[][]{{1., 0.}, {0., 1.}};
         final int seed = 1;
         final boolean warmStart = true;
@@ -60,7 +60,7 @@ public class BayesianGaussianMixtureUnitTest {
         final double weightConcentrationPrior = 0.01;
         final double meanPrecisionPrior = 10.;
         final double[] meanPrior = new double[]{0., 0.};
-        final double degreesOfFreedomPrior = 1.;
+        final double degreesOfFreedomPrior = 2.;
         final double[][] covariancePrior = new double[][]{{1., 0.}, {0., 1.}};
         final int seed = 1;
         final boolean warmStart = true;
@@ -77,6 +77,12 @@ public class BayesianGaussianMixtureUnitTest {
         }
 
         bgmm.fit(data);
+        System.out.println("weightConcentration: " + bgmm.weightConcentration);
+        System.out.println("meanPrecision: " + bgmm.meanPrecision);
+        System.out.println("means: " + bgmm.means);
+        System.out.println("precisionsCholesky: " + bgmm.precisionsCholesky);
+        System.out.println("covariances: " + bgmm.covariances);
+        System.out.println("degreesOfFreedom: " + bgmm.degreesOfFreedom);
     }
 
     //******************************************************************************************************************
@@ -102,7 +108,7 @@ public class BayesianGaussianMixtureUnitTest {
                         new ArrayRealVector(new double[]{3., 4., 5., 6.}),
                         new ArrayRealVector(new double[]{0.1, 0.2, 0.3, 0.4}),
                 2).toArray(), // nFeatures must be less than all elements of degreesOfFreedom
-                new double[]{-1.6586593 , -1.85180648, -2.25041877, -2.73671313}, epsilon);
+                new double[]{-2.2586593 , -3.45180648, -5.25041877, -7.53671313}, epsilon);
     }
 
     @Test

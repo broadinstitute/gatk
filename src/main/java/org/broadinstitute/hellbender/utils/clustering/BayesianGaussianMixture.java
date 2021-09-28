@@ -59,12 +59,18 @@ public final class BayesianGaussianMixture {
     private boolean isConverged;
     private double lowerBound;
 
-    private RealVector weightConcentration;
-    private RealVector meanPrecision;
-    private List<RealVector> means;
-    private List<RealMatrix> precisionsCholesky;
-    private List<RealMatrix> covariances;
-    private RealVector degreesOfFreedom;
+//    private RealVector weightConcentration;
+//    private RealVector meanPrecision;
+//    private List<RealVector> means;
+//    private List<RealMatrix> precisionsCholesky;
+//    private List<RealMatrix> covariances;
+//    private RealVector degreesOfFreedom;
+    public RealVector weightConcentration;
+    public RealVector meanPrecision;
+    public List<RealVector> means;
+    public List<RealMatrix> precisionsCholesky;
+    public List<RealMatrix> covariances;
+    public RealVector degreesOfFreedom;
 
     private void logHeapUsage(final String message) {
         final int mb = 1024 * 1024;
@@ -152,22 +158,26 @@ public final class BayesianGaussianMixture {
                 final double change = lowerBound - prevLowerBound;
 
                 if (nIter % verboseInterval == 0) {
-                    logger.info(String.format("Iteration %d, lower-bound change = %.4f...", nIter, change));
+                    logger.info(String.format("Iteration %d, lower bound = %.4f, lower-bound change = %.4f...",
+                            nIter, lowerBound, change));
                 }
 
                 if (Math.abs(change) < tol) {
                     isConverged = true;
-                    logger.info(String.format("Initialization %d converged after %d iterations, final lower-bound change = %.4f...", init, nIter, change));
+                    logger.info(String.format("Initialization %d converged after %d iterations, final lower bound = %.4f, final lower-bound change = %.4f...",
+                            init, nIter, lowerBound, change));
                     break;
                 }
 
                 if (nInit == maxIter && !isConverged) {
-                    logger.info(String.format("Initialization %d did not converge after %d iterations, final lower-bound change = %.4f...", init, nIter, change));
+                    logger.info(String.format("Initialization %d did not converge after %d iterations, final lower bound = %.4f, final lower-bound change = %.4f...",
+                            init, nIter, lowerBound, change));
                 }
             }
 
             if (lowerBound > maxLowerBound || maxLowerBound == Double.NEGATIVE_INFINITY) {
                 maxLowerBound = lowerBound;
+                // TODO log maxLowerBound
 //                TODO best_params = self._get_parameters()
 //                best_n_iter = n_iter
             }
@@ -363,17 +373,20 @@ public final class BayesianGaussianMixture {
     private double computeLowerBound(final RealMatrix logResp) { // we remove an unused logProbNorm parameter from the python code
         // Contrary to the original formula, we have done some simplification
         // and removed all the constant terms.
+        final int nSamples = logResp.getRowDimension();
         final int nFeatures = meanPrior.getDimension();
 
         // We removed 0.5 * nFeatures * degreesOfFreedom.map(Math::log)
         // because the precision matrix is normalized.
         final RealVector logDetPrecisionsChol = computeLogDetCholesky(precisionsCholesky);
-        logDetPrecisionsChol.subtract(degreesOfFreedom.mapMultiply(0.5 * nFeatures));
+        logDetPrecisionsChol.combineToSelf(1., -0.5 * nFeatures, degreesOfFreedom.map(Math::log));
 
         final double logWishart = sum(logWishartNorm(degreesOfFreedom, logDetPrecisionsChol, nFeatures));
         final double logNormWeight = logDirichletNorm(weightConcentration);
 
-        return -sum(ebeMultiply(map(logResp, Math::exp), logResp)) - logWishart - logNormWeight
+        return -sum(ebeMultiply(map(logResp, Math::exp), logResp))
+                - logWishart
+                - logNormWeight
                 - 0.5 * nFeatures * sum(meanPrecision.map(Math::log));
     }
 
@@ -410,8 +423,9 @@ public final class BayesianGaussianMixture {
                                 .sum()));
         // To simplify the computation we have removed the Math.log(Math.PI) term
         return degreesOfFreedom.ebeMultiply(logDetPrecisionChol)
-                .subtract(degreesOfFreedom.mapMultiply(0.5 * MathUtils.LOG_2 * nFeatures))
-                .subtract(logGammaSumTerm);
+                .add(degreesOfFreedom.mapMultiply(0.5 * MathUtils.LOG_2 * nFeatures))
+                .add(logGammaSumTerm)
+                .mapMultiply(-1.);
     }
 
     /**
