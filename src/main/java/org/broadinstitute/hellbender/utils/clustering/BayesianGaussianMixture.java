@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.clustering;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.analysis.UnivariateFunction;
@@ -223,7 +224,7 @@ public final class BayesianGaussianMixture {
             resp.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
                 @Override
                 public double visit(int sampleIndex, int componentIndex, double value) {
-                    return componentIndex == 0 ? 1. : 0.;
+                    return 1. / nComponents;
                 }
             });
             initialize(X, resp);
@@ -376,13 +377,31 @@ public final class BayesianGaussianMixture {
                 - 0.5 * nFeatures * sum(meanPrecision.map(Math::log));
     }
 
-    private static double logDirichletNorm(final RealVector dirichletConcentration) {
+    //******************************************************************************************************************
+    // static helper methods (package-protected only for testing)
+    //******************************************************************************************************************
+
+    /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L20">here</a>.
+     * @param dirichletConcentration parameters of the Dirichlet distribution. (nComponents, )
+     * @return                       log normalization of the Dirichlet distribution.
+     */
+    @VisibleForTesting
+    static double logDirichletNorm(final RealVector dirichletConcentration) {
         return Gamma.logGamma(sum(dirichletConcentration)) - sum(dirichletConcentration.map(Gamma::logGamma));
     }
 
-    private RealVector logWishartNorm(final RealVector degreesOfFreedom,
-                                      final RealVector logDetPrecisionChol,
-                                      final int nFeatures) {
+    /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L38">here</a>.
+     * @param degreesOfFreedom      number of degrees of freedom on the covariance Wishart distributions for all components. (nComponents, )
+     * @param logDetPrecisionChol   determinants of the precision matrices for all components. (nComponents, )
+     * @return                      log normalizations of the Wishart distributions for all components. (nComponents, )
+     */
+    @VisibleForTesting
+    static RealVector logWishartNorm(final RealVector degreesOfFreedom,
+                                     final RealVector logDetPrecisionChol,
+                                     final int nFeatures) {
+        final int nComponents = degreesOfFreedom.getDimension();
         final RealVector logGammaSumTerm = new ArrayRealVector(nComponents);
         IntStream.range(0, nComponents).forEach(
                 k -> logGammaSumTerm.setEntry(k,
@@ -395,11 +414,17 @@ public final class BayesianGaussianMixture {
                 .subtract(logGammaSumTerm);
     }
 
-    private static List<RealMatrix> computePrecisionCholesky(final List<RealMatrix> covariances) {
+    /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_gaussian_mixture.py#L300">here</a>.
+     * @param covariances           covariance matrices for all components. List of (nFeatures, nFeatures) with length nComponents
+     * @return                      Cholesky decompositions of precision matrices for all components. List of (nFeatures, nFeatures) with length nComponents
+     */
+    @VisibleForTesting
+    static List<RealMatrix> computePrecisionCholesky(final List<RealMatrix> covariances) {
         final int nComponents = covariances.size();
         final int nFeatures = covariances.get(0).getRowDimension();
 
-        final List<RealMatrix> precisionsChol = new ArrayList<>(Collections.nCopies(nComponents, covariances.get(0).copy()));
+        final List<RealMatrix> precisionsChol = new ArrayList<>(Collections.nCopies(nComponents, null));
         for (int k = 0; k < nComponents; k++) {
             final RealMatrix cov = covariances.get(k);
             try {
@@ -423,7 +448,13 @@ public final class BayesianGaussianMixture {
         return precisionsChol;
     }
 
-    private static RealVector computeLogDetCholesky(final List<RealMatrix> matrixChol) {
+    /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_gaussian_mixture.py#L354">here</a>.
+     * @param matrixChol            Cholesky decompositions of matrices for all components. List of (nFeatures, nFeatures) with length nComponents
+     * @return                      log determinants of the Cholesky decompositions of matrices for all components. (nComponents, )
+     */
+    @VisibleForTesting
+    static RealVector computeLogDetCholesky(final List<RealMatrix> matrixChol) { // we remove the nFeatures parameter from the python code (unnecessary when restricting covariance type to full)
         final int nComponents = matrixChol.size();
         final RealVector logDetChol = new ArrayRealVector(nComponents);
         IntStream.range(0, nComponents).forEach(
@@ -431,14 +462,22 @@ public final class BayesianGaussianMixture {
         return logDetChol;
     }
 
-    private static RealMatrix estimateLogGaussianProb(final RealMatrix X,
-                                                      final List<RealVector> means,
-                                                      final List<RealMatrix> precisionsChol) {
+    /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_gaussian_mixture.py#L394">here</a>.
+     * @param X                     data. (nSamples, nFeatures)
+     * @param means                 mean vectors for all components. List of (nFeatures, ) with length nComponents
+     * @param precisionsChol        Cholesky decompositions of precision matrices for all components. List of (nFeatures, nFeatures) with length nComponents
+     * @return                      log Gaussian probabilities. (nSamples, nComponents)
+     */
+    @VisibleForTesting
+    static RealMatrix estimateLogGaussianProb(final RealMatrix X,
+                                              final List<RealVector> means,
+                                              final List<RealMatrix> precisionsChol) {
         final int nSamples = X.getRowDimension();
         final int nComponents = means.size();
         final int nFeatures = precisionsChol.get(0).getRowDimension();
 
-        // det(precision_chol) is half of det(precision)
+        // det(precisionChol) is half of det(precision)
         final RealVector logDet = computeLogDetCholesky(precisionsChol);
 
         final RealMatrix logProb = X.createMatrix(nSamples, nComponents);
@@ -461,16 +500,25 @@ public final class BayesianGaussianMixture {
         return result;
     }
 
-    private Triple<RealVector, List<RealVector>, List<RealMatrix>> estimateGaussianParameters(final RealMatrix X,
-                                                                                              final RealMatrix resp,
-                                                                                              final double regCovar) {
+    /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_gaussian_mixture.py#L260">here</a>.
+     * @param X                     data. (nSamples, nFeatures)
+     * @param resp                  responsibilities for each data sample in X. (nSamples, nComponents)
+     * @param regCovar              regularization added to the diagonal of the covariance matrices.
+     * @return                      triple of effective number for all components, mean vectors for all components, and covariance matrices for all components.
+     *                              i.e., Triple of [(nComponents, ), List of (nFeatures, ) with length nComponents, List of (nFeatures, nFeatures) with length nComponents]
+     */
+    @VisibleForTesting
+    static Triple<RealVector, List<RealVector>, List<RealMatrix>> estimateGaussianParameters(final RealMatrix X,
+                                                                                             final RealMatrix resp,
+                                                                                             final double regCovar) {
         final int nComponents = resp.getColumnDimension();
 
         final RealVector nk = new ArrayRealVector(nComponents);
         IntStream.range(0, nComponents).forEach(
                 k -> nk.setEntry(k, sum(resp.getColumnVector(k)) + EPSILON));
 
-        final List<RealVector> means = new ArrayList<>(Collections.nCopies(nComponents, meanPrior));
+        final List<RealVector> means = new ArrayList<>(Collections.nCopies(nComponents, null));
         final RealMatrix respTDotX = resp.transpose().multiply(X);
         IntStream.range(0, nComponents).forEach(
                 k -> means.set(k, respTDotX.getRowVector(k).mapDivide(nk.getEntry(k))));
@@ -480,16 +528,26 @@ public final class BayesianGaussianMixture {
         return Triple.of(nk, means, covariances);
     }
 
-    private List<RealMatrix> estimateGaussianCovariances(final RealMatrix X,
-                                                         final RealMatrix resp,
-                                                         final RealVector nk,
-                                                         final List<RealVector> means,
-                                                         final double regCovar) {
+
+    /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_gaussian_mixture.py#L154">here</a>.
+     * @param X                     data. (nSamples, nFeatures)
+     * @param resp                  responsibilities for each data sample in X. (nSamples, nComponents)
+     * @param nk                    effective number for all components. (nComponents, )
+     * @param means                 mean vectors for all components. List of (nFeatures, ) with length nComponents
+     * @param regCovar              regularization added to the diagonal of the covariance matrices.
+     * @return                      covariance matrices for all components. List of (nFeatures, nFeatures) with length nComponents
+     */
+    private static List<RealMatrix> estimateGaussianCovariances(final RealMatrix X,
+                                                                final RealMatrix resp,
+                                                                final RealVector nk,
+                                                                final List<RealVector> means,
+                                                                final double regCovar) {
         final int nSamples = X.getRowDimension();
         final int nComponents = means.size();
         final int nFeatures = means.get(0).getDimension();
 
-        final List<RealMatrix> covariances = new ArrayList<>(Collections.nCopies(nComponents, covariancePrior));
+        final List<RealMatrix> covariances = new ArrayList<>(Collections.nCopies(nComponents, null));
         for (int k = 0; k < nComponents; k++) {
             final RealMatrix diff = X.copy();
             final RealVector mean = means.get(k);
