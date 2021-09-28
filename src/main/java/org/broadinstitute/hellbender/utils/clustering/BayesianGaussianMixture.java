@@ -10,6 +10,7 @@ import org.apache.commons.math3.linear.CholeskyDecomposition;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.NonPositiveDefiniteMatrixException;
+import org.apache.commons.math3.linear.NonSymmetricMatrixException;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.random.RandomGenerator;
@@ -33,6 +34,8 @@ public final class BayesianGaussianMixture {
 
     private static final double LOG_2_PI = Math.log(2. * Math.PI);
     private static final double EPSILON = 1E-10;
+    private static final double RELATIVE_SYMMETRY_THRESHOLD = 1E-10;
+    private static final double ABSOLUTE_POSITIVITY_THRESHOLD = 1E-10;
 
     public enum InitMethod {
         K_MEANS, RANDOM, TEST
@@ -158,19 +161,19 @@ public final class BayesianGaussianMixture {
                 final double change = lowerBound - prevLowerBound;
 
                 if (nIter % verboseInterval == 0) {
-                    logger.info(String.format("Iteration %d, lower bound = %.4f, lower-bound change = %.4f...",
+                    logger.info(String.format("Iteration %d, lower bound = %.5f, lower-bound change = %.5f...",
                             nIter, lowerBound, change));
                 }
 
                 if (Math.abs(change) < tol) {
                     isConverged = true;
-                    logger.info(String.format("Initialization %d converged after %d iterations, final lower bound = %.4f, final lower-bound change = %.4f...",
+                    logger.info(String.format("Initialization %d converged after %d iterations, final lower bound = %.5f, final lower-bound change = %.5f...",
                             init, nIter, lowerBound, change));
                     break;
                 }
 
                 if (nInit == maxIter && !isConverged) {
-                    logger.info(String.format("Initialization %d did not converge after %d iterations, final lower bound = %.4f, final lower-bound change = %.4f...",
+                    logger.info(String.format("Initialization %d did not converge after %d iterations, final lower bound = %.5f, final lower-bound change = %.5f...",
                             init, nIter, lowerBound, change));
                 }
             }
@@ -234,9 +237,14 @@ public final class BayesianGaussianMixture {
             resp.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
                 @Override
                 public double visit(int sampleIndex, int componentIndex, double value) {
-                    return 1. / nComponents;
+                    return componentIndex;
                 }
             });
+            final RealVector respSumOverComponents = new ArrayRealVector(nSamples);
+            IntStream.range(0, nSamples).forEach(
+                    i -> respSumOverComponents.setEntry(i, Arrays.stream(resp.getRow(i)).sum()));
+            IntStream.range(0, nSamples).forEach(
+                    i -> resp.setRowVector(i, resp.getRowVector(i).mapDivide(respSumOverComponents.getEntry(i))));
             initialize(X, resp);
         } else {
             throw new GATKException.ShouldNeverReachHereException("An initialization method must be implemented for each InitMethod.");
@@ -279,6 +287,7 @@ public final class BayesianGaussianMixture {
 
     private void estimateWeights(final RealVector nk) {
         weightConcentration = nk.mapAdd(weightConcentrationPrior);
+        // System.out.println("weightConcentration:\n\t" + weightConcentration);
     }
 
     private void estimateMeans(final RealVector nk,
@@ -291,6 +300,8 @@ public final class BayesianGaussianMixture {
                                 .add(xk.get(k).mapMultiply(nk.getEntry(k)))
                                 .mapDivide(meanPrecision.getEntry(k))));
         this.means = means;
+        // System.out.println("meanPrecision:\n\t" + meanPrecision);
+        // System.out.println("means:\n\t" + this.means);
     }
 
     private void estimatePrecisions(final RealVector nk,
@@ -298,6 +309,7 @@ public final class BayesianGaussianMixture {
                                     final List<RealMatrix> sk) {
         estimateWishartFull(nk, xk, sk);
         precisionsCholesky = computePrecisionCholesky(covariances);
+        // System.out.println("precisionsCholesky:\n\t" + precisionsCholesky);
     }
 
     private void estimateWishartFull(final RealVector nk,
@@ -316,6 +328,8 @@ public final class BayesianGaussianMixture {
                     .scalarMultiply(1. / degreesOfFreedom.getEntry(k)); // Contrary to the original Bishop book, we normalize the covariances
             covariances.set(k, cov);
         }
+        // System.out.println("degreesOfFreedom:\n\t" + degreesOfFreedom);
+        // System.out.println("covariances:\n\t" + covariances);
     }
 
     private RealMatrix estimateWeightedLogProb(final RealMatrix X) {
@@ -324,6 +338,7 @@ public final class BayesianGaussianMixture {
         final RealVector logWeights = estimateLogWeights();
         IntStream.range(0, nSamples).forEach(
                 i -> weightedLogProb.setRowVector(i, weightedLogProb.getRowVector(i).add(logWeights)));
+        // System.out.println("estimateWeightedLogProb:\n\t" + weightedLogProb);
         return weightedLogProb;
     }
 
@@ -336,12 +351,15 @@ public final class BayesianGaussianMixture {
         final RealMatrix logResp = weightedLogProb.copy();
         IntStream.range(0, nSamples).forEach(
                 i -> logResp.setRowVector(i, logResp.getRowVector(i).mapSubtract(logProbNorm.getEntry(i))));
+        // System.out.println("estimateLogProbResp, logProbNorm:\n\t" + logProbNorm);
+        // System.out.println("estimateLogProbResp, logResp:\n\t" + logResp);
         return Pair.of(logProbNorm, logResp);
     }
 
     private RealVector estimateLogWeights() {
+        // System.out.println(weightConcentration.map(Gamma::digamma).mapSubtract(Gamma.digamma(sum(weightConcentration))));
         return weightConcentration.map(Gamma::digamma)
-                .mapAdd(Gamma.digamma(sum(weightConcentration)));
+                .mapSubtract(Gamma.digamma(sum(weightConcentration)));
     }
 
     private RealMatrix estimateLogProb(final RealMatrix X) {
@@ -351,7 +369,7 @@ public final class BayesianGaussianMixture {
         // We remove nFeatures * degreesOfFreedom.map(Math::log) because
         // the precision matrix is normalized
         final RealMatrix result = estimateLogGaussianProb(X, means, precisionsCholesky);
-        final RealVector normalizingTerm = degreesOfFreedom.mapMultiply(0.5 * nFeatures);
+        final RealVector normalizingTerm = degreesOfFreedom.map(Math::log).mapMultiply(0.5 * nFeatures);
         IntStream.range(0, nSamples).forEach(
                 i -> result.setRowVector(i, result.getRowVector(i).subtract(normalizingTerm)));
 
@@ -367,6 +385,7 @@ public final class BayesianGaussianMixture {
         IntStream.range(0, nSamples).forEach(
                 i -> result.setRowVector(i, result.getRowVector(i).add(addToLogGaussTerm)));
 
+        // System.out.println("estimateLogProb:\n\t" + result);
         return result;
     }
 
@@ -442,7 +461,8 @@ public final class BayesianGaussianMixture {
         for (int k = 0; k < nComponents; k++) {
             final RealMatrix cov = covariances.get(k);
             try {
-                final RealMatrix covChol = new CholeskyDecomposition(cov).getL();
+                final RealMatrix covChol = new CholeskyDecomposition(
+                        cov, RELATIVE_SYMMETRY_THRESHOLD, ABSOLUTE_POSITIVITY_THRESHOLD).getL();
                 final RealMatrix precisionChol = cov.createMatrix(nFeatures, nFeatures);
                 for (int l = 0; l < nFeatures; l++) {
                     final RealVector b = new ArrayRealVector(nFeatures);
@@ -451,12 +471,12 @@ public final class BayesianGaussianMixture {
                     precisionChol.setColumnVector(l, b);
                 }
                 precisionsChol.set(k, precisionChol.transpose());
-            } catch (final NonPositiveDefiniteMatrixException e) {
+            } catch (final NonPositiveDefiniteMatrixException | NonSymmetricMatrixException e) {
                 throw new UserException(
                         "Fitting the Bayesian Gaussian mixture model failed because some components have " +
                                 "ill-defined empirical covariance (perhaps caused by singleton " +
                                 "or collapsed samples). Try to decrease the number of components " +
-                                "or increase the covariance-regularization parameter.");
+                                "or increase the covariance-regularization parameter.", e);
             }
         }
         return precisionsChol;

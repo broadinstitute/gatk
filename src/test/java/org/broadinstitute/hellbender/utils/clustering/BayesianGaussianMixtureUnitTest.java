@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.clustering;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.testng.Assert;
@@ -51,6 +52,8 @@ public class BayesianGaussianMixtureUnitTest {
 
     @Test
     public void testSimulatedData() throws IOException {
+        final int nFeatures = 10;
+
         final int nComponents = 3;
         final double tol = 1E-6;
         final double regCovar = 1E-6;
@@ -59,9 +62,10 @@ public class BayesianGaussianMixtureUnitTest {
         final BayesianGaussianMixture.InitMethod initMethod = BayesianGaussianMixture.InitMethod.TEST;
         final double weightConcentrationPrior = 0.01;
         final double meanPrecisionPrior = 10.;
-        final double[] meanPrior = new double[]{0., 0.};
-        final double degreesOfFreedomPrior = 2.;
-        final double[][] covariancePrior = new double[][]{{1., 0.}, {0., 1.}};
+        final double[] meanPrior = new double[nFeatures];
+        Arrays.fill(meanPrior, 0.);
+        final double degreesOfFreedomPrior = nFeatures;
+        final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
         final int seed = 1;
         final boolean warmStart = true;
         final int verboseInterval = 1;
@@ -107,7 +111,7 @@ public class BayesianGaussianMixtureUnitTest {
                 BayesianGaussianMixture.logWishartNorm(
                         new ArrayRealVector(new double[]{3., 4., 5., 6.}),
                         new ArrayRealVector(new double[]{0.1, 0.2, 0.3, 0.4}),
-                2).toArray(), // nFeatures must be less than all elements of degreesOfFreedom
+                2).toArray(), // nFeatures must be <= all elements of degreesOfFreedom
                 new double[]{-2.2586593 , -3.45180648, -5.25041877, -7.53671313}, epsilon);
     }
 
