@@ -470,7 +470,7 @@ task BigQueryLoadJson {
 
        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-       DATE = 86400 ## 24 hours in seconds
+       DATE=86400 ## 24 hours in seconds
 
 
        if [ ~{has_service_account_file} = 'true' ]; then
