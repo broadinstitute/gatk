@@ -117,6 +117,7 @@ public final class GATKSVVCFConstants {
     public static final String INTERGENIC = "PREDICTED_INTERGENIC";
     public static final String NONCODING_SPAN = "PREDICTED_NONCODING_SPAN";
     public static final String NONCODING_BREAKPOINT = "PREDICTED_NONCODING_BREAKPOINT";
+    public static final String NEAREST_TSS = "PREDICTED_NEAREST_TSS";
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
