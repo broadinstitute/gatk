@@ -250,7 +250,6 @@ task ExtractAnAcAfFromVCF {
 
         ### for validation of the pipeline
         wc -l ~{custom_annotations_file_name} | awk '{print $1}'  > count.txt
-        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
 
         ### compress the vcf and index it
         bcftools view -I deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
@@ -291,6 +290,8 @@ task SitesOnlyVcf {
         # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
         # in it so that downstream steps can call cache
 
+        wc -l ~{input_vcf}
+
         gatk --java-options "-Xmx12288m" \
             SelectVariants \
                 -V ~{input_vcf} \
@@ -299,7 +300,10 @@ task SitesOnlyVcf {
                 --sites-only-vcf-output \
                 -O ~{output_filename}
 
-     >>>
+        wc -l ~{output_filename}
+
+
+    >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
