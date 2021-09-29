@@ -6,7 +6,9 @@ from google.cloud import bigquery
 def execute_with_retry(client, label, sql):
     """Run a BigQuery SQL string with a label.
 
-    Three retries with incremental backoff if BiqQuery returns 'retry-able errors', any other error is re-raised.
+    Three retries with incremental backoff if BiqQuery returns 'retry-able errors'
+    (see https://googleapis.dev/python/bigquery/latest/_modules/google/api_core/retry.html),
+    any other error is re-raised.
 
     Parameters
     ----------
@@ -36,8 +38,9 @@ def execute_with_retry(client, label, sql):
                 f"COMPLETED ({time.time() - start} seconds, {3 - len(retry_delay)} retries, {mb_billed} MBs) - {label}")
 
             return results
-        except (google.api_core.exceptions.ServiceUnavailable,
-                google.api_core.exceptions.BadRequest) as err:
+        except (google.api_core.exceptions.InternalServerError,
+                google.api_core.exceptions.TooManyRequests,
+                google.api_core.exceptions.ServiceUnavailable) as err:
             if len(retry_delay) > 0:
                 t = retry_delay.pop(0)
                 print(f"Error {err} running query {label}, sleeping for {t}")
