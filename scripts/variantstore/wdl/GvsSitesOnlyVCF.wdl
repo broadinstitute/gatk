@@ -21,6 +21,9 @@ workflow GvsSitesOnlyVCF {
         File reference
     }
 
+    Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
+
+
     call MakeSubpopulationFiles {
         input:
             input_ancestry_file = ancestry_file,
@@ -90,17 +93,20 @@ workflow GvsSitesOnlyVCF {
          table_suffix = table_suffix,
          service_account_json_path = service_account_json_path,
          load_jsons_done = BigQueryLoadJson.done
-   }
+    }
+    scatter(i in range(length(contig_array)) ) {
 
-    call BigQueryExportVat {
-       input:
-         project_id = project_id,
-         dataset_name = dataset_name,
-         output_path = output_path,
-         table_suffix = table_suffix,
-         service_account_json_path = service_account_json_path,
-         validate_jsons_done = BigQuerySmokeTest.done
-     }
+      call BigQueryExportVat {
+        input:
+            contig = contig_array[i],
+            project_id = project_id,
+            dataset_name = dataset_name,
+            output_path = output_path,
+            table_suffix = table_suffix,
+            service_account_json_path = service_account_json_path,
+            validate_jsons_done = BigQuerySmokeTest.done
+      }
+    }
 }
 
 ################################################################################
@@ -731,6 +737,7 @@ task BigQuerySmokeTest {
 
 task BigQueryExportVat {
     input {
+        String contig
         String project_id
         String dataset_name
         String output_path
@@ -741,13 +748,11 @@ task BigQueryExportVat {
 
     # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
     String vat_table = "vat_" + table_suffix
-    String export_path = output_path + "export/"
+    String export_path = output_path + "export/" + contig + "/*.tsv.gz"
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     ## TODO partition VAT by contig and cluster by position for a cheaper export (which is done by contig--do I need to make contig an int instead of a string?)
-
-    Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
 
     command <<<
 
@@ -760,13 +765,9 @@ task BigQueryExportVat {
           gcloud config set project ~{project_id}
         fi
 
-        COUNTER=22 ## TODO add X & Y
-        CONTIG=chr$COUNTER
-        until [  $COUNTER -lt 1 ]; do
-          echo contig $COUNTER
-           bq query --nouse_legacy_sql --project_id=~{project_id} \
+        bq query --nouse_legacy_sql --project_id=~{project_id} \
         'EXPORT DATA OPTIONS(
-        uri="~{export_path}$CONTIG/*.tsv.gz",
+        uri="~{export_path}",
         format="CSV",
         compression="GZIP",
         overwrite=true,
@@ -875,11 +876,9 @@ task BigQueryExportVat {
         clinvar_last_updated,
         ARRAY_TO_STRING(clinvar_phenotype, ", ") as clinvar_phenotype,
         FROM `~{dataset_name}.~{vat_table}`
-        WHERE contig=$CONTIG ## so I'm going to want to partition by contig!!!
+        WHERE contig="~{contig}" ## so Im going to want to partition by contig!!!
         ORDER BY position  ## and then cluster by position
         '
-          let COUNTER-=1
-        done
 
     >>>
     # ------------------------------------------------
