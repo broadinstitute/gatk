@@ -231,9 +231,11 @@ task ExtractAnAcAfFromVCF {
         #]
 
 
+        ## normalize and filter out the filtered sites and FT filtered out variants
         bcftools norm -m-any ~{local_input_vcf} | \
-        bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta > ~{normalized_vcf}
-
+        bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta | \
+        bcftools view -f 'PASS'  | \
+        bcftools filter -i "FORMAT/FT='PASS'" --set-GTs . > ~{normalized_vcf}
 
         ## make a file of just the first 4 columns of the tsv (maybe I could just bcftools query it?)
         bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%REF\t%ALT\n' > check_duplicates.tsv
