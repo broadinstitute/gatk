@@ -238,13 +238,15 @@ task ExtractAnAcAfFromVCF {
         bcftools filter -i "FORMAT/FT='PASS'" --set-GTs . > ~{normalized_vcf}
 
         ## make a file of just the first 4 columns of the tsv (maybe I could just bcftools query it?)
-        bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%REF\t%ALT\n' > check_duplicates.tsv
+        bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
-        sort check_duplicates.tsv | uniq -d | cut -f1,2  > duplicates.tsv
-        ## remove those rows (this will be ALL rows with this position--so good rows too, potentially we want to grab f1,4 to do this with)
+        sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5  > duplicates.tsv
+        ## remove those rows (that match up to the first 5 cols)
         grep -v -wFf duplicates.tsv ~{normalized_vcf} | grep -v "AC=0;"  > deduplicated.vcf
 
         wc -l duplicates.tsv
+        echo "the following variants will be dropped due to a bug"
+        cat duplicates.tsv
 
         bcftools plugin fill-tags  -- deduplicated.vcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom | bcftools query -f \
         '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
