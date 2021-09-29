@@ -6,7 +6,7 @@ from google.cloud import bigquery
 def execute_with_retry(client, label, sql):
     """Run a BigQuery SQL string with a label.
 
-    Three retries with incremental backoff if BiqQuery returns a 503, any other error is re-raised.
+    Three retries with incremental backoff if BiqQuery returns 'retry-able errors', any other error is re-raised.
 
     Parameters
     ----------
