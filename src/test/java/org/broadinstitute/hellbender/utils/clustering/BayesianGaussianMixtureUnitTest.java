@@ -52,10 +52,11 @@ public class BayesianGaussianMixtureUnitTest {
 
     @Test
     public void testSimulatedData() throws IOException {
-        final int nFeatures = 10;
+        final int nFeatures = 6;
+        final int nComponents = 6;
+        final int nSamplesWarmStart = 100000;
 
-        final int nComponents = 3;
-        final double tol = 1E-6;
+        final double tol = 1E-3;
         final double regCovar = 1E-6;
         final int maxIter = 100;
         final int nInit = 1;
@@ -79,6 +80,14 @@ public class BayesianGaussianMixtureUnitTest {
         for(int i = 0; i<lines.size(); i++){
             data[i] = Arrays.stream(lines.get(i).split("\t")).mapToDouble(Double::parseDouble).toArray();
         }
+
+        bgmm.fit(Arrays.copyOfRange(data, 0, nSamplesWarmStart));
+        System.out.println("weightConcentration: " + bgmm.weightConcentration);
+        System.out.println("meanPrecision: " + bgmm.meanPrecision);
+        System.out.println("means: " + bgmm.means);
+        System.out.println("precisionsCholesky: " + bgmm.precisionsCholesky);
+        System.out.println("covariances: " + bgmm.covariances);
+        System.out.println("degreesOfFreedom: " + bgmm.degreesOfFreedom);
 
         bgmm.fit(data);
         System.out.println("weightConcentration: " + bgmm.weightConcentration);

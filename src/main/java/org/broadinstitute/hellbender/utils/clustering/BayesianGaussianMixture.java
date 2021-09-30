@@ -16,6 +16,7 @@ import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -141,22 +142,28 @@ public final class BayesianGaussianMixture {
         double maxLowerBound = Double.NEGATIVE_INFINITY;
         isConverged = false;
 
+        logHeapUsage("Starting loop...");
         for (int init = 0; init < nInit; init++) {
             logger.info(String.format("Initialization %d...", init));
 
             if (doInit) {
                 initializeParameters(X, seed);
             }
+            logHeapUsage("After initialization...");
 
             double lowerBound = doInit ? Double.NEGATIVE_INFINITY : this.lowerBound;
 
+            logHeapUsage("Starting iteration...");
             for (int nIter = 1; nIter <= maxIter; nIter++) {
                 final double prevLowerBound = lowerBound;
 
                 final Pair<Double, RealMatrix> logRespAndlogProbNorm = EStep(X);
+                logHeapUsage("After EStep...");
                 final RealMatrix logResp = logRespAndlogProbNorm.getRight();
                 MStep(X, logResp);
+                logHeapUsage("After MStep...");
                 lowerBound = computeLowerBound(logResp);
+                logHeapUsage("After computeLowerBound...");
 
                 final double change = lowerBound - prevLowerBound;
 
@@ -275,7 +282,7 @@ public final class BayesianGaussianMixture {
     private void MStep(final RealMatrix X,
                        final RealMatrix logResp) {
         final Triple<RealVector, List<RealVector>, List<RealMatrix>> parameters =
-                estimateGaussianParameters(X, map(logResp, Math::exp), regCovar);
+                estimateGaussianParameters(X, map(logResp, FastMath::exp), regCovar);
         final RealVector nk = parameters.getLeft();
         final List<RealVector> xk = parameters.getMiddle();
         final List<RealMatrix> sk = parameters.getRight();
@@ -366,10 +373,10 @@ public final class BayesianGaussianMixture {
         final int nSamples = X.getRowDimension();
         final int nFeatures = X.getColumnDimension();
 
-        // We remove nFeatures * degreesOfFreedom.map(Math::log) because
+        // We remove nFeatures * degreesOfFreedom.map(FastMath::log) because
         // the precision matrix is normalized
         final RealMatrix result = estimateLogGaussianProb(X, means, precisionsCholesky);
-        final RealVector normalizingTerm = degreesOfFreedom.map(Math::log).mapMultiply(0.5 * nFeatures);
+        final RealVector normalizingTerm = degreesOfFreedom.map(FastMath::log).mapMultiply(0.5 * nFeatures);
         IntStream.range(0, nSamples).forEach(
                 i -> result.setRowVector(i, result.getRowVector(i).subtract(normalizingTerm)));
 
@@ -392,21 +399,20 @@ public final class BayesianGaussianMixture {
     private double computeLowerBound(final RealMatrix logResp) { // we remove an unused logProbNorm parameter from the python code
         // Contrary to the original formula, we have done some simplification
         // and removed all the constant terms.
-        final int nSamples = logResp.getRowDimension();
         final int nFeatures = meanPrior.getDimension();
 
-        // We removed 0.5 * nFeatures * degreesOfFreedom.map(Math::log)
+        // We removed 0.5 * nFeatures * degreesOfFreedom.map(FastMath::log)
         // because the precision matrix is normalized.
         final RealVector logDetPrecisionsChol = computeLogDetCholesky(precisionsCholesky);
-        logDetPrecisionsChol.combineToSelf(1., -0.5 * nFeatures, degreesOfFreedom.map(Math::log));
+        logDetPrecisionsChol.combineToSelf(1., -0.5 * nFeatures, degreesOfFreedom.map(FastMath::log));
 
         final double logWishart = sum(logWishartNorm(degreesOfFreedom, logDetPrecisionsChol, nFeatures));
         final double logNormWeight = logDirichletNorm(weightConcentration);
 
-        return -sum(ebeMultiply(map(logResp, Math::exp), logResp))
+        return -sum(ebeMultiply(map(logResp, FastMath::exp), logResp))
                 - logWishart
                 - logNormWeight
-                - 0.5 * nFeatures * sum(meanPrecision.map(Math::log));
+                - 0.5 * nFeatures * sum(meanPrecision.map(FastMath::log));
     }
 
     //******************************************************************************************************************
@@ -492,7 +498,7 @@ public final class BayesianGaussianMixture {
         final int nComponents = matrixChol.size();
         final RealVector logDetChol = new ArrayRealVector(nComponents);
         IntStream.range(0, nComponents).forEach(
-                k -> logDetChol.setEntry(k, sum(diag(matrixChol.get(k)).map(Math::log))));
+                k -> logDetChol.setEntry(k, sum(diag(matrixChol.get(k)).map(FastMath::log))));
         return logDetChol;
     }
 
