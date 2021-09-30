@@ -269,6 +269,7 @@ task ExtractAnAcAfFromVCF {
         Int count_variants = read_int("count.txt")
         File output_vcf = "~{normalized_vcf_compressed}"
         File output_vcf_index = "~{normalized_vcf_indexed}"
+        File testing_normalized = "~{normalized_vcf}"
     }
 }
 
