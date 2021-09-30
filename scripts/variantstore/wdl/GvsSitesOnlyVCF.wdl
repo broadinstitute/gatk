@@ -231,13 +231,13 @@ task ExtractAnAcAfFromVCF {
         #]
 
 
-        ## normalize and filter out the filtered sites and FT filtered out variants
+        ## normalize and filter out the filtered sites and FT filtered out variants ## do we need:
         bcftools norm -m-any ~{local_input_vcf} | \
         bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta | \
-        bcftools view -f 'PASS'  | \
+        bcftools view -f 'PASS,.'  | \
         bcftools filter -i "FORMAT/FT='PASS'" --set-GTs . > ~{normalized_vcf}
 
-        ## make a file of just the first 4 columns of the tsv (maybe I could just bcftools query it?)
+        ## make a file of just the first 5 columns of the tsv
         bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
         sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5  > duplicates.tsv
@@ -245,7 +245,7 @@ task ExtractAnAcAfFromVCF {
         grep -v -wFf duplicates.tsv ~{normalized_vcf} | grep -v "AC=0;"  > deduplicated.vcf
 
         wc -l duplicates.tsv
-        echo "the following variants will be dropped due to a bug"
+        echo "the following duplicate variants will be dropped due to a bug"
         cat duplicates.tsv
 
         bcftools plugin fill-tags  -- deduplicated.vcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom | bcftools query -f \
