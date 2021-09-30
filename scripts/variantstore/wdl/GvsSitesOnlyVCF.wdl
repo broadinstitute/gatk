@@ -34,6 +34,8 @@ workflow GvsSitesOnlyVCF {
 
     ## Scatter across the shards from the GVS jointVCF
     scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
+        ## Create a sites-only VCF from the original GVS jointVCF
+        ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
         call ExtractAnAcAfFromVCF {
             input:
               input_vcf = MakeSubpopulationFiles.input_vcfs[i],
@@ -44,20 +46,11 @@ workflow GvsSitesOnlyVCF {
               ref = reference
         }
 
-      ## Create a sites-only VCF from the original GVS jointVCF
-        call SitesOnlyVcf {
-          input:
-            input_vcf = ExtractAnAcAfFromVCF.output_vcf,
-            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
-            service_account_json_path = service_account_json_path,
-            output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz"
-        }
-
       ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
         call AnnotateVCF {
           input:
-            input_vcf = SitesOnlyVcf.output_vcf,
-            input_vcf_index = SitesOnlyVcf.output_vcf_idx,
+            input_vcf = ExtractAnAcAfFromVCF.output_vcf,
+            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
             output_annotated_file_name = "${output_annotated_file_name}_${i}",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
@@ -256,7 +249,7 @@ task ExtractAnAcAfFromVCF {
         wc -l ~{custom_annotations_file_name} | awk '{print $1 -7}'  > count.txt
 
         ### compress the vcf and index it
-        bcftools view -I deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
+        bcftools view --no-update --drop-genotypes deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
         bcftools index --tbi  ~{normalized_vcf_compressed}
 
     >>>
@@ -264,7 +257,7 @@ task ExtractAnAcAfFromVCF {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210916"
-        memory: "20 GB"
+        memory: "32 GB"
         preemptible: 1
         cpu: "2"
         disks: "local-disk 500 SSD"
@@ -276,47 +269,6 @@ task ExtractAnAcAfFromVCF {
         Int count_variants = read_int("count.txt")
         File output_vcf = "~{normalized_vcf_compressed}"
         File output_vcf_index = "~{normalized_vcf_indexed}"
-    }
-}
-
-task SitesOnlyVcf {
-    input {
-        File input_vcf
-        File input_vcf_index
-        String? service_account_json_path
-        String output_filename
-    }
-    String output_vcf_idx = basename(output_filename) + ".tbi"
-
-    command <<<
-        set -e
-
-        # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
-        # in it so that downstream steps can call cache
-
-        gatk --java-options "-Xmx12288m" \
-            SelectVariants \
-                -V ~{input_vcf} \
-                --add-output-vcf-command-line false \
-                --exclude-filtered \
-                --sites-only-vcf-output \
-                -O ~{output_filename}
-
-    >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "broadinstitute/gatk:4.2.0.0"
-        memory: "15 GB"
-        preemptible: 3
-        cpu: "2"
-        disks: "local-disk 250 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        File output_vcf="~{output_filename}"
-        File output_vcf_idx="~{output_vcf_idx}"
     }
 }
 
