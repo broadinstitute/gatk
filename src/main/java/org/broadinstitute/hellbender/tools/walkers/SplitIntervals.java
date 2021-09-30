@@ -86,7 +86,7 @@ public class SplitIntervals extends GATKTool {
 
     public static final String MIN_CONTIG_SIZE_LONG_NAME = "min-contig-size";
 
-    public static final String INTERVAL_FILE_PREFIX_FULL_NAME = "interval-file-prefix";
+    public static final String INTERVAL_FILE_PREFIX_FULL_NAME = "prefix";
     public static final String INTERVAL_FILE_EXTENSION_FULL_NAME = "extension";
 
     public static final String DEFAULT_PREFIX = "";

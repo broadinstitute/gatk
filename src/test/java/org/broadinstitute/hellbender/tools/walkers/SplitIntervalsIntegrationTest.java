@@ -43,9 +43,27 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(outputDir);
 
         runCommandLine(args);
-        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_EXTENSION);
-        checkIntervalSizes(scatterCount, outputDir, 1000000, SplitIntervals.DEFAULT_EXTENSION);
+        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
+        checkIntervalSizes(scatterCount, outputDir, 1000000, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
     }
+
+    @Test
+    public void testOneIntervalFilenamePrefix() {
+        final int scatterCount = 5;
+        final File outputDir = createTempDir("output");
+        final String prefix = "scattered-with-weird-prefix-";
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInterval("20:1000000-2000000")
+                .addReference(b37Reference)
+                .add(SplitIntervals.SCATTER_COUNT_SHORT_NAME, scatterCount)
+                .add(SplitIntervals.INTERVAL_FILE_PREFIX_FULL_NAME, prefix)
+                .addOutput(outputDir);
+
+        runCommandLine(args);
+        verifyScatteredFilesExist(scatterCount, outputDir, prefix, SplitIntervals.DEFAULT_EXTENSION);
+        checkIntervalSizes(scatterCount, outputDir, 1000000, prefix, SplitIntervals.DEFAULT_EXTENSION);
+    }
+
 
     @Test
     public void testOneIntervalAlternateExtension() {
@@ -60,8 +78,8 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(outputDir);
 
         runCommandLine(args);
-        verifyScatteredFilesExist(scatterCount, outputDir, extension);
-        checkIntervalSizes(scatterCount, outputDir, 1000000, extension);
+        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_PREFIX, extension);
+        checkIntervalSizes(scatterCount, outputDir, 1000000, SplitIntervals.DEFAULT_PREFIX, extension);
     }
 
     @Test
@@ -75,8 +93,8 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(outputDir);
 
         runCommandLine(args);
-        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_EXTENSION);
-        checkIntervalSizes(scatterCount, outputDir, 1000000, SplitIntervals.DEFAULT_EXTENSION);
+        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
+        checkIntervalSizes(scatterCount, outputDir, 1000000, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
 
     }
 
@@ -92,8 +110,8 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(outputDir);
 
         runCommandLine(args);
-        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_EXTENSION);
-        checkIntervalSizes(scatterCount, outputDir, 2000000, SplitIntervals.DEFAULT_EXTENSION);
+        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
+        checkIntervalSizes(scatterCount, outputDir, 2000000, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
 
     }
 
@@ -110,8 +128,8 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
                 .add(SplitIntervals.DONT_MIX_CONTIGS_LONG_NAME, true)
                 .addOutput(outputDir);
         runCommandLine(args);
-        verifyScatteredFilesExist(scatterCount + 1, outputDir, SplitIntervals.DEFAULT_EXTENSION);
-        checkTotalSize(scatterCount + 1, outputDir, 2000002, SplitIntervals.DEFAULT_EXTENSION);
+        verifyScatteredFilesExist(scatterCount + 1, outputDir, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
+        checkTotalSize(scatterCount + 1, outputDir, 2000002, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
     }
 
     @Test
@@ -124,9 +142,9 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(outputDir);
 
         runCommandLine(args);
-        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_EXTENSION);
+        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
         final long totalLengthInRef = GLP.getSequenceDictionary().getSequences().stream().mapToLong(SAMSequenceRecord::getSequenceLength).sum();
-        checkIntervalSizes(scatterCount, outputDir, totalLengthInRef, SplitIntervals.DEFAULT_EXTENSION);
+        checkIntervalSizes(scatterCount, outputDir, totalLengthInRef, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
     }
 
     @Test
@@ -145,7 +163,7 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
                 .addOutput(outputDir);
 
         runCommandLine(args);
-        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_EXTENSION);
+        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
 
         final File outputDir2 = createTempDir("output2");
 
@@ -161,28 +179,28 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
     }
 
     //generates the files to look for given a scatter count, directory and extension
-    private static Stream<File> getExpectedScatteredFiles(final int scatterCount, final File outputDir, String extension) {
+    private static Stream<File> getExpectedScatteredFiles(final int scatterCount, final File outputDir, String prefix, String extension) {
         final int maxNumberOfPlaces = (int)Math.max(Math.floor(Math.log10(scatterCount-1))+1, SplitIntervals.DEFAULT_NUMBER_OF_DIGITS);
         final String fileIndexFormatString = "%0" + maxNumberOfPlaces + "d";
-        return IntStream.range(0, scatterCount).mapToObj(n -> new File(outputDir, String.format(fileIndexFormatString, n) + extension));
+        return IntStream.range(0, scatterCount).mapToObj(n -> new File(outputDir, prefix + String.format(fileIndexFormatString, n) + extension));
     }
 
-    private static void verifyScatteredFilesExist(final int scatterCount, final File outputDir, String extension) {
-        getExpectedScatteredFiles(scatterCount, outputDir, extension).forEach(f -> Assert.assertTrue(f.exists()));
-        Assert.assertFalse(new File(outputDir, formatter.format(scatterCount) + extension).exists());
+    private static void verifyScatteredFilesExist(final int scatterCount, final File outputDir, String prefix, String extension) {
+        getExpectedScatteredFiles(scatterCount, outputDir, prefix, extension).forEach(f -> Assert.assertTrue(f.exists()));
+        Assert.assertFalse(new File(outputDir, prefix + formatter.format(scatterCount) + extension).exists());
     }
 
     private static List<SimpleInterval> readIntervals(final File intervalsFile) {
         return Utils.stream(IntervalList.fromFile(intervalsFile)).map(SimpleInterval::new).collect(Collectors.toList());
     }
 
-    private static void checkIntervalSizes(final int scatterCount, final File outputDir, final long expectedTotalLength, String extension) {
+    private static void checkIntervalSizes(final int scatterCount, final File outputDir, final long expectedTotalLength, String prefix, String extension) {
         final long splitLength = expectedTotalLength / scatterCount;
-        getExpectedScatteredFiles(scatterCount, outputDir, extension).forEach(f -> Assert.assertEquals(readIntervals(f).stream().mapToLong(SimpleInterval::size).sum(), splitLength, 100));
+        getExpectedScatteredFiles(scatterCount, outputDir, prefix, extension).forEach(f -> Assert.assertEquals(readIntervals(f).stream().mapToLong(SimpleInterval::size).sum(), splitLength, 100));
     }
 
-    private static void checkTotalSize(final int scatterCount, final File outputDir, final long expectedTotalLength, String extension) {
-        final long totalLength = getExpectedScatteredFiles(scatterCount, outputDir, extension)
+    private static void checkTotalSize(final int scatterCount, final File outputDir, final long expectedTotalLength, String prefix, String extension) {
+        final long totalLength = getExpectedScatteredFiles(scatterCount, outputDir, prefix, extension)
                 .mapToLong(f -> readIntervals(f).stream().mapToLong(SimpleInterval::size).sum())
                 .sum();
         Assert.assertEquals(totalLength, expectedTotalLength);
