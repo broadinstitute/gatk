@@ -10,6 +10,7 @@ import org.apache.commons.math3.linear.CholeskyDecomposition;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.NonPositiveDefiniteMatrixException;
+import org.apache.commons.math3.linear.NonSquareMatrixException;
 import org.apache.commons.math3.linear.NonSymmetricMatrixException;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
@@ -23,6 +24,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.NaturalLogUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,39 +82,42 @@ public final class BayesianGaussianMixture {
         final int mb = 1024 * 1024;
         final Runtime runtime = Runtime.getRuntime();
         logger.info("Used memory [MB]: " + (runtime.totalMemory() - runtime.freeMemory()) / mb);
-        System.gc();
         logger.info(message);
     }
 
-    public BayesianGaussianMixture(final int nComponents,
-                                   final double tol,
-                                   final double regCovar,
-                                   final int maxIter,
-                                   final int nInit,
-                                   final InitMethod initMethod,
-                                   final double weightConcentrationPrior,
-                                   final double meanPrecisionPrior,
-                                   final double[] meanPrior,
-                                   final double degreesOfFreedomPrior,
-                                   final double[][] covariancePrior,
-                                   final int seed,
-                                   final boolean warmStart,
-                                   final int verboseInterval) {
-        // TODO: use a Builder to enable default parameter values
+    /**
+     * We use a {@link Builder} to enable the setting of default values, which can be
+     * done trivially in python. Our implementation of parameter validation, etc. thus slightly differ from that in
+     * the sklearn implementation.
+     */
+    private BayesianGaussianMixture(final int nComponents,
+                                    final double tol,
+                                    final double regCovar,
+                                    final int maxIter,
+                                    final int nInit,
+                                    final InitMethod initMethod,
+                                    final double weightConcentrationPrior,
+                                    final double meanPrecisionPrior,
+                                    final RealVector meanPrior,
+                                    final double degreesOfFreedomPrior,
+                                    final RealMatrix covariancePrior,
+                                    final int seed,
+                                    final boolean warmStart,
+                                    final int verboseInterval) {
         this.nComponents = nComponents;
         this.tol = tol;
         this.regCovar = regCovar;
         this.maxIter = maxIter;
         this.nInit = nInit;
-        this.initMethod = initMethod;
+        this.verboseInterval = verboseInterval;
         this.weightConcentrationPrior = weightConcentrationPrior;
         this.meanPrecisionPrior = meanPrecisionPrior;
-        this.meanPrior = new ArrayRealVector(meanPrior, true);
+        this.meanPrior = meanPrior;
         this.degreesOfFreedomPrior = degreesOfFreedomPrior;
-        this.covariancePrior = new Array2DRowRealMatrix(covariancePrior, true);
+        this.covariancePrior = covariancePrior;
+        this.initMethod = initMethod;
         this.seed = seed;
         this.warmStart = warmStart;
-        this.verboseInterval = verboseInterval;
 
         rng = RandomGeneratorFactory.createRandomGenerator(new Random(seed));
         isConverged = false;
@@ -120,7 +125,7 @@ public final class BayesianGaussianMixture {
     }
 
     /**
-     * @param data matrix of data with dimensions (n_samples, n_features); defensive copy will not be made
+     * @param data matrix of data with dimensions (n_samples, n_features); to minimize memory requirements, a defensive copy will not be made
      */
     public void fit(final double[][] data) {
 //        TODO X = self._validate_data(X, dtype=[np.float64, np.float32], ensure_min_samples=2)
@@ -133,7 +138,7 @@ public final class BayesianGaussianMixture {
                     String.format("Number of data samples = %d is not greater than or equal to nComponents = %d",
                             nSamples, nComponents));
         }
-        checkInitialParameters(X);
+        checkPriorParameters(X);
 
         // if we enable warm_start, we will have a unique initialisation
         final boolean doInit = !(warmStart && isConverged);
@@ -144,12 +149,12 @@ public final class BayesianGaussianMixture {
 
         logHeapUsage("Starting loop...");
         for (int init = 0; init < nInit; init++) {
+            logHeapUsage("Starting initialization...");
             logger.info(String.format("Initialization %d...", init));
 
             if (doInit) {
                 initializeParameters(X, seed);
             }
-            logHeapUsage("After initialization...");
 
             double lowerBound = doInit ? Double.NEGATIVE_INFINITY : this.lowerBound;
 
@@ -157,13 +162,16 @@ public final class BayesianGaussianMixture {
             for (int nIter = 1; nIter <= maxIter; nIter++) {
                 final double prevLowerBound = lowerBound;
 
+                logHeapUsage("Starting EStep...");
                 final Pair<Double, RealMatrix> logRespAndlogProbNorm = EStep(X);
-                logHeapUsage("After EStep...");
                 final RealMatrix logResp = logRespAndlogProbNorm.getRight();
+
+                logHeapUsage("Starting MStep...");
                 MStep(X, logResp);
-                logHeapUsage("After MStep...");
+
+                logHeapUsage("Starting computeLowerBound...");
                 lowerBound = computeLowerBound(logResp);
-                logHeapUsage("After computeLowerBound...");
+
 
                 final double change = lowerBound - prevLowerBound;
 
@@ -213,9 +221,6 @@ public final class BayesianGaussianMixture {
 
     public double[] scoreSamples(final double[][] data) {
         return null;
-    }
-
-    private void checkInitialParameters(final RealMatrix X) {
     }
 
     private void initializeParameters(final RealMatrix X,
@@ -653,17 +658,179 @@ public final class BayesianGaussianMixture {
         return result;
     }
 
-    private void checkParameters(final RealMatrix X) {}
+    void checkPriorParameters(final RealMatrix X) {
+        checkMeanParameters(X);
+        checkPrecisionParameters(X);
+        checkCovarianceParameters(X);
+    }
 
-    private void checkWeightsParameters() {}
-
-    private void checkMeansParameters(final RealMatrix X) {}
+    private void checkMeanParameters(final RealMatrix X) {}
 
     private void checkPrecisionParameters(final RealMatrix X) {}
 
-    private void checkCovariancePriorParameter(final RealMatrix X) {}
+    private void checkCovarianceParameters(final RealMatrix X) {}
 
-    private void checkPrecisionPositivity(final RealVector precision) {}
+    @Override
+    public String toString() {
+        return "BayesianGaussianMixture{" +
+                "nComponents=" + nComponents +
+                ", tol=" + tol +
+                ", regCovar=" + regCovar +
+                ", maxIter=" + maxIter +
+                ", nInit=" + nInit +
+                ", initMethod=" + initMethod +
+                ", weightConcentrationPrior=" + weightConcentrationPrior +
+                ", meanPrecisionPrior=" + meanPrecisionPrior +
+                ", meanPrior=" + meanPrior +
+                ", degreesOfFreedomPrior=" + degreesOfFreedomPrior +
+                ", covariancePrior=" + covariancePrior +
+                ", seed=" + seed +
+                ", warmStart=" + warmStart +
+                ", verboseInterval=" + verboseInterval +
+                ", isConverged=" + isConverged +
+                ", lowerBound=" + lowerBound +
+                ", weightConcentration=" + weightConcentration +
+                ", meanPrecision=" + meanPrecision +
+                ", means=" + means +
+                ", precisionsCholesky=" + precisionsCholesky +
+                ", covariances=" + covariances +
+                ", degreesOfFreedom=" + degreesOfFreedom +
+                '}';
+    }
 
-    private void checkPrecisionMatrix(final RealMatrix precision) {}
+    /**
+     * This builder will set defaults and perform validation of basic parameters that do not require the data X to do so.
+     */
+    public static final class Builder {
+        private int nComponents = 1;
+        private double tol = 1E-3;
+        private double regCovar = 1E-6;
+        private int maxIter = 100;
+        private int nInit = 1;
+        private InitMethod initMethod = InitMethod.K_MEANS;
+                                                                // some prior parameters require the data X to construct defaults and/or fully validate
+        private Double weightConcentrationPrior = null;         // if null, will be set to 1. / nComponents upon build()
+        private double meanPrecisionPrior = 1;
+        private RealVector meanPrior = null;                    // if null, will be set to the mean of X (over samples, i.e., over rows) upon fit
+        private Double degreesOfFreedomPrior = null;            // if null, will be set to nFeatures (i.e., X.getColumnDimension()) upon fit
+        private RealMatrix covariancePrior;                     // if null, will be set to the covariance of X upon fit
+
+        private int seed = 0;                                   // defaults to None (i.e., uses the global random state) in the sklearn implementation; we disallow this to avoid reproducibility headaches
+        private boolean warmStart = false;
+        private int verboseInterval = 10;
+
+        public Builder() {
+        }
+
+        public Builder nComponents(final int nComponents) {
+            Utils.validateArg(nComponents >= 1, "nComponents must be >= 1.");
+            this.nComponents = nComponents;
+            return this;
+        }
+
+        public Builder tol(final double tol) {
+            Utils.validateArg(tol > 0., "tol must be > 0.");
+            this.tol = tol;
+            return this;
+        }
+
+        public Builder regCovar(final double regCovar) {
+            Utils.validateArg(regCovar >= 0., "regCovar must be >= 0.");
+            this.regCovar = regCovar;
+            return this;
+        }
+
+        public Builder maxIter(final int maxIter) {
+            Utils.validateArg(maxIter >= 1, "maxIter must be >= 1.");
+            this.maxIter = maxIter;
+            return this;
+        }
+
+        public Builder nInit(final int nInit) {
+            Utils.validateArg(nInit >= 1, "nInit must be >= 1.");
+            this.nInit = nInit;
+            return this;
+        }
+
+        public Builder initMethod(final InitMethod initMethod) {
+            this.initMethod = initMethod;
+            return this;
+        }
+
+        public Builder weightConcentrationPrior(final double weightConcentrationPrior) {
+            Utils.validateArg(weightConcentrationPrior > 0., "weightConcentrationPrior must be > 0.");
+            this.weightConcentrationPrior = weightConcentrationPrior;
+            return this;
+        }
+
+        public Builder meanPrecisionPrior(final double meanPrecisionPrior) {
+            Utils.validateArg(meanPrecisionPrior > 0., "meanPrecisionPrior must be > 0.");
+            this.meanPrecisionPrior = meanPrecisionPrior;
+            return this;
+        }
+
+        public Builder meanPrior(final double[] meanPrior) {
+            this.meanPrior = meanPrior == null ? null : new ArrayRealVector(meanPrior, true);
+            return this;
+        }
+
+        public Builder degreesOfFreedomPrior(final double degreesOfFreedomPrior) {
+            Utils.validateArg(degreesOfFreedomPrior > 0., "degreesOfFreedomPrior must be > 0.");
+            this.degreesOfFreedomPrior = degreesOfFreedomPrior;
+            return this;
+        }
+
+        public Builder covariancePrior(final double[][] covariancePrior) {
+            if (covariancePrior == null ) {
+                this.covariancePrior = null;
+            } else {
+                this.covariancePrior = new Array2DRowRealMatrix(covariancePrior, true);
+                checkCovariance(this.covariancePrior);
+            }
+            return this;
+        }
+
+        public Builder seed(final int seed) {
+            this.seed = seed;
+            return this;
+        }
+
+        public Builder warmStart(final boolean warmStart) {
+            this.warmStart = warmStart;
+            return this;
+        }
+
+        public Builder verboseInterval(final int verboseInterval) {
+            Utils.validateArg(verboseInterval >= 1, "verboseInterval must be >= 1.");
+            this.verboseInterval = verboseInterval;
+            return this;
+        }
+
+        public BayesianGaussianMixture build() {
+            weightConcentrationPrior = weightConcentrationPrior == null ? 1. / nComponents : weightConcentrationPrior;
+            return new BayesianGaussianMixture(
+                    nComponents,
+                    tol,
+                    regCovar,
+                    maxIter,
+                    nInit,
+                    initMethod,
+                    weightConcentrationPrior,
+                    meanPrecisionPrior,
+                    meanPrior,
+                    degreesOfFreedomPrior,
+                    covariancePrior,
+                    seed,
+                    warmStart,
+                    verboseInterval);
+        }
+
+        private static void checkCovariance(final RealMatrix covariance) {
+            try {
+                new CholeskyDecomposition(covariance, BayesianGaussianMixture.RELATIVE_SYMMETRY_THRESHOLD, BayesianGaussianMixture.ABSOLUTE_POSITIVITY_THRESHOLD);
+            } catch (final NonSquareMatrixException | NonSymmetricMatrixException | NonPositiveDefiniteMatrixException e) {
+                throw new IllegalArgumentException("Covariance matrix must be square, symmetric, and positive semidefinite.", e);
+            }
+        }
+    }
 }

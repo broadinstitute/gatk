@@ -20,24 +20,26 @@ import java.util.stream.IntStream;
 public class BayesianGaussianMixtureUnitTest {
     @Test
     public void testSmallInputs() {
-        final int nComponents = 3;
-        final double tol = 1E-3;
-        final double regCovar = 1E-6;
-        final int maxIter = 10;
-        final int nInit = 1;
-        final BayesianGaussianMixture.InitMethod initMethod = BayesianGaussianMixture.InitMethod.TEST;
-        final double weightConcentrationPrior = 0.01;
-        final double meanPrecisionPrior = 10.;
+        final int nFeatures = 2;
         final double[] meanPrior = new double[]{0., 0.};
-        final double degreesOfFreedomPrior = 2.;
         final double[][] covariancePrior = new double[][]{{1., 0.}, {0., 1.}};
-        final int seed = 1;
-        final boolean warmStart = true;
-        final int verboseInterval = 1;
 
-        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture(
-                nComponents, tol, regCovar, maxIter, nInit, initMethod, weightConcentrationPrior, meanPrecisionPrior,
-                meanPrior, degreesOfFreedomPrior, covariancePrior, seed, warmStart, verboseInterval);
+        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
+                .nComponents(6)
+                .tol(1E-3)
+                .regCovar(1E-6)
+                .maxIter(100)
+                .nInit(1)
+                .initMethod(BayesianGaussianMixture.InitMethod.TEST)
+                .weightConcentrationPrior(1E-2)
+                .meanPrecisionPrior(10.)
+                .meanPrior(meanPrior)
+                .degreesOfFreedomPrior(nFeatures)
+                .covariancePrior(covariancePrior)
+                .seed(1)
+                .warmStart(true)
+                .verboseInterval(1)
+                .build();
 
         final double[][] data = new double[][]{
                 {1., 2.},
@@ -52,28 +54,29 @@ public class BayesianGaussianMixtureUnitTest {
 
     @Test
     public void testSimulatedData() throws IOException {
-        final int nFeatures = 6;
-        final int nComponents = 6;
+        final int nFeatures = 10;
         final int nSamplesWarmStart = 100000;
 
-        final double tol = 1E-3;
-        final double regCovar = 1E-6;
-        final int maxIter = 100;
-        final int nInit = 1;
-        final BayesianGaussianMixture.InitMethod initMethod = BayesianGaussianMixture.InitMethod.TEST;
-        final double weightConcentrationPrior = 0.01;
-        final double meanPrecisionPrior = 10.;
         final double[] meanPrior = new double[nFeatures];
         Arrays.fill(meanPrior, 0.);
-        final double degreesOfFreedomPrior = nFeatures;
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
-        final int seed = 1;
-        final boolean warmStart = true;
-        final int verboseInterval = 1;
 
-        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture(
-                nComponents, tol, regCovar, maxIter, nInit, initMethod, weightConcentrationPrior, meanPrecisionPrior,
-                meanPrior, degreesOfFreedomPrior, covariancePrior, seed, warmStart, verboseInterval);
+        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
+                .nComponents(10)
+                .tol(1E-3)
+                .regCovar(1E-6)
+                .maxIter(100)
+                .nInit(1)
+                .initMethod(BayesianGaussianMixture.InitMethod.TEST)
+                .weightConcentrationPrior(1E-2)
+                .meanPrecisionPrior(10.)
+                .meanPrior(meanPrior)
+                .degreesOfFreedomPrior(nFeatures)
+                .covariancePrior(covariancePrior)
+                .seed(1)
+                .warmStart(true)
+                .verboseInterval(1)
+                .build();
 
         final List<String> lines = Files.readAllLines(Paths.get("/home/slee/working/malariagen/issues/hyperhet/simulated-data.tsv"), StandardCharsets.UTF_8);
         final double[][] data = new double[lines.size()][];
