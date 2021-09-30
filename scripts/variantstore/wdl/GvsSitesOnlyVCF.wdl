@@ -269,7 +269,6 @@ task ExtractAnAcAfFromVCF {
         Int count_variants = read_int("count.txt")
         File output_vcf = "~{normalized_vcf_compressed}"
         File output_vcf_index = "~{normalized_vcf_indexed}"
-        File testing_normalized = "~{normalized_vcf}"
     }
 }
 
@@ -331,10 +330,10 @@ task AnnotateVCF {
     # Runtime settings:
     runtime {
         docker: "annotation/nirvana:3.14"
-        memory: "20 GB"
+        memory: "32 GB"
         cpu: "2"
         preemptible: 5
-        disks: "local-disk 250 SSD"
+        disks: "local-disk 500 SSD"
     }
     # ------------------------------------------------
     # Outputs:
