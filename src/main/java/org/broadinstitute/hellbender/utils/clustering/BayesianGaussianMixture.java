@@ -73,6 +73,7 @@ public final class BayesianGaussianMixture {
     private List<RealMatrix> covariances;
     private RealVector degreesOfFreedom;
 
+    private int bestInit;
     private RealVector bestWeightConcentration;
     private RealVector bestMeanPrecision;
     private List<RealVector> bestMeans;
@@ -144,12 +145,13 @@ public final class BayesianGaussianMixture {
         isConverged = false;
 
         logHeapUsage("Starting loop...");
+        rng.setSeed(seed);
         for (int init = 0; init < nInit; init++) {
             logHeapUsage("Starting initialization...");
             logger.info(String.format("Initialization %d...", init));
 
             if (doInit) {
-                initializeParameters(X, seed);
+                initializeParameters(X);
             }
 
             double lowerBound = doInit ? Double.NEGATIVE_INFINITY : this.lowerBound;
@@ -176,43 +178,46 @@ public final class BayesianGaussianMixture {
                     break;
                 }
 
-                if (nInit == maxIter && !isConverged) {
+                if (nIter == maxIter && !isConverged) {
                     logger.info(String.format("Initialization %d did not converge after %d iterations, final lower bound = %.5f, final lower-bound change = %.5f...",
                             init, nIter, lowerBound, change));
                 }
-
-                if (lowerBound > maxLowerBound || maxLowerBound == Double.NEGATIVE_INFINITY) {
-                    maxLowerBound = lowerBound;
-                    logger.info(String.format("New maximum lower bound = %.5f found with initialization %d...",
-                            maxLowerBound, init));
-                    bestWeightConcentration = weightConcentration.copy();
-                    bestMeanPrecision = meanPrecision.copy();
-                    bestMeans = means.stream().map(RealVector::copy).collect(Collectors.toList());
-                    bestPrecisionsCholesky = precisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
-                    bestCovariances = covariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
-                    bestDegreesOfFreedom = degreesOfFreedom.copy();
-                }
             }
 
-            if (!isConverged) {
-                logger.warn("No initializations converged. Try changing initialization parameters, increasing maxIter, " +
-                        "increasing tol, or checking for degenerate data.");
+            if (lowerBound > maxLowerBound || maxLowerBound == Double.NEGATIVE_INFINITY) {
+                maxLowerBound = lowerBound;
+                logger.info(String.format("New maximum lower bound = %.5f found with initialization %d...",
+                        maxLowerBound, init));
+                bestInit = init;
+                bestWeightConcentration = weightConcentration.copy();
+                bestMeanPrecision = meanPrecision.copy();
+                bestMeans = means.stream().map(RealVector::copy).collect(Collectors.toList());
+                bestPrecisionsCholesky = precisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
+                bestCovariances = covariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
+                bestDegreesOfFreedom = degreesOfFreedom.copy();
             }
-
-            // set values to the best found over all initializations
-            this.lowerBound = maxLowerBound;
-            weightConcentration = bestWeightConcentration.copy();
-            meanPrecision = bestMeanPrecision.copy();
-            means = bestMeans.stream().map(RealVector::copy).collect(Collectors.toList());
-            precisionsCholesky = bestPrecisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
-            covariances = bestCovariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
-            degreesOfFreedom = bestDegreesOfFreedom.copy();
         }
+
+        if (!isConverged) {
+            logger.warn("No initializations converged. Try changing initialization parameters, increasing maxIter, " +
+                    "increasing tol, or checking for degenerate data.");
+        }
+
+        // set values to the best found over all initializations
+        this.lowerBound = maxLowerBound;
+        logger.info(String.format("Fit complete. Maximum lower bound = %.5f found with initialization %d.",
+                maxLowerBound, bestInit));
+        weightConcentration = bestWeightConcentration.copy();
+        meanPrecision = bestMeanPrecision.copy();
+        means = bestMeans.stream().map(RealVector::copy).collect(Collectors.toList());
+        precisionsCholesky = bestPrecisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
+        covariances = bestCovariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
+        degreesOfFreedom = bestDegreesOfFreedom.copy();
     }
 
     /**
      * TODO
-     * In contrast to the sklearn implementation, our fitPredict calls fit (and not vice versa) to avoid an unused E step
+     * In contrast to the sklearn implementation, our fitPredict calls fit (and not vice versa) to avoid an unused E step.
      * @param data      double[][] of data with dimensions (nSamples, nFeatures); to minimize memory requirements, a defensive copy will not be made
      * @return          int[] with dimension (nSamples, ) giving component assignments for each data sample
      */
@@ -242,14 +247,10 @@ public final class BayesianGaussianMixture {
     }
 
     /**
-     * TODO
      * @param X         data. (nSamples, nFeatures)
-     * @param seed      random seed
      */
-    private void initializeParameters(final RealMatrix X,
-                                      final int seed) {
+    private void initializeParameters(final RealMatrix X) {
         final int nSamples = X.getRowDimension();
-        rng.setSeed(seed);
 
         if (initMethod == InitMethod.K_MEANS) {
             // TODO add implementation of K-means
@@ -393,7 +394,6 @@ public final class BayesianGaussianMixture {
     }
 
     /**
-     *
      * @param X         data. (nSamples, nFeatures)
      * @return          (nSamples, nComponents)
      */
@@ -465,7 +465,8 @@ public final class BayesianGaussianMixture {
     }
 
     //******************************************************************************************************************
-    // static helper methods (package-protected only for testing)
+    // static helper methods (package-protected only for testing);
+    // some of these are imported from other classes in the sklearn.mixture package, so we provide links for all methods
     //******************************************************************************************************************
 
     /**
@@ -637,20 +638,24 @@ public final class BayesianGaussianMixture {
         final int nComponents = means.size();
         final int nFeatures = means.get(0).getDimension();
 
-        final List<RealMatrix> covariances = new ArrayList<>(Collections.nCopies(nComponents, null));       // TODO comment these
+
+
+
+
+        final List<RealMatrix> covariances = new ArrayList<>(Collections.nCopies(nComponents, null));
         for (int k = 0; k < nComponents; k++) {
             final RealMatrix diff = X.copy();
             final RealVector mean = means.get(k);
-            IntStream.range(0, nSamples).forEach(
+            IntStream.range(0, nSamples).forEach(                                                                // diff = X - means[k]
                     i -> diff.setRowVector(i, diff.getRowVector(i).subtract(mean)));
 
             final RealVector respComponent = resp.getColumnVector(k);
             final RealMatrix respComponentTimesDiffT = diff.transpose();
-            IntStream.range(0, nFeatures).forEach(
+            IntStream.range(0, nFeatures).forEach(                                                               // respComponentTimesDiffT = resp[:, k] * diff.T
                     i -> respComponentTimesDiffT.setRowVector(i, respComponentTimesDiffT.getRowVector(i).ebeMultiply(respComponent)));
-            final RealMatrix cov = respComponentTimesDiffT.multiply(diff).scalarMultiply(1. / nk.getEntry(k));
+            final RealMatrix cov = respComponentTimesDiffT.multiply(diff).scalarMultiply(1. / nk.getEntry(k));      // covariances[k] = np.dot(respComponentTimesDiffT, diff) / nk[k]
 
-            IntStream.range(0, nFeatures).forEach(
+            IntStream.range(0, nFeatures).forEach(                                                               // covariances[k].flat[:: nFeatures + 1] += regCovar
                     i -> cov.addToEntry(i, i, regCovar));
 
             covariances.set(k, cov);
@@ -676,7 +681,7 @@ public final class BayesianGaussianMixture {
         return sum;
     }
 
-    private static RealVector diag(final RealMatrix m) { // m should be square matrix
+    private static RealVector diag(final RealMatrix m) { // m is assumed to be a square matrix
         final int dim = m.getRowDimension();
         final RealVector diag = new ArrayRealVector(dim);
         IntStream.range(0, dim).forEach(i -> diag.setEntry(i, m.getEntry(i, i)));
@@ -696,7 +701,7 @@ public final class BayesianGaussianMixture {
     }
 
     private static RealMatrix ebeMultiply(final RealMatrix m,
-                                          final RealMatrix n) { // m and n should have same dimensions
+                                          final RealMatrix n) { // m and n are assumed to have the same dimensions
         final RealMatrix result = m.copy();
         result.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
             @Override
@@ -711,6 +716,10 @@ public final class BayesianGaussianMixture {
     // parameter validation methods that require the data X (nSamples, nComponents)
     //******************************************************************************************************************
 
+    /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L381">here</a>
+     * for this and the following methods.
+     */
     private void checkPriorParameters(final RealMatrix X) {
         checkMeanParameters(X);
         checkPrecisionParameters(X);
@@ -768,8 +777,8 @@ public final class BayesianGaussianMixture {
     // getters, toString, and miscellaneous
     //******************************************************************************************************************
 
-    public RealVector getWeightConcentration() {
-        return weightConcentration.copy();
+    public RealVector getWeights() {
+        return weightConcentration.copy().mapDivideToSelf(sum(weightConcentration));
     }
 
     public RealVector getMeanPrecision() {

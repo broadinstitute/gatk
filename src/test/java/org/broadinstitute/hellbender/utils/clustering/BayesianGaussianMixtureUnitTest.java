@@ -6,9 +6,11 @@ import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -17,52 +19,69 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
-public class BayesianGaussianMixtureUnitTest {
-    @Test
-    public void testSmallInputs() {
-        final int nFeatures = 2;
-        final double[] meanPrior = new double[]{0., 0.};
-        final double[][] covariancePrior = new double[][]{{1., 0.}, {0., 1.}};
+public final class BayesianGaussianMixtureUnitTest { // extends GATKBaseTest {
+//    private static final File TEST_SUB_DIR = new File(packageRootTestDir, "utils/clustering");
+    private static final File TEST_SUB_DIR = new File("/home/slee/working/gatk/src/test/resources/org/broadinstitute/hellbender/utils/clustering");
 
-        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
-                .nComponents(6)
-                .tol(1E-3)
-                .regCovar(1E-6)
-                .maxIter(100)
-                .nInit(1)
-                .initMethod(BayesianGaussianMixture.InitMethod.TEST)
-                .weightConcentrationPrior(1E-2)
-                .meanPrecisionPrior(10.)
-                .meanPrior(meanPrior)
-                .degreesOfFreedomPrior(nFeatures)
-                .covariancePrior(covariancePrior)
-                .seed(1)
-                .warmStart(true)
-                .verboseInterval(1)
-                .build();
+    /**
+     * import numpy as np  # np.__version__    = 1.19.5
+     * import torch        # torch.__version__ = 1.8.0
+     * import pyro         # pyro.__version__  = 1.6.0
+     * import pyro.distributions as dist
+     *
+     * def generate_gmm_data(seed=1,
+     *                       num_points=10000,
+     *                       num_components=3,
+     *                       num_features=5,
+     *                       weight_concentration=1.,
+     *                       mean_scale=10.,
+     *                       variance_scale=1.,
+     *                       lkj_concentration=1. # uniform distribution over correlation matrices, see https://pyro.ai/examples/lkj.html
+     *                       ):
+     *     pyro.set_rng_seed(seed)
+     *     pi_k = pyro.sample('weight_k', dist.Dirichlet(weight_concentration * torch.ones(num_components)))
+     *
+     *     with pyro.plate('components', size=num_components, dim=-2):
+     *         mu_ki = pyro.sample('mean_ki', dist.Normal(0., mean_scale * torch.ones(num_features)))
+     *         theta_ki = pyro.sample('variance_ki', dist.HalfCauchy(variance_scale * torch.ones(num_features)))
+     *         L_corr_kij = pyro.sample('lower_cholesky_correlation_kij', dist.LKJCholesky(num_features, lkj_concentration))
+     *
+     *     L_cov_kij = torch.bmm(theta_ki.sqrt().diag_embed(), L_corr_kij.squeeze(dim=-3))
+     *
+     *     with pyro.plate('data', size=num_points):
+     *         z_n = pyro.sample('assignment', dist.Categorical(pi_k))
+     *         X_ni = pyro.sample('obs_n', dist.MultivariateNormal(mu_ki[z_n], scale_tril=L_cov_kij[z_n]))
+     *
+     *     return (x.detach().numpy() for x in [pi_k, mu_ki, L_cov_kij, z_n, X_ni])
+     *
+     * pi_k, mu_ki, L_cov_kij, z_n, X_ni = generate_gmm_data()
+     * cov_kij = np.einsum('kij,klj->kil', L_cov_kij, L_cov_kij)
+     * np.savetxt('bayesian-gaussian-mixture-simulated-data-10k-samples-4-components-3-features.tsv', X_ni, delimiter='\t')
+     */
+    private static final File SIMULATED_DATA_FILE = new File(TEST_SUB_DIR, "bayesian-gaussian-mixture-simulated-data-10k-samples-4-components-3-features.tsv");
 
-        final double[][] data = new double[][]{
-                {1., 2.},
-                {2., 3.},
-                {3., 4.},
-                {4., 5.},
-                {5., 6.}
-        };
-
-        bgmm.fit(data);
+    private static double[][] readData(final File file) throws IOException {
+        final List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
+        final double[][] data = new double[lines.size()][];
+        for (int i = 0; i < lines.size(); i++) {
+            data[i] = Arrays.stream(lines.get(i).split("\t")).mapToDouble(Double::parseDouble).toArray();
+        }
+        return data;
     }
 
     @Test
     public void testSimulatedData() throws IOException {
-        final int nFeatures = 10;
-        final int nSamplesWarmStart = 100000;
+        final int nComponents = 4;
+        final int nFeatures = 3;
+
+        final double[][] data = readData(SIMULATED_DATA_FILE);
 
         final double[] meanPrior = new double[nFeatures];
         Arrays.fill(meanPrior, 0.);
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
 
         final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
-                .nComponents(10)
+                .nComponents(nComponents)
                 .tol(1E-3)
                 .regCovar(1E-6)
                 .maxIter(100)
@@ -78,27 +97,28 @@ public class BayesianGaussianMixtureUnitTest {
                 .verboseInterval(1)
                 .build();
 
-        final List<String> lines = Files.readAllLines(Paths.get("/home/slee/working/malariagen/issues/hyperhet/simulated-data.tsv"), StandardCharsets.UTF_8);
-        final double[][] data = new double[lines.size()][];
-        for(int i = 0; i < lines.size(); i++){
-            data[i] = Arrays.stream(lines.get(i).split("\t")).mapToDouble(Double::parseDouble).toArray();
-        }
-
-        bgmm.fit(Arrays.copyOfRange(data, 0, nSamplesWarmStart));
-        System.out.println("weightConcentration: " + bgmm.getWeightConcentration());
-        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
-        System.out.println("means: " + bgmm.getMeans());
-        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
-        System.out.println("covariances: " + bgmm.getCovariances());
-        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
-
         bgmm.fit(data);
-        System.out.println("weightConcentration: " + bgmm.getWeightConcentration());
+        System.out.println("weights: " + bgmm.getWeights());
         System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
         System.out.println("means: " + bgmm.getMeans());
         System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
         System.out.println("covariances: " + bgmm.getCovariances());
         System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
+    }
+
+    @Test
+    public void testSimulatedDataWithWarmStart() throws IOException {
+
+    }
+
+    @Test
+    public void testSimulatedDataWithManyExtraComponents() throws IOException {
+
+    }
+
+    @Test
+    public void testSimulatedDataWithMultipleInitializations() throws IOException {
+
     }
 
     //******************************************************************************************************************
