@@ -66,7 +66,7 @@ public class BayesianGaussianMixtureUnitTest {
                 .tol(1E-3)
                 .regCovar(1E-6)
                 .maxIter(100)
-                .nInit(5)
+                .nInit(1)
                 .initMethod(BayesianGaussianMixture.InitMethod.TEST)
                 .weightConcentrationPrior(1E-2)
                 .meanPrecisionPrior(10.)
