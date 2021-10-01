@@ -14,14 +14,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
-public final class BayesianGaussianMixtureUnitTest { // extends GATKBaseTest {
-//    private static final File TEST_SUB_DIR = new File(packageRootTestDir, "utils/clustering");
-    private static final File TEST_SUB_DIR = new File("/home/slee/working/gatk/src/test/resources/org/broadinstitute/hellbender/utils/clustering");
+public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
+    private static final File TEST_SUB_DIR = new File(packageRootTestDir, "utils/clustering");
 
     /**
      * import numpy as np  # np.__version__    = 1.19.5
