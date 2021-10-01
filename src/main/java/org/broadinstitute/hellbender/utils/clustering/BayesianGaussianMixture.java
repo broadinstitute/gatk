@@ -17,6 +17,7 @@ import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.stat.correlation.Covariance;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public final class BayesianGaussianMixture {
@@ -54,9 +56,9 @@ public final class BayesianGaussianMixture {
     private final InitMethod initMethod;
     private final double weightConcentrationPrior;
     private final double meanPrecisionPrior;
-    private final RealVector meanPrior;
-    private final double degreesOfFreedomPrior;
-    private final RealMatrix covariancePrior;
+    private RealVector meanPrior;             // not final; if not specified via Builder and set to null, will then be set to the mean of X (over samples, i.e., over rows) upon fit(X)
+    private Double degreesOfFreedomPrior;     // not final; if not specified via Builder and set to null, will then be set to nFeatures upon fit(X)
+    private RealMatrix covariancePrior;       // not final; if not specified via Builder and set to null, will then be set to the covariance of X upon fix(X)
     private final int seed;
     private final boolean warmStart;
     private final int verboseInterval;
@@ -65,30 +67,23 @@ public final class BayesianGaussianMixture {
     private boolean isConverged;
     private double lowerBound;
 
-//    private RealVector weightConcentration;
-//    private RealVector meanPrecision;
-//    private List<RealVector> means;
-//    private List<RealMatrix> precisionsCholesky;
-//    private List<RealMatrix> covariances;
-//    private RealVector degreesOfFreedom;
-    public RealVector weightConcentration;
-    public RealVector meanPrecision;
-    public List<RealVector> means;
-    public List<RealMatrix> precisionsCholesky;
-    public List<RealMatrix> covariances;
-    public RealVector degreesOfFreedom;
+    private RealVector weightConcentration;
+    private RealVector meanPrecision;
+    private List<RealVector> means;
+    private List<RealMatrix> precisionsCholesky;
+    private List<RealMatrix> covariances;
+    private RealVector degreesOfFreedom;
 
-    private void logHeapUsage(final String message) {
-        final int mb = 1024 * 1024;
-        final Runtime runtime = Runtime.getRuntime();
-        logger.info("Used memory [MB]: " + (runtime.totalMemory() - runtime.freeMemory()) / mb);
-        logger.info(message);
-    }
+    private RealVector bestWeightConcentration;
+    private RealVector bestMeanPrecision;
+    private List<RealVector> bestMeans;
+    private List<RealMatrix> bestPrecisionsCholesky;
+    private List<RealMatrix> bestCovariances;
+    private RealVector bestDegreesOfFreedom;
 
     /**
      * We use a {@link Builder} to enable the setting of default values, which can be
-     * done trivially in python. Our implementation of parameter validation, etc. thus slightly differ from that in
-     * the sklearn implementation.
+     * done trivially in python. Our implementation of parameter validation thus slightly differs from that in sklearn.
      */
     private BayesianGaussianMixture(final int nComponents,
                                     final double tol,
@@ -99,7 +94,7 @@ public final class BayesianGaussianMixture {
                                     final double weightConcentrationPrior,
                                     final double meanPrecisionPrior,
                                     final RealVector meanPrior,
-                                    final double degreesOfFreedomPrior,
+                                    final Double degreesOfFreedomPrior,
                                     final RealMatrix covariancePrior,
                                     final int seed,
                                     final boolean warmStart,
@@ -128,7 +123,7 @@ public final class BayesianGaussianMixture {
      * @param data matrix of data with dimensions (n_samples, n_features); to minimize memory requirements, a defensive copy will not be made
      */
     public void fit(final double[][] data) {
-//        TODO X = self._validate_data(X, dtype=[np.float64, np.float32], ensure_min_samples=2)
+        Utils.validateArg(data.length >= 2, "Data must contain at least 2 samples.");
 
         final RealMatrix X = new Array2DRowRealMatrix(data, false); // we do not make a defensive copy
 
@@ -140,7 +135,6 @@ public final class BayesianGaussianMixture {
         }
         checkPriorParameters(X);
 
-        // if we enable warm_start, we will have a unique initialisation
         final boolean doInit = !(warmStart && isConverged);
         final int nInit = doInit ? this.nInit : 1;
 
@@ -163,8 +157,7 @@ public final class BayesianGaussianMixture {
                 final double prevLowerBound = lowerBound;
 
                 logHeapUsage("Starting EStep...");
-                final Pair<Double, RealMatrix> logRespAndlogProbNorm = EStep(X);
-                final RealMatrix logResp = logRespAndlogProbNorm.getRight();
+                final RealMatrix logResp = EStep(X);
 
                 logHeapUsage("Starting MStep...");
                 MStep(X, logResp);
@@ -194,24 +187,34 @@ public final class BayesianGaussianMixture {
             }
 
             if (lowerBound > maxLowerBound || maxLowerBound == Double.NEGATIVE_INFINITY) {
+                logger.info(String.format("New maximum lower bound = %.5f found with initialization %d...",
+                        maxLowerBound, init));
                 maxLowerBound = lowerBound;
-                // TODO log maxLowerBound
-//                TODO best_params = self._get_parameters()
-//                best_n_iter = n_iter
+                bestWeightConcentration = weightConcentration.copy();
+                bestMeanPrecision = meanPrecision.copy();
+                bestMeans = means.stream().map(RealVector::copy).collect(Collectors.toList());
+                bestPrecisionsCholesky = precisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
+                bestCovariances = covariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
+                bestDegreesOfFreedom = degreesOfFreedom.copy();
             }
 
             if (!isConverged) {
-                logger.warn("No initializations converged. Try changing initialization parameters, increasing maxIter," +
+                logger.warn("No initializations converged. Try changing initialization parameters, increasing maxIter, " +
                         "increasing tol, or checking for degenerate data.");
             }
 
-//            TODO self._set_parameters(best_params)
-//            self.n_iter_ = best_n_iter
+            // set values to the best found over all initializations
             this.lowerBound = maxLowerBound;
+            weightConcentration = bestWeightConcentration.copy();
+            meanPrecision = bestMeanPrecision.copy();
+            means = bestMeans.stream().map(RealVector::copy).collect(Collectors.toList());
+            precisionsCholesky = bestPrecisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
+            covariances = bestCovariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
+            degreesOfFreedom = bestDegreesOfFreedom.copy();
         }
 
 //        TODO add this for fitPredict
-//        Always do a final e-step to guarantee that the labels returned by
+//        (original sklearn comment) Always do a final e-step to guarantee that the labels returned by
 //        fit_predict(X) are always consistent with fit(X).predict(X)
 //        for any value of max_iter and tol (and any random_state).
 //        _, log_resp = self._e_step(X)
@@ -264,24 +267,20 @@ public final class BayesianGaussianMixture {
     }
 
     private void initialize(final RealMatrix X,
-                            final RealMatrix resp) {
-        final Triple<RealVector, List<RealVector>, List<RealMatrix>> parameters = estimateGaussianParameters(X, resp, regCovar);
-        final RealVector nk = parameters.getLeft();
-        final List<RealVector> xk = parameters.getMiddle();
-        final List<RealMatrix> sk = parameters.getRight();
+                            final RealMatrix resp) { // unlike the sklearn implementation, we simply reuse the MStep method;
+        MStep(X, map(resp, FastMath::log));          // we thus compute an extra log(resp), which fortunately does not seem to cause numerical discrepancies in tests on typical data
+    }                                                // (although one might be wary of diverging at all from sklearn at this initialization step...)
 
-        estimateWeights(nk);
-        estimateMeans(nk, xk);
-        estimatePrecisions(nk, xk, sk);
-    }
-
-    private Pair<Double, RealMatrix> EStep(final RealMatrix X) {
-        final Pair<RealVector, RealMatrix> logProbNormAndLogProbResp = estimateLogProbResp(X);
-        final RealVector logProbNorm = logProbNormAndLogProbResp.getLeft();
-        final RealMatrix logProbResp = logProbNormAndLogProbResp.getRight();
-
-        final double meanLogProbNorm = Arrays.stream(logProbNorm.toArray()).average().getAsDouble();
-        return Pair.of(meanLogProbNorm, logProbResp);
+    private RealMatrix EStep(final RealMatrix X) {  // we trivially collapse out the sklearn _estimate_log_prob_resp method and remove some unused returns
+        final int nSamples = X.getRowDimension();
+        final RealMatrix weightedLogProb = estimateWeightedLogProb(X);
+        final RealVector logProbNorm = new ArrayRealVector(nSamples);
+        IntStream.range(0, nSamples).forEach(
+                i -> logProbNorm.setEntry(i, NaturalLogUtils.logSumExp(weightedLogProb.getRow(i))));
+        final RealMatrix logResp = weightedLogProb.copy();
+        IntStream.range(0, nSamples).forEach(
+                i -> logResp.setRowVector(i, logResp.getRowVector(i).mapSubtract(logProbNorm.getEntry(i))));
+        return logResp;
     }
 
     private void MStep(final RealMatrix X,
@@ -299,7 +298,6 @@ public final class BayesianGaussianMixture {
 
     private void estimateWeights(final RealVector nk) {
         weightConcentration = nk.mapAdd(weightConcentrationPrior);
-        // System.out.println("weightConcentration:\n\t" + weightConcentration);
     }
 
     private void estimateMeans(final RealVector nk,
@@ -312,8 +310,6 @@ public final class BayesianGaussianMixture {
                                 .add(xk.get(k).mapMultiply(nk.getEntry(k)))
                                 .mapDivide(meanPrecision.getEntry(k))));
         this.means = means;
-        // System.out.println("meanPrecision:\n\t" + meanPrecision);
-        // System.out.println("means:\n\t" + this.means);
     }
 
     private void estimatePrecisions(final RealVector nk,
@@ -321,13 +317,12 @@ public final class BayesianGaussianMixture {
                                     final List<RealMatrix> sk) {
         estimateWishartFull(nk, xk, sk);
         precisionsCholesky = computePrecisionCholesky(covariances);
-        // System.out.println("precisionsCholesky:\n\t" + precisionsCholesky);
     }
 
     private void estimateWishartFull(final RealVector nk,
                                      final List<RealVector> xk,
                                      final List<RealMatrix> sk) {
-        // Warning : in some versions of Bishop, there is a typo in the formula 10.63
+        // (original sklearn comment) Warning : in some versions of Bishop, there is a typo in the formula 10.63
         // `degrees_of_freedom_k = degrees_of_freedom_0 + N_k` is the correct formula
         degreesOfFreedom = nk.mapAdd(degreesOfFreedomPrior);
 
@@ -337,11 +332,9 @@ public final class BayesianGaussianMixture {
             final RealMatrix cov = covariancePrior
                     .add(sk.get(k).scalarMultiply(nk.getEntry(k)))
                     .add(diff.outerProduct(diff).scalarMultiply(nk.getEntry(k) * meanPrecisionPrior / meanPrecision.getEntry(k)))
-                    .scalarMultiply(1. / degreesOfFreedom.getEntry(k)); // Contrary to the original Bishop book, we normalize the covariances
+                    .scalarMultiply(1. / degreesOfFreedom.getEntry(k)); // (original sklearn comment) Contrary to the original Bishop book, we normalize the covariances
             covariances.set(k, cov);
         }
-        // System.out.println("degreesOfFreedom:\n\t" + degreesOfFreedom);
-        // System.out.println("covariances:\n\t" + covariances);
     }
 
     private RealMatrix estimateWeightedLogProb(final RealMatrix X) {
@@ -350,35 +343,18 @@ public final class BayesianGaussianMixture {
         final RealVector logWeights = estimateLogWeights();
         IntStream.range(0, nSamples).forEach(
                 i -> weightedLogProb.setRowVector(i, weightedLogProb.getRowVector(i).add(logWeights)));
-        // System.out.println("estimateWeightedLogProb:\n\t" + weightedLogProb);
         return weightedLogProb;
     }
 
-    private Pair<RealVector, RealMatrix> estimateLogProbResp(final RealMatrix X) {
-        final int nSamples = X.getRowDimension();
-        final RealMatrix weightedLogProb = estimateWeightedLogProb(X);
-        final RealVector logProbNorm = new ArrayRealVector(nSamples);
-        IntStream.range(0, nSamples).forEach(
-                i -> logProbNorm.setEntry(i, NaturalLogUtils.logSumExp(weightedLogProb.getRow(i))));
-        final RealMatrix logResp = weightedLogProb.copy();
-        IntStream.range(0, nSamples).forEach(
-                i -> logResp.setRowVector(i, logResp.getRowVector(i).mapSubtract(logProbNorm.getEntry(i))));
-        // System.out.println("estimateLogProbResp, logProbNorm:\n\t" + logProbNorm);
-        // System.out.println("estimateLogProbResp, logResp:\n\t" + logResp);
-        return Pair.of(logProbNorm, logResp);
-    }
-
     private RealVector estimateLogWeights() {
-        // System.out.println(weightConcentration.map(Gamma::digamma).mapSubtract(Gamma.digamma(sum(weightConcentration))));
-        return weightConcentration.map(Gamma::digamma)
-                .mapSubtract(Gamma.digamma(sum(weightConcentration)));
+        return weightConcentration.map(Gamma::digamma).mapSubtract(Gamma.digamma(sum(weightConcentration)));
     }
 
     private RealMatrix estimateLogProb(final RealMatrix X) {
         final int nSamples = X.getRowDimension();
         final int nFeatures = X.getColumnDimension();
 
-        // We remove nFeatures * degreesOfFreedom.map(FastMath::log) because
+        // (original sklearn comment) We remove nFeatures * degreesOfFreedom.map(FastMath::log) because
         // the precision matrix is normalized
         final RealMatrix result = estimateLogGaussianProb(X, means, precisionsCholesky);
         final RealVector normalizingTerm = degreesOfFreedom.map(FastMath::log).mapMultiply(0.5 * nFeatures);
@@ -397,16 +373,15 @@ public final class BayesianGaussianMixture {
         IntStream.range(0, nSamples).forEach(
                 i -> result.setRowVector(i, result.getRowVector(i).add(addToLogGaussTerm)));
 
-        // System.out.println("estimateLogProb:\n\t" + result);
         return result;
     }
 
     private double computeLowerBound(final RealMatrix logResp) { // we remove an unused logProbNorm parameter from the python code
-        // Contrary to the original formula, we have done some simplification
+        // (original sklearn comment) Contrary to the original formula, we have done some simplification
         // and removed all the constant terms.
         final int nFeatures = meanPrior.getDimension();
 
-        // We removed 0.5 * nFeatures * degreesOfFreedom.map(FastMath::log)
+        // (original sklearn comment) We removed 0.5 * nFeatures * degreesOfFreedom.map(FastMath::log)
         // because the precision matrix is normalized.
         final RealVector logDetPrecisionsChol = computeLogDetCholesky(precisionsCholesky);
         logDetPrecisionsChol.combineToSelf(1., -0.5 * nFeatures, degreesOfFreedom.map(FastMath::log));
@@ -482,12 +457,11 @@ public final class BayesianGaussianMixture {
                     precisionChol.setColumnVector(l, b);
                 }
                 precisionsChol.set(k, precisionChol.transpose());
-            } catch (final NonPositiveDefiniteMatrixException | NonSymmetricMatrixException e) {
+            } catch (final NonSymmetricMatrixException | NonPositiveDefiniteMatrixException e) {
                 throw new UserException(
-                        "Fitting the Bayesian Gaussian mixture model failed because some components have " +
-                                "ill-defined empirical covariance (perhaps caused by singleton " +
-                                "or collapsed samples). Try to decrease the number of components " +
-                                "or increase the covariance-regularization parameter.", e);
+                        "Numerical issues were encountered, causing at least one component to be assigned an invalid covariance " +
+                                "(i.e., the covariance was not symmetric and/or positive semidefinite). " +
+                                "Try to adjust the covariance prior or increase the covariance-regularization parameter.", e);
             }
         }
         return precisionsChol;
@@ -613,6 +587,10 @@ public final class BayesianGaussianMixture {
         return covariances;
     }
 
+    //******************************************************************************************************************
+    // static RealVector and RealMatrix helper methods
+    //******************************************************************************************************************
+
     private static double sum(final RealVector v) {
         return Arrays.stream(v.toArray()).sum();
     }
@@ -658,17 +636,84 @@ public final class BayesianGaussianMixture {
         return result;
     }
 
-    void checkPriorParameters(final RealMatrix X) {
+    //******************************************************************************************************************
+    // parameter validation methods that require the data X
+    //******************************************************************************************************************
+
+    private void checkPriorParameters(final RealMatrix X) {
         checkMeanParameters(X);
         checkPrecisionParameters(X);
         checkCovarianceParameters(X);
     }
 
-    private void checkMeanParameters(final RealMatrix X) {}
+    private void checkMeanParameters(final RealMatrix X) {
+        final int nSamples = X.getRowDimension();
+        final int nFeatures = X.getColumnDimension();
+        if (meanPrior == null) { // if not specified through the Builder, set to the mean of X (over samples, i.e., over rows) by default
+            meanPrior = new ArrayRealVector(nComponents);
+            IntStream.range(0, nFeatures).forEach(
+                    i -> meanPrior.setEntry(i, sum(X.getColumnVector(i)) / nSamples));
+        } else {
+            Utils.validateArg(meanPrior.getDimension() == nFeatures,
+                    String.format("meanPrior and the data should correspond to the same number of features, " +
+                            "but meanPrior has dimension %d and the data has %d features.", meanPrior.getDimension(), nFeatures));
+        }
+    }
 
-    private void checkPrecisionParameters(final RealMatrix X) {}
+    private void checkPrecisionParameters(final RealMatrix X) {
+        final int nFeatures = X.getColumnDimension();
+        if (degreesOfFreedomPrior == null) { // if not specified through the Builder, set to nFeatures by default
+            degreesOfFreedomPrior = (double) nFeatures;
+        } else {
+            Utils.validateArg(degreesOfFreedomPrior > nFeatures - 1.,
+                    String.format("degreesOfFreedomPrior = %.5f must be strictly greater than the number of features minus 1 = %d.",
+                            degreesOfFreedomPrior, nFeatures - 1));
+        }
+    }
 
-    private void checkCovarianceParameters(final RealMatrix X) {}
+    private void checkCovarianceParameters(final RealMatrix X) {
+        final int nFeatures = X.getColumnDimension();
+        if (covariancePrior == null) { // if not specified through the Builder, set to the covariance of X by default
+            covariancePrior = new Covariance(X.transpose()).getCovarianceMatrix();
+        } else {
+            Builder.checkCovariance(covariancePrior);
+            Utils.validateArg(covariancePrior.getRowDimension() == nFeatures,
+                    String.format("covariancePrior and the data should correspond to the same number of features, " +
+                            "but covariancePrior has dimensions %d x %d and the data has %d features.",
+                            covariancePrior.getRowDimension(), covariancePrior.getColumnDimension(), nFeatures));
+        }
+    }
+
+    private static void logHeapUsage(final String message) {
+        final int mb = 1024 * 1024;
+        final Runtime runtime = Runtime.getRuntime();
+        logger.info("Used memory [MB]: " + (runtime.totalMemory() - runtime.freeMemory()) / mb);
+        logger.info(message);
+    }
+
+    public RealVector getWeightConcentration() {
+        return weightConcentration.copy();
+    }
+
+    public RealVector getMeanPrecision() {
+        return meanPrecision.copy();
+    }
+
+    public List<RealVector> getMeans() {
+        return means.stream().map(RealVector::copy).collect(Collectors.toList());
+    }
+
+    public List<RealMatrix> getPrecisionsCholesky() {
+        return precisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
+    }
+
+    public List<RealMatrix> getCovariances() {
+        return covariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
+    }
+
+    public RealVector getDegreesOfFreedom() {
+        return degreesOfFreedom.copy();
+    }
 
     @Override
     public String toString() {
@@ -711,9 +756,9 @@ public final class BayesianGaussianMixture {
                                                                 // some prior parameters require the data X to construct defaults and/or fully validate
         private Double weightConcentrationPrior = null;         // if null, will be set to 1. / nComponents upon build()
         private double meanPrecisionPrior = 1;
-        private RealVector meanPrior = null;                    // if null, will be set to the mean of X (over samples, i.e., over rows) upon fit
-        private Double degreesOfFreedomPrior = null;            // if null, will be set to nFeatures (i.e., X.getColumnDimension()) upon fit
-        private RealMatrix covariancePrior;                     // if null, will be set to the covariance of X upon fit
+        private RealVector meanPrior = null;                    // if null, will be set to the mean of X (over samples, i.e., over rows) upon fix(X)
+        private Double degreesOfFreedomPrior = null;            // if null, will be set to nFeatures (i.e., X.getColumnDimension()) upon fix(X)
+        private RealMatrix covariancePrior;                     // if null, will be set to the covariance of X upon fix(X)
 
         private int seed = 0;                                   // defaults to None (i.e., uses the global random state) in the sklearn implementation; we disallow this to avoid reproducibility headaches
         private boolean warmStart = false;
@@ -770,7 +815,9 @@ public final class BayesianGaussianMixture {
         }
 
         public Builder meanPrior(final double[] meanPrior) {
-            this.meanPrior = meanPrior == null ? null : new ArrayRealVector(meanPrior, true);
+            Utils.nonNull(meanPrior, "meanPrior must be non-null. " +
+                    "To set this to the empirical mean of the data, simply do not chain this method onto the Builder.");
+            this.meanPrior = new ArrayRealVector(meanPrior, true);
             return this;
         }
 
@@ -781,12 +828,10 @@ public final class BayesianGaussianMixture {
         }
 
         public Builder covariancePrior(final double[][] covariancePrior) {
-            if (covariancePrior == null ) {
-                this.covariancePrior = null;
-            } else {
-                this.covariancePrior = new Array2DRowRealMatrix(covariancePrior, true);
-                checkCovariance(this.covariancePrior);
-            }
+            Utils.nonNull(covariancePrior, "covariancePrior must be non-null. " +
+                    "To set this the empirical covariance of the data, simply do not chain this method onto the Builder.");
+            this.covariancePrior = new Array2DRowRealMatrix(covariancePrior, true);
+            checkCovariance(this.covariancePrior);
             return this;
         }
 

@@ -85,20 +85,20 @@ public class BayesianGaussianMixtureUnitTest {
         }
 
         bgmm.fit(Arrays.copyOfRange(data, 0, nSamplesWarmStart));
-        System.out.println("weightConcentration: " + bgmm.weightConcentration);
-        System.out.println("meanPrecision: " + bgmm.meanPrecision);
-        System.out.println("means: " + bgmm.means);
-        System.out.println("precisionsCholesky: " + bgmm.precisionsCholesky);
-        System.out.println("covariances: " + bgmm.covariances);
-        System.out.println("degreesOfFreedom: " + bgmm.degreesOfFreedom);
+        System.out.println("weightConcentration: " + bgmm.getWeightConcentration());
+        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
+        System.out.println("means: " + bgmm.getMeans());
+        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
+        System.out.println("covariances: " + bgmm.getCovariances());
+        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
 
         bgmm.fit(data);
-        System.out.println("weightConcentration: " + bgmm.weightConcentration);
-        System.out.println("meanPrecision: " + bgmm.meanPrecision);
-        System.out.println("means: " + bgmm.means);
-        System.out.println("precisionsCholesky: " + bgmm.precisionsCholesky);
-        System.out.println("covariances: " + bgmm.covariances);
-        System.out.println("degreesOfFreedom: " + bgmm.degreesOfFreedom);
+        System.out.println("weightConcentration: " + bgmm.getWeightConcentration());
+        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
+        System.out.println("means: " + bgmm.getMeans());
+        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
+        System.out.println("covariances: " + bgmm.getCovariances());
+        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
     }
 
     //******************************************************************************************************************
