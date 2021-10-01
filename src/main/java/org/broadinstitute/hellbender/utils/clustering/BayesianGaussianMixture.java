@@ -62,7 +62,6 @@ public final class BayesianGaussianMixture {
     private final boolean warmStart;
     private final int verboseInterval;
 
-    private final RandomGenerator rng;
     private boolean isConverged;
     private double lowerBound;
 
@@ -114,7 +113,6 @@ public final class BayesianGaussianMixture {
         this.seed = seed;
         this.warmStart = warmStart;
 
-        rng = RandomGeneratorFactory.createRandomGenerator(new Random(seed));
         isConverged = false;
         lowerBound = Double.NEGATIVE_INFINITY;
 
@@ -144,13 +142,15 @@ public final class BayesianGaussianMixture {
         double maxLowerBound = Double.NEGATIVE_INFINITY;
         isConverged = false;
 
+        final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(seed));
+
         logHeapUsage("Starting loop...");
         for (int init = 0; init < nInit; init++) {
             logHeapUsage("Starting initialization...");
             logger.info(String.format("Initialization %d...", init));
 
             if (doInit) {
-                initializeParameters(X);
+                initializeParameters(X, rng);
             }
 
             double lowerBound = doInit ? Double.NEGATIVE_INFINITY : this.lowerBound;
@@ -247,8 +247,10 @@ public final class BayesianGaussianMixture {
 
     /**
      * @param X         data. (nSamples, nFeatures)
+     * @param rng       random number generator, which should be reset to this.seed at start of fit
      */
-    private void initializeParameters(final RealMatrix X) {
+    private void initializeParameters(final RealMatrix X,
+                                      final RandomGenerator rng) {
         final int nSamples = X.getRowDimension();
 
         if (initMethod == InitMethod.K_MEANS) {
