@@ -145,7 +145,6 @@ public final class BayesianGaussianMixture {
         isConverged = false;
 
         logHeapUsage("Starting loop...");
-        rng.setSeed(seed);
         for (int init = 0; init < nInit; init++) {
             logHeapUsage("Starting initialization...");
             logger.info(String.format("Initialization %d...", init));

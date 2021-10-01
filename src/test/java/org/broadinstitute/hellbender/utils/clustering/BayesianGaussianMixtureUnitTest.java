@@ -106,6 +106,51 @@ public final class BayesianGaussianMixtureUnitTest { // extends GATKBaseTest {
         System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
     }
 
+//    @Test
+//    public void testSimulatedData1Mx3x10() throws IOException {
+//        final int nComponents = 10;
+//        final int nFeatures = 10;
+//
+//        final double[][] data = readData(new File("/home/slee/working/malariagen/issues/hyperhet/simulated-data.tsv"));
+//
+//        final double[] meanPrior = new double[nFeatures];
+//        Arrays.fill(meanPrior, 0.);
+//        final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
+//
+//        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
+//                .nComponents(nComponents)
+//                .tol(1E-3)
+//                .regCovar(1E-6)
+//                .maxIter(100)
+//                .nInit(1)
+//                .initMethod(BayesianGaussianMixture.InitMethod.TEST)
+//                .weightConcentrationPrior(1E-2)
+//                .meanPrecisionPrior(10.)
+//                .meanPrior(meanPrior)
+//                .degreesOfFreedomPrior(nFeatures)
+//                .covariancePrior(covariancePrior)
+//                .seed(1)
+//                .warmStart(true)
+//                .verboseInterval(1)
+//                .build();
+//
+//        bgmm.fit(Arrays.copyOfRange(data, 0, 100000));
+//        System.out.println("weights: " + bgmm.getWeights());
+//        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
+//        System.out.println("means: " + bgmm.getMeans());
+//        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
+//        System.out.println("covariances: " + bgmm.getCovariances());
+//        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
+//
+//        bgmm.fit(data);
+//        System.out.println("weights: " + bgmm.getWeights());
+//        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
+//        System.out.println("means: " + bgmm.getMeans());
+//        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
+//        System.out.println("covariances: " + bgmm.getCovariances());
+//        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
+//    }
+
     @Test
     public void testSimulatedDataWithWarmStart() throws IOException {
 
