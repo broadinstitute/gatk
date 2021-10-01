@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.clustering;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
@@ -39,7 +38,7 @@ public final class BayesianGaussianMixture {
 
     private static final double LOG_2_PI = Math.log(2. * Math.PI);
     private static final double EPSILON = 1E-10;
-    private static final double RELATIVE_SYMMETRY_THRESHOLD = 1E-10;
+    private static final double RELATIVE_SYMMETRY_THRESHOLD = 1E-6;
     private static final double ABSOLUTE_POSITIVITY_THRESHOLD = 1E-10;
 
     public enum InitMethod {
@@ -117,6 +116,8 @@ public final class BayesianGaussianMixture {
         rng = RandomGeneratorFactory.createRandomGenerator(new Random(seed));
         isConverged = false;
         lowerBound = Double.NEGATIVE_INFINITY;
+
+        logger.info(toString());
     }
 
     /**
@@ -184,18 +185,18 @@ public final class BayesianGaussianMixture {
                     logger.info(String.format("Initialization %d did not converge after %d iterations, final lower bound = %.5f, final lower-bound change = %.5f...",
                             init, nIter, lowerBound, change));
                 }
-            }
 
-            if (lowerBound > maxLowerBound || maxLowerBound == Double.NEGATIVE_INFINITY) {
-                logger.info(String.format("New maximum lower bound = %.5f found with initialization %d...",
-                        maxLowerBound, init));
-                maxLowerBound = lowerBound;
-                bestWeightConcentration = weightConcentration.copy();
-                bestMeanPrecision = meanPrecision.copy();
-                bestMeans = means.stream().map(RealVector::copy).collect(Collectors.toList());
-                bestPrecisionsCholesky = precisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
-                bestCovariances = covariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
-                bestDegreesOfFreedom = degreesOfFreedom.copy();
+                if (lowerBound > maxLowerBound || maxLowerBound == Double.NEGATIVE_INFINITY) {
+                    maxLowerBound = lowerBound;
+                    logger.info(String.format("New maximum lower bound = %.5f found with initialization %d...",
+                            maxLowerBound, init));
+                    bestWeightConcentration = weightConcentration.copy();
+                    bestMeanPrecision = meanPrecision.copy();
+                    bestMeans = means.stream().map(RealVector::copy).collect(Collectors.toList());
+                    bestPrecisionsCholesky = precisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
+                    bestCovariances = covariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
+                    bestDegreesOfFreedom = degreesOfFreedom.copy();
+                }
             }
 
             if (!isConverged) {
@@ -687,8 +688,8 @@ public final class BayesianGaussianMixture {
     private static void logHeapUsage(final String message) {
         final int mb = 1024 * 1024;
         final Runtime runtime = Runtime.getRuntime();
-        logger.info("Used memory [MB]: " + (runtime.totalMemory() - runtime.freeMemory()) / mb);
-        logger.info(message);
+        logger.debug("Used memory [MB]: " + (runtime.totalMemory() - runtime.freeMemory()) / mb);
+        logger.debug(message);
     }
 
     public RealVector getWeightConcentration() {

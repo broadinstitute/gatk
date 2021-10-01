@@ -66,7 +66,7 @@ public class BayesianGaussianMixtureUnitTest {
                 .tol(1E-3)
                 .regCovar(1E-6)
                 .maxIter(100)
-                .nInit(1)
+                .nInit(5)
                 .initMethod(BayesianGaussianMixture.InitMethod.TEST)
                 .weightConcentrationPrior(1E-2)
                 .meanPrecisionPrior(10.)
@@ -80,7 +80,7 @@ public class BayesianGaussianMixtureUnitTest {
 
         final List<String> lines = Files.readAllLines(Paths.get("/home/slee/working/malariagen/issues/hyperhet/simulated-data.tsv"), StandardCharsets.UTF_8);
         final double[][] data = new double[lines.size()][];
-        for(int i = 0; i<lines.size(); i++){
+        for(int i = 0; i < lines.size(); i++){
             data[i] = Arrays.stream(lines.get(i).split("\t")).mapToDouble(Double::parseDouble).toArray();
         }
 
