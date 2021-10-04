@@ -423,7 +423,7 @@ task CreateManifest {
             gsutil cp ~{service_account_json_path} local.service_account.json
             gcloud auth activate-service-account --key-file=local.service_account.json
           fi
-          gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
+          gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
         fi
     >>>
 
