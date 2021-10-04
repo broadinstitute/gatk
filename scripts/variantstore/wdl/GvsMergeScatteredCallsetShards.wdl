@@ -27,7 +27,9 @@ workflow GvsMergeScatteredCallsetShards {
     input:
       input_vcfs = VCFpaths.paths,
       input_vcfs_indexes = VCFIndexpaths.paths,
-      output_vcf_name = output_vcf_name
+      output_vcf_name = output_vcf_name,
+      output_directory = output_directory,
+      service_account_json_path = service_account_json_path
   }
 }
 
@@ -37,7 +39,8 @@ task MergeVCFs {
     Array[File] input_vcfs_indexes
     String gather_type = "BLOCK"
     String output_vcf_name
-
+    String output_directory
+    String? service_account_json_path
     File? gatk_override
   }
 
@@ -52,8 +55,16 @@ task MergeVCFs {
     }
   }
 
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
   command {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+    fi
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
     --ignore-safety-checks --gather-type ~{gather_type} \
@@ -62,6 +73,12 @@ task MergeVCFs {
     --output ~{output_vcf_name}
 
     tabix ~{output_vcf_name}
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_directory} | sed 's/\/$//')
+
+    gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
+    gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
   }
 
   runtime {
@@ -76,8 +93,8 @@ task MergeVCFs {
     File output_vcf_index = "~{output_vcf_name}.tbi"
   }
 }
-task GenerateOrderedPaths {
 
+task GenerateOrderedPaths {
   input {
     String root_path
     String num_files
@@ -98,7 +115,7 @@ task GenerateOrderedPaths {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210923"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211004"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
