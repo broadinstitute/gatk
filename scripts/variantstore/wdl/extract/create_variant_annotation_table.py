@@ -39,7 +39,8 @@ vat_nirvana_transcripts_dictionary = {
 vat_nirvana_gvs_alleles_dictionary = {
   "gvs_all_an": "AN", # required
   "gvs_all_ac": "AC", # required
-  "gvs_all_af": "AF" # required
+  "gvs_all_af": "AF", # required
+  "gvs_all_s_het": "AC_Het" # required
 }
 
 vat_nirvana_revel_dictionary = {
@@ -94,10 +95,10 @@ significance_ordering = [
 gnomad_ordering = [
  "afr",
  "amr",
+ "asj",
  "eas",
  "fin",
  "nfr",
- "asj",
  "oth",
  "sas"
 ]
@@ -163,33 +164,36 @@ def get_gnomad_subpop(gnomad_obj):
     row["gnomad_max_af"] = max_af
     return row
 
-
-def get_subpopulation_calculations(variant_obj):
+def get_subpopulation_calculations(subpop_annotations):
     row = {}
     max_ac = None
     max_an = None
     max_af = None
+    max_sc = None
     max_subpop = ""
-    for gvs_subpop in gvs_subpopulations: # TODO check with Lee on order
-      subpop_annotations = variant_obj.get("".join([gvs_subpop, "SubpopulationAnnotations"]))
-      if subpop_annotations != None:
-        subpop_ac_val = subpop_annotations.get("AC") # note that these can be null if there is no value in the annotations. They will be null in the VAT
-        subpop_an_val = subpop_annotations.get("AN")
-        subpop_af_val = subpop_annotations.get("AF")
-        # here we set the subpopulation ac/an/af values
-        row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
-        row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
-        row["_".join(["gvs", gvs_subpop, "af"])] = subpop_af_val
-        if subpop_af_val != None and(max_af == None or subpop_af_val > max_af): # this will also set the first max_af value
-          max_subpop = gvs_subpop
-          max_ac = subpop_ac_val
-          max_an = subpop_an_val
-          max_af = subpop_af_val
+    for gvs_subpop in gvs_subpopulations:
+      subpop_ac_val = subpop_annotations.get("_".join(["AC", gvs_subpop]))
+      subpop_an_val = subpop_annotations.get("_".join(["AN", gvs_subpop]))
+      subpop_af_val = subpop_annotations.get("_".join(["AF", gvs_subpop]))
+       # note the assumption is made that AC_Hom must be even because by it's nature it means there are two, but there could be an error
+      subpop_sc_val = int(subpop_annotations.get("_".join(["AC_Hom", gvs_subpop])) / 2 ) + subpop_annotations.get("_".join(["AC_Het", gvs_subpop]))
+      # here we set the subpopulation ac/an/af values
+      row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
+      row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
+      row["_".join(["gvs", gvs_subpop, "af"])] = subpop_af_val
+      row["_".join(["gvs", gvs_subpop, "sc"])] = subpop_sc_val
+      if subpop_af_val != None and(max_af == None or subpop_af_val > max_af): # this will also set the first max_af value
+        max_subpop = gvs_subpop
+        max_ac = subpop_ac_val
+        max_an = subpop_an_val
+        max_af = subpop_af_val
+        max_sc = subpop_sc_val
     # here we set the MAX subpopulation ac/an/af values
     row["gvs_max_subpop"] = max_subpop
     row["gvs_max_ac"] = max_ac
     row["gvs_max_an"] = max_an
     row["gvs_max_af"] = max_af
+    row["gvs_max_sc"] = max_sc
     return row
 
 def make_annotated_json_row(row_position, variant_line, transcript_line):
@@ -261,8 +265,11 @@ def make_annotated_json_row(row_position, variant_line, transcript_line):
       nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
       gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
       row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
+    row["gvs_all_s_hom"] = int(gvs_annotations.get("AC_Hom") / 2 )
+    row["gvs_all_sc"] = int(gvs_annotations.get("AC_Hom") / 2 ) + gvs_annotations.get('AC_Het')
 
-    subpopulation_info = get_subpopulation_calculations(variant_line)
+
+    subpopulation_info = get_subpopulation_calculations(gvs_annotations)
     row.update(subpopulation_info)
 
     return row

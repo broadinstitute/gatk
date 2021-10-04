@@ -18,51 +18,36 @@ workflow GvsSitesOnlyVCF {
         File? gatk_override
         File AnAcAf_annotations_template
         File ancestry_file
+        File reference
     }
-    Array[File] gvs_extract_cohort_filtered_vcfs = read_lines(inputFileofFileNames)
-    Array[File] gvs_extract_cohort_filtered_vcf_indices  = read_lines(inputFileofIndexFileNames)
 
     call MakeSubpopulationFiles {
         input:
-            input_ancestry_file = ancestry_file
+            input_ancestry_file = ancestry_file,
+            service_account_json_path = service_account_json_path,
+            inputFileofFileNames = inputFileofFileNames,
+            inputFileofIndexFileNames = inputFileofIndexFileNames
     }
 
     ## Scatter across the shards from the GVS jointVCF
-    scatter(i in range(length(gvs_extract_cohort_filtered_vcfs)) ) {
-        String? service_account_json_optional = if (defined(service_account_json_path)) then service_account_json_path else ''
-    scatter(j in range(length(MakeSubpopulationFiles.ancestry_mapping_list)) ) {
-        ## Calculate AC/AN/AF for subpopulations
-          call GetSubpopulationCalculations {
+    scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
+        call ExtractAnAcAfFromVCF {
             input:
-              input_vcf = gvs_extract_cohort_filtered_vcfs[i],
-              input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
-              service_account_json = service_account_json_optional,
-              subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list[j],
-              subpopulation = basename(MakeSubpopulationFiles.ancestry_mapping_list[j], "_subpopulation.args")
-          }
-          call ExtractAcAnAfFromSubpopulationVCFs {
-            input:
-              subpopulation = GetSubpopulationCalculations.subpopulation_name,
-              input_vcf = GetSubpopulationCalculations.subpopulation_output_vcf,
-              input_vcf_index = GetSubpopulationCalculations.subpopulation_output_vcf_idx,
-              custom_annotations_template = AnAcAf_annotations_template
-          }
+              input_vcf = MakeSubpopulationFiles.input_vcfs[i],
+              input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
+              service_account_json_path = service_account_json_path,
+              subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list,
+              custom_annotations_template = AnAcAf_annotations_template,
+              ref = reference
         }
 
       ## Create a sites-only VCF from the original GVS jointVCF
         call SitesOnlyVcf {
           input:
-            input_vcf = gvs_extract_cohort_filtered_vcfs[i],
-            input_vcf_index = gvs_extract_cohort_filtered_vcf_indices[i],
+            input_vcf = ExtractAnAcAfFromVCF.output_vcf,
+            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
             service_account_json_path = service_account_json_path,
             output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz"
-        }
-
-        call ExtractAnAcAfFromVCF {
-          input:
-            input_vcf = SitesOnlyVcf.output_vcf,
-            input_vcf_index = SitesOnlyVcf.output_vcf_idx,
-            custom_annotations_template = AnAcAf_annotations_template
         }
 
       ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
@@ -73,7 +58,6 @@ workflow GvsSitesOnlyVCF {
             output_annotated_file_name = "${output_annotated_file_name}_${i}",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
-            subpopulation_calculations_files = ExtractAcAnAfFromSubpopulationVCFs.annotations_file
         }
 
         call PrepAnnotationJson {
@@ -114,92 +98,52 @@ workflow GvsSitesOnlyVCF {
 task MakeSubpopulationFiles {
     input {
         File input_ancestry_file
+        String? service_account_json_path
+        File inputFileofFileNames
+        File inputFileofIndexFileNames
     }
-    String output_ancestry_filename =  "ancestry_mapping"
-    command <<<
-        set -e
-
-        python3 /app/extract_subpop.py \
-        --input_path ~{input_ancestry_file}
-
-    >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
-        memory: "1 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        Array[File] ancestry_mapping_list = glob("*_subpopulation.args")
-    }
-}
-
-
-task GetSubpopulationCalculations {
-    input {
-        File input_vcf
-        File input_vcf_index
-        String? service_account_json
-        File subpopulation_sample_list
-        String subpopulation
-    }
-    String output_filename = "~{subpopulation}.vcf"
-    String output_vcf_idx = output_filename + ".idx"
-
-    String has_service_account_file = if (service_account_json != '') then 'true' else 'false'
-    String input_vcf_basename = basename(input_vcf)
-    String updated_input_vcf = if (service_account_json != '') then input_vcf_basename else input_vcf
-
     parameter_meta {
-        input_vcf: {
-            localization_optional: true
+        input_ancestry_file: {
+          localization_optional: true
         }
-        input_vcf_index: {
-            localization_optional: true
+        inputFileofFileNames: {
+          localization_optional: true
+        }
+        inputFileofIndexFileNames: {
+          localization_optional: true
         }
     }
+    String output_ancestry_filename =  "ancestry_mapping.tsv"
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    String updated_input_ancestry_file = if (defined(service_account_json_path)) then basename(input_ancestry_file) else input_ancestry_file
+    String updated_input_vcfs_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
+    String updated_input_indices_file = if (defined(service_account_json_path)) then basename(inputFileofIndexFileNames) else inputFileofIndexFileNames
+
     command <<<
         set -e
 
         if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json} local.service_account.json
+          gsutil cp ~{service_account_json_path} local.service_account.json
           export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
           gcloud auth activate-service-account --key-file=local.service_account.json
 
-          gsutil cp ~{input_vcf} .
-          gsutil cp ~{input_vcf_index} .
-        fi
+          gsutil cp ~{input_ancestry_file} .
+          gsutil cp ~{inputFileofFileNames} .
+          gsutil cp ~{inputFileofIndexFileNames} .
+       fi
 
 
-        # Hacky method to get the subpopulation AC/AN/AF
-        # The input here will be a list of samples for a given subpopulation
-        # for now, we aren't gonna scatter, let's get them all
+        python3 /app/extract_subpop.py \
+          --input_path ~{updated_input_ancestry_file} \
+          --output_path ~{output_ancestry_filename}
 
-        # The sample names input:  This argument can be specified multiple times in order to provide multiple sample names, or to specify
-        # the name of one or more files containing sample names. File names must use the extension ".args", and the
-        # expected file format is simply plain text with one sample name per line. Note that sample exclusion takes
-        # precedence over inclusion, so that if a sample is in both lists it will be excluded.
+    >>>
 
-        gatk --java-options "-Xmx2048m" \
-            SelectVariants \
-                -V ~{updated_input_vcf} \
-                -sn ~{subpopulation_sample_list} \
-                --add-output-vcf-command-line false \
-                --allow-nonoverlapping-command-line-samples \
-                --exclude-filtered \
-                -O ~{output_filename}
-
-     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "broadinstitute/gatk:4.2.0.0"
-        memory: "3 GB"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210916"
+        memory: "1 GB"
         preemptible: 3
         cpu: "1"
         disks: "local-disk 100 HDD"
@@ -207,43 +151,105 @@ task GetSubpopulationCalculations {
     # ------------------------------------------------
     # Outputs:
     output {
-        File subpopulation_output_vcf = "~{output_filename}"
-        File subpopulation_output_vcf_idx = "~{output_vcf_idx}"
-        String subpopulation_name = subpopulation
+        File ancestry_mapping_list = "~{output_ancestry_filename}"
+        Array[File] input_vcfs = read_lines(updated_input_vcfs_file)
+        Array[File] input_vcf_indices = read_lines(updated_input_indices_file)
     }
 }
 
-task ExtractAcAnAfFromSubpopulationVCFs {
+
+task ExtractAnAcAfFromVCF {
     input {
-        String subpopulation
         File input_vcf
         File input_vcf_index
+        String? service_account_json_path
+        File subpopulation_sample_list
         File custom_annotations_template
+        File ref
+    }
+    parameter_meta {
+        input_vcf: {
+          localization_optional: true
+        }
+        input_vcf_index: {
+          localization_optional: true
+        }
     }
 
-    String custom_annotations_file_name = subpopulation + "_an_ac_af.tsv"
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    String custom_annotations_file_name = "ac_an_af.tsv"
+    String local_input_vcf = basename(input_vcf)
+    String local_input_vcf_index = basename(input_vcf_index)
 
-    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
+    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af & sc
     command <<<
         set -e
 
-        sed 's/gvsAnnotations/~{subpopulation}SubpopulationAnnotations/g' ~{custom_annotations_template} > ~{custom_annotations_file_name}
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
 
-        bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' | grep -v "*" >> ~{custom_annotations_file_name}
+        fi
+
+        cp ~{custom_annotations_template} ~{custom_annotations_file_name}
+
+        gsutil cp ~{input_vcf} ~{local_input_vcf}
+        gsutil cp ~{input_vcf_index} ~{local_input_vcf_index}
+        gsutil cp ~{ref} Homo_sapiens_assembly38.fasta
+
+        # TODO Compare the ancestry list with the sample list and throw an error (but dont fail the job) if there are samples that are in one, but not the other. Two different errors.
+        # awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
+
+        # expected_subpopulations = [
+        # "afr",
+        # "amr",
+        # "eas",
+        # "eur",
+        # "mid",
+        # "oth",
+        # "sas"
+        #]
+
+
+        bcftools norm -m-any ~{local_input_vcf} | \
+        bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta > normalized.vcf
+
+
+        ## make a file of just the first 4 columns of the tsv (maybe I could just bcftools query it?)
+        bcftools query normalized.vcf -f '%CHROM\t%POS\t%REF\t%ALT\n' > check_duplicates.tsv
+        ## check it for duplicates and put them in a new file
+        sort check_duplicates.tsv | uniq -d | cut -f1,2  > duplicates.tsv
+        ## remove those rows (this will be ALL rows with this position--so good rows too, potentially we want to grab f1,4 to do this with)
+        grep -v -wFf duplicates.tsv normalized.vcf | grep -v "AC=0;"  > deduplicated.vcf
+
+        wc -l duplicates.tsv
+
+        bcftools plugin fill-tags  -- deduplicated.vcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom | bcftools query -f \
+        '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
+        | grep -v "*" >> ~{custom_annotations_file_name}
+
+        ### for validation of the pipeline
+        wc -l ~{custom_annotations_file_name} | awk '{print $1}'  > count.txt
+        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
+
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
-        memory: "1 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210916"
+        memory: "20 GB"
+        preemptible: 1
+        cpu: "2"
+        disks: "local-disk 500 SSD"
     }
     # ------------------------------------------------
     # Outputs:
     output {
         File annotations_file = "~{custom_annotations_file_name}"
+        Int count_variants = read_int("count.txt")
+        File output_vcf = local_input_vcf
+        File output_vcf_index = local_input_vcf_index
     }
 }
 
@@ -256,36 +262,15 @@ task SitesOnlyVcf {
     }
     String output_vcf_idx = basename(output_filename) + ".tbi"
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String input_vcf_basename = basename(input_vcf)
-    String updated_input_vcf = if (defined(service_account_json_path)) then input_vcf_basename else input_vcf
-
-    parameter_meta {
-        input_vcf: {
-            localization_optional: true
-        }
-        input_vcf_index: {
-            localization_optional: true
-        }
-    }
     command <<<
         set -e
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-
-            gsutil cp ~{input_vcf} .
-            gsutil cp ~{input_vcf_index} .
-        fi
 
         # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
         # in it so that downstream steps can call cache
 
-        gatk --java-options "-Xmx2048m" \
+        gatk --java-options "-Xmx12288m" \
             SelectVariants \
-                -V ~{updated_input_vcf} \
+                -V ~{input_vcf} \
                 --add-output-vcf-command-line false \
                 --exclude-filtered \
                 --sites-only-vcf-output \
@@ -296,55 +281,16 @@ task SitesOnlyVcf {
     # Runtime settings:
     runtime {
         docker: "broadinstitute/gatk:4.2.0.0"
-        memory: "3 GB"
+        memory: "15 GB"
         preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
+        cpu: "2"
+        disks: "local-disk 250 HDD"
     }
     # ------------------------------------------------
     # Outputs:
     output {
         File output_vcf="~{output_filename}"
         File output_vcf_idx="~{output_vcf_idx}"
-    }
-}
-
-task ExtractAnAcAfFromVCF {
-    input {
-        File input_vcf
-        File input_vcf_index
-        File custom_annotations_template
-    }
-
-    String custom_annotations_file_name = "an_ac_af.tsv"
-
-    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af
-    command <<<
-        set -e
-
-        cp ~{custom_annotations_template} ~{custom_annotations_file_name}
-
-        bcftools norm -m- ~{input_vcf} | bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%AN\t%AC\t%AF\n' | grep -v "*" >> ~{custom_annotations_file_name}
-
-        ### for validation of the pipeline
-        bcftools norm -m- ~{input_vcf} | grep -v "AC=0;" | grep "AC=" | grep "AN=" | grep "AF=" | grep -v "*" | wc -l > count.txt
-        # I find this ^ clearer, but could also do a regex like:  grep "AC=[1-9][0-9]*;A[N|F]=[.0-9]*;A[N|F]=[.0-9]*"
-        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
-    >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
-        memory: "1 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        File annotations_file = "~{custom_annotations_file_name}"
-        Int count_variants = read_int("count.txt")
     }
 }
 
@@ -355,7 +301,6 @@ task AnnotateVCF {
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
-        Array[File] subpopulation_calculations_files
     }
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String annotation_json_name_jsi = annotation_json_name + ".jsi"
@@ -384,18 +329,7 @@ task AnnotateVCF {
         mkdir customannotations_dir
         CUSTOM_ANNOTATIONS_FOLDER="$PWD/customannotations_dir"
 
-        # Start with the subpopulations
-        # Create an array in path of the paths and loop through them
-        subpopulation_array=(~{sep=" " subpopulation_calculations_files})
-        for val in ${subpopulation_array[@]}; do
-          echo $val
-          dotnet ~{custom_creation_location} customvar\
-             -r $DATA_SOURCES_FOLDER~{path_reference} \
-             -i $val \
-             -o $CUSTOM_ANNOTATIONS_FOLDER
-        done
-
-        # Then do the full set of samples
+        # Add AC/AN/AF as custom annotations
         dotnet ~{custom_creation_location} customvar\
              -r $DATA_SOURCES_FOLDER~{path_reference} \
              -i ~{custom_annotations_file} \
@@ -418,7 +352,7 @@ task AnnotateVCF {
     # Runtime settings:
     runtime {
         docker: "annotation/nirvana:3.14"
-        memory: "5 GB"
+        memory: "20 GB"
         cpu: "2"
         preemptible: 5
         disks: "local-disk 250 SSD"
@@ -447,6 +381,8 @@ task PrepAnnotationJson {
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
+    ## TODO these temp files do not currently get cleaned up. Some of them may be helpful for recovery.
+
     command <<<
         set -e
 
@@ -471,8 +407,8 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210824"
-        memory: "3 GB"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210916"
+        memory: "8 GB"
         preemptible: 5
         cpu: "1"
         disks: "local-disk 250 SSD"
@@ -592,31 +528,40 @@ task BigQueryLoadJson {
               v.gvs_all_ac,
               v.gvs_all_an,
               v.gvs_all_af,
+              v.gvs_all_sc,
               v.gvs_max_af,
               v.gvs_max_ac,
               v.gvs_max_an,
+              v.gvs_max_sc,
               v.gvs_max_subpop,
               v.gvs_afr_ac,
               v.gvs_afr_an,
               v.gvs_afr_af,
+              v.gvs_afr_sc,
               v.gvs_amr_ac,
               v.gvs_amr_an,
               v.gvs_amr_af,
+              v.gvs_amr_sc,
               v.gvs_eas_ac,
               v.gvs_eas_an,
               v.gvs_eas_af,
+              v.gvs_eas_sc,
               v.gvs_eur_ac,
               v.gvs_eur_an,
               v.gvs_eur_af,
+              v.gvs_eur_sc,
               v.gvs_mid_ac,
               v.gvs_mid_an,
               v.gvs_mid_af,
+              v.gvs_mid_sc,
               v.gvs_oth_ac,
               v.gvs_oth_an,
               v.gvs_oth_af,
+              v.gvs_oth_sc,
               v.gvs_sas_ac,
               v.gvs_sas_an,
               v.gvs_sas_af,
+              v.gvs_sas_sc,
               v.gene_symbol,
               v.transcript_source,
               v.aa_change,
@@ -740,7 +685,7 @@ task BigQuerySmokeTest {
         # if the result of the bq call and the csv parsing is a series of digits, then check that it matches the input
         if [[ $VAT_COUNT =~ ^[0-9]+$ ]]; then
             if [[ $INITIAL_VARIANT_COUNT -ne $VAT_COUNT ]]; then
-                echo "FAIL: The VAT table ~{vat_table} and the input files had mismatched variant counts."
+                echo "FAIL: The VAT table ~{vat_table} has $VAT_COUNT variants in it, and the input files had $INITIAL_VARIANT_COUNT."
             else
                 echo "PASS: The VAT table ~{vat_table} has $VAT_COUNT variants in it, which is the expected number."
             fi

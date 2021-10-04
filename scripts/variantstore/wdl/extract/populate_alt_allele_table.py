@@ -1,41 +1,15 @@
-import time
 import os
+import argparse
 
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
 from google.oauth2 import service_account
 from pathlib import Path
 
-import argparse
+import utils
 
 client = None
 
-def execute_with_retry(label, sql):
-    retry_delay = [30, 60, 90] # 3 retries with incremental backoff
-    start = time.time()
-    while len(retry_delay) > 0:
-        try:
-            query_label = label.replace(" ","-").strip().lower()
-            existing_labels = client._default_query_job_config.labels
-            job_labels = existing_labels
-            job_labels["gvs_query_name"] = query_label
-            job_config = bigquery.QueryJobConfig(labels=job_labels)
-            query = client.query(sql, job_config=job_config)
-            print(f"STARTING - {label} (jobid: {query.job_id})")
-            results = query.result()
-            job = client.get_job(query.job_id)
-            mb_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)/(1024 * 1024)
-            print(f"COMPLETED ({time.time() - start} seconds, {3-len(retry_delay)} retries, {mb_billed} MBs) - {label}")
-
-            return results
-        except Exception as err:
-            # if there are no retries left... raise
-            if (len(retry_delay) == 0):
-                raise err
-            else:
-                t = retry_delay.pop(0)
-                print(f"Error {err} running query {label}, sleeping for {t}")
-                time.sleep(t)
 
 def populate_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_path):
     global client
@@ -63,7 +37,7 @@ def populate_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_
                   position2 as (select * from {fq_vet_table} WHERE call_GT IN ('1/2', '1|2', '2/1', '2|1'))"""
 
     sql = alt_allele_temp_function + query_with + alt_allele_positions
-    result = execute_with_retry(f"into alt allele from {vet_table_name}", sql)
+    result = utils.execute_with_retry(client, f"into alt allele from {vet_table_name}", sql)
     return result
 
 if __name__ == '__main__':

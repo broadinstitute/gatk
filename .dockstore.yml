@@ -82,6 +82,7 @@ workflows:
        - /scripts/variantstore/wdl/GvsCreateAltAllele.example.inputs.json
      filters:
        branches:
+         - master
          - ah_var_store
    - name: GvsExtractCallset
      subclass: WDL
@@ -111,6 +112,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_handle_prepare_error
    - name: GvsSitesOnlyVCF
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsSitesOnlyVCF.wdl
