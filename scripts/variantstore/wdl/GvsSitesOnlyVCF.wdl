@@ -248,8 +248,9 @@ task ExtractAnAcAfFromVCF {
         ### for validation of the pipeline
         wc -l ~{custom_annotations_file_name} | awk '{print $1 -7}'  > count.txt
 
-        ### compress the vcf and index it
-        bcftools view --no-update --drop-genotypes deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
+        ### compress the vcf and index it, make it sites-only and drop the AS_QUALapprox field---might be nice to be able to drop all of the INFO fields, since I dont need AC/AN/AF in this form
+        bcftools view --no-update --drop-genotypes deduplicated.vcf -Oz -o sites_only.vcf.gz
+        bcftools annotate -x INFO/AS_QUALapprox sites_only.vcf.gz > ~{normalized_vcf_compressed}
         bcftools index --tbi  ~{normalized_vcf_compressed}
 
     >>>
