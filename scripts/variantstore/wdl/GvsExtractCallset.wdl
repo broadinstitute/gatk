@@ -107,7 +107,8 @@ workflow GvsExtractCallset {
     call CreateManifest {
       input:
         manifest_lines = ExtractTask.manifest,
-        output_gcs_dir = output_gcs_dir
+        output_gcs_dir = output_gcs_dir,
+        service_account_json_path = service_account_json_path
     }
 
     output {
@@ -403,7 +404,10 @@ task CreateManifest {
     input {
         Array[String] manifest_lines
         String? output_gcs_dir
+        String? service_account_json_path
     }
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         set -e
@@ -414,8 +418,12 @@ task CreateManifest {
         # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-        if [ -n "${OUTPUT_GCS_DIR}" ]; then
-          gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
+        if [ -n "$OUTPUT_GCS_DIR" ]; then
+          if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+          fi
+          gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
         fi
     >>>
 
