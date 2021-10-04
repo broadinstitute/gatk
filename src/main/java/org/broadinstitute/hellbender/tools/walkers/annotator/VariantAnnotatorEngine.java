@@ -234,9 +234,9 @@ public final class VariantAnnotatorEngine {
                         final Map<String, Object> annotationsFromCurrentType = currentASannotation.combineRawData(allelesList, annotationValue);
                         if (annotationsFromCurrentType != null) {
                             combinedAnnotations.putAll(annotationsFromCurrentType);
-                            //remove all the raw keys for the annotation because we already used all of them in combineRawData
-                            annotationMap.keySet().removeAll(currentASannotation.getRawKeyNames());
                         }
+                        //remove all the raw keys for the annotation because we already used all of them in combineRawData
+                        annotationMap.keySet().removeAll(currentASannotation.getRawKeyNames());
                     }
                 }
             }
