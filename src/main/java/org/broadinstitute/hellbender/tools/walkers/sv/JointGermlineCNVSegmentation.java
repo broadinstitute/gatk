@@ -301,11 +301,24 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         write(clusteredCalls);
     }
 
+    private VariantContext buildAndSanitizeRecord(final SVCallRecord record) {
+        final VariantContextBuilder builder = SVCallRecordUtils.getVariantBuilder(record)
+                .rmAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY)
+                .rmAttribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE);
+        final List<Genotype> genotypes = new ArrayList<>(builder.getGenotypes().size());
+        for (final Genotype g : builder.getGenotypes()) {
+            final Map<String, Object> attr = new HashMap<>(g.getExtendedAttributes());
+            attr.remove(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
+            genotypes.add(new GenotypeBuilder(g).noAttributes().attributes(attr).make());
+        }
+        return builder.genotypes(genotypes).make();
+    }
+
     private void write(final List<SVCallRecord> calls) {
         final List<VariantContext> sortedCalls = calls.stream()
                 .sorted(Comparator.comparing(c -> new SimpleInterval(c.getContigA(), c.getPositionA(), c.getPositionB()), //VCs have to be sorted by end as well
                         IntervalUtils.getDictionaryOrderComparator(dictionary)))
-                .map(record -> buildVariantContext(record, reference))
+                .map(this::buildAndSanitizeRecord)
                 .collect(Collectors.toList());
         final Iterator<VariantContext> it = sortedCalls.iterator();
         ArrayList<VariantContext> overlappingVCs = new ArrayList<>(calls.size());
@@ -489,6 +502,9 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     @VisibleForTesting
     protected static int getSamplePloidy(final Set<String> allosomalContigs, final int refAutosomalCopyNumber,
                                        final SampleDB sampleDB, final String sampleName, final String contig, final Genotype g) {
+        if (g != null && g.hasExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT)) {
+            return VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
+        }
         if (!allosomalContigs.contains(contig)) {
             return refAutosomalCopyNumber;
         }
@@ -584,6 +600,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
             }
             // Strip this for gCNV pipeline
             attributes.remove(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
+            genotypeBuilder.attributes(attributes);
             genotypes.add(genotypeBuilder.make());
         }
         builder.genotypes(genotypes);
@@ -631,8 +648,9 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         svBuilder.attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM));
 
         // Add expected copy number, assume diploid
+        final Allele refAllele = variant.getReference();
         final List<Genotype> genotypesWithECN = variant.getGenotypes().stream()
-                .map(g -> addExpectedCopyNumber(g, allosomalContigs, refAutosomalCopyNumber, sampleDB, variant.getContig()))
+                .map(g -> prepareGenotype(g, refAllele, allosomalContigs, refAutosomalCopyNumber, sampleDB, variant.getContig()))
                 .collect(Collectors.toList());
         svBuilder.genotypes(genotypesWithECN);
 
@@ -643,10 +661,30 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         return SVCallRecordUtils.copyCallWithNewGenotypes(baseRecord, GenotypesContext.copy(nonRefGenotypes));
     }
 
-    private static Genotype addExpectedCopyNumber(final Genotype g, final Set<String> allosomalContigs, final int refAutosomalCopyNumber,
-                                                  final SampleDB sampleDB, final String contig) {
+    private static Genotype prepareGenotype(final Genotype g, final Allele refAllele,
+                                            final Set<String> allosomalContigs, final int refAutosomalCopyNumber,
+                                            final SampleDB sampleDB, final String contig) {
+        final GenotypeBuilder builder = new GenotypeBuilder(g);
         final int ploidy = getSamplePloidy(allosomalContigs, refAutosomalCopyNumber, sampleDB, g.getSampleName(), contig, g);
-        return new GenotypeBuilder(g).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy).make();
+        correctGenotypePloidy(builder, g, ploidy, refAllele);
+        addExpectedCopyNumber(builder, ploidy);
+        return builder.make();
+    }
+
+    private static void correctGenotypePloidy(final GenotypeBuilder builder, final Genotype g, final int ploidy,
+                                              final Allele refAllele) {
+        final ArrayList<Allele> alleles = new ArrayList<>(g.getAlleles());
+        Utils.validate(alleles.size() <= ploidy, "Encountered genotype with ploidy " + ploidy + " but " +
+                alleles.size() + " alleles.");
+        while (alleles.size() < ploidy) {
+            alleles.add(refAllele);
+        }
+        alleles.trimToSize();
+        builder.alleles(alleles);
+    }
+
+    private static void addExpectedCopyNumber(final GenotypeBuilder g, final int ploidy) {
+        g.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy).make();
     }
 
     /**

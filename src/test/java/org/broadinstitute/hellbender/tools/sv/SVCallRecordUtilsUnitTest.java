@@ -24,11 +24,20 @@ public class SVCallRecordUtilsUnitTest {
     private static final List<String> PESR_ALGORITHM = Collections.singletonList("pesr");
 
     private static final Genotype GENOTYPE_DEL_1 = new GenotypeBuilder("sample1")
-            .alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).make();
+            .alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL))
+            .attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 1)
+            .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+            .make();
     private static final Genotype GENOTYPE_DEL_2 = new GenotypeBuilder("sample2")
-            .alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N)).make();
+            .alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N))
+            .attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 2)
+            .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+            .make();
     private static final Genotype GENOTYPE_DEL_3 = new GenotypeBuilder("sample3")
-            .alleles(Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)).make();
+            .alleles(Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL))
+            .attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0)
+            .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+            .make();
 
     private static final Genotype GENOTYPE_INS_1 = new GenotypeBuilder("sample1")
             .alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)).make();
@@ -40,6 +49,13 @@ public class SVCallRecordUtilsUnitTest {
 
     private static final Comparator<SVCallRecord> RECORD_COMPARATOR = SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict);
 
+    private static final Map<String, Object> createCopyNumberAttributeMap(final int copyNumber, final int expectedCopyNumber) {
+        final HashMap<String, Object> map = new HashMap<>();
+        map.put(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, expectedCopyNumber);
+        map.put(GATKSVVCFConstants.COPY_NUMBER_FORMAT, copyNumber);
+        return map;
+    }
+
     @DataProvider(name = "testGetVariantBuilderData")
     public Object[][] testGetVariantBuilderData() {
         return new Object[][]{
@@ -49,7 +65,7 @@ public class SVCallRecordUtilsUnitTest {
                             DEPTH_ONLY_ALGORITHM,
                             ALLELES_DEL,
                             Lists.newArrayList(GENOTYPE_DEL_1, GENOTYPE_DEL_2),
-                            Collections.emptyMap()),
+                                Collections.emptyMap()),
                         new VariantContextBuilder("", "chr1", 1000, 1999, ALLELES_DEL)
                                 .id("var1")
                                 .genotypes(GENOTYPE_DEL_1, GENOTYPE_DEL_2)

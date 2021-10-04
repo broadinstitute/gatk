@@ -71,7 +71,35 @@ public final class SVCallRecordUtils {
         if (svtype.equals(StructuralVariantType.BND) || svtype.equals(StructuralVariantType.INV)) {
             builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
         }
-        builder.genotypes(record.getGenotypes());
+
+        // Generate alleles for DEL genotypes, which can be inferred from expected and actual copy numbers
+        final List<Genotype> newGenotypes = new ArrayList<>(record.getGenotypes().size());
+        if (svtype.equals(StructuralVariantType.DEL)) {
+            for (final Genotype g : record.getGenotypes()) {
+                Utils.validate(altAlleles.size() == 1, "Encountered deletion with multiple ALT alleles");
+                Utils.validate(g.hasExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT),
+                        "Deletion genotype missing " + GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT + " field");
+                Utils.validate(g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT),
+                        "Deletion genotype missing " + GATKSVVCFConstants.COPY_NUMBER_FORMAT + " field");
+                final int expectedCopyNumber = VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
+                final int copyNumber = VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);
+                final int numAltAlleles = expectedCopyNumber - copyNumber;
+                Utils.validate(numAltAlleles >= 0, "Invalid copy number " + copyNumber +
+                        " for deletion genotype with expected copy number " + expectedCopyNumber);
+                final List<Allele> genotypeAlleles = new ArrayList<>(expectedCopyNumber);
+                for (int i = 0; i < copyNumber; i++) {
+                    genotypeAlleles.add(refAllele);
+                }
+                for (int i = copyNumber; i < numAlleles; i++) {
+                    genotypeAlleles.add(altAlleles.get(0));
+                }
+                newGenotypes.add(new GenotypeBuilder(g).alleles(genotypeAlleles).make());
+            }
+            builder.genotypes(newGenotypes);
+        } else {
+            builder.genotypes(record.getGenotypes());
+        }
+
         return builder;
     }
 

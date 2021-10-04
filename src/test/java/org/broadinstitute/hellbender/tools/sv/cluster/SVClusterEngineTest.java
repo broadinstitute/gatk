@@ -42,9 +42,9 @@ public class SVClusterEngineTest {
         Assert.assertTrue(flattened.getAlgorithms().containsAll(SVTestUtils.depthOnly.getAlgorithms()));
         Assert.assertTrue(flattened.getAlgorithms().containsAll(SVTestUtils.call2.getAlgorithms()));
         //should have all the genotypes
-        SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.depthAndStuff.getGenotypes());
-        SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.depthOnly.getGenotypes());
-        SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.call2.getGenotypes());
+        SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.depthAndStuff.getGenotypes(), true);
+        SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.depthOnly.getGenotypes(), true);
+        SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.call2.getGenotypes(), true);
         //TODO: add test for insertion cluster
     }
 
@@ -330,8 +330,8 @@ public class SVClusterEngineTest {
         final List<SVCallRecord> output1 = temp1.getOutput(); //flushes all clusters
         Assert.assertTrue(temp1.isEmpty());
         Assert.assertEquals(output1.size(), 2);
-        SVTestUtils.assertEqualsExceptMembership(SVTestUtils.call1, output1.get(0));
-        SVTestUtils.assertEqualsExceptMembership(SVTestUtils.call3, output1.get(1));
+        SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
+        SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call3, output1.get(1));
 
         final SVClusterEngine<SVCallRecord> temp2 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         temp2.add(SVTestUtils.call1);
@@ -343,7 +343,7 @@ public class SVClusterEngineTest {
         //median of two items ends up being the second item here
         Assert.assertEquals(output2.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
         Assert.assertEquals(output2.get(0).getPositionB(), SVTestUtils.call1.getPositionB());
-        SVTestUtils.assertEqualsExceptMembership(output2.get(1), SVTestUtils.call4_chr10);
+        SVTestUtils.assertEqualsExceptMembershipAndGT(output2.get(1), SVTestUtils.call4_chr10);
 
         //checking insensitivity to sample set overlap
         final SVClusterEngine<SVCallRecord> temp3 = SVTestUtils.getNewDefaultSingleLinkageEngine();

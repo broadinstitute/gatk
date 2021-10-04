@@ -246,7 +246,22 @@ public class SVTestUtils {
         assertEqualsExceptExcludedAttributes(one, two, Collections.singletonList(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
     }
 
-    public static void assertEqualsExceptExcludedAttributes(final SVCallRecord one, final SVCallRecord two, final Collection<String> excludedAttributeKeys) {
+    public static void assertEqualsExceptMembershipAndGT(final SVCallRecord one, final SVCallRecord two) {
+        assertEqualsExceptExcludedAttributes(one, two, Collections.singletonList(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY), true);
+    }
+
+    private static Genotype nullGT(final Genotype gt) {
+        return new GenotypeBuilder(gt).alleles(null).make();
+    }
+
+    public static void assertEqualsExceptExcludedAttributes(final SVCallRecord one, final SVCallRecord two,
+                                                            final Collection<String> excludedAttributeKeys) {
+        assertEqualsExceptExcludedAttributes(one, two, excludedAttributeKeys, false);
+    }
+
+    public static void assertEqualsExceptExcludedAttributes(final SVCallRecord one, final SVCallRecord two,
+                                                            final Collection<String> excludedAttributeKeys,
+                                                            final boolean ignoreGT) {
         if (one == two) return;
         Assert.assertEquals(one.getAlgorithms(), two.getAlgorithms());
         Assert.assertEquals(one.getAlleles(), two.getAlleles());
@@ -269,26 +284,34 @@ public class SVTestUtils {
         Assert.assertEquals(one.getType(), two.getType());
         Assert.assertEquals(one.getGenotypes().size(), two.getGenotypes().size());
         for (int i = 0; i < one.getGenotypes().size(); i++) {
-            VariantContextTestUtils.assertGenotypesAreEqual(one.getGenotypes().get(i), two.getGenotypes().get(i));
+            final Genotype g1 = ignoreGT ? nullGT(one.getGenotypes().get(i)) : one.getGenotypes().get(i);
+            final Genotype g2 = ignoreGT ? nullGT(two.getGenotypes().get(i)) : two.getGenotypes().get(i);
+            VariantContextTestUtils.assertGenotypesAreEqual(g1, g2);
         }
     }
 
-    public static void assertContainsAllIgnoreRefAlleleBase(final GenotypesContext one, final GenotypesContext two) {
+    public static void assertContainsAllIgnoreRefAlleleBase(final GenotypesContext one, final GenotypesContext two,
+                                                            final boolean ignoreGT) {
         Assert.assertTrue(one.size() >= two.size());
         if ( !one.isEmpty()) {
             Assert.assertTrue(one.getSampleNames().containsAll(two.getSampleNames()), "sample names set");
             final Set<String> samples = two.getSampleNames();
             for ( final String sample : samples ) {
-                assertSameGenotypeExceptRefBase(one.get(sample), two.get(sample));
+                assertSameGenotypeExceptRefBase(one.get(sample), two.get(sample), ignoreGT);
             }
         }
     }
 
-    public static void assertSameGenotypeExceptRefBase(final Genotype g1, final Genotype g2) {
+    public static void assertSameGenotypeExceptRefBase(final Genotype g1, final Genotype g2, final boolean ignoreGT) {
         final GenotypeBuilder builderOne = new GenotypeBuilder(g1);
         final GenotypeBuilder builderTwo = new GenotypeBuilder(g2);
-        builderOne.alleles(replaceRefAlleles(g1.getAlleles(), Allele.REF_N));
-        builderTwo.alleles(replaceRefAlleles(g2.getAlleles(), Allele.REF_N));
+        if (ignoreGT) {
+            builderOne.alleles(null);
+            builderTwo.alleles(null);
+        } else {
+            builderOne.alleles(replaceRefAlleles(g1.getAlleles(), Allele.REF_N));
+            builderTwo.alleles(replaceRefAlleles(g2.getAlleles(), Allele.REF_N));
+        }
         VariantContextTestUtils.assertGenotypesAreEqual(builderOne.make(), builderTwo.make());
     }
 

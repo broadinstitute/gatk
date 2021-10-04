@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -117,7 +118,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         final int length = collapseLength(mostPreciseCalls, start, end, type);
 
         final Allele refAllele = collapseRefAlleles(exampleCall.getContigA(), start);
-        final List<Allele> altAlleles = collapseAltAlleles(items, type);
+        final List<Allele> altAlleles = collapseAltAlleles(items);
         final int numAlleles = (refAllele == null ? 0 : 1) + altAlleles.size();
         final List<Allele> alleles = new ArrayList<>(numAlleles);
         if (refAllele != null) {
@@ -173,10 +174,9 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
      * &lt;INS:MEI&gt;. If multiple alt alleles are found, the variant must either be a CNV or sub-typed alleles with the
      * same base symbol (e.g. &lt;INS:MEI&gt; and &lt;INS:MEI:SVA&gt; would result in &lt;INS&gt;).
      * @param items records whose alt alleles should be collapsed
-     * @param type type of the collapsed records
      * @return collapsed alt alleles
      */
-    protected List<Allele> collapseAltAlleles(final Collection<SVCallRecord> items, final StructuralVariantType type) {
+    protected List<Allele> collapseAltAlleles(final Collection<SVCallRecord> items) {
         Utils.nonNull(items);
         final List<Allele> altAlleles = items.stream().map(SVCallRecord::getAltAlleles)
                 .flatMap(List::stream)
@@ -191,11 +191,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
             // TODO does not search for subtypes e.g. <DUP:TANDEM>
             if (altAlleles.size() == 2 && altAlleles.contains(Allele.SV_SIMPLE_DEL) && altAlleles.contains(Allele.SV_SIMPLE_DUP)) {
                 // CNVs
-                if (type == StructuralVariantType.CNV) {
-                    return altAlleles;
-                } else {
-                    throw new IllegalArgumentException("Encountered multi-allelic with DEL/DUP for non-CNV");
-                }
+                return altAlleles;
             }
 
             final String[] collapsedAlleleTokens;
@@ -288,15 +284,27 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         Utils.nonNull(genotypes);
         Utils.nonEmpty(genotypes);
 
+        // No alt alleles, so return all ref
+        if (sampleAltAlleles.isEmpty()) {
+            return Collections.nCopies(expectedCopyNumber, refAllele);
+        }
+
         // Ploidy 0
         if (expectedCopyNumber == 0) {
             return Collections.emptyList();
         }
 
-        // No alt alleles, so return all ref
-        //if (sampleAltAlleles.isEmpty()) {
-        //    return Collections.nCopies(expectedCopyNumber, refAllele);
-        //}
+        // Multi-allelic CNVs - genotypes are stored in copy number attribute
+        if (sampleAltAlleles.size() == 2 && (sampleAltAlleles.contains(Allele.SV_SIMPLE_DEL)
+                || sampleAltAlleles.contains(Allele.SV_SIMPLE_DUP))) {
+            return Collections.nCopies(expectedCopyNumber, Allele.NO_CALL);
+        }
+
+        // Cannot resolve alleles for DUPs when ploidy is over 1
+        if (expectedCopyNumber > 1 && sampleAltAlleles.size() == 1
+                && sampleAltAlleles.get(0).equals(Allele.SV_SIMPLE_DUP)) {
+            return Collections.nCopies(expectedCopyNumber, Allele.NO_CALL);
+        }
 
         // Determine frequency of each genotype
         final Map<List<Allele>, Integer> genotypeCounts = genotypes.stream().map(Genotype::getAlleles)
@@ -328,6 +336,57 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         return alleles;
     }
 
+    private Integer collapseSampleCopyNumber(final Collection<Genotype> genotypes,
+                                             final int expectedCopyNumber) {
+        final Map<Integer, Integer> nonRefCopyNumberCounts = genotypes.stream()
+                .map(g -> VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, expectedCopyNumber))
+                .filter(c -> c != expectedCopyNumber)
+                .collect(Collectors.groupingBy(i -> i, Collectors.collectingAndThen(Collectors.toList(), Collection::size)));
+        if (nonRefCopyNumberCounts.isEmpty()) {
+            return expectedCopyNumber;
+        } else if (nonRefCopyNumberCounts.size() == 1) {
+            return nonRefCopyNumberCounts.keySet().iterator().next();
+        }
+
+        // If we have conflicting sv types, let them cancel out to ref
+        // TODO expose option to control this behavior
+        final int numLoss = (int) nonRefCopyNumberCounts.keySet().stream().filter(c -> c < expectedCopyNumber).count();
+        if (numLoss != 0 && numLoss != nonRefCopyNumberCounts.size()) {
+            return expectedCopyNumber;
+        }
+
+        // Sort such that ties go to state closest to ref
+        final List<Integer> sortedCopyStates = nonRefCopyNumberCounts.keySet().stream()
+                .sorted(getCopyNumberCollapsingComparator(expectedCopyNumber)).collect(Collectors.toList());
+        int maxFreqCopyState = expectedCopyNumber;
+        int maxFreq = 0;
+        for (final Integer c : sortedCopyStates) {
+            final int freq = nonRefCopyNumberCounts.get(c);
+            if (freq > maxFreq) {
+                maxFreqCopyState = c;
+                maxFreq = freq;
+            }
+        }
+        return maxFreqCopyState;
+    }
+
+
+    private static Comparator<Integer> getCopyNumberCollapsingComparator(final int expectedCopyNumber) {
+        return (o1, o2) -> compareCopyNumberForCollapsing(o1, o2, expectedCopyNumber);
+    }
+
+    private static int compareCopyNumberForCollapsing(final Integer first, final Integer second, final Integer expectedCopyNumber) {
+        Utils.nonNull(first);
+        Utils.nonNull(second);
+        Utils.nonNull(expectedCopyNumber);
+        final int distanceResult = Integer.compare(Math.abs(first - expectedCopyNumber), Math.abs(second - expectedCopyNumber));
+        if (distanceResult != 0) {
+            return distanceResult;
+        }
+        // Shouldn't happen if copy states are either all > or all < expected state
+        return Integer.compare(first, second);
+    }
+
     protected Genotype collapseSampleGenotypes(final Collection<Genotype> genotypes,
                                                final Allele refAllele) {
         final GenotypeBuilder builder = new GenotypeBuilder(genotypes.iterator().next());
@@ -337,19 +396,18 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                 .distinct()
                 .collect(Collectors.toList());
         final int expectedCopyNumber = collapseExpectedCopyNumber(genotypes);
+        builder.noAttributes();
+
         final List<Allele> collapsedAlleles = collapseSampleGenotypeAlleles(genotypes, expectedCopyNumber, refAllele, sampleAltAlleles);
         builder.alleles(collapsedAlleles);
-        builder.noAttributes();
-        builder.attributes(collapseGenotypeAttributes(genotypes, collapsedAlleles, expectedCopyNumber));
+        builder.attributes(collapseGenotypeAttributes(genotypes, expectedCopyNumber));
         return builder.make();
     }
 
     protected Map<String, Object> collapseGenotypeAttributes(final Collection<Genotype> genotypes,
-                                                             final List<Allele> collapsedAlleles,
                                                              final int expectedCopyNumber) {
         Utils.nonNull(genotypes);
         Utils.nonEmpty(genotypes);
-        final List<Allele> collapsedAltAlleles = collapsedAlleles.stream().filter(SVCallRecordUtils::isAltAllele).collect(Collectors.toList());
         final Map<String, Object> collapsedAttributes = new HashMap<>();
         final Map<String, Set<Object>> genotypeFields = genotypes.stream().map(Genotype::getExtendedAttributes)
                 .map(Map::entrySet)
@@ -357,7 +415,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                 .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toSet())));
         for (final Map.Entry<String, Set<Object>> entry : genotypeFields.entrySet()) {
             if (entry.getKey().equals(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
-                collapsedAttributes.put(entry.getKey(), collapseSampleCopyNumber(expectedCopyNumber, collapsedAltAlleles));
+                collapsedAttributes.put(GATKSVVCFConstants.COPY_NUMBER_FORMAT, collapseSampleCopyNumber(genotypes, expectedCopyNumber));
             } else if (entry.getKey().equals(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT)) {
                 continue;
             } else {
@@ -374,22 +432,6 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         } else {
             return null;
         }
-    }
-
-    /**
-     * Special handling for CNV copy number attribute
-     */
-    protected Object collapseSampleCopyNumber(final int expectedCopyNumber,
-                                              final List<Allele> collapsedAltAlleles) {
-        int copyNumber = expectedCopyNumber;
-        for (final Allele allele : collapsedAltAlleles) {
-            if (allele.equals(Allele.SV_SIMPLE_DEL)) {
-                copyNumber--;
-            } else if (allele.equals(Allele.SV_SIMPLE_DUP)) {
-                copyNumber++;
-            }
-        }
-        return new Integer(copyNumber);
     }
 
     protected Map<String, Object> collapseVariantAttributes(final Collection<SVCallRecord> items) {

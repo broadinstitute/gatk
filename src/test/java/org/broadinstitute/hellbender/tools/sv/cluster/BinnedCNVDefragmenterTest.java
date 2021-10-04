@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
+import com.google.common.collect.Lists;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
-import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -22,18 +23,29 @@ public class BinnedCNVDefragmenterTest {
     @Test
     public void testCollapser() {
         final SVCallRecord call1FlattenedDefault = defaultDefragmenter.getCollapser().collapse(Collections.singletonList(SVTestUtils.call1));
-        SVTestUtils.assertEqualsExceptMembership(SVTestUtils.call1, call1FlattenedDefault);
+        SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, call1FlattenedDefault);
 
         final SVCallRecord call1FlattenedSingleSample = binnedDefragmenter.getCollapser().collapse(Collections.singletonList(SVTestUtils.call1));
-        SVTestUtils.assertEqualsExceptMembership(call1FlattenedSingleSample, call1FlattenedDefault);
+        SVTestUtils.assertEqualsExceptMembershipAndGT(call1FlattenedSingleSample, call1FlattenedDefault);
 
         final SVCallRecord sameBoundsThreeSamples = binnedDefragmenter.getCollapser().collapse(Arrays.asList(SVTestUtils.call1, SVTestUtils.sameBoundsSampleMismatch));
         Assert.assertEquals(sameBoundsThreeSamples.getPositionA(), SVTestUtils.call1.getPositionA());
         Assert.assertEquals(sameBoundsThreeSamples.getPositionB(), SVTestUtils.call1.getPositionB());
-        final Allele refAllele = Allele.create(ReferenceUtils.getRefBaseAtPosition(SVTestUtils.hg38Reference, sameBoundsThreeSamples.getContigA(), sameBoundsThreeSamples.getPositionA()), true);
-        Assert.assertTrue(sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample1.make().getSampleName()).sameGenotype(SVTestUtils.makeGenotypeWithRefAllele(SVTestUtils.sample1, refAllele)));
-        Assert.assertTrue(sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample2.make().getSampleName()).sameGenotype(SVTestUtils.makeGenotypeWithRefAllele(SVTestUtils.sample2, refAllele)));
-        Assert.assertTrue(sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample3.make().getSampleName()).sameGenotype(SVTestUtils.makeGenotypeWithRefAllele(SVTestUtils.sample3, refAllele)));
+
+        final Genotype testGenotype1 = sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample1.make().getSampleName());
+        final Genotype expectedGenotype1 = SVTestUtils.sample1.alleles(Lists.newArrayList(Allele.REF_T, Allele.SV_SIMPLE_DEL)).make();
+        Assert.assertEquals(testGenotype1.getAlleles(), expectedGenotype1.getAlleles());
+        Assert.assertEquals(testGenotype1.getExtendedAttributes(), expectedGenotype1.getExtendedAttributes());
+
+        final Genotype testGenotype2 = sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample2.make().getSampleName());
+        final Genotype expectedGenotype2 = SVTestUtils.sample2.alleles(Collections.nCopies(2, Allele.NO_CALL)).make();
+        Assert.assertEquals(testGenotype2.getAlleles(), expectedGenotype2.getAlleles());
+        Assert.assertEquals(testGenotype2.getExtendedAttributes(), expectedGenotype2.getExtendedAttributes());
+
+        final Genotype testGenotype3 = sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample3.make().getSampleName());
+        final Genotype expectedGenotype3 = SVTestUtils.sample3.alleles(Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)).make();
+        Assert.assertEquals(testGenotype3.getAlleles(), expectedGenotype3.getAlleles());
+        Assert.assertEquals(testGenotype3.getExtendedAttributes(), expectedGenotype3.getExtendedAttributes());
 
         final SVCallRecord overlapping = binnedDefragmenter.getCollapser().collapse(Arrays.asList(SVTestUtils.call1, SVTestUtils.call2));
         Assert.assertEquals(overlapping.getPositionA(), SVTestUtils.call1.getPositionA());
@@ -88,8 +100,8 @@ public class BinnedCNVDefragmenterTest {
         temp1.add(SVTestUtils.call3);
         final List<SVCallRecord> output1 = temp1.getOutput(); //flushes all clusters
         Assert.assertEquals(output1.size(), 2);
-        SVTestUtils.assertEqualsExceptMembership(SVTestUtils.call1, output1.get(0));
-        SVTestUtils.assertEqualsExceptMembership(SVTestUtils.call3, output1.get(1));
+        SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
+        SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call3, output1.get(1));
 
         final SVClusterEngine<SVCallRecord> temp2 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, paddingFraction, 0.8, SVTestUtils.targetIntervals, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);
         temp2.add(SVTestUtils.call1);
@@ -100,7 +112,7 @@ public class BinnedCNVDefragmenterTest {
         Assert.assertEquals(output2.size(), 2);
         Assert.assertEquals(output2.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
         Assert.assertEquals(output2.get(0).getPositionB(), SVTestUtils.call2.getPositionB());
-        SVTestUtils.assertEqualsExceptMembership(output2.get(1), SVTestUtils.call4_chr10);
+        SVTestUtils.assertEqualsExceptMembershipAndGT(output2.get(1), SVTestUtils.call4_chr10);
 
         //cohort case, checking sample set overlap
         final SVClusterEngine<SVCallRecord> temp3 = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, CNVLinkage.DEFAULT_PADDING_FRACTION, CNVLinkage.DEFAULT_SAMPLE_OVERLAP, CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS);

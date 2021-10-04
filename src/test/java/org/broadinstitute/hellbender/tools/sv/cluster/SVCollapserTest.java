@@ -153,11 +153,11 @@ public class SVCollapserTest {
                 .map(a -> SVTestUtils.newCallRecordWithAlleles(a, variantAlleles, svtype))
                 .collect(Collectors.toList());
 
-        final List<Allele> sortedTestCommon = SVCallRecordUtils.sortAlleles(collapser.collapseAltAlleles(records, svtype));
+        final List<Allele> sortedTestCommon = SVCallRecordUtils.sortAlleles(collapser.collapseAltAlleles(records));
         final List<Allele> sortedExpectedCommon = SVCallRecordUtils.sortAlleles(resultCommon);
         Assert.assertEquals(sortedTestCommon, sortedExpectedCommon);
 
-        final List<Allele> sortedTestSpecific = SVCallRecordUtils.sortAlleles(collapserSpecificAltAllele.collapseAltAlleles(records, svtype));
+        final List<Allele> sortedTestSpecific = SVCallRecordUtils.sortAlleles(collapserSpecificAltAllele.collapseAltAlleles(records));
         final List<Allele> sortedExpectedSpecific = SVCallRecordUtils.sortAlleles(resultSpecific);
         Assert.assertEquals(sortedTestSpecific, sortedExpectedSpecific);
     }
@@ -192,106 +192,122 @@ public class SVCollapserTest {
                         1,
                         Collections.singletonList(Allele.REF_N)
                 },
-                // DEL
+                // INS
                 {
                     Collections.singletonList(
-                            Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                            Collections.singletonList(Allele.SV_SIMPLE_INS)
                     ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
                         1,
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                        Collections.singletonList(Allele.SV_SIMPLE_INS)
                 },
-                // DEL, DEL
+                // INS, INS
                 {
                         Lists.newArrayList(
-                                Collections.singletonList(Allele.SV_SIMPLE_DEL),
-                                Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                                Collections.singletonList(Allele.SV_SIMPLE_INS),
+                                Collections.singletonList(Allele.SV_SIMPLE_INS)
                         ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
                         1,
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                        Collections.singletonList(Allele.SV_SIMPLE_INS)
                 },
-                // DEL, REF
+                // INS, REF
                 {
                         Lists.newArrayList(
-                                Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                                Collections.singletonList(Allele.SV_SIMPLE_INS),
                                 Collections.singletonList(Allele.REF_N)
                         ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
                         1,
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                        Collections.singletonList(Allele.SV_SIMPLE_INS)
                 },
-                // REF/DEL, REF/REF
+                // REF/INS, REF/REF
                 {
                         Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
                         ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
                         2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
                 },
-                // DEL/DEL, REF/REF
+                // INS/INS, REF/REF
                 {
                         Lists.newArrayList(
-                                Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
                         ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
                         2,
-                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
+                        Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS)
                 },
-                // REF/DEL, REF/DEL
+                // REF/INS, REF/INS
                 {
                         Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                        ),
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        2,
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                },
+                // REF/INS, REF/INS, INS/INS
+                {
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS)
+                        ),
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        2,
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                },
+                // REF/INS, INS/INS, INS/INS
+                {
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
+                                Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS)
+                        ),
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        2,
+                        Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS)
+                },
+                // REF/INS, REF
+                {
+                        Lists.newArrayList(
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
+                                Collections.singletonList(Allele.REF_N)
+                        ),
+                        Collections.singletonList(Allele.SV_SIMPLE_INS),
+                        2,
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
+                },
+                // CNVs should get converted to null GTs with correct ploidy
+                {
+                        Collections.singletonList(
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
                         ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Lists.newArrayList(Allele.SV_SIMPLE_DEL),
                         2,
                         Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
                 },
-                // REF/DEL, REF/DEL, DEL/DEL
                 {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                                Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
+                        Collections.singletonList(
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP)
                         ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        Lists.newArrayList(Allele.SV_SIMPLE_DUP),
                         2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
+                        Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
                 },
-                // REF/DEL, DEL/DEL, DEL/DEL
                 {
                         Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                                Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL),
-                                Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
-                        2,
-                        Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
-                },
-                // REF/DEL, REF
-                {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                                Collections.singletonList(Allele.REF_N)
-                        ),
-                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
-                        2,
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
-                },
-                // DUP/DEL, REF/REF
-                {
-                        Lists.newArrayList(
-                                Lists.newArrayList(Allele.SV_SIMPLE_DUP, Allele.SV_SIMPLE_DEL),
-                                Lists.newArrayList(Allele.REF_N, Allele.REF_N)
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP)
                         ),
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         2,
-                        Lists.newArrayList(Allele.SV_SIMPLE_DUP, Allele.SV_SIMPLE_DEL)
+                        Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
                 },
         };
     }
@@ -315,7 +331,6 @@ public class SVCollapserTest {
                         Collections.singletonList("var1"),
                         Collections.singletonList(new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}),
                         Collections.singletonList(new Object[]{null}),
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                         2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
                         new Object[]{null},
@@ -326,7 +341,6 @@ public class SVCollapserTest {
                         Collections.singletonList("var1"),
                         Collections.singletonList(new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}),
                         Collections.singletonList(new Object[]{30}),
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                         2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
                         new Object[]{30},
@@ -342,7 +356,6 @@ public class SVCollapserTest {
                         Lists.newArrayList(
                                 new Object[]{null},
                                 new Object[]{null}),
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                         2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
                         new Object[]{null},
@@ -358,7 +371,6 @@ public class SVCollapserTest {
                         Lists.newArrayList(
                                 new Object[]{30},
                                 new Object[]{30}),
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                         2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
                         new Object[]{30},
@@ -374,7 +386,6 @@ public class SVCollapserTest {
                         Lists.newArrayList(
                                 new Object[]{30},
                                 new Object[]{45}),
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                         2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
                         new Object[]{null},
@@ -390,7 +401,6 @@ public class SVCollapserTest {
                         Lists.newArrayList(
                                 new Object[]{30, "VALUE2"},
                                 new Object[]{30}),
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                         2,
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY, "KEY2"},
                         new Object[]{30, "VALUE2"},
@@ -404,9 +414,22 @@ public class SVCollapserTest {
                                 new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
                         ),
                         Lists.newArrayList(
-                                new Object[]{0},
-                                new Object[]{0}),
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                new Object[]{2},
+                                new Object[]{2}),
+                        2,
+                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                        new Object[]{2},
+                        true
+                },
+                {
+                        Lists.newArrayList("var1", "var2"),
+                        Lists.newArrayList(
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
+                        ),
+                        Lists.newArrayList(
+                                new Object[]{1},
+                                new Object[]{2}),
                         2,
                         new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
                         new Object[]{1},
@@ -419,14 +442,14 @@ public class SVCollapserTest {
                                 new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
                         ),
                         Lists.newArrayList(
-                                new Object[]{0},
-                                new Object[]{0}),
-                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP),
+                                new Object[]{3},
+                                new Object[]{2}),
                         2,
                         new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
                         new Object[]{3},
                         true
                 },
+                // Tie by frequency goes to het
                 {
                         Lists.newArrayList("var1", "var2"),
                         Lists.newArrayList(
@@ -434,28 +457,43 @@ public class SVCollapserTest {
                                 new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
                         ),
                         Lists.newArrayList(
+                                new Object[]{1},
+                                new Object[]{0}),
+                        2,
+                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                        new Object[]{1},
+                        true
+                },
+                // Hom wins by freq
+                {
+                        Lists.newArrayList("var1", "var2"),
+                        Lists.newArrayList(
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
+                        ),
+                        Lists.newArrayList(
+                                new Object[]{1},
                                 new Object[]{0},
                                 new Object[]{0}),
-                        Lists.newArrayList(Allele.SV_SIMPLE_DUP, Allele.SV_SIMPLE_DEL),
+                        2,
+                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                        new Object[]{0},
+                        true
+                },
+                // Mixed DEL/DUP cancel out
+                {
+                        Lists.newArrayList("var1", "var2"),
+                        Lists.newArrayList(
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
+                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
+                        ),
+                        Lists.newArrayList(
+                                new Object[]{1},
+                                new Object[]{3}),
                         2,
                         new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
                         new Object[]{2},
-                        true
-                },
-                // Edge case with mixed ploidy
-                {
-                        Lists.newArrayList("var1", "var2"),
-                        Lists.newArrayList(
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                                new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT}
-                        ),
-                        Lists.newArrayList(
-                                new Object[]{2},
-                                new Object[]{1}),
-                        Lists.newArrayList(Allele.SV_SIMPLE_DEL),
-                        1,
-                        new String[]{GATKSVVCFConstants.COPY_NUMBER_FORMAT},
-                        new Object[]{0},
                         true
                 }
         };
@@ -465,7 +503,6 @@ public class SVCollapserTest {
     public void collapseAttributesTest(final List<String> variantIds,
                                        final List<String[]> keys,
                                        final List<Object[]> values,
-                                       final List<Allele> collapsedAlleles,
                                        final int expectedCopyNumber,
                                        final String[] expectedKeys,
                                        final Object[] expectedValues,
@@ -480,7 +517,7 @@ public class SVCollapserTest {
         final List<Genotype> genotypes = inputAttributesList.stream()
                 .map(m -> new GenotypeBuilder().attributes(m).make())
                 .collect(Collectors.toList());
-        Assert.assertEquals(collapser.collapseGenotypeAttributes(genotypes, collapsedAlleles, expectedCopyNumber), expectedAttributes);
+        Assert.assertEquals(collapser.collapseGenotypeAttributes(genotypes, expectedCopyNumber), expectedAttributes);
 
         if (!isCNVTest) {
             // Test as variant attributes
