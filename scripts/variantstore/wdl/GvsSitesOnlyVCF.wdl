@@ -3,8 +3,6 @@ workflow GvsSitesOnlyVCF {
    input {
         File inputFileofFileNames
         File inputFileofIndexFileNames
-        String output_sites_only_file_name
-        String output_annotated_file_name
         String project_id
         String dataset_name
         File nirvana_data_directory
@@ -36,6 +34,7 @@ workflow GvsSitesOnlyVCF {
     scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
         ## Create a sites-only VCF from the original GVS jointVCF
         ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
+        String input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz")
         call ExtractAnAcAfFromVCF {
             input:
               input_vcf = MakeSubpopulationFiles.input_vcfs[i],
@@ -51,7 +50,7 @@ workflow GvsSitesOnlyVCF {
           input:
             input_vcf = ExtractAnAcAfFromVCF.output_vcf,
             input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
-            output_annotated_file_name = "${output_annotated_file_name}_${i}",
+            output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
         }
@@ -59,7 +58,7 @@ workflow GvsSitesOnlyVCF {
         call PrepAnnotationJson {
           input:
             annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${i}.json.gz",
+            output_file_suffix = "${input_vcf_name}.json.gz",
             output_path = output_path,
             service_account_json_path = service_account_json_path
         }
