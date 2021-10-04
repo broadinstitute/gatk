@@ -1,0 +1,106 @@
+version 1.0
+
+workflow GvsMergeScatteredCallsetShards {
+  input {
+    String input_vcfs_directory_plus_prefix
+    Int num_shards = 500
+    String output_vcf_name
+    String output_directory
+    String? service_account_json_path
+  }
+
+  call GenerateOrderedPaths as VCFpaths {
+    input:
+      root_path = input_vcfs_directory_plus_prefix,
+      num_files = num_shards,
+      path_suffix = ".vcf.gz"
+  }
+
+  call GenerateOrderedPaths as VCFIndexpaths {
+    input:
+      root_path = input_vcfs_directory_plus_prefix,
+      num_files = num_shards,
+      path_suffix = ".vcf.gz.tbi"
+  }
+
+  call MergeVCFs {
+    input:
+      input_vcfs = VCFpaths.paths,
+      input_vcfs_indexes = VCFIndexpaths.paths,
+      output_vcf_name = output_vcf_name
+  }
+}
+
+task MergeVCFs {
+  input {
+    Array[File] input_vcfs
+    Array[File] input_vcfs_indexes
+    String gather_type = "BLOCK"
+    String output_vcf_name
+
+    File? gatk_override
+  }
+
+  Int disk_size = ceil(size(input_vcfs, "GiB") * 2.5) + 10
+
+  parameter_meta {
+    input_vcfs: {
+      localization_optional: true
+    }
+    input_vcfs_indexes: {
+      localization_optional: true
+    }
+  }
+
+  command {
+    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+    gatk --java-options -Xmx3g GatherVcfsCloud \
+    --ignore-safety-checks --gather-type ~{gather_type} \
+    --create-output-variant-index false \
+    -I ~{sep=' -I ' input_vcfs} \
+    --output ~{output_vcf_name}
+
+    tabix ~{output_vcf_name}
+  }
+
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+    preemptible: 1
+    memory: "3 GiB"
+    disks: "local-disk ~{disk_size} HDD"
+  }
+
+  output {
+    File output_vcf = "~{output_vcf_name}"
+    File output_vcf_index = "~{output_vcf_name}.tbi"
+  }
+}
+task GenerateOrderedPaths {
+
+  input {
+    String root_path
+    String num_files
+    String path_suffix
+  }
+
+  command <<<
+    set -e
+
+    python3 /app/generate_ordered_paths.py \
+    --root_path ~{root_path} \
+    --path_suffix ~{path_suffix} \
+    --number ~{num_files} > file_names.txt
+  >>>
+
+  output {
+    Array[File] paths = read_lines("file_names.txt")
+  }
+
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210923"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    cpu: 1
+  }
+}
