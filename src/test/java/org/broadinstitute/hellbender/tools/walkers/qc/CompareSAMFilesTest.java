@@ -19,10 +19,11 @@ public class CompareSAMFilesTest extends CommandLineProgramTest {
 
     @Test
     public void testSmall(){
-        final File out = new File(home + "test/test.bam");
+        final File out = new File(home + "test/test.csv");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("I", testBam1)
-                .add("read2", testBam2);
+                .add("read2", testBam2)
+                .add("output", out.getAbsolutePath());
         runCommandLine(args, CompareSAMFiles.class.getSimpleName());
         int d = 3;
     }

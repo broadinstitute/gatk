@@ -45,6 +45,7 @@ public class CompareSAMFiles extends GATKTool {
     long genomeNotTranscrDup = 0;
     long neitherDup;
     long genomeDupNotFoundInTranscr = 0;
+    long genomeAbsentTranscriptDup = 0;
     long notFoundInTranscr = 0;
     long notFoundInGenome = 0;
     long numReadPairsGenome = 0;
@@ -105,9 +106,11 @@ public class CompareSAMFiles extends GATKTool {
         currentRead1 = read1Iterator.next();
         currentRead2 = read2Iterator.next(); // Check for hasNext()
 
-        while (read1Iterator.hasNext()){
+        while (read1Iterator.hasNext() && read2Iterator.hasNext()){
             final ReadPair input1ReadPair = new ReadPair();
             final ReadPair input2ReadPair = new ReadPair();
+
+            // First in the sense that these are the first read encountered in a querynameGroup
             final GATKRead firstInput1Read = currentRead1;
             final GATKRead firstInput2Read = currentRead2;
 
@@ -151,11 +154,15 @@ public class CompareSAMFiles extends GATKTool {
                     }
                 }
 
-                currentRead1 = read1Iterator.next();
-                currentRead2 = read2Iterator.next();
+                if (read1Iterator.hasNext()){
+                    currentRead1 = read1Iterator.next();
+                }
+
+                if (read2Iterator.hasNext()){
+                    currentRead2 = read2Iterator.next();
+                }
             } else if (diff < 0){
                 // Read1 is behind. This queryname group is not in input2.
-                int d = 3;
                 input1ReadPair.add(firstInput1Read);
                 collectQueryNameGroup(read1Iterator, input1ReadPair, firstInput1Read);
                 // Extract a method, like "handleWhenDiffLessThan0"
@@ -164,18 +171,68 @@ public class CompareSAMFiles extends GATKTool {
                 } else {
                     notFoundInTranscr += 1;
                 }
-                currentRead1 = read1Iterator.next();
-            } else {
-                int d = 3;
-                // read2 not found in read1---what to do?
-                currentRead2 = read2Iterator.next();
 
+                if (read1Iterator.hasNext()){
+                    currentRead1 = read1Iterator.next();
+                }
+            } else {
+                logger.info("Found transcriptome reads not in the genome");
+                logger.info(currentRead2.getName());
+
+                input2ReadPair.add(firstInput2Read);
+                collectQueryNameGroup(read2Iterator, input2ReadPair, firstInput2Read);
+                // Ditto above. Extract this method.
+                if (input2ReadPair.isDuplicateMarked()){
+                    genomeAbsentTranscriptDup += 1;
+                } else {
+                    notFoundInGenome += 1;
+                }
+
+                // read2 not found in read1---what to do?
+                if (read2Iterator.hasNext()){
+                    currentRead2 = read2Iterator.next();
+                }
             }
         }
     }
 
     @Override
     public Object onTraversalSuccess(){
+        if (read1Iterator.hasNext()){
+            logger.info("read1Iterator has next");
+            while (read1Iterator.hasNext()){
+                final ReadPair input1ReadPair = new ReadPair();
+                final GATKRead firstInput1Read = currentRead1;
+                input1ReadPair.add(firstInput1Read);
+                collectQueryNameGroup(read1Iterator, input1ReadPair, firstInput1Read);
+                if (input1ReadPair.isDuplicateMarked()){
+                    genomeDupNotFoundInTranscr++;
+                } else {
+                    notFoundInTranscr++;
+                }
+
+                currentRead1 = read1Iterator.next();
+            }
+        }
+
+        if (read2Iterator.hasNext()){
+            logger.info("read2Iterator has next");
+            while (read2Iterator.hasNext()){ // CODE DUPLICATION
+                final ReadPair input2ReadPair = new ReadPair();
+                final GATKRead firstInput2Read = currentRead2;
+                input2ReadPair.add(firstInput2Read);
+                collectQueryNameGroup(read2Iterator, input2ReadPair, firstInput2Read);
+                if (input2ReadPair.isDuplicateMarked()){
+                    genomeAbsentTranscriptDup++;
+                } else {
+                    notFoundInGenome++;
+                }
+
+                currentRead2 = read2Iterator.next();
+            }
+        }
+
+
         try (PrintWriter pw = new PrintWriter(outputTable)){
             final String sample = getHeaderForReads().getReadGroups().get(0).getSample();
             pw.println("#sample=" + sample);
