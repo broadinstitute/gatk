@@ -65,6 +65,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsMergeScatteredCallsetShards
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeScatteredCallsetShards.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - rsa_split_intervals
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
