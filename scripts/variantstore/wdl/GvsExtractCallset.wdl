@@ -205,6 +205,9 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
+        # Drop trailing slash if one exists
+        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
         OUTPUT_FILE_BYTES="$(du -b ~{output_file} | cut -f1)"
         echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
 
