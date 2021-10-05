@@ -36,7 +36,7 @@ workflow GvsMergeScatteredCallsetShards {
 task MergeVCFs {
   input {
     Array[File] input_vcfs
-    Array[File]? input_vcfs_indexes
+#    Array[File]? input_vcfs_indexes
     String gather_type = "BLOCK"
     String output_vcf_name
     String output_directory
