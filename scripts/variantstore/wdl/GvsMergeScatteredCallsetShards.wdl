@@ -115,7 +115,7 @@ task GenerateOrderedPaths {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211005"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211005_2"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
