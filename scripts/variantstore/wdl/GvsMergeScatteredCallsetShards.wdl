@@ -27,7 +27,7 @@ workflow GvsMergeScatteredCallsetShards {
     input:
       input_vcfs = VCFpaths.paths,
       input_vcfs_indexes = VCFIndexpaths.paths,
-      output_vcf_name = "${output_file_base_name}.vcf.gz",
+      output_vcf_name = "${output_vcf_base_name}.vcf.gz",
       output_directory = output_directory,
       service_account_json_path = service_account_json_path
   }
