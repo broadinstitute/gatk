@@ -50,9 +50,9 @@ task MergeVCFs {
     input_vcfs: {
       localization_optional: true
     }
-    input_vcfs_indexes: {
-      localization_optional: true
-    }
+#    input_vcfs_indexes: {
+#      localization_optional: true
+#    }
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
