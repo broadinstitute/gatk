@@ -38,7 +38,7 @@ task MergeVCFs {
     File? gatk_override
   }
 
-  Int disk_size = select_first([merge_disk_override, ceil(size(input_vcfs, "GiB") * 2.5) + 10])
+  Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else ceil(size(input_vcfs, "GiB") * 2.5) + 10
 
   parameter_meta {
     input_vcfs: {
