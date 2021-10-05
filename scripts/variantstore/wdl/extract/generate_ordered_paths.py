@@ -1,7 +1,7 @@
 import argparse
 
 def generate_ordered_paths(root_path, path_suffix, number):
-    for i in range(0, number - 1):
+    for i in range(0, number):
         print(f"{root_path}{i}{path_suffix}")
 
 if __name__ == '__main__':
