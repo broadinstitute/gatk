@@ -4,7 +4,7 @@ workflow GvsMergeScatteredCallsetShards {
   input {
     String input_vcfs_directory_plus_prefix
     Int num_shards = 500
-    String output_vcf_name
+    String output_vcf_base_name
     String output_directory
     String? service_account_json_path
   }
@@ -27,7 +27,7 @@ workflow GvsMergeScatteredCallsetShards {
     input:
       input_vcfs = VCFpaths.paths,
       input_vcfs_indexes = VCFIndexpaths.paths,
-      output_vcf_name = output_vcf_name,
+      output_vcf_name = "${output_file_base_name}.vcf.gz",
       output_directory = output_directory,
       service_account_json_path = service_account_json_path
   }
@@ -115,7 +115,7 @@ task GenerateOrderedPaths {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211004"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211005"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
