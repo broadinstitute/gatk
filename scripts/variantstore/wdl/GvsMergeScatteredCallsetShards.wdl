@@ -16,17 +16,17 @@ workflow GvsMergeScatteredCallsetShards {
       path_suffix = ".vcf.gz"
   }
 
-  call GenerateOrderedPaths as VCFIndexpaths {
-    input:
-      root_path = input_vcfs_directory_plus_prefix,
-      num_files = num_shards,
-      path_suffix = ".vcf.gz.tbi"
-  }
+#  call GenerateOrderedPaths as VCFIndexpaths {
+#    input:
+#      root_path = input_vcfs_directory_plus_prefix,
+#      num_files = num_shards,
+#      path_suffix = ".vcf.gz.tbi"
+#  }
 
   call MergeVCFs {
     input:
       input_vcfs = VCFpaths.paths,
-      input_vcfs_indexes = VCFIndexpaths.paths,
+#      input_vcfs_indexes = VCFIndexpaths.paths,
       output_vcf_name = "${output_vcf_base_name}.vcf.gz",
       output_directory = output_directory,
       service_account_json_path = service_account_json_path
@@ -36,7 +36,7 @@ workflow GvsMergeScatteredCallsetShards {
 task MergeVCFs {
   input {
     Array[File] input_vcfs
-    Array[File] input_vcfs_indexes
+#    Array[File] input_vcfs_indexes
     String gather_type = "BLOCK"
     String output_vcf_name
     String output_directory
