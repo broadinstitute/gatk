@@ -11,9 +11,9 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 
 import java.io.File;
-import java.net.UnknownServiceException;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -27,6 +27,8 @@ import java.util.List;
         programGroup = ShortVariantDiscoveryProgramGroup.class // Sato: change
 )
 public class CompareSAMFiles extends GATKTool {
+    @Argument(fullName = "output", shortName = "O")
+    public File outputTable = new File("duplicate_comaprison_counts.csv");
 
     @Argument(fullName = "read2", doc = "read2")
     public GATKPath read2;
@@ -162,17 +164,23 @@ public class CompareSAMFiles extends GATKTool {
 
     @Override
     public Object onTraversalSuccess(){
-        File out = new File("/Users/tsato/workspace/gatk/tmp/duplicates.txt");
+        try (PrintWriter pw = new PrintWriter(outputTable)){
+            final String sample = getHeaderForReads().getReadGroups().get(0).getSample();
+            pw.println("#sample=" + sample);
+            pw.println("genomeDupTranscrNot," + genomeDupTranscrNot);
+            pw.println("bothDup," + bothDup);
+            pw.println("genomeNotTranscrDup," + genomeNotTranscrDup);
+            pw.println("neitherDup," + neitherDup);
+            pw.println("genomeDupNotFoundInTranscr," + genomeDupNotFoundInTranscr);
+            pw.println("notFoundInTranscr," + notFoundInTranscr);
+            pw.println("notFoundInGenome," + notFoundInGenome);
+            pw.println("numReadPairsGenome," + numReadPairsGenome);
+            pw.println("numReadPairsTranscr," + numReadPairsTranscr);
+        } catch (IOException e){
+            throw new UserException("Could not write to " + outFile, e);
+        }
 
-        System.out.println("genomeDupTranscrNot," + genomeDupTranscrNot);
-        System.out.println("bothDup," + bothDup);
-        System.out.println("genomeNotTranscrDup," + genomeNotTranscrDup);
-        System.out.println("neitherDup," + neitherDup);
-        System.out.println("genomeDupNotFoundInTranscr," + genomeDupNotFoundInTranscr);
-        System.out.println("notFoundInTranscr," + notFoundInTranscr);
-        System.out.println("notFoundInGenome," + notFoundInGenome);
-        System.out.println("numReadPairsGenome," + numReadPairsGenome);
-        System.out.println("numReadPairsTranscr," + numReadPairsTranscr);
+
 
         return "SUCCESS";
     }

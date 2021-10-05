@@ -12,14 +12,23 @@ import static org.testng.Assert.*;
 public class CompareSAMFilesTest extends CommandLineProgramTest {
     final String home = "/Volumes/dsde_working/tsato/hydro.gen/Analysis/874_twist_RNA/transcriptome/compare_sam_files/";
     final String testBam1 = home + "test/Control_KapaLC_1.duplicate_marked_test.sam";
-    final String testBam2 = home + "test/Control_KapaLC_1.transcriptome.dulicate_marked_test.sam";
+    final String testBam2 = home + "test/Control_KapaLC_1.transcriptome.duplicate_marked_test.sam";
 
     final String bam1 = home + "Control_KapaLC_1.duplicate_marked.bam";
-    final String bam2 = home + "Control_KapaLC_1.transcriptome.dulicate_marked.bam";
-
+    final String bam2 = home + "Control_KapaLC_1.transcriptome.duplicate_marked.bam";
 
     @Test
-    public void test(){
+    public void testSmall(){
+        final File out = new File(home + "test/test.bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .add("I", testBam1)
+                .add("read2", testBam2);
+        runCommandLine(args, CompareSAMFiles.class.getSimpleName());
+        int d = 3;
+    }
+
+    @Test
+    public void testLarge(){
         final File out = new File(home + "test/test.bam");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("I", bam1)
