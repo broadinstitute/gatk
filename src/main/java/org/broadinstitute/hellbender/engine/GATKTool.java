@@ -342,6 +342,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
     /**
      * Returns the pre-filter read transformer (simple or composite) that will be applied to the reads before filtering.
+     * An example of a pre-filter read transformation includes converting non (ATCG) reads into N's, as done by
+     * HaplotypeCaller as of October 2021.
+     *
      * The default implementation uses the {@link ReadTransformer#identity()}.
      * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
      * the transformer object to avoid object allocation.
