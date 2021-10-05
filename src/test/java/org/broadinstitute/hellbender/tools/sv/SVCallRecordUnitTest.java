@@ -29,8 +29,8 @@ public class SVCallRecordUnitTest {
         return new Object[][]{
                 {SVTestUtils.newCallRecordWithAlgorithms(Collections.emptyList()), false},
                 {SVTestUtils.newCallRecordWithAlgorithms(Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM)), true},
-                {SVTestUtils.newCallRecordWithAlgorithms(Collections.singletonList("pesr")), false},
-                {SVTestUtils.newCallRecordWithAlgorithms(Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, "pesr")), false}
+                {SVTestUtils.newCallRecordWithAlgorithms(SVTestUtils.PESR_ONLY_ALGORITHM_LIST), false},
+                {SVTestUtils.newCallRecordWithAlgorithms(Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM)), false}
         };
     }
 

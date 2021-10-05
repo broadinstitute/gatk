@@ -29,7 +29,8 @@ public class SVCallRecord implements SVLocatable {
             GATKSVVCFConstants.CONTIG2_ATTRIBUTE,
             GATKSVVCFConstants.END2_ATTRIBUTE,
             GATKSVVCFConstants.SVLEN,
-            GATKSVVCFConstants.STRANDS_ATTRIBUTE
+            GATKSVVCFConstants.STRANDS_ATTRIBUTE,
+            GATKSVVCFConstants.SVTYPE
     );
 
     private final String id;

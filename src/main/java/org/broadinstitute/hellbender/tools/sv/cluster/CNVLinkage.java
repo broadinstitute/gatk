@@ -18,19 +18,21 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConsta
  * Clustering engine class for defragmenting depth-based DEL/DUP calls, such as those produced by
  * {@link org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller GermlineCNVCaller}. Each variant is first padded by a fraction
  * of its length and then merged with any other overlapping variants that meet the minimum sample overlap. Additionally,
- * singleton variants (with only one carrier sample) will only be merged with variants of the same copy number.
+ * singleton variants (with only one carrier sample) will only be linked with variants of the same copy number.
  */
-public class CNVLinkage extends CanonicalSVLinkage<SVCallRecord> {
+public class CNVLinkage extends SVClusterLinkage<SVCallRecord> {
 
     public static final double DEFAULT_SAMPLE_OVERLAP = 0.8;
     public static final double DEFAULT_PADDING_FRACTION = 0.25;
 
     protected final double minSampleOverlap;
     protected final double paddingFraction;
+    protected final SAMSequenceDictionary dictionary;
 
     public CNVLinkage(final SAMSequenceDictionary dictionary, final double paddingFraction,
                       final double minSampleOverlap) {
-        super(dictionary, false);
+        super();
+        this.dictionary = dictionary;
         this.minSampleOverlap = minSampleOverlap;
         this.paddingFraction = paddingFraction;
     }

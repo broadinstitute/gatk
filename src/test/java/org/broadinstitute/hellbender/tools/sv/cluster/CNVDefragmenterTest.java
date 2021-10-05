@@ -32,7 +32,7 @@ public class CNVDefragmenterTest {
         Assert.assertFalse(defragmenter.areClusterable(deletion, duplication), "Different sv types should not cluster");
 
         final SVCallRecord duplicationNonDepthOnly = new SVCallRecord("test_dup", "chr1", 1000, false, "chr1", 1999, true, StructuralVariantType.DUP,
-                1000, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, "pesr"),
+                1000, Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP),
                 Collections.emptyList(), Collections.emptyMap());
         Assert.assertFalse(defragmenter.areClusterable(duplication, duplicationNonDepthOnly), "Clustered records must be depth-only");
@@ -44,7 +44,7 @@ public class CNVDefragmenterTest {
         Assert.assertFalse(defragmenter.areClusterable(deletion, cnv), "Different sv types should not cluster");
 
         final SVCallRecord insertion = new SVCallRecord("test_ins", "chr1", 1000, true, "chr1", 1001, false, StructuralVariantType.INS,
-                1000, Collections.singletonList("pesr"),
+                1000, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                 Collections.emptyList(), Collections.emptyMap());
         Assert.assertFalse(defragmenter.areClusterable(insertion, insertion), "Only CNVs should be valid");

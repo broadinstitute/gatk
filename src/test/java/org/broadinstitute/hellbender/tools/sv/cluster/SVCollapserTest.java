@@ -109,21 +109,6 @@ public class SVCollapserTest {
         Assert.assertEquals(collapser.collapseRefAlleles("chr1", pos), result);
     }
 
-    @DataProvider(name = "getSymbolicAlleleSymbolsTestData")
-    public Object[][] getSymbolicAlleleSymbolsTestData() {
-        return new Object[][]{
-                {Allele.create("<DUP>"), new String[] {"DUP"}},
-                {Allele.create("<DUP:TANDEM>"), new String[] {"DUP", "TANDEM"}},
-                {Allele.create("<INS:MEI:LINE>"), new String[] {"INS", "MEI", "LINE"}}
-        };
-    }
-
-    @Test(dataProvider= "getSymbolicAlleleSymbolsTestData")
-    public void getSymbolicAlleleSymbolsTest(final Allele allele, final String[] result) {
-        final String[] test = CanonicalSVCollapser.getSymbolicAlleleSymbols(allele);
-        Assert.assertEquals(test, result);
-    }
-
     @DataProvider(name = "collapseAltAllelesTestData")
     public Object[][] collapseAltAllelesTestData() {
         return new Object[][]{
@@ -283,7 +268,6 @@ public class SVCollapserTest {
                         2,
                         Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
                 },
-                // CNVs should get converted to null GTs with correct ploidy
                 {
                         Collections.singletonList(
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
@@ -292,6 +276,43 @@ public class SVCollapserTest {
                         2,
                         Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
                 },
+                // DEL should have GT filled out
+                {
+                        Collections.singletonList(
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
+                        ),
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        2,
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
+                },
+                {
+                        Collections.singletonList(
+                                Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                        ),
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        1,
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                },
+                // If collapsed ploidy > 1, fill out GT with REF calls
+                {
+                        Collections.singletonList(
+                                Collections.singletonList(Allele.SV_SIMPLE_DEL)
+                        ),
+                        Collections.singletonList(Allele.SV_SIMPLE_DEL),
+                        2,
+                        Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
+                },
+                // DUPs with ploidy 1 should have GT filled out
+                {
+                        Lists.newArrayList(
+                                Collections.singletonList(Allele.SV_SIMPLE_DUP),
+                                Collections.singletonList(Allele.REF_N)
+                        ),
+                        Lists.newArrayList(Allele.SV_SIMPLE_DUP),
+                        1,
+                        Lists.newArrayList(Allele.SV_SIMPLE_DUP)
+                },
+                // DUPs with ploidy >1 should be converted to no-call GTs
                 {
                         Collections.singletonList(
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP)
@@ -300,6 +321,7 @@ public class SVCollapserTest {
                         2,
                         Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
                 },
+                // CNVs should get converted to no-call GTs with correct ploidy, preferring higher ploidy
                 {
                         Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
@@ -587,6 +609,15 @@ public class SVCollapserTest {
                         1,
                         StructuralVariantType.BND,
                         -1
+                },
+                {
+                        new Integer[]{null, null},
+                        new String[]{"chr2", "chr2"},
+                        new StructuralVariantType[]{StructuralVariantType.BND, StructuralVariantType.BND},
+                        1,
+                        1,
+                        StructuralVariantType.BND,
+                        -1
                 }
         };
     }
@@ -713,15 +744,15 @@ public class SVCollapserTest {
                 {
                         new String[]{"pesr1"},
                         Collections.singletonList(
-                                Collections.singletonList("pesr")
+                                SVTestUtils.PESR_ONLY_ALGORITHM_LIST
                         ),
                         Sets.newHashSet("pesr1")
                 },
                 {
                         new String[]{"pesr1", "pesr2"},
                         Lists.newArrayList(
-                                Collections.singletonList("pesr"),
-                                Collections.singletonList("pesr")
+                                SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                                SVTestUtils.PESR_ONLY_ALGORITHM_LIST
                         ),
                         Sets.newHashSet("pesr1", "pesr2")
                 },
@@ -729,14 +760,14 @@ public class SVCollapserTest {
                         new String[]{"depth1", "pesr1"},
                         Lists.newArrayList(
                                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
-                                Collections.singletonList("pesr")
+                                SVTestUtils.PESR_ONLY_ALGORITHM_LIST
                         ),
                         Sets.newHashSet("pesr1"),
                 },
                 {
                         new String[]{"mixed1", "depth1"},
                         Lists.newArrayList(
-                                Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, "pesr"),
+                                Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM),
                                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM)
                         ),
                         Sets.newHashSet("mixed1"),
@@ -744,8 +775,8 @@ public class SVCollapserTest {
                 {
                         new String[]{"mixed1", "pesr1"},
                         Lists.newArrayList(
-                                Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, "pesr"),
-                                Collections.singletonList("pesr")
+                                Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM),
+                                SVTestUtils.PESR_ONLY_ALGORITHM_LIST
                         ),
                         Sets.newHashSet("mixed1", "pesr1"),
                 },
@@ -879,14 +910,26 @@ public class SVCollapserTest {
     @DataProvider(name = "collapseAlgorithmsTestData")
     public Object[][] collapseAlgorithmsTestData() {
         return new Object[][]{
+                // depth only
                 {Collections.singletonList(Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM)), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM)},
-                {Collections.singletonList(Collections.singletonList("pesr")), Collections.singletonList("pesr")},
+                {Lists.newArrayList(Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM)),
+                        Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM)},
+
+                // pesr only
+                {Collections.singletonList(SVTestUtils.PESR_ONLY_ALGORITHM_LIST), SVTestUtils.PESR_ONLY_ALGORITHM_LIST},
                 {Collections.singletonList(Lists.newArrayList("pesrA", "pesrB")), Lists.newArrayList("pesrA", "pesrB")},
                 {Collections.singletonList(Lists.newArrayList("pesrB", "pesrA")), Lists.newArrayList("pesrA", "pesrB")},
                 {Lists.newArrayList(Collections.singletonList("pesrA"), Collections.singletonList("pesrB")), Lists.newArrayList("pesrA", "pesrB")},
                 {Lists.newArrayList(Collections.singletonList("pesrB"), Collections.singletonList("pesrA")), Lists.newArrayList("pesrA", "pesrB")},
                 {Lists.newArrayList(Lists.newArrayList("pesrA", "pesrB"), Collections.singletonList("pesrB")), Lists.newArrayList("pesrA", "pesrB")},
                 {Lists.newArrayList(Lists.newArrayList("pesrB", "pesrA"), Collections.singletonList("pesrA")), Lists.newArrayList("pesrA", "pesrB")},
+
+                // mixed depth/pesr
+                {Lists.newArrayList(SVTestUtils.PESR_ONLY_ALGORITHM_LIST, SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST),
+                        Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM)},
+                {Lists.newArrayList(Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM),
+                        Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM)),
+                        Lists.newArrayList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM)}
         };
     }
 

@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
@@ -21,13 +22,6 @@ import java.util.stream.Collectors;
  * {@link CanonicalSVLinkage}, into a single representative call.
  */
 public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
-
-    /**
-     * Determines whether a given SV type represents a CNV.
-     */
-    public static boolean isCnvType(final StructuralVariantType type) {
-        return type == StructuralVariantType.DEL || type == StructuralVariantType.DUP || type == StructuralVariantType.CNV;
-    }
 
     /**
      * Define strategies for collapsing variant intervals.
@@ -159,17 +153,6 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
     }
 
     /**
-     * Parses allele for the base type string, e.g. "INS" for "&lt;INS:MEI&gt;"
-     */
-    @VisibleForTesting
-    protected static final String[] getSymbolicAlleleSymbols(final Allele allele) {
-        return allele.getDisplayString()
-                .replace("<", "")
-                .replace(">", "")
-                .split(":");
-    }
-
-    /**
      * Collapses alternate alleles into a list of representative alleles. Note this supports sub-typed alleles such as
      * &lt;INS:MEI&gt;. If multiple alt alleles are found, the variant must either be a CNV or sub-typed alleles with the
      * same base symbol (e.g. &lt;INS:MEI&gt; and &lt;INS:MEI:SVA&gt; would result in &lt;INS&gt;).
@@ -209,7 +192,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
 
     private String[] collapseAltAllelesCommon(final List<Allele> alleles) {
         final List<String[]> alleleTokens = alleles.stream()
-                .map(CanonicalSVCollapser::getSymbolicAlleleSymbols)
+                .map(GATKSVVariantContextUtils::getSymbolicAlleleSymbols)
                 .collect(Collectors.toList());
         final String[] firstTokens = alleleTokens.get(0);
         int alleleSize = 0;
@@ -229,7 +212,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
 
     private String[] collapseAltAllelesMostSpecific(final List<Allele> alleles) {
         final List<String[]> alleleTokens = alleles.stream()
-                .map(CanonicalSVCollapser::getSymbolicAlleleSymbols)
+                .map(GATKSVVariantContextUtils::getSymbolicAlleleSymbols)
                 .collect(Collectors.toList());
         final int maxSize = alleleTokens.stream().mapToInt(arr -> arr.length).max().getAsInt();
         int alleleIndex = 0;
@@ -387,6 +370,9 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         return Integer.compare(first, second);
     }
 
+    /***
+     * Collapses collection of genotypes belonging to a single sample.
+     */
     protected Genotype collapseSampleGenotypes(final Collection<Genotype> genotypes,
                                                final Allele refAllele) {
         final GenotypeBuilder builder = new GenotypeBuilder(genotypes.iterator().next());
@@ -457,6 +443,14 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         }
     }
 
+    /***
+     * Calculates new SVLEN value.
+     * @param items  records to collapse
+     * @param newStart  collapsed start position
+     * @param newEnd   collapsed end position
+     * @param newType   collapsed sv type
+     * @return
+     */
     protected final int collapseLength(final Collection<SVCallRecord> items, final int newStart, final int newEnd,
                                        final StructuralVariantType newType) {
         Utils.nonNull(items);
@@ -585,7 +579,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         if (types.size() == 1) {
             return types.iterator().next();
         }
-        if (types.stream().allMatch(CanonicalSVCollapser::isCnvType)) {
+        if (types.stream().allMatch(GATKSVVariantContextUtils::isCnvType)) {
             return StructuralVariantType.CNV;
         }
         final List<String> typeStrings = types.stream().map(StructuralVariantType::name).collect(Collectors.toList());

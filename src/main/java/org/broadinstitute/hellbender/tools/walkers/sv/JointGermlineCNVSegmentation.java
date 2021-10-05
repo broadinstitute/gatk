@@ -208,9 +208,9 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
         final ClusteringParameters clusterArgs = ClusteringParameters.createDepthParameters(clusterIntervalOverlap, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
         if (callIntervals == null) {
-            defragmenter = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap, clusterArgs);
+            defragmenter = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap);
         } else {
-            defragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap, callIntervals, clusterArgs);
+            defragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap, callIntervals);
         }
         clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy, altAlleleSummaryStrategy, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN,
                 dictionary, reference, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
@@ -544,15 +544,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         Utils.nonNull(call);
         Utils.nonNull(reference);
         // Use only the alt alleles actually called in genotypes
-        List<Allele> newAltAlleles = call.getGenotypes().stream()
-                .flatMap(g -> g.getAlleles().stream())
-                .filter(allele -> allele != null && !allele.isReference() && allele.isCalled())
-                .distinct()
-                .collect(Collectors.toList());
-        if (newAltAlleles.isEmpty()) {
-            // If calls were dropped, use original alt alleles
-            newAltAlleles = call.getAltAlleles();
-        }
+        final List<Allele> newAltAlleles = getCalledAllelesOrOriginalIfNone(call);
         final boolean isCNV = newAltAlleles.size() != 1;
         final StructuralVariantType svtype;
         if (isCNV) {
@@ -605,6 +597,23 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         }
         builder.genotypes(genotypes);
         return builder.make();
+    }
+
+    /**
+     * Reduces alt alleles in genotypes, if any. If none, simply return the original alt allele list for the record.
+     */
+    private static List<Allele> getCalledAllelesOrOriginalIfNone(final SVCallRecord call) {
+        // Use only the alt alleles actually called in genotypes
+        List<Allele> newAltAlleles = call.getGenotypes().stream()
+                .flatMap(g -> g.getAlleles().stream())
+                .filter(allele -> allele != null && !allele.isReference() && allele.isCalled())
+                .distinct()
+                .collect(Collectors.toList());
+        if (newAltAlleles.isEmpty()) {
+            // If calls were dropped, use original alt alleles
+            newAltAlleles = call.getAltAlleles();
+        }
+        return newAltAlleles;
     }
 
     @Override

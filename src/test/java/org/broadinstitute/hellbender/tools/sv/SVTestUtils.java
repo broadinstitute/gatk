@@ -32,6 +32,10 @@ public class SVTestUtils {
                     CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
                     CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
 
+    public static final String PESR_ALGORITHM = "pesr";
+    public static final List<String> DEPTH_ONLY_ALGORITHM_LIST = Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM);
+    public static final List<String> PESR_ONLY_ALGORITHM_LIST = Collections.singletonList(PESR_ALGORITHM);
+
     public static CanonicalSVLinkage<SVCallRecord> getNewDefaultLinkage() {
         final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<>(SVTestUtils.hg38Dict, false);
         linkage.setDepthOnlyParams(defaultDepthOnlyParameters);
@@ -380,13 +384,13 @@ public class SVTestUtils {
     public static SVCallRecord newCallRecordWithLengthAndTypeAndChrom2(final Integer length, final StructuralVariantType svtype, final String chrom2) {
         final int positionB = length == null ? 1 : length;
         return new SVCallRecord("", "chr1", 1, getValidTestStrandA(svtype), chrom2, positionB, getValidTestStrandB(svtype),
-                svtype, length, Collections.singletonList("pesr"), Collections.emptyList(), Collections.emptyList(),
+                svtype, length, PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyMap());
     }
 
     public static SVCallRecord newDeletionCallRecordWithId(final String id) {
         return new SVCallRecord(id, "chr1", 1, true, "chr1", 100, false,
-                StructuralVariantType.DEL, 100, Collections.singletonList("pesr"), Collections.emptyList(),
+                StructuralVariantType.DEL, 100, PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyMap());
     }
 
@@ -399,7 +403,7 @@ public class SVTestUtils {
     // Note strands and length may not be set properly
     public static SVCallRecord newCallRecordWithIntervalAndType(final int start, final int end, final StructuralVariantType svtype) {
         return new SVCallRecord("", "chr1", start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
-                svtype, getLength(start, end, svtype), Collections.singletonList("pesr"), Collections.emptyList(),
+                svtype, getLength(start, end, svtype), PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyMap());
     }
 
@@ -452,7 +456,7 @@ public class SVTestUtils {
 
     public static SVCallRecord newCallRecordInsertionWithLength(final Integer length) {
         return new SVCallRecord("", "chr1", 1000, true, "chr1", 1000, false, StructuralVariantType.INS, length,
-                Collections.singletonList("pesr"),
+                PESR_ONLY_ALGORITHM_LIST,
                 Collections.emptyList(),
                 Collections.emptyList(),
                 Collections.emptyMap());

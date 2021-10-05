@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
@@ -108,7 +107,7 @@ public final class SVCallRecordUtils {
      * genotypes are not touched. Samples without genotypes are assigned the provided sets of alleles and attributes.
      * @param genotypes base genotypes
      * @param samples samples which the resulting genotypes must contain (existing samples are ignored)
-     * @param alleles alleles to apply to all new genotypes
+     * @param alleles alleles to apply to all new genotypes, must be length equal to the ploidy for the sample
      * @param attributes attributes to apply to all new genotypes
      * @return genotypes augmented with missing samples
      */
@@ -388,49 +387,6 @@ public final class SVCallRecordUtils {
         Utils.validate(allele.isSymbolic(), "Expected symbolic alt allele");
         // TODO use htsjdk (see https://github.com/samtools/htsjdk/issues/18)
         return StructuralVariantType.valueOf(allele.getDisplayString().replace("<", "").replace(">", ""));
-    }
-
-    private static SVCallRecord createVariantFromLegacyGCNV(final VariantContext variant) {
-        boolean isDel = false;
-        for (final Genotype g : variant.getGenotypes()) {
-            if (g.getAlleles().stream().anyMatch(a -> a.equals(GATKSVVCFConstants.DEL_ALLELE))) {
-                isDel = true;
-            } else if (g.getAlleles().stream().anyMatch(a -> a.equals(GATKSVVCFConstants.DUP_ALLELE))) {
-                isDel = false;
-            } else if (g.getAlleles().stream().allMatch(a -> a.isNoCall())) {
-                if (g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
-                    isDel = (Integer.parseInt(g.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT).toString()) < g.getPloidy());
-                } else {
-                    throw new IllegalStateException("Genotype for sample " + g.getSampleName() + " at " + variant.getContig() + ":" + variant.getStart() + " had no CN attribute and will be dropped.");
-                }
-            } else {
-                throw new IllegalArgumentException("Segment VCF schema expects <DEL>, <DUP>, and no-call allele, but found "
-                        + g.getAllele(0) + " at " + variant.getContig() + ":" + variant.getStart());
-            }
-        }
-        final boolean startStrand = isDel ? true : false;
-        final boolean endStrand = isDel ? false : true;
-        final StructuralVariantType type;
-        final List<Allele> alleles;
-        if (!variant.getReference().equals(Allele.REF_N) && variant.getAlternateAlleles().contains(GATKSVVCFConstants.DUP_ALLELE)
-                && variant.getAlternateAlleles().contains(GATKSVVCFConstants.DEL_ALLELE)) {
-            type = StructuralVariantType.CNV;
-            alleles = variant.getAlleles();
-        } else if (isDel) {
-            type = StructuralVariantType.DEL;
-            alleles = Lists.newArrayList(variant.getReference(), GATKSVVCFConstants.DEL_ALLELE);
-        } else {
-            type = StructuralVariantType.DUP;
-            alleles = Lists.newArrayList(variant.getReference(), GATKSVVCFConstants.DUP_ALLELE);
-        }
-
-        final String id = variant.getID();
-        final String startContig = variant.getContig();
-        final int start = variant.getStart();
-        final int end = variant.getEnd();
-        final int length = end - start;
-        final List<String> algorithms = Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM);
-        return new SVCallRecord(id, startContig, start, startStrand, startContig, end, endStrand, type, length, algorithms, alleles, variant.getGenotypes(), variant.getAttributes());
     }
 
     public static boolean containsAltAllele(final Genotype g) {

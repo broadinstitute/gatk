@@ -75,7 +75,7 @@ public class SVClusterEngineTest {
     @Test(dataProvider= "maxPositionIntervals")
     public void testGetMaxClusterableStartingPosition(final int start, final int end) {
         testGetMaxClusterableStartingPositionWithAlgorithm(start, end, GATKSVVCFConstants.DEPTH_ALGORITHM);
-        testGetMaxClusterableStartingPositionWithAlgorithm(start, end, "pesr");
+        testGetMaxClusterableStartingPositionWithAlgorithm(start, end, SVTestUtils.PESR_ALGORITHM);
     }
 
     private void testGetMaxClusterableStartingPositionWithAlgorithm(final int start, final int end, final String algorithm) {
@@ -91,7 +91,7 @@ public class SVClusterEngineTest {
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap());
         final SVCallRecord call2Pesr = new SVCallRecord("call2", "chr1", call2Start, true, "chr1", call2Start + call1.getLength() - 1, false, StructuralVariantType.DEL,
-                call1.getLength(), Collections.singletonList("pesr"),
+                call1.getLength(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap());
         Assert.assertTrue(engine.getLinkage().areClusterable(call1, call2Depth) || engine.getLinkage().areClusterable(call1, call2Pesr));
@@ -102,7 +102,7 @@ public class SVClusterEngineTest {
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap());
         final SVCallRecord call3Pesr = new SVCallRecord("call2", "chr1", call3Start, true, "chr1", call3Start + call1.getLength() - 1, false, StructuralVariantType.DEL,
-                call1.getLength(), Collections.singletonList("pesr"),
+                call1.getLength(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap());
         Assert.assertFalse(engine.getLinkage().areClusterable(call1, call3Depth) || engine.getLinkage().areClusterable(call1, call3Pesr));
@@ -158,7 +158,7 @@ public class SVClusterEngineTest {
     public void testClusterTogetherVaryPositions(final int start1, final int end1, final int start2, final int end2, final boolean result) {
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", start1, true,
                 "chr1", end1, false,
-                StructuralVariantType.DEL, end1 - start1 + 1, Lists.newArrayList("pesr"),
+                StructuralVariantType.DEL, end1 - start1 + 1, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                 SVTestUtils.threeGenotypes, Collections.emptyMap());
         final SVCallRecord call2 = new SVCallRecord("call2", "chr1", start2, true,
@@ -218,13 +218,13 @@ public class SVClusterEngineTest {
             for (final String contig1B : contigs) {
                 final SVCallRecord call1 = new SVCallRecord("call1", contig1A, 1000, true,
                         contig1B, 2001, false, StructuralVariantType.BND,
-                        null, Lists.newArrayList("pesr"),
+                        null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                         Collections.emptyList(), Collections.emptyList(), Collections.emptyMap());
                 for (final String contig2A : contigs) {
                     for (final String contig2B : contigs) {
                         final SVCallRecord call2 = new SVCallRecord("call2", contig2A, 1000, true,
                                 contig2B, 2001, false, StructuralVariantType.BND,
-                                null, Lists.newArrayList("pesr"),
+                                null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap());
                         // Should only cluster if contigs match
                         Assert.assertEquals(engine.getLinkage().areClusterable(call1, call2), contig1A.equals(contig2A) && contig1B.equals(contig2B));
@@ -238,8 +238,8 @@ public class SVClusterEngineTest {
     public void testClusterTogetherVaryAlgorithms() {
         final List<List<String>> algorithmsList = Lists.newArrayList(
                 Arrays.asList(GATKSVVCFConstants.DEPTH_ALGORITHM),
-                Arrays.asList(GATKSVVCFConstants.DEPTH_ALGORITHM, "PESR"),
-                Arrays.asList("PESR")
+                Arrays.asList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM),
+                SVTestUtils.PESR_ONLY_ALGORITHM_LIST
         );
         for (final List<String> algorithms1 : algorithmsList) {
             final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, true,

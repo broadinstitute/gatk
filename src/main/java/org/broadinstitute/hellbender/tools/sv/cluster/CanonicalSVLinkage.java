@@ -7,9 +7,6 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.Collection;
-import java.util.Set;
-
 /**
  * <p>Main class for SV clustering. Two items are clustered together if they:</p>
  * <ul>
@@ -30,10 +27,10 @@ import java.util.Set;
  * overlap is tested assuming the given start position and a length of
  * {@value CanonicalSVLinkage#INSERTION_ASSUMED_LENGTH_FOR_OVERLAP}.</p>
  */
-public class CanonicalSVLinkage<T extends SVCallRecord> implements SVClusterLinkage<T> {
+public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage<T> {
 
     protected final SAMSequenceDictionary dictionary;
-    protected final boolean enableCNV;  // DEL/DUP multi-allelic site clustering
+    protected final boolean clusterDelWithDup;  // DEL/DUP multi-allelic site clustering
     protected ClusteringParameters depthOnlyParams;
     protected ClusteringParameters mixedParams;
     protected ClusteringParameters evidenceParams;
@@ -71,22 +68,22 @@ public class CanonicalSVLinkage<T extends SVCallRecord> implements SVClusterLink
     /**
      * Create a new engine
      * @param dictionary sequence dictionary pertaining to clustered records
-     * @param enableCNV enables clustering of DEL/DUP variants into CNVs
+     * @param clusterDelWithDup enables clustering of DEL/DUP variants into CNVs
      */
     public CanonicalSVLinkage(final SAMSequenceDictionary dictionary,
-                              final boolean enableCNV) {
+                              final boolean clusterDelWithDup) {
         Utils.nonNull(dictionary);
         this.dictionary = dictionary;
         this.depthOnlyParams = DEFAULT_DEPTH_ONLY_PARAMS;
         this.mixedParams = DEFAULT_MIXED_PARAMS;
         this.evidenceParams = DEFAULT_PESR_PARAMS;
-        this.enableCNV = enableCNV;
+        this.clusterDelWithDup = clusterDelWithDup;
     }
 
     @Override
     public boolean areClusterable(final SVCallRecord a, final SVCallRecord b) {
         if (a.getType() != b.getType()) {
-            if (!enableCNV) {
+            if (!clusterDelWithDup) {
                 // CNV clustering disabled, so no type mixing
                 return false;
             } else if (!(a.isSimpleCNV() && b.isSimpleCNV())) {
@@ -107,38 +104,6 @@ public class CanonicalSVLinkage<T extends SVCallRecord> implements SVClusterLink
             return clusterTogetherWithParams(a, b, depthOnlyParams, dictionary);
         } else {
             return false;
-        }
-    }
-
-    /**
-     * Checks for minimum fractional sample overlap of the two sets. Defaults to true if both sets are empty.
-     */
-    private static boolean hasSampleSetOverlap(final Set<String> samplesA, final Set<String> samplesB, final double minSampleOverlap) {
-        final int denom = Math.max(samplesA.size(), samplesB.size());
-        if (denom == 0) {
-            return true;
-        }
-        final double sampleOverlap = getSampleSetOverlap(samplesA, samplesB) / (double) denom;
-        return sampleOverlap >= minSampleOverlap;
-    }
-
-    /**
-     * Returns number of overlapping items
-     */
-    private static int getSampleSetOverlap(final Collection<String> a, final Set<String> b) {
-        return (int) a.stream().filter(b::contains).count();
-    }
-
-    /**
-     * Returns true if there is sufficient fractional carrier sample overlap in the two records.
-     */
-    protected static boolean hasSampleOverlap(final SVCallRecord a, final SVCallRecord b, final double minSampleOverlap) {
-        if (minSampleOverlap > 0) {
-            final Set<String> samplesA = a.getCarrierSamples();
-            final Set<String> samplesB = b.getCarrierSamples();
-            return hasSampleSetOverlap(samplesA, samplesB, minSampleOverlap);
-        } else {
-            return true;
         }
     }
 
