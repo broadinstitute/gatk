@@ -6,6 +6,7 @@ workflow GvsMergeScatteredCallsetShards {
     Int num_shards
     String output_vcf_base_name
     String output_directory
+    Int? merge_disk_override
     String? service_account_json_path
   }
 
@@ -21,6 +22,7 @@ workflow GvsMergeScatteredCallsetShards {
       input_vcfs = VCFpaths.paths,
       output_vcf_name = "${output_vcf_base_name}.vcf.gz",
       output_directory = output_directory,
+      merge_disk_override = merge_disk_override,
       service_account_json_path = service_account_json_path
   }
 }
@@ -31,11 +33,12 @@ task MergeVCFs {
     String gather_type = "BLOCK"
     String output_vcf_name
     String output_directory
+    Int? merge_disk_override
     String? service_account_json_path
     File? gatk_override
   }
 
-  Int disk_size = ceil(size(input_vcfs, "GiB") * 2.5) + 10
+  Int disk_size = select_first([merge_disk_override, ceil(size(input_vcfs, "GiB") * 2.5) + 10])
 
   parameter_meta {
     input_vcfs: {
