@@ -111,6 +111,18 @@ public class CompareSAMFiles extends GATKTool {
             final GATKRead firstInput1Read = currentRead1;
             final GATKRead firstInput2Read = currentRead2;
 
+            if (currentRead1 == null || currentRead2 == null){
+                logger.info("currentRead1 is null");
+                logger.info("read1Iterator has next = " + read1Iterator.hasNext());
+                logger.info("read2Iterator has next = " + read2Iterator.hasNext());
+            }
+
+            if (currentRead1 == null || currentRead2 == null){
+                logger.info("currentRead2 is null");
+                logger.info("read1Iterator has next = " + read1Iterator.hasNext());
+                logger.info("read2Iterator has next = " + read2Iterator.hasNext());
+            }
+
             int diff = queryNameComparator.compareReadNames(currentRead1, currentRead2);
             if (diff == 0){
                 // fast-forward and gather all the reads that share the same query name
@@ -177,7 +189,7 @@ public class CompareSAMFiles extends GATKTool {
             pw.println("numReadPairsGenome," + numReadPairsGenome);
             pw.println("numReadPairsTranscr," + numReadPairsTranscr);
         } catch (IOException e){
-            throw new UserException("Could not write to " + outFile, e);
+            throw new UserException("Could not write to " + outputTable, e);
         }
 
 
