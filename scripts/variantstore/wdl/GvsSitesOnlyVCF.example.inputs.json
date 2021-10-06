@@ -12,5 +12,6 @@
   "GvsSitesOnlyVCF.project_id": "spec-ops-aou",
   "GvsSitesOnlyVCF.dataset_name": "anvil_100_for_testing",
   "GvsSitesOnlyVCF.AnAcAf_annotations_template": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/custom_annotations_template.tsv",
-  "GvsSitesOnlyVCF.ancestry_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/subpop.tsv"
+  "GvsSitesOnlyVCF.ancestry_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/subpop.tsv",
+  "GvsSitesOnlyVCF.reference": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
 }
