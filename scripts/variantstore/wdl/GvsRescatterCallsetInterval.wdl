@@ -37,7 +37,7 @@ workflow GvsRescatterCallsetInterval {
         reference_dict = reference_dict,
         reference_index = reference_index,
         scatter_count = re_scatter_count,
-        wgs_intervals = base_interval_file_path + intervals_to_scatter[i],
+        wgs_intervals = base_interval_file_path + intervals_to_scatter[i] + "-scattered.interval_list",
         extract_preemptible_override = extract_preemptible_override,
         filter_set_name = filter_set_name,
         gatk_override = gatk_override,
@@ -48,7 +48,7 @@ workflow GvsRescatterCallsetInterval {
 
   call GenerateOrderedPaths as VCFpaths {
     input:
-      root_path = subshards_gcs_directory + '/' + output_file_base_name + '_',
+      root_path = sub(subshards_gcs_directory, "/$", "") + '/' + output_file_base_name + '_',
       num_files = re_scatter_count,
       path_suffix = ".vcf.gz"
   }
