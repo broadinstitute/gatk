@@ -19,13 +19,29 @@ public class CompareSAMFilesTest extends CommandLineProgramTest {
 
     final String gatkHome = "/Users/tsato/workspace/gatk/tmp/";
 
+    final String ribosomeBamHg19 = "";
+    final String ribosomeBamHg38 = "";
+
+    @Test
+    public void testRibosome(){
+        final File out = new File(gatkHome + "ribosome_test.csv");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .add("I", ribosomeBamHg19)
+                .add("read2", ribosomeBamHg38)
+                .add("output", out.getAbsolutePath())
+                .add("mode", "RIBOSOME");
+        runCommandLine(args, CompareSAMFiles.class.getSimpleName());
+        int d = 3;
+    }
+
     @Test
     public void testSmall(){
         final File out = new File(gatkHome + "test.csv");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("I", testBam1)
                 .add("read2", testBam2)
-                .add("output", out.getAbsolutePath());
+                .add("output", out.getAbsolutePath())
+                .add("mode", "DUPLICATE");
         runCommandLine(args, CompareSAMFiles.class.getSimpleName());
         int d = 3;
     }

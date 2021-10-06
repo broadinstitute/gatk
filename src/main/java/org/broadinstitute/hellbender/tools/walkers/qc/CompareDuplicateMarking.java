@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 // Define an interface with methods match()
-public class CompareDuplicateMarking {
+public class CompareDuplicateMarking implements QuerynameSetComparison {
     long genomeDupTranscrNot = 0;
     long bothDup = 0;
     long genomeNotTranscrDup = 0;
@@ -23,12 +23,12 @@ public class CompareDuplicateMarking {
     public CompareDuplicateMarking(){}
 
     /**
-     * Process the case where the queryname set in input1 is not found in input2 (move this to the interface)
      *
      * The queryname set was found in the genome, but not in the transcriptome.
      *
      * @param input1ReadPair
      */
+    @Override
     public void processInput1(final ReadPair input1ReadPair){
         if (input1ReadPair.isDuplicateMarked()){
             genomeDupNotFoundInTranscr += 1;
@@ -37,6 +37,7 @@ public class CompareDuplicateMarking {
         }
     }
 
+    @Override
     public void processInput2(final ReadPair input2ReadPair){
         if (input2ReadPair.isDuplicateMarked()){
             genomeAbsentTranscriptDup += 1;
@@ -45,6 +46,7 @@ public class CompareDuplicateMarking {
         }
     }
 
+    @Override
     public void processMatchingQuerynameSets(final ReadPair input1ReadPair, final ReadPair input2ReadPair){
         // This code chunk is a good candidate for Scala's match, which would improve readability
         if (input1ReadPair.isDuplicateMarked()){
@@ -62,6 +64,7 @@ public class CompareDuplicateMarking {
         }
     }
 
+    @Override
     public void writeSummary(final File outputTable, final SAMFileHeader header){
         try (PrintWriter pw = new PrintWriter(outputTable)){
             final String sample = header.getReadGroups().get(0).getSample();

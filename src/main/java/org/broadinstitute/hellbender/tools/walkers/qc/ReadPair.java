@@ -12,7 +12,14 @@ public class ReadPair {
     private List<GATKRead> secondaryAlignments = new ArrayList<>(10);
     private List<GATKRead> supplementaryAlignments = new ArrayList<>(10); // Finally understand the difference
 
-    ReadPair() {
+    ReadPair() { }
+
+    public GATKRead getFirstOfPair(){
+        return firstOfPair;
+    }
+
+    public GATKRead getSecondOfPair(){
+        return secondOfPair;
     }
 
     public void add(final GATKRead read) {

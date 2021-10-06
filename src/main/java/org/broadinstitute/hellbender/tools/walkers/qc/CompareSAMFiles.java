@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 
@@ -31,13 +32,18 @@ public class CompareSAMFiles extends GATKTool {
     @Argument(fullName = "read2", doc = "read2")
     public GATKPath read2;
 
+    @Argument(fullName = "mode")
+    public String mode = "RIBOSOME";
+
+
+
     PeekableIterator<GATKRead> read1Iterator;
     PeekableIterator<GATKRead> read2Iterator;
 
     GATKRead currentRead1;
     GATKRead currentRead2;
     ReadQueryNameComparator queryNameComparator;
-    CompareDuplicateMarking compareDuplicateMarking;
+    QuerynameSetComparison queryNameSetComparison;
 
     ReadsDataSource reads2;
     public void onTraversalStart(){
@@ -49,7 +55,23 @@ public class CompareSAMFiles extends GATKTool {
         SAMFileHeader.SortOrder so2 = reads2.getHeader().getSortOrder();
         read2Iterator = new PeekableIterator<>(reads2.iterator());
 
-        compareDuplicateMarking = new CompareDuplicateMarking();
+        // Clean this Unhandled Exception mess somehow
+        try {
+            queryNameSetComparison = getQuerynameComparison(mode);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private QuerynameSetComparison getQuerynameComparison(String mode) throws FileNotFoundException {
+        if (mode.equals("RIBOSOME")){
+            return new CompareRibosomalReads(new File("ribosome.tsv"));
+        } else if (mode.equals("DUPLICATE")){
+            return new CompareDuplicateMarking();
+        } else {
+            throw new UserException("Unrecognizable mode " + mode);
+        }
+
     }
 
     boolean read1Behind;
@@ -94,7 +116,7 @@ public class CompareSAMFiles extends GATKTool {
                 collectQueryNameGroup(read2Iterator, input2ReadPair, firstInput2Read);
 
                 // Process the info. Abstract this section and put the ribosome part in.
-                compareDuplicateMarking.processMatchingQuerynameSets(input1ReadPair, input2ReadPair);
+                queryNameSetComparison.processMatchingQuerynameSets(input1ReadPair, input2ReadPair);
 
                 if (read1Iterator.hasNext()){
                     currentRead1 = read1Iterator.next();
@@ -108,7 +130,7 @@ public class CompareSAMFiles extends GATKTool {
                 input1ReadPair.add(firstInput1Read);
                 collectQueryNameGroup(read1Iterator, input1ReadPair, firstInput1Read);
                 // Extract a method, like "handleWhenDiffLessThan0"
-                compareDuplicateMarking.processInput1(input1ReadPair);
+                queryNameSetComparison.processInput1(input1ReadPair);
 
                 if (read1Iterator.hasNext()){
                     currentRead1 = read1Iterator.next();
@@ -120,7 +142,7 @@ public class CompareSAMFiles extends GATKTool {
                 input2ReadPair.add(firstInput2Read);
                 collectQueryNameGroup(read2Iterator, input2ReadPair, firstInput2Read);
                 // Ditto above. Extract this method.
-                compareDuplicateMarking.processInput2(input2ReadPair);
+                queryNameSetComparison.processInput2(input2ReadPair);
 
                 if (read2Iterator.hasNext()){
                     currentRead2 = read2Iterator.next();
@@ -138,7 +160,7 @@ public class CompareSAMFiles extends GATKTool {
                 final GATKRead firstInput1Read = currentRead1;
                 input1ReadPair.add(firstInput1Read);
                 collectQueryNameGroup(read1Iterator, input1ReadPair, firstInput1Read);
-                compareDuplicateMarking.processInput1(input1ReadPair);
+                queryNameSetComparison.processInput1(input1ReadPair);
                 currentRead1 = read1Iterator.next();
             }
         }
@@ -150,12 +172,12 @@ public class CompareSAMFiles extends GATKTool {
                 final GATKRead firstInput2Read = currentRead2;
                 input2ReadPair.add(firstInput2Read);
                 collectQueryNameGroup(read2Iterator, input2ReadPair, firstInput2Read);
-                compareDuplicateMarking.processInput2(input2ReadPair);
+                queryNameSetComparison.processInput2(input2ReadPair);
                 currentRead2 = read2Iterator.next();
             }
         }
 
-        compareDuplicateMarking.writeSummary(outputTable, getHeaderForReads());
+        queryNameSetComparison.writeSummary(outputTable, getHeaderForReads());
         return "SUCCESS";
     }
 
