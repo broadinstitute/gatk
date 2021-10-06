@@ -224,33 +224,44 @@ task ExtractAnAcAfFromVCF {
         #]
 
 
-        ## normalize and filter out the filtered sites and FT filtered out variants ## do we need:
-        bcftools norm -m-any ~{local_input_vcf} | \
-        bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta | \
-        bcftools view -f 'PASS,.'  | \
-        bcftools filter -i "FORMAT/FT='PASS'" --set-GTs . > ~{normalized_vcf}
+        wc -l ~{local_input_vcf}
+
+        ## filter out sites with too many alt alleles
+        bcftools view -e 'N_ALT>500' --no-update  ~{local_input_vcf}  > test1.vcf
+        wc -l test1.vcf
+
+        ## filter out the non-passing sites
+        bcftools view  -f 'PASS,.' --no-update  test1.vcf | \
+        ## normalize, left align and split multi allelic sites to new lines, remove duplicate lines
+        bcftools norm -m- --check-ref w -f Homo_sapiens_assembly38.fasta | \
+        ## filter out spanning deletions and variants with an AC of 0
+        bcftools view  -e 'ALT[0]="*"' -e 'AC=0' --no-update | \
+        ## ensure that we respect the FT tag
+        bcftools filter -i "FORMAT/FT='PASS,.'" --set-GTs . > ~{normalized_vcf}
+        wc -l ~{normalized_vcf}
 
         ## make a file of just the first 5 columns of the tsv
         bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
         sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5  > duplicates.tsv
         ## remove those rows (that match up to the first 5 cols)
-        grep -v -wFf duplicates.tsv ~{normalized_vcf} | grep -v "AC=0;"  > deduplicated.vcf
+        grep -v -wFf duplicates.tsv ~{normalized_vcf} > deduplicated.vcf
 
         wc -l duplicates.tsv | awk '{print $1}' > duplicates_count.txt
         echo "the following duplicate variants will be dropped due to a bug"
         cat duplicates.tsv
 
+        ## calculate annotations for all subpopulations
         bcftools plugin fill-tags  -- deduplicated.vcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom | bcftools query -f \
         '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
-        | grep -v "*" >> ~{custom_annotations_file_name}
+        >> ~{custom_annotations_file_name}
 
         ### for validation of the pipeline
         wc -l ~{custom_annotations_file_name} | awk '{print $1 -7}'  > count.txt
 
-        ### compress the vcf and index it, make it sites-only and drop the AS_QUALapprox field---might be nice to be able to drop all of the INFO fields, since I dont need AC/AN/AF in this form
-        bcftools view --no-update --drop-genotypes deduplicated.vcf -Oz -o sites_only.vcf.gz
-        bcftools annotate -x INFO/AS_QUALapprox sites_only.vcf.gz -Oz -o ~{normalized_vcf_compressed}
+        ### compress the vcf and index it, make it sites-only
+        bcftools view --no-update --drop-genotypes deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
+        ##bcftools annotate -x INFO Is this overkill?
         bcftools index --tbi  ~{normalized_vcf_compressed}
 
     >>>
