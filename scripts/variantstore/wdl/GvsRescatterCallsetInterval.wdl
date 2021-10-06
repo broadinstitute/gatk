@@ -1,6 +1,6 @@
 version 1.0
 
-workflow GvsMergeScatteredCallsetShards {
+workflow GvsRescatterCallsetInterval {
   input {
     String input_vcfs_directory_plus_prefix
     Int num_shards
