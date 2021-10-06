@@ -1,27 +1,63 @@
 version 1.0
 
+import "GvsExtractCallset.wdl" as CallsetInterval
+
 workflow GvsRescatterCallsetInterval {
   input {
-    String input_vcfs_directory_plus_prefix
-    Int num_shards
-    String output_vcf_base_name
+    String data_project
+    String default_dataset
+    String fq_cohort_extract_table_prefix
+    String output_file_base_name
+    File reference
+    File reference_dict
+    File reference_index
+    String final_output_gcs_dir
+    String subshards_gcs_directory
+    String? filter_set_name
+
+    Int re_scatter_count
+    String base_interval_file_path
+    Array[String] intervals_to_scatter    #e.g. [0001, 0413, 9839]
     String output_directory
+
+    Int? extract_preemptible_override
     Int? merge_disk_override
+    File? gatk_override
     String? service_account_json_path
+  }
+
+  scatter(i in range(length(intervals_to_scatter))) {
+    call CallsetInterval.GvsExtractCallset {
+      input:
+        data_project = data_project,
+        default_dataset = default_dataset,
+        fq_cohort_extract_table_prefix = fq_cohort_extract_table_prefix,
+        output_file_base_name = output_file_base_name + '_' + intervals_to_scatter[i],
+        reference = reference,
+        reference_dict = reference_dict,
+        reference_index = reference_index,
+        scatter_count = re_scatter_count,
+        wgs_intervals = base_interval_file_path + intervals_to_scatter[i],
+        extract_preemptible_override = extract_preemptible_override,
+        filter_set_name = filter_set_name,
+        gatk_override = gatk_override,
+        output_gcs_dir = subshards_gcs_directory,
+        service_account_json_path = service_account_json_path
+    }
   }
 
   call GenerateOrderedPaths as VCFpaths {
     input:
-      root_path = input_vcfs_directory_plus_prefix,
-      num_files = num_shards,
+      root_path = subshards_gcs_directory + '/' + output_file_base_name + '_',
+      num_files = re_scatter_count,
       path_suffix = ".vcf.gz"
   }
 
   call MergeVCFs {
     input:
       input_vcfs = VCFpaths.paths,
-      output_vcf_name = "${output_vcf_base_name}.vcf.gz",
-      output_directory = output_directory,
+      output_vcf_name = "${output_file_base_name}.vcf.gz",
+      output_directory = final_output_gcs_dir,
       merge_disk_override = merge_disk_override,
       service_account_json_path = service_account_json_path
   }
