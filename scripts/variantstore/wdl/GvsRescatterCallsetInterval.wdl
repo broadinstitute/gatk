@@ -36,29 +36,29 @@ workflow GvsRescatterCallsetInterval {
         reference_dict = reference_dict,
         reference_index = reference_index,
         scatter_count = re_scatter_count,
-        wgs_intervals = interval_file_dir + intervals_to_scatter[i] + "-scattered.interval_list",
+        wgs_intervals = sub(interval_file_dir, "/$", "") + '/' + intervals_to_scatter[i] + "-scattered.interval_list",
         extract_preemptible_override = extract_preemptible_override,
         filter_set_name = filter_set_name,
         gatk_override = gatk_override,
         output_gcs_dir = subshards_gcs_directory,
         service_account_json_path = service_account_json_path
     }
-  }
 
-  call GenerateOrderedPaths as VCFpaths {
-    input:
-      root_path = sub(subshards_gcs_directory, "/$", "") + '/' + output_file_base_name + '_',
-      num_files = re_scatter_count,
-      path_suffix = ".vcf.gz"
-  }
+    call GenerateOrderedPaths as VCFpaths {
+      input:
+        root_path = sub(subshards_gcs_directory, "/$", "") + '/' + output_file_base_name + '_' + intervals_to_scatter[i] + '_',
+        num_files = re_scatter_count,
+        path_suffix = ".vcf.gz"
+    }
 
-  call MergeVCFs {
-    input:
-      input_vcfs = VCFpaths.paths,
-      output_vcf_name = "${output_file_base_name}.vcf.gz",
-      output_directory = final_output_gcs_dir,
-      merge_disk_override = merge_disk_override,
-      service_account_json_path = service_account_json_path
+    call MergeVCFs {
+      input:
+        input_vcfs = VCFpaths.paths,
+        output_vcf_name = "${output_file_base_name}.vcf.gz",
+        output_directory = final_output_gcs_dir,
+        merge_disk_override = merge_disk_override,
+        service_account_json_path = service_account_json_path
+    }
   }
 }
 
