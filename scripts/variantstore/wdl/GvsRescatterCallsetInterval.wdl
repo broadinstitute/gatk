@@ -16,9 +16,8 @@ workflow GvsRescatterCallsetInterval {
     String? filter_set_name
 
     Int re_scatter_count
-    String base_interval_file_path
+    String interval_file_dir
     Array[String] intervals_to_scatter    #e.g. [0001, 0413, 9839]
-    String output_directory
 
     Int? extract_preemptible_override
     Int? merge_disk_override
@@ -37,7 +36,7 @@ workflow GvsRescatterCallsetInterval {
         reference_dict = reference_dict,
         reference_index = reference_index,
         scatter_count = re_scatter_count,
-        wgs_intervals = base_interval_file_path + intervals_to_scatter[i] + "-scattered.interval_list",
+        wgs_intervals = interval_file_dir + intervals_to_scatter[i] + "-scattered.interval_list",
         extract_preemptible_override = extract_preemptible_override,
         filter_set_name = filter_set_name,
         gatk_override = gatk_override,
