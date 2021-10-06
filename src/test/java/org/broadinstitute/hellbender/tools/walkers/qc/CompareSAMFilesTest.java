@@ -17,9 +17,11 @@ public class CompareSAMFilesTest extends CommandLineProgramTest {
     final String bam1 = home + "Control_KapaLC_1.duplicate_marked.bam";
     final String bam2 = home + "Control_KapaLC_1.transcriptome.duplicate_marked.bam";
 
+    final String gatkHome = "/Users/tsato/workspace/gatk/tmp/";
+
     @Test
     public void testSmall(){
-        final File out = new File(home + "test/test.csv");
+        final File out = new File(gatkHome + "test.csv");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("I", testBam1)
                 .add("read2", testBam2)

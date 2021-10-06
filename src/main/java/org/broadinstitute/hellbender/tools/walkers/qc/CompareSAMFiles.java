@@ -13,8 +13,6 @@ import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This should eventually be turned into a biread walker, a subclass of WalkerBase.
@@ -39,17 +37,7 @@ public class CompareSAMFiles extends GATKTool {
     GATKRead currentRead1;
     GATKRead currentRead2;
     ReadQueryNameComparator queryNameComparator;
-
-    long genomeDupTranscrNot = 0;
-    long bothDup = 0;
-    long genomeNotTranscrDup = 0;
-    long neitherDup;
-    long genomeDupNotFoundInTranscr = 0;
-    long genomeAbsentTranscriptDup = 0;
-    long notFoundInTranscr = 0;
-    long notFoundInGenome = 0;
-    long numReadPairsGenome = 0;
-    long numReadPairsTranscr = 0;
+    CompareDuplicateMarking compareDuplicateMarking;
 
     ReadsDataSource reads2;
     public void onTraversalStart(){
@@ -60,46 +48,11 @@ public class CompareSAMFiles extends GATKTool {
         reads2 = new ReadsPathDataSource(read2.toPath());
         SAMFileHeader.SortOrder so2 = reads2.getHeader().getSortOrder();
         read2Iterator = new PeekableIterator<>(reads2.iterator());
+
+        compareDuplicateMarking = new CompareDuplicateMarking();
     }
 
     boolean read1Behind;
-
-    private class ReadPair {
-        private GATKRead firstOfPair;
-        private GATKRead secondOfPair;
-        private List<GATKRead> secondaryAlignments = new ArrayList<>(10);
-        private List<GATKRead> supplementaryAlignments = new ArrayList<>(10); // Finally understand the difference
-        private ReadPair(){}
-
-        private void add(GATKRead read){
-            if (read.isFirstOfPair()){
-                this.firstOfPair = read;
-            } else if (read.isSecondOfPair()){
-                this.secondOfPair = read;
-            } else if (read.isSupplementaryAlignment()){
-                this.secondaryAlignments.add(read);
-            } else {
-                int d = 3;
-                throw new UserException("Unknown read type");
-            }
-        }
-
-        public boolean isDuplicateMarked(){
-            // Doing some investigation
-            if (firstOfPair.isDuplicate()){
-                // Make sure the rest is duplicate-marked
-                if (!secondOfPair.isDuplicate() || secondaryAlignments.stream().anyMatch(r -> ! r.isDuplicate())){
-                    throw new UserException("First of pair a duplicate but the rest is not" + secondOfPair.getName());
-                }
-            } else {
-                // Make sure the rest is not duplicate-marked
-                if (secondOfPair.isDuplicate() || secondaryAlignments.stream().anyMatch(r -> r.isDuplicate())){
-                    throw new UserException("First of pair a not duplicate but the rest is " + secondOfPair.getName());
-                }
-            }
-            return firstOfPair.isDuplicate();
-        }
-    }
 
     @Override
     public void traverse() {
@@ -127,8 +80,10 @@ public class CompareSAMFiles extends GATKTool {
             }
 
             int diff = queryNameComparator.compareReadNames(currentRead1, currentRead2);
+
             if (diff == 0){
-                // fast-forward and gather all the reads that share the same query name
+                // The query names match:
+                // Fast-forward and gather all the reads that share the same query name (queryname set)
                 // i.e. the mate and secondary and supplementary alignments
                 input1ReadPair.add(firstInput1Read);
                 input2ReadPair.add(firstInput2Read);
@@ -139,20 +94,7 @@ public class CompareSAMFiles extends GATKTool {
                 collectQueryNameGroup(read2Iterator, input2ReadPair, firstInput2Read);
 
                 // Process the info. Abstract this section and put the ribosome part in.
-                // This code chunk is a good candidate for Scala's match, which would improve readability
-                if (input1ReadPair.isDuplicateMarked()){
-                    if (input2ReadPair.isDuplicateMarked()){
-                        bothDup += 1;
-                    } else {
-                        genomeDupTranscrNot += 1;
-                    }
-                } else {
-                    if (input2ReadPair.isDuplicateMarked()){
-                        genomeNotTranscrDup += 1;
-                    } else {
-                        neitherDup += 1;
-                    }
-                }
+                compareDuplicateMarking.processMatchingQuerynameSets(input1ReadPair, input2ReadPair);
 
                 if (read1Iterator.hasNext()){
                     currentRead1 = read1Iterator.next();
@@ -166,11 +108,7 @@ public class CompareSAMFiles extends GATKTool {
                 input1ReadPair.add(firstInput1Read);
                 collectQueryNameGroup(read1Iterator, input1ReadPair, firstInput1Read);
                 // Extract a method, like "handleWhenDiffLessThan0"
-                if (input1ReadPair.isDuplicateMarked()){
-                    genomeDupNotFoundInTranscr += 1;
-                } else {
-                    notFoundInTranscr += 1;
-                }
+                compareDuplicateMarking.processInput1(input1ReadPair);
 
                 if (read1Iterator.hasNext()){
                     currentRead1 = read1Iterator.next();
@@ -182,13 +120,8 @@ public class CompareSAMFiles extends GATKTool {
                 input2ReadPair.add(firstInput2Read);
                 collectQueryNameGroup(read2Iterator, input2ReadPair, firstInput2Read);
                 // Ditto above. Extract this method.
-                if (input2ReadPair.isDuplicateMarked()){
-                    genomeAbsentTranscriptDup += 1;
-                } else {
-                    notFoundInGenome += 1;
-                }
+                compareDuplicateMarking.processInput2(input2ReadPair);
 
-                // read2 not found in read1---what to do?
                 if (read2Iterator.hasNext()){
                     currentRead2 = read2Iterator.next();
                 }
@@ -205,12 +138,7 @@ public class CompareSAMFiles extends GATKTool {
                 final GATKRead firstInput1Read = currentRead1;
                 input1ReadPair.add(firstInput1Read);
                 collectQueryNameGroup(read1Iterator, input1ReadPair, firstInput1Read);
-                if (input1ReadPair.isDuplicateMarked()){
-                    genomeDupNotFoundInTranscr++;
-                } else {
-                    notFoundInTranscr++;
-                }
-
+                compareDuplicateMarking.processInput1(input1ReadPair);
                 currentRead1 = read1Iterator.next();
             }
         }
@@ -222,35 +150,12 @@ public class CompareSAMFiles extends GATKTool {
                 final GATKRead firstInput2Read = currentRead2;
                 input2ReadPair.add(firstInput2Read);
                 collectQueryNameGroup(read2Iterator, input2ReadPair, firstInput2Read);
-                if (input2ReadPair.isDuplicateMarked()){
-                    genomeAbsentTranscriptDup++;
-                } else {
-                    notFoundInGenome++;
-                }
-
+                compareDuplicateMarking.processInput2(input2ReadPair);
                 currentRead2 = read2Iterator.next();
             }
         }
 
-
-        try (PrintWriter pw = new PrintWriter(outputTable)){
-            final String sample = getHeaderForReads().getReadGroups().get(0).getSample();
-            pw.println("#sample=" + sample);
-            pw.println("genomeDupTranscrNot," + genomeDupTranscrNot);
-            pw.println("bothDup," + bothDup);
-            pw.println("genomeNotTranscrDup," + genomeNotTranscrDup);
-            pw.println("neitherDup," + neitherDup);
-            pw.println("genomeDupNotFoundInTranscr," + genomeDupNotFoundInTranscr);
-            pw.println("notFoundInTranscr," + notFoundInTranscr);
-            pw.println("notFoundInGenome," + notFoundInGenome);
-            pw.println("numReadPairsGenome," + numReadPairsGenome);
-            pw.println("numReadPairsTranscr," + numReadPairsTranscr);
-        } catch (IOException e){
-            throw new UserException("Could not write to " + outputTable, e);
-        }
-
-
-
+        compareDuplicateMarking.writeSummary(outputTable, getHeaderForReads());
         return "SUCCESS";
     }
 
