@@ -14,6 +14,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -22,6 +23,8 @@ import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -733,5 +736,42 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(ic2 > 0); //if GQ0s with no data are output as hom-ref, then ic2 is ~0.7
         Assert.assertEquals(ic1, ic2, 0.1); //there will be some difference because the old version zeros out low depth hom-refs and makes them no-calls
         Assert.assertEquals(vcWithoutPLs.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0), 114);  //don't count no-calls that are PL=[0,0,0] in classic VCF
+    }
+
+    @Test
+    public void testMissingDPVariant() {
+        final File inputNoDP = getTestFile("homVarNoDP.g.vcf");
+        final File outputNoDP = createTempFile("outputNoDP", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(hg38Reference)
+                .addVCF(inputNoDP)
+                .addOutput(outputNoDP)
+                .add(GenotypeCalculationArgumentCollection.CALL_CONFIDENCE_SHORT_NAME, 0);
+        runCommandLine(args);
+
+        final List<VariantContext> noDPVCs = VariantContextTestUtils.getVariantContexts(outputNoDP);
+        Assert.assertEquals(noDPVCs.size(), 0);
+
+        final File input1DP = getTestFile("homVar1DP.g.vcf");
+        final File output1DP = createTempFile("output1DP" ,".vcf");
+
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.addReference(hg38Reference)
+                .addVCF(input1DP)
+                .addOutput(output1DP)
+                .add(StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, "StandardAnnotation")
+                .add(StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, "AS_StandardAnnotation");
+        runCommandLine(args2);
+
+        //interfaces can't have static methods, so we have to create an annotation class to query its keys
+        final AS_QualByDepth annotation = new AS_QualByDepth();
+        final List<VariantContext> oneDPVCs = VariantContextTestUtils.getVariantContexts(output1DP);
+        Assert.assertEquals(oneDPVCs.size(), 1);
+        final VariantContext vc = oneDPVCs.get(0);
+        Assert.assertTrue(vc.getAttributes().keySet().containsAll(annotation.getKeyNames()));
+        Assert.assertFalse(vc.getAttributes().keySet().contains(annotation.getPrimaryRawKey()));
+        Assert.assertFalse(vc.getAttributes().keySet().contains(annotation.getSecondaryRawKeys().get(0)));
+        Assert.assertFalse(vc.getAttributes().keySet().contains(annotation.getSecondaryRawKeys().get(1)));
     }
 }

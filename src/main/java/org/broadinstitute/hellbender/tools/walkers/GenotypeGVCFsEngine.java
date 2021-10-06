@@ -176,7 +176,8 @@ public class GenotypeGVCFsEngine
         // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
         // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
         // We could theoretically make 2 passes to re-create the genotypes, but that gets extremely expensive with large sample sizes.
-        if (result.isPolymorphicInSamples()) {
+        // Note that we also check depth because the previous conditions were also contingent on depth
+        if (result.isPolymorphicInSamples()  && result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0) {
             // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
             final VariantContextBuilder vcBuilder = new VariantContextBuilder(result);
             //don't count sites with no depth and no confidence towards things like AN and InbreedingCoeff

@@ -66,7 +66,7 @@ public class AS_QualByDepth implements InfoFieldAnnotation, ReducibleAnnotation,
     }
 
     @Override
-    public List<String> getSecondaryRawKeys() { return Arrays.asList(GATKVCFConstants.AS_QUAL_KEY);}
+    public List<String> getSecondaryRawKeys() { return Arrays.asList(GATKVCFConstants.AS_QUAL_KEY, GATKVCFConstants.AS_VARIANT_DEPTH_KEY);}
 
     @Override
     public List<VCFCompoundHeaderLine> getRawDescriptions() {
