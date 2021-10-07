@@ -29,6 +29,7 @@ workflow GvsExtractCallset {
         File? excluded_intervals
         Boolean? emit_pls = false
         Int? extract_preemptible_override
+        Int? split_intervals_disk_size_override
 
         String? service_account_json_path
 
@@ -49,6 +50,7 @@ workflow GvsExtractCallset {
           ref_dict = reference_dict,
           scatter_count = scatter_count,
           output_gcs_dir = output_gcs_dir,
+          split_intervals_disk_size_override = split_intervals_disk_size_override,
           service_account_json_path = service_account_json_path
     }
 
@@ -105,7 +107,8 @@ workflow GvsExtractCallset {
     call CreateManifest {
       input:
         manifest_lines = ExtractTask.manifest,
-        output_gcs_dir = output_gcs_dir
+        output_gcs_dir = output_gcs_dir,
+        service_account_json_path = service_account_json_path
     }
 
     output {
@@ -202,6 +205,9 @@ task ExtractTask {
                 ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
+        # Drop trailing slash if one exists
+        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
         OUTPUT_FILE_BYTES="$(du -b ~{output_file} | cut -f1)"
         echo ${OUTPUT_FILE_BYTES} > vcf_bytes.txt
 
@@ -253,6 +259,7 @@ task ExtractTask {
         File ref_dict
         Int scatter_count
         String? split_intervals_extra_args
+        Int? split_intervals_disk_size_override
         String? output_gcs_dir
 
         File? gatk_override
@@ -260,6 +267,7 @@ task ExtractTask {
     }
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+    Int disk_size = if (defined(split_intervals_disk_size_override)) then split_intervals_disk_size_override else 10
 
     parameter_meta {
         intervals: {
@@ -306,7 +314,7 @@ task ExtractTask {
          docker: "us.gcr.io/broad-gatk/gatk:4.2.0.0"
          bootDiskSizeGb: 15
          memory: "3 GB"
-         disks: "local-disk 10 HDD"
+         disks: "local-disk ~{disk_size} HDD"
          preemptible: 3
          cpu: 1
      }
@@ -399,7 +407,10 @@ task CreateManifest {
     input {
         Array[String] manifest_lines
         String? output_gcs_dir
+        String? service_account_json_path
     }
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         set -e
@@ -410,7 +421,11 @@ task CreateManifest {
         # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-        if [ -n "${OUTPUT_GCS_DIR}" ]; then
+        if [ -n "$OUTPUT_GCS_DIR" ]; then
+          if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+          fi
           gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
         fi
     >>>
