@@ -12,7 +12,6 @@ workflow GvsRescatterCallsetInterval {
     File reference_dict
     File reference_index
     String final_output_gcs_dir
-    String subshards_gcs_directory
     String? filter_set_name
 
     Int re_scatter_count
@@ -40,22 +39,14 @@ workflow GvsRescatterCallsetInterval {
         extract_preemptible_override = extract_preemptible_override,
         filter_set_name = filter_set_name,
         gatk_override = gatk_override,
-#        output_gcs_dir = subshards_gcs_directory,
         service_account_json_path = service_account_json_path
     }
-
-#    call GenerateOrderedPaths as VCFpaths {
-#      input:
-#        root_path = sub(subshards_gcs_directory, "/$", "") + '/' + output_file_base_name + '_' + intervals_to_scatter[i] + '_',
-#        num_files = re_scatter_count,
-#        path_suffix = ".vcf.gz"
-#    }
 
     call MergeVCFs {
       input:
         input_vcfs = ExtractInterval.output_vcfs,
         output_vcf_name = "${output_file_base_name}_${intervals_to_scatter[i]}.vcf.gz",
-        output_directory = subshards_gcs_directory, # replace with final_output_gcs_dir after tested
+        output_directory = final_output_gcs_dir,
         merge_disk_override = merge_disk_override,
         service_account_json_path = service_account_json_path
     }
