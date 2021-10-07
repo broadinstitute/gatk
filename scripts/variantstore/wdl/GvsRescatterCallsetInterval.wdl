@@ -64,6 +64,7 @@ task MergeVCFs {
     File? gatk_override
   }
 
+  # if there are a large number of VCFs, better to estimate a size than have to run size() on each one, which can accumulate
   Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else ceil(size(input_vcfs, "GiB") * 2.5) + 10
 
   parameter_meta {
@@ -108,33 +109,5 @@ task MergeVCFs {
   output {
     File output_vcf = "~{output_vcf_name}"
     File output_vcf_index = "~{output_vcf_name}.tbi"
-  }
-}
-
-task GenerateOrderedPaths {
-  input {
-    String root_path
-    String num_files
-    String path_suffix
-  }
-
-  command <<<
-    set -e
-
-    python3 /app/generate_ordered_paths.py \
-    --root_path ~{root_path} \
-    --path_suffix ~{path_suffix} \
-    --number ~{num_files} > file_names.txt
-  >>>
-
-  output {
-    Array[File] paths = read_lines("file_names.txt")
-  }
-
-  runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211005_2"
-    memory: "3 GB"
-    disks: "local-disk 10 HDD"
-    cpu: 1
   }
 }
