@@ -29,6 +29,7 @@ workflow GvsExtractCallset {
         File? excluded_intervals
         Boolean? emit_pls = false
         Int? extract_preemptible_override
+        Int? extract_maxretries_override
         Int? split_intervals_disk_size_override
 
         String? service_account_json_path
@@ -95,7 +96,8 @@ workflow GvsExtractCallset {
                 output_gcs_dir                  = output_gcs_dir,
                 local_disk                      = local_disk_for_extract,
                 last_modified_timestamps        = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp],
-                extract_preemptible_override    = extract_preemptible_override
+                extract_preemptible_override    = extract_preemptible_override,
+                extract_maxretries_override = extract_maxretries_override
         }
     }
 
@@ -154,6 +156,7 @@ task ExtractTask {
         String? service_account_json_path
         File? gatk_override
         Int? extract_preemptible_override
+        Int? extract_maxretries_override
 
         Int? local_sort_max_records_in_ram = 10000000
         Int local_disk
@@ -237,7 +240,7 @@ task ExtractTask {
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
         preemptible: select_first([extract_preemptible_override, "2"])
-        maxRetries: 3
+        maxRetries: select_first([extract_maxretries_override, "3"])
         cpu: 2
     }
 
