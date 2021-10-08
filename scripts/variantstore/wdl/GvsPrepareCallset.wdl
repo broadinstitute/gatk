@@ -19,6 +19,7 @@ workflow GvsPrepareCallset {
         String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
         Int temp_table_ttl_in_hours = 72
+        Boolean? skip_pet_insert = false
         String? service_account_json_path
         String? docker
     }
@@ -36,6 +37,7 @@ workflow GvsPrepareCallset {
             fq_temp_table_dataset           = fq_temp_table_dataset,
             fq_destination_dataset          = fq_destination_dataset,
             temp_table_ttl_in_hours         = temp_table_ttl_in_hours,
+            skip_pet_insert                 - skip_pet_insert,
             service_account_json_path       = service_account_json_path,
             docker                          = docker_final
     }
@@ -62,7 +64,8 @@ task PrepareCallsetTask {
         String fq_sample_mapping_table
         String fq_temp_table_dataset
         String fq_destination_dataset
-        Int temp_table_ttl_in_hours
+        Int temp_table_ttl_in_hours,
+        Boolean skip_pet_insert,
 
         String? service_account_json_path
         String docker
@@ -72,7 +75,7 @@ task PrepareCallsetTask {
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String use_sample_names_file = if (defined(sample_names_to_extract)) then 'true' else 'false'
-    String python_option = if (defined(sample_names_to_extract)) then '--sample_names_to_extract sample_names_file' else '--fq_cohort_sample_names ' + fq_sample_mapping_table
+    String sample_list_param = if (defined(sample_names_to_extract)) then '--sample_names_to_extract sample_names_file' else '--fq_cohort_sample_names ' + fq_sample_mapping_table
 
     parameter_meta {
       sample_names_to_extract: {
@@ -99,11 +102,12 @@ task PrepareCallsetTask {
             --fq_temp_table_dataset ~{fq_temp_table_dataset} \
             --fq_destination_dataset ~{fq_destination_dataset} \
             --destination_cohort_table_prefix ~{destination_cohort_table_prefix} \
-            ~{python_option} \
+            ~{sample_list_param} \
             --query_project ~{query_project} \
             ~{sep=" " query_label_args} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
             --ttl ~{temp_table_ttl_in_hours} \
+            --skip_pet_insert ~{skip_pet_insert} \
             $SERVICE_ACCOUNT_STANZA
     >>>
 
