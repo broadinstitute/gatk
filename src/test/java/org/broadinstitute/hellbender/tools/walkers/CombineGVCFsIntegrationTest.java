@@ -374,7 +374,7 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final List<VariantContext> allVCs = getVariantContexts(output);
 
-        Assert.assertEquals(allVCs.size(), 3);
+        Assert.assertEquals(allVCs.size(), 6);
 
         final VariantContext first = allVCs.get(0);
         Assert.assertEquals(first.getStart(), 69772);
@@ -384,13 +384,60 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final VariantContext second = allVCs.get(1);
         Assert.assertEquals(second.getStart(), 69773);
-        Assert.assertEquals(second.getEnd(), 69774);
+        Assert.assertEquals(second.getEnd(), 69773);
+        Assert.assertEquals(second.getGenotypes().size(), 2);
+        Assert.assertTrue(second.getAlleles().contains(Allele.SPAN_DEL));
+
+        for (int i = 2; i < 5; i++) {
+            Assert.assertTrue(allVCs.get(i).getAlleles().contains(Allele.SPAN_DEL));
+        }
+
+
+        final VariantContext last = allVCs.get(5);
+        Assert.assertEquals(last.getStart(), 69777);
+        Assert.assertEquals(last.getEnd(), 69783);
+        Assert.assertFalse(last.getAlleles().contains(Allele.SPAN_DEL));
+        Assert.assertEquals(last.getGenotypes().size(), 2);
+    }
+
+    @Test
+    public void testOneHasDeletionAndTwoHasVariant() throws Exception {
+        final File output = createTempFile("combinegvcfs", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37_reference_20_21))
+                .addOutput(output);
+        args.addVCF(getTestFile("gvcfExample1b.vcf"));
+        args.addVCF(getTestFile("gvcfExample2b.vcf"));
+        args.addRaw("--" + CombineGVCFs.IGNORE_VARIANTS_THAT_START_OUTSIDE_INTERVAL);
+        args.addRaw(" -L 20:69772-69783");
+
+        runCommandLine(args);
+
+        final List<VariantContext> allVCs = getVariantContexts(output);
+
+        Assert.assertEquals(allVCs.size(), 5);
+
+        final VariantContext first = allVCs.get(0);
+        Assert.assertEquals(first.getStart(), 69772);
+        Assert.assertEquals(first.getEnd(), 69776);
+        Assert.assertEquals(first.getNAlleles(), 3);
+        Assert.assertEquals(first.getGenotypes().size(), 2);
+
+        final VariantContext second = allVCs.get(1);
+        Assert.assertEquals(second.getStart(), 69773);
+        Assert.assertEquals(second.getEnd(), 69773);
+        Assert.assertEquals(second.getNAlleles(), 4);
+        Assert.assertTrue(second.getAlleles().contains(Allele.SPAN_DEL));
         Assert.assertEquals(second.getGenotypes().size(), 2);
 
-        final VariantContext third = allVCs.get(2);
-        Assert.assertEquals(third.getStart(), 69775);
-        Assert.assertEquals(third.getEnd(), 69783);
-        Assert.assertEquals(third.getGenotypes().size(), 2);
+        final VariantContext overlap = allVCs.get(3);
+        Assert.assertEquals(overlap.getStart(), 69775);
+        Assert.assertEquals(overlap.getEnd(), 69775);
+        Assert.assertEquals(second.getNAlleles(), 4);
+        Assert.assertTrue(second.getAlleles().contains(Allele.SPAN_DEL));
+        Assert.assertTrue(overlap.getGenotype(0).hasPL());
+        Assert.assertTrue(overlap.getGenotype(1).hasPL());
     }
 
     @Test

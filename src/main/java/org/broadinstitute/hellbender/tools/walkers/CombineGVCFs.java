@@ -396,7 +396,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
                 // if it was ending anyways, then remove it from the future state
                 // or if ending vc is the same sample as a starting VC, then remove it from the future state
-                if((vc.getEnd() == pos.getStart()) || (variantContexts.size() > 0 && !forceOutputAtCurrentPosition && newSamples.containsAll(vc.getSampleNames()))) {
+                if((vc.getEnd() == pos.getStart())) { // || (variantContexts.size() > 0 && !forceOutputAtCurrentPosition && newSamples.containsAll(vc.getSampleNames()))) {
                     samples.removeAll(vc.getSampleNames());
                     variantContextsOverlappingCurrentMerge.remove(i);
                 }
