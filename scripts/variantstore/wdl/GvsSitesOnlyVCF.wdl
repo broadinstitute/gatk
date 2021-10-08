@@ -211,7 +211,11 @@ task ExtractAnAcAfFromVCF {
         gsutil cp ~{ref} Homo_sapiens_assembly38.fasta
 
         # TODO Compare the ancestry list with the sample list and throw an error (but dont fail the job) if there are samples that are in one, but not the other. Two different errors.
-        # awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
+        #awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
+        #bcftools query --list-samples ~{local_input_vcf} | sort -u > collected_samples.txt
+
+        #wc -l collected_subpopulations.txt
+        #wc -l collected_samples.txt
 
         # expected_subpopulations = [
         # "afr",
