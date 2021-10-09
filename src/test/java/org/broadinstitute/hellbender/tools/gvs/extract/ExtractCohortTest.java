@@ -42,6 +42,42 @@ class ExtractCohortTest extends CommandLineProgramTest {
     IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
   }
 
+  @Test
+  public void testFinalVCFfromRangesAvro() throws Exception {
+    // To generate the Avro input files, create a table for export using the GVS QuickStart Data
+    //
+    // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.ref_ranges_for_testing` AS
+    // SELECT * FROM `spec-ops-aou.terra_test_1.ref_ranges_001`
+    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000;
+    //
+    // Then export in GUI w/ Avro + Snappy
+    //
+    // And the same for the VET data:
+    // CREATE OR REPLACE TABLE `spec-ops-aou.terra_test_1.vet_for_testing` AS
+    // SELECT * FROM `spec-ops-aou.terra_test_1.vet_001`
+    // WHERE location >= (20 * 1000000000000) + 10000000 - 1001 AND location <= (20 * 1000000000000) + 20000000
+    //
+    final File expectedVCF = getTestFile("ranges_extract.expected.vcf");
+
+    // create a temporary file (that will get cleaned up after the test has run) to hold the output data in
+    final File outputVCF = createTempFile("extract_output", "vcf");
+
+    final ArgumentsBuilder args = new ArgumentsBuilder();
+    args
+            .add("mode", "RANGES")
+            .add("ref-version", 38)
+            .add("R", hg38Reference)
+            .add("O", outputVCF.getAbsolutePath())
+            .add("local-sort-max-records-in-ram", 10000000)
+            .add("ref-ranges-avro-file-name", getTestFile("quickstart_10mb_ref_ranges.avro"))
+            .add("vet-avro-file-name", getTestFile("quickstart_10mb_vet.avro"))
+            .add("L", "chr20:10000000-20000000")
+            .add("sample-file", prefix+"quickstart.sample.list");
+
+    runCommandLine(args);
+    IntegrationTestSpec.assertEqualTextFiles(outputVCF, expectedVCF);
+  }
+
   @Test(expectedExceptions = UserException.class)
   public void testThrowFilterError() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
