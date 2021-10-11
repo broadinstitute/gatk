@@ -243,6 +243,10 @@ def populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destinat
   print(sql)
   if (not skip_pet_insert):
     utils.execute_with_retry(client, "populate-final-export-vet", sql)
+    print(f"\nFinal cohort extract data written to {fq_destination_table_data}\n")
+  else:
+    print(f"\nFinal vet data NOT written to {fq_destination_table_data}. Manually execute the command above!\n")
+
   return
 
 def make_extract_table(fq_pet_vet_dataset,
@@ -333,8 +337,6 @@ def make_extract_table(fq_pet_vet_dataset,
     populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destination_table_data, skip_pet_insert)
   finally:
     dump_job_stats()
-
-  print(f"\nFinal cohort extract data written to {fq_destination_table_data}\n")
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')
