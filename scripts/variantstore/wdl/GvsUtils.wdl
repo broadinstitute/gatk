@@ -26,9 +26,9 @@ task MergeVCFs {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     if [ ~{has_service_account_file} = 'true' ]; then
-    gsutil cp ~{service_account_json_path} local.service_account.json
-    gcloud auth activate-service-account --key-file=local.service_account.json
-    export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
     fi
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
@@ -112,11 +112,11 @@ task SplitIntervals {
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-    if [ ~{has_service_account_file} = 'true' ]; then
-    gsutil cp ~{service_account_json_path} local.service_account.json
-    gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
-    gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
+      if [ ~{has_service_account_file} = 'true' ]; then
+        gsutil cp ~{service_account_json_path} local.service_account.json
+        gcloud auth activate-service-account --key-file=local.service_account.json
+      fi
+      gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
     fi
   }
 
@@ -155,9 +155,9 @@ task GetBQTableLastModifiedDatetime {
     set -e
 
     if [ ~{has_service_account_file} = 'true' ]; then
-    gsutil cp ~{service_account_json_path} local.service_account.json
-    gcloud auth activate-service-account --key-file=local.service_account.json
-    gcloud config set project ~{query_project}
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{query_project}
     fi
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
@@ -167,9 +167,9 @@ task GetBQTableLastModifiedDatetime {
 
     LASTMODIFIED=$(bq --location=US --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
     if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
-    echo $LASTMODIFIED
+      echo $LASTMODIFIED
     else
-    exit 1
+      exit 1
     fi
   >>>
 

@@ -57,14 +57,14 @@ workflow GvsExtractCallset {
           service_account_json_path = service_account_json_path
     }
 
-    call Utils.GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
+    call Utils.GetBQTableLastModifiedDatetime as CohortExtractTableLastModified {
         input:
             query_project = query_project,
             fq_table = fq_cohort_extract_table,
             service_account_json_path = service_account_json_path
     }
 
-    call Utils.GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
+    call Utils.GetBQTableLastModifiedDatetime as SamplesTableLastModified {
         input:
             query_project = query_project,
             fq_table = fq_samples_to_extract_table,
@@ -97,7 +97,7 @@ workflow GvsExtractCallset {
                 output_file                     = "${output_file_base_name}_${i}.vcf.gz",
                 output_gcs_dir                  = output_gcs_dir,
                 local_disk                      = local_disk_for_extract,
-                last_modified_timestamps        = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp],
+                last_modified_timestamps        = [SamplesTableLastModified.last_modified_timestamp, CohortExtractTableLastModified.last_modified_timestamp],
                 extract_preemptible_override    = extract_preemptible_override,
                 extract_maxretries_override     = extract_maxretries_override
         }

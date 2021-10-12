@@ -4,7 +4,7 @@ import "GvsWarpTasks.wdl" as Tasks
 import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateFilterSet {
-   input {
+    input {
         File wgs_intervals
         Int scatter_count
 
@@ -138,23 +138,23 @@ workflow GvsCreateFilterSet {
 
     call Tasks.IndelsVariantRecalibrator {
         input:
-        sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-        sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
-        model_report = indels_model,
-        recalibration_filename = filter_set_name + ".indels.recal",
-        tranches_filename = filter_set_name + ".indels.tranches",
-        recalibration_tranche_values = indel_recalibration_tranche_values,
-        recalibration_annotation_values = indel_recalibration_annotation_values,
-        excluded_sites_bed = excluded_sites_bed,
-        mills_resource_vcf = mills_resource_vcf,
-        mills_resource_vcf_index = mills_resource_vcf_index,
-        axiomPoly_resource_vcf = axiomPoly_resource_vcf,
-        axiomPoly_resource_vcf_index = axiomPoly_resource_vcf_index,
-        dbsnp_resource_vcf = dbsnp_resource_vcf,
-        dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
-        use_allele_specific_annotations = true,
-        disk_size = large_disk,
-        machine_mem_gb = INDEL_VQSR_machine_mem_gb
+            sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+            sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+            model_report = indels_model,
+            recalibration_filename = filter_set_name + ".indels.recal",
+            tranches_filename = filter_set_name + ".indels.tranches",
+            recalibration_tranche_values = indel_recalibration_tranche_values,
+            recalibration_annotation_values = indel_recalibration_annotation_values,
+            excluded_sites_bed = excluded_sites_bed,
+            mills_resource_vcf = mills_resource_vcf,
+            mills_resource_vcf_index = mills_resource_vcf_index,
+            axiomPoly_resource_vcf = axiomPoly_resource_vcf,
+            axiomPoly_resource_vcf_index = axiomPoly_resource_vcf_index,
+            dbsnp_resource_vcf = dbsnp_resource_vcf,
+            dbsnp_resource_vcf_index = dbsnp_resource_vcf_index,
+            use_allele_specific_annotations = true,
+            disk_size = large_disk,
+            machine_mem_gb = INDEL_VQSR_machine_mem_gb
     }
 
     if (GetNumSamplesLoaded.num_samples > snps_variant_recalibration_threshold) {

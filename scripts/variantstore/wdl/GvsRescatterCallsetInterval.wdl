@@ -17,7 +17,7 @@ workflow GvsRescatterCallsetInterval {
 
     Int re_scatter_count
     String interval_file_dir
-    Array[String] intervals_to_scatter    #e.g. ["0001", "0413", "9839"] to match the format of the interval files
+    Array[String] intervals_to_scatter    #e.g. ["0001", "0413", "9839"] match format of the interval file names
 
     Int? extract_preemptible_override
     Int? merge_disk_override
