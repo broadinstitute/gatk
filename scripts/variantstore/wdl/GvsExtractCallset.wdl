@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsExtractCallset {
    input {
         String data_project
@@ -43,7 +45,7 @@ workflow GvsExtractCallset {
     String fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES"
     String fq_cohort_extract_table  = "~{fq_cohort_extract_table_prefix}__DATA"
 
-    call SplitIntervals {
+    call Utils.SplitIntervals {
       input:
           intervals = wgs_intervals,
           ref_fasta = reference,
@@ -55,14 +57,14 @@ workflow GvsExtractCallset {
           service_account_json_path = service_account_json_path
     }
 
-    call GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
+    call Utils.GetBQTableLastModifiedDatetime as fq_cohort_extract_table_datetime {
         input:
             query_project = query_project,
             fq_table = fq_cohort_extract_table,
             service_account_json_path = service_account_json_path
     }
 
-    call GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
+    call Utils.GetBQTableLastModifiedDatetime as fq_samples_to_extract_table_datetime {
         input:
             query_project = query_project,
             fq_table = fq_samples_to_extract_table,
@@ -251,129 +253,6 @@ task ExtractTask {
         File output_vcf_index = "~{output_file}.tbi"
         Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
         String manifest = read_string("manifest.txt")
-    }
- }
-
- task SplitIntervals {
-    input {
-        File intervals
-        File ref_fasta
-        File ref_fai
-        File ref_dict
-        Int scatter_count
-        String? split_intervals_extra_args
-        Int? split_intervals_disk_size_override
-        String? output_gcs_dir
-
-        File? gatk_override
-        String? service_account_json_path
-    }
-
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    Int disk_size = if (defined(split_intervals_disk_size_override)) then split_intervals_disk_size_override else 10
-
-    parameter_meta {
-        intervals: {
-            localization_optional: true
-        }
-        ref_fasta: {
-            localization_optional: true
-        }
-        ref_fai: {
-            localization_optional: true
-        }
-        ref_dict: {
-            localization_optional: true
-        }
-     }
-
-     command {
-         set -e
-         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-         mkdir interval-files
-         gatk --java-options "-Xmx2g" SplitIntervals \
-             --dont-mix-contigs \
-             -R ~{ref_fasta} \
-             ~{"-L " + intervals} \
-             -scatter ~{scatter_count} \
-             -O interval-files \
-             ~{split_intervals_extra_args}
-         cp interval-files/*.interval_list .
-
-         # Drop trailing slash if one exists
-         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-
-         if [ -n "$OUTPUT_GCS_DIR" ]; then
-             if [ ~{has_service_account_file} = 'true' ]; then
-                 gsutil cp ~{service_account_json_path} local.service_account.json
-                 gcloud auth activate-service-account --key-file=local.service_account.json
-             fi
-             gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
-         fi
-     }
-
-     runtime {
-         docker: "us.gcr.io/broad-gatk/gatk:4.2.0.0"
-         bootDiskSizeGb: 15
-         memory: "3 GB"
-         disks: "local-disk ~{disk_size} HDD"
-         preemptible: 3
-         cpu: 1
-     }
-
-     output {
-         Array[File] interval_files = glob("*.interval_list")
-     }
- }
-
-task GetBQTableLastModifiedDatetime {
-    # because this is being used to determine if the data has changed, never use call cache
-    meta {
-        volatile: true
-    }
-
-    input {
-        String query_project
-        String fq_table
-        String? service_account_json_path
-    }
-
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
-    # ------------------------------------------------
-    # try to get the last modified date for the table in question; fail if something comes back from BigQuwey
-    # that isn't in the right format (e.g. an error)
-    command <<<
-        set -e
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-        fi
-
-        echo "project_id = ~{query_project}" > ~/.bigqueryrc
-
-        # bq needs the project name to be separate by a colon
-        DATASET_TABLE_COLON=$(echo ~{fq_table} | sed 's/\./:/')
-
-        LASTMODIFIED=$(bq --location=US --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
-        if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
-            echo $LASTMODIFIED
-        else
-            exit 1
-        fi
-    >>>
-
-    output {
-        String last_modified_timestamp = read_string(stdout())
-    }
-
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
-        memory: "3 GB"
-        disks: "local-disk 10 HDD"
-        preemptible: 3
-        cpu: 1
     }
 }
 

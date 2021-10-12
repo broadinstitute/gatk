@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsWarpTasks.wdl" as Tasks
+import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateFilterSet {
    input {
@@ -83,7 +84,7 @@ workflow GvsCreateFilterSet {
     String fq_tranches_destination_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
     String fq_filter_sites_destination_table = "~{data_project}.~{default_dataset}.filter_set_sites"
 
-    call GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
+    call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
         input:
             query_project = query_project,
             fq_table = fq_sample_table,
@@ -98,7 +99,7 @@ workflow GvsCreateFilterSet {
             project_id = query_project
     }
 
-    call SplitIntervals {
+    call Utils.SplitIntervals {
           input:
               intervals = wgs_intervals,
               ref_fasta = reference,
@@ -127,10 +128,9 @@ workflow GvsCreateFilterSet {
         }
     }
 
-    call MergeVCFs {
+    call Utils.MergeVCFs as MergeVCFs {
        input:
            input_vcfs = ExtractFilterTask.output_vcf,
-           input_vcfs_indexes = ExtractFilterTask.output_vcf_index,
            output_vcf_name = "${output_file_base_name}.vcf.gz",
            preemptible_tries = 3,
            gatk_override = gatk_override
@@ -216,10 +216,9 @@ workflow GvsCreateFilterSet {
                 gatk_override = gatk_override
         }
 
-        call MergeVCFs as MergeRecalibrationFiles {
+        call Utils.MergeVCFs as MergeRecalibrationFiles {
             input:
                 input_vcfs = SNPsVariantRecalibratorScattered.recalibration,
-                input_vcfs_indexes = SNPsVariantRecalibratorScattered.recalibration_index,
                 gather_type = "CONVENTIONAL",
                 output_vcf_name = "${filter_set_name}.vrecalibration.gz",
                 preemptible_tries = 3,
@@ -407,62 +406,7 @@ task ExtractFilterTask {
         File output_vcf = "~{output_file}"
         File output_vcf_index = "~{output_file}.tbi"
     }
- }
-
- task SplitIntervals {
-     input {
-         File intervals
-         File ref_fasta
-         File ref_fai
-         File ref_dict
-         Int scatter_count
-         String? split_intervals_extra_args
-
-         File? gatk_override
-     }
-
-     parameter_meta {
-         intervals: {
-             localization_optional: true
-         }
-         ref_fasta: {
-             localization_optional: true
-         }
-         ref_fai: {
-             localization_optional: true
-         }
-         ref_dict: {
-             localization_optional: true
-         }
-      }
-
-      command {
-          set -e
-          export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-          mkdir interval-files
-          gatk --java-options "-Xmx5g" SplitIntervals \
-              -R ~{ref_fasta} \
-              ~{"-L " + intervals} \
-              -scatter ~{scatter_count} \
-              -O interval-files \
-              ~{split_intervals_extra_args}
-          cp interval-files/*.interval_list .
-      }
-
-      runtime {
-          docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
-          bootDiskSizeGb: 15
-          memory: "6 GB"
-          disks: "local-disk 10 HDD"
-          preemptible: 3
-          cpu: 1
-      }
-
-      output {
-          Array[File] interval_files = glob("*.interval_list")
-      }
-  }
+}
 
 task PopulateFilterSetInfo {
     input {
@@ -652,104 +596,5 @@ task PopulateFilterSetTranches {
 
     output {
         String status_load_filter_set_tranches = read_string("status_load_filter_set_tranches")
-    }
-}
-
-task MergeVCFs {
-    input {
-        Array[File] input_vcfs
-        Array[File] input_vcfs_indexes
-        String gather_type = "BLOCK"
-        String output_vcf_name
-
-        File? gatk_override
-        Int preemptible_tries
-    }
-
-    Int disk_size = ceil(size(input_vcfs, "GiB") * 2.5) + 10
-
-    parameter_meta {
-         input_vcfs: {
-             localization_optional: true
-         }
-         input_vcfs_indexes: {
-             localization_optional: true
-         }
-      }
-
-    command {
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-        gatk --java-options -Xmx3g GatherVcfsCloud \
-            --ignore-safety-checks --gather-type ~{gather_type} \
-            --create-output-variant-index false \
-            -I ~{sep=' -I ' input_vcfs} \
-            --output ~{output_vcf_name}
-
-        tabix ~{output_vcf_name}
-    }
-
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
-        preemptible: preemptible_tries
-        memory: "3 GiB"
-        disks: "local-disk ~{disk_size} HDD"
-    }
-
-    output {
-        File output_vcf = "~{output_vcf_name}"
-        File output_vcf_index = "~{output_vcf_name}.tbi"
-    }
-}
-
-task GetBQTableLastModifiedDatetime {
-    # because this is being used to determine if the data has changed, never use call cache
-    meta {
-        volatile: true
-    }
-
-    input {
-        String query_project
-        String fq_table
-        String? service_account_json_path
-    }
-
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
-    # ------------------------------------------------
-    # try to get the last modified date for the table in question; fail if something comes back from BigQuery
-    # that isn't in the right format (e.g. an error)
-    command <<<
-        set -e
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{query_project}
-        fi
-
-        echo "project_id = ~{query_project}" > ~/.bigqueryrc
-
-        # bq needs the project name to be separate by a colon
-        DATASET_TABLE_COLON=$(echo ~{fq_table} | sed 's/\./:/')
-
-        LASTMODIFIED=$(bq --location=US --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
-        if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
-            echo $LASTMODIFIED
-        else
-            exit 1
-        fi
-    >>>
-
-    output {
-        String last_modified_timestamp = read_string(stdout())
-    }
-
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
-        memory: "3 GB"
-        disks: "local-disk 10 HDD"
-        preemptible: 3
-        cpu: 1
     }
 }
