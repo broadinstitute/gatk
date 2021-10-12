@@ -64,7 +64,8 @@ task MergeVCFs {
     File? gatk_override
   }
 
-  # if there are a large number of VCFs, better to estimate a size than have to run size() on each one, which can accumulate
+  # if there are a large number of VCFs, better to estimate a size than have to run size() on each one,
+  # which can take quite a long time 
   Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else ceil(size(input_vcfs, "GiB") * 2.5) + 10
 
   parameter_meta {

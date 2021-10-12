@@ -97,7 +97,7 @@ workflow GvsExtractCallset {
                 local_disk                      = local_disk_for_extract,
                 last_modified_timestamps        = [fq_samples_to_extract_table_datetime.last_modified_timestamp, fq_cohort_extract_table_datetime.last_modified_timestamp],
                 extract_preemptible_override    = extract_preemptible_override,
-                extract_maxretries_override = extract_maxretries_override
+                extract_maxretries_override     = extract_maxretries_override
         }
     }
 
