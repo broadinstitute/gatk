@@ -12,14 +12,12 @@ task MergeVCFs {
     File? gatk_override
   }
 
-  # if there are a large number of VCFs, better to estimate a size than have to run size() on each one,
-  # which can take quite a long time
-  Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else ceil(size(input_vcfs, "GiB") * 2.5) + 10
+  Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else 100
 
   parameter_meta {
     input_vcfs: {
-                  localization_optional: true
-                }
+      localization_optional: true
+    }
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -83,17 +81,17 @@ task SplitIntervals {
 
   parameter_meta {
     intervals: {
-                 localization_optional: true
-               }
+      localization_optional: true
+    }
     ref_fasta: {
-                 localization_optional: true
-               }
+      localization_optional: true
+    }
     ref_fai: {
-               localization_optional: true
-             }
+      localization_optional: true
+    }
     ref_dict: {
-                localization_optional: true
-              }
+      localization_optional: true
+    }
   }
 
   command {
