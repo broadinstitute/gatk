@@ -1,6 +1,5 @@
 version 1.0
 
-
 task MergeVCFs {
   input {
     Array[File] input_vcfs
