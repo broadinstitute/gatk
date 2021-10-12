@@ -1,6 +1,6 @@
-# Sample set QC
+# Callset Stats
 
-Sample set qc is performed after a callset has been extracted to validate the quality of the callset with respect to the VQSR filter set used. Most of these steps are manual at this point and are executed in the BQ console.  
+The generation of GVS callset stats is performed after a callset has been extracted to validate the quality of the callset with respect to the VQSR filter set used. Most of these steps are manual at this point and are executed in the BQ console.
 
 **NOTE:** You will need permission to query table `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites`.
 
@@ -31,12 +31,14 @@ and `prefix` is the "cohort_extract_table_prefix" from `GvsExtractCallset` and t
 
 This will currently create/overwrite the sample_metrics table in the dataset. (TODO we may want this to just update the table so we can support multiple filter sets)
 
-## Evaluate and extract the qc data
+## Evaluate and extract the data
 
 - Copy the contents of `filter_set_samples_calculate_threshold.example.sql` to the BQ console
 - Replace `$FQ_PREFIX` with `<project>.<dataset>.<prefix>`
 - Replace `$NAME_OF_FILTER_SET` with the name of the filter set you used to filter the callset
 - Execute the query
-- Click the SAVE RESULTS button to export the results, or you can save the query as a SQL file and then run this command locally to get a CSV file in your local environment:
+- Click the SAVE RESULTS button to export the results, or you can save the query as an SQL file and then run this command locally to get a CSV file in your local environment:
 
 	`bq --project_id=<project> --use_legacy_sql=false query --format=csv --use_legacy_sql=false "$(cat <path to SQL file>)" > <path to destination CSV file>`
+
+	**NOTE:** using the size of the callset (e.g. 22K) as an identifier will probably be least confusing way to distinguish it from other callset data (as opposed to the BigQuery prefix and/or filter set name referenced above).
