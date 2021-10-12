@@ -242,7 +242,7 @@ def populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destinat
         """
   print(sql)
   if (not skip_pet_insert):
-    resutls = utils.execute_with_retry(client, "populate-final-export-vet", sql)
+    results = utils.execute_with_retry(client, "populate-final-export-vet", sql)
     print(f"\nFinal cohort extract data written to {fq_destination_table_data}\n")
   else:
     print(f"\nFinal vet data NOT written to {fq_destination_table_data}. Manually execute the command above!\n")
