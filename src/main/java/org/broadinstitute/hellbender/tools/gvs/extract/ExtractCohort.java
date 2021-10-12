@@ -16,11 +16,11 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.SampleList;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.common.ExtractTool;
 import org.broadinstitute.hellbender.tools.gvs.common.FilterSensitivityTools;
-import org.broadinstitute.hellbender.tools.gvs.ingest.PetTsvCreator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -172,7 +172,7 @@ public class ExtractCohort extends ExtractTool {
             shortName = "irs",
             doc = "Reference state to be inferred from GVS, must match what was used during loading",
             optional = true)
-    public PetTsvCreator.GQStateEnum inferredReferenceState = PetTsvCreator.GQStateEnum.SIXTY;
+    public GQStateEnum inferredReferenceState = GQStateEnum.SIXTY;
 
     protected static VCFHeader generateVcfHeader(Set<String> sampleNames,
                                                  final SAMSequenceDictionary sequenceDictionary,

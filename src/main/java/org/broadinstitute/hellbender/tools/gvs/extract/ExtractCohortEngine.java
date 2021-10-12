@@ -23,11 +23,11 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
+import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SampleList;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.common.VariantBitSet;
-import org.broadinstitute.hellbender.tools.gvs.ingest.PetTsvCreator;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -83,7 +83,7 @@ public class ExtractCohortEngine {
     private final GATKPath refRangesAvroFileName;
     private final String filterSetName;
 
-    private final PetTsvCreator.GQStateEnum inferredReferenceState;
+    private final GQStateEnum inferredReferenceState;
 
 
     public ExtractCohortEngine(final String projectID,
@@ -112,7 +112,7 @@ public class ExtractCohortEngine {
                                final boolean emitPLs,
                                final ExtractCohort.VQSLODFilteringType VQSLODFilteringType,
                                final boolean excludeFilteredSites,
-                               final PetTsvCreator.GQStateEnum inferredReferenceState
+                               final GQStateEnum inferredReferenceState
     ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
@@ -215,9 +215,6 @@ public class ExtractCohortEngine {
         }
         logger.debug("Initializing Reader");
 
-        // TODO: for ranges
-        //     1. we need to include "missing" ranges in the ranges table
-        //     2. rowRestriction should be end => start and start <= end (overlapping)
         if (this.mode == CommonCode.ModeEnum.RANGES) {
             if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
                 throw new GATKException("Can not process cross-contig boundaries for Ranges implementation");
@@ -264,19 +261,28 @@ public class ExtractCohortEngine {
         return SortingCollection.newInstance(GenericRecord.class, sortingCollectionCodec, sortingCollectionComparator, localSortMaxRecordsInRam, true);
     }
 
-    private static SortingCollection<GenericRecord> addToVetSortingCollection(final SortingCollection<GenericRecord> sortingCollection,
-                                                                              final Iterable<GenericRecord> avroReader,
-                                                                              final VariantBitSet vbs) {
+    private SortingCollection<GenericRecord> addToVetSortingCollection(final SortingCollection<GenericRecord> sortingCollection,
+                                                                       final Iterable<GenericRecord> avroReader,
+                                                                       final VariantBitSet vbs) {
         int recordsProcessed = 0;
         long startTime = System.currentTimeMillis();
 
+        // NOTE: if OverlapDetector takes too long, try using RegionChecker from tws_sv_local_assembler
+        final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
+
         for (final GenericRecord queryRow : avroReader) {
-            vbs.setVariant((Long) queryRow.get(SchemaUtils.LOCATION_FIELD_NAME));
-            sortingCollection.add(queryRow);
-            if (recordsProcessed++ % 1000000 == 0) {
-                long endTime = System.currentTimeMillis();
-                logger.info("Processed " + recordsProcessed + " VET records in " + (endTime - startTime) + " ms");
-                startTime = endTime;
+            long location = (Long) queryRow.get(SchemaUtils.LOCATION_FIELD_NAME);
+            int position = SchemaUtils.decodePosition(location);
+            SimpleInterval simpleInverval = new SimpleInterval(SchemaUtils.decodeContig(location), position, position);
+
+            if (intervalsOverlapDetector.overlapsAny(simpleInverval)) {
+                vbs.setVariant(location);
+                sortingCollection.add(queryRow);
+                if (recordsProcessed++ % 1000000 == 0) {
+                    long endTime = System.currentTimeMillis();
+                    logger.info("Processed " + recordsProcessed + " VET records in " + (endTime - startTime) + " ms");
+                    startTime = endTime;
+                }
             }
         }
 
@@ -284,7 +290,7 @@ public class ExtractCohortEngine {
         return sortingCollection;
     }
 
-    private static SortingCollection<GenericRecord> addToRefSortingCollection(final SortingCollection<GenericRecord> sortingCollection, final Iterable<GenericRecord> avroReader, final VariantBitSet vbs) {
+    private SortingCollection<GenericRecord> addToRefSortingCollection(final SortingCollection<GenericRecord> sortingCollection, final Iterable<GenericRecord> avroReader, final VariantBitSet vbs) {
         int recordsProcessed = 0;
         long startTime = System.currentTimeMillis();
 
@@ -780,7 +786,7 @@ public class ExtractCohortEngine {
         return createRefSiteVariantContextWithGQ(sample, contig, start, refAllele, null);
     }
 
-    private static SortingCollection<GenericRecord> createSortedVetCollectionFromBigQuery(final String projectID,
+    private SortingCollection<GenericRecord> createSortedVetCollectionFromBigQuery(final String projectID,
                                                                                           final String fqDatasetName,
                                                                                           final Set<Long> sampleIdsToExtract,
                                                                                           final Long minLocation,
@@ -814,7 +820,7 @@ public class ExtractCohortEngine {
         return sortedVet;
     }
 
-    private static SortingCollection<GenericRecord> createSortedReferenceRangeCollectionFromBigQuery(final String projectID,
+    private SortingCollection<GenericRecord> createSortedReferenceRangeCollectionFromBigQuery(final String projectID,
                                                                                                      final String fqDatasetName,
                                                                                                      final Set<Long> sampleIdsToExtract,
                                                                                                      final Long minLocation,
@@ -1037,7 +1043,7 @@ public class ExtractCohortEngine {
             state = processReferenceDataFromStream(sortedReferenceRangeIterator, referenceCache, location, sampleId);
         }
 
-        return new ExtractCohortRecord(location, 1, sampleId, state);
+        return new ExtractCohortRecord(location, sampleId, state);
     }
 
     private String processReferenceDataFromCache(Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {

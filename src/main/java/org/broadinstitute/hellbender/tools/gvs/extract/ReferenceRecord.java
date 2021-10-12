@@ -24,16 +24,9 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
         this.sampleId = Long.parseLong(genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME).toString());
         this.contig = SchemaUtils.decodeContig(location);
         this.start = SchemaUtils.decodePosition(location);
-
-        if (genericRecord.get("length") != null) {
-            this.end = this.start + Integer.parseInt(genericRecord.get("length").toString()) - 1;
-            this.endLocation = this.location + + Integer.parseInt(genericRecord.get("length").toString()) - 1;
-        } else {
-            this.end = start;
-            this.endLocation = location;
-        }
-        this.state = Objects.toString(genericRecord.get(SchemaUtils.STATE_FIELD_NAME), "v");
-
+        this.end = this.start + Integer.parseInt(genericRecord.get("length").toString()) - 1;
+        this.endLocation = this.location + + Integer.parseInt(genericRecord.get("length").toString()) - 1;
+        this.state = Objects.toString(genericRecord.get(SchemaUtils.STATE_FIELD_NAME));
     }
 
     public ReferenceRecord(long location, long sampleId, int length, String state) {

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
@@ -40,7 +41,7 @@ public class SampleInfoTsvCreator {
     private List<String> createSampleListRow(
             String sampleName,
             String sampleId,
-            PetTsvCreator.GQStateEnum inferredMissingState
+            GQStateEnum inferredMissingState
     ) {
 
         List<String> row = new ArrayList<>();
@@ -59,7 +60,7 @@ public class SampleInfoTsvCreator {
         return Arrays.stream(SampleInfoTsvCreator.HeaderFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
     }
 
-    public void createRow(String sampleName, String sampleId, List<SimpleInterval> userIntervals, PetTsvCreator.GQStateEnum gqStateToIgnore) {
+    public void createRow(String sampleName, String sampleId, List<SimpleInterval> userIntervals, GQStateEnum gqStateToIgnore) {
         // if the sample_info tsvs don't exist yet -- create them
         // Create a sample_info file to go into the sample_info dir for _this_ sample
         // TODO--this should just be one file per sample set?

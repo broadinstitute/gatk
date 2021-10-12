@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
+import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
 import org.broadinstitute.hellbender.utils.*;
@@ -60,7 +61,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             shortName = "IG",
             doc = "Ref Block GQ band to ignore, bands of 10 e.g 0-9 get combined to 0, 20-29 get combined to 20",
             optional = true)
-    public PetTsvCreator.GQStateEnum gqStateToIgnore = PetTsvCreator.GQStateEnum.SIXTY;
+    public GQStateEnum gqStateToIgnore = GQStateEnum.SIXTY;
 
     @Argument(fullName = "ignore-above-gq-threshold",
     shortName = "GTIG",

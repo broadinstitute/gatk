@@ -14,7 +14,6 @@ public class ExtractCohortRecord implements Locatable {
     private final String contig;
     private final Integer start;
     private final Integer end;
-    private final Long endLocation;
 
     private final String state;
     private final String refAllele;
@@ -45,14 +44,9 @@ public class ExtractCohortRecord implements Locatable {
         this.sampleId = Long.parseLong(genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME).toString());
         this.contig = SchemaUtils.decodeContig(location);
         this.start = SchemaUtils.decodePosition(location);
+        this.end = start;
 
-        if (genericRecord.get("length") != null) {
-            this.end = this.start + Integer.parseInt(genericRecord.get("length").toString()) - 1;
-            this.endLocation = this.location + + Integer.parseInt(genericRecord.get("length").toString()) - 1;
-        } else {
-            this.end = start;
-            this.endLocation = location;
-        }
+        // if this record is being constructed from the VET data, we won't have a state so we default it to 'v'
         this.state = Objects.toString(genericRecord.get(SchemaUtils.STATE_FIELD_NAME), "v");
 
         // the rest are nullable
@@ -77,13 +71,13 @@ public class ExtractCohortRecord implements Locatable {
         }
     }
 
-    public ExtractCohortRecord(long location, int length, long sampleId, String state) {
+    // constructor for single base reference
+    public ExtractCohortRecord(long location, long sampleId, String state) {
         this.location = location;
         this.sampleId = sampleId;
         this.contig = SchemaUtils.decodeContig(location);
         this.start = SchemaUtils.decodePosition(location);
-        this.end = start + length - 1;
-        this.endLocation = location + length - 1;
+        this.end = start;
         this.state = state;
 
         this.refAllele = null;
@@ -106,7 +100,6 @@ public class ExtractCohortRecord implements Locatable {
     public int getEnd() { return this.end; }
 
     public long getLocation() { return this.location; }
-    public long getEndLocation() { return this.endLocation; }
 
     public Long getSampleId() { return this.sampleId; }
 
