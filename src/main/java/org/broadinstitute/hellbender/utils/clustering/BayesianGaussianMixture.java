@@ -84,6 +84,7 @@ public final class BayesianGaussianMixture {
     private List<RealMatrix> bestPrecisionsCholesky;
     private List<RealMatrix> bestCovariances;
     private RealVector bestDegreesOfFreedom;
+    private boolean isFitted = false;
 
     /**
      * We use a {@link Builder} to enable the setting of default values, which can be
@@ -217,6 +218,7 @@ public final class BayesianGaussianMixture {
         precisionsCholesky = bestPrecisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
         covariances = bestCovariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
         degreesOfFreedom = bestDegreesOfFreedom.copy();
+        isFitted = true;
     }
 
     /**
@@ -247,7 +249,16 @@ public final class BayesianGaussianMixture {
      * @return
      */
     public double[] scoreSamples(final double[][] data) {
-        return null;
+        if (!isFitted) {
+            throw new UnsupportedOperationException("Cannot score samples before model has been fit.");
+        }
+        final RealMatrix X = new Array2DRowRealMatrix(data);
+        final int nSamples = X.getRowDimension();
+        final RealMatrix weightedLogProb = estimateWeightedLogProb(X);
+        final RealVector logProbNorm = new ArrayRealVector(                     // logProbNorm = logsumexp(weightedLogProb, axis=1)
+                IntStream.range(0, nSamples).mapToDouble(
+                        i -> NaturalLogUtils.logSumExp(weightedLogProb.getRow(i))).toArray());
+        return logProbNorm.toArray();
     }
 
     /**
