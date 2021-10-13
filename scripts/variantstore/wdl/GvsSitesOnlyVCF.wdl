@@ -240,13 +240,19 @@ task ExtractAnAcAfFromVCF {
         bcftools view  -e 'ALT[0]="*" || AC=0' --no-update | \
         ## ensure that we respect the FT tag
         bcftools filter -i "FORMAT/FT='PASS,.'" --set-GTs . > ~{normalized_vcf}
+        du -h ~{normalized_vcf}
+
+        ## clean up
+        rm ~{local_input_vcf}
 
         ## make a file of just the first 5 columns of the tsv
         bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
         sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5  > duplicates.tsv
+        rm check_duplicates.tsv ## clean up
         ## remove those rows (that match up to the first 5 cols)
         grep -v -wFf duplicates.tsv ~{normalized_vcf} > deduplicated.vcf
+        rm ~{normalized_vcf} ## clean up
 
         wc -l duplicates.tsv | awk '{print $1}' > duplicates_count.txt
         echo "the following duplicate variants will be dropped due to a bug"
