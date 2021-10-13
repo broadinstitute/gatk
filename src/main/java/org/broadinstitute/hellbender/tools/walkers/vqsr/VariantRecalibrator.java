@@ -558,6 +558,13 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 .build();
         bgmm.fit(positiveTrainingDataArray);
 
+        System.out.println("weights: " + bgmm.getWeights());
+        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
+        System.out.println("means: " + bgmm.getMeans());
+        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
+        System.out.println("covariances: " + bgmm.getCovariances());
+        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
+
         final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
         final double[] scores = bgmm.scoreSamples(data);
         dumpScores(scores, output + ".scores.tsv");
