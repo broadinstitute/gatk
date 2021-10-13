@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import org.apache.commons.math3.linear.MatrixUtils;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -24,10 +25,8 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixture;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
-import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.report.GATKReport;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -564,11 +563,20 @@ public class VariantRecalibrator extends MultiVariantWalker {
         final List<VariantDatum> positiveTrainingData = dataManager.getTrainingData();
         final double[][] positiveTrainingDataArray = positiveTrainingData.stream().map(vd -> vd.annotations).toArray(double[][]::new);
 
+        final int nFeatures = annotationOrder.size();
+        final double[] meanPrior = new double[nFeatures];
+        Arrays.fill(meanPrior, 0.);
+        final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
+
         final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
                 .nComponents(VRAC.MAX_GAUSSIANS)
                 .maxIter(VRAC.MAX_ITERATIONS)
                 .nInit(max_attempts)
                 .initMethod(BayesianGaussianMixture.InitMethod.TEST)
+                .weightConcentrationPrior(VRAC.DIRICHLET_PARAMETER)
+                .meanPrior(meanPrior)
+                .degreesOfFreedomPrior(nFeatures)
+                .covariancePrior(covariancePrior)
                 .seed(1)
                 .warmStart(true)
                 .verboseInterval(1)
@@ -594,7 +602,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         }
     }
 
-    private void dumpScores(double[] scores, String output) {
+    private static void dumpScores(double[] scores, String output) {
         try (FileWriter fos = new FileWriter(output);
              PrintWriter dos = new PrintWriter(fos)) {
 
