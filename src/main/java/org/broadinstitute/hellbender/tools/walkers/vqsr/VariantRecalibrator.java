@@ -575,7 +575,8 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 .build();
         bgmm.fit(positiveTrainingDataArray);
 
-        final double[] scores = bgmm.scoreSamples(positiveTrainingDataArray);
+        final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
+        final double[] scores = bgmm.scoreSamples(data);
         dumpScores(scores, output + ".scores.tsv");
 
         dataManager.dropAggregateData(); // Don't need the aggregate data anymore so let's free up the memory
