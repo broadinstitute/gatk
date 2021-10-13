@@ -409,31 +409,6 @@ public class VariantRecalibrator extends MultiVariantWalker {
         }
     }
 
-    /**
-     * Order and validate annotations according to the annotations in the serialized model
-     * Annotations on the command line must be the same as those in the model report or this will throw an exception.
-     * Sets the {@code annotationOrder} list to map from command line order to the model report's order.
-     * n^2 because we typically use 7 or less annotations.
-     * @param annotationTable GATKReportTable of annotations read from the serialized model file
-     */
-    protected void orderAndValidateAnnotations(final GATKReportTable annotationTable, final List<String> annotationKeys){
-        annotationOrder = new ArrayList<Integer>(annotationKeys.size());
-
-        for (int i = 0; i < annotationTable.getNumRows(); i++){
-            String serialAnno = (String)annotationTable.get(i, "Annotation");
-            for (int j = 0; j < annotationKeys.size(); j++) {
-                if (serialAnno.equals( annotationKeys.get(j))){
-                    annotationOrder.add(j);
-                }
-            }
-        }
-
-        if(annotationOrder.size() != annotationTable.getNumRows() || annotationOrder.size() != annotationKeys.size()) {
-            throw new CommandLineException( "Annotations specified on the command line do not match annotations in the model report." );
-        }
-
-    }
-
     //---------------------------------------------------------------------------------------------------------------
     //
     // apply
@@ -563,7 +538,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         final List<VariantDatum> positiveTrainingData = dataManager.getTrainingData();
         final double[][] positiveTrainingDataArray = positiveTrainingData.stream().map(vd -> vd.annotations).toArray(double[][]::new);
 
-        final int nFeatures = annotationOrder.size();
+        final int nFeatures = USE_ANNOTATIONS.size();
         final double[] meanPrior = new double[nFeatures];
         Arrays.fill(meanPrior, 0.);
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
