@@ -245,6 +245,9 @@ task ExtractAnAcAfFromVCF {
         ## clean up unneeded file
         rm ~{local_input_vcf}
 
+        ## clean up unneeded file
+        rm ~{local_input_vcf}
+
         ## make a file of just the first 5 columns of the tsv
         bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
