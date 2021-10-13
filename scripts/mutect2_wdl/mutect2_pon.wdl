@@ -44,6 +44,7 @@ workflow Mutect2_Panel {
     Int small_task_mem = 4
     Int small_task_disk = 100
     Int boot_disk_size = 12
+    Int? m2_mem
 
     # Use as a last resort to increase the disk given to every task in case of ill behaving data
     Int? emergency_extra_disk
@@ -73,7 +74,8 @@ workflow Mutect2_Panel {
                 gatk_docker = gatk_docker,
                 preemptible = preemptible,
                 max_retries = max_retries,
-                gcs_project_for_requester_pays = gcs_project_for_requester_pays
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays,
+                mem = m2_mem
         }
     }
 

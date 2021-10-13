@@ -135,6 +135,7 @@ workflow Mutect2 {
       File? gatk_override
       String basic_bash_docker = "ubuntu:16.04"
       Boolean? filter_funcotations
+      Int? mem
 
       Int? preemptible
       Int? max_retries
@@ -242,7 +243,8 @@ workflow Mutect2 {
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size,
-                gcs_project_for_requester_pays = gcs_project_for_requester_pays
+                gcs_project_for_requester_pays = gcs_project_for_requester_pays,
+                mem = mem
         }
     }
 
