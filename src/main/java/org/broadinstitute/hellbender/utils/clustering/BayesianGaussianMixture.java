@@ -13,6 +13,11 @@ import org.apache.commons.math3.linear.NonSquareMatrixException;
 import org.apache.commons.math3.linear.NonSymmetricMatrixException;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.ml.clustering.CentroidCluster;
+import org.apache.commons.math3.ml.clustering.Clusterable;
+import org.apache.commons.math3.ml.clustering.DoublePoint;
+import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
+import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.special.Gamma;
@@ -42,7 +47,7 @@ public final class BayesianGaussianMixture {
     private static final double ABSOLUTE_POSITIVITY_THRESHOLD = 1E-10;
 
     public enum InitMethod {
-        K_MEANS, RANDOM, TEST
+        K_MEANS_PLUS_PLUS, RANDOM, TEST
     }
 
     protected static final Logger logger = LogManager.getLogger(BayesianGaussianMixture.class);
@@ -253,8 +258,19 @@ public final class BayesianGaussianMixture {
                                       final RandomGenerator rng) {
         final int nSamples = X.getRowDimension();
 
-        if (initMethod == InitMethod.K_MEANS) {
-            // TODO add implementation of K-means
+        if (initMethod == InitMethod.K_MEANS_PLUS_PLUS) {
+            final List<IndexedDoublePoint> pointsX = IntStream.range(0, nSamples).boxed()
+                    .map(i -> new IndexedDoublePoint(X.getRow(i), i))
+                    .collect(Collectors.toList());
+
+            final KMeansPlusPlusClusterer<IndexedDoublePoint> kMeansPlusPlusClusterer =
+                    new KMeansPlusPlusClusterer<>(nComponents, -1, new EuclideanDistance(), rng);
+            final List<CentroidCluster<IndexedDoublePoint>> centroids = kMeansPlusPlusClusterer.cluster(pointsX);
+            final RealMatrix resp = X.createMatrix(nSamples, nComponents);
+            IntStream.range(0, nComponents)
+                    .forEach(k -> centroids.get(k).getPoints()
+                            .forEach(p -> resp.setEntry(p.index, k, 1)));
+            initialize(X, resp);
         } else if (initMethod == InitMethod.RANDOM) {
             final RealMatrix resp = X.createMatrix(nSamples, nComponents);
             resp.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
@@ -824,6 +840,22 @@ public final class BayesianGaussianMixture {
         logger.debug(message);
     }
 
+    private static final class IndexedDoublePoint implements Clusterable {
+        final DoublePoint point;
+        final int index;
+
+        private IndexedDoublePoint(final double[] point,
+                                   final int index) {
+            this.point = new DoublePoint(point);
+            this.index = index;
+        }
+
+        @Override
+        public double[] getPoint() {
+            return point.getPoint();
+        }
+    }
+
     //******************************************************************************************************************
     // Builder
     //******************************************************************************************************************
@@ -837,7 +869,7 @@ public final class BayesianGaussianMixture {
         private double regCovar = 1E-6;
         private int maxIter = 100;
         private int nInit = 1;
-        private InitMethod initMethod = InitMethod.K_MEANS;
+        private InitMethod initMethod = InitMethod.K_MEANS_PLUS_PLUS;
                                                                 // some prior parameters require the data X to construct defaults and/or fully validate
         private Double weightConcentrationPrior = null;         // if null, will be set to 1. / nComponents upon build()
         private double meanPrecisionPrior = 1;
