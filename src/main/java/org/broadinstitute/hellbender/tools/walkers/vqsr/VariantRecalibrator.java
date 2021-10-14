@@ -547,7 +547,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 .nComponents(VRAC.MAX_GAUSSIANS)
                 .maxIter(VRAC.MAX_ITERATIONS)
                 .nInit(max_attempts)
-                .initMethod(BayesianGaussianMixture.InitMethod.RANDOM)
+                .initMethod(BayesianGaussianMixture.InitMethod.K_MEANS_PLUS_PLUS)
                 .weightConcentrationPrior(VRAC.DIRICHLET_PARAMETER)
                 .meanPrior(meanPrior)
                 .degreesOfFreedomPrior(nFeatures)
