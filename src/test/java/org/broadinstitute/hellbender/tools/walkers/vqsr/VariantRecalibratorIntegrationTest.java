@@ -32,9 +32,9 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
     public void test1kgp50Exomes() {
         final String[] arguments = {
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.snps.recal",
-                "--tranches-file", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.snps.tranches",
-                "--output-model", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.snps.model.report",
+                "-O", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.kmeanspp.snps.recal",
+                "--tranches-file", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.kmeanspp.snps.tranches",
+                "--output-model", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.kmeanspp.snps.model.report",
                 "--trust-all-polymorphic",
                 "--tranche"," 100.0",
                 "-tranche", "99.95",
