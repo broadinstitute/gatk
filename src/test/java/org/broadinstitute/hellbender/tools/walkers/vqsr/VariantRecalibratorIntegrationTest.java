@@ -52,7 +52,6 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                 "-an", "FS",
                 "-an", "ReadPosRankSum",
                 "-an", "MQRankSum",
-                "-an", "MQ",
                 "-an", "QD",
                 "-an", "SOR",
                 "-mode", "SNP",
