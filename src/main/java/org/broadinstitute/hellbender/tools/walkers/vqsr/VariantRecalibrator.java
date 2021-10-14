@@ -567,9 +567,20 @@ public class VariantRecalibrator extends MultiVariantWalker {
 
         final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
         final double[] scores = bgmm.scoreSamples(data);
-        dumpScores(scores, output + ".scores.tsv");
+//        dumpScores(scores, output + ".scores.tsv");
 
         dataManager.dropAggregateData(); // Don't need the aggregate data anymore so let's free up the memory
+        dataManager.setScores(dataManager.getData(), scores);
+
+        // Find the VQSLOD cutoff values which correspond to the various tranches of calls requested by the user
+        final int nCallsAtTruth = TrancheManager.countCallsAtTruth(dataManager.getData(), Double.NEGATIVE_INFINITY);
+        final TrancheManager.SelectionMetric metric = new TrancheManager.TruthSensitivityMetric(nCallsAtTruth);
+        final List<? extends Tranche> tranches = TrancheManager.findVQSLODTranches(dataManager.getData(), VQSLOD_TRANCHES, metric, VRAC.MODE);
+        tranchesStream.print(VQSLODTranche.printHeader());
+        tranchesStream.print(Tranche.tranchesString(tranches));
+
+        logger.info("Writing out recalibration table...");
+        dataManager.writeOutRecalibrationTable(recalWriter, getBestAvailableSequenceDictionary());
 
         return true;
     }

@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 public class VariantDataManager {
@@ -482,12 +483,14 @@ public class VariantDataManager {
             VariantContextBuilder builder = new VariantContextBuilder("VQSR", datum.loc.getContig(), datum.loc.getStart(), datum.loc.getEnd(), alleles);
             builder.attribute(VCFConstants.END_KEY, datum.loc.getEnd());
             builder.attribute(GATKVCFConstants.VQS_LOD_KEY, String.format("%.4f", datum.lod));
-            builder.attribute(GATKVCFConstants.CULPRIT_KEY, (datum.worstAnnotation != -1 ? annotationKeys.get(datum.worstAnnotation) : "NULL"));
 
             if ( datum.atTrainingSite ) builder.attribute(GATKVCFConstants.POSITIVE_LABEL_KEY, true);
-            if ( datum.atAntiTrainingSite ) builder.attribute(GATKVCFConstants.NEGATIVE_LABEL_KEY, true);
 
             recalWriter.add(builder.make());
         }
+    }
+
+    public void setScores( List<VariantDatum> data, double[] scores ) {
+        IntStream.range(0, data.size()).forEach(i -> data.get(i).lod = scores[i]);
     }
 }
