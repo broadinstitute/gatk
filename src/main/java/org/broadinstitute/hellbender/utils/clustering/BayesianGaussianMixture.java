@@ -84,7 +84,7 @@ public final class BayesianGaussianMixture {
     private List<RealMatrix> bestPrecisionsCholesky;
     private List<RealMatrix> bestCovariances;
     private RealVector bestDegreesOfFreedom;
-    private boolean isFitted = false;
+    private boolean isFittedOrSpecified = false;
 
     /**
      * We use a {@link Builder} to enable the setting of default values, which can be
@@ -218,7 +218,7 @@ public final class BayesianGaussianMixture {
         precisionsCholesky = bestPrecisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
         covariances = bestCovariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
         degreesOfFreedom = bestDegreesOfFreedom.copy();
-        isFitted = true;
+        isFittedOrSpecified = true;
     }
 
     /**
@@ -249,8 +249,8 @@ public final class BayesianGaussianMixture {
      * @return
      */
     public double[] scoreSamples(final double[][] data) {
-        if (!isFitted) {
-            throw new UnsupportedOperationException("Cannot score samples before model has been fit.");
+        if (!isFittedOrSpecified) {
+            throw new UnsupportedOperationException("Cannot score samples before model has been fit or specified.");
         }
         final RealMatrix X = new Array2DRowRealMatrix(data);
         final int nSamples = X.getRowDimension();
