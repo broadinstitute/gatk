@@ -783,7 +783,7 @@ public final class BayesianGaussianMixture {
     private void checkCovarianceParameters(final RealMatrix X) {
         final int nFeatures = X.getColumnDimension();
         if (covariancePrior == null) { // if not specified through the Builder, set to the covariance of X by default
-            covariancePrior = new Covariance(X.transpose()).getCovarianceMatrix();
+            covariancePrior = new Covariance(X).getCovarianceMatrix();      // note Covariance assumes columns correspond to features; np.cov assumes rows correspond to features
         } else {
             checkCovariance(covariancePrior);
             Utils.validateArg(covariancePrior.getRowDimension() == nFeatures,
