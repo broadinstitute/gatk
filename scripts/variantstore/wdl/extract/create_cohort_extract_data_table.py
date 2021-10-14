@@ -204,7 +204,7 @@ def populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_data
       print(f"{fq_pet_table} query is {utils.utf8len(sql)/(1024*1024)} MB in length")
       label = "populate destination table with pet data"
       query = utils.async_execute_with_retry(client, label, sql)
-      QUERY_OBJS.add(query, label)
+      QUERY_OBJS.add((query, label))
   return
 
 def create_final_extract_table(fq_destination_table_data):
@@ -253,7 +253,7 @@ def populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destinat
   if (not skip_pet_insert):
     label = "populate-final-export-vet"
     query = utils.async_execute_with_retry(client, label, sql)
-    QUERY_OBJS.add(query, label)
+    QUERY_OBJS.add((query, label))
     print(f"\nFinal cohort extract data written to {fq_destination_table_data}\n")
   else:
     print(f"\nFinal vet data NOT written to {fq_destination_table_data}. Manually execute the command above!\n")
