@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -58,14 +59,14 @@ public final class DepthPerAlleleBySample implements GenotypeAnnotation, Standar
         gb.AD(annotateWithLikelihoods(vc, g, alleles, likelihoods));
     }
 
-    protected int[] annotateWithLikelihoods(VariantContext vc, Genotype g, Set<Allele> alleles, final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
+    protected static <EVIDENCE extends Locatable> int[] annotateWithLikelihoods(VariantContext vc, Genotype g, Set<Allele> alleles, final AlleleLikelihoods<EVIDENCE, Allele> likelihoods) {
 
         final Map<Allele, Integer> alleleCounts = new LinkedHashMap<>();
         for ( final Allele allele : vc.getAlleles() ) {
             alleleCounts.put(allele, 0);
         }
         final Map<Allele, List<Allele>> alleleSubset = alleles.stream().collect(Collectors.toMap(a -> a, Arrays::asList));
-        final AlleleLikelihoods<GATKRead, Allele> subsettedLikelihoods = likelihoods.marginalize(alleleSubset);
+        final AlleleLikelihoods<EVIDENCE, Allele> subsettedLikelihoods = likelihoods.marginalize(alleleSubset);
         subsettedLikelihoods.bestAllelesBreakingTies(g.getSampleName()).stream()
                 .filter(ba -> ba.isInformative())
                 .forEach(ba -> alleleCounts.compute(ba.allele, (allele,prevCount) -> prevCount + 1));
