@@ -11,6 +11,7 @@ from google.oauth2 import service_account
 import utils
 
 JOB_IDS = set()
+QUERY_OBJS = set()
 
 #
 # CONSTANTS
@@ -33,6 +34,13 @@ VET_DISTINCT_POS_TABLE = f"{output_table_prefix}_vet_distinct_pos"
 PET_NEW_TABLE = f"{output_table_prefix}_pet_new"
 VET_NEW_TABLE = f"{output_table_prefix}_vet_new"
 EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
+
+def get_query_results():
+  for query in QUERY_OBJS:
+    query[0].result()
+    job = client.get_job(query[0].job_id)
+    mb_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed) / (1024 * 1024)
+    print(f"COMPLETED (jobid: {query[0].job_id} {mb_billed} MBs) - {query[1]}")
 
 def dump_job_stats():
   total = 0
@@ -194,8 +202,9 @@ def populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_data
 
       print(sql)
       print(f"{fq_pet_table} query is {utils.utf8len(sql)/(1024*1024)} MB in length")
-      utils.execute_with_retry(client, "populate destination table with pet data", sql)
-
+      label = "populate destination table with pet data"
+      query = utils.async_execute_with_retry(client, label, sql)
+      QUERY_OBJS.add(query, label)
   return
 
 def create_final_extract_table(fq_destination_table_data):
@@ -242,7 +251,9 @@ def populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destinat
         """
   print(sql)
   if (not skip_pet_insert):
-    results = utils.execute_with_retry(client, "populate-final-export-vet", sql)
+    label = "populate-final-export-vet"
+    query = utils.async_execute_with_retry(client, label, sql)
+    QUERY_OBJS.add(query, label)
     print(f"\nFinal cohort extract data written to {fq_destination_table_data}\n")
   else:
     print(f"\nFinal vet data NOT written to {fq_destination_table_data}. Manually execute the command above!\n")
@@ -336,6 +347,7 @@ def make_extract_table(fq_pet_vet_dataset,
     populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_dataset, fq_destination_table_data, sample_ids)
     populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destination_table_data, skip_pet_insert)
   finally:
+    get_query_results()
     dump_job_stats()
 
 if __name__ == '__main__':
@@ -352,7 +364,7 @@ if __name__ == '__main__':
   parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
   parser.add_argument('--max_tables',type=int, help='Maximum number of PET/VET tables to consider', required=False, default=250)
   parser.add_argument('--ttl',type=int, help='Temp table TTL in hours', required=False, default=72)
-  parser.add_argument('--skip_pet_insert',type=bool, 
+  parser.add_argument('--skip_pet_insert',type=bool,
     help='This will not execute the final sql query to insert the pet_new data into the DATA table, but will print out the command instead. Useful when flex slots need to be allocated.',
     required=False, default=False)
   sample_args = parser.add_mutually_exclusive_group(required=True)
