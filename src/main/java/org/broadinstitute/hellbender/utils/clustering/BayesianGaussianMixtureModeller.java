@@ -148,12 +148,18 @@ public final class BayesianGaussianMixtureModeller {
             double lowerBound = doInit ? Double.NEGATIVE_INFINITY : this.lowerBound;
 
             BayesianGaussianMixtureUtils.logHeapUsage(logger, "Starting iteration...");
+            final RealVector weights = weightConcentration.copy().mapDivideToSelf(BayesianGaussianMixtureUtils.sum(weightConcentration));
+
             for (int nIter = 1; nIter <= maxIter; nIter++) {
                 final double prevLowerBound = lowerBound;
 
                 final RealMatrix logResp = EStep(X);
                 MStep(X, logResp);
                 lowerBound = computeLowerBound(logResp);
+
+                final RealVector newWeights = weightConcentration.copy().mapDivideToSelf(BayesianGaussianMixtureUtils.sum(weightConcentration));
+                System.out.println("weights difference: " + IntStream.range(0, nComponents).mapToDouble(k -> Math.abs(weights.getEntry(k) - newWeights.getEntry(k))).sum());
+                weights.combineToSelf(0, 1, newWeights);
 
                 final double change = lowerBound - prevLowerBound;
 
