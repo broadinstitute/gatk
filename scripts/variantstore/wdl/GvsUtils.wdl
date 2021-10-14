@@ -12,6 +12,7 @@ task MergeVCFs {
     File? gatk_override
   }
 
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else 100
 
   parameter_meta {
@@ -19,8 +20,6 @@ task MergeVCFs {
       localization_optional: true
     }
   }
-
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -71,7 +70,6 @@ task SplitIntervals {
     String? split_intervals_extra_args
     Int? split_intervals_disk_size_override
     String? output_gcs_dir
-
     File? gatk_override
     String? service_account_json_path
   }
