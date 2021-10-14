@@ -32,9 +32,9 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
     public void test1kgp50Exomes() {
         final String[] arguments = {
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.nojitter.snps.recal",
-                "--tranches-file", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.nojitter.snps.tranches",
-                "--output-model", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.nojitter.snps.model.report",
+                "-O", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.snps.recal",
+                "--tranches-file", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.snps.tranches",
+                "--output-model", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.dropin.snps.model.report",
                 "--trust-all-polymorphic",
                 "--tranche"," 100.0",
                 "-tranche", "99.95",
@@ -58,8 +58,8 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                 "--sample-every-Nth-variant", "1",
                 "--max-gaussians", "6",
                 "--resource:hapmap,known=false,training=true,truth=true,prior=15", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,known=false,training=true,truth=true,prior=12", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,known=false,training=true,truth=false,prior=10", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+//                "--resource:omni,known=false,training=true,truth=true,prior=12", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+//                "--resource:1000G,known=false,training=true,truth=false,prior=10", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
 //                "--resource:dbsnp,known=true,training=false,truth=false,prior=7", "/mnt/4AB658D7B658C4DB/working/ref/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
                 "--verbosity", "DEBUG"
         };

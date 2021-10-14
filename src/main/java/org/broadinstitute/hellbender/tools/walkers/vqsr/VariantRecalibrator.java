@@ -501,7 +501,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         // pull in only the things we absolutely need.
         datum.referenceAllele = refAllele;
         datum.alternateAllele = altAllele;
-        dataManager.decodeAnnotations(datum, vc, false);
+        dataManager.decodeAnnotations(datum, vc, true);
 
         // non-deterministic because order of calls depends on load of machine
         datum.loc = (isInput ? new SimpleInterval(vc) : null);
