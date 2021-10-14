@@ -65,14 +65,14 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsMergeScatteredCallsetShards
+   - name: GvsRescatterCallsetInterval
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeScatteredCallsetShards.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
      filters:
        branches:
          - master
          - ah_var_store
-         - rsa_split_intervals
+         - rsa_rescattering_wf
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
@@ -82,7 +82,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_split_intervals
+         - rsa_rescattering_wf
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -101,7 +101,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_split_intervals
+         - rsa_rescattering_wf
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
