@@ -575,8 +575,8 @@ public class VariantRecalibrator extends MultiVariantWalker {
         // Find the VQSLOD cutoff values which correspond to the various tranches of calls requested by the user
         final int nCallsAtTruth = TrancheManager.countCallsAtTruth(dataManager.getData(), Double.NEGATIVE_INFINITY);
         final TrancheManager.SelectionMetric metric = new TrancheManager.TruthSensitivityMetric(nCallsAtTruth);
-        final List<? extends Tranche> tranches = TrancheManager.findVQSLODTranches(dataManager.getData(), VQSLOD_TRANCHES, metric, VRAC.MODE);
-        tranchesStream.print(VQSLODTranche.printHeader());
+        final List<? extends Tranche> tranches = TrancheManager.findTranches(dataManager.getData(), TS_TRANCHES, metric, VRAC.MODE);
+        tranchesStream.print(TruthSensitivityTranche.printHeader());
         tranchesStream.print(Tranche.tranchesString(tranches));
 
         logger.info("Writing out recalibration table...");
