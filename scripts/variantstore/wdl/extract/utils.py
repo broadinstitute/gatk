@@ -23,8 +23,10 @@ def execute_with_retry(client, label, sql, parallelize = False):
     start = time.time()
     while len(retry_delay) >= 0:
         try:
-            query = execute_query(client, label, sql)
-            get_query_results(query, client, start, retry_delay)
+            query = start_query(client, label, sql)
+            (results, mb_billed) = get_query_results(query, client, start, retry_delay)
+            print(f"COMPLETED ({time.time() - start} seconds, {3 - len(retry_delay)} retries, {mb_billed} MBs) - {label}")
+
         except (google.api_core.exceptions.InternalServerError,
                 google.api_core.exceptions.TooManyRequests,
                 google.api_core.exceptions.ServiceUnavailable) as err:
@@ -38,7 +40,7 @@ def execute_with_retry(client, label, sql, parallelize = False):
             raise
 
 
-def execute_query(client, label, sql):
+def start_query(client, label, sql):
     query_label = label.replace(" ", "-").strip().lower()
     existing_labels = client._default_query_job_config.labels
     job_labels = existing_labels
@@ -50,15 +52,15 @@ def execute_query(client, label, sql):
     return query
 
 
-def get_query_results(query, client, start, retry_delay):
+def get_query_results(query, client, start, retry_delay, label):
     results = query.result()
     job = client.get_job(query.job_id)
     mb_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed) / (
                 1024 * 1024)
-    print(
-        f"COMPLETED ({time.time() - start} seconds, {3 - len(retry_delay)} retries, {mb_billed} MBs) - {label}")
+    # print(
+    #     f"COMPLETED ({time.time() - start} seconds, {3 - len(retry_delay)} retries, {mb_billed} MBs) - {label}")
 
-    return results
+    return (results, mb_billed)
 
 
 def utf8len(s):

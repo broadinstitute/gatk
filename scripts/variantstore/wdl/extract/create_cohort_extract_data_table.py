@@ -11,7 +11,6 @@ from google.oauth2 import service_account
 import utils
 
 JOB_IDS = set()
-QUERY_OBJS = set()
 
 #
 # CONSTANTS
@@ -34,15 +33,6 @@ VET_DISTINCT_POS_TABLE = f"{output_table_prefix}_vet_distinct_pos"
 PET_NEW_TABLE = f"{output_table_prefix}_pet_new"
 VET_NEW_TABLE = f"{output_table_prefix}_vet_new"
 EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
-
-def get_query_results():
-  for query_pair in QUERY_OBJS:
-    query = query_pair[0]
-    label = query_pair[1]
-    query.result()
-    job = client.get_job(query.job_id)
-    mb_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed) / (1024 * 1024)
-    print(f"COMPLETED (jobid: {query.job_id} {mb_billed} MBs) - {label}")
 
 def dump_job_stats():
   total = 0
@@ -147,9 +137,7 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
       if i == 1:
         utils.execute_with_retry(client, "create and populate vet new table", sql)
       else:
-        label = "populate vet new table"
-        query = utils.execute_with_retry(client, label, sql, True)
-        QUERY_OBJS.add((query, label))
+        utils.execute_with_retry(client, "populate vet new table", sql)
   return
 
 
@@ -180,6 +168,7 @@ def create_position_table(fq_temp_table_dataset, min_variant_samples):
   return
 
 def populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_dataset, fq_destination_table_data, sample_ids):
+  bq_async_queries = set()
   def get_pet_subselect(fq_pet_table, samples, id):
     sample_stanza = ','.join([str(s) for s in samples])
     sql = f"    q_{id} AS (SELECT p.location, p.sample_id, p.state FROM \n" \
@@ -207,8 +196,13 @@ def populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_data
       print(sql)
       print(f"{fq_pet_table} query is {utils.utf8len(sql)/(1024*1024)} MB in length")
       label = "populate destination table with pet data"
-      query = utils.execute_with_retry(client, label, sql, True)
-      QUERY_OBJS.add((query, label))
+      query = utils.start_query(client, label, sql)
+      bq_async_queries.add((query, label))
+
+    for (query,label) in bq_async_queries:
+      (results, mb_billed) = utils.get_query_results(query, client, label)
+      print(f"COMPLETED {mb_billed} MBs) - {label}")
+
   return
 
 def create_final_extract_table(fq_destination_table_data):
@@ -255,10 +249,7 @@ def populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destinat
         """
   print(sql)
   if (not skip_pet_insert):
-    label = "populate-final-export-vet"
-    query = utils.execute_with_retry(client, label, sql, True)
-    QUERY_OBJS.add((query, label))
-    print(f"\nFinal cohort extract data written to {fq_destination_table_data}\n")
+    results = utils.execute_with_retry(client, "populate-final-export-vet", sql)
   else:
     print(f"\nFinal vet data NOT written to {fq_destination_table_data}. Manually execute the command above!\n")
 
