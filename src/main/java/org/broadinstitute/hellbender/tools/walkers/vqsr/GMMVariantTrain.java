@@ -37,6 +37,7 @@ import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -226,6 +227,9 @@ public class GMMVariantTrain extends MultiVariantWalker {
     @Override
     public void onTraversalStart() {
 
+        GMMVTAC.readHyperparameters();
+        logger.info("GMM hyperparameters: " + GMMVTAC.hyperparameters);
+
         dataManager = new GMMVariantTrainDataManager( new ArrayList<>(USE_ANNOTATIONS), GMMVTAC);
 
         if ( IGNORE_INPUT_FILTERS != null ) {
@@ -379,23 +383,27 @@ public class GMMVariantTrain extends MultiVariantWalker {
         final double[][] positiveTrainingDataArray = positiveTrainingData.stream().map(vd -> vd.annotations).toArray(double[][]::new);
 
         final int nFeatures = USE_ANNOTATIONS.size();
-        final double[] meanPrior = new double[nFeatures];
-        Arrays.fill(meanPrior, 0.);
+
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
 
         final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
-                .nComponents(GMMVTAC.MAX_GAUSSIANS)
-                .maxIter(GMMVTAC.MAX_ITERATIONS)
-                .nInit(max_attempts)
-                .initMethod(BayesianGaussianMixture.InitMethod.K_MEANS_PLUS_PLUS)
-                .weightConcentrationPrior(GMMVTAC.DIRICHLET_PARAMETER)
-                .meanPrior(meanPrior)
-                .degreesOfFreedomPrior(nFeatures)
+                .nComponents(GMMVTAC.hyperparameters.nComponents)
+                .tol(GMMVTAC.hyperparameters.tol)
+                .regCovar(GMMVTAC.hyperparameters.regCovar)
+                .maxIter(GMMVTAC.hyperparameters.maxIter)
+                .nInit(GMMVTAC.hyperparameters.nInit)
+                .initMethod(GMMVTAC.hyperparameters.getInitMethod())
+                .weightConcentrationPrior(GMMVTAC.hyperparameters.weightConcentrationPrior)
+                .meanPrecisionPrior(GMMVTAC.hyperparameters.meanPrecisionPrior)
+                .meanPrior(
+                        GMMVTAC.hyperparameters.meanPrior != null
+                                ? Collections.nCopies(nFeatures, GMMVTAC.hyperparameters.meanPrior).stream().mapToDouble(x -> x).toArray()
+                                : null)
+                .degreesOfFreedomPrior(GMMVTAC.hyperparameters.degreesOfFreedomPrior)
                 .covariancePrior(covariancePrior)
-                .seed(1)
-                .warmStart(true)
-                .tol(100.)
-                .verboseInterval(1)
+                .seed(GMMVTAC.hyperparameters.seed)
+                .warmStart(GMMVTAC.hyperparameters.warmStart)
+                .verboseInterval(GMMVTAC.hyperparameters.verboseInterval)
                 .build();
         bgmm.fit(positiveTrainingDataArray);
 

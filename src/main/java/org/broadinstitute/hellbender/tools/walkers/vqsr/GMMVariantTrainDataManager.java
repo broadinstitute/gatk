@@ -19,7 +19,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -239,54 +238,12 @@ public class GMMVariantTrainDataManager {
             }
         }
         logger.info( "Training with " + trainingData.size() + " variants after standard deviation thresholding." );
-        if( trainingData.size() < GMMVTAC.MIN_NUM_BAD_VARIANTS ) {
-            logger.warn( "WARNING: Training with very few variant sites! Please check the model reporting PDF to ensure the quality of the model is reliable." );
-        } else if( trainingData.size() > GMMVTAC.MAX_NUM_TRAINING_DATA ) {
+        if( trainingData.size() > GMMVTAC.MAX_NUM_TRAINING_DATA ) {
             logger.warn( "WARNING: Very large training set detected. Downsampling to " + GMMVTAC.MAX_NUM_TRAINING_DATA + " training variants." );
             Collections.shuffle(trainingData, Utils.getRandomGenerator());
             return trainingData.subList(0, GMMVTAC.MAX_NUM_TRAINING_DATA);
         }
         return trainingData;
-    }
-
-    public List<VariantDatum> selectWorstVariants() {
-        final List<VariantDatum> trainingData = new ArrayList<>();
-
-        for( final VariantDatum datum : data ) {
-            if( datum != null && !datum.failingSTDThreshold && !Double.isInfinite(datum.lod) && datum.lod < GMMVTAC.BAD_LOD_CUTOFF ) {
-                datum.atAntiTrainingSite = true;
-                trainingData.add( datum );
-            }
-        }
-
-        logger.info( "Selected worst " + trainingData.size() + " scoring variants --> variants with LOD <= " + String.format("%.4f", GMMVTAC.BAD_LOD_CUTOFF) + "." );
-
-        return trainingData;
-    }
-
-    public List<VariantDatum> getEvaluationData() {
-        final List<VariantDatum> evaluationData = new ArrayList<>();
-
-        for( final VariantDatum datum : data ) {
-            if( datum != null && !datum.failingSTDThreshold && !datum.atTrainingSite && !datum.atAntiTrainingSite ) {
-                evaluationData.add( datum );
-            }
-        }
-
-        return evaluationData;
-    }
-
-    /**
-     * Remove all VariantDatum's from the data list which are marked as aggregate data
-     */
-    public void dropAggregateData() {
-        final Iterator<VariantDatum> iter = data.iterator();
-        while (iter.hasNext()) {
-            final VariantDatum datum = iter.next();
-            if( datum.isAggregate ) {
-                iter.remove();
-            }
-        }
     }
 
     protected double mean( final int index, final boolean trainingData ) {
