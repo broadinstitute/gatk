@@ -120,6 +120,10 @@ def check_filtering(variant):
     if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
       print("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
       return False
+    # skip any row (with a warning) if the AC value is 0
+    elif variant["gvsAnnotations"].get("AC") == 0:
+      print("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
+      return False
     # skip any row (with a warning) if AC, AN or AF is missing
     elif variant["gvsAnnotations"].get("AC") == None:
       print("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
@@ -129,10 +133,6 @@ def check_filtering(variant):
       return False
     elif variant["gvsAnnotations"].get("AF") == None:
       print("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
-      return False
-    # skip any row (with a warning) if the AC value is 0
-    elif variant["gvsAnnotations"].get("AC") == 0:
-      print("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
       return False
     else:
       return True
