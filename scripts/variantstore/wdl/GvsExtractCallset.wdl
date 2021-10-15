@@ -16,6 +16,7 @@ workflow GvsExtractCallset {
 
         String fq_cohort_extract_table_prefix
         String query_project = data_project
+        String fq_ranges_dataset = "~{data_project}.~{default_dataset}"
 
         Boolean do_not_filter_override = false
         String? filter_set_name
@@ -87,6 +88,7 @@ workflow GvsExtractCallset {
                 read_project_id                 = query_project,
                 mode                            = mode,
                 do_not_filter_override          = do_not_filter_override,
+                fq_ranges_dataset               = fq_ranges_dataset,
                 fq_filter_set_info_table        = fq_filter_set_info_table,
                 fq_filter_set_site_table        = fq_filter_set_site_table,
                 fq_filter_set_tranches_table    = fq_filter_set_tranches_table,
@@ -148,6 +150,7 @@ task ExtractTask {
         String mode
 
         Boolean do_not_filter_override
+        String fq_ranges_dataset
         String fq_filter_set_info_table
         String fq_filter_set_site_table
         String fq_filter_set_tranches_table
@@ -201,14 +204,20 @@ task ExtractTask {
                 ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
 
+        if [ ~{mode} = "RANGES" ]; then
+            MODE_ARGS="--mode RANGES --vet-ranges-fq-dataset ~{fq_ranges_dataset} "
+        else
+            MODE_ARGS="--mode PET --cohort-extract-table ~{fq_cohort_extract_table} "
+        fi
+
         gatk --java-options "-Xmx9g" \
             ExtractCohort \
-                --mode ~{mode} --ref-version 38 \
+                ${MODE_ARGS} \
+                --ref-version 38 \
                 -R ~{reference} \
                 -O ~{output_file} \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
                 --sample-table ~{fq_samples_to_extract_table} \
-                --cohort-extract-table ~{fq_cohort_extract_table} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id} \
