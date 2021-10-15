@@ -26,7 +26,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixture;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -35,10 +34,7 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -46,114 +42,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Build a recalibration model to score variant quality for filtering purposes
- *
- * <p>This tool performs the first pass in a two-stage process called Variant Quality Score Recalibration (VQSR).
- * Specifically, it builds the model that will be used in the second step to actually filter variants. This model
- * attempts to describe the relationship between variant annotations (such as QD, MQ and ReadPosRankSum, for example)
- * and the probability that a variant is a true genetic variant versus a sequencing or data processing artifact. It is
- * developed adaptively based on "true sites" provided as input, typically HapMap sites and those sites found to be
- * polymorphic on the Omni 2.5M SNP chip array (in humans). This adaptive error model can then be applied to both known
- * and novel variation discovered in the call set of interest to evaluate the probability that each call is real. The
- * result is a score called the VQSLOD that gets added to the INFO field of each variant. This score is the log odds of
- * being a true variant versus being false under the trained Gaussian mixture model. </p>
- *
- * <h4>Summary of the VQSR procedure</h4>
- * <p>The purpose of variant recalibration is to assign a well-calibrated probability to each variant call in a call set.
- * These probabilities can then be used to filter the variants with a greater level of accuracy and flexibility than
- * can typically be achieved by traditional hard-filter (filtering on individual annotation value thresholds). The first
- * pass consists of building a model that describes how variant annotation values co-vary with the truthfulness of
- * variant calls in a training set, and then scoring all input variants according to the model. The second pass simply
- * consists of specifying a target sensitivity value (which corresponds to an empirical VQSLOD cutoff) and applying
- * filters to each variant call according to their ranking. The result is a VCF file in which variants have been
- * assigned a score and filter status.</p>
- *
- * <p>VQSR is probably the hardest part of the Best Practices to get right, so be sure to read the
- * <a href='https://gatk.broadinstitute.org/hc/en-us/articles/360035531612-Variant-Quality-Score-Recalibration-VQSR-'>method documentation</a> and
- * <a href='https://gatk.broadinstitute.org/hc/en-us/articles/360035531112--How-to-Filter-variants-either-with-VQSR-or-by-hard-filtering'>tutorial</a> to really understand what these
- * tools do and how to use them for best results on your own data.</p>
- *
- * <h3>Inputs</h3>
- * <ul>
- *      <li>The input variants to be recalibrated. These variant calls must be annotated with the annotations that will be
- * used for modeling. If the calls come from multiple samples, they must have been obtained by joint calling the samples,
- * either directly (running HaplotypeCaller on all samples together) or via the GVCF workflow (HaplotypeCaller with -ERC
- * GVCF per-sample then GenotypeGVCFs on the resulting gVCFs) which is more scalable.</li>
- *      <li>Known, truth, and training sets to be used by the algorithm. See the method documentation linked above for
- * more details.</li>
- * </ul>
- *
- * <h3>Outputs</h3>
- * <ul>
- * <li>A recalibration table file that will be used by the ApplyVQSR tool.</li>
- * <li>A tranches file that shows various metrics of the recalibration callset for slices of the data.</li>
- * </ul>
- *
- * <h3>Usage example</h3>
- *
- * <h4>Recalibrating SNPs in exome data</h4>
- * <pre>
- * gatk VariantRecalibrator \
- *   -R Homo_sapiens_assembly38.fasta \
- *   -V input.vcf.gz \
- *   --resource:hapmap,known=false,training=true,truth=true,prior=15.0 hapmap_3.3.hg38.sites.vcf.gz \
- *   --resource:omni,known=false,training=true,truth=false,prior=12.0 1000G_omni2.5.hg38.sites.vcf.gz \
- *   --resource:1000G,known=false,training=true,truth=false,prior=10.0 1000G_phase1.snps.high_confidence.hg38.vcf.gz \
- *   --resource:dbsnp,known=true,training=false,truth=false,prior=2.0 Homo_sapiens_assembly38.dbsnp138.vcf.gz \
- *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
- *   -mode SNP \
- *   -O output.recal \
- *   --tranches-file output.tranches \
- *   --rscript-file output.plots.R
- * </pre>
- *
- * <h4>Allele-specific version of the SNP recalibration (beta)</h4>
- * <pre>
- * gatk VariantRecalibrator \
- *   -R Homo_sapiens_assembly38.fasta \
- *   -V input.vcf.gz \
- *   -AS \
- *   --resource:hapmap,known=false,training=true,truth=true,prior=15.0 hapmap_3.3.hg38.sites.vcf.gz \
- *   --resource:omni,known=false,training=true,truth=false,prior=12.0 1000G_omni2.5.hg38.sites.vcf.gz \
- *   --resource:1000G,known=false,training=true,truth=false,prior=10.0 1000G_phase1.snps.high_confidence.hg38.vcf.gz \
- *   --resource:dbsnp,known=true,training=false,truth=false,prior=2.0 Homo_sapiens_assembly38.dbsnp138.vcf.gz \
- *   -an QD -an MQ -an MQRankSum -an ReadPosRankSum -an FS -an SOR \
- *   -mode SNP \
- *   -O output.AS.recal \
- *   --tranches-file output.AS.tranches \
- *   --rscript-file output.plots.AS.R
- * </pre>
- * <p>Note that to use the allele-specific (AS) mode, the input VCF must have been produced using allele-specific
- * annotations in HaplotypeCaller. Note also that each allele will have a separate line in the output recalibration
- * file with its own VQSLOD and `culprit`, which will be transferred to the final VCF by the ApplyVQSR tool.
- *
- * <h3>Caveats</h3>
- *
- * <ul>
- * <li>The values used in the example above are only meant to show how the command lines are composed.
- * They are not meant to be taken as specific recommendations of values to use in your own work, and they may be
- * different from the values cited elsewhere in our documentation. For the latest and greatest recommendations on
- * how to set parameter values for your own analyses, please read the Best Practices section of the documentation,
- * especially the <a href='https://software.broadinstitute.org/gatk/guide/article?id=1259'>FAQ document</a> on VQSR parameters.</li>
- * <li>Whole genomes and exomes take slightly different parameters, so make sure you adapt your commands accordingly! See
- * the documents linked above for details.</li>
- * <li>If you work with small datasets (e.g. targeted capture experiments or small number of exomes), you will run into
- * problems. Read the docs linked above for advice on how to deal with those issues.</li>
- * <li>In order to create the model reporting plots, the Rscript executable needs to be in your environment PATH
- * (this is the scripting version of R, not the interactive version).
- * See <a target="r-project" href="http://www.r-project.org">http://www.r-project.org</a> for more information on how
- * to download and install R.</li>
- * </ul>
- *
- * <h3>Additional notes</h3>
- * <ul>
- *     <li>This tool only accepts a single input variant file unlike earlier version of GATK, which accepted multiple
- *     input variant files.</li>
- *     <li>SNPs and indels must be recalibrated in separate runs, but it is not necessary to separate them into different
- * files. See the tutorial linked above for an example workflow. Note that mixed records are treated as indels.</li>
- *     <li></li>
- * </ul>
- *
+ * TODO
  */
 @CommandLineProgramProperties(
         summary = "Build a recalibration model to score variant quality for filtering purposes",
@@ -164,19 +53,11 @@ import java.util.TreeSet;
 public class GMMVariantTrain extends MultiVariantWalker {
 
     @ArgumentCollection
-    final private VariantRecalibratorArgumentCollection VRAC = new VariantRecalibratorArgumentCollection();
+    final private GMMVariantTrainArgumentCollection GMMVTAC = new GMMVariantTrainArgumentCollection();
 
     /////////////////////////////
     // Inputs
     /////////////////////////////
-
-    /**
-     * These additional calls should be unfiltered and annotated with the error covariates that are intended to be used for modeling.
-     */
-    @Argument(fullName="aggregate",
-            shortName = "aggregate", doc="Additional raw input variants to be used in building the model",
-            optional=true)
-    private List<FeatureInput<VariantContext>> aggregate = new ArrayList<>();
 
     /**
      * Any set of VCF files to use as lists of training, truth, or known sites.
@@ -206,18 +87,6 @@ public class GMMVariantTrain extends MultiVariantWalker {
     /////////////////////////////
     // Additional Command Line Arguments
     /////////////////////////////
-    /**
-     * The expected transition / transversion ratio of true novel variants in your targeted region (whole genome, exome, specific
-     * genes), which varies greatly by the CpG and GC content of the region. See expected Ti/Tv ratios section of the GATK best
-     * practices documentation (https://software.broadinstitute.org/gatk/guide/best-practices) for more information.
-     * Normal values are 2.15 for human whole genome values and 3.2 for human whole exomes. Note
-     * that this parameter is used for display purposes only and isn't used anywhere in the algorithm!
-     */
-    @Argument(fullName="target-titv",
-            shortName="titv",
-            doc="The expected novel Ti/Tv ratio to use when calculating FDR tranches and for display on the optimization curve output figures. (approx 2.15 for whole genome experiments). ONLY USED FOR PLOTTING PURPOSES!",
-            optional=true)
-    private double TARGET_TITV = 2.15;
 
     /**
      * See the input VCF file's INFO field for a list of all available annotations.
@@ -307,13 +176,6 @@ public class GMMVariantTrain extends MultiVariantWalker {
         }
     };
 
-    @Hidden
-    @Argument(fullName="replicate",
-            shortName="replicate",
-            doc="Used to debug the random number generation inside the VQSR. Do not use.",
-            optional=true)
-    private int REPLICATE = 200;
-
     /**
      * The statistical model being built by this tool may fail due to simple statistical sampling
      * issues. Rather than dying immediately when the initial model fails, this argument allows the
@@ -347,12 +209,10 @@ public class GMMVariantTrain extends MultiVariantWalker {
     /////////////////////////////
     // Private Member Variables
     /////////////////////////////
-    private VariantDataManager dataManager;
+    private GMMVariantTrainDataManager dataManager;
     private VariantContextWriter recalWriter;
     private PrintStream tranchesStream;
-    final private ArrayList<Double> replicate = new ArrayList<>(REPLICATE * 2);
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
-    private final VariantRecalibratorEngine engine = new VariantRecalibratorEngine( VRAC );
     final private ArrayList<VariantDatum> reduceSum = new ArrayList<>(2000);
     final private List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>();
     private long counter = 0;
@@ -366,7 +226,7 @@ public class GMMVariantTrain extends MultiVariantWalker {
     @Override
     public void onTraversalStart() {
 
-        dataManager = new VariantDataManager( new ArrayList<>(USE_ANNOTATIONS), VRAC );
+        dataManager = new GMMVariantTrainDataManager( new ArrayList<>(USE_ANNOTATIONS), GMMVTAC);
 
         if ( IGNORE_INPUT_FILTERS != null ) {
             ignoreInputFilterSet.addAll( IGNORE_INPUT_FILTERS );
@@ -409,10 +269,6 @@ public class GMMVariantTrain extends MultiVariantWalker {
 
         recalWriter = createVCFWriter(output);
         recalWriter.writeHeader( new VCFHeader(hInfo) );
-
-        for ( int iii = 0; iii < REPLICATE * 2; iii++ ) {
-            replicate.add(Utils.getRandomGenerator().nextDouble());
-        }
     }
 
     //---------------------------------------------------------------------------------------------------------------
@@ -448,42 +304,20 @@ public class GMMVariantTrain extends MultiVariantWalker {
     }
 
     private void consumeQueuedVariants() {
-        variantsAtLocus.forEach(v -> addVariantDatum(v.left, true, v.right));
-        if (!aggregate.isEmpty()) {
-            // use the first featureContext in the queue for the aggregate resources
-            addOverlappingAggregateVariants(aggregate, false, variantsAtLocus.get(0).getRight());
-        }
+        variantsAtLocus.forEach(v -> addVariantDatum(v.left, v.right));
         variantsAtLocus.clear();
     }
 
-    /**
-     * Find overlapping variants and pull out the necessary information to create the VariantDatum
-     * @param aggregateInputs the input sources to search within
-     * @param isInput   is this the driving variant input (true) or an aggregate input ?
-     * @param context   the FeatureContext from the apply call
-     */
-    private void addOverlappingAggregateVariants(
-            final List<FeatureInput<VariantContext>> aggregateInputs,
-            final boolean isInput,
-            final FeatureContext context ) {
-        if( aggregateInputs == null ) { throw new IllegalArgumentException("aggregateInputs cannot be null."); }
-        if( context == null ) { throw new IllegalArgumentException("context cannot be null."); }
-
-        for( final VariantContext vc : context.getValues(aggregateInputs, context.getInterval().getStart()) ) {
-            addVariantDatum(vc, isInput, context);
-        }
-    }
-
-    private void addVariantDatum(final VariantContext vc, final boolean isInput, final FeatureContext context ) {
+    private void addVariantDatum(final VariantContext vc, final FeatureContext context) {
         if( vc != null && ( IGNORE_ALL_FILTERS || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()) ) ) {
-            if( VariantDataManager.checkVariationClass( vc, VRAC.MODE ) && !VRAC.useASannotations) {
-                addDatum(reduceSum, isInput, context, vc, null, null);
+            if( GMMVariantTrainDataManager.checkVariationClass( vc, GMMVTAC.MODE ) && !GMMVTAC.useASannotations) {
+                addDatum(reduceSum, true, context, vc, null, null);
             }
-            else if( VRAC.useASannotations ) {
+            else if( GMMVTAC.useASannotations ) {
                 for (final Allele allele : vc.getAlternateAlleles()) {
-                    if (!GATKVCFConstants.isSpanningDeletion(allele) && VariantDataManager.checkVariationClass(vc, allele, VRAC.MODE)) {
+                    if (!GATKVCFConstants.isSpanningDeletion(allele) && GMMVariantTrainDataManager.checkVariationClass(vc, allele, GMMVTAC.MODE)) {
                         //note that this may not be the minimal representation for the ref and alt allele
-                        addDatum(reduceSum, isInput, context, vc, vc.getReference(), allele);
+                        addDatum(reduceSum, true, context, vc, vc.getReference(), allele);
                     }
                 }
             }
@@ -550,11 +384,11 @@ public class GMMVariantTrain extends MultiVariantWalker {
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
 
         final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
-                .nComponents(VRAC.MAX_GAUSSIANS)
-                .maxIter(VRAC.MAX_ITERATIONS)
+                .nComponents(GMMVTAC.MAX_GAUSSIANS)
+                .maxIter(GMMVTAC.MAX_ITERATIONS)
                 .nInit(max_attempts)
                 .initMethod(BayesianGaussianMixture.InitMethod.K_MEANS_PLUS_PLUS)
-                .weightConcentrationPrior(VRAC.DIRICHLET_PARAMETER)
+                .weightConcentrationPrior(GMMVTAC.DIRICHLET_PARAMETER)
                 .meanPrior(meanPrior)
                 .degreesOfFreedomPrior(nFeatures)
                 .covariancePrior(covariancePrior)
@@ -574,15 +408,13 @@ public class GMMVariantTrain extends MultiVariantWalker {
 
         final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
         final double[] scores = bgmm.scoreSamples(data);
-//        dumpScores(scores, output + ".scores.tsv");
 
-        dataManager.dropAggregateData(); // Don't need the aggregate data anymore so let's free up the memory
         dataManager.setScores(dataManager.getData(), scores);
 
         // Find the VQSLOD cutoff values which correspond to the various tranches of calls requested by the user
         final int nCallsAtTruth = TrancheManager.countCallsAtTruth(dataManager.getData(), Double.NEGATIVE_INFINITY);
         final TrancheManager.SelectionMetric metric = new TrancheManager.TruthSensitivityMetric(nCallsAtTruth);
-        final List<? extends Tranche> tranches = TrancheManager.findTranches(dataManager.getData(), TS_TRANCHES, metric, VRAC.MODE);
+        final List<? extends Tranche> tranches = TrancheManager.findTranches(dataManager.getData(), TS_TRANCHES, metric, GMMVTAC.MODE);
         tranchesStream.print(TruthSensitivityTranche.printHeader());
         tranchesStream.print(Tranche.tranchesString(tranches));
 
@@ -599,19 +431,6 @@ public class GMMVariantTrain extends MultiVariantWalker {
         }
         if (tranchesStream != null) {
             tranchesStream.close();
-        }
-    }
-
-    private static void dumpScores(double[] scores, String output) {
-        try (FileWriter fos = new FileWriter(output);
-             PrintWriter dos = new PrintWriter(fos)) {
-
-            for (int i = 0; i < scores.length; i++)
-            {
-                dos.print(scores[i] + "\n");
-            }
-        } catch (IOException e) {
-            System.out.println("Error printing scores.");
         }
     }
 }

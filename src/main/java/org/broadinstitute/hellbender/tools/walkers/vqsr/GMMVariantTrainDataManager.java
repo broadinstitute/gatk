@@ -1,47 +1,50 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang3.AnnotationUtils;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
-public class VariantDataManager {
+public class GMMVariantTrainDataManager {
     private List<VariantDatum> data = Collections.emptyList();
     private double[] meanVector;
     private double[] varianceVector; // this is really the standard deviation
     public List<String> annotationKeys;
-    private final VariantRecalibratorArgumentCollection VRAC;
-    protected final static Logger logger = LogManager.getLogger(VariantDataManager.class);
+    private final GMMVariantTrainArgumentCollection GMMVTAC;
+    protected final static Logger logger = LogManager.getLogger(GMMVariantTrainDataManager.class);
     protected final List<TrainingSet> trainingSets;
     private static final double SAFETY_OFFSET = 0.01;     //To use for example as 1/(X + SAFETY_OFFSET) to protect against dividing or taking log of X=0.
     private static final double PRECISION = 0.01;         //To use mainly with MathUtils.compareDoubles(a,b,PRECISION)
 
-    public VariantDataManager( final List<String> annotationKeys, final VariantRecalibratorArgumentCollection VRAC ) {
+    public GMMVariantTrainDataManager(final List<String> annotationKeys, final GMMVariantTrainArgumentCollection GMMVTAC) {
         this.data = Collections.emptyList();
         final List<String> uniqueAnnotations = annotationKeys.stream().distinct().collect(Collectors.toList());
         if (annotationKeys.size() != uniqueAnnotations.size()) {
             logger.warn("Ignoring duplicate annotations for recalibration %s.", Utils.getDuplicatedItems(annotationKeys));
         }
         this.annotationKeys = new ArrayList<>( uniqueAnnotations );
-        this.VRAC = VRAC;
+        this.GMMVTAC = GMMVTAC;
         meanVector = new double[this.annotationKeys.size()];
         varianceVector = new double[this.annotationKeys.size()];
         trainingSets = new ArrayList<>();
@@ -103,7 +106,7 @@ public class VariantDataManager {
         for( final VariantDatum datum : data ) {
             boolean remove = false;
             for( final double val : datum.annotations ) {
-                remove = remove || (Math.abs(val) > VRAC.STD_THRESHOLD);
+                remove = remove || (Math.abs(val) > GMMVTAC.STD_THRESHOLD);
             }
             datum.failingSTDThreshold = remove;
         }
@@ -231,17 +234,17 @@ public class VariantDataManager {
         for( final VariantDatum datum : data ) {
             if( datum.atTrainingSite && !datum.failingSTDThreshold ) {
                 trainingData.add( datum );
-            } else if (datum.failingSTDThreshold && VRAC.debugStdevThresholding) {
+            } else if (datum.failingSTDThreshold && GMMVTAC.debugStdevThresholding) {
                 logger.warn("Datum at " + datum.loc + " with ref " + datum.referenceAllele + " and alt " + datum.alternateAllele + " failing std thresholding: " + Arrays.toString(datum.annotations));
             }
         }
         logger.info( "Training with " + trainingData.size() + " variants after standard deviation thresholding." );
-        if( trainingData.size() < VRAC.MIN_NUM_BAD_VARIANTS ) {
+        if( trainingData.size() < GMMVTAC.MIN_NUM_BAD_VARIANTS ) {
             logger.warn( "WARNING: Training with very few variant sites! Please check the model reporting PDF to ensure the quality of the model is reliable." );
-        } else if( trainingData.size() > VRAC.MAX_NUM_TRAINING_DATA ) {
-            logger.warn( "WARNING: Very large training set detected. Downsampling to " + VRAC.MAX_NUM_TRAINING_DATA + " training variants." );
+        } else if( trainingData.size() > GMMVTAC.MAX_NUM_TRAINING_DATA ) {
+            logger.warn( "WARNING: Very large training set detected. Downsampling to " + GMMVTAC.MAX_NUM_TRAINING_DATA + " training variants." );
             Collections.shuffle(trainingData, Utils.getRandomGenerator());
-            return trainingData.subList(0, VRAC.MAX_NUM_TRAINING_DATA);
+            return trainingData.subList(0, GMMVTAC.MAX_NUM_TRAINING_DATA);
         }
         return trainingData;
     }
@@ -250,13 +253,13 @@ public class VariantDataManager {
         final List<VariantDatum> trainingData = new ArrayList<>();
 
         for( final VariantDatum datum : data ) {
-            if( datum != null && !datum.failingSTDThreshold && !Double.isInfinite(datum.lod) && datum.lod < VRAC.BAD_LOD_CUTOFF ) {
+            if( datum != null && !datum.failingSTDThreshold && !Double.isInfinite(datum.lod) && datum.lod < GMMVTAC.BAD_LOD_CUTOFF ) {
                 datum.atAntiTrainingSite = true;
                 trainingData.add( datum );
             }
         }
 
-        logger.info( "Selected worst " + trainingData.size() + " scoring variants --> variants with LOD <= " + String.format("%.4f", VRAC.BAD_LOD_CUTOFF) + "." );
+        logger.info( "Selected worst " + trainingData.size() + " scoring variants --> variants with LOD <= " + String.format("%.4f", GMMVTAC.BAD_LOD_CUTOFF) + "." );
 
         return trainingData;
     }
@@ -286,18 +289,6 @@ public class VariantDataManager {
         }
     }
 
-    public List<VariantDatum> getRandomDataForPlotting( final int numToAdd, final List<VariantDatum> trainingData, final List<VariantDatum> antiTrainingData, final List<VariantDatum> evaluationData ) {
-        final List<VariantDatum> returnData = new ArrayList<>();
-        Collections.shuffle(trainingData, Utils.getRandomGenerator());
-        Collections.shuffle(antiTrainingData, Utils.getRandomGenerator());
-        Collections.shuffle(evaluationData, Utils.getRandomGenerator());
-        returnData.addAll(trainingData.subList(0, Math.min(numToAdd, trainingData.size())));
-        returnData.addAll(antiTrainingData.subList(0, Math.min(numToAdd, antiTrainingData.size())));
-        returnData.addAll(evaluationData.subList(0, Math.min(numToAdd, evaluationData.size())));
-        Collections.shuffle(returnData, Utils.getRandomGenerator());
-        return returnData;
-    }
-
     protected double mean( final int index, final boolean trainingData ) {
         double sum = 0.0;
         int numNonNull = 0;
@@ -325,7 +316,7 @@ public class VariantDataManager {
         int iii = 0;
         for( final String key : annotationKeys ) {
             isNull[iii] = false;
-            annotations[iii] = decodeAnnotation( key, vc, jitter, VRAC, datum );
+            annotations[iii] = decodeAnnotation( key, vc, jitter, GMMVTAC, datum );
             if( Double.isNaN(annotations[iii]) ) { isNull[iii] = true; }
             iii++;
         }
@@ -337,14 +328,14 @@ public class VariantDataManager {
         return Math.log((x - xmin)/(xmax - x));
     }
 
-    private static double decodeAnnotation( final String annotationKey, final VariantContext vc, final boolean jitter, final VariantRecalibratorArgumentCollection vrac, final VariantDatum datum ) {
+    private static double decodeAnnotation( final String annotationKey, final VariantContext vc, final boolean jitter, final GMMVariantTrainArgumentCollection gmmvtac, final VariantDatum datum ) {
         double value;
 
         final double LOG_OF_TWO = 0.6931472;
 
         try {
             //if we're in allele-specific mode and an allele-specific annotation has been requested, parse the appropriate value from the list
-            if(vrac.useASannotations && annotationKey.startsWith(GATKVCFConstants.ALLELE_SPECIFIC_PREFIX)) {
+            if(gmmvtac.useASannotations && annotationKey.startsWith(GATKVCFConstants.ALLELE_SPECIFIC_PREFIX)) {
                 final List<Object> valueList = vc.getAttributeAsList(annotationKey);
                 //FIXME: we need to look at the ref allele here too
                 if (vc.hasAllele(datum.alternateAllele)) {
@@ -363,17 +354,17 @@ public class VariantDataManager {
             if( jitter && annotationKey.equalsIgnoreCase(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY) && MathUtils.compareDoubles(value, 0.0, PRECISION) == 0 ) { value += 0.01 * Utils.getRandomGenerator().nextGaussian(); }
             if( jitter && (annotationKey.equalsIgnoreCase(GATKVCFConstants.STRAND_ODDS_RATIO_KEY) || annotationKey.equalsIgnoreCase(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY)) && MathUtils.compareDoubles(value, LOG_OF_TWO, PRECISION) == 0 ) { value += 0.01 * Utils.getRandomGenerator().nextGaussian(); }   //min SOR is 2.0, then we take ln
             if( jitter && (annotationKey.equalsIgnoreCase(VCFConstants.RMS_MAPPING_QUALITY_KEY))) {
-                if( vrac.MQ_CAP > 0) {
-                    value = logitTransform(value, -SAFETY_OFFSET, vrac.MQ_CAP + SAFETY_OFFSET);
-                    if (MathUtils.compareDoubles(value, logitTransform(vrac.MQ_CAP, -SAFETY_OFFSET, vrac.MQ_CAP + SAFETY_OFFSET), PRECISION) == 0 ) {
-                        value += vrac.MQ_JITTER * Utils.getRandomGenerator().nextGaussian();
+                if( gmmvtac.MQ_CAP > 0) {
+                    value = logitTransform(value, -SAFETY_OFFSET, gmmvtac.MQ_CAP + SAFETY_OFFSET);
+                    if (MathUtils.compareDoubles(value, logitTransform(gmmvtac.MQ_CAP, -SAFETY_OFFSET, gmmvtac.MQ_CAP + SAFETY_OFFSET), PRECISION) == 0 ) {
+                        value += gmmvtac.MQ_JITTER * Utils.getRandomGenerator().nextGaussian();
                     }
-                } else if( MathUtils.compareDoubles(value, vrac.MQ_CAP, PRECISION) == 0 ) {
-                    value += vrac.MQ_JITTER * Utils.getRandomGenerator().nextGaussian();
+                } else if( MathUtils.compareDoubles(value, gmmvtac.MQ_CAP, PRECISION) == 0 ) {
+                    value += gmmvtac.MQ_JITTER * Utils.getRandomGenerator().nextGaussian();
                 }
             }
             if( jitter && (annotationKey.equalsIgnoreCase(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY))){
-                value += vrac.MQ_JITTER * Utils.getRandomGenerator().nextGaussian();
+                value += gmmvtac.MQ_JITTER * Utils.getRandomGenerator().nextGaussian();
             }
         } catch( NumberFormatException e ) {
             value = Double.NaN; // VQSR works with missing data by marginalizing over the missing dimension when evaluating the Gaussian mixture model
@@ -396,7 +387,7 @@ public class VariantDataManager {
         for( final TrainingSet trainingSet : trainingSets ) {
             List<VariantContext> vcs = featureContext.getValues(trainingSet.variantSource, featureContext.getInterval().getStart());
             for( final VariantContext trainVC : vcs ) {
-                if (VRAC.useASannotations && !doAllelesMatch(trainVC, datum))
+                if (GMMVTAC.useASannotations && !doAllelesMatch(trainVC, datum))
                     continue;
                 if( isValidVariant( evalVC, trainVC, TRUST_ALL_POLYMORPHIC ) ) {
                     datum.isKnown = datum.isKnown || trainingSet.isKnown;
@@ -477,17 +468,19 @@ public class VariantDataManager {
         List<Allele> alleles = Arrays.asList(Allele.create("N", true), Allele.create("<VQSR>", false));
 
         for( final VariantDatum datum : data ) {
-            if (VRAC.useASannotations)
+            if (GMMVTAC.useASannotations)
                 alleles = Arrays.asList(datum.referenceAllele, datum.alternateAllele); //use the alleles to distinguish between multiallelics in AS mode
             VariantContextBuilder builder = new VariantContextBuilder("VQSR", datum.loc.getContig(), datum.loc.getStart(), datum.loc.getEnd(), alleles);
             builder.attribute(VCFConstants.END_KEY, datum.loc.getEnd());
             builder.attribute(GATKVCFConstants.VQS_LOD_KEY, String.format("%.4f", datum.lod));
-            builder.attribute(GATKVCFConstants.CULPRIT_KEY, (datum.worstAnnotation != -1 ? annotationKeys.get(datum.worstAnnotation) : "NULL"));
 
             if ( datum.atTrainingSite ) builder.attribute(GATKVCFConstants.POSITIVE_LABEL_KEY, true);
-            if ( datum.atAntiTrainingSite ) builder.attribute(GATKVCFConstants.NEGATIVE_LABEL_KEY, true);
 
             recalWriter.add(builder.make());
         }
+    }
+
+    public void setScores( List<VariantDatum> data, double[] scores ) {
+        IntStream.range(0, data.size()).forEach(i -> data.get(i).lod = scores[i]);
     }
 }
