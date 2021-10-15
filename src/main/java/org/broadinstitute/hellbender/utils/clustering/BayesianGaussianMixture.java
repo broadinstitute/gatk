@@ -930,8 +930,10 @@ public final class BayesianGaussianMixture {
             return this;
         }
 
-        public Builder weightConcentrationPrior(final double weightConcentrationPrior) {
-            Utils.validateArg(weightConcentrationPrior > 0., "weightConcentrationPrior must be > 0.");
+        public Builder weightConcentrationPrior(final Double weightConcentrationPrior) {
+            if (weightConcentrationPrior != null) {
+                Utils.validateArg(weightConcentrationPrior > 0., "weightConcentrationPrior must be > 0.");
+            }
             this.weightConcentrationPrior = weightConcentrationPrior;
             return this;
         }
@@ -943,23 +945,29 @@ public final class BayesianGaussianMixture {
         }
 
         public Builder meanPrior(final double[] meanPrior) {
-            Utils.nonNull(meanPrior, "meanPrior must be non-null. " +
-                    "To set this to the empirical mean of the data, simply do not chain this method onto the Builder.");
-            this.meanPrior = new ArrayRealVector(meanPrior, true);
+            if (meanPrior != null) {
+                this.meanPrior = new ArrayRealVector(meanPrior, true);
+            } else {
+                this.meanPrior = null;
+            }
             return this;
         }
 
-        public Builder degreesOfFreedomPrior(final double degreesOfFreedomPrior) {
-            Utils.validateArg(degreesOfFreedomPrior > 0., "degreesOfFreedomPrior must be > 0.");
+        public Builder degreesOfFreedomPrior(final Double degreesOfFreedomPrior) {
+            if (degreesOfFreedomPrior != null) {
+                Utils.validateArg(degreesOfFreedomPrior > 0., "degreesOfFreedomPrior must be > 0.");
+            }
             this.degreesOfFreedomPrior = degreesOfFreedomPrior;
             return this;
         }
 
         public Builder covariancePrior(final double[][] covariancePrior) {
-            Utils.nonNull(covariancePrior, "covariancePrior must be non-null. " +
-                    "To set this the empirical covariance of the data, simply do not chain this method onto the Builder.");
-            this.covariancePrior = new Array2DRowRealMatrix(covariancePrior, true);
-            checkCovariance(this.covariancePrior);
+            if (covariancePrior != null) {
+                this.covariancePrior = new Array2DRowRealMatrix(covariancePrior, true);
+                checkCovariance(this.covariancePrior);
+            } else {
+                this.covariancePrior = null;
+            }
             return this;
         }
 
