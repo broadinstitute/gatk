@@ -88,7 +88,7 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
                 .weightConcentrationPrior(1E-2)
                 .meanPrecisionPrior(10.)
                 .meanPrior(meanPrior)
-                .degreesOfFreedomPrior(nFeatures)
+                .degreesOfFreedomPrior((double) nFeatures)
                 .covariancePrior(covariancePrior)
                 .seed(1)
                 .warmStart(true)
