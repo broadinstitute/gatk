@@ -62,7 +62,7 @@ public final class BayesianGaussianMixture {
     private final double meanPrecisionPrior;
     private RealVector meanPrior;             // not final; if not specified via Builder and set to null, will then be set to the mean of X (over samples, i.e., over rows) upon fit(X)
     private Double degreesOfFreedomPrior;     // not final; if not specified via Builder and set to null, will then be set to nFeatures upon fit(X)
-    private RealMatrix covariancePrior;       // not final; if not specified via Builder and set to null, will then be set to the covariance of X upon fix(X)
+    private RealMatrix covariancePrior;       // not final; if not specified via Builder and set to null, will then be set to the covariance of X upon fit(X)
     private final int seed;
     private final boolean warmStart;
     private final int verboseInterval;
@@ -884,9 +884,9 @@ public final class BayesianGaussianMixture {
                                                                 // some prior parameters require the data X to construct defaults and/or fully validate
         private Double weightConcentrationPrior = null;         // if null, will be set to 1. / nComponents upon build()
         private double meanPrecisionPrior = 1;
-        private RealVector meanPrior = null;                    // if null, will be set to the mean of X (over samples, i.e., over rows) upon fix(X)
-        private Double degreesOfFreedomPrior = null;            // if null, will be set to nFeatures (i.e., X.getColumnDimension()) upon fix(X)
-        private RealMatrix covariancePrior;                     // if null, will be set to the covariance of X upon fix(X)
+        private RealVector meanPrior = null;                    // if null, will be set to the mean of X (over samples, i.e., over rows) upon fit(X)
+        private Double degreesOfFreedomPrior = null;            // if null, will be set to nFeatures (i.e., X.getColumnDimension()) upon fit(X)
+        private RealMatrix covariancePrior;                     // if null, will be set to the covariance of X upon fit(X)
 
         private int seed = 0;                                   // defaults to None (i.e., uses the global random state) in the sklearn implementation; we disallow this to avoid reproducibility headaches
         private boolean warmStart = false;
