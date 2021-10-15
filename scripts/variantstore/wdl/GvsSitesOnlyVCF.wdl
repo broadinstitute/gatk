@@ -514,14 +514,6 @@ task BigQueryLoadJson {
        echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
        bq --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
 
-       ## TODO partition by contig and cluster by position for a cheaper export (which is done by contig--do I need to make contig an int instead of a string?)
-
-       # create the final vat table with the correct fields
-       PARTITION_FIELD="contig" ## Can I do this yet, since it's not a number?
-       CLUSTERING_FIELD="position"
-       PARTITION_STRING="" #--range_partitioning=$PARTITION_FIELD,0,4000,4000"
-       CLUSTERING_STRING="" #--clustering_fields=$CLUSTERING_FIELD"
-
        set +e
        bq show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
        BQ_SHOW_RC=$?
@@ -752,8 +744,6 @@ task BigQueryExportVat {
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
-    ## TODO partition VAT by contig and cluster by position for a cheaper export (which is done by contig--do I need to make contig an int instead of a string?)
-
     command <<<
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
@@ -876,8 +866,8 @@ task BigQueryExportVat {
         clinvar_last_updated,
         ARRAY_TO_STRING(clinvar_phenotype, ", ") as clinvar_phenotype,
         FROM `~{dataset_name}.~{vat_table}`
-        WHERE contig="~{contig}" ## so Im going to want to partition by contig!!!
-        ORDER BY position  ## and then cluster by position
+        WHERE contig="~{contig}"
+        ORDER BY position
         '
 
     >>>
