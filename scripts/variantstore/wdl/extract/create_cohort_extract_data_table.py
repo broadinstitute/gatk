@@ -110,7 +110,12 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
     sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_pl, QUALapprox, AS_QUALapprox from `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
     return sql
 
+  # create the table before populating
+  create_sql = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` \n" + \
+    f" (location INTEGER, sample_id INTEGER, ref STRING, alt STRING, call_GT STRING, call_GQ INTEGER, call_pl STRING, QUALapprox STRING, AS_QUALapprox STRING)  {TEMP_TABLE_TTL}"
+  create_results = utils.execute_with_retry(client, "create-vet-new", create_sql)
   subs = {}
+  bq_async_queries = set()
   for i in range(1, PET_VET_TABLE_COUNT+1):
     partition_samples = get_samples_for_partition(sample_ids, i)
 
@@ -118,8 +123,7 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
     fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
     if len(partition_samples) > 0:
       subs = {}
-      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i == 1 \
-        else f"\nINSERT INTO `{fq_temp_table_dataset}.{VET_NEW_TABLE}` \n WITH \n"
+      insert_sql = f"\nINSERT INTO `{fq_temp_table_dataset}.{VET_NEW_TABLE}` \n WITH \n"
       fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
       j = 1
 
@@ -128,16 +132,19 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
         subs[id] = get_subselect(fq_vet_table, samples, id)
         j = j + 1
 
-      sql = create_or_insert + ("\n".join(subs.values())) + "\n" + \
+      sql = insert_sql + ("\n".join(subs.values())) + "\n" + \
             "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
             f" (SELECT * FROM q_all)"
 
       print(sql)
       print(f"VET Query is {utils.utf8len(sql)/(1024*1024)} MB in length")
-      if i == 1:
-        utils.execute_with_retry(client, "create and populate vet new table", sql)
-      else:
-        utils.execute_with_retry(client, "populate vet new table", sql)
+
+      label = "populate vet new table"  
+      bq_async_queries.add(utils.start_query(client, label, sql))
+
+  for (query,label) in bq_async_queries:
+    (results, mb_billed) = utils.get_query_results(query, client)
+    print(f"COMPLETED {mb_billed} MBs) - {label}")
   return
 
 
@@ -200,7 +207,7 @@ def populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_data
       bq_async_queries.add((query, label))
 
     for (query,label) in bq_async_queries:
-      (results, mb_billed) = utils.get_query_results(query, client, label)
+      (results, mb_billed) = utils.get_query_results(query, client)
       print(f"COMPLETED {mb_billed} MBs) - {label}")
 
   return
