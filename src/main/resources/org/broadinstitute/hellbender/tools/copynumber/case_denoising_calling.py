@@ -23,6 +23,23 @@ parser = argparse.ArgumentParser(description="gCNV case calling tool based on a 
 # logging args
 gcnvkernel.cli_commons.add_logging_args_to_argparse(parser)
 
+hidden_denoising_args = {
+    "max_bias_factors",
+    "psi_t_scale",
+    "log_mean_bias_std",
+    "init_ard_rel_unexplained_variance",
+    "enable_bias_factors",
+    "enable_explicit_gc_bias_modeling",
+    "disable_bias_factors_in_active_class",
+    "num_gc_bins",
+    "gc_curve_sd"
+}
+
+hidden_calling_args = {
+    "p_active",
+    "class_coherence_length"
+}
+
 # add tool-specific args
 group = parser.add_argument_group(title="Required arguments")
 
@@ -79,26 +96,13 @@ group.add_argument("--input_opt_path",
 # Note: we are hiding parameters that are either set by the model or are irrelevant to the case calling task
 gcnvkernel.DenoisingModelConfig.expose_args(
     parser,
-    hide={
-        "--max_bias_factors",
-        "--psi_t_scale",
-        "--log_mean_bias_std",
-        "--init_ard_rel_unexplained_variance",
-        "--enable_bias_factors",
-        "--enable_explicit_gc_bias_modeling",
-        "--disable_bias_factors_in_active_class",
-        "--num_gc_bins",
-        "--gc_curve_sd",
-    })
+    hide={"--" + arg for arg in hidden_denoising_args})
 
 # add calling config args
 # Note: we are hiding parameters that are either set by the model or are irrelevant to the case calling task
 gcnvkernel.CopyNumberCallingConfig.expose_args(
     parser,
-    hide={
-        '--p_active',
-        '--class_coherence_length'
-    })
+    hide={"--" + arg for arg in hidden_calling_args})
 
 # override some inference parameters
 gcnvkernel.HybridInferenceParameters.expose_args(parser)
@@ -109,24 +113,16 @@ def update_args_dict_from_saved_model(input_model_path: str,
     logging.info("Loading denoising model configuration from the provided model...")
     with open(os.path.join(input_model_path, "denoising_config.json"), 'r') as fp:
         loaded_denoising_config_dict = json.load(fp)
+    with open(os.path.join(input_model_path, "calling_config.json"), 'r') as fp:
+        loaded_calling_config_dict = json.load(fp)
 
-    # boolean flags
-    _args_dict['enable_bias_factors'] = \
-        loaded_denoising_config_dict['enable_bias_factors']
-    _args_dict['enable_explicit_gc_bias_modeling'] = \
-        loaded_denoising_config_dict['enable_explicit_gc_bias_modeling']
-    _args_dict['disable_bias_factors_in_active_class'] = \
-        loaded_denoising_config_dict['disable_bias_factors_in_active_class']
-
-    # bias factor related
-    _args_dict['max_bias_factors'] = \
-        loaded_denoising_config_dict['max_bias_factors']
-
-    # gc-related
-    _args_dict['num_gc_bins'] = \
-        loaded_denoising_config_dict['num_gc_bins']
-    _args_dict['gc_curve_sd'] = \
-        loaded_denoising_config_dict['gc_curve_sd']
+    # load arguments from the model denoising config that are hidden by the tool
+    for arg in hidden_denoising_args:
+        _args_dict[arg] = \
+            loaded_denoising_config_dict[arg]
+    for arg in hidden_calling_args:
+        _args_dict[arg] = \
+            loaded_calling_config_dict[arg]
 
     logging.info("- bias factors enabled: "
                  + repr(_args_dict['enable_bias_factors']))

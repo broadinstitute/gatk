@@ -1,8 +1,12 @@
 package org.broadinstitute.hellbender.tools.copynumber.arguments;
 
+import com.google.common.collect.ImmutableList;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -27,6 +31,16 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     public static final String COPY_NUMBER_POSTERIOR_EXPECTATION_MODE_LONG_NAME = "copy-number-posterior-expectation-mode";
     public static final String ENABLE_BIAS_FACTORS_LONG_NAME = "enable-bias-factors";
     public static final String ACTIVE_CLASS_PADDING_HYBRID_MODE_LONG_NAME = "active-class-padding-hybrid-mode";
+
+    // these model parameters will be extracted from provided model in CASE mode
+    private static final List<String> HIDDEN_ARGS_CASE_MODE = ImmutableList.of(
+            MAX_BIAS_FACTORS_LONG_NAME,
+            INTERVAL_PSI_SCALE_LONG_NAME,
+            LOG_MEAN_BIAS_STANDARD_DEVIATION_LONG_NAME,
+            INIT_ARD_REL_UNEXPLAINED_VARIANCE_LONG_NAME,
+            ENABLE_BIAS_FACTORS_LONG_NAME,
+            NUM_GC_BINS_LONG_NAME,
+            GC_CURVE_STANDARD_DEVIATION_LONG_NAME);
 
     public enum CopyNumberPosteriorExpectationMode {
         MAP("map"),
@@ -168,7 +182,11 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
         return arguments;
     }
 
-    public void validate() {
+    public void validate(final CommandLineArgumentParser clpParser, final GermlineCNVCaller.RunMode runMode) {
+        if (runMode == GermlineCNVCaller.RunMode.CASE)
+            HIDDEN_ARGS_CASE_MODE.forEach(a -> Utils.validateArg(
+                    !clpParser.getNamedArgumentDefinitionByAlias(a).getHasBeenSet(),
+                    String.format("Argument '--%s' cannot be set in the CASE mode.", a)));
         ParamUtils.isPositive(maxBiasFactors,
                 String.format("Maximum number of bias factors (%s) must be positive.",
                         MAX_BIAS_FACTORS_LONG_NAME));
