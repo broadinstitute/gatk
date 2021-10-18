@@ -21,6 +21,9 @@ workflow GvsSitesOnlyVCF {
         File reference
     }
 
+    Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
+
+
     call MakeSubpopulationFiles {
         input:
             input_ancestry_file = ancestry_file,
@@ -90,7 +93,20 @@ workflow GvsSitesOnlyVCF {
          table_suffix = table_suffix,
          service_account_json_path = service_account_json_path,
          load_jsons_done = BigQueryLoadJson.done
-   }
+    }
+    scatter(i in range(length(contig_array)) ) {
+
+      call BigQueryExportVat {
+        input:
+            contig = contig_array[i],
+            project_id = project_id,
+            dataset_name = dataset_name,
+            output_path = output_path,
+            table_suffix = table_suffix,
+            service_account_json_path = service_account_json_path,
+            validate_jsons_done = BigQuerySmokeTest.done
+      }
+    }
 }
 
 ################################################################################
@@ -180,6 +196,9 @@ task ExtractAnAcAfFromVCF {
     String custom_annotations_file_name = "ac_an_af.tsv"
     String local_input_vcf = basename(input_vcf)
     String local_input_vcf_index = basename(input_vcf_index)
+    String normalized_vcf = "normalized.vcf"
+    String normalized_vcf_compressed = "normalized.vcf.gz"
+    String normalized_vcf_indexed = "normalized.vcf.gz.tbi"
 
     # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af & sc
     command <<<
@@ -213,15 +232,15 @@ task ExtractAnAcAfFromVCF {
 
 
         bcftools norm -m-any ~{local_input_vcf} | \
-        bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta > normalized.vcf
+        bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta > ~{normalized_vcf}
 
 
         ## make a file of just the first 4 columns of the tsv (maybe I could just bcftools query it?)
-        bcftools query normalized.vcf -f '%CHROM\t%POS\t%REF\t%ALT\n' > check_duplicates.tsv
+        bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
         sort check_duplicates.tsv | uniq -d | cut -f1,2  > duplicates.tsv
         ## remove those rows (this will be ALL rows with this position--so good rows too, potentially we want to grab f1,4 to do this with)
-        grep -v -wFf duplicates.tsv normalized.vcf | grep -v "AC=0;"  > deduplicated.vcf
+        grep -v -wFf duplicates.tsv ~{normalized_vcf} | grep -v "AC=0;"  > deduplicated.vcf
 
         wc -l duplicates.tsv
 
@@ -232,6 +251,10 @@ task ExtractAnAcAfFromVCF {
         ### for validation of the pipeline
         wc -l ~{custom_annotations_file_name} | awk '{print $1}'  > count.txt
         # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
+
+        ### compress the vcf and index it
+        bcftools view -I deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
+        bcftools index --tbi  ~{normalized_vcf_compressed}
 
     >>>
     # ------------------------------------------------
@@ -248,8 +271,8 @@ task ExtractAnAcAfFromVCF {
     output {
         File annotations_file = "~{custom_annotations_file_name}"
         Int count_variants = read_int("count.txt")
-        File output_vcf = local_input_vcf
-        File output_vcf_index = local_input_vcf_index
+        File output_vcf = "~{normalized_vcf_compressed}"
+        File output_vcf_index = "~{normalized_vcf_indexed}"
     }
 }
 
@@ -453,7 +476,7 @@ task BigQueryLoadJson {
 
        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-       DATE = 86400 ## 24 hours in seconds
+       DATE=86400 ## 24 hours in seconds
 
 
        if [ ~{has_service_account_file} = 'true' ]; then
@@ -490,12 +513,6 @@ task BigQueryLoadJson {
 
        echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
        bq --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
-
-       # create the final vat table with the correct fields
-       PARTITION_FIELD="position"
-       CLUSTERING_FIELD="vid"
-       PARTITION_STRING="" #--range_partitioning=$PARTITION_FIELD,0,4000,4000"
-       CLUSTERING_STRING="" #--clustering_fields=$CLUSTERING_FIELD"
 
        set +e
        bq show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
@@ -699,6 +716,166 @@ task BigQuerySmokeTest {
     runtime {
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
         memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        Boolean done = true
+    }
+}
+
+task BigQueryExportVat {
+    input {
+        String contig
+        String project_id
+        String dataset_name
+        String output_path
+        String table_suffix
+        String? service_account_json_path
+        Boolean validate_jsons_done
+    }
+
+    # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
+    String vat_table = "vat_" + table_suffix
+    String export_path = output_path + "export/" + contig + "/*.tsv.gz"
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
+          gcloud config set project ~{project_id}
+        fi
+
+        bq query --nouse_legacy_sql --project_id=~{project_id} \
+        'EXPORT DATA OPTIONS(
+        uri="~{export_path}",
+        format="CSV",
+        compression="GZIP",
+        overwrite=true,
+        header=true,
+        field_delimiter=" ") AS
+        SELECT
+        vid,
+        transcript,
+        contig,
+        position,
+        ref_allele,
+        alt_allele,
+        gvs_all_ac,
+        gvs_all_an,
+        gvs_all_af,
+        gvs_all_sc,
+        gvs_max_af,
+        gvs_max_ac,
+        gvs_max_an,
+        gvs_max_sc,
+        gvs_max_subpop,
+        gvs_afr_ac,
+        gvs_afr_an,
+        gvs_afr_af,
+        gvs_afr_sc,
+        gvs_amr_ac,
+        gvs_amr_an,
+        gvs_amr_af,
+        gvs_amr_sc,
+        gvs_eas_ac,
+        gvs_eas_an,
+        gvs_eas_af,
+        gvs_eas_sc,
+        gvs_eur_ac,
+        gvs_eur_an,
+        gvs_eur_af,
+        gvs_eur_sc,
+        gvs_mid_ac,
+        gvs_mid_an,
+        gvs_mid_af,
+        gvs_mid_sc,
+        gvs_oth_ac,
+        gvs_oth_an,
+        gvs_oth_af,
+        gvs_oth_sc,
+        gvs_sas_ac,
+        gvs_sas_an,
+        gvs_sas_af,
+        gvs_sas_sc,
+        gene_symbol,
+        transcript_source,
+        aa_change,
+        (SELECT STRING_AGG(c, ", ") FROM UNNEST(ARRAY(SELECT x FROM UNNEST(consequence) AS x ORDER BY x)) as c) AS consequence,
+        dna_change_in_transcript,
+        variant_type,
+        exon_number,
+        intron_number,
+        genomic_location,
+        (SELECT STRING_AGG(d, ", ") FROM UNNEST(ARRAY(SELECT x FROM UNNEST(dbsnp_rsid) AS x ORDER BY x)) as d) AS dbsnp_rsid,
+        gene_id,
+        gene_omim_id,
+        is_canonical_transcript,
+        gnomad_all_af,
+        gnomad_all_ac,
+        gnomad_all_an,
+        gnomad_max_af,
+        gnomad_max_ac,
+        gnomad_max_an,
+        gnomad_max_subpop,
+        gnomad_afr_ac,
+        gnomad_afr_an,
+        gnomad_afr_af,
+        gnomad_amr_ac,
+        gnomad_amr_an,
+        gnomad_amr_af,
+        gnomad_asj_ac,
+        gnomad_asj_an,
+        gnomad_asj_af,
+        gnomad_eas_ac,
+        gnomad_eas_an,
+        gnomad_eas_af,
+        gnomad_fin_ac,
+        gnomad_fin_an,
+        gnomad_fin_af,
+        gnomad_nfr_ac,
+        gnomad_nfr_an,
+        gnomad_nfr_af,
+        gnomad_sas_ac,
+        gnomad_sas_an,
+        gnomad_sas_af,
+        gnomad_oth_ac,
+        gnomad_oth_an,
+        gnomad_oth_af,
+        revel,
+        splice_ai_acceptor_gain_score,
+        splice_ai_acceptor_gain_distance,
+        splice_ai_acceptor_loss_score,
+        splice_ai_acceptor_loss_distance,
+        splice_ai_donor_gain_score,
+        splice_ai_donor_gain_distance,
+        splice_ai_donor_loss_score,
+        splice_ai_donor_loss_distance,
+        (SELECT STRING_AGG(CAST(id AS STRING), ", ") FROM UNNEST(omim_phenotypes_id) id) as omim_phenotypes_id,
+        ARRAY_TO_STRING(omim_phenotypes_name, ", ") as omim_phenotypes_name,
+        ARRAY_TO_STRING(clinvar_classification, ", ") as clinvar_classification,
+        clinvar_last_updated,
+        ARRAY_TO_STRING(clinvar_phenotype, ", ") as clinvar_phenotype,
+        FROM `~{dataset_name}.~{vat_table}`
+        WHERE contig="~{contig}"
+        ORDER BY position
+        '
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "openbridge/ob_google-bigquery:latest"
+        memory: "2 GB"
         preemptible: 3
         cpu: "1"
         disks: "local-disk 100 HDD"
