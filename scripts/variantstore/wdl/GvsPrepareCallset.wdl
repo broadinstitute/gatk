@@ -68,7 +68,7 @@ task PrepareCallsetTask {
         Boolean skip_pet_insert
 
         String? service_account_json_path
-        String docker
+        String docker = "us.gcr.io/broad-dsde-methods/variantstore:fix_vet_001"
     }
     # Note the coercion of optional query_labels using select_first([expr, default])
     Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []

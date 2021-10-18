@@ -111,6 +111,7 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
     return sql
 
   subs = {}
+  should_create_table = True
   for i in range(1, PET_VET_TABLE_COUNT+1):
     partition_samples = get_samples_for_partition(sample_ids, i)
 
@@ -118,8 +119,13 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
     fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
     if len(partition_samples) > 0:
       subs = {}
-      create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n" if i == 1 \
-        else f"\nINSERT INTO `{fq_temp_table_dataset}.{VET_NEW_TABLE}` \n WITH \n"
+
+      # only create on the first table (which might not be table 1)
+      if (should_create_table):
+          create_or_insert = f"\nCREATE OR REPLACE TABLE `{fq_temp_table_dataset}.{VET_NEW_TABLE}` {TEMP_TABLE_TTL} AS \n WITH \n"
+          should_create_table = False
+      else:
+          create_or_insert = f"\nINSERT INTO `{fq_temp_table_dataset}.{VET_NEW_TABLE}` \n WITH \n"
       fq_vet_table = f"{fq_pet_vet_dataset}.{VET_TABLE_PREFIX}{i:03}"
       j = 1
 
