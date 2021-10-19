@@ -38,7 +38,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVLocation;
  */
 @DefaultSerializer(SVInterval.Serializer.class)
 @VisibleForTesting
-public final class SVInterval implements Comparable<SVInterval> {
+public class SVInterval implements Comparable<SVInterval> {
     private final int contig;
     private final int start;
     private final int end;
@@ -103,6 +103,17 @@ public final class SVInterval implements Comparable<SVInterval> {
     public int getContig() { return contig; }
     public int getStart() { return start; }
     public int getEnd() { return end; }
+
+    /**
+     * Assumes half-open interval.
+     */
+    public SimpleInterval toSimpleInterval(String[] contigIDToName) {
+        Integer contigID = this.getContig();  // non-negative
+        if (contigID >= contigIDToName.length) {
+            throw new ArrayIndexOutOfBoundsException("Contig ID " + contigID + " out of bounds of provided contig ID to name map");
+        }
+        return new SimpleInterval(contigIDToName[contigID], this.getStart() + 1, this.getEnd());
+    }
 
     // assumes the interval is half-open
     public int getLength() { return end - start; }

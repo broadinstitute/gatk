@@ -1,11 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
-import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.OverlapDetector;
-import htsjdk.tribble.Feature;
 import htsjdk.tribble.annotation.Strand;
 import htsjdk.tribble.bed.FullBEDFeature;
 import htsjdk.variant.variantcontext.Allele;
@@ -19,23 +15,19 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.ClosedSVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.gtf.*;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.*;
 
 import static java.util.Objects.isNull;
+import static org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata.buildContigIDToNameArray;
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata.buildContigNameToIDMap;
+import static org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils.locatableToClosedSVInterval;
 
 /**
  * Adds gene overlap and variant consequence annotations to SV VCF from GATK-SV pipeline
@@ -43,8 +35,9 @@ import static org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata
  * Output file is an annotated SV VCF
  */
 @CommandLineProgramProperties(
-        summary = "Adds gene overlap and variant consequence annotations to SV VCF from GATK-SV pipeline." +
-                "Input files are an SV VCF and a GTF file containing primary or canonical transcripts." +
+        summary = "Adds gene overlap and variant consequence annotations to SV VCF from GATK-SV pipeline. " +
+                "Input files are an SV VCF, a GTF file containing primary or canonical transcripts, " +
+                "a BED file containing promoter regions, and a BED file containing noncoding elements. " +
                 "Output file is an annotated SV VCF.",
         oneLineSummary = "Adds gene overlap and variant consequence annotations to SV VCF from GATK-SV pipeline",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
@@ -82,13 +75,17 @@ public final class SVAnnotate extends VariantWalker {
     private File nonCodingBedFile;
 
     private VariantContextWriter vcfWriter = null;
-    private OverlapDetector<GencodeGtfGeneFeature> gtfOverlapDetector;
-    private OverlapDetector<FullBEDFeature> promoterOverlapDetector;
-    private OverlapDetector<FullBEDFeature> nonCodingOverlapDetector;
+    private SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree;
+    private SVIntervalTree<String> promoterIntervalTree;
+    private SVIntervalTree<String> nonCodingIntervalTree;
     private SVIntervalTree<String> transcriptionStartSiteTree;
-    private final Set<String> MSVExonOverlapClassifications = Sets.newHashSet(GATKSVVCFConstants.LOF, GATKSVVCFConstants.INT_EXON_DUP, GATKSVVCFConstants.DUP_PARTIAL, GATKSVVCFConstants.PARTIAL_EXON_DUP, GATKSVVCFConstants.COPY_GAIN);
+    private final Set<String> MSVExonOverlapClassifications = Sets.newHashSet(GATKSVVCFConstants.LOF,
+                                                                                GATKSVVCFConstants.INT_EXON_DUP,
+                                                                                GATKSVVCFConstants.DUP_PARTIAL,
+                                                                                GATKSVVCFConstants.PARTIAL_EXON_DUP,
+                                                                                GATKSVVCFConstants.COPY_GAIN);
     private Map<String, Integer> contigNameToID;
-    private SAMSequenceDictionary sequenceDictionary;
+    private String[] contigIDToName;
     private int maxContigLength;
     private enum StructuralVariantAnnotationType {
         DEL,
@@ -114,37 +111,57 @@ public final class SVAnnotate extends VariantWalker {
     @Override
     public void onTraversalStart() {
         final VCFHeader header = getHeaderForVariants();
-        sequenceDictionary = header.getSequenceDictionary();
+        final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         maxContigLength = sequenceDictionary.getSequences().stream().mapToInt(SAMSequenceRecord::getSequenceLength).max().getAsInt() + 1;
         contigNameToID = buildContigNameToIDMap(sequenceDictionary);
+        contigIDToName = buildContigIDToNameArray(contigNameToID);
+        // TODO: more elegant way to make reference inputs optional than checking 10x?
+        if (!isNull(proteinCodingGTFFile)) {
+            final FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource = new FeatureDataSource<>(proteinCodingGTFFile);
+            buildIntervalTreesFromGTF(proteinCodingGTFSource);
+        }
 
-        final FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource = new FeatureDataSource<>(proteinCodingGTFFile);
-        gtfOverlapDetector = OverlapDetector.create(Lists.newArrayList(proteinCodingGTFSource));
+        if (!isNull(promoterBedFile)) {
+            final FeatureDataSource<FullBEDFeature> promoterSource = new FeatureDataSource<>(promoterBedFile);
+            promoterIntervalTree = buildIntervalTreeFromBED(promoterSource);
+        }
 
-        buildTranscriptionStartSiteTree(proteinCodingGTFSource);
-
-        final FeatureDataSource<FullBEDFeature> promoterSource = new FeatureDataSource<>(promoterBedFile);
-        promoterOverlapDetector = OverlapDetector.create(Lists.newArrayList(promoterSource));
-
-        final FeatureDataSource<FullBEDFeature> nonCodingSource = new FeatureDataSource<>(nonCodingBedFile);
-        nonCodingOverlapDetector = OverlapDetector.create(Lists.newArrayList(nonCodingSource));
-
+        if (!isNull(nonCodingBedFile)) {
+            final FeatureDataSource<FullBEDFeature> nonCodingSource = new FeatureDataSource<>(nonCodingBedFile);
+            nonCodingIntervalTree = buildIntervalTreeFromBED(nonCodingSource);
+        }
 
         vcfWriter = createVCFWriter(outputFile);
         updateAndWriteHeader(header);
     }
 
-    private void buildTranscriptionStartSiteTree(FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource) {
+    private void buildIntervalTreesFromGTF(FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource) {
+        gtfIntervalTree = new SVIntervalTree<>();
         transcriptionStartSiteTree = new SVIntervalTree<>();
         for (final GencodeGtfGeneFeature gene : proteinCodingGTFSource) {
             final List<GencodeGtfTranscriptFeature> transcriptsForGene = gene.getTranscripts();
             for (GencodeGtfTranscriptFeature transcript : transcriptsForGene) {
+                gtfIntervalTree.put(locatableToClosedSVInterval(transcript, contigNameToID), transcript);
                 final int start = transcript.getGenomicStrand().equals(Strand.decode("-")) ? transcript.getEnd() : transcript.getStart();
-                final int end = start + 1;
-                transcriptionStartSiteTree.put(new SVInterval(contigNameToID.get(transcript.getContig()), start, end), transcript.getGeneName());
+                transcriptionStartSiteTree.put(new ClosedSVInterval(contigNameToID.get(transcript.getContig()), start, start),
+                        transcript.getGeneName());
             }
         }
     }
+
+    private SVIntervalTree<String> buildIntervalTreeFromBED(FeatureDataSource<FullBEDFeature> BEDSource) {
+        SVIntervalTree<String> BEDIntervalTree = new SVIntervalTree<>();
+        for (final FullBEDFeature feature : BEDSource) {
+            // BED feature already does start+1 conversion to closed interval
+            try {
+                BEDIntervalTree.put(locatableToClosedSVInterval(feature, contigNameToID), feature.getName()); // TODO: handle this in a function to convert Locatable to SVInterval
+            } catch (IllegalArgumentException e) {
+                continue;  // if BED input contains chromosome not in VCF sequence dictionary, just ignore it
+            }
+        }
+        return BEDIntervalTree;
+    }
+
 
     private void addAnnotationInfoKeysToHeader(final VCFHeader header) {
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.LOF, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) on which the SV is predicted to have a loss-of-function effect."));
@@ -170,38 +187,40 @@ public final class SVAnnotate extends VariantWalker {
         vcfWriter.writeHeader(header);
     }
 
-    protected static boolean variantSpansFeature(final SimpleInterval variantInterval, final SimpleInterval featureInterval) {
+    protected static boolean variantSpansFeature(final SimpleInterval variantInterval,
+                                                 final SimpleInterval featureInterval) {
         return variantInterval.contains(featureInterval);
     }
 
-    protected static int countBreakendsInsideFeature(final SimpleInterval variantInterval, final SimpleInterval featureInterval) {
+    protected static int countBreakendsInsideFeature(final SimpleInterval variantInterval,
+                                                     final SimpleInterval featureInterval) {
         int count = 0;
         if (variantInterval.getContig().equals(featureInterval.getContig())) {
-            if (variantInterval.getStart() >= featureInterval.getStart() && variantInterval.getStart() <= featureInterval.getEnd()) {
+            if (variantInterval.getStart() >= featureInterval.getStart() &&
+                    variantInterval.getStart() <= featureInterval.getEnd()) {
                 count++;
             }
-            if (variantInterval.getEnd() >= featureInterval.getStart() && variantInterval.getEnd() <= featureInterval.getEnd()) {
+            if (variantInterval.getEnd() >= featureInterval.getStart() &&
+                    variantInterval.getEnd() <= featureInterval.getEnd()) {
                 count++;
             }
         }
         return count;
     }
 
-    protected static boolean variantOverlapsFeature(final SimpleInterval variantInterval, final SimpleInterval featureInterval) {
-        return IntervalUtils.overlaps(variantInterval, featureInterval);
-    }
-
-    private static void updateVariantConsequenceDict(final Map<String, Set<String>> variantConsequenceDict, final String key, final String value) {
+    private static void updateVariantConsequenceDict(final Map<String, Set<String>> variantConsequenceDict,
+                                                     final String key,
+                                                     final String value) {
         variantConsequenceDict.putIfAbsent(key, new HashSet<>());
         variantConsequenceDict.get(key).add(value);
     }
 
-    private String annotateDeletionOrInsertion(final SimpleInterval variantInterval, final GencodeGtfTranscriptFeature gtfTranscript) {
+    private String annotateDeletionOrInsertion(final SimpleInterval variantInterval,
+                                               final GencodeGtfTranscriptFeature gtfTranscript) {
         final List<GencodeGtfFeature> gtfFeaturesForTranscript = gtfTranscript.getAllFeatures();
         String consequence = GATKSVVCFConstants.INTRONIC;
         for (GencodeGtfFeature gtfFeature : gtfFeaturesForTranscript) {
-            final SimpleInterval featureInterval = new SimpleInterval(gtfFeature);
-            if (!variantOverlapsFeature(variantInterval, featureInterval)) {
+            if (!variantInterval.overlaps(gtfFeature)) {
                 continue;
             }
             if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.CDS) {
@@ -214,7 +233,8 @@ public final class SVAnnotate extends VariantWalker {
         return consequence;
     }
 
-    private String annotateDuplication(final SimpleInterval variantInterval, final GencodeGtfTranscriptFeature gtfTranscript) {
+    private String annotateDuplication(final SimpleInterval variantInterval,
+                                       final GencodeGtfTranscriptFeature gtfTranscript) {
         String consequence = GATKSVVCFConstants.INTRONIC;
         final SimpleInterval transcriptInterval = new SimpleInterval(gtfTranscript);
         if (variantSpansFeature(variantInterval, transcriptInterval)) {
@@ -228,10 +248,10 @@ public final class SVAnnotate extends VariantWalker {
             int numBreakpointsInUTR = 0;
             int numExonsSpanned = 0;
             for (GencodeGtfFeature gtfFeature : gtfFeaturesForTranscript) {
-                final SimpleInterval featureInterval = new SimpleInterval(gtfFeature);
-                if (!variantOverlapsFeature(variantInterval, featureInterval)) {
+                if (!variantInterval.overlaps(gtfFeature)) {
                     continue;
                 }
+                final SimpleInterval featureInterval = new SimpleInterval(gtfFeature);
                 if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.EXON) {
                     if (variantSpansFeature(variantInterval, featureInterval)) {
                         numExonsSpanned++;  // TODO: CDS or exon? may differ from breakpoints
@@ -255,7 +275,8 @@ public final class SVAnnotate extends VariantWalker {
         return consequence;
     }
 
-    private String annotateCopyNumberVariant(final SimpleInterval variantInterval, final GencodeGtfTranscriptFeature gtfTranscript) {
+    private String annotateCopyNumberVariant(final SimpleInterval variantInterval,
+                                             final GencodeGtfTranscriptFeature gtfTranscript) {
         String consequence = annotateDuplication(variantInterval, gtfTranscript);
         if (MSVExonOverlapClassifications.contains(consequence)) {
             return GATKSVVCFConstants.MSV_EXON_OVERLAP;
@@ -264,7 +285,8 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
-    private String annotateInversion(final SimpleInterval variantInterval, final GencodeGtfTranscriptFeature gtfTranscript) {
+    private String annotateInversion(final SimpleInterval variantInterval,
+                                     final GencodeGtfTranscriptFeature gtfTranscript) {
         String consequence = GATKSVVCFConstants.INTRONIC;
         final SimpleInterval transcriptInterval = new SimpleInterval(gtfTranscript);
         if (variantSpansFeature(variantInterval, transcriptInterval)) {
@@ -275,15 +297,14 @@ public final class SVAnnotate extends VariantWalker {
             // both breakpoints inside transcript
             final List<GencodeGtfFeature> gtfFeaturesForTranscript = gtfTranscript.getAllFeatures();
             for (GencodeGtfFeature gtfFeature : gtfFeaturesForTranscript) {
-                final SimpleInterval featureInterval = new SimpleInterval(gtfFeature);
-                if (!variantOverlapsFeature(variantInterval, featureInterval)) {
+                if (!variantInterval.overlaps(gtfFeature)) {
                     continue;
                 }
                 // TODO: if overlaps exon, it's LOF unless both breakpoints are in the same UTR?
                 if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.EXON) {
                     consequence = GATKSVVCFConstants.LOF;  // TODO: CDS or exon here?
                 } else if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.UTR) {
-                    if (countBreakendsInsideFeature(variantInterval, featureInterval) == 2) {
+                    if (countBreakendsInsideFeature(variantInterval, new SimpleInterval(gtfFeature)) == 2) {
                         consequence = GATKSVVCFConstants.UTR;
                     }
                 }
@@ -292,13 +313,15 @@ public final class SVAnnotate extends VariantWalker {
         return consequence;
     }
 
-    private String annotateTranslocation(final SimpleInterval variantInterval, final GencodeGtfTranscriptFeature gtfTranscript) {
+    private String annotateTranslocation(final SimpleInterval variantInterval,
+                                         final GencodeGtfTranscriptFeature gtfTranscript) {
         // already checked for transcript overlap, and if a translocation breakpoint falls inside a gene it's automatically LOF
         // TODO: eliminate unnecessary function or keep for aesthetics/future flexibility?
         return GATKSVVCFConstants.LOF;
     }
 
-    private String annotateBreakend(final SimpleInterval variantInterval, final GencodeGtfTranscriptFeature gtfTranscript) {
+    private String annotateBreakend(final SimpleInterval variantInterval,
+                                    final GencodeGtfTranscriptFeature gtfTranscript) {
         String consequence = annotateDeletionOrInsertion(variantInterval, gtfTranscript);
         if (consequence.equals(GATKSVVCFConstants.LOF)) {
             consequence = GATKSVVCFConstants.BREAKEND_EXON;
@@ -306,10 +329,10 @@ public final class SVAnnotate extends VariantWalker {
         return consequence;
     }
 
-    private void annotateTranscript(final SimpleInterval variantInterval, final StructuralVariantAnnotationType svType, final GencodeGtfTranscriptFeature transcript, final Map<String, Set<String>> variantConsequenceDict) {
-        if (!variantOverlapsFeature(variantInterval, new SimpleInterval(transcript))) {
-            return;
-        }
+    private void annotateTranscript(final SimpleInterval variantInterval,
+                                    final StructuralVariantAnnotationType svType,
+                                    final GencodeGtfTranscriptFeature transcript,
+                                    final Map<String, Set<String>> variantConsequenceDict) {
         String consequence = null;
         if (svType.equals(StructuralVariantAnnotationType.DEL) || svType.equals(StructuralVariantAnnotationType.INS)) {
             consequence = annotateDeletionOrInsertion(variantInterval, transcript);
@@ -333,49 +356,60 @@ public final class SVAnnotate extends VariantWalker {
     /**
      Annotate promoter overlaps and return a boolean: true if there are any promoter overlaps, false if not
      */
-    private boolean annotatePromoterOverlaps(final SimpleInterval variantInterval, final Map<String, Set<String>> variantConsequenceDict) {
+    private boolean annotatePromoterOverlaps(final SimpleInterval variantInterval,
+                                             final Map<String, Set<String>> variantConsequenceDict) {
         boolean anyPromoterOverlaps = false;
-        final Set<FullBEDFeature> promotersForVariant = promoterOverlapDetector.getOverlaps(variantInterval);
         final Set<String> codingAnnotationGenes = new HashSet<>();
         variantConsequenceDict.values().forEach(codingAnnotationGenes::addAll);
-        for (FullBEDFeature promoter : promotersForVariant) {
-            if (!codingAnnotationGenes.contains(promoter.getName())) {
-                updateVariantConsequenceDict(variantConsequenceDict, GATKSVVCFConstants.PROMOTER, promoter.getName());
+        final Iterator<SVIntervalTree.Entry<String>> promotersForVariant =
+                promoterIntervalTree.overlappers(locatableToClosedSVInterval(variantInterval, contigNameToID));
+        for (Iterator<SVIntervalTree.Entry<String>> it = promotersForVariant; it.hasNext(); ) {
+            SVIntervalTree.Entry<String> promoterEntry = it.next();
+            String promoterName = promoterEntry.getValue();
+            if (!codingAnnotationGenes.contains(promoterName)) {
+                updateVariantConsequenceDict(variantConsequenceDict, GATKSVVCFConstants.PROMOTER, promoterName);
                 anyPromoterOverlaps = true;
             }
         }
         return anyPromoterOverlaps;
     }
 
-    private void annotateNonCodingOverlaps(final SimpleInterval variantInterval, final Map<String, Set<String>> variantConsequenceDict) {
-        final Set<FullBEDFeature> nonCodingFeaturesForVariant = nonCodingOverlapDetector.getOverlaps(variantInterval);
-        for (FullBEDFeature feature : nonCodingFeaturesForVariant) {
+    private void annotateNonCodingOverlaps(final SimpleInterval variantInterval,
+                                           final Map<String, Set<String>> variantConsequenceDict) {
+        final Iterator<SVIntervalTree.Entry<String>> nonCodingFeaturesForVariant =
+                nonCodingIntervalTree.overlappers(locatableToClosedSVInterval(variantInterval, contigNameToID));
+        for (Iterator<SVIntervalTree.Entry<String>> it = nonCodingFeaturesForVariant; it.hasNext(); ) {
+            SVIntervalTree.Entry<String> featureEntry = it.next();
             String consequence = GATKSVVCFConstants.NONCODING_BREAKPOINT;
-            if (variantSpansFeature(variantInterval, new SimpleInterval(feature))) {
+            if (variantSpansFeature(variantInterval, featureEntry.getInterval().toSimpleInterval(contigIDToName))) {
                 consequence = GATKSVVCFConstants.NONCODING_SPAN;
             }
-            updateVariantConsequenceDict(variantConsequenceDict, consequence, feature.getName());
+            updateVariantConsequenceDict(variantConsequenceDict, consequence, featureEntry.getValue());
         }
     }
 
 
-    protected static void annotateNearestTranscriptionStartSite(final SimpleInterval variantInterval, final Map<String, Set<String>> variantConsequenceDict, SVIntervalTree<String> transcriptionStartSiteTree, int maxContigLength, int variantContigID) {
+    protected static void annotateNearestTranscriptionStartSite(final SimpleInterval variantInterval,
+                                                                final Map<String, Set<String>> variantConsequenceDict,
+                                                                final SVIntervalTree<String> transcriptionStartSiteTree,
+                                                                final int maxContigLength,
+                                                                final int variantContigID) {
         // TODO: keep all nearest TSS for dispersed CPX / CTX or choose closest?
-        // TODO: will start < end ever? Shouldn't at this point in the pipeline
-        SVIntervalTree.Entry<String> nearestBefore = transcriptionStartSiteTree.max(new SVInterval(variantContigID, variantInterval.getStart(), variantInterval.getEnd()));
-        SVIntervalTree.Entry<String> nearestAfter = transcriptionStartSiteTree.min(new SVInterval(variantContigID, variantInterval.getStart(), variantInterval.getEnd()));
+        final ClosedSVInterval svInterval = new ClosedSVInterval(variantContigID, variantInterval.getStart(), variantInterval.getEnd());
+        final SVIntervalTree.Entry<String> nearestBefore = transcriptionStartSiteTree.max(svInterval);
+        final SVIntervalTree.Entry<String> nearestAfter = transcriptionStartSiteTree.min(svInterval);
         // nearest TSS only "valid" for annotation if non-null and on the same contig as the variant
-        boolean beforeInvalid = (isNull(nearestBefore) || nearestBefore.getInterval().getContig() != variantContigID );
-        boolean afterInvalid = (isNull(nearestAfter) || nearestAfter.getInterval().getContig() != variantContigID );
+        final boolean beforeInvalid = (isNull(nearestBefore) || nearestBefore.getInterval().getContig() != variantContigID );
+        final boolean afterInvalid = (isNull(nearestAfter) || nearestAfter.getInterval().getContig() != variantContigID );
         // if at least one result is valid, keep one with shorter distance
         if (!(beforeInvalid && afterInvalid)) {
             // if result is invalid, set distance to longest contig length so that other TSS will be kept
-            int distanceBefore = beforeInvalid ? maxContigLength : variantInterval.getStart() - nearestBefore.getInterval().getEnd();
-            int distanceAfter = afterInvalid ? maxContigLength : nearestAfter.getInterval().getStart() - variantInterval.getEnd();
-            String nearestTSSGeneName = (distanceBefore < distanceAfter) ? nearestBefore.getValue() : nearestAfter.getValue();
+            final int distanceBefore = beforeInvalid ? maxContigLength : variantInterval.getStart() - nearestBefore.getInterval().getEnd();
+            final int distanceAfter = afterInvalid ? maxContigLength : nearestAfter.getInterval().getStart() - variantInterval.getEnd();
+            final String nearestTSSGeneName = (distanceBefore < distanceAfter) ? nearestBefore.getValue() : nearestAfter.getValue();
             updateVariantConsequenceDict(variantConsequenceDict, GATKSVVCFConstants.NEAREST_TSS, nearestTSSGeneName);
         }
-        // TODO: return consequence instead?
+        // TODO: return consequence instead? easier for unit tests...
     }
 
     private StructuralVariantAnnotationType getSVType(final VariantContext variant) {
@@ -397,13 +431,14 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
-    private void annotateSVSegment(final SimpleInterval variantInterval, final StructuralVariantAnnotationType svType, final Map<String, Set<String>> variantConsequenceDict) {
-        final Set<GencodeGtfGeneFeature> gtfGenesForVariant = gtfOverlapDetector.getOverlaps(variantInterval);
-        for (GencodeGtfGeneFeature geneOverlapped : gtfGenesForVariant) {
-            final List<GencodeGtfTranscriptFeature> transcriptsForGene = geneOverlapped.getTranscripts();
-            for (GencodeGtfTranscriptFeature transcript : transcriptsForGene) {
-                annotateTranscript(variantInterval, svType, transcript, variantConsequenceDict);
-            }
+    private void annotateSVSegment(final SimpleInterval variantInterval, final StructuralVariantAnnotationType svType,
+                                   final Map<String, Set<String>> variantConsequenceDict) {
+        // TODO: method to convert SimpleInterval > SVInterval? Or switch to always using one or the other - could I use SimpleInterval as base for ClosedIntervalTree?
+        final Iterator<SVIntervalTree.Entry<GencodeGtfTranscriptFeature>> gtfTranscriptsForVariant =
+                gtfIntervalTree.overlappers(locatableToClosedSVInterval(variantInterval, contigNameToID));
+        for (Iterator<SVIntervalTree.Entry<GencodeGtfTranscriptFeature>> it = gtfTranscriptsForVariant; it.hasNext(); ) {
+            SVIntervalTree.Entry<GencodeGtfTranscriptFeature> transcriptEntry = it.next();
+            annotateTranscript(variantInterval, svType, transcriptEntry.getValue(), variantConsequenceDict);
         }
     }
 
@@ -420,7 +455,9 @@ public final class SVAnnotate extends VariantWalker {
         } else if (overallSVType.equals(StructuralVariantAnnotationType.CTX)) {
             intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));
             // annotate both breakpoints of translocation - CHR2:END2-END2
-            intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant.getAttributeAsString(GATKSVVCFConstants.END_CONTIG_ATTRIBUTE, "NONE"), variant.getAttributeAsInt(GATKSVVCFConstants.END_CONTIG_POSITION, 0), variant.getAttributeAsInt(GATKSVVCFConstants.END_CONTIG_POSITION, 0))));
+            final int end2 = variant.getAttributeAsInt(GATKSVVCFConstants.END_CONTIG_POSITION, 0);
+            intervals.add(new SVSegment(overallSVType,
+                            new SimpleInterval(variant.getAttributeAsString(GATKSVVCFConstants.END_CONTIG_ATTRIBUTE, "NONE"), end2, end2)));
         } else {
             intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));
         }
@@ -439,12 +476,15 @@ public final class SVAnnotate extends VariantWalker {
     }
 
     @Override
-    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+    public void apply(final VariantContext variant, final ReadsContext readsContext, final ReferenceContext referenceContext,
+                      final FeatureContext featureContext) {
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
         final StructuralVariantAnnotationType overallSVType = getSVType(variant);
         final List<SVSegment> svSegments = getSVSegments(variant, overallSVType);
-        for (SVSegment svSegment : svSegments) {
-            annotateSVSegment(svSegment.interval, svSegment.intervalSVType, variantConsequenceDict);
+        if (!isNull(proteinCodingGTFFile)) {
+            for (SVSegment svSegment : svSegments) {
+                annotateSVSegment(svSegment.interval, svSegment.intervalSVType, variantConsequenceDict);
+            }
         }
 
         // if variant consequence dictionary is empty (no protein-coding annotations), apply INTERGENIC flag
@@ -452,21 +492,31 @@ public final class SVAnnotate extends VariantWalker {
 
         // then annotate promoter overlaps and non-coding feature overlaps
         boolean anyPromoterOverlaps = false;
-        for (SVSegment svSegment : svSegments) {
-            anyPromoterOverlaps = anyPromoterOverlaps || annotatePromoterOverlaps(svSegment.interval, variantConsequenceDict);
-            annotateNonCodingOverlaps(svSegment.interval, variantConsequenceDict);
+        if (!isNull(promoterBedFile)) {
+            for (SVSegment svSegment : svSegments) {
+                anyPromoterOverlaps = anyPromoterOverlaps || annotatePromoterOverlaps(svSegment.interval, variantConsequenceDict);
+            }
+        }
+
+        if (!isNull(nonCodingBedFile)) {
+            for (SVSegment svSegment : svSegments) {
+                annotateNonCodingOverlaps(svSegment.interval, variantConsequenceDict);
+            }
         }
 
         // annotate nearest TSS for intergenic variants with no promoter overlaps
-        if (!anyPromoterOverlaps && noCodingAnnotations) {
+        if (!isNull(proteinCodingGTFFile) && !anyPromoterOverlaps && noCodingAnnotations) {
             for (SVSegment svSegment : svSegments) {
-                annotateNearestTranscriptionStartSite(svSegment.interval, variantConsequenceDict, transcriptionStartSiteTree, maxContigLength, contigNameToID.get(svSegment.interval.getContig()));
+                annotateNearestTranscriptionStartSite(svSegment.interval, variantConsequenceDict, transcriptionStartSiteTree,
+                                                        maxContigLength, contigNameToID.get(svSegment.interval.getContig()));
             }
         }
 
         VariantContextBuilder vcb = new VariantContextBuilder(variant);
         vcb.putAttributes(formatVariantConsequenceDict(variantConsequenceDict));
-        vcb.attribute(GATKSVVCFConstants.INTERGENIC, noCodingAnnotations);
+        if (!isNull(proteinCodingGTFFile)) {
+            vcb.attribute(GATKSVVCFConstants.INTERGENIC, noCodingAnnotations);
+        }
         vcfWriter.add(vcb.make());
     }
 

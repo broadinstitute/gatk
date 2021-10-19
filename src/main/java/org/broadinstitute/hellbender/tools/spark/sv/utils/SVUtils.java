@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -106,6 +107,18 @@ public final class SVUtils {
             return allContigs;
         } catch ( final IOException ioe ) {
             throw new UserException("Can't read nonCanonicalContigNamesFile file "+nonCanonicalContigNamesFile, ioe);
+        }
+    }
+
+
+    public static ClosedSVInterval locatableToClosedSVInterval(Locatable loc,
+                                                               Map<String, Integer> contigNameToID) {
+        Integer contigID;
+        try {
+            contigID = contigNameToID.get(loc.getContig());
+            return new ClosedSVInterval(contigID, loc.getStart(), loc.getEnd());
+        } catch (NullPointerException e) {
+            throw new IllegalArgumentException("Contig " + loc.getContig() + " not in provided contig ID to name map");
         }
     }
 
