@@ -271,9 +271,14 @@ public final class VariantAnnotatorEngine {
                 }
             }
         }
-        //this is manual because the AS_QUAL "rawKey" get added by genotyping
+        //this is manual because:
+        // * the AS_QUAL "rawKey" get added by genotyping
+        // * QualByDepth isn't Reducible and doesn't have raw keys
         if (!keepRawCombinedAnnotations) {
             variantAnnotations.remove(GATKVCFConstants.AS_QUAL_KEY);
+            variantAnnotations.remove(GATKVCFConstants.RAW_QUAL_APPROX_KEY);
+            variantAnnotations.remove(GATKVCFConstants.VARIANT_DEPTH_KEY);
+            variantAnnotations.remove(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY);
         }
 
         // generate a new annotated VC

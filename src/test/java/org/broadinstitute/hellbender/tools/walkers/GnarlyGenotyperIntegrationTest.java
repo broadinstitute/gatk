@@ -181,7 +181,6 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY));
         final List<String> sors = vc.getAttributeAsStringList(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY,"");
         Assert.assertEquals(sors.get(1), VCFConstants.MISSING_VALUE_v4);
-
     }
 
 }

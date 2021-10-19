@@ -11,6 +11,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
@@ -773,5 +774,35 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(vc.getAttributes().keySet().contains(annotation.getPrimaryRawKey()));
         Assert.assertFalse(vc.getAttributes().keySet().contains(annotation.getSecondaryRawKeys().get(0)));
         Assert.assertFalse(vc.getAttributes().keySet().contains(annotation.getSecondaryRawKeys().get(1)));
+    }
+
+    //as for issue #7483 where two GVCFs merged with GenomicsDB produce some empty annotations fields
+    @Test
+    public void testOnEmptyAnnotations() {
+        final String input = getTestDataDir() + "/walkers/GnarlyGenotyper/emptyASAnnotations.g.vcf";
+        final File output = createTempFile("GGVCFsOutput", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .add("G", "StandardAnnotation")
+                .add("G", "AS_StandardAnnotation")
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final VariantContext vc = outputData.getRight().get(0);
+        //span del (*) has empty data, but gets "genotyped out"
+        Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
+        final List<String> mqs = vc.getAttributeAsStringList(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY,"");
+        Assert.assertEquals(mqs.size(), 1);
+        Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.AS_FISHER_STRAND_KEY));
+        final List<String> fss = vc.getAttributeAsStringList(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY,"");
+        Assert.assertEquals(fss.size(), 1);
+        Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY));
+        final List<String> sors = vc.getAttributeAsStringList(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY,"");
+        Assert.assertEquals(sors.size(), 1);
     }
 }
