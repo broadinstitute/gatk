@@ -139,7 +139,7 @@ public final class GATKVCFConstants {
     public static final String HAPLOTYPE_COMPLEXITY_KEY =           "HAPCOMP";
     public static final String HAPLOTYPE_DOMINANCE_KEY =            "HAPDOM";
     public final static String TRANSMISSION_PROBABILITY_KEY =       "TP"; //PhaseByTransmission
-    public static final String FRAGMENT_ALLELE_DEPTHS = "FAD";
+    public static final String FRAGMENT_ALLELE_DEPTHS =             "FAD";
 
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
