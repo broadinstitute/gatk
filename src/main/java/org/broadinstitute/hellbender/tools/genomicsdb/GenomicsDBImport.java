@@ -351,7 +351,7 @@ public final class GenomicsDBImport extends GATKTool {
     private boolean sharedPosixFSOptimizations = false;
 
     @Argument(fullName = BYPASS_FEATURE_READER,
-            doc = "Used htslib to read input VCFs instead of FeatureReader. This will reduce memory usage and potentially speed up " +
+            doc = "Use htslib to read input VCFs instead of GATK's FeatureReader. This will reduce memory usage and potentially speed up " +
                   "the import. Lower memory requirements may also enable parallelism through " + MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL +
                   ". To enable this option, VCFs must be normalized, block-compressed and indexed.",
             optional = true)
