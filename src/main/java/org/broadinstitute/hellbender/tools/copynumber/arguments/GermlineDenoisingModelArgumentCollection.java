@@ -31,6 +31,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     public static final String COPY_NUMBER_POSTERIOR_EXPECTATION_MODE_LONG_NAME = "copy-number-posterior-expectation-mode";
     public static final String ENABLE_BIAS_FACTORS_LONG_NAME = "enable-bias-factors";
     public static final String ACTIVE_CLASS_PADDING_HYBRID_MODE_LONG_NAME = "active-class-padding-hybrid-mode";
+    public static final String NUM_SAMPLES_CR_APPROX_LONG_NAME = "num-samples-copy-ratio-approx";
 
     // these model parameters will be extracted from provided model in CASE mode
     private static final List<String> HIDDEN_ARGS_CASE_MODE = ImmutableList.of(
@@ -152,6 +153,14 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
     )
     private int activeClassPaddingHybridMode = 50000;
 
+    @Argument(
+            doc = "Number of samples to draw from the final model approximation to estimate denoised copy number " +
+                    "ratios. Note that this argument will not affect inference of the model.",
+            fullName = NUM_SAMPLES_CR_APPROX_LONG_NAME,
+            optional = true
+    )
+    private int numSamplesCopyRatioApprox = 200;
+
     /**
      * Generates arguments for the python CLI tool. Note that 'enable_explicit_gc_bias_modeling' is added
      * by {@link GermlineCNVCaller}.
@@ -161,7 +170,8 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
                 String.format("--psi_s_scale=%e", samplePsiScale),
                 String.format("--mapping_error_rate=%e", mappingErrorRate),
                 String.format("--depth_correction_tau=%e", depthCorrectionTau),
-                String.format("--q_c_expectation_mode=%s", copyNumberPosteriorExpectationMode.pythonArgumentString)));
+                String.format("--q_c_expectation_mode=%s", copyNumberPosteriorExpectationMode.pythonArgumentString),
+                String.format("--num_samples_copy_ratio_approx=%d", numSamplesCopyRatioApprox)));
         if (runMode == GermlineCNVCaller.RunMode.COHORT) {
             arguments.addAll(Arrays.asList(
                     String.format("--max_bias_factors=%d", maxBiasFactors),
