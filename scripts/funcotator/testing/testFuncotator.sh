@@ -314,7 +314,7 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
     INPUT=${BASE_DIR}/FUNCOTATOR_LARGE_TEST_INPUTS/hg38_trio.vcf
 		#INPUT=${BASE_DIR}/gatk/src/test/resources/large/funcotator/regressionTestVariantSetHG38.vcf
     #INPUT=${BASE_DIR}/tmp/cohort24_23_seg.subset.vcf
-    #INPUT=${BASE_DIR}/gatk/tmp.38.vcf
+    INPUT=${BASE_DIR}/gatk/tmp.38.vcf
     #INPUT=${BASE_DIR}/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/badDataOneAlleleDepthValue_hg38.vcf
     REF=$HG38
   fi

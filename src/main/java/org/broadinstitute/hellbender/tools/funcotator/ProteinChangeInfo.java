@@ -92,19 +92,26 @@ public final class ProteinChangeInfo {
         // subtract 1 to remove leading base required by VCFs
         final int numRefAminoAcids = (int) Math.ceil((refAllele.length() - 1) / ((double) AminoAcid.CODON_LENGTH));
 
-        // Frameshifts are always rendered the same way:
-        if ( isFrameshift ) {
-            initializeForFrameshift(referenceProteinSequence, proteinChangeStartIndex);
+        // Band-aid for the StringIndexOutOfBoundsException for some variants at the edges of coding regions:
+        try {
+            // Frameshifts are always rendered the same way:
+            if ( isFrameshift ) {
+                initializeForFrameshift(referenceProteinSequence, proteinChangeStartIndex);
+            }
+            // Handle insertions and deletions:
+            else if ( GATKVariantContextUtils.isInsertion(refAllele, altAllele) ) {
+                initializeForInsertion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
+            }
+            else if ( GATKVariantContextUtils.isDeletion(refAllele, altAllele) ) {
+                initializeForDeletion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
+            }
+            else {
+                initializeForOnp(referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex);
+            }
         }
-        // Handle insertions and deletions:
-        else if ( GATKVariantContextUtils.isInsertion(refAllele, altAllele) ) {
-            initializeForInsertion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
-        }
-        else if ( GATKVariantContextUtils.isDeletion(refAllele, altAllele) ) {
-            initializeForDeletion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
-        }
-        else {
-            initializeForOnp(referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex);
+        catch (final StringIndexOutOfBoundsException ex) {
+            throw ex;
+//            initializeForOutOfBoundsErrorCase(referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex);
         }
     }
 
@@ -178,6 +185,13 @@ public final class ProteinChangeInfo {
         }
     }
 
+    private void initializeForOutOfBoundsErrorCase(final String referenceProteinSequence, final String alternateProteinSequence, final int proteinChangeStartIndex) {
+        aaStartPos = proteinChangeStartIndex + 1;
+        aaEndPos = aaStartPos;
+        refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, proteinChangeStartIndex + 1);
+        altAaSeq = "ERR";
+    }
+
     private void initializeForDeletion(final int alignedCodingSequenceAlleleStart, final Strand strand, final String referenceProteinSequence, final String alternateProteinSequence, final boolean indelIsBetweenCodons, final int numAltAminoAcids, final int numRefAminoAcids) {
         final int proteinChangeStartIndex;// We render the protein change differently if it's a deletion directly between two codons:
         if (indelIsBetweenCodons) {
@@ -188,7 +202,10 @@ public final class ProteinChangeInfo {
 
             aaStartPos = proteinChangeStartIndex + 1;
             aaEndPos = aaStartPos + numRefAminoAcids - 1;
-            refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, proteinChangeStartIndex + numRefAminoAcids);
+
+            final int endCoord = Math.min(proteinChangeStartIndex + numRefAminoAcids, referenceProteinSequence.length());
+
+            refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, endCoord);
             altAaSeq = "";
         }
         else {
@@ -202,8 +219,11 @@ public final class ProteinChangeInfo {
             aaStartPos = proteinChangeStartIndex + 1;
             aaEndPos = aaStartPos + numRefAminoAcids + endOffset;
 
-            refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, aaEndPos);
-            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, aaStartPos + numAltAminoAcids + endOffset);
+            final int refEndCoord = Math.min(aaEndPos, referenceProteinSequence.length());
+            refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, refEndCoord);
+
+            final int altEndCoord = Math.min(aaStartPos + numAltAminoAcids + endOffset, alternateProteinSequence.length());
+            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, altEndCoord);
 
             // Trim our state for this deletion:
             trimDeletionProteinChangeVariables();
@@ -273,7 +293,8 @@ public final class ProteinChangeInfo {
                     (strand == Strand.POSITIVE ? 1 : 0);
             aaEndPos = aaStartPos + 1;
             refAaSeq = "";
-            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, proteinChangeStartIndex + numAltAminoAcids );
+            final int endCoord = Math.min(proteinChangeStartIndex + numAltAminoAcids, alternateProteinSequence.length());
+            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, endCoord );
         }
         else {
             // To start with, we fill in the information naively corresponding to the potentially
@@ -284,7 +305,8 @@ public final class ProteinChangeInfo {
             aaEndPos = aaStartPos + numRefAminoAcids;
 
             refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, aaEndPos);
-            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, aaStartPos + numAltAminoAcids);
+            final int endCoord = Math.min(aaStartPos + numAltAminoAcids, alternateProteinSequence.length());
+            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, endCoord);
 
             // Trim our state for this insertion:
             trimInsertionProteinChangeVariables();
