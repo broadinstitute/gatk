@@ -140,11 +140,12 @@ def make_new_vet_union_all(fq_pet_vet_dataset, fq_temp_table_dataset, sample_ids
       print(f"VET Query is {utils.utf8len(sql)/(1024*1024)} MB in length")
 
       label = "populate vet new table"  
-      bq_async_queries.add(utils.start_query(client, label, sql))
+      bq_async_queries.add((utils.start_query(client, label, sql), label))
 
   for (query,label) in bq_async_queries:
     (results, mb_billed) = utils.get_query_results(query, client)
-    print(f"COMPLETED {mb_billed} MBs) - {label}")
+    print(results)
+    print(f"COMPLETED job {query.job_id}; {mb_billed} MBs) - {label}")
   return
 
 
