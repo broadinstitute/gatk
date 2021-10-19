@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -11,6 +13,7 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -150,4 +153,25 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
                             Collections.emptyList(), Collections.emptyList()));
         }
     }
+
+    //as for issue #7483 where two GVCFs merged with GenomicsDB produce some empty annotations fields
+    @Test
+    public void testOnEmptyAnnotations() {
+        final String input = getToolTestDataDir() + "emptyASAnnotations.g.vcf";
+        final File output = createTempFile("GnarlyGenotyper", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final VariantContext vc = outputData.getRight().get(0);
+        Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
+        Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.AS_FISHER_STRAND_KEY));
+    }
+
 }

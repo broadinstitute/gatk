@@ -88,6 +88,11 @@ public final class AS_StrandOddsRatio extends AS_StrandBiasTest implements AS_St
         return Collections.singletonMap(getKeyNames().get(0), StrandOddsRatio.formattedValue(ratio));
     }
 
+    /**
+     *
+     * @param combinedData
+     * @return a map with alternate alleles as keys and may contain null values
+     */
     @Override
     protected Map<Allele,Double> calculateReducedData(AlleleSpecificAnnotationData<List<Integer>> combinedData) {
         final Map<Allele,Double> annotationMap = new HashMap<>();
@@ -95,9 +100,13 @@ public final class AS_StrandOddsRatio extends AS_StrandBiasTest implements AS_St
         final List<Integer> refStrandCounts = perAlleleData.get(combinedData.getRefAllele());
         for (final Allele a : perAlleleData.keySet()) {
             List<Integer> altStrandCounts = perAlleleData.get(a);
-            int[][] refAltTable = new int[][] {new int[]{refStrandCounts.get(FORWARD),refStrandCounts.get(REVERSE)},
-                    new int[]{altStrandCounts.get(FORWARD),altStrandCounts.get(REVERSE)}};
-            annotationMap.put(a,StrandOddsRatio.calculateSOR(refAltTable));
+            if (altStrandCounts.isEmpty()) {
+                annotationMap.put(a, null);
+            } else {
+                int[][] refAltTable = new int[][]{new int[]{refStrandCounts.get(FORWARD), refStrandCounts.get(REVERSE)},
+                        new int[]{altStrandCounts.get(FORWARD), altStrandCounts.get(REVERSE)}};
+                annotationMap.put(a, StrandOddsRatio.calculateSOR(refAltTable));
+            }
         }
         return annotationMap;
     }
