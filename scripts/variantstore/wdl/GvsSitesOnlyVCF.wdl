@@ -82,7 +82,7 @@ workflow GvsSitesOnlyVCF {
          project_id = project_id,
          dataset_name = dataset_name,
          counts_variants = ExtractAnAcAfFromVCF.count_variants,
-         counts_variant_duplicates = ExtractAnAcAfFromVCF.count_duplicates,
+         track_dropped_variants = ExtractAnAcAfFromVCF.track_dropped,
          table_suffix = table_suffix,
          service_account_json_path = service_account_json_path,
          load_jsons_done = BigQueryLoadJson.done
@@ -227,11 +227,14 @@ task ExtractAnAcAfFromVCF {
         # "sas"
         #]
 
-        ## get the number of +500 alt alleles for Lee
-        bcftools view -i 'N_ALT>500' --no-update --no-header  ~{local_input_vcf} | wc -l
+        ## track the dropped variants with +500 alt alleles or N's in the reference
+        bcftools view -i 'N_ALT>500 || REF~"N"' ~{local_input_vcf} | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+
+        ## Since Nirvana cant handle N as a base, drop them for now and keep track of the lines dropped
+        ## bcftools view -e 'REF~"N"' ~{local_input_vcf}
 
         ## filter out sites with too many alt alleles
-        bcftools view -e 'N_ALT>500' --no-update  ~{local_input_vcf} | \
+        bcftools view -e 'N_ALT>500 || REF~"N"' --no-update  ~{local_input_vcf} | \
         ## filter out the non-passing sites
         bcftools view  -f 'PASS,.' --no-update | \
         ## normalize, left align and split multi allelic sites to new lines, remove duplicate lines
@@ -240,6 +243,7 @@ task ExtractAnAcAfFromVCF {
         bcftools view  -e 'ALT[0]="*" || AC=0' --no-update | \
         ## ensure that we respect the FT tag
         bcftools filter -i "FORMAT/FT='PASS,.'" --set-GTs . > ~{normalized_vcf}
+
         du -h ~{normalized_vcf}
 
         ## clean up
@@ -254,21 +258,23 @@ task ExtractAnAcAfFromVCF {
         grep -v -wFf duplicates.tsv ~{normalized_vcf} > deduplicated.vcf
         rm ~{normalized_vcf} ## clean up
 
-        wc -l duplicates.tsv | awk '{print $1}' > duplicates_count.txt
         echo "the following duplicate variants will be dropped due to a bug"
-        cat duplicates.tsv
+        cat duplicates.tsv >> track_dropped.tsv
+        cat track_dropped.tsv
+
+        rm duplicates.tsv ## clean up
 
         ## calculate annotations for all subpopulations
         bcftools plugin fill-tags  -- deduplicated.vcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom,AC_Hemi | bcftools query -f \
         '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_Hemi\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_Hemi_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_Hemi_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_Hemi_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_Hemi_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_Hemi_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_Hemi_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\t%AC_Hemi_sas\n' \
         >> ~{custom_annotations_file_name}
 
-        ### for validation of the pipeline
+        ## for validation of the pipeline
         wc -l ~{custom_annotations_file_name} | awk '{print $1 -7}'  > count.txt
 
-        ### compress the vcf and index it, make it sites-only
+        ## compress the vcf and index it, make it sites-only
         bcftools view --no-update --drop-genotypes deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
-        ##bcftools annotate -x INFO Is this overkill?
+        ## bcftools annotate -x INFO Is this overkill?
         bcftools index --tbi  ~{normalized_vcf_compressed}
 
     >>>
@@ -286,7 +292,7 @@ task ExtractAnAcAfFromVCF {
     output {
         File annotations_file = "~{custom_annotations_file_name}"
         Int count_variants = read_int("count.txt")
-        Int count_duplicates = read_int("duplicates_count.txt")
+        File track_dropped = "track_dropped.tsv"
         File output_vcf = "~{normalized_vcf_compressed}"
         File output_vcf_index = "~{normalized_vcf_indexed}"
     }
@@ -643,7 +649,7 @@ task BigQuerySmokeTest {
         String project_id
         String dataset_name
         Array[Int] counts_variants
-        Array[Int] counts_variant_duplicates
+        Array[File] track_dropped_variants
         String table_suffix
         String? service_account_json_path
         Boolean load_jsons_done
@@ -671,9 +677,12 @@ task BigQuerySmokeTest {
         # sum all the initial input variants across the shards
 
         INITIAL_VARIANT_COUNT=$(python -c "print(sum([~{sep=', ' counts_variants}]))")
-        DUPLICATE_VARIANT_COUNT=$(python -c "print(sum([~{sep=', ' counts_variant_duplicates}]))")
+        ## here a list of files: ~{sep=', ' track_dropped_variants}
+        ## I need to get the lines from each file
+        awk 'FNR==1{print ""}1' ~{sep=' ' track_dropped_variants} > dropped_variants.txt
 
-        echo "Duplicate variant count: $DUPLICATE_VARIANT_COUNT."
+        echo "Dropped variants:"
+        cat dropped_variants.txt
 
         # Count number of variants in the VAT
         bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}`' > bq_variant_count.csv
