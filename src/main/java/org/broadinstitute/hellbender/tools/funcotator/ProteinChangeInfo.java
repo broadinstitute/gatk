@@ -92,26 +92,19 @@ public final class ProteinChangeInfo {
         // subtract 1 to remove leading base required by VCFs
         final int numRefAminoAcids = (int) Math.ceil((refAllele.length() - 1) / ((double) AminoAcid.CODON_LENGTH));
 
-        // Band-aid for the StringIndexOutOfBoundsException for some variants at the edges of coding regions:
-        try {
-            // Frameshifts are always rendered the same way:
-            if ( isFrameshift ) {
-                initializeForFrameshift(referenceProteinSequence, proteinChangeStartIndex);
-            }
-            // Handle insertions and deletions:
-            else if ( GATKVariantContextUtils.isInsertion(refAllele, altAllele) ) {
-                initializeForInsertion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
-            }
-            else if ( GATKVariantContextUtils.isDeletion(refAllele, altAllele) ) {
-                initializeForDeletion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
-            }
-            else {
-                initializeForOnp(referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex);
-            }
+        // Frameshifts are always rendered the same way:
+        if ( isFrameshift ) {
+            initializeForFrameshift(referenceProteinSequence, proteinChangeStartIndex);
         }
-        catch (final StringIndexOutOfBoundsException ex) {
-            throw ex;
-//            initializeForOutOfBoundsErrorCase(referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex);
+        // Handle insertions and deletions:
+        else if ( GATKVariantContextUtils.isInsertion(refAllele, altAllele) ) {
+            initializeForInsertion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
+        }
+        else if ( GATKVariantContextUtils.isDeletion(refAllele, altAllele) ) {
+            initializeForDeletion(alignedCodingSequenceAlleleStart, strand, referenceProteinSequence, alternateProteinSequence, indelIsBetweenCodons, numAltAminoAcids, numRefAminoAcids);
+        }
+        else {
+            initializeForOnp(referenceProteinSequence, alternateProteinSequence, proteinChangeStartIndex);
         }
     }
 
@@ -183,13 +176,6 @@ public final class ProteinChangeInfo {
             refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, proteinChangeEndIndex);
             altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, proteinChangeEndIndex);
         }
-    }
-
-    private void initializeForOutOfBoundsErrorCase(final String referenceProteinSequence, final String alternateProteinSequence, final int proteinChangeStartIndex) {
-        aaStartPos = proteinChangeStartIndex + 1;
-        aaEndPos = aaStartPos;
-        refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, proteinChangeStartIndex + 1);
-        altAaSeq = "ERR";
     }
 
     private void initializeForDeletion(final int alignedCodingSequenceAlleleStart, final Strand strand, final String referenceProteinSequence, final String alternateProteinSequence, final boolean indelIsBetweenCodons, final int numAltAminoAcids, final int numRefAminoAcids) {
