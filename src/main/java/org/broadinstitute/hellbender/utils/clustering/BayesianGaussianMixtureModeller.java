@@ -531,7 +531,7 @@ public final class BayesianGaussianMixtureModeller {
 
     public BayesianGaussianMixtureModelPosterior getBestFit() {
         if (!isFitAvailable) {
-            throw new UnsupportedOperationException("Best fit has not yet been determined. Call a fitting method or set the best fit first.");
+            throw new UnsupportedOperationException("Best fit has not yet been determined. Call a fitting method or set the fits first.");
         }
         return bestFit;
     }
