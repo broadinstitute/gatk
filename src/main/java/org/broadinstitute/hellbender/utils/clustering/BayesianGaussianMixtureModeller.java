@@ -536,6 +536,11 @@ public final class BayesianGaussianMixtureModeller {
         return bestFit;
     }
 
+    /**
+     * Should only be used to set fits in preparation for calling {@link #scoreSamples}.
+     * To be consistent with sklearn, setting fits will not affect the result of calling {@link #fit} or {@link #fitPredict},
+     * even if {@link #warmStart} is true; the fits will essentially be overwritten by the new ones.
+     */
     public void setCurrentAndBestFits(final BayesianGaussianMixtureModelPosterior fit) {
         weightConcentration = fit.getWeightConcentration();
         meanPrecision = fit.getMeanPrecision();
