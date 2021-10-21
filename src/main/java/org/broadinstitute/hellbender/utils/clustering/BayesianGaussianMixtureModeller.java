@@ -52,7 +52,7 @@ public final class BayesianGaussianMixtureModeller {
     private final double epsilon;
 
     private boolean isConverged;
-    private boolean isFitted;
+    private boolean isFitAvailable;
     private double lowerBound;
     private int bestInit;
 
@@ -105,7 +105,7 @@ public final class BayesianGaussianMixtureModeller {
         this.epsilon = epsilon;
 
         isConverged = false;
-        isFitted = false;
+        isFitAvailable = false;
         lowerBound = Double.NEGATIVE_INFINITY;
 
         logger.info(toString());
@@ -186,8 +186,7 @@ public final class BayesianGaussianMixtureModeller {
                         means,
                         precisionsCholesky,
                         covariances,
-                        degreesOfFreedom
-                );
+                        degreesOfFreedom);
             }
         }
 
@@ -201,7 +200,7 @@ public final class BayesianGaussianMixtureModeller {
         logger.info(String.format("Fit complete. Maximum lower bound = %.5f found with initialization %d.",
                 maxLowerBound, bestInit));
         setCurrentAndBestFits(bestFit);
-        isFitted = true;
+        isFitAvailable = true;
     }
 
     /**
@@ -232,8 +231,8 @@ public final class BayesianGaussianMixtureModeller {
      * @return
      */
     public double[] scoreSamples(final double[][] data) {
-        if (!isFitted) {
-            throw new UnsupportedOperationException("Cannot score samples before model has been fit or specified.");
+        if (!isFitAvailable) {
+            throw new UnsupportedOperationException("Cannot score samples before model has been fit or set.");
         }
         final RealMatrix X = new Array2DRowRealMatrix(data);
         final int nSamples = X.getRowDimension();
@@ -524,25 +523,28 @@ public final class BayesianGaussianMixtureModeller {
     //******************************************************************************************************************
 
     public double getLowerBound() {
+        if (!isFitAvailable) {
+            throw new UnsupportedOperationException("Lower bound has not yet been determined. Call a fitting method first.");
+        }
         return lowerBound;
     }
 
     public BayesianGaussianMixtureModelPosterior getBestFit() {
-        if (!isFitted || bestFit == null) {
+        if (!isFitAvailable) {
             throw new UnsupportedOperationException("Best fit has not yet been determined. Call a fitting method or set the best fit first.");
         }
         return bestFit;
     }
 
     public void setCurrentAndBestFits(final BayesianGaussianMixtureModelPosterior fit) {
-        weightConcentration = bestFit.getWeightConcentration();
-        meanPrecision = bestFit.getMeanPrecision();
-        means = bestFit.getMeans();
-        precisionsCholesky = bestFit.getPrecisionsCholesky();
-        covariances = bestFit.getCovariances();
-        degreesOfFreedom = bestFit.getDegreesOfFreedom();
+        weightConcentration = fit.getWeightConcentration();
+        meanPrecision = fit.getMeanPrecision();
+        means = fit.getMeans();
+        precisionsCholesky = fit.getPrecisionsCholesky();
+        covariances = fit.getCovariances();
+        degreesOfFreedom = fit.getDegreesOfFreedom();
         bestFit = fit;
-        isFitted = true;
+        isFitAvailable = true;
     }
 
     @Override
