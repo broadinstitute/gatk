@@ -172,10 +172,10 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
     public void testLogDirichletNorm() {
         final double epsilon = 1E-10;
         Assert.assertEquals(
-                BayesianGaussianMixture.logDirichletNorm(new ArrayRealVector(new double[]{1., 2., 3., 4.})),
+                BayesianGaussianMixtureUtils.logDirichletNorm(new ArrayRealVector(new double[]{1., 2., 3., 4.})),
                 10.31692083029347, epsilon);
         Assert.assertEquals(
-                BayesianGaussianMixture.logDirichletNorm(new ArrayRealVector(new double[]{0.1, 0.2, 0.3, 0.4})),
+                BayesianGaussianMixtureUtils.logDirichletNorm(new ArrayRealVector(new double[]{0.1, 0.2, 0.3, 0.4})),
                 -5.669252286684849, epsilon);
     }
 
@@ -183,7 +183,7 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
     public void testLogWishartNorm() {
         final double epsilon = 1E-6;
         Assert.assertEquals(
-                BayesianGaussianMixture.logWishartNorm(
+                BayesianGaussianMixtureUtils.logWishartNorm(
                         new ArrayRealVector(new double[]{3., 4., 5., 6.}),
                         new ArrayRealVector(new double[]{0.1, 0.2, 0.3, 0.4}),
                 2).toArray(), // nFeatures must be <= all elements of degreesOfFreedom
@@ -193,7 +193,7 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
     @Test
     public void testComputePrecisionCholesky() {
         final double epsilon = 1E-6;
-        final List<RealMatrix> result = BayesianGaussianMixture.computePrecisionCholesky(
+        final List<RealMatrix> result = BayesianGaussianMixtureUtils.computePrecisionCholesky(
                 Arrays.asList(  // must be symmetric, positive semidefinite covariance matrices
                         new Array2DRowRealMatrix(new double[][]{
                                 {2., 1.},
@@ -222,7 +222,7 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
     @Test
     public void testLogDetCholesky() {
         final double epsilon = 1E-6;
-        final RealVector result = BayesianGaussianMixture.computeLogDetCholesky(
+        final RealVector result = BayesianGaussianMixtureUtils.computeLogDetCholesky(
                 Arrays.asList(  // must be symmetric, positive semidefinite covariance matrices
                         new Array2DRowRealMatrix(new double[][]{
                                 {2., 1.},
@@ -261,7 +261,7 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
                 new Array2DRowRealMatrix(new double[][]{
                         {0.40824829, -0.61545745},
                         {0., 0.73854895}}));
-        final RealMatrix result = BayesianGaussianMixture.estimateLogGaussianProb(X, means, precisionsChol);
+        final RealMatrix result = BayesianGaussianMixtureUtils.estimateLogGaussianProb(X, means, precisionsChol);
         final RealMatrix expected = new Array2DRowRealMatrix(new double[][]{
                 {-2.38718321, -3.38226071, -4.49137016},
                 {-2.72051654, -2.95368928, -3.85500652},
@@ -288,7 +288,7 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
                 {0.1908342,  0.38890714, 0.42025866},
                 {0.22501625, 0.46461061, 0.31037314},
                 {0.36304264, 0.59155755, 0.04539982}});
-        final Triple<RealVector, List<RealVector>, List<RealMatrix>> result = BayesianGaussianMixture.estimateGaussianParameters(X, resp, regCovar);
+        final Triple<RealVector, List<RealVector>, List<RealMatrix>> result = BayesianGaussianMixtureUtils.estimateGaussianParameters(X, resp, regCovar);
         final Triple<RealVector, List<RealVector>, List<RealMatrix>> expected = Triple.of(
                 new ArrayRealVector(new double[]{1.41039229, 2.09060924, 1.49899847}),
                 Arrays.asList(
