@@ -523,7 +523,7 @@ public final class BayesianGaussianMixtureModeller {
     //******************************************************************************************************************
 
     public double getLowerBound() {
-        if (!isFitAvailable) {
+        if (lowerBound == Double.NEGATIVE_INFINITY) {
             throw new UnsupportedOperationException("Lower bound has not yet been determined. Call a fitting method first.");
         }
         return lowerBound;
