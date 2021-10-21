@@ -31,10 +31,10 @@ public class GMMVariantTrainIntegrationTest extends CommandLineProgramTest {
     @Test
     public void test1kgp50Exomes() {
         final String[] arguments = {
-                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.gmmvt.snps.recal",
-                "--tranches-file", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.gmmvt.snps.tranches",
-                "--output-model", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.gmmvt..snps.model.report",
+                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
+                "-O", "/home/slee/working/vqsr/1kgp-50-exomes/test.snps.recal",
+                "--tranches-file", "/home/slee/working/vqsr/1kgp-50-exomes/test.snps.tranches",
+                "--output-model", "/home/slee/working/vqsr/1kgp-50-exomes/test.snps.model.hdf5",
                 "--trust-all-polymorphic",
                 "--tranche"," 100.0",
                 "-tranche", "99.95",
@@ -54,9 +54,10 @@ public class GMMVariantTrainIntegrationTest extends CommandLineProgramTest {
                 "-an", "MQRankSum",
                 "-an", "QD",
                 "-an", "SOR",
+                "-an", "MQ",
                 "-mode", "SNP",
                 "--sample-every-Nth-variant", "1",
-                "--hyperparameters-json", "/home/slee/working/vqsr/1kgp-50-exomes/1kgp-50-exomes.hyperparameters.json",
+                "--hyperparameters-json", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.hyperparameters.json",
                 "--resource:hapmap,known=false,training=true,truth=true,prior=15", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
 //                "--resource:omni,known=false,training=true,truth=true,prior=12", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
 //                "--resource:1000G,known=false,training=true,truth=false,prior=10", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",

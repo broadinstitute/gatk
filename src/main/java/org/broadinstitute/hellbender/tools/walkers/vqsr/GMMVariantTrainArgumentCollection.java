@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixture;
+import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -17,7 +16,7 @@ import java.util.Set;
 
 /*
  * A bunch of arguments for GMMVariantTrain.
- * TODO expose number of K-means iterations and symmetry threshold in BGMM
+ * TODO expose number of K-means iterations, epsilon, and symmetry/positivity thresholds
  */
 final class GMMVariantTrainArgumentCollection {
 
@@ -147,12 +146,12 @@ final class GMMVariantTrainArgumentCollection {
 
         Hyperparameters() {}
 
-        BayesianGaussianMixture.InitMethod getInitMethod() {
+        BayesianGaussianMixtureModeller.InitMethod getInitMethod() {
             switch (initMethod) {
                 case "kmeans++":
-                    return BayesianGaussianMixture.InitMethod.K_MEANS_PLUS_PLUS;
+                    return BayesianGaussianMixtureModeller.InitMethod.K_MEANS_PLUS_PLUS;
                 case "random":
-                    return BayesianGaussianMixture.InitMethod.RANDOM;
+                    return BayesianGaussianMixtureModeller.InitMethod.RANDOM;
                 default:
                     throw new UserException.BadInput("Unknown initialization method specified.");
             }

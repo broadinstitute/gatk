@@ -26,7 +26,8 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixture;
+import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModelPosterior;
+import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VcfUtils;
@@ -124,16 +125,12 @@ public class GMMVariantTrain extends MultiVariantWalker {
     private boolean IGNORE_ALL_FILTERS = false;
 
     /**
-     *  This GATKReport gives information to describe the VQSR model fit. Normalized means for the positive model are
-     *  concatenated as one table and negative model normalized means as another table. Covariances are also concatenated
-     *  for positive and negative models, respectively. Tables of annotation means and standard deviations are provided
-     *  to help describe the normalization. The model fit report can be read in with our R gsalib package. Individual
-     *  model Gaussians can be subset by the value in the "Gaussian" column if desired.
+     *  TODO
      */
     @Argument(fullName="output-model",
             doc="If specified, the variant recalibrator will output the VQSR model to this file path.",
             optional=true)
-    private GATKPath outputModel = null;
+    private GATKPath outputModelPath = null;
 
     /**
      * This argument is intended to be used in a more complicated VQSR scheme meant for very large WGS callsets that
@@ -386,7 +383,7 @@ public class GMMVariantTrain extends MultiVariantWalker {
 
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
 
-        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
+        final BayesianGaussianMixtureModeller bgmm = new BayesianGaussianMixtureModeller.Builder()
                 .nComponents(GMMVTAC.hyperparameters.nComponents)
                 .tol(GMMVTAC.hyperparameters.tol)
                 .regCovar(GMMVTAC.hyperparameters.regCovar)
@@ -407,12 +404,15 @@ public class GMMVariantTrain extends MultiVariantWalker {
                 .build();
         bgmm.fit(positiveTrainingDataArray);
 
-        System.out.println("weights: " + bgmm.getWeights());
-        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
-        System.out.println("means: " + bgmm.getMeans());
-        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
-        System.out.println("covariances: " + bgmm.getCovariances());
-        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
+        final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
+        fit.write(outputModelPath.toPath().toFile(), "/bgmm");
+
+        System.out.println("weights: " + fit.getWeights());
+        System.out.println("meanPrecision: " + fit.getMeanPrecision());
+        System.out.println("means: " + fit.getMeans());
+        System.out.println("precisionsCholesky: " + fit.getPrecisionsCholesky());
+        System.out.println("covariances: " + fit.getCovariances());
+        System.out.println("degreesOfFreedom: " + fit.getDegreesOfFreedom());
 
         final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
         final double[] scores = bgmm.scoreSamples(data);
