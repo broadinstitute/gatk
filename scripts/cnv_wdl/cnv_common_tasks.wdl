@@ -267,6 +267,7 @@ task CollectCounts {
         gatk --java-options "-Xmx~{command_mem_mb}m" CollectReadCounts \
             -L ~{intervals} \
             --input ~{bam} \
+            --read-index ~{bam_idx} \
             --reference ~{ref_fasta} \
             --format ~{default="HDF5" hdf5_or_tsv_or_null_format} \
             --interval-merging-rule OVERLAPPING_ONLY \
@@ -343,6 +344,7 @@ task CollectAllelicCounts {
         gatk --java-options "-Xmx~{command_mem_mb}m" CollectAllelicCounts \
             -L ~{common_sites} \
             --input ~{bam} \
+            --read-index ~{bam_idx} \
             --reference ~{ref_fasta} \
             --minimum-base-quality ~{default="20" minimum_base_quality} \
             --output ~{allelic_counts_filename} \
