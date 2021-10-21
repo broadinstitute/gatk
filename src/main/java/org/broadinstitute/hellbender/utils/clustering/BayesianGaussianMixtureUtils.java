@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.clustering;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.linear.ArrayRealVector;
@@ -12,6 +11,12 @@ import org.apache.commons.math3.linear.NonSquareMatrixException;
 import org.apache.commons.math3.linear.NonSymmetricMatrixException;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.ml.clustering.CentroidCluster;
+import org.apache.commons.math3.ml.clustering.Clusterable;
+import org.apache.commons.math3.ml.clustering.DoublePoint;
+import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
+import org.apache.commons.math3.ml.distance.EuclideanDistance;
+import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.Logger;
@@ -22,23 +27,56 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+/**
+ * Static helper methods for {@link BayesianGaussianMixtureModeller}.
+ * Some methods are ported from classes other than sklearn.mixture.BayesianGaussianMixture; see documentation links.
+ */
 final class BayesianGaussianMixtureUtils {
 
     private static final double LOG_2_PI = Math.log(2. * Math.PI);
 
-    //******************************************************************************************************************
-    // static helper methods (package-protected only for testing);
-    // some of these are imported from other classes in the sklearn.mixture package, so we provide links for all methods
-    //******************************************************************************************************************
+    private static final class IndexedDoublePoint implements Clusterable {
+        final DoublePoint point;
+        final int index;
+
+        private IndexedDoublePoint(final double[] point,
+                                   final int index) {
+            this.point = new DoublePoint(point);
+            this.index = index;
+        }
+
+        @Override
+        public double[] getPoint() {
+            return point.getPoint();
+        }
+    }
+
+    static RealMatrix calculateRespKMeansPlusPlus(final RealMatrix X,
+                                                  final int nComponents,
+                                                  final RandomGenerator rng) {
+        final int nSamples = X.getRowDimension();
+        final List<IndexedDoublePoint> pointsX = IntStream.range(0, nSamples).boxed()
+                .map(i -> new IndexedDoublePoint(X.getRow(i), i))
+                .collect(Collectors.toList());
+
+        final KMeansPlusPlusClusterer<IndexedDoublePoint> kMeansPlusPlusClusterer =
+                new KMeansPlusPlusClusterer<>(nComponents, -1, new EuclideanDistance(), rng);
+        final List<CentroidCluster<IndexedDoublePoint>> centroids = kMeansPlusPlusClusterer.cluster(pointsX);
+        final RealMatrix resp = X.createMatrix(nSamples, nComponents);
+        IntStream.range(0, nComponents)
+                .forEach(k -> centroids.get(k).getPoints()
+                        .forEach(p -> resp.setEntry(p.index, k, 1)));
+        return resp;
+    }
 
     /**
      * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L20">here</a>.
      * @param dirichletConcentration parameters of the Dirichlet distribution. (nComponents, )
      * @return                       log normalization of the Dirichlet distribution.
      */
-    @VisibleForTesting
     static double logDirichletNorm(final RealVector dirichletConcentration) {
         return Gamma.logGamma(sum(dirichletConcentration)) - sum(dirichletConcentration.map(Gamma::logGamma));
     }
@@ -49,7 +87,6 @@ final class BayesianGaussianMixtureUtils {
      * @param logDetPrecisionsChol  determinants of the precision matrices for all components. (nComponents, )
      * @return                      log normalizations of the Wishart distributions for all components. (nComponents, )
      */
-    @VisibleForTesting
     static RealVector logWishartNorm(final RealVector degreesOfFreedom,
                                      final RealVector logDetPrecisionsChol,
                                      final int nFeatures) {
@@ -74,7 +111,6 @@ final class BayesianGaussianMixtureUtils {
      * @param absolutePositivityThreshold   threshold below which diagonal elements are considered null and matrix not positive definite
      * @return                              Cholesky decompositions of precision matrices for all components. List with length nComponents of (nFeatures, nFeatures) matrices
      */
-    @VisibleForTesting
     static List<RealMatrix> computePrecisionCholesky(final List<RealMatrix> covariances,
                                                      final double relativeSymmetryThreshold,
                                                      final double absolutePositivityThreshold) {
@@ -111,7 +147,6 @@ final class BayesianGaussianMixtureUtils {
      * @param matrixChol            Cholesky decompositions of matrices for all components. List with length nComponents of (nFeatures, nFeatures) matrices
      * @return                      log determinants of the Cholesky decompositions of matrices for all components. (nComponents, )
      */
-    @VisibleForTesting
     static RealVector computeLogDetCholesky(final List<RealMatrix> matrixChol) {
         return new ArrayRealVector(         // np.sum(np.log(matrixChol.reshape(nComponents, -1)[:, :: n_features + 1]), axis=1)
                 matrixChol.stream().mapToDouble(
@@ -126,7 +161,6 @@ final class BayesianGaussianMixtureUtils {
      * @param precisionsChol        Cholesky decompositions of precision matrices for all components. List with length nComponents of (nFeatures, nFeatures) matrices
      * @return                      log Gaussian probabilities. (nSamples, nComponents)
      */
-    @VisibleForTesting
     static RealMatrix estimateLogGaussianProb(final RealMatrix X,
                                               final List<RealVector> means,
                                               final List<RealMatrix> precisionsChol) {
@@ -167,7 +201,6 @@ final class BayesianGaussianMixtureUtils {
      * @return                      triple of effective number for all components, mean vectors for all components, and covariance matrices for all components.
      *                              i.e., Triple of [(nComponents, ), List with length nComponents of (nFeatures, ) vectors, List with length nComponents of (nFeatures, nFeatures) matrices]
      */
-    @VisibleForTesting
     static Triple<RealVector, List<RealVector>, List<RealMatrix>> estimateGaussianParameters(final RealMatrix X,
                                                                                              final RealMatrix resp,
                                                                                              final double regCovar,
@@ -198,11 +231,11 @@ final class BayesianGaussianMixtureUtils {
      * @param regCovar              regularization added to the diagonal of the covariance matrices.
      * @return                      covariance matrices for all components. List with length nComponents of (nFeatures, nFeatures) matrices
      */
-    static List<RealMatrix> estimateGaussianCovariances(final RealMatrix X,
-                                                        final RealMatrix resp,
-                                                        final RealVector nk,
-                                                        final List<RealVector> means,
-                                                        final double regCovar) {
+    private static List<RealMatrix> estimateGaussianCovariances(final RealMatrix X,
+                                                                final RealMatrix resp,
+                                                                final RealVector nk,
+                                                                final List<RealVector> means,
+                                                                final double regCovar) {
         final int nSamples = X.getRowDimension();
         final int nComponents = means.size();
         final int nFeatures = means.get(0).getDimension();
@@ -250,7 +283,7 @@ final class BayesianGaussianMixtureUtils {
         return sum;
     }
 
-    static RealVector diag(final RealMatrix m) { // m is assumed to be a square matrix
+    private static RealVector diag(final RealMatrix m) { // m is assumed to be a square matrix
         final int dim = m.getRowDimension();
         final RealVector diag = new ArrayRealVector(dim);
         IntStream.range(0, dim).forEach(i -> diag.setEntry(i, m.getEntry(i, i)));

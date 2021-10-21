@@ -3,170 +3,23 @@ package org.broadinstitute.hellbender.utils.clustering;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
-import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
-public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
-    private static final File TEST_SUB_DIR = new File(packageRootTestDir, "utils/clustering");
+/**
+ * Unit tests for static helper methods; checked against python implementations in sklearn.
+ */
+public final class BayesianGaussianMixtureUtilsUnitTest {
 
-    /**
-     * import numpy as np  # np.__version__    = 1.19.5
-     * import torch        # torch.__version__ = 1.8.0
-     * import pyro         # pyro.__version__  = 1.6.0
-     * import pyro.distributions as dist
-     *
-     * def generate_gmm_data(seed=1,
-     *                       num_points=10000,
-     *                       num_components=3,
-     *                       num_features=5,
-     *                       weight_concentration=1.,
-     *                       mean_scale=10.,
-     *                       variance_scale=1.,
-     *                       lkj_concentration=1. # uniform distribution over correlation matrices, see https://pyro.ai/examples/lkj.html
-     *                       ):
-     *     pyro.set_rng_seed(seed)
-     *     pi_k = pyro.sample('weight_k', dist.Dirichlet(weight_concentration * torch.ones(num_components)))
-     *
-     *     with pyro.plate('components', size=num_components, dim=-2):
-     *         mu_ki = pyro.sample('mean_ki', dist.Normal(0., mean_scale * torch.ones(num_features)))
-     *         theta_ki = pyro.sample('variance_ki', dist.HalfCauchy(variance_scale * torch.ones(num_features)))
-     *         L_corr_kij = pyro.sample('lower_cholesky_correlation_kij', dist.LKJCholesky(num_features, lkj_concentration))
-     *
-     *     L_cov_kij = torch.bmm(theta_ki.sqrt().diag_embed(), L_corr_kij.squeeze(dim=-3))
-     *
-     *     with pyro.plate('data', size=num_points):
-     *         z_n = pyro.sample('assignment', dist.Categorical(pi_k))
-     *         X_ni = pyro.sample('obs_n', dist.MultivariateNormal(mu_ki[z_n], scale_tril=L_cov_kij[z_n]))
-     *
-     *     return (x.detach().numpy() for x in [pi_k, mu_ki, L_cov_kij, z_n, X_ni])
-     *
-     * pi_k, mu_ki, L_cov_kij, z_n, X_ni = generate_gmm_data()
-     * cov_kij = np.einsum('kij,klj->kil', L_cov_kij, L_cov_kij)
-     * np.savetxt('bayesian-gaussian-mixture-simulated-data-10k-samples-4-components-3-features.tsv', X_ni, delimiter='\t')
-     */
-    private static final File SIMULATED_DATA_FILE = new File(TEST_SUB_DIR, "bayesian-gaussian-mixture-simulated-data-10k-samples-4-components-3-features.tsv");
-
-    private static double[][] readData(final File file) throws IOException {
-        final List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
-        final double[][] data = new double[lines.size()][];
-        for (int i = 0; i < lines.size(); i++) {
-            data[i] = Arrays.stream(lines.get(i).split("\t")).mapToDouble(Double::parseDouble).toArray();
-        }
-        return data;
-    }
-
-    @Test
-    public void testSimulatedData() throws IOException {
-        final int nComponents = 4;
-        final int nFeatures = 3;
-
-        final double[][] data = readData(SIMULATED_DATA_FILE);
-
-        final double[] meanPrior = new double[nFeatures];
-        Arrays.fill(meanPrior, 0.);
-        final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
-
-        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
-                .nComponents(nComponents)
-                .tol(1E-3)
-                .regCovar(1E-6)
-                .maxIter(100)
-                .nInit(1)
-                .initMethod(BayesianGaussianMixture.InitMethod.TEST)
-                .weightConcentrationPrior(1E-2)
-                .meanPrecisionPrior(10.)
-                .meanPrior(meanPrior)
-                .degreesOfFreedomPrior((double) nFeatures)
-                .covariancePrior(covariancePrior)
-                .seed(1)
-                .warmStart(true)
-                .verboseInterval(1)
-                .build();
-
-        bgmm.fit(data);
-        System.out.println("weights: " + bgmm.getWeights());
-        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
-        System.out.println("means: " + bgmm.getMeans());
-        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
-        System.out.println("covariances: " + bgmm.getCovariances());
-        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
-    }
-
-//    @Test
-//    public void testSimulatedData1Mx3x10() throws IOException {
-//        final int nComponents = 10;
-//        final int nFeatures = 10;
-//
-//        final double[][] data = readData(new File("/home/slee/working/malariagen/issues/hyperhet/simulated-data.tsv"));
-//
-//        final double[] meanPrior = new double[nFeatures];
-//        Arrays.fill(meanPrior, 0.);
-//        final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
-//
-//        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
-//                .nComponents(nComponents)
-//                .tol(1E-3)
-//                .regCovar(1E-6)
-//                .maxIter(100)
-//                .nInit(1)
-//                .initMethod(BayesianGaussianMixture.InitMethod.TEST)
-//                .weightConcentrationPrior(1E-2)
-//                .meanPrecisionPrior(10.)
-//                .meanPrior(meanPrior)
-//                .degreesOfFreedomPrior(nFeatures)
-//                .covariancePrior(covariancePrior)
-//                .seed(1)
-//                .warmStart(true)
-//                .verboseInterval(1)
-//                .build();
-//
-//        bgmm.fit(Arrays.copyOfRange(data, 0, 100000));
-//        System.out.println("weights: " + bgmm.getWeights());
-//        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
-//        System.out.println("means: " + bgmm.getMeans());
-//        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
-//        System.out.println("covariances: " + bgmm.getCovariances());
-//        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
-//
-//        bgmm.fit(data);
-//        System.out.println("weights: " + bgmm.getWeights());
-//        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
-//        System.out.println("means: " + bgmm.getMeans());
-//        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
-//        System.out.println("covariances: " + bgmm.getCovariances());
-//        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
-//    }
-
-    @Test
-    public void testSimulatedDataWithWarmStart() throws IOException {
-
-    }
-
-    @Test
-    public void testSimulatedDataWithManyExtraComponents() throws IOException {
-
-    }
-
-    @Test
-    public void testSimulatedDataWithMultipleInitializations() throws IOException {
-
-    }
-
-    //******************************************************************************************************************
-    // unit tests for static helper methods; checked against python implementations
-    //******************************************************************************************************************
+    private static final double RELATIVE_SYMMETRY_THRESHOLD = 1E-6;
+    private static final double ABSOLUTE_POSITIVITY_THRESHOLD = 1E-10;
+    private static final double EPSILON = 1E-10;
 
     @Test
     public void testLogDirichletNorm() {
@@ -186,7 +39,7 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
                 BayesianGaussianMixtureUtils.logWishartNorm(
                         new ArrayRealVector(new double[]{3., 4., 5., 6.}),
                         new ArrayRealVector(new double[]{0.1, 0.2, 0.3, 0.4}),
-                2).toArray(), // nFeatures must be <= all elements of degreesOfFreedom
+                        2).toArray(), // nFeatures must be <= all elements of degreesOfFreedom
                 new double[]{-2.2586593 , -3.45180648, -5.25041877, -7.53671313}, epsilon);
     }
 
@@ -203,7 +56,9 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
                                 {3., 4.}}),
                         new Array2DRowRealMatrix(new double[][]{
                                 {6., 5.},
-                                {5., 6.}})));
+                                {5., 6.}})),
+                RELATIVE_SYMMETRY_THRESHOLD,
+                ABSOLUTE_POSITIVITY_THRESHOLD);
         final List<RealMatrix> expected =
                 Arrays.asList(
                         new Array2DRowRealMatrix(new double[][]{
@@ -288,7 +143,7 @@ public final class BayesianGaussianMixtureUnitTest extends GATKBaseTest {
                 {0.1908342,  0.38890714, 0.42025866},
                 {0.22501625, 0.46461061, 0.31037314},
                 {0.36304264, 0.59155755, 0.04539982}});
-        final Triple<RealVector, List<RealVector>, List<RealMatrix>> result = BayesianGaussianMixtureUtils.estimateGaussianParameters(X, resp, regCovar);
+        final Triple<RealVector, List<RealVector>, List<RealMatrix>> result = BayesianGaussianMixtureUtils.estimateGaussianParameters(X, resp, regCovar, EPSILON);
         final Triple<RealVector, List<RealVector>, List<RealMatrix>> expected = Triple.of(
                 new ArrayRealVector(new double[]{1.41039229, 2.09060924, 1.49899847}),
                 Arrays.asList(

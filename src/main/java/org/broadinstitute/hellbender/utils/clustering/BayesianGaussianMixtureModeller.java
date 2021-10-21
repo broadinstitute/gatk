@@ -6,11 +6,6 @@ import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
-import org.apache.commons.math3.ml.clustering.CentroidCluster;
-import org.apache.commons.math3.ml.clustering.Clusterable;
-import org.apache.commons.math3.ml.clustering.DoublePoint;
-import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
-import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.special.Gamma;
@@ -28,16 +23,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public final class BayesianGaussianMixture {
+public final class BayesianGaussianMixtureModeller {
 
     public enum InitMethod {
         K_MEANS_PLUS_PLUS, RANDOM, TEST
     }
 
-    private static final Logger logger = LogManager.getLogger(BayesianGaussianMixture.class);
+    private static final Logger logger = LogManager.getLogger(BayesianGaussianMixtureModeller.class);
 
     private final int nComponents;
     private final double tol;
@@ -58,7 +52,9 @@ public final class BayesianGaussianMixture {
     private final double epsilon;
 
     private boolean isConverged;
+    private boolean isFitted;
     private double lowerBound;
+    private int bestInit;
 
     private RealVector weightConcentration;
     private RealVector meanPrecision;
@@ -67,36 +63,29 @@ public final class BayesianGaussianMixture {
     private List<RealMatrix> covariances;
     private RealVector degreesOfFreedom;
 
-    private int bestInit;
-    private RealVector bestWeightConcentration;
-    private RealVector bestMeanPrecision;
-    private List<RealVector> bestMeans;
-    private List<RealMatrix> bestPrecisionsCholesky;
-    private List<RealMatrix> bestCovariances;
-    private RealVector bestDegreesOfFreedom;
-    private boolean isFittedOrSpecified = false;
+    private BayesianGaussianMixtureModelPosterior bestFit;
 
     /**
      * We use a {@link Builder} to enable the setting of default values, which can be
      * done trivially in python. Our implementation of parameter validation thus slightly differs from that in sklearn.
      */
-    private BayesianGaussianMixture(final int nComponents,
-                                    final double tol,
-                                    final double regCovar,
-                                    final int maxIter,
-                                    final int nInit,
-                                    final InitMethod initMethod,
-                                    final double weightConcentrationPrior,
-                                    final double meanPrecisionPrior,
-                                    final RealVector meanPrior,
-                                    final Double degreesOfFreedomPrior,
-                                    final RealMatrix covariancePrior,
-                                    final int seed,
-                                    final boolean warmStart,
-                                    final int verboseInterval,
-                                    final double relativeSymmetryThreshold,
-                                    final double absolutePositivityThreshold,
-                                    final double epsilon) {
+    private BayesianGaussianMixtureModeller(final int nComponents,
+                                            final double tol,
+                                            final double regCovar,
+                                            final int maxIter,
+                                            final int nInit,
+                                            final InitMethod initMethod,
+                                            final double weightConcentrationPrior,
+                                            final double meanPrecisionPrior,
+                                            final RealVector meanPrior,
+                                            final Double degreesOfFreedomPrior,
+                                            final RealMatrix covariancePrior,
+                                            final int seed,
+                                            final boolean warmStart,
+                                            final int verboseInterval,
+                                            final double relativeSymmetryThreshold,
+                                            final double absolutePositivityThreshold,
+                                            final double epsilon) {
         this.nComponents = nComponents;
         this.tol = tol;
         this.regCovar = regCovar;
@@ -116,6 +105,7 @@ public final class BayesianGaussianMixture {
         this.epsilon = epsilon;
 
         isConverged = false;
+        isFitted = false;
         lowerBound = Double.NEGATIVE_INFINITY;
 
         logger.info(toString());
@@ -190,12 +180,14 @@ public final class BayesianGaussianMixture {
                 logger.info(String.format("New maximum lower bound = %.5f found with initialization %d...",
                         maxLowerBound, init));
                 bestInit = init;
-                bestWeightConcentration = weightConcentration.copy();
-                bestMeanPrecision = meanPrecision.copy();
-                bestMeans = means.stream().map(RealVector::copy).collect(Collectors.toList());
-                bestPrecisionsCholesky = precisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
-                bestCovariances = covariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
-                bestDegreesOfFreedom = degreesOfFreedom.copy();
+                bestFit = new BayesianGaussianMixtureModelPosterior(
+                        weightConcentration,
+                        meanPrecision,
+                        means,
+                        precisionsCholesky,
+                        covariances,
+                        degreesOfFreedom
+                );
             }
         }
 
@@ -208,13 +200,8 @@ public final class BayesianGaussianMixture {
         this.lowerBound = maxLowerBound;
         logger.info(String.format("Fit complete. Maximum lower bound = %.5f found with initialization %d.",
                 maxLowerBound, bestInit));
-        weightConcentration = bestWeightConcentration.copy();
-        meanPrecision = bestMeanPrecision.copy();
-        means = bestMeans.stream().map(RealVector::copy).collect(Collectors.toList());
-        precisionsCholesky = bestPrecisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
-        covariances = bestCovariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
-        degreesOfFreedom = bestDegreesOfFreedom.copy();
-        isFittedOrSpecified = true;
+        setCurrentAndBestFits(bestFit);
+        isFitted = true;
     }
 
     /**
@@ -245,7 +232,7 @@ public final class BayesianGaussianMixture {
      * @return
      */
     public double[] scoreSamples(final double[][] data) {
-        if (!isFittedOrSpecified) {
+        if (!isFitted) {
             throw new UnsupportedOperationException("Cannot score samples before model has been fit or specified.");
         }
         final RealMatrix X = new Array2DRowRealMatrix(data);
@@ -266,17 +253,7 @@ public final class BayesianGaussianMixture {
         final int nSamples = X.getRowDimension();
 
         if (initMethod == InitMethod.K_MEANS_PLUS_PLUS) {
-            final List<IndexedDoublePoint> pointsX = IntStream.range(0, nSamples).boxed()
-                    .map(i -> new IndexedDoublePoint(X.getRow(i), i))
-                    .collect(Collectors.toList());
-
-            final KMeansPlusPlusClusterer<IndexedDoublePoint> kMeansPlusPlusClusterer =
-                    new KMeansPlusPlusClusterer<>(nComponents, -1, new EuclideanDistance(), rng);
-            final List<CentroidCluster<IndexedDoublePoint>> centroids = kMeansPlusPlusClusterer.cluster(pointsX);
-            final RealMatrix resp = X.createMatrix(nSamples, nComponents);
-            IntStream.range(0, nComponents)
-                    .forEach(k -> centroids.get(k).getPoints()
-                            .forEach(p -> resp.setEntry(p.index, k, 1)));
+            final RealMatrix resp = BayesianGaussianMixtureUtils.calculateRespKMeansPlusPlus(X, nComponents, rng);
             initialize(X, resp);
         } else if (initMethod == InitMethod.RANDOM) {
             final RealMatrix resp = X.createMatrix(nSamples, nComponents);
@@ -489,11 +466,6 @@ public final class BayesianGaussianMixture {
                 - 0.5 * nFeatures * BayesianGaussianMixtureUtils.sum(meanPrecision.map(FastMath::log));
     }
 
-
-
-
-
-
     //******************************************************************************************************************
     // parameter validation methods that require the data X (nSamples, nComponents)
     //******************************************************************************************************************
@@ -548,31 +520,29 @@ public final class BayesianGaussianMixture {
     }
 
     //******************************************************************************************************************
-    // getters, toString, and miscellaneous
+    // getters and toString
     //******************************************************************************************************************
 
-    public RealVector getWeights() {
-        return weightConcentration.copy().mapDivideToSelf(BayesianGaussianMixtureUtils.sum(weightConcentration));
+    public double getLowerBound() {
+        return lowerBound;
     }
 
-    public RealVector getMeanPrecision() {
-        return meanPrecision.copy();
+    public BayesianGaussianMixtureModelPosterior getBestFit() {
+        if (!isFitted || bestFit == null) {
+            throw new UnsupportedOperationException("Best fit has not yet been determined. Call a fitting method or set the best fit first.");
+        }
+        return bestFit;
     }
 
-    public List<RealVector> getMeans() {
-        return means.stream().map(RealVector::copy).collect(Collectors.toList());
-    }
-
-    public List<RealMatrix> getPrecisionsCholesky() {
-        return precisionsCholesky.stream().map(RealMatrix::copy).collect(Collectors.toList());
-    }
-
-    public List<RealMatrix> getCovariances() {
-        return covariances.stream().map(RealMatrix::copy).collect(Collectors.toList());
-    }
-
-    public RealVector getDegreesOfFreedom() {
-        return degreesOfFreedom.copy();
+    public void setCurrentAndBestFits(final BayesianGaussianMixtureModelPosterior fit) {
+        weightConcentration = bestFit.getWeightConcentration();
+        meanPrecision = bestFit.getMeanPrecision();
+        means = bestFit.getMeans();
+        precisionsCholesky = bestFit.getPrecisionsCholesky();
+        covariances = bestFit.getCovariances();
+        degreesOfFreedom = bestFit.getDegreesOfFreedom();
+        bestFit = fit;
+        isFitted = true;
     }
 
     @Override
@@ -584,26 +554,18 @@ public final class BayesianGaussianMixture {
                 ", maxIter=" + maxIter +
                 ", nInit=" + nInit +
                 ", initMethod=" + initMethod +
+                ", weightConcentrationPrior=" + weightConcentrationPrior +
+                ", meanPrecisionPrior=" + meanPrecisionPrior +
+                ", meanPrior=" + meanPrior +
+                ", degreesOfFreedomPrior=" + degreesOfFreedomPrior +
+                ", covariancePrior=" + covariancePrior +
                 ", seed=" + seed +
                 ", warmStart=" + warmStart +
                 ", verboseInterval=" + verboseInterval +
+                ", relativeSymmetryThreshold=" + relativeSymmetryThreshold +
+                ", absolutePositivityThreshold=" + absolutePositivityThreshold +
+                ", epsilon=" + epsilon +
                 '}';
-    }
-
-    private static final class IndexedDoublePoint implements Clusterable {
-        final DoublePoint point;
-        final int index;
-
-        private IndexedDoublePoint(final double[] point,
-                                   final int index) {
-            this.point = new DoublePoint(point);
-            this.index = index;
-        }
-
-        @Override
-        public double[] getPoint() {
-            return point.getPoint();
-        }
     }
 
     //******************************************************************************************************************
@@ -730,24 +692,27 @@ public final class BayesianGaussianMixture {
             return this;
         }
 
-        public void relativeSymmetryThreshold(final double relativeSymmetryThreshold) {
+        public Builder relativeSymmetryThreshold(final double relativeSymmetryThreshold) {
             Utils.validateArg(relativeSymmetryThreshold >= 0., "relativeSymmetryThreshold must be >= 0.");
             this.relativeSymmetryThreshold = relativeSymmetryThreshold;
+            return this;
         }
 
-        public void setAbsolutePositivityThreshold(final double absolutePositivityThreshold) {
+        public Builder absolutePositivityThreshold(final double absolutePositivityThreshold) {
             Utils.validateArg(absolutePositivityThreshold >= 0., "absolutePositivityThreshold must be >= 0.");
             this.absolutePositivityThreshold = absolutePositivityThreshold;
+            return this;
         }
 
-        public void epsilon(final double epsilon) {
+        public Builder epsilon(final double epsilon) {
             Utils.validateArg(epsilon >= 0., "absolutePositivityThreshold must be >= 0.");
             this.epsilon = epsilon;
+            return this;
         }
 
-        public BayesianGaussianMixture build() {
+        public BayesianGaussianMixtureModeller build() {
             weightConcentrationPrior = weightConcentrationPrior == null ? 1. / nComponents : weightConcentrationPrior;
-            return new BayesianGaussianMixture(
+            return new BayesianGaussianMixtureModeller(
                     nComponents,
                     tol,
                     regCovar,
