@@ -72,7 +72,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_rescattering_wf
+         - rsa_fix_merge_vcfs
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
@@ -82,7 +82,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_rescattering_wf
+         - rsa_fix_merge_vcfs
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
