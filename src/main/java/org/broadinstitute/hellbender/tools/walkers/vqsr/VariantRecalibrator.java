@@ -44,6 +44,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.IntStream;
 
 /**
  * Build a recalibration model to score variant quality for filtering purposes
@@ -685,6 +686,9 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     saveModelReport(report, outputModel);
                 }
 
+                writeModelHDF5(new File(output + ".positive.hdf5"), goodModel);
+                writeModelHDF5(new File(output + ".negative.hdf5"), badModel);
+
                 engine.calculateWorstPerformingAnnotation(dataManager.getData(), goodModel, badModel);
 
 
@@ -1185,6 +1189,28 @@ private GATKReportTable makeVectorTable(final String tableName,
             logger.info(String.format("Annotations written to %s.", file.getAbsolutePath()));
         } catch (final RuntimeException exception) {
             throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
+                    exception, file.getAbsolutePath()));
+        }
+    }
+
+    public void writeModelHDF5(final File file,
+                               final GaussianMixtureModel model) {
+        try (final HDF5File hdf5File = new HDF5File(file, HDF5File.OpenMode.CREATE)) { // TODO allow appending
+            IOUtils.canReadFile(hdf5File.getFile());
+
+            final int nComponents = model.getModelGaussians().size();
+            final int nFeatures = model.getNumAnnotations();
+            hdf5File.makeDouble("/vqsr/number_of_components", nComponents);
+            hdf5File.makeDouble("/vqsr/number_of_features", nComponents);
+            hdf5File.makeDoubleArray("/vqsr/weights", model.getModelGaussians().stream().mapToDouble(g -> Math.pow(10., (g.pMixtureLog10))).toArray());
+            IntStream.range(0, nComponents).forEach(
+                    k -> hdf5File.makeDoubleArray("/vqsr/means/" + k, model.getModelGaussians().get(k).mu));
+            IntStream.range(0, nComponents).forEach(
+                    k -> hdf5File.makeDoubleMatrix("vqsr/covariances/" + k, model.getModelGaussians().get(k).sigma.getArray()));
+
+            logger.info(String.format("VQSR model written to %s.", file.getAbsolutePath()));
+        } catch (final RuntimeException exception) {
+            throw new GATKException(String.format("Exception encountered during writing of VQSR model (%s). Output file at %s may be in a bad state.",
                     exception, file.getAbsolutePath()));
         }
     }
