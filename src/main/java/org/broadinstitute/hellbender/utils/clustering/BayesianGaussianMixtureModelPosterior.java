@@ -24,6 +24,7 @@ public final class BayesianGaussianMixtureModelPosterior {
 
     private static final Logger logger = LogManager.getLogger(BayesianGaussianMixtureModelPosterior.class);
 
+    private static final String WEIGHTS_SUBPATH = "/weights";                                // double array
     private static final String WEIGHT_CONCENTRATION_SUBPATH = "/weight_concentration";      // double array
     private static final String MEAN_PRECISION_SUBPATH = "/mean_precision";                  // double array
     private static final String MEANS_SUBPATH = "/means";                                    // double arrays in means/0, means/1, etc. subpaths for each component
@@ -136,6 +137,7 @@ public final class BayesianGaussianMixtureModelPosterior {
             IOUtils.canReadFile(hdf5File.getFile());
             Utils.validateArg(path.startsWith("/"), "The path should start with / and specify the path within the HDF5 file for the model.");
 
+            hdf5File.makeDoubleArray(path + WEIGHTS_SUBPATH, getWeights().toArray());
             hdf5File.makeDoubleArray(path + WEIGHT_CONCENTRATION_SUBPATH, weightConcentration.toArray());
             hdf5File.makeDoubleArray(path + MEAN_PRECISION_SUBPATH, meanPrecision.toArray());
             IntStream.range(0, nComponents).forEach(
