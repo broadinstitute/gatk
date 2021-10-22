@@ -451,11 +451,11 @@ public class GMMVariantTrain extends MultiVariantWalker {
         try (final HDF5File hdf5File = new HDF5File(file, HDF5File.OpenMode.CREATE)) { // TODO allow appending
             IOUtils.canReadFile(hdf5File.getFile());
 
-            hdf5File.makeStringArray("/annotation_names", dataManager.getAnnotationKeys().stream().toArray(String[]::new));
-            hdf5File.makeDoubleMatrix("/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new));
-            hdf5File.makeDoubleArray("/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
-            hdf5File.makeDoubleArray("/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
-            hdf5File.makeDoubleArray("/is_anti_training", dataManager.getData().stream().mapToDouble(vd -> vd.atAntiTrainingSite ? 1 : 0).toArray());
+            hdf5File.makeStringArray("/data/annotation_names", dataManager.getAnnotationKeys().stream().toArray(String[]::new));
+            hdf5File.makeDoubleMatrix("/data/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new));
+            hdf5File.makeDoubleArray("/data/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
+            hdf5File.makeDoubleArray("/data/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
+            hdf5File.makeDoubleArray("/data/is_anti_training", dataManager.getData().stream().mapToDouble(vd -> vd.atAntiTrainingSite ? 1 : 0).toArray());
 
             logger.info(String.format("Annotations written to %s.", file.getAbsolutePath()));
         } catch (final RuntimeException exception) {
