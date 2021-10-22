@@ -639,9 +639,6 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 dataManager.setData(reduceSum);
                 dataManager.normalizeData(inputModel == null, annotationOrder); // Each data point is now (x - mean) / standard deviation
 
-                final String annotationsOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();
-                writeAnnotationsHDF5(new File(annotationsOutput + ".annot.hdf5"));
-
                 final GaussianMixtureModel goodModel;
                 final GaussianMixtureModel badModel;
 
@@ -678,6 +675,9 @@ public class VariantRecalibrator extends MultiVariantWalker {
                                         "(via --minimum-bad-variants 5000, for example).");
                     }
                 }
+
+                final String annotationsOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();
+                writeAnnotationsHDF5(new File(annotationsOutput + ".annot.hdf5"));
 
                 dataManager.dropAggregateData(); // Don't need the aggregate data anymore so let's free up the memory
                 engine.evaluateData(dataManager.getData(), badModel, true);
