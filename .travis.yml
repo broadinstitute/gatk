@@ -74,7 +74,7 @@ before_install:
   fi;
 - if [[ $TRAVIS_SECURE_ENV_VARS == true ]]; then
     echo "Logging in to dockerhub";
-    docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
+    docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_TOKEN;
   fi
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
