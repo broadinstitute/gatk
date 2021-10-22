@@ -16,6 +16,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -23,11 +24,13 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModelPosterior;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VcfUtils;
@@ -376,6 +379,8 @@ public class GMMVariantTrain extends MultiVariantWalker {
         dataManager.setData(reduceSum);
         dataManager.normalizeData(true, annotationOrder); // Each data point is now (x - mean) / standard deviation
 
+        writeAnnotationsHDF5(new File(output + ".hdf5"));
+
         final List<VariantDatum> positiveTrainingData = dataManager.getTrainingData();
         final double[][] positiveTrainingDataArray = positiveTrainingData.stream().map(vd -> vd.annotations).toArray(double[][]::new);
 
@@ -439,6 +444,23 @@ public class GMMVariantTrain extends MultiVariantWalker {
         }
         if (tranchesStream != null) {
             tranchesStream.close();
+        }
+    }
+
+    public void writeAnnotationsHDF5(final File file) {
+        try (final HDF5File hdf5File = new HDF5File(file, HDF5File.OpenMode.CREATE)) { // TODO allow appending
+            IOUtils.canReadFile(hdf5File.getFile());
+
+            hdf5File.makeStringArray("/annotation_names", dataManager.getAnnotationKeys().stream().toArray(String[]::new));
+            hdf5File.makeDoubleMatrix("/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new));
+            hdf5File.makeDoubleArray("/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
+            hdf5File.makeDoubleArray("/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
+            hdf5File.makeDoubleArray("/is_anti_training", dataManager.getData().stream().mapToDouble(vd -> vd.atAntiTrainingSite ? 1 : 0).toArray());
+
+            logger.info(String.format("Annotations written to %s.", file.getAbsolutePath()));
+        } catch (final RuntimeException exception) {
+            throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
+                    exception, file.getAbsolutePath()));
         }
     }
 }

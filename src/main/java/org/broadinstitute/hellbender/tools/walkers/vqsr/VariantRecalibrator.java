@@ -10,6 +10,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -23,6 +24,8 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.MultiVariantWalker;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -635,6 +638,8 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 dataManager.setData(reduceSum);
                 dataManager.normalizeData(inputModel == null, annotationOrder); // Each data point is now (x - mean) / standard deviation
 
+                writeAnnotationsHDF5(new File(output + ".hdf5"));
+
                 final GaussianMixtureModel goodModel;
                 final GaussianMixtureModel badModel;
 
@@ -1165,5 +1170,22 @@ private GATKReportTable makeVectorTable(final String tableName,
         stream.println("}");
         stream.println("}");
         stream.println("}");
+    }
+
+    public void writeAnnotationsHDF5(final File file) {
+        try (final HDF5File hdf5File = new HDF5File(file, HDF5File.OpenMode.CREATE)) { // TODO allow appending
+            IOUtils.canReadFile(hdf5File.getFile());
+
+            hdf5File.makeStringArray("/annotation_names", dataManager.getAnnotationKeys().stream().toArray(String[]::new));
+            hdf5File.makeDoubleMatrix("/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new));
+            hdf5File.makeDoubleArray("/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
+            hdf5File.makeDoubleArray("/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
+            hdf5File.makeDoubleArray("/is_anti_training", dataManager.getData().stream().mapToDouble(vd -> vd.atAntiTrainingSite ? 1 : 0).toArray());
+
+            logger.info(String.format("Annotations written to %s.", file.getAbsolutePath()));
+        } catch (final RuntimeException exception) {
+            throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
+                    exception, file.getAbsolutePath()));
+        }
     }
 }
