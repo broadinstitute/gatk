@@ -379,7 +379,8 @@ public class GMMVariantTrain extends MultiVariantWalker {
         dataManager.setData(reduceSum);
         dataManager.normalizeData(true, annotationOrder); // Each data point is now (x - mean) / standard deviation
 
-        writeAnnotationsHDF5(new File(output + ".hdf5"));
+        final String annotationsOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();
+        writeAnnotationsHDF5(new File(annotationsOutput + ".annot.hdf5"));
 
         final List<VariantDatum> positiveTrainingData = dataManager.getTrainingData();
         final double[][] positiveTrainingDataArray = positiveTrainingData.stream().map(vd -> vd.annotations).toArray(double[][]::new);

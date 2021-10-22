@@ -639,7 +639,8 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 dataManager.setData(reduceSum);
                 dataManager.normalizeData(inputModel == null, annotationOrder); // Each data point is now (x - mean) / standard deviation
 
-                writeAnnotationsHDF5(new File(output + ".hdf5"));
+                final String annotationsOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();
+                writeAnnotationsHDF5(new File(annotationsOutput + ".annot.hdf5"));
 
                 final GaussianMixtureModel goodModel;
                 final GaussianMixtureModel badModel;
@@ -686,8 +687,9 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     saveModelReport(report, outputModel);
                 }
 
-                writeModelHDF5(new File(output + ".positive.hdf5"), goodModel);
-                writeModelHDF5(new File(output + ".negative.hdf5"), badModel);
+                final String modelOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();
+                writeModelHDF5(new File(modelOutput + ".positive.hdf5"), goodModel);
+                writeModelHDF5(new File(modelOutput + ".negative.hdf5"), badModel);
 
                 engine.calculateWorstPerformingAnnotation(dataManager.getData(), goodModel, badModel);
 
