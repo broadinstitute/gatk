@@ -268,7 +268,13 @@ public class ExtractCohortEngine {
         long startTime = System.currentTimeMillis();
 
         // NOTE: if OverlapDetector takes too long, try using RegionChecker from tws_sv_local_assembler
-        final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
+        // need to manually add the upstream padding to the set of intervals
+        List<SimpleInterval> overlapIntervals = new ArrayList<>();
+        overlapIntervals.addAll(traversalIntervals);
+        overlapIntervals.add(new SimpleInterval(SchemaUtils.decodeContig(minLocation),
+                                                SchemaUtils.decodePosition(minLocation) - IngestConstants.MAX_DELETION_SIZE + 1,
+                                                SchemaUtils.decodePosition(minLocation)));
+        final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(overlapIntervals);
 
         for (final GenericRecord queryRow : avroReader) {
             long location = (Long) queryRow.get(SchemaUtils.LOCATION_FIELD_NAME);
