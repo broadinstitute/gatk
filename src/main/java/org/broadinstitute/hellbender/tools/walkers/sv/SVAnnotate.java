@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import com.sun.tools.javah.Gen;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.annotation.Strand;
@@ -37,7 +38,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils.locatab
 @CommandLineProgramProperties(
         summary = "Adds gene overlap and variant consequence annotations to SV VCF from GATK-SV pipeline. " +
                 "Input files are an SV VCF, a GTF file containing primary or canonical transcripts, " +
-                "a BED file containing promoter regions, and a BED file containing noncoding elements. " +
+                "and a BED file containing noncoding elements. " +
                 "Output file is an annotated SV VCF.",
         oneLineSummary = "Adds gene overlap and variant consequence annotations to SV VCF from GATK-SV pipeline",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
@@ -61,11 +62,11 @@ public final class SVAnnotate extends VariantWalker {
     private File proteinCodingGTFFile;
 
     @Argument(
-            fullName="promoterBed",
-            doc="BED file (with header) containing promoter regions. Columns: chrom, start, end, name (gene to which the promoter corresponds), score (.), strand",
-            optional=true
+            fullName="promoterWindowLength",
+            doc="Promoter window (bp) upstream of TSS. Promoters will be inferred as the {window} bases upstream of the TSS. Default: 1000",
+            minValue=0, optional=true
     )
-    private File promoterBedFile;
+    private int promoterWindow = 1000;
 
     @Argument(
             fullName="nonCodingBed",
@@ -98,6 +99,15 @@ public final class SVAnnotate extends VariantWalker {
         CNV
     }
 
+    private static Integer getContigIDFromName(String contigName, Map<String, Integer> contigNameToID) {
+        try {
+            Integer contigID = contigNameToID.get(contigName);
+            return contigID;
+        } catch (NullPointerException e) {
+            throw new IllegalArgumentException("Contig " + contigName + " not in provided contig ID to name map");
+        }
+    }
+
     // mini class for SV intervals (type and segment) within CPX events
     private static final class SVSegment {
         private final StructuralVariantAnnotationType intervalSVType;
@@ -121,11 +131,6 @@ public final class SVAnnotate extends VariantWalker {
             buildIntervalTreesFromGTF(proteinCodingGTFSource);
         }
 
-        if (!isNull(promoterBedFile)) {
-            final FeatureDataSource<FullBEDFeature> promoterSource = new FeatureDataSource<>(promoterBedFile);
-            promoterIntervalTree = buildIntervalTreeFromBED(promoterSource);
-        }
-
         if (!isNull(nonCodingBedFile)) {
             final FeatureDataSource<FullBEDFeature> nonCodingSource = new FeatureDataSource<>(nonCodingBedFile);
             nonCodingIntervalTree = buildIntervalTreeFromBED(nonCodingSource);
@@ -135,16 +140,38 @@ public final class SVAnnotate extends VariantWalker {
         updateAndWriteHeader(header);
     }
 
+    private boolean isNegativeStrand(GencodeGtfTranscriptFeature transcript) {
+        return transcript.getGenomicStrand().equals(Strand.decode("-"));
+    }
+
+    private int getTranscriptionStartSite(GencodeGtfTranscriptFeature transcript) {
+        final boolean negativeStrand = isNegativeStrand(transcript);
+        final int tss = negativeStrand ? transcript.getEnd() : transcript.getStart();;  // GTF codec reassigns start to be earlier in contig
+        return tss;
+    }
+
     private void buildIntervalTreesFromGTF(FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource) {
+        // builds GTF, TSS, and promoter interval trees
         gtfIntervalTree = new SVIntervalTree<>();
         transcriptionStartSiteTree = new SVIntervalTree<>();
+        promoterIntervalTree = new SVIntervalTree<>();
         for (final GencodeGtfGeneFeature gene : proteinCodingGTFSource) {
             final List<GencodeGtfTranscriptFeature> transcriptsForGene = gene.getTranscripts();
             for (GencodeGtfTranscriptFeature transcript : transcriptsForGene) {
+                final int contigID;
+                try {
+                    contigID = getContigIDFromName(transcript.getContig(), contigNameToID);
+                } catch (IllegalArgumentException e) {
+                    continue; // if GTF input contains chromosome not in VCF sequence dictionary, just ignore it
+                }
                 gtfIntervalTree.put(locatableToClosedSVInterval(transcript, contigNameToID), transcript);
-                final int start = transcript.getGenomicStrand().equals(Strand.decode("-")) ? transcript.getEnd() : transcript.getStart();
-                transcriptionStartSiteTree.put(new ClosedSVInterval(contigNameToID.get(transcript.getContig()), start, start),
-                        transcript.getGeneName());
+                final String geneName = transcript.getGeneName();
+                final int tss = getTranscriptionStartSite(transcript);
+                transcriptionStartSiteTree.put(new ClosedSVInterval(contigID, tss, tss), geneName);
+                final boolean negativeStrand = isNegativeStrand(transcript);
+                final int promoterLeft = negativeStrand ? tss : Math.max(tss - promoterWindow, 0);
+                final int promoterRight = negativeStrand ? tss + promoterWindow : tss;
+                promoterIntervalTree.put(new ClosedSVInterval(contigID, promoterLeft, promoterRight), geneName);
             }
         }
     }
@@ -165,11 +192,11 @@ public final class SVAnnotate extends VariantWalker {
 
     private void addAnnotationInfoKeysToHeader(final VCFHeader header) {
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.LOF, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) on which the SV is predicted to have a loss-of-function effect."));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INT_EXON_DUP, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) on which the SV is predicted to result in intragenic exonic duplication."));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INT_EXON_DUP, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) on which the SV is predicted to result in intragenic exonic duplication without breaking any coding sequences."));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.COPY_GAIN, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) on which the SV is predicted to have a copy-gain effect."));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DUP_PARTIAL, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) which are partially overlapped by an SV's duplication."));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INTRONIC, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) where the SV was found to lie entirely within an intron."));
-        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.PARTIAL_EXON_DUP, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) where the SV was found to partially overlap a single exon."));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.PARTIAL_EXON_DUP, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) where the duplication SV has one breakpoint in the coding sequence."));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INV_SPAN, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) which are entirely spanned by an SV's inversion."));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.UTR, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) for which the SV is predicted to disrupt a UTR."));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.MSV_EXON_OVERLAP, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) on which the multiallelic SV would be predicted to have a LOF, INTRAGENIC_EXON_DUP, COPY_GAIN, DUP_PARTIAL, or PARTIAL_EXON_DUP annotation if the SV were biallelic."));
@@ -215,7 +242,7 @@ public final class SVAnnotate extends VariantWalker {
         variantConsequenceDict.get(key).add(value);
     }
 
-    private String annotateDeletionOrInsertion(final SimpleInterval variantInterval,
+    private String annotateInsertion(final SimpleInterval variantInterval,
                                                final GencodeGtfTranscriptFeature gtfTranscript) {
         final List<GencodeGtfFeature> gtfFeaturesForTranscript = gtfTranscript.getAllFeatures();
         String consequence = GATKSVVCFConstants.INTRONIC;
@@ -233,6 +260,17 @@ public final class SVAnnotate extends VariantWalker {
         return consequence;
     }
 
+    private String annotateDeletion(final SimpleInterval variantInterval,
+                                    final GencodeGtfTranscriptFeature gtfTranscript) {
+        // For DEL only, return LOF if the variant overlaps the transcription start site
+        int tss = getTranscriptionStartSite(gtfTranscript);
+        if (variantInterval.overlaps(new SimpleInterval(gtfTranscript.getContig(), tss, tss))) {
+            return GATKSVVCFConstants.LOF;
+        } else {
+            return annotateInsertion(variantInterval, gtfTranscript);
+        }
+    }
+
     private String annotateDuplication(final SimpleInterval variantInterval,
                                        final GencodeGtfTranscriptFeature gtfTranscript) {
         String consequence = GATKSVVCFConstants.INTRONIC;
@@ -244,31 +282,36 @@ public final class SVAnnotate extends VariantWalker {
         } else {
             // both breakpoints inside transcript
             final List<GencodeGtfFeature> gtfFeaturesForTranscript = gtfTranscript.getAllFeatures();
-            int numBreakpointsInExon = 0;  // TODO: CDS or exon?
+            int numBreakpointsInCDS = 0;  // TODO: CDS or exon?
             int numBreakpointsInUTR = 0;
-            int numExonsSpanned = 0;
+            int numCDSSpanned = 0;
+            int numUTRSpanned = 0;
             for (GencodeGtfFeature gtfFeature : gtfFeaturesForTranscript) {
                 if (!variantInterval.overlaps(gtfFeature)) {
                     continue;
                 }
                 final SimpleInterval featureInterval = new SimpleInterval(gtfFeature);
-                if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.EXON) {
+                if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.CDS) {
                     if (variantSpansFeature(variantInterval, featureInterval)) {
-                        numExonsSpanned++;  // TODO: CDS or exon? may differ from breakpoints
+                        numCDSSpanned++;  // TODO: CDS or exon? may differ from breakpoints
                     } else {
-                        numBreakpointsInExon = numBreakpointsInExon + countBreakendsInsideFeature(variantInterval, featureInterval);
+                        numBreakpointsInCDS = numBreakpointsInCDS + countBreakendsInsideFeature(variantInterval, featureInterval);
                     }
                 } else if (gtfFeature.getFeatureType() == GencodeGtfFeature.FeatureType.UTR) {
-                    numBreakpointsInUTR = numBreakpointsInUTR + countBreakendsInsideFeature(variantInterval, featureInterval);
+                    if (variantSpansFeature(variantInterval, featureInterval)) {
+                        numUTRSpanned++;  // TODO: CDS or exon? may differ from breakpoints
+                    } else {
+                        numBreakpointsInUTR = numBreakpointsInUTR + countBreakendsInsideFeature(variantInterval, featureInterval);
+                    }
                 }
             }
-            if (numBreakpointsInExon == 2) {
+            if (numBreakpointsInCDS == 2 || (numBreakpointsInCDS == 1 && numBreakpointsInUTR == 1)) {
                 consequence = GATKSVVCFConstants.LOF;
-            } else if (numExonsSpanned > 0) {
-                consequence = GATKSVVCFConstants.INT_EXON_DUP;  // formerly DUP_LOF - consider INTERNAL
-            } else if (numBreakpointsInExon == 1) {
-                consequence = GATKSVVCFConstants.PARTIAL_EXON_DUP;  // new category - could collapse with DUP_PARTIAL
-            } else if (numBreakpointsInUTR > 0) {
+            } else if (numBreakpointsInCDS == 1) {
+                consequence = GATKSVVCFConstants.PARTIAL_EXON_DUP;
+            } else if (numCDSSpanned > 0) {
+                consequence = GATKSVVCFConstants.INT_EXON_DUP;  // no breakpoints in CDS
+            } else if (numBreakpointsInUTR > 0 || numUTRSpanned > 0) {
                 consequence = GATKSVVCFConstants.UTR;
             }
         }
@@ -322,7 +365,7 @@ public final class SVAnnotate extends VariantWalker {
 
     private String annotateBreakend(final SimpleInterval variantInterval,
                                     final GencodeGtfTranscriptFeature gtfTranscript) {
-        String consequence = annotateDeletionOrInsertion(variantInterval, gtfTranscript);
+        String consequence = annotateInsertion(variantInterval, gtfTranscript);
         if (consequence.equals(GATKSVVCFConstants.LOF)) {
             consequence = GATKSVVCFConstants.BREAKEND_EXON;
         }
@@ -334,18 +377,30 @@ public final class SVAnnotate extends VariantWalker {
                                     final GencodeGtfTranscriptFeature transcript,
                                     final Map<String, Set<String>> variantConsequenceDict) {
         String consequence = null;
-        if (svType.equals(StructuralVariantAnnotationType.DEL) || svType.equals(StructuralVariantAnnotationType.INS)) {
-            consequence = annotateDeletionOrInsertion(variantInterval, transcript);
-        } else if (svType.equals(StructuralVariantAnnotationType.DUP)) {
-            consequence = annotateDuplication(variantInterval, transcript);
-        } else if (svType.equals(StructuralVariantAnnotationType.CNV)) {
-            consequence = annotateCopyNumberVariant(variantInterval,transcript);
-        } else if (svType.equals(StructuralVariantAnnotationType.INV)) {
-            consequence = annotateInversion(variantInterval, transcript);
-        } else if (svType.equals(StructuralVariantAnnotationType.CTX)) {
-            consequence = annotateTranslocation(variantInterval, transcript);
-        } else if (svType.equals(StructuralVariantAnnotationType.BND)) {
-            consequence = annotateBreakend(variantInterval, transcript);
+        switch (svType) {
+            case DEL:
+                consequence = annotateDeletion(variantInterval, transcript);
+                break;
+            case INS:
+                consequence = annotateInsertion(variantInterval, transcript);
+                break;
+            case DUP:
+                consequence = annotateDuplication(variantInterval, transcript);
+                break;
+            case CNV:
+                consequence = annotateCopyNumberVariant(variantInterval,transcript);
+                break;
+            case INV:
+                consequence = annotateInversion(variantInterval, transcript);
+                break;
+            case CTX:
+                consequence = annotateTranslocation(variantInterval, transcript);
+                break;
+            case BND:
+                consequence = annotateBreakend(variantInterval, transcript);
+                break;
+            default:
+                break;
         }
 
         if (consequence != null) {
@@ -492,7 +547,7 @@ public final class SVAnnotate extends VariantWalker {
 
         // then annotate promoter overlaps and non-coding feature overlaps
         boolean anyPromoterOverlaps = false;
-        if (!isNull(promoterBedFile)) {
+        if (!isNull(proteinCodingGTFFile)) {
             for (SVSegment svSegment : svSegments) {
                 anyPromoterOverlaps = anyPromoterOverlaps || annotatePromoterOverlaps(svSegment.interval, variantConsequenceDict);
             }

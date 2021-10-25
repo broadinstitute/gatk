@@ -110,12 +110,10 @@ public final class SVUtils {
         }
     }
 
-
     public static ClosedSVInterval locatableToClosedSVInterval(Locatable loc,
                                                                Map<String, Integer> contigNameToID) {
-        Integer contigID;
         try {
-            contigID = contigNameToID.get(loc.getContig());
+            Integer contigID = contigNameToID.get(loc.getContig());
             return new ClosedSVInterval(contigID, loc.getStart(), loc.getEnd());
         } catch (NullPointerException e) {
             throw new IllegalArgumentException("Contig " + loc.getContig() + " not in provided contig ID to name map");
