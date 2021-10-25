@@ -24,7 +24,7 @@ workflow GvsPrepareCallset {
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210923"])
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_flag_in_prepare"])
 
     call PrepareCallsetTask {
         input:
@@ -68,7 +68,7 @@ task PrepareCallsetTask {
         Boolean skip_pet_insert
 
         String? service_account_json_path
-        String docker = "us.gcr.io/broad-dsde-methods/variantstore:fix_vet_001"
+        String docker
     }
     # Note the coercion of optional query_labels using select_first([expr, default])
     Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
