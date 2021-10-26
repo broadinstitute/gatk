@@ -507,7 +507,7 @@ task CreateImportTsvs {
           input_vcf="${VCFS_ARRAY[$i]}"
           input_vcf_basename=$(basename $input_vcf)
           updated_input_vcf=$input_vcf
-          input_vcf_index="${VCF_INDEXES_ARRAY[$i]}.tbi"
+          input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
           sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
           if [ ~{has_service_account_file} = 'true' ]; then
