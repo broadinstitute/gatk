@@ -377,6 +377,10 @@ public class GMMVariantTrain extends MultiVariantWalker {
         consumeQueuedVariants(); // finish processing any queued variants
 
         dataManager.setData(reduceSum);
+
+        final String rawAnnotationsOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();
+        writeAnnotationsHDF5(new File(rawAnnotationsOutput + ".annot.raw.hdf5"));
+
         dataManager.normalizeData(true, annotationOrder); // Each data point is now (x - mean) / standard deviation
 
         final String annotationsOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();

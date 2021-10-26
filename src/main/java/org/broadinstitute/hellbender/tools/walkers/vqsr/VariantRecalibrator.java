@@ -637,6 +637,10 @@ public class VariantRecalibrator extends MultiVariantWalker {
         for (int i = 1; i <= max_attempts; i++) {
             try {
                 dataManager.setData(reduceSum);
+
+                final String rawAnnotationsOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();
+                writeAnnotationsHDF5(new File(rawAnnotationsOutput + ".annot.raw.hdf5"));
+
                 dataManager.normalizeData(inputModel == null, annotationOrder); // Each data point is now (x - mean) / standard deviation
 
                 final GaussianMixtureModel goodModel;
