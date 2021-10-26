@@ -470,11 +470,6 @@ task CreateImportTsvs {
     volatile: true
   }
 
-  parameter_meta {
-    input_vcfs: {
-      localization_optional: true
-    }
-  }
   command <<<
       set -e
 
