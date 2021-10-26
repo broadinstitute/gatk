@@ -84,7 +84,7 @@ before_install:
     if [[ ${TESTS_REQUIRE_GCLOUD} == true ]]; then
       scripts/travis/install_and_authenticate_to_gcloud.sh;
     fi;
-    openssl aes-256-cbc -K $encrypted_4823d58debd3_key -iv $encrypted_4823d58debd3_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
+    openssl aes-256-cbc -K $encrypted_8ebb1ef83f64_key -iv $encrypted_8ebb1ef83f64_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
     chmod 600 ~/.ssh/id_rsa;
     echo "Testing github authentication:";
     ssh -T git@github.com;
