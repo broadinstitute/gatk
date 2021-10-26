@@ -105,8 +105,8 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| filter\_set_name | the name of the filter set identifier created in step #2 |
-| fq_cohort\_extract\_table\_prefix | the fully qualified name of the `destination_cohort_table_prefix` from step #3, of the form `<project>.<dataset>.<destination_cohort_table_prefix>` |
+| filter\_set_name | the name of the filter set identifier created in step #3 |
+| fq_cohort\_extract\_table\_prefix | the fully qualified name of the `destination_cohort_table_prefix` from step #4, of the form `<project>.<dataset>.<destination_cohort_table_prefix>` |
 | output_file\_base\_name | Base name for generated VCFs |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
