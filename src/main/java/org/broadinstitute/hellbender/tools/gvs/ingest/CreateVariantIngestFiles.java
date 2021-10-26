@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import com.google.cloud.bigquery.storage.v1beta2.BatchCommitWriteStreamsRequest;
+import com.google.cloud.bigquery.storage.v1beta2.BatchCommitWriteStreamsResponse;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
@@ -38,9 +40,8 @@ import java.util.List;
 public final class CreateVariantIngestFiles extends VariantWalker {
     static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
 
-    private PetTsvCreator petTsvCreator;
-    private VetTsvCreator vetTsvCreator;
-    private SampleInfoTsvCreator sampleInfoTsvCreator;
+    private PetCreator petTsvCreator;
+    private VetCreator vetTsvCreator;
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
     private String sampleName;
@@ -187,11 +188,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
         String tableNumber = String.format("%03d", sampleTableNumber);
 
-//        parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
-//        final Path sampleDirectoryPath = IngestUtils.createSampleDirectory(parentDirectory, sampleDirectoryNumber);
-        sampleInfoTsvCreator = new SampleInfoTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir);
-        sampleInfoTsvCreator.createRow(sampleName, sampleId, userIntervals, gqStateToIgnore);
-
         // To set up the missing positions
         SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
         userIntervals = intervalArgumentCollection.getIntervals(seqDictionary);
@@ -199,10 +195,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
+        petTsvCreator = new PetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
 
         if (enableVet) {
-            vetTsvCreator = new VetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir);
+            vetTsvCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName);
         }
 
 
@@ -230,9 +226,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             return;
         }
 
+        try {
         // write to VET if NOT reference block and NOT a no call
-        if (!variant.isReferenceBlock() && !isNoCall(variant)) {
-            if (enableVet) vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
+            if (!variant.isReferenceBlock() && !isNoCall(variant)) {
+                if (enableVet) vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
+            }
+        } catch (IOException ioe) {
+            throw new GATKException("Error writing VET", ioe);
         }
 
         try {
@@ -243,6 +243,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     }
 
+
     @Override
     public Object onTraversalSuccess() {
         try {
@@ -250,6 +251,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         } catch (IOException ioe) {
             throw new GATKException("Error writing missing intervals", ioe);
         }
+        vetTsvCreator.completeCreation();
+        petTsvCreator.completeCreation();
         return 0;
     }
 
@@ -260,13 +263,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
         if (vetTsvCreator != null) {
             vetTsvCreator.closeTool();;
-        }
-        if (sampleInfoTsvCreator != null) {
-            try {
-                sampleInfoTsvCreator.closeTool();
-            } catch (final Exception e) {
-                throw new IllegalArgumentException("Couldn't close SampleInfo writer", e);
-            }
         }
     }
 
