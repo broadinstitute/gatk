@@ -366,7 +366,7 @@ dependencies {
     compile 'org.broadinstitute:http-nio:0.1.0-rc1'
 
     // Required for COSMIC Funcotator data source:
-    compile 'org.xerial:sqlite-jdbc:3.20.1'
+    compile 'org.xerial:sqlite-jdbc:3.36.0.3'
     
     // Required for SV Discovery machine learning
     compile group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
