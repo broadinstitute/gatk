@@ -25,7 +25,7 @@ env:
   #limit gradle jvm memory and disable daemon
   - GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false"
   #google cloud stuff
-  - export CLOUDSDK_CONFIG=${pwd}./config
+  - export CLOUDSDK_CONFIG=${PWD}/config
   - export CLOUDSDK_CORE_DISABLE_PROMPTS=1
   - export GCLOUD_HOME=$HOME/gcloud/google-cloud-sdk/bin
   - export CLOUDSDK_PYTHON_SITEPACKAGES=1
