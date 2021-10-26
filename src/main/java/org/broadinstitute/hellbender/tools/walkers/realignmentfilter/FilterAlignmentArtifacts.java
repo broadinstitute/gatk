@@ -136,7 +136,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
     public String bamOutputPath = null;
 
     @Advanced
-    @Argument(fullName = AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_LONG_NAME, doc = "Which Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
+    @Argument(fullName = AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_LONG_NAME, doc = "Smith-Waterman implementation to use, generally FASTEST_AVAILABLE is the right choice", optional = true)
     public SmithWatermanAligner.Implementation smithWatermanImplementation = SmithWatermanAligner.Implementation.FASTEST_AVAILABLE;
 
 
