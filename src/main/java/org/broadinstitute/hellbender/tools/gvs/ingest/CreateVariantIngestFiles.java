@@ -107,7 +107,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Argument(fullName = "output-type",
             shortName = "ot",
-            doc = "[Experimental] Output file format: TSV, ORC or PARQUET [default=TSV].",
+            doc = "[Experimental] Output file format: TSV, ORC, PARQUET or BQ [default=TSV].",
             optional = true)
     public CommonCode.OutputType outputType = CommonCode.OutputType.TSV;
 
@@ -122,6 +122,21 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             doc = "directory for output tsv files",
             optional = true)
     private File outputDir = new File(".");
+
+    @Argument(
+            fullName = "project-id",
+            doc = "ID of the Google Cloud project where the dataset for pet and vet tables exist",
+            optional = true
+    )
+    protected String projectID = null;
+
+    @Argument(
+            fullName = "dataset-name",
+            doc = "Name of the dataset to update pet and vet tables",
+            optional = true
+    )
+    protected String datasetName = null;
+
 
     // getGenotypes() returns list of lists for all samples at variant
     // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
@@ -170,11 +185,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // Mod the sample directories
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
-        String tableNumberPrefix = String.format("%03d_", sampleTableNumber);
+        String tableNumber = String.format("%03d", sampleTableNumber);
 
 //        parentDirectory = parentOutputDirectory.toPath(); // TODO do we need this? More efficient way to do this?
 //        final Path sampleDirectoryPath = IngestUtils.createSampleDirectory(parentDirectory, sampleDirectoryNumber);
-        sampleInfoTsvCreator = new SampleInfoTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, outputDir);
+        sampleInfoTsvCreator = new SampleInfoTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir);
         sampleInfoTsvCreator.createRow(sampleName, sampleId, userIntervals, gqStateToIgnore);
 
         // To set up the missing positions
@@ -184,10 +199,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges);
+        petTsvCreator = new PetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
 
         if (enableVet) {
-            vetTsvCreator = new VetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, outputDir);
+            vetTsvCreator = new VetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir);
         }
 
 

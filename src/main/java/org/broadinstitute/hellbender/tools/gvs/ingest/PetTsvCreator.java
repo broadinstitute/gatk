@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import com.google.cloud.bigquery.storage.v1beta2.BigQueryWriteClient;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -31,11 +32,13 @@ public final class PetTsvCreator {
     private PetOrcWriter petOrcWriter = null;
     private PetAvroWriter petAvroWriter = null;
     private PetParquetWriter petParquetWriter = null;
+    private PetJsonWriter petBQJsonWriter = null;
 
     private RefRangesWriter refRangesWriter = null;
 
     private boolean writePetData;
     private boolean writeReferenceRanges;
+    private boolean useBQWriteApi = false;
     private final String sampleId;
     private SimpleInterval previousInterval;
     private final SAMSequenceDictionary seqDictionary;
@@ -43,9 +46,10 @@ public final class PetTsvCreator {
     private GenomeLocSortedSet coverageLocSortedSet;
     private final static String PET_FILETYPE_PREFIX = "pet_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
+    private BigQueryWriteClient bqWriteClient;
 
 
-    public PetTsvCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges) {
+    public PetTsvCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
         this.outputType = outputType;
@@ -57,6 +61,12 @@ public final class PetTsvCreator {
         try {
             final File petOutputFile = new File(outputDirectory, PET_FILETYPE_PREFIX + tableNumberPrefix + sampleIdentifierForOutputFileName + "." + outputType.toString().toLowerCase());
             switch (outputType) {
+                case JSON:
+                    useBQWriteApi = true;
+                    if (projectId == null || datasetName == null) {
+                        throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
+                    }
+                    break;
                 case TSV:
                     List<String> petHeader = PetTsvCreator.getHeaders();
                     petTsvWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
@@ -87,8 +97,15 @@ public final class PetTsvCreator {
                 }
             }
 
+            if (useBQWriteApi) {
+                bqWriteClient = BigQueryWriteClient.create();
+                petBQJsonWriter = new PetJsonWriter(bqWriteClient, projectId, datasetName,PET_FILETYPE_PREFIX + tableNumberPrefix);
+            }
+
         } catch (final IOException e) {
             throw new UserException("Could not create pet outputs", e);
+        } catch (final Exception ex) {
+            throw new UserException("Could not create pet outputs", ex);
         }
 
         this.gqStatesToIgnore.add(gqStateToIgnore);
@@ -182,6 +199,9 @@ public final class PetTsvCreator {
                         String state = TSVLineToCreatePet.get(2);
 
                         switch (outputType) {
+                            case JSON:
+                                petBQJsonWriter.addRow(location, sampleId, state);
+                                break;
                             case TSV:
                                 petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
                                 break;
