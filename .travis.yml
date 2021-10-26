@@ -10,6 +10,8 @@ env:
   matrix:
   - SCALA_VERSION=2.11 TEST_TYPE=cloud UPLOAD=true TESTS_REQUIRE_GCLOUD=true
   global:
+  #this is for google cloud sdk
+  - CLOUDSDK_CONFIG=${pwd}./config
   #gradle needs this
   - TERM=dumb
   #limit gradle jvm memory and disable daemon
