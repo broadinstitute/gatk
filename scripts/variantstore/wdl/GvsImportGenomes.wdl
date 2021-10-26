@@ -514,6 +514,10 @@ task CreateImportTsvs {
               gsutil cp $input_vcf .
               gsutil cp $input_vcf_index .
               updated_input_vcf=$input_vcf_basename
+          else
+              mv $input_vcf .
+              mv $input_vcf_index .
+              updated_input_vcf=$input_vcf_basename
           fi
 
           # check whether these files have already been generated
