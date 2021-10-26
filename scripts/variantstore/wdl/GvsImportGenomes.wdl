@@ -441,6 +441,7 @@ task CreateFOFNs {
 task CreateImportTsvs {
   input {
     Array[File] input_vcfs
+    Array[File] input_vcf_indexes	
     Array[String] sample_names
     File interval_list
     String output_directory
@@ -498,6 +499,7 @@ task CreateImportTsvs {
 
       # translate WDL arrays into BASH arrays
       VCFS_ARRAY=(~{sep=" " input_vcfs})
+      VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
       SAMPLE_NAMES_ARRAY=(~{sep=" " sample_names})
 
       # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
@@ -505,7 +507,7 @@ task CreateImportTsvs {
           input_vcf="${VCFS_ARRAY[$i]}"
           input_vcf_basename=$(basename $input_vcf)
           updated_input_vcf=$input_vcf
-          input_vcf_index="${VCFS_ARRAY[$i]}.tbi"
+          input_vcf_index="${VCF_INDEXES_ARRAY[$i]}.tbi"
           sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
           if [ ~{has_service_account_file} = 'true' ]; then
