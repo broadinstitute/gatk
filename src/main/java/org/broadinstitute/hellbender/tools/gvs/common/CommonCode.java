@@ -149,7 +149,7 @@ public class CommonCode {
         AVRO,
         PARQUET,
         TSV2,
-        JSON,
+        BQ,
         NONE
     }
 }
