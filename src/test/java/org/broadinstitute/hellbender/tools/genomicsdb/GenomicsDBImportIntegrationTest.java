@@ -1159,7 +1159,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         for(int i=0; i<LOCAL_GVCFS.size(); i+=stepSize) {
             int upper = Math.min(i+stepSize, LOCAL_GVCFS.size());
             writeToGenomicsDB(LOCAL_GVCFS.subList(i, upper), intervals, workspace, batchSize, false, 0, 1, false, false, i!=0, 
-                              chrsToPartitions, useNativeReaderInitial && useNativeReader);
+                              chrsToPartitions, (i == 0 && useNativeReaderInitial) || (i > 0 && useNativeReader));
             checkJSONFilesAreWritten(workspace);
         }
         for(SimpleInterval currInterval : intervals) {
@@ -1188,7 +1188,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     @Test
     public void testGenomicsDBBasicIncrementalAllNativeReader() throws IOException {
         final String workspace = createTempDir("genomicsdb-incremental-tests").getAbsolutePath() + "/workspace";
-        testIncrementalImport(2, INTERVAL, workspace, 0, true, true, COMBINED_WITH_GENOTYPES, 0, false, true);
+        testIncrementalImport(2, INTERVAL, workspace, 0, true, true, COMBINED_WITH_GENOTYPES, 0, true, true);
         createAndCheckIntervalListFromExistingWorkspace(workspace, INTERVAL_PICARD_STYLE_EXPECTED);
     }
 
