@@ -30,18 +30,6 @@ env:
   # For cromwell jar download
   - export CROMWELL_JAR=$HOME/cromwell-51.jar
   - export WOMTOOL_JAR=$HOME/womtool-51.jar
-matrix:
-  fast_finish: true
-  include:
-     - jdk: openjdk11
-       language: java
-       env: SCALA_VERSION=2.12 TEST_TYPE=integration TEST_VERBOSITY=minimal
-     - jdk: openjdk11
-       language: java
-       env: SCALA_VERSION=2.12 TEST_TYPE=unit TEST_VERBOSITY=minimal
-     - jdk: openjdk11
-       language: java
-       env: SCALA_VERSION=2.12 TEST_TYPE=cloud TESTS_REQUIRE_GCLOUD=true TEST_VERBOSITY=minimal
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
@@ -53,24 +41,13 @@ cache:
     - $HOME/gcloud/
     - $HOME/site-library
 before_install:
-  #skip push builds if there's an associated PR because we don't look at them anway
-- if [[ ${TRAVIS_EVENT_TYPE} == push ]];
-  then
-    PULL_REQUESTS=$( scripts/travis/check_for_pull_request );
-    if [[ $( grep -c "commits" <<< ${PULL_REQUESTS} ) -gt 0 ]];
-    then
-      travis_terminate 0;
-    fi;
-  fi;
-- if [[ $TRAVIS_SECURE_ENV_VARS == true ]]; then
-    echo "Logging in to dockerhub";
-    docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
-  fi
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
     echo "Test report will be written to  https://storage.googleapis.com$HELLBENDER_TEST_LOGS$REPORT_PATH/tests/test/index.html";
   fi;
 - if [[ ${TRAVIS_SECURE_ENV_VARS} == true ]]; then
+    pwd;
+    ls -lh . ;
     if [[ ${TESTS_REQUIRE_GCLOUD} == true ]]; then
       scripts/travis/install_and_authenticate_to_gcloud.sh;
     fi;
