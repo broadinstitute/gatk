@@ -193,7 +193,8 @@ task ExtractAnAcAfFromVCF {
     String normalized_vcf_compressed = "normalized.vcf.gz"
     String normalized_vcf_indexed = "normalized.vcf.gz.tbi"
 
-    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af & sc
+    # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
+    # while extracting the an/ac/af & sc by subpopulation into a tsv
     command <<<
         set -e
 
@@ -210,12 +211,12 @@ task ExtractAnAcAfFromVCF {
         gsutil cp ~{input_vcf_index} ~{local_input_vcf_index}
         gsutil cp ~{ref} Homo_sapiens_assembly38.fasta
 
-        # TODO Compare the ancestry list with the sample list and throw an error (but dont fail the job) if there are samples that are in one, but not the other. Two different errors.
-        #awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
-        #bcftools query --list-samples ~{local_input_vcf} | sort -u > collected_samples.txt
-
-        #wc -l collected_subpopulations.txt
-        #wc -l collected_samples.txt
+        ## compare the ancestry sample list with the vcf sample list
+        # TODO throw an error (but dont fail the job) if there are samples that are in one, but not the other. Throw two different errors.
+        # Currently commented out to save on io with the AoU beta VAT creation
+        # awk '{print $1}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulation_samples.txt
+        # bcftools query --list-samples ~{local_input_vcf} | sort -u > collected_samples.txt
+        # diff collected_subpopulation_samples.txt collected_samples.txt
 
         # expected_subpopulations = [
         # "afr",
@@ -227,11 +228,8 @@ task ExtractAnAcAfFromVCF {
         # "sas"
         #]
 
-        ## track the dropped variants with +500 alt alleles or N's in the reference
+        ## track the dropped variants with +500 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
         bcftools view -i 'N_ALT>500 || REF~"N"' ~{local_input_vcf} | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
-
-        ## Since Nirvana cant handle N as a base, drop them for now and keep track of the lines dropped
-        ## bcftools view -e 'REF~"N"' ~{local_input_vcf}
 
         ## filter out sites with too many alt alleles
         bcftools view -e 'N_ALT>500 || REF~"N"' --no-update  ~{local_input_vcf} | \
@@ -244,9 +242,7 @@ task ExtractAnAcAfFromVCF {
         ## ensure that we respect the FT tag
         bcftools filter -i "FORMAT/FT='PASS,.'" --set-GTs . > ~{normalized_vcf}
 
-        du -h ~{normalized_vcf}
-
-        ## clean up
+        ## clean up unneeded file
         rm ~{local_input_vcf}
 
         ## make a file of just the first 5 columns of the tsv
@@ -258,11 +254,9 @@ task ExtractAnAcAfFromVCF {
         grep -v -wFf duplicates.tsv ~{normalized_vcf} > deduplicated.vcf
         rm ~{normalized_vcf} ## clean up
 
-        echo "the following duplicate variants will be dropped due to a bug"
+        ## add duplicates to the file tracking dropped variants
         cat duplicates.tsv >> track_dropped.tsv
-        cat track_dropped.tsv
-
-        rm duplicates.tsv ## clean up
+        rm duplicates.tsv ## clean up unneeded file
 
         ## calculate annotations for all subpopulations
         bcftools plugin fill-tags  -- deduplicated.vcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom,AC_Hemi | bcftools query -f \
@@ -274,7 +268,7 @@ task ExtractAnAcAfFromVCF {
 
         ## compress the vcf and index it, make it sites-only
         bcftools view --no-update --drop-genotypes deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
-        ## bcftools annotate -x INFO Is this overkill?
+        ## if we can spare the IO and want to pass a smaller file we can also drop the info field w bcftools annotate -x INFO
         bcftools index --tbi  ~{normalized_vcf_compressed}
 
     >>>
