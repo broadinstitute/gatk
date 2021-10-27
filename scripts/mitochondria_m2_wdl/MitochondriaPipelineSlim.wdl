@@ -36,6 +36,7 @@ workflow MitochondriaPipelineSlim {
     Float? f_score_beta
     Float? verifyBamID
     Boolean compress_output_vcf = false
+    Boolean output_coverage_at_every_base = false
 
     #Optional runtime arguments
     Int? preemptible_tries
@@ -180,6 +181,20 @@ workflow MitochondriaPipelineSlim {
       preemptible_tries = preemptible_tries
   }
 
+  # This is a temporary task to handle "joint calling" until Mutect2 can produce a GVCF.
+  # This proivdes coverage at each base so low coverage sites can be considered ./. rather than 0/0.
+  if(output_coverage_at_every_base) {
+   call CoverageAtEveryBase {
+    input:
+      input_bam = SubsetBamToChrM.output_bam,
+      input_bai = SubsetBamToChrM.output_bai,
+      ref_fasta = ref_fasta,
+      ref_fasta_index = ref_fasta_index,
+      ref_dict = ref_dict,
+      mt_interval_list = mt_interval_list
+   }
+  }
+
   output {
     File out_vcf = FilterContamination.filtered_vcf
     File out_vcf_index = FilterContamination.filtered_vcf_index
@@ -190,6 +205,50 @@ workflow MitochondriaPipelineSlim {
     String major_haplogroup = GetContamination.major_hg
     Float contamination = FilterContamination.contamination
     Int mean_coverage = CollectWgsMetrics.mean_coverage
+    File? base_level_coverage_metrics = CoverageAtEveryBase.table
   }
 }
+
+task CoverageAtEveryBase {
+  input {
+    File input_bam
+    File input_bai
+    File ref_fasta
+    File ref_fasta_index
+    File ref_dict
+    File mt_interval_list
+
+    Int? preemptible_tries
+  }
+  Int disk_size = ceil(size(input_bam, "GB") + size(ref_fasta, "GB") * 2) + 20
+
+  meta {
+    description: "Remove this hack once there's a GVCF solution."
+  }
+
+  command <<<
+    set -e
+
+    java -jar /usr/gitc/picard.jar CollectHsMetrics \
+      I=~{input_bam} \
+      R=~{ref_fasta} \
+      PER_BASE_COVERAGE=per_base_coverage.tsv \
+      O=mtdna.metrics \
+      TI=~{mt_interval_list} \
+      BI=~{mt_interval_list} \
+      COVMAX=20000 \
+      SAMPLE_SIZE=1
+
+  >>>
+  runtime {
+    disks: "local-disk " + disk_size + " HDD"
+    memory: "1200 MB"
+    docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
+    preemptible: select_first([preemptible_tries, 5])
+  }
+  output {
+    File table = "per_base_coverage.tsv"
+  }
+}
+
 
