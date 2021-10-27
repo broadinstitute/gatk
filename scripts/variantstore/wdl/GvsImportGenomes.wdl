@@ -446,8 +446,8 @@ task CreateFOFNs {
 
 task CreateImportTsvs {
   input {
-    Array[String] input_vcfs
-    Array[String] input_vcf_indexes
+    Array[File] input_vcfs
+    Array[File] input_vcf_indexes
     Array[String] sample_names
     File interval_list
     String output_directory
@@ -475,6 +475,12 @@ task CreateImportTsvs {
   meta {
     description: "Creates a tsv file for import into BigQuery"
     volatile: true
+  }
+
+  parameter_meta {
+    input_vcfs: {
+      localization_optional: true
+    }
   }
 
   command <<<
