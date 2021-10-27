@@ -48,7 +48,8 @@ public class PendingBQWriter {
     public void addJsonRow(JSONObject row) throws InterruptedException, ExecutionException {
         JSONArray jsonArr = new JSONArray();
         jsonArr.put(row);
-        ApiFuture<AppendRowsResponse> future = writer.append(jsonArr, row.getLong(VetFieldEnum.location.toString()));
+        // TODO figure out what to use as the offset
+        ApiFuture<AppendRowsResponse> future = writer.append(jsonArr);
         AppendRowsResponse response = future.get();
     }
 
