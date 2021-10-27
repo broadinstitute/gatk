@@ -104,7 +104,7 @@ public class GenomicsDBImportUnitTest extends GATKBaseTest {
         catch(URISyntaxException e) {
             throw new RuntimeException("Malformed URI "+e.toString());
         }
-        final Map<String, URI> actual = GenomicsDBImport.loadSampleNameMapFileInSortedOrder(sampleFile.toPath());
+        final Map<String, URI> actual = GenomicsDBImport.loadSampleNameMapFileInSortedOrder(sampleFile.toPath(), false);
         Assert.assertEquals(actual, expected);
         Assert.assertEquals(actual.keySet().iterator().next(), "Sample1");
     }

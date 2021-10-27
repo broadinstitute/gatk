@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.FileExtensions;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.FeatureReader;
@@ -202,6 +203,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String VCF_INITIALIZER_THREADS_LONG_NAME = "reader-threads";
     public static final String MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL = "max-num-intervals-to-import-in-parallel";
     public static final String MERGE_CONTIGS_INTO_NUM_PARTITIONS = "merge-contigs-into-num-partitions";
+    public static final String BYPASS_FEATURE_READER = "bypass-feature-reader";
     public static final int INTERVAL_LIST_SIZE_WARNING_THRESHOLD = 100;
     public static final int ARRAY_COLUMN_BOUNDS_START = 0;
     public static final int ARRAY_COLUMN_BOUNDS_END = 1;
@@ -347,6 +349,13 @@ public final class GenomicsDBImport extends GATKTool {
                   "large number of file descriptors open is an issue",
             optional = true)
     private boolean sharedPosixFSOptimizations = false;
+
+    @Argument(fullName = BYPASS_FEATURE_READER,
+            doc = "Use htslib to read input VCFs instead of GATK's FeatureReader. This will reduce memory usage and potentially speed up " +
+                  "the import. Lower memory requirements may also enable parallelism through " + MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL +
+                  ". To enable this option, VCFs must be normalized, block-compressed and indexed.",
+            optional = true)
+    private boolean bypassFeatureReader = false;
 
     @Argument(fullName = USE_GCS_HDFS_CONNECTOR,
             doc = "Use the GCS HDFS Connector instead of the native GCS SDK client with gs:// URLs.",
@@ -502,6 +511,15 @@ public final class GenomicsDBImport extends GATKTool {
         }
     }
 
+    private static void assertVariantFileIsCompressedAndIndexed(final Path path) {
+        if (!path.toString().toLowerCase().endsWith(FileExtensions.COMPRESSED_VCF)) {
+            throw new UserException("Input variant files must be block compressed vcfs when using " +
+                BYPASS_FEATURE_READER + ", but " + path.toString() + " does not appear to be");
+        }
+        Path indexPath = path.resolveSibling(path.getFileName() + FileExtensions.COMPRESSED_VCF_INDEX);
+        IOUtils.assertFileIsReadable(indexPath);
+    }
+
     /**
      * sets the values of mergedHeaderLines, mergedHeaderSequenceDictionary, and sampleNameToVcfPath
      */
@@ -512,6 +530,9 @@ public final class GenomicsDBImport extends GATKTool {
             final List<VCFHeader> headers = new ArrayList<>(variantPaths.size());
             for (final String variantPathString : variantPaths) {
                 final Path variantPath = IOUtils.getPath(variantPathString);
+                if (bypassFeatureReader) {
+                    assertVariantFileIsCompressedAndIndexed(variantPath);
+                }
                 final  VCFHeader header = getHeaderFromPath(variantPath);
                 Utils.validate(header != null, "Null header was found in " + variantPath + ".");
                 assertGVCFHasOnlyOneSample(variantPathString, header);
@@ -539,7 +560,7 @@ public final class GenomicsDBImport extends GATKTool {
             //it's VERY IMPORTANT that this map is Sorted according to String's natural ordering, if it is not
             //the resulting database will have incorrect sample names
             //see https://github.com/broadinstitute/gatk/issues/3682 for more information
-            sampleNameToVcfPath = loadSampleNameMapFileInSortedOrder(IOUtils.getPath(sampleNameMapFile));
+            sampleNameToVcfPath = loadSampleNameMapFileInSortedOrder(IOUtils.getPath(sampleNameMapFile), bypassFeatureReader);
             final Path firstHeaderPath = IOUtils.getPath(sampleNameToVcfPath.entrySet().iterator().next().getValue().toString());
             final VCFHeader header = getHeaderFromPath(firstHeaderPath);
             //getMetaDataInInputOrder() returns an ImmutableSet - LinkedHashSet is mutable and preserves ordering
@@ -607,6 +628,11 @@ public final class GenomicsDBImport extends GATKTool {
      */
     @VisibleForTesting
     static LinkedHashMap<String, URI> loadSampleNameMapFile(final Path sampleToFileMapPath) {
+            return loadSampleNameMapFile(sampleToFileMapPath, false);
+    }
+
+    private static LinkedHashMap<String, URI> loadSampleNameMapFile(final Path sampleToFileMapPath,
+            final boolean checkVcfIsCompressedAndIndexed) {
         try {
             final List<String> lines = Files.readAllLines(sampleToFileMapPath);
             if (lines.isEmpty()) {
@@ -631,6 +657,9 @@ public final class GenomicsDBImport extends GATKTool {
                     if (oldPath != null){
                         throw new UserException.BadInput("Found two mappings for the same sample: " + sample + "\n" + path + "\n" + oldPath );
                     }
+                    if (checkVcfIsCompressedAndIndexed) {
+                        assertVariantFileIsCompressedAndIndexed(IOUtils.getPath(path));
+                    }
                 }
                 catch(final URISyntaxException e) {
                     throw new UserException("Malformed URI "+e.toString());
@@ -652,10 +681,12 @@ public final class GenomicsDBImport extends GATKTool {
      *
      * The sample names must be unique.
      * @param sampleToFileMapPath path to the mapping file
+     * @param checkVcfIsCompressedAndIndexed boolean indicating whether to check vcf is compressed and indexed
      * @return map of sample name to corresponding file, sorted by sample name
      */
-    public static SortedMap<String, URI> loadSampleNameMapFileInSortedOrder(final Path sampleToFileMapPath){
-        return new TreeMap<>(loadSampleNameMapFile(sampleToFileMapPath));
+    public static SortedMap<String, URI> loadSampleNameMapFileInSortedOrder(final Path sampleToFileMapPath,
+        final boolean checkVcfIsCompressedAndIndexed){
+        return new TreeMap<>(loadSampleNameMapFile(sampleToFileMapPath, checkVcfIsCompressedAndIndexed));
     }
 
     /**
@@ -831,7 +862,8 @@ public final class GenomicsDBImport extends GATKTool {
         importConfigurationBuilder.setConsolidateTiledbArrayAfterLoad(doConsolidation);
         importConfigurationBuilder.setEnableSharedPosixfsOptimizations(sharedPosixFSOptimizations);
         ImportConfig importConfig = new ImportConfig(importConfigurationBuilder.build(), validateSampleToReaderMap, true,
-                batchSize, mergedHeaderLines, sampleNameToVcfPath, this::createSampleToReaderMap, doIncrementalImport);
+                batchSize, mergedHeaderLines, sampleNameToVcfPath, bypassFeatureReader ? null : this::createSampleToReaderMap,
+                doIncrementalImport);
         importConfig.setOutputCallsetmapJsonFile(callsetMapJSONFile);
         importConfig.setOutputVidmapJsonFile(vidMapJSONFile);
         importConfig.setOutputVcfHeaderFile(vcfHeaderFile);
