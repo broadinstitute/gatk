@@ -151,12 +151,11 @@ public class SomaticGenotypingEngine {
 
             final List<Allele> allAllelesToEmit = ListUtils.union(Arrays.asList(mergedVC.getReference()), tumorAltAlleles);
 
-
-            final Map<String, Object> negativeLogPopulationAFAnnotation = getNegativeLogPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), tumorAltAlleles, MTAC.getDefaultAlleleFrequency());
+            final Map<Allele, Double> populationAFAnnotation = getPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), mergedVC, MTAC.getDefaultAlleleFrequency());
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allAllelesToEmit)
-                    .attributes(negativeLogPopulationAFAnnotation)
+                    .attribute(GATKVCFConstants.POPULATION_AF_KEY, tumorAltAlleles.stream().mapToDouble(a -> - Math.log10(populationAFAnnotation.get(a))).toArray())
                     .attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, tumorAltAlleles.stream().mapToDouble(a -> MathUtils.logToLog10(tumorLogOdds.getAlt(a))).toArray());
 
             if (hasNormal) {
@@ -329,31 +328,22 @@ public class SomaticGenotypingEngine {
         return hasNormal ? Optional.of(supplier.get()) : Optional.empty();
     }
 
-    private static Map<String, Object> getNegativeLogPopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
-                                                                            final List<Allele> altAlleles,
-                                                                            final double afOfAllelesNotInGermlineResource) {
-        final Optional<VariantContext> germlineVC = germlineResourceVariants.isEmpty() ? Optional.empty()
-                : Optional.of(germlineResourceVariants.get(0));  // assume only one VC per site
-        final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(altAlleles, germlineVC, afOfAllelesNotInGermlineResource);
-
-        return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_KEY, MathUtils.applyToArray(populationAlleleFrequencies, x -> - Math.log10(x)));
-    }
-
     @VisibleForTesting
-    static double[] getGermlineAltAlleleFrequencies(final List<Allele> altAlleles, final Optional<VariantContext> germlineVC, final double afOfAllelesNotInGermlineResource) {
-        if (germlineVC.isPresent())  {
+    static Map<Allele, Double> getPopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
+                                                         final VariantContext mergedVC,
+                                                         final double afOfAllelesNotInGermlineResource) {
+        final Optional<VariantContext> germlineVC = germlineResourceVariants.isEmpty() ? Optional.empty()
+            : Optional.of(germlineResourceVariants.get(0));  // assume only one VC per site
+        if (germlineVC.isPresent()) {
             final List<Double> germlineAltAFs = Mutect2Engine.getAttributeAsDoubleList(germlineVC.get(), VCFConstants.ALLELE_FREQUENCY_KEY, afOfAllelesNotInGermlineResource);
-            return altAlleles.stream()
-                    .mapToDouble(allele -> {
-                        final VariantContext vc = germlineVC.get();
-                        final OptionalInt germlineAltIndex = IntStream.range(0, vc.getNAlleles() - 1)
-                                .filter(n -> vc.getAlternateAllele(n).basesMatch(allele))
-                                .findAny();
-                        return germlineAltIndex.isPresent() ? germlineAltAFs.get(germlineAltIndex.getAsInt())
-                                : afOfAllelesNotInGermlineResource;
-                    }).toArray();
-        }
+            final int[] matchedAlleleIndex = GATKVariantContextUtils.matchAllelesOnly(mergedVC, germlineVC.get());
+            return IntStream.range(0, matchedAlleleIndex.length).boxed()
+                .collect(Collectors.toMap(n -> mergedVC.getAlternateAllele(n),
+                                          n -> matchedAlleleIndex[n] >= 0 ?
+                                          germlineAltAFs.get(matchedAlleleIndex[n]) : afOfAllelesNotInGermlineResource));
+         }
 
-        return Doubles.toArray(Collections.nCopies(altAlleles.size(), afOfAllelesNotInGermlineResource));
+         return mergedVC.getAlternateAlleles().stream()
+             .collect(Collectors.toMap(a -> a, a -> afOfAllelesNotInGermlineResource));
     }
 }

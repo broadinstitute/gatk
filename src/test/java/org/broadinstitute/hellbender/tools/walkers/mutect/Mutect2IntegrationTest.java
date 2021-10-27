@@ -500,7 +500,11 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<VariantContext> missedObviousVariantsAtTenPercent = filteredVariants.get(10).stream()
                 .filter(vc -> !vc.getFilters().contains(GATKVCFConstants.CONTAMINATION_FILTER_NAME))
                 .filter(VariantContext::isBiallelic)
-                .filter(vc -> {
+	        .filter(vc -> {
+                    final double[] population_af = VariantContextGetters.getAttributeAsDoubleArray(vc,
+                    GATKVCFConstants.POPULATION_AF_KEY, () -> new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}, Double.POSITIVE_INFINITY);
+                    return population_af[0] < 6.0;
+                }).filter(vc -> {
                     final int[] AD = vc.getGenotype(0).getAD();
                     return AD[1] < 0.15 * AD[0];
                 }).collect(Collectors.toList());
