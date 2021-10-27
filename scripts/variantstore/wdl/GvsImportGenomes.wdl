@@ -446,8 +446,8 @@ task CreateFOFNs {
 
 task CreateImportTsvs {
   input {
-    Array[File] input_vcfs
-    Array[File] input_vcf_indexes	
+    Array[String] input_vcfs
+    Array[String] input_vcf_indexes
     Array[String] sample_names
     File interval_list
     String output_directory
@@ -516,16 +516,10 @@ task CreateImportTsvs {
           input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
           sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
-          if [ ~{has_service_account_file} = 'true' ]; then
-              gsutil cp $input_vcf .
-              gsutil cp $input_vcf_index .
-              updated_input_vcf=$input_vcf_basename
-          else
-              # move the vcf and index next to each other in case they came from different locations
-              mv $input_vcf .
-              mv $input_vcf_index .
-              updated_input_vcf=$input_vcf_basename
-          fi
+          # we always do our own localization
+          gsutil cp $input_vcf .
+          gsutil cp $input_vcf_index .
+          updated_input_vcf=$input_vcf_basename
 
           # check whether these files have already been generated
           DO_TSV_GENERATION='true'
