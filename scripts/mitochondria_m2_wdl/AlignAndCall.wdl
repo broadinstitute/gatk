@@ -218,7 +218,6 @@ workflow AlignAndCall {
       preemptible_tries = preemptible_tries
  }
 
-
   output {
     File mt_aligned_bam = AlignToMt.mt_aligned_bam
     File mt_aligned_bai = AlignToMt.mt_aligned_bai
