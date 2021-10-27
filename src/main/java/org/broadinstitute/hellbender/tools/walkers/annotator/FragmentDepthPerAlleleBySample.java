@@ -26,7 +26,7 @@ import java.util.Set;
  * <p>This annotation is identical to DepthPerAlleleBySample except that allele support is considered per read pair, not per individual read.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of coverage of each allele per sample (AD)")
-public final class FragmentDepthPerAlleleBySample implements JumboGenotypeAnnotation, StandardAnnotation, StandardMutectAnnotation {
+public final class FragmentDepthPerAlleleBySample implements JumboGenotypeAnnotation, StandardMutectAnnotation {
 
     @Override
     public void annotate(final ReferenceContext ref,
