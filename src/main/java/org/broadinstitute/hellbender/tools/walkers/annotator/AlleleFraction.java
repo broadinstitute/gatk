@@ -57,7 +57,7 @@ public final class AlleleFraction implements GenotypeAnnotation {
         // if there is no AD value calculate it now using likelihoods
         else if (likelihoods != null) {
             DepthPerAlleleBySample adCalc = new DepthPerAlleleBySample();
-            final int[] AD = adCalc.annotateWithLikelihoods(vc, g, new LinkedHashSet<>(vc.getAlleles()), likelihoods);
+            final int[] AD = DepthPerAlleleBySample.annotateWithLikelihoods(vc, g, new LinkedHashSet<>(vc.getAlleles()), likelihoods);
             final double[] allAlleleFractions = MathUtils.normalizeSumToOne(Arrays.stream(AD).mapToDouble(x -> x*1.0).toArray());
             gb.attribute(getKeyNames().get(0), Arrays.copyOfRange(allAlleleFractions, 1, allAlleleFractions.length)); //omit the first entry of the array corresponding to the reference
         }
