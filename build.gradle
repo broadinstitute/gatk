@@ -184,7 +184,7 @@ configurations.all {
         force 'com.google.guava:guava:' + guavaVersion
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
-        force 'com.google.protobuf:protobuf-java:3.8.0'
+        force 'com.google.protobuf:protobuf-java:3.10.0'
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion

@@ -376,6 +376,7 @@ public final class PetCreator {
                         // will be Interrupted or Execution Exception
                         throw new IOException("BQ exception", ex);
                     }
+                    break;
                 case ORC:
                     petOrcWriter.addRow(location, sampleId, state);
                     break;
@@ -467,6 +468,7 @@ public final class PetCreator {
             switch (outputType) {
                 case BQ:
                     if (petBQJsonWriter != null) petBQJsonWriter.close();
+                    break;
                 case TSV:
                     if (petTsvWriter != null) petTsvWriter.close();
                     break;
