@@ -71,7 +71,7 @@ workflow GvsExtractCallset {
             service_account_json_path = service_account_json_path
     }
 
-    scatter(i in range(length(SplitIntervals.interval_files))) {
+    scatter(i in range(scatter_count) ) {
         call ExtractTask {
             input:
                 gatk_override                   = gatk_override,
