@@ -68,7 +68,7 @@ final sparkVersion = System.getProperty('spark.version', '2.4.5')
 final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.1')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.2')
 final bigQueryVersion = System.getProperty('bigQuery.version', '1.117.1')
 final guavaVersion = System.getProperty('guava.version', '27.1-jre')
 final log4j2Version = System.getProperty('log4j2Version', '2.13.1')
@@ -366,7 +366,7 @@ dependencies {
     compile 'org.broadinstitute:http-nio:0.1.0-rc1'
 
     // Required for COSMIC Funcotator data source:
-    compile 'org.xerial:sqlite-jdbc:3.20.1'
+    compile 'org.xerial:sqlite-jdbc:3.36.0.3'
     
     // Required for SV Discovery machine learning
     compile group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'

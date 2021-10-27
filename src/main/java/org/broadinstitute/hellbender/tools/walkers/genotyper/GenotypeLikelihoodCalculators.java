@@ -59,7 +59,7 @@ public final class GenotypeLikelihoodCalculators {
 
 
     /**
-     * Shared table of genotypes give the ploidy sorted by their index in the likelihood array.
+     * Shared table of genotypes given the ploidy sorted by their index in the likelihood array.
      *
      * <p>
      *  Its format is described in {@link #buildGenotypeAlleleCountsTable(int, int, int[][])}.

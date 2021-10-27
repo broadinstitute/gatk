@@ -696,7 +696,18 @@ public class ProteinChangeInfoUnitTest extends GATKBaseTest {
                         Strand.POSITIVE, false,
                         ProteinChangeInfo.create(185,185,"?", "")
                 },
-
+                // =============================
+                // Problem cases:
+                {
+                        //chr9	67726241	.	TCA	TCACACACA
+                        Allele.create("TCA", true),
+                        Allele.create("TCACACACA"),
+                        328,
+                        328,
+                        "ATGGGGATGAGATTTCAGTTGCTCCGGGAGCGACGCATCTCCTCACGTGGGCCAGGCTTTCAGGCACCCAAAGCGGATCCGCCGCGGCGAAAACGATTGACAGCCGGCCTCATGACCCAGGTAGAGACGCAGAAAGAGGCTCACCAAAGACAGGCCGCCATGCGACAAACCGCTTTGTGGCGCACAGGGCACATTCGGCCAAAGACACACACGCACACGGGCATACACACACAAACCCACAGAGAGAGGGAAAGAAACACACAGAGACTGAGAGACAGAGAGAGAAGAGAGACTGGGAGACACACACACAGACACACACACACACACTCACACACACACACA",
+                        Strand.POSITIVE, false,
+                        ProteinChangeInfo.create(110,111,"", "HT")
+                },
         };
     }
 

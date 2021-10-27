@@ -6,6 +6,8 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 
 public class GenotypeGVCFsEngine
 {
+    private static final Logger logger = LogManager.getLogger(GenotypeGVCFsEngine.class);
     private static final String GVCF_BLOCK = "GVCFBlock";
 
     //the annotation engine
@@ -173,15 +176,18 @@ public class GenotypeGVCFsEngine
         // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
         // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
         // We could theoretically make 2 passes to re-create the genotypes, but that gets extremely expensive with large sample sizes.
-        if (result.isPolymorphicInSamples()) {
+        // Note that we also check depth because the previous conditions were also contingent on depth
+        if (result.isPolymorphicInSamples()  && result.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0) {
             // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
-            final VariantContext reannotated = annotationEngine.annotateContext(result, features, ref, null, a -> true);
-            return new VariantContextBuilder(reannotated).genotypes(cleanupGenotypeAnnotations(reannotated, false)).make();
+            final VariantContextBuilder vcBuilder = new VariantContextBuilder(result);
+            //don't count sites with no depth and no confidence towards things like AN and InbreedingCoeff
+            vcBuilder.genotypes(assignNoCallsAnnotationExcludedGenotypes(result.getGenotypes()));
+            VariantContext annotated = annotationEngine.annotateContext(vcBuilder.make(), features, ref, null, a -> true);
+            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(result, false)).make();
         } else if (includeNonVariants) {
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
-            VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
-            reannotated = annotationEngine.annotateContext(reannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
-            return reannotated;
+            VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
+            return annotationEngine.annotateContext(preannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
         } else {
             return null;
         }
@@ -364,6 +370,9 @@ public class GenotypeGVCFsEngine
         final StandardCallerArgumentCollection args = new StandardCallerArgumentCollection();
         args.genotypeArgs = genotypeArgs.clone();
 
+        //keep hom ref calls even if no PLs
+        args.genotypeArgs.genotypeAssignmentMethod = GenotypeAssignmentMethod.PREFER_PLS;
+
         //whether to emit non-variant sites is not contained in genotypeArgs and must be passed to args separately
         //Note: GATK3 uses OutputMode.EMIT_ALL_CONFIDENT_SITES when includeNonVariants is requested
         //GATK4 uses EMIT_ALL_ACTIVE_SITES to ensure LowQual sites are emitted.
@@ -473,6 +482,28 @@ public class GenotypeGVCFsEngine
             recoveredGs.add(builder.noAttributes().attributes(attrs).make());
         }
         return recoveredGs;
+    }
+
+    static boolean excludeFromAnnotations(Genotype oldGT) {
+        return oldGT.isHomRef() && !oldGT.hasPL()
+                && ((oldGT.hasDP() && oldGT.getDP() == 0) || !oldGT.hasDP())
+                && oldGT.hasGQ() && oldGT.getGQ() == 0;
+    }
+
+    private List<Genotype> assignNoCallsAnnotationExcludedGenotypes(final GenotypesContext genotypes) {
+        final List<Genotype> returnList = new ArrayList<>();
+        for (final Genotype oldGT : genotypes) {
+            //convert GQ0s that were reblocked back to no-calls for better AN and InbreedingCoeff annotations
+            if (excludeFromAnnotations(oldGT)) {
+                final GenotypeBuilder builder = new GenotypeBuilder(oldGT);
+                builder.alleles(Collections.nCopies(oldGT.getPloidy(), Allele.NO_CALL));
+                returnList.add(builder.make());
+            } else {
+                returnList.add(oldGT);
+            }
+
+        }
+        return returnList;
     }
 
 

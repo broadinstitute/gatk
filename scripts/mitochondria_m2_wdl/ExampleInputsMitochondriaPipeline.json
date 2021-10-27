@@ -1,7 +1,6 @@
 {
   "MitochondriaPipeline.wgs_aligned_input_bam_or_cram": "input_bam_here",
   "MitochondriaPipeline.wgs_aligned_input_bam_or_cram_index": "input_bam_index_here",
-  "MitochondriaPipeline.autosomal_coverage": 30,
   "MitochondriaPipeline.ref_fasta": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
   "MitochondriaPipeline.ref_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
   "MitochondriaPipeline.ref_fasta_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",

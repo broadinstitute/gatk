@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
@@ -76,6 +77,9 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  * diverges the second time we suggest checking if input count or karyotype values or other inputs are abnormal
  * (an example of abnormality is a count file containing mostly zeros). </p>
  *
+ * <p> More details about the model and inference procedure can be found in the white paper
+ * https://github.com/broadinstitute/gatk/blob/master/docs/CNV/germline-cnv-caller-model.pdf</p>
+ * 
  * <h3>Python environment setup</h3>
  *
  * <p>The computation done by this tool, aside from input data parsing and validation, is performed outside of the Java
@@ -121,9 +125,12 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  *     <dt>CASE mode:</dt>
  *     <dd><p>The tool will be run in CASE mode using the argument {@code run-mode CASE}. The path to a previously
  *     obtained model directory must be provided via the {@code model} argument in this mode. The modeled intervals are
- *     then specified by a file contained in the model directory, all interval-related arguments are ignored in this
- *     mode, and all model intervals must be present in all of the input count files. The tool output in CASE mode
- *     is only the "-calls" subdirectory and is organized similarly to that in COHORT mode.</p>
+ *     then specified by a file contained in the model directory, and all model intervals must be present in all of the
+ *     input count files. All interval-related arguments (e.g. {@code interval-psi-scale}) are redundant in this mode
+ *     and will trigger an exception if provided. However, an advanced user can adjust various sample-related
+ *     (e.g. {@code sample-psi-scale}) and global (e.g. {@code p_alt}) arguments for custom applications of the tool.
+ *     Inference-related arguments (e.g. {@code min_training_epochs}) can be adjusted as well. The tool output in CASE
+ *     mode is only the "-calls" subdirectory and is organized similarly to that in COHORT mode.</p>
  *
  *      <p>Note that at the moment, this tool does not automatically verify the compatibility of the provided parametrization
  *      with the provided count files. Model compatibility may be assessed a posteriori by inspecting the magnitude of
@@ -359,8 +366,9 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     }
 
     private void validateArguments() {
-        germlineCallingArgumentCollection.validate();
-        germlineDenoisingModelArgumentCollection.validate();
+        final CommandLineArgumentParser clpParser = (CommandLineArgumentParser) getCommandLineParser();
+        germlineCallingArgumentCollection.validate(clpParser, runMode);
+        germlineDenoisingModelArgumentCollection.validate(clpParser, runMode);
         germlineCNVHybridADVIArgumentCollection.validate();
 
         Utils.validateArg(inputReadCountPaths.size() == new HashSet<>(inputReadCountPaths).size(),
@@ -431,7 +439,8 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         final List<File> intervalSubsetReadCountFiles = new ArrayList<>(inputReadCountPaths.size());
         streamOfSubsettedAndValidatedReadCounts(inputReadCountPaths, specifiedIntervals, logger)
                 .forEach(subsetReadCounts -> {
-                    final File intervalSubsetReadCountFile = IOUtils.createTempFile(subsetReadCounts.getMetadata().getSampleName(), ".tsv");
+                    final File intervalSubsetReadCountFile = IOUtils.createTempFile(
+                            subsetReadCounts.getMetadata().getSampleName() + ".rc", ".tsv"); // we add ".rc" to ensure prefix will be >= 3 characters, see https://github.com/broadinstitute/gatk/issues/7410
                     subsetReadCounts.write(intervalSubsetReadCountFile);
                     intervalSubsetReadCountFiles.add(intervalSubsetReadCountFile);
                 });

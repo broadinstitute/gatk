@@ -14,10 +14,6 @@ import java.util.function.Supplier;
 public interface SmithWatermanAligner extends Closeable {
     Logger logger = LogManager.getLogger(SmithWatermanAligner.class);
 
-    // match=1, mismatch = -1/3, gap=-(1+k/3)
-    SWParameters ORIGINAL_DEFAULT = new SWParameters(3, -1, -4, -3);
-    SWParameters STANDARD_NGS = new SWParameters(25, -50, -110, -6);
-
     /**
      *  perform a Smith-Waterman alignment of alt against ref
      *
