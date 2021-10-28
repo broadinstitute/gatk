@@ -15,7 +15,6 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -199,7 +198,7 @@ public final class PetCreator {
                         switch (outputType) {
                             case BQ:
                                 try {
-                                    petBQJsonWriter.addJsonRow(createJson(location, sampleId, state));
+                                    petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
                                 } catch (Exception ex) {
                                     // will be Interrupted or Execution Exception
                                     throw new IOException("BQ exception", ex);
@@ -305,7 +304,7 @@ public final class PetCreator {
         return rows;
     }
 
-    private JSONObject createJson(long location, long sampleId, String state) {
+    private JSONObject createJsonRow(long location, long sampleId, String state) {
         JSONObject record = new JSONObject();
         record.put(SchemaUtils.LOCATION_FIELD_NAME, location);
         record.put(SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
@@ -371,7 +370,7 @@ public final class PetCreator {
                     break;
                 case BQ:
                     try {
-                        petBQJsonWriter.addJsonRow(createJson(location, sampleId, state));
+                        petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
                     } catch (Exception ex) {
                         // will be Interrupted or Execution Exception
                         throw new IOException("BQ exception", ex);
