@@ -11,13 +11,15 @@ import argparse
 
 vat_nirvana_positions_dictionary = {
   "position": "position", # required
+  "ref_allele": "refAllele", # required
+  "alt_allele": "altAlleles", # required
 }
 
 vat_nirvana_variants_dictionary = {
   "vid": "vid", # required
   "contig": "chromosome", # required
-  "ref_allele": "refAllele", # required
-  "alt_allele": "altAllele", # required
+  # "ref_allele": "refAllele", # required # do we want to grab both to compare?
+  # "alt_allele": "altAllele", # required
   "variant_type": "variantType", # required
   "genomic_location": "hgvsg", # required
   "dbsnp_rsid": "dbsnp",  # nullable
@@ -118,6 +120,10 @@ def check_filtering(variant):
     if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
       print("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
       return False
+    # skip any row (with a warning) if the AC value is 0
+    elif variant["gvsAnnotations"].get("AC") == 0:
+      print("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
+      return False
     # skip any row (with a warning) if AC, AN or AF is missing
     elif variant["gvsAnnotations"].get("AC") == None:
       print("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
@@ -127,10 +133,6 @@ def check_filtering(variant):
       return False
     elif variant["gvsAnnotations"].get("AF") == None:
       print("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
-      return False
-    # skip any row (with a warning) if the AC value is 0
-    elif variant["gvsAnnotations"].get("AC") == 0:
-      print("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
       return False
     else:
       return True
@@ -176,7 +178,7 @@ def get_subpopulation_calculations(subpop_annotations):
       subpop_an_val = subpop_annotations.get("_".join(["AN", gvs_subpop]))
       subpop_af_val = subpop_annotations.get("_".join(["AF", gvs_subpop]))
        # note the assumption is made that AC_Hom must be even because by it's nature it means there are two, but there could be an error
-      subpop_sc_val = int(subpop_annotations.get("_".join(["AC_Hom", gvs_subpop])) / 2 ) + subpop_annotations.get("_".join(["AC_Het", gvs_subpop]))
+      subpop_sc_val = int(subpop_annotations.get("_".join(["AC_Hom", gvs_subpop])) / 2 ) + subpop_annotations.get("_".join(["AC_Het", gvs_subpop])) + subpop_annotations.get("_".join(["AC_Hemi", gvs_subpop]))
       # here we set the subpopulation ac/an/af values
       row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
       row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
@@ -196,9 +198,11 @@ def get_subpopulation_calculations(subpop_annotations):
     row["gvs_max_sc"] = max_sc
     return row
 
-def make_annotated_json_row(row_position, variant_line, transcript_line):
+def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transcript_line):
     row = {}
     row["position"] = row_position # this is a required field
+    row["ref_allele"] = row_ref # this is a required field
+    row["alt_allele"] = row_alt # this is a required field
 
     for vat_variants_fieldname in vat_nirvana_variants_dictionary.keys():  # like "contig"
       nirvana_variants_fieldname = vat_nirvana_variants_dictionary.get(vat_variants_fieldname)
@@ -287,17 +291,23 @@ def make_positions_json(annotated_json, output_json):
 
   for p in positions:
     position=p['position']
+    refAllele=p['refAllele'] # ref_allele
+    altAlleles=p['altAlleles'] # this is an array that we need to split into each alt_allele
     variants=p['variants']
+    if '*' in altAlleles:
+      altAlleles.remove('*')
+    ## there should be the same number of altAlleles as variants, right?
+    assert len(altAlleles)==len(variants)
     # row for each variant - transcript
     # so let's start with each variant
-    for variant in variants:
+    for index, variant in enumerate(variants):
       # check if it's a row we care about
       if check_filtering(variant) is False:
         continue
       # remember that we want one for each variant-transcript and variant-null for variants without transcripts
       if variant.get("transcripts") == None:
         # then we make a special row
-        row = make_annotated_json_row(position, variant, None)
+        row = make_annotated_json_row(position, refAllele, altAlleles[index], variant, None)
         json_str = json.dumps(row) + "\n"
         json_bytes = json_str.encode('utf-8')
         output_file.write(json_bytes)
@@ -308,13 +318,13 @@ def make_positions_json(annotated_json, output_json):
         if "Ensembl" in sources:
           for transcript in transcript_lines:
             if transcript.get('source') == "Ensembl":
-              row = make_annotated_json_row(position, variant, transcript)
+              row = make_annotated_json_row(position, refAllele, altAlleles[index], variant, transcript)
               json_str = json.dumps(row) + "\n"
               json_bytes = json_str.encode('utf-8')
               output_file.write(json_bytes)
         else:
           # if there are transcripts, but they are not Ensembl, we now only want one row in the VAT, not one row per transcript
-          row = make_annotated_json_row(position, variant, None)
+          row = make_annotated_json_row(position, refAllele, altAlleles[index], variant, None)
           json_str = json.dumps(row) + "\n"
           json_bytes = json_str.encode('utf-8')
           output_file.write(json_bytes)

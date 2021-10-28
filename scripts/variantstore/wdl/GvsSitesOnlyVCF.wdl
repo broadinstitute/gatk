@@ -3,8 +3,6 @@ workflow GvsSitesOnlyVCF {
    input {
         File inputFileofFileNames
         File inputFileofIndexFileNames
-        String output_sites_only_file_name
-        String output_annotated_file_name
         String project_id
         String dataset_name
         File nirvana_data_directory
@@ -34,6 +32,9 @@ workflow GvsSitesOnlyVCF {
 
     ## Scatter across the shards from the GVS jointVCF
     scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
+        ## Create a sites-only VCF from the original GVS jointVCF
+        ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
+        String input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz")
         call ExtractAnAcAfFromVCF {
             input:
               input_vcf = MakeSubpopulationFiles.input_vcfs[i],
@@ -44,21 +45,12 @@ workflow GvsSitesOnlyVCF {
               ref = reference
         }
 
-      ## Create a sites-only VCF from the original GVS jointVCF
-        call SitesOnlyVcf {
-          input:
-            input_vcf = ExtractAnAcAfFromVCF.output_vcf,
-            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
-            service_account_json_path = service_account_json_path,
-            output_filename = "${output_sites_only_file_name}_${i}.sites_only.vcf.gz"
-        }
-
       ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
         call AnnotateVCF {
           input:
-            input_vcf = SitesOnlyVcf.output_vcf,
-            input_vcf_index = SitesOnlyVcf.output_vcf_idx,
-            output_annotated_file_name = "${output_annotated_file_name}_${i}",
+            input_vcf = ExtractAnAcAfFromVCF.output_vcf,
+            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
+            output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
         }
@@ -66,7 +58,7 @@ workflow GvsSitesOnlyVCF {
         call PrepAnnotationJson {
           input:
             annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${i}.json.gz",
+            output_file_suffix = "${input_vcf_name}.json.gz",
             output_path = output_path,
             service_account_json_path = service_account_json_path
         }
@@ -90,12 +82,13 @@ workflow GvsSitesOnlyVCF {
          project_id = project_id,
          dataset_name = dataset_name,
          counts_variants = ExtractAnAcAfFromVCF.count_variants,
+         track_dropped_variants = ExtractAnAcAfFromVCF.track_dropped,
          table_suffix = table_suffix,
          service_account_json_path = service_account_json_path,
          load_jsons_done = BigQueryLoadJson.done
     }
-    scatter(i in range(length(contig_array)) ) {
 
+    scatter(i in range(length(contig_array)) ) {
       call BigQueryExportVat {
         input:
             contig = contig_array[i],
@@ -158,7 +151,7 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210916"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211007"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -200,7 +193,8 @@ task ExtractAnAcAfFromVCF {
     String normalized_vcf_compressed = "normalized.vcf.gz"
     String normalized_vcf_indexed = "normalized.vcf.gz.tbi"
 
-    # separate multi-allelic sites into their own lines, remove deletions and extract the an/ac/af & sc
+    # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
+    # while extracting the an/ac/af & sc by subpopulation into a tsv
     command <<<
         set -e
 
@@ -217,8 +211,12 @@ task ExtractAnAcAfFromVCF {
         gsutil cp ~{input_vcf_index} ~{local_input_vcf_index}
         gsutil cp ~{ref} Homo_sapiens_assembly38.fasta
 
-        # TODO Compare the ancestry list with the sample list and throw an error (but dont fail the job) if there are samples that are in one, but not the other. Two different errors.
-        # awk '{print $2}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulations.txt
+        ## compare the ancestry sample list with the vcf sample list
+        # TODO throw an error (but dont fail the job) if there are samples that are in one, but not the other. Throw two different errors.
+        # Currently commented out to save on io with the AoU beta VAT creation
+        # awk '{print $1}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulation_samples.txt
+        # bcftools query --list-samples ~{local_input_vcf} | sort -u > collected_samples.txt
+        # diff collected_subpopulation_samples.txt collected_samples.txt
 
         # expected_subpopulations = [
         # "afr",
@@ -230,39 +228,56 @@ task ExtractAnAcAfFromVCF {
         # "sas"
         #]
 
+        ## track the dropped variants with +500 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
+        bcftools view -i 'N_ALT>500 || REF~"N"' ~{local_input_vcf} | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
-        bcftools norm -m-any ~{local_input_vcf} | \
-        bcftools norm --check-ref w  -f Homo_sapiens_assembly38.fasta > ~{normalized_vcf}
+        ## filter out sites with too many alt alleles
+        bcftools view -e 'N_ALT>500 || REF~"N"' --no-update  ~{local_input_vcf} | \
+        ## filter out the non-passing sites
+        bcftools view  -f 'PASS,.' --no-update | \
+        ## normalize, left align and split multi allelic sites to new lines, remove duplicate lines
+        bcftools norm -m- --check-ref w -f Homo_sapiens_assembly38.fasta | \
+        ## filter out spanning deletions and variants with an AC of 0
+        bcftools view  -e 'ALT[0]="*" || AC=0' --no-update | \
+        ## ensure that we respect the FT tag
+        bcftools filter -i "FORMAT/FT='PASS,.'" --set-GTs . > ~{normalized_vcf}
 
+        ## clean up unneeded file
+        rm ~{local_input_vcf}
 
-        ## make a file of just the first 4 columns of the tsv (maybe I could just bcftools query it?)
-        bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%REF\t%ALT\n' > check_duplicates.tsv
+        ## make a file of just the first 5 columns of the tsv
+        bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
-        sort check_duplicates.tsv | uniq -d | cut -f1,2  > duplicates.tsv
-        ## remove those rows (this will be ALL rows with this position--so good rows too, potentially we want to grab f1,4 to do this with)
-        grep -v -wFf duplicates.tsv ~{normalized_vcf} | grep -v "AC=0;"  > deduplicated.vcf
+        sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5  > duplicates.tsv
+        rm check_duplicates.tsv ## clean up
+        ## remove those rows (that match up to the first 5 cols)
+        grep -v -wFf duplicates.tsv ~{normalized_vcf} > deduplicated.vcf
+        rm ~{normalized_vcf} ## clean up
 
-        wc -l duplicates.tsv
+        ## add duplicates to the file tracking dropped variants
+        cat duplicates.tsv >> track_dropped.tsv
+        rm duplicates.tsv ## clean up unneeded file
 
-        bcftools plugin fill-tags  -- deduplicated.vcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom | bcftools query -f \
-        '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\n' \
-        | grep -v "*" >> ~{custom_annotations_file_name}
+        ## calculate annotations for all subpopulations
+        bcftools plugin fill-tags  -- deduplicated.vcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom,AC_Hemi | bcftools query -f \
+        '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_Hemi\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_Hemi_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_Hemi_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_Hemi_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_Hemi_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_Hemi_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_Hemi_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\t%AC_Hemi_sas\n' \
+        >> ~{custom_annotations_file_name}
 
-        ### for validation of the pipeline
-        wc -l ~{custom_annotations_file_name} | awk '{print $1}'  > count.txt
-        # Should this be where we do the filtering of the AC/AN/AF values rather than in the python?
+        ## for validation of the pipeline
+        wc -l ~{custom_annotations_file_name} | awk '{print $1 -7}'  > count.txt
 
-        ### compress the vcf and index it
-        bcftools view -I deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
+        ## compress the vcf and index it, make it sites-only
+        bcftools view --no-update --drop-genotypes deduplicated.vcf -Oz -o ~{normalized_vcf_compressed}
+        ## if we can spare the IO and want to pass a smaller file we can also drop the info field w bcftools annotate -x INFO
         bcftools index --tbi  ~{normalized_vcf_compressed}
 
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210916"
-        memory: "20 GB"
-        preemptible: 1
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211007"
+        memory: "32 GB"
+        preemptible: 3
         cpu: "2"
         disks: "local-disk 500 SSD"
     }
@@ -271,49 +286,9 @@ task ExtractAnAcAfFromVCF {
     output {
         File annotations_file = "~{custom_annotations_file_name}"
         Int count_variants = read_int("count.txt")
+        File track_dropped = "track_dropped.tsv"
         File output_vcf = "~{normalized_vcf_compressed}"
         File output_vcf_index = "~{normalized_vcf_indexed}"
-    }
-}
-
-task SitesOnlyVcf {
-    input {
-        File input_vcf
-        File input_vcf_index
-        String? service_account_json_path
-        String output_filename
-    }
-    String output_vcf_idx = basename(output_filename) + ".tbi"
-
-    command <<<
-        set -e
-
-        # Adding `--add-output-vcf-command-line false` so that the VCF header doesn't have a timestamp
-        # in it so that downstream steps can call cache
-
-        gatk --java-options "-Xmx12288m" \
-            SelectVariants \
-                -V ~{input_vcf} \
-                --add-output-vcf-command-line false \
-                --exclude-filtered \
-                --sites-only-vcf-output \
-                -O ~{output_filename}
-
-     >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "broadinstitute/gatk:4.2.0.0"
-        memory: "15 GB"
-        preemptible: 3
-        cpu: "2"
-        disks: "local-disk 250 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        File output_vcf="~{output_filename}"
-        File output_vcf_idx="~{output_vcf_idx}"
     }
 }
 
@@ -375,10 +350,10 @@ task AnnotateVCF {
     # Runtime settings:
     runtime {
         docker: "annotation/nirvana:3.14"
-        memory: "20 GB"
+        memory: "32 GB"
         cpu: "2"
         preemptible: 5
-        disks: "local-disk 250 SSD"
+        disks: "local-disk 500 SSD"
     }
     # ------------------------------------------------
     # Outputs:
@@ -430,7 +405,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20210916"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211007"
         memory: "8 GB"
         preemptible: 5
         cpu: "1"
@@ -668,6 +643,7 @@ task BigQuerySmokeTest {
         String project_id
         String dataset_name
         Array[Int] counts_variants
+        Array[File] track_dropped_variants
         String table_suffix
         String? service_account_json_path
         Boolean load_jsons_done
@@ -695,6 +671,12 @@ task BigQuerySmokeTest {
         # sum all the initial input variants across the shards
 
         INITIAL_VARIANT_COUNT=$(python -c "print(sum([~{sep=', ' counts_variants}]))")
+        ## here a list of files: ~{sep=', ' track_dropped_variants}
+        ## I need to get the lines from each file
+        awk 'FNR==1{print ""}1' ~{sep=' ' track_dropped_variants} > dropped_variants.txt
+
+        echo "Dropped variants:"
+        cat dropped_variants.txt
 
         # Count number of variants in the VAT
         bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}`' > bq_variant_count.csv
