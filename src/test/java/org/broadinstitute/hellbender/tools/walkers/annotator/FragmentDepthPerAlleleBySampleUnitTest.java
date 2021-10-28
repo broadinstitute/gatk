@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -12,6 +11,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -63,7 +63,7 @@ public final class FragmentDepthPerAlleleBySampleUnitTest extends GATKBaseTest {
     @Test
     public void testDescription(){
         Assert.assertEquals(new FragmentDepthPerAlleleBySample().getKeyNames(), Collections.singletonList(GATKVCFConstants.FRAGMENT_ALLELE_DEPTHS));
-        Assert.assertEquals(new FragmentDepthPerAlleleBySample().getDescriptions(), Collections.singletonList(VCFStandardHeaderLines.getFormatLine(GATKVCFConstants.FRAGMENT_ALLELE_DEPTHS)));
+        Assert.assertEquals(new FragmentDepthPerAlleleBySample().getDescriptions(), Collections.singletonList(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.FRAGMENT_ALLELE_DEPTHS)));
     }
 
     // provide # of pairs where left/right reads are alt/neither, neither/alt, alt/alt, ref/neither, neither/ref, ref/ref
