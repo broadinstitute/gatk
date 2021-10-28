@@ -19,7 +19,7 @@ workflow GvsPrepareCallset {
         String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
         Int temp_table_ttl_in_hours = 72
-        Boolean skip_pet_insert = false
+        Boolean skip_vet_new_insert = false
         String? service_account_json_path
         String? docker
     }
@@ -37,7 +37,7 @@ workflow GvsPrepareCallset {
             fq_temp_table_dataset           = fq_temp_table_dataset,
             fq_destination_dataset          = fq_destination_dataset,
             temp_table_ttl_in_hours         = temp_table_ttl_in_hours,
-            skip_pet_insert                 = skip_pet_insert,
+            skip_vet_new_insert             = skip_vet_new_insert,
             service_account_json_path       = service_account_json_path,
             docker                          = docker_final
     }
@@ -65,7 +65,7 @@ task PrepareCallsetTask {
         String fq_temp_table_dataset
         String fq_destination_dataset
         Int temp_table_ttl_in_hours
-        Boolean skip_pet_insert
+        Boolean skip_vet_new_insert
 
         String? service_account_json_path
         String docker
@@ -107,7 +107,7 @@ task PrepareCallsetTask {
             ~{sep=" " query_label_args} \
             --fq_sample_mapping_table ~{fq_sample_mapping_table} \
             --ttl ~{temp_table_ttl_in_hours} \
-            --skip_pet_insert ~{skip_pet_insert} \
+            --skip_vet_new_insert ~{skip_vet_new_insert} \
             $SERVICE_ACCOUNT_STANZA
     >>>
 
