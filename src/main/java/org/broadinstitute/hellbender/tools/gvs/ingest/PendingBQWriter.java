@@ -2,13 +2,16 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.bigquery.storage.v1beta2.*;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.concurrent.ExecutionException;
 
 public class PendingBQWriter {
+    static final Logger logger = LogManager.getLogger(PendingBQWriter.class);
+
     private BigQueryWriteClient bqWriteClient;
     private WriteStream writeStream;
     protected JsonStreamWriter writer;
@@ -16,18 +19,22 @@ public class PendingBQWriter {
 
     public PendingBQWriter(BigQueryWriteClient bqWriteClient, String projectId, String datasetName, String tableName) throws Exception {
         this.bqWriteClient = bqWriteClient;
-        writeStream = WriteStream.newBuilder().setType(WriteStream.Type.PENDING).build();
+        WriteStream writeStreamConfig = WriteStream.newBuilder().setType(WriteStream.Type.PENDING).build();
         parentTable = TableName.of(projectId, datasetName, tableName);
         CreateWriteStreamRequest createWriteStreamRequest =
                 CreateWriteStreamRequest.newBuilder()
                         .setParent(parentTable.toString())
-                        .setWriteStream(writeStream)
+                        .setWriteStream(writeStreamConfig)
                         .build();
-        WriteStream writeStream = bqWriteClient.createWriteStream(createWriteStreamRequest);
+        writeStream = bqWriteClient.createWriteStream(createWriteStreamRequest);
         writer = JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema()).build();
     }
 
     public void commitWriteStreams() {
+        FinalizeWriteStreamResponse finalizeResponse =
+                bqWriteClient.finalizeWriteStream(writeStream.getName());
+        logger.info("Rows written: " + finalizeResponse.getRowCount());
+
         BatchCommitWriteStreamsRequest commitRequest =
                 BatchCommitWriteStreamsRequest.newBuilder()
                         .setParent(parentTable.toString())
