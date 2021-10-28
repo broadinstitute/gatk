@@ -225,7 +225,7 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
             ignoreInputFilterSet.addAll( IGNORE_INPUT_FILTERS );
         }
 
-        final File outputTranchesFile = new File(outputPrefix + ".tranches");
+        final File outputTranchesFile = new File(outputPrefix + ".tranches.csv");
         try {
             tranchesStream = new PrintStream(outputTranchesFile);
         } catch (FileNotFoundException e) {
@@ -261,7 +261,7 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
             hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
         }
 
-        final File outputRecalFile = new File(outputPrefix + ".recal");
+        final File outputRecalFile = new File(outputPrefix + ".recal.vcf");
         recalWriter = createVCFWriter(outputRecalFile);
         recalWriter.writeHeader( new VCFHeader(hInfo) );
     }
@@ -379,7 +379,7 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
 
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         final ProcessOutput pythonProcessOutput = executor.executeScriptAndGetOutput(
-                new Resource(pythonScriptFile.getAbsolutePath(), ScikitLearnVariantTrain.class),
+                pythonScriptFile.getAbsolutePath(),
                 null,
                 composePythonArguments(rawAnnotationsFile, annotationsFile, VTAC.hyperparametersJSONFile, outputPrefix));
 

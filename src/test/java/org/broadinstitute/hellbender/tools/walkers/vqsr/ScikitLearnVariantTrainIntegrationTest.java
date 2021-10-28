@@ -16,10 +16,11 @@ public class ScikitLearnVariantTrainIntegrationTest extends CommandLineProgramTe
     @Test
     public void test1kgp50Exomes() {
         final String[] arguments = {
+                "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn-test/sklearn.snps",
-                "--python-script", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn-test/sklearn.py",
-                "--hyperparameters-json", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn-test/sklearn.hyperparameters.json",
+                "--python-script", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn-test/isolation-forest.py",
+                "--hyperparameters-json", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn-test/hyperparameters.json",
                 "--trust-all-polymorphic",
                 "--tranche"," 100.0",
                 "-tranche", "99.95",
