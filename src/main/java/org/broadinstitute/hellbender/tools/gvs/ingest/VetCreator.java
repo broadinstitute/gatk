@@ -102,6 +102,7 @@ public class VetCreator {
         return row;
     }
 
+    // Similar to create row but with types for JSON object
     public JSONObject createJson(final long location, final VariantContext variant, final long sampleId) {
         JSONObject jsonObject = new JSONObject();
         for ( final VetFieldEnum fieldEnum : VetFieldEnum.values() ) {
