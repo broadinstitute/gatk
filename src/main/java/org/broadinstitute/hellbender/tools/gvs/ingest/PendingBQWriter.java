@@ -45,11 +45,11 @@ public class PendingBQWriter {
         // If the response does not have a commit time, it means the commit operation failed.
         if (commitResponse.hasCommitTime() == false) {
             for (StorageError err : commitResponse.getStreamErrorsList()) {
-                System.out.println(err.getErrorMessage());
+                logger.error(err.getErrorMessage());
             }
             throw new RuntimeException("Error committing the streams");
         }
-        System.out.println("Appended and committed records successfully.");
+        logger.info("Appended and committed records successfully.");
     }
 
     public void addJsonRow(JSONObject row) throws InterruptedException, ExecutionException {
