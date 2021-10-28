@@ -78,16 +78,10 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
             optional=false)
     private List<FeatureInput<VariantContext>> resource = new ArrayList<>();
 
-    /////////////////////////////
-    // Outputs
-    /////////////////////////////
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName=StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc="The output recal file used by ApplyVQSR", optional=false)
-    private GATKPath output;
-
-    @Argument(fullName="tranches-file", doc="The output tranches file used by ApplyVQSR", optional=false)
-    private File TRANCHES_FILE; // not GATKPath since this name must be accessible to R code
+            doc="Output prefix.")
+    private String outputPrefix;
 
     /////////////////////////////
     // Additional Command Line Arguments
@@ -126,17 +120,6 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
             doc="If specified, the variant recalibrator will ignore all input filters. Useful to rerun the VQSR from a filtered output file.",
             optional=true)
     private boolean IGNORE_ALL_FILTERS = false;
-
-    /**
-     *  TODO
-     */
-    @Argument(fullName="output-model",
-            doc="If specified, the variant recalibrator will output the VQSR model to this file path.",
-            optional=true)
-    private GATKPath outputModelPath = null;
-
-    @Argument(fullName="output-scores")
-    private File outputScoresFile = null;
 
     @Argument(fullName="python-script")
     private File pythonScriptFile = null;
@@ -242,10 +225,11 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
             ignoreInputFilterSet.addAll( IGNORE_INPUT_FILTERS );
         }
 
+        final File outputTranchesFile = new File(outputPrefix + ".tranches");
         try {
-            tranchesStream = new PrintStream(TRANCHES_FILE);
+            tranchesStream = new PrintStream(outputTranchesFile);
         } catch (FileNotFoundException e) {
-            throw new UserException.CouldNotCreateOutputFile(TRANCHES_FILE, e);
+            throw new UserException.CouldNotCreateOutputFile(outputTranchesFile, e);
         }
 
         for (final FeatureInput<VariantContext> variantFeature : resource ) {
@@ -277,7 +261,8 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
             hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
         }
 
-        recalWriter = createVCFWriter(output);
+        final File outputRecalFile = new File(outputPrefix + ".recal");
+        recalWriter = createVCFWriter(outputRecalFile);
         recalWriter.writeHeader( new VCFHeader(hInfo) );
     }
 
@@ -384,28 +369,27 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
 
         dataManager.setData(reduceSum);
 
-        final String rawAnnotationsOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();
-        final File rawAnnotationsFile = new File(rawAnnotationsOutput + ".annot.raw.hdf5");
+        final File rawAnnotationsFile = new File(outputPrefix + ".annot.raw.hdf5");
         writeAnnotationsHDF5(rawAnnotationsFile);
 
         dataManager.normalizeData(true, annotationOrder); // Each data point is now (x - mean) / standard deviation
 
-        final String annotationsOutput = output.toString().endsWith(".recal") ? output.toString().split(".recal")[0] : output.toString();
-        final File annotationsFile = new File(annotationsOutput + ".annot.hdf5");
+        final File annotationsFile = new File(outputPrefix + ".annot.hdf5");
         writeAnnotationsHDF5(annotationsFile);
 
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         final ProcessOutput pythonProcessOutput = executor.executeScriptAndGetOutput(
                 new Resource(pythonScriptFile.getAbsolutePath(), ScikitLearnVariantTrain.class),
                 null,
-                composePythonArguments(rawAnnotationsFile, annotationsFile, VTAC.hyperparametersJSONFile, outputScoresFile));
+                composePythonArguments(rawAnnotationsFile, annotationsFile, VTAC.hyperparametersJSONFile, outputPrefix));
 
         if (pythonProcessOutput.getExitValue() != 0) {
             throw executor.getScriptException(executor.getExceptionMessageFromScriptError(pythonProcessOutput));
         }
 
-        logger.info(String.format("Scores written to %s.", outputScoresFile.getAbsolutePath()));
+        logger.info("Inference and scoring complete.");
 
+        final File outputScoresFile = new File(outputPrefix + ".scores.hdf5");
         try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresFile, HDF5File.OpenMode.READ_ONLY)) {
             IOUtils.canReadFile(outputScoresFileHDF5File.getFile());
             final double[] scores = outputScoresFileHDF5File.readDoubleArray("/scores");
@@ -458,13 +442,13 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
     private static List<String> composePythonArguments(final File rawAnnotationsFile,
                                                        final File annotationsFile,
                                                        final File hyperparametersJSONFile,
-                                                       final File outputScoresFile) {
+                                                       final String outputPrefix) {
         try {
             return new ArrayList<>(Arrays.asList(
                     "--raw_annotations_file=" + rawAnnotationsFile.getCanonicalPath(),
                     "--annotations_file=" + annotationsFile.getCanonicalPath(),
                     "--hyperparameters_json_file=" + hyperparametersJSONFile.getCanonicalPath(),
-                    "--output_scores_file=" + outputScoresFile.getCanonicalPath()));
+                    "--output_prefix=" + outputPrefix));
         } catch (final IOException e) {
             throw new UserException.BadInput(String.format("Encountered exception resolving canonical file paths: %s", e));
         }

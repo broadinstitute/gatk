@@ -17,12 +17,9 @@ public class ScikitLearnVariantTrainIntegrationTest extends CommandLineProgramTe
     public void test1kgp50Exomes() {
         final String[] arguments = {
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn.test.snps.recal",
-                "--tranches-file", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn.test.snps.tranches",
-                "--output-model", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn.test.snps.model.hdf5",
-                "--output-scores", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn.test.snps.scores.hdf5",
-                "--python-script", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn.test.py",
-                "--hyperparameters-json", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn.test.hyperparameters.json",
+                "-O", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn-test/sklearn.snps",
+                "--python-script", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn-test/sklearn.py",
+                "--hyperparameters-json", "/home/slee/working/vqsr/1kgp-50-exomes/sklearn-test/sklearn.hyperparameters.json",
                 "--trust-all-polymorphic",
                 "--tranche"," 100.0",
                 "-tranche", "99.95",
