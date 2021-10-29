@@ -178,6 +178,32 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+     *  Find the indices in one allele list (or OptionalInt.empty() if none exists) in another list of alleles
+     *  We assume that reference alleles are the first element of each list and don't assume that either list is in its minimal representation
+     * @param alleles1  The alleles whose indices we want to find within {@code alleles2}
+     * @param alleles2  The alleles where we find the occurrence of alleles1
+     * @return  Example: alleles1 = {A, G, T}; alleles2 = {AA, GA, CC} output = {0,1,EMPTY}
+     */
+    public static List<OptionalInt> alleleIndices(final List<Allele> alleles1, final List<Allele> alleles2) {
+        Utils.validateArg(!alleles1.isEmpty() && !alleles2.isEmpty(), "alleles lists must at least contain a reference allele.");
+        final Allele ref1 = alleles1.get(0);
+        final Allele ref2 = alleles2.get(0);
+        Utils.validateArg(ref1.isReference() && ref2.isReference(), "First allele in each list must be reference.");
+
+        final Allele commonRef = determineReferenceAllele(ref1, ref2);
+        final Map<Allele, Allele> alleles1ToCommon = createAlleleMapping(commonRef, ref1, alleles1.subList(1, alleles1.size()));
+        final Map<Allele, Allele> alleles2ToCommon = createAlleleMapping(commonRef, ref2, alleles2.subList(1, alleles2.size()));
+
+        final Map<Allele, Integer> commonToIndex2 = IntStream.range(0, alleles2.size()).boxed()
+                .collect(Collectors.toMap(n -> alleles2ToCommon.get(alleles2.get(n)), n -> n));
+
+        return alleles1.stream()
+                .map(a -> commonToIndex2.getOrDefault(alleles1ToCommon.get(a), -1))
+                .map(n -> n < 0 ? OptionalInt.empty() : OptionalInt.of(n))
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Determines the common reference allele
      *
      * @param VCs    the list of VariantContexts
@@ -1251,7 +1277,15 @@ public final class GATKVariantContextUtils {
      */
     public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
                                                            final Allele inputRef, final List<Allele> inputAlts) {
-        Utils.validate( refAllele.length() > inputRef.length(), () -> "BUG: inputRef="+inputRef+" is longer than refAllele="+refAllele);
+        Utils.validate( refAllele.length() >= inputRef.length(), () -> "BUG: inputRef="+inputRef+" is longer than refAllele="+refAllele);
+
+        // frequent simple case where there is already a common reference
+        if (refAllele.length() == inputRef.length()) {
+            final Map<Allele, Allele> map = new LinkedHashMap<>();
+            inputAlts.forEach(a -> map.put(a,a));
+            return map;
+        }
+
         final byte[] extraBases = Arrays.copyOfRange(refAllele.getBases(), inputRef.length(), refAllele.length());
 
         final Map<Allele, Allele> map = new LinkedHashMap<>();

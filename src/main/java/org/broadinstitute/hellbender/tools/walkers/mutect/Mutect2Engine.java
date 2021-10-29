@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
@@ -416,11 +417,28 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             }
         } else if (!MTAC.genotypeGermlineSites) {
             final List<VariantContext> germline = features.getValues(MTAC.germlineResource, refInterval);
-            if (!germline.isEmpty()){
-                final VariantContext germlineVariant = germline.get(0);
-                final List<Double> germlineAlleleFrequencies = getAttributeAsDoubleList(germlineVariant, VCFConstants.ALLELE_FREQUENCY_KEY, 0.0);
-                if (!germlineAlleleFrequencies.isEmpty() && germlineAlleleFrequencies.get(0) > MTAC.maxPopulationAlleleFrequency) {
-                    return new ActivityProfileState(refInterval, 0.0);
+
+            for (final VariantContext germlineVC : germline) {
+                final List<Double> germlineAlleleFrequencies = getAttributeAsDoubleList(germlineVC, VCFConstants.ALLELE_FREQUENCY_KEY, 0.0);
+                final List<Allele> germlineAlts = germlineVC.getAlternateAlleles();
+                final Allele germlineRef = germlineVC.getReference();
+
+                for (int germlineAltIdx = 0; germlineAltIdx < germlineAlts.size(); germlineAltIdx++) {
+                    if (germlineAlleleFrequencies.get(germlineAltIdx) < MTAC.maxPopulationAlleleFrequency) {
+                        continue;
+                    }
+
+                    final Allele germlineAlt = germlineVC.getAlternateAllele(germlineAltIdx);
+
+                    // if it's a substitution that shares its first base with the dominant tumor allele, or if it's an
+                    // indel and the dominant tumor allele is an indel, skip
+                    if (PileupQualBuffer.likeliestIndexIsIndel(bestTumorAltAllele.getLeft()) && germlineAlt.length() != germlineRef.length()) {
+                            return new ActivityProfileState(refInterval, 0.0);
+                    } else if (PileupQualBuffer.likeliestIndexIsSubstitution(bestTumorAltAllele.getLeft()) && germlineAlt.length() == germlineRef.length()
+                            && PileupQualBuffer.getSubstitutionBase(bestTumorAltAllele.getLeft()) == germlineRef.getBases()[0]) {
+                        return new ActivityProfileState(refInterval, 0.0);
+                    }
+
                 }
             }
         }
@@ -607,6 +625,18 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 }
             }
             return ImmutablePair.of(bestIndex, buffers.get(bestIndex));
+        }
+
+        public static boolean likeliestIndexIsIndel(final int index) {
+            return index == INDEL;
+        }
+
+        public static boolean likeliestIndexIsSubstitution(final int index) {
+            return index < OTHER_SUBSTITUTION;
+        }
+
+        public static byte getSubstitutionBase(final int index) {
+            return BaseUtils.baseIndexToSimpleBase(index);
         }
 
         private void accumulateSubstitution(final byte base, final byte qual) {

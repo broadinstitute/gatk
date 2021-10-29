@@ -152,7 +152,7 @@ public class SomaticGenotypingEngine {
             final List<Allele> allAllelesToEmit = ListUtils.union(Arrays.asList(mergedVC.getReference()), tumorAltAlleles);
 
 
-            final Map<String, Object> negativeLogPopulationAFAnnotation = getNegativeLogPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), tumorAltAlleles, MTAC.getDefaultAlleleFrequency());
+            final Map<String, Object> negativeLogPopulationAFAnnotation = getNegativeLogPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), allAllelesToEmit, MTAC.getDefaultAlleleFrequency());
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allAllelesToEmit)
@@ -329,31 +329,46 @@ public class SomaticGenotypingEngine {
         return hasNormal ? Optional.of(supplier.get()) : Optional.empty();
     }
 
+    /**
+     *
+     * @param germlineResourceVariants  Germline resource variants from which our AF INFO field annotation is drawn
+     * @param allAlleles    Every emitted allele, with the reference allele first.  Only alt alleles are annotated, but we
+     *                      need the ref allele in case the germline resource has a more or less parsimoniuous representation
+     *                      For example, eg ref = A, alt = C; germline ref = AT, germline alt = CT
+     * @param afOfAllelesNotInGermlineResource  default value of germline AF annotation
+     * @return
+     */
     private static Map<String, Object> getNegativeLogPopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
-                                                                            final List<Allele> altAlleles,
+                                                                            final List<Allele> allAlleles,
                                                                             final double afOfAllelesNotInGermlineResource) {
         final Optional<VariantContext> germlineVC = germlineResourceVariants.isEmpty() ? Optional.empty()
                 : Optional.of(germlineResourceVariants.get(0));  // assume only one VC per site
-        final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(altAlleles, germlineVC, afOfAllelesNotInGermlineResource);
+        final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(allAlleles, germlineVC, afOfAllelesNotInGermlineResource);
 
         return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_KEY, MathUtils.applyToArray(populationAlleleFrequencies, x -> - Math.log10(x)));
     }
 
+    /**
+     *
+     * @param allAlleles    Every emitted allele, with the reference allele first.  Only alt alleles are annotated, but we
+     *      *               need the ref allele in case the germline resource has a more or less parsimonious representation
+     *      *               For example, eg ref = A, alt = C; germline ref = AT, germline alt = CT
+     * @param germlineVC    Germline resource variant context from which AF INFO field is drawn
+     * @param afOfAllelesNotInGermlineResource  Default value of population AF annotation
+     * @return
+     */
     @VisibleForTesting
-    static double[] getGermlineAltAlleleFrequencies(final List<Allele> altAlleles, final Optional<VariantContext> germlineVC, final double afOfAllelesNotInGermlineResource) {
+    static double[] getGermlineAltAlleleFrequencies(final List<Allele> allAlleles, final Optional<VariantContext> germlineVC, final double afOfAllelesNotInGermlineResource) {
+        Utils.validateArg(!allAlleles.isEmpty(), "allAlleles are empty -- there is not even a reference allele.");
         if (germlineVC.isPresent())  {
+            List<OptionalInt> germlineIndices = GATKVariantContextUtils.alleleIndices(allAlleles, germlineVC.get().getAlleles());
             final List<Double> germlineAltAFs = Mutect2Engine.getAttributeAsDoubleList(germlineVC.get(), VCFConstants.ALLELE_FREQUENCY_KEY, afOfAllelesNotInGermlineResource);
-            return altAlleles.stream()
-                    .mapToDouble(allele -> {
-                        final VariantContext vc = germlineVC.get();
-                        final OptionalInt germlineAltIndex = IntStream.range(0, vc.getNAlleles() - 1)
-                                .filter(n -> vc.getAlternateAllele(n).basesMatch(allele))
-                                .findAny();
-                        return germlineAltIndex.isPresent() ? germlineAltAFs.get(germlineAltIndex.getAsInt())
-                                : afOfAllelesNotInGermlineResource;
-                    }).toArray();
-        }
 
-        return Doubles.toArray(Collections.nCopies(altAlleles.size(), afOfAllelesNotInGermlineResource));
+            return germlineIndices.stream().skip(1)  // skip the reference allele
+                .mapToDouble(idx -> idx.isPresent() ? germlineAltAFs.get(idx.getAsInt() - 1) : afOfAllelesNotInGermlineResource)    // note the -1 since germlineAltAFs do not include ref
+                .toArray();
+        } else {
+            return Doubles.toArray(Collections.nCopies(allAlleles.size() - 1, afOfAllelesNotInGermlineResource));
+        }
     }
 }

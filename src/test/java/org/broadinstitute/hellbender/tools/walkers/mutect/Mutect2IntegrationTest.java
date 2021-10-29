@@ -89,6 +89,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File FILTERING_DIR = new File(toolsTestDir, "mutect/filtering");
 
     private static final File GNOMAD_WITHOUT_AF_SNIPPET = new File(toolsTestDir, "mutect/gnomad-without-af.vcf");
+    private static final File UNPARSIMONIOUS_GNOMAD_SNIPPET = new File(toolsTestDir, "mutect/unparsimonious_germline.vcf");
 
     private static final double TLOD_MATCH_EPSILON = 0.05;
     private static final double VARIANT_TLOD_MATCH_PCT = 0.01;
@@ -468,6 +469,40 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         runMutect2(DREAM_4_TUMOR, unfilteredVcf, "20:1119000-1120000", b37Reference, Optional.of(GNOMAD_WITHOUT_AF_SNIPPET),
                 args -> args.addInterval(new SimpleInterval("20:10837425-10837426")));
+    }
+
+    // make sure we have fixed a bug where germline resources with less parsimonious representations (eg AC -> TC when M2 calls A->T) still
+    // yield a correct annotation
+    @Test
+    public void testUnparsimoniousGermlineResource() {
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final int position1 = 1366255;
+        final int position2 = 1401389;
+        final int position3 = 2289449;
+        final double defaultAF = 9.78e-7;
+        final String interval1 = "20:" + (position1 - 1000) + "-" + (position1 + 1000);
+        final String interval2 = "20:" + (position2 - 1000) + "-" + (position2 + 1000);
+        final String interval3 = "20:" + (position3 - 1000) + "-" + (position3 + 1000);
+        runMutect2(DREAM_4_TUMOR, unfilteredVcf, interval1, b37Reference, Optional.of(UNPARSIMONIOUS_GNOMAD_SNIPPET),
+                args -> args.addInterval(interval2).addInterval(interval3).add(M2ArgumentCollection.DEFAULT_AF_LONG_NAME, defaultAF)
+                        .addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+
+        // when we call on these intervals we should get variants 20:1366255 G->A, 20:1401389 G->C, and 20:2289449 TCTGGGGACAAA->T
+        // In the germline resource file the alleles are represented as GT -> AT (equivalent to G->A), GT -> CA (not equivalent to G->C),
+        // and TCTGGGGACAAA->TAA (equivalent to TCTGGGGACA->T) with an extraneous TCTGGGGACAAA->T, respectively
+        // In the first case, we should get AF = 0.1 from GG -> AG = G -> A; in the second case we should get the default AF; in the third case
+        // we should get AF = 0.1 from TCTGGGGACAAA->TAA and NOT AF = 0.2 from TCTGGGGACAAA->T
+
+        final Map<Integer, double[]> startToAFArray = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toMap(VariantContext::getStart,
+                vc -> MathUtils.applyToArray(VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_KEY), x -> Math.pow(10, -x))));
+
+        Assert.assertTrue(startToAFArray.containsKey(position1));
+        Assert.assertTrue(startToAFArray.containsKey(position2));
+        Assert.assertTrue(startToAFArray.containsKey(position3));
+
+        Assert.assertEquals(startToAFArray.get(position1), new double[] {0.1}, 1e-8);
+        Assert.assertEquals(startToAFArray.get(position2), new double[] {defaultAF}, 1e-8);
+        Assert.assertEquals(startToAFArray.get(position3), new double[] {0.1}, 1e-8);
     }
 
     @Test

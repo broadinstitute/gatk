@@ -164,6 +164,42 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(GATKVariantContextUtils.isAlleleInList(Allele.REF_A, Allele.ALT_T, ATCref, Arrays.asList(Allele.ALT_T, Allele.create("TTC",false))));
     }
 
+    @DataProvider
+    Object[][] alleleIndicesData() {
+        // {alleles1, alleles2, expected indices}
+        return new Object[][] {
+                // ref only
+                { Arrays.asList(Allele.REF_A), Arrays.asList(Allele.REF_A), Arrays.asList(OptionalInt.of(0))},
+
+                // extra alt
+                { Arrays.asList(Allele.REF_A), Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(OptionalInt.of(0))},
+
+                // same biallelic
+                { Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(OptionalInt.of(0), OptionalInt.of(1))},
+
+                // missing alt
+                { Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(Allele.REF_A), Arrays.asList(OptionalInt.of(0), OptionalInt.empty())},
+
+                // different alt
+                { Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(Allele.REF_A, Allele.ALT_G), Arrays.asList(OptionalInt.of(0), OptionalInt.empty())},
+
+                // triallelic, order switched
+                { Arrays.asList(Allele.REF_A, Allele.ALT_C, Allele.ALT_G), Arrays.asList(Allele.REF_A, Allele.ALT_G, Allele.ALT_C), Arrays.asList(OptionalInt.of(0), OptionalInt.of(2), OptionalInt.of(1))},
+
+                // longer representation
+                { Arrays.asList(Allele.REF_A, Allele.ALT_G), Arrays.asList(ATref, GT), Arrays.asList(OptionalInt.of(0), OptionalInt.of(1))},
+
+                // shorter representation
+                { Arrays.asList(ATref, GT), Arrays.asList(Allele.REF_A, Allele.ALT_G), Arrays.asList(OptionalInt.of(0), OptionalInt.of(1))}
+        };
+    }
+
+    @Test(dataProvider = "alleleIndicesData")
+    public void testAlleleIndices(final List<Allele> alleles1, final List<Allele> alleles2, final List<OptionalInt> expected ) {
+        final List<OptionalInt> result = GATKVariantContextUtils.alleleIndices(alleles1, alleles2);
+        Assert.assertEquals(result, expected);
+    }
+
     // --------------------------------------------------------------------------------
     //
     // Test allele merging
