@@ -46,7 +46,7 @@ workflow GvsRescatterCallsetInterval {
     call Utils.MergeVCFs as MergeVCFs {
       input:
         input_vcfs = ExtractInterval.output_vcfs,
-        output_vcf_name = "${output_file_base_name}_${intervals_to_scatter[i]}.vcf.gz",
+        output_vcf_name = output_file_base_name + "_" + read_int(intervals_to_scatter[i]) + ".vcf.gz",    #take out leading 0s from interval file name
         output_directory = final_output_gcs_dir,
         merge_disk_override = merge_disk_override,
         service_account_json_path = service_account_json_path
