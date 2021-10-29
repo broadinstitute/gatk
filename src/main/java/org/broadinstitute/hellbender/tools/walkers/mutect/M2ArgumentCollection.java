@@ -124,10 +124,10 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public boolean genotypePonSites = false;
 
     /**
-     * Usually we exclude sites in the panel of normals from active region determination, which saves time.  Setting this to true
+     * Usually we exclude germline sites from active region determination to save runtime.  Setting this to true
      * causes Mutect to produce a variant call at these sites.  This call will still be filtered, but it shows up in the vcf.
      */
-    @Argument(fullName= GENOTYPE_GERMLINE_SITES_LONG_NAME, doc="(EXPERIMENTAL) Call all apparent germline site even though they will ultimately be filtered.", optional = true)
+    @Argument(fullName= GENOTYPE_GERMLINE_SITES_LONG_NAME, doc="Call all apparent germline site even though they will ultimately be filtered.", optional = true)
     public boolean genotypeGermlineSites = false;
 
     /**
