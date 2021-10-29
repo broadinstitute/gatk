@@ -72,7 +72,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_fix_rescattered_vcf_name
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
