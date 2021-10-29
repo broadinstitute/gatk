@@ -112,6 +112,7 @@ workflows:
          - kc_ranges_extract
          - ah_var_store
          - kc_no_streaming
+         - ah_spike_writeapi
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
