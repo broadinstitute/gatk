@@ -2,6 +2,7 @@ language: java
 dist: bionic
 group: travis_lts
 git:
+  # We intentionally check out the entire repo history because we hit errors during the build if the most recent tag isn't in our history for `git describe`
   depth: 9999999
   lfs_skip_smudge: true
 jdk:
