@@ -228,7 +228,7 @@ def create_final_extract_table(fq_destination_table_data):
   print(sql)
   results = utils.execute_with_retry(client, "create-final-export-table", sql)
 
-def populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destination_table_data, skip_pet_insert):
+def populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destination_table_data, skip_vet_new_insert):
   sql = f"""
         INSERT INTO `{fq_destination_table_data}`
             SELECT
@@ -247,7 +247,7 @@ def populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destinat
               `{fq_temp_table_dataset}.{VET_NEW_TABLE}`
         """
   print(sql)
-  if (not skip_pet_insert):
+  if (not skip_vet_new_insert):
     results = utils.execute_with_retry(client, "populate-final-export-vet", sql)
     print(f"\nFinal cohort extract data written to {fq_destination_table_data}\n")
   else:
@@ -268,7 +268,7 @@ def make_extract_table(fq_pet_vet_dataset,
                        fq_sample_mapping_table,
                        sa_key_path,
                        temp_table_ttl_hours,
-                       skip_pet_insert
+                       skip_vet_new_insert
                        ):
   try:
     fq_destination_table_data = f"{fq_destination_dataset}.{destination_table_prefix}__DATA"
@@ -340,7 +340,7 @@ def make_extract_table(fq_pet_vet_dataset,
     create_position_table(fq_temp_table_dataset, min_variant_samples)
     create_final_extract_table(fq_destination_table_data)
     populate_final_extract_table_with_pet(fq_pet_vet_dataset, fq_temp_table_dataset, fq_destination_table_data, sample_ids)
-    populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destination_table_data, skip_pet_insert)
+    populate_final_extract_table_with_vet_new(fq_temp_table_dataset, fq_destination_table_data, skip_vet_new_insert)
   finally:
     dump_job_stats()
 
@@ -358,9 +358,9 @@ if __name__ == '__main__':
   parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
   parser.add_argument('--max_tables',type=int, help='Maximum number of PET/VET tables to consider', required=False, default=250)
   parser.add_argument('--ttl',type=int, help='Temp table TTL in hours', required=False, default=72)
-  parser.add_argument('--skip_pet_insert',type=bool, 
+  parser.add_argument('--skip_vet_new_insert', default=False, type=lambda x: (str(x).lower() == 'true'),
     help='This will not execute the final sql query to insert the pet_new data into the DATA table, but will print out the command instead. Useful when flex slots need to be allocated.',
-    required=False, default=False)
+    required=False)
   sample_args = parser.add_mutually_exclusive_group(required=True)
   sample_args.add_argument('--sample_names_to_extract',type=str, help='File containing list of samples to extract, 1 per line')
   sample_args.add_argument('--fq_cohort_sample_names',type=str, help='FQN of cohort table to extract, contains "sample_name" column')
@@ -382,4 +382,4 @@ if __name__ == '__main__':
                      args.fq_sample_mapping_table,
                      args.sa_key_path,
                      args.ttl,
-                     args.skip_pet_insert)
+                     args.skip_vet_new_insert)
