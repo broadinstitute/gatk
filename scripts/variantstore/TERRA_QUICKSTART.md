@@ -90,6 +90,7 @@ This is done by running the `GvsPrepareCallset` workflow with the following para
 | default_dataset      | The name of the dataset  |
 | destination\_cohort\_table_prefix | A unique, descriptive name for the tables containing the callset (e.g. `demo_10_wgs_callset`); you will want to make note of this for use in the next step |
 | sample\_names\_to_extract | A file of sample names to be extracted in the callset (use `gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvs_quickstart_10_samples.txt`) |
+| skip\_pet\_new_insert | Set to true if your data set is greather than 20k samples. Then copy the sql from the log and execute with flex slots |
 
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
