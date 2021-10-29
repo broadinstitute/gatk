@@ -18,6 +18,7 @@ workflow GvsRescatterCallsetInterval {
     Int re_scatter_count
     String interval_file_dir
     Array[String] intervals_to_scatter    #e.g. ["0001", "0413", "9839"] match format of the interval file names
+    Int batch_size = 5
 
     Int? extract_preemptible_override
     Int? merge_disk_override
@@ -46,7 +47,9 @@ workflow GvsRescatterCallsetInterval {
     call Utils.MergeVCFs as MergeVCFs {
       input:
         input_vcfs = ExtractInterval.output_vcfs,
-        output_vcf_name = output_file_base_name + "_" + read_int(intervals_to_scatter[i]) + ".vcf.gz",    #take out leading 0s from interval file name
+        output_vcf_name = "${output_file_base_name}_${intervals_to_scatter[i]}.vcf.gz",
+        # take out leading 0s from interval file name number for VCF and index
+        output_vcf_name = output_file_base_name + "_" + read_string(read_int(intervals_to_scatter[i])) + ".vcf.gz",
         output_directory = final_output_gcs_dir,
         merge_disk_override = merge_disk_override,
         service_account_json_path = service_account_json_path
