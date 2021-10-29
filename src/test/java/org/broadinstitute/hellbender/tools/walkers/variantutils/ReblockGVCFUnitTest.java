@@ -383,7 +383,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         Assert.assertEquals(subsetAnnotations.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED), 329810.0);
         Assert.assertEquals(subsetAnnotations.get(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED), 93);
 
-        Assert.assertEquals(subsetAnnotations.get(GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY), "|-2.1,1|NaN");
+        Assert.assertEquals(subsetAnnotations.get(GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY), "|-2.1,1|");
         Assert.assertEquals(subsetAnnotations.get(GATKVCFConstants.AS_SB_TABLE_KEY), "17,18|8,5|0,0");
         Assert.assertEquals(subsetAnnotations.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY), "123769.00|46800.00|0.00");
     }

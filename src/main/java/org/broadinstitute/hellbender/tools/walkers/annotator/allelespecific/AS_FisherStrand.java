@@ -74,8 +74,12 @@ public class AS_FisherStrand extends AS_StrandBiasTest implements AS_StandardAnn
         for (final Allele a : perAlleleData.keySet()) {
             if(!a.equals(combinedData.getRefAllele(),true)) {
                 final List<Integer> altStrandCounts = combinedData.getAttribute(a);
-                final int[][] refAltTable = new int[][]{new int[]{refStrandCounts.get(0), refStrandCounts.get(1)}, new int[]{altStrandCounts.get(0), altStrandCounts.get(1)}};
-                annotationMap.put(a, QualityUtils.phredScaleErrorRate(Math.max(FisherStrand.pValueForContingencyTable(refAltTable), MIN_PVALUE)));
+                if (altStrandCounts.isEmpty()) {
+                    annotationMap.put(a, null);
+                } else {
+                    final int[][] refAltTable = new int[][]{new int[]{refStrandCounts.get(0), refStrandCounts.get(1)}, new int[]{altStrandCounts.get(0), altStrandCounts.get(1)}};
+                    annotationMap.put(a, QualityUtils.phredScaleErrorRate(Math.max(FisherStrand.pValueForContingencyTable(refAltTable), MIN_PVALUE)));
+                }
             }
         }
         return annotationMap;

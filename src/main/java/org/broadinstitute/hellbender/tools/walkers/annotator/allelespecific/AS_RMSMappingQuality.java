@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
@@ -163,13 +164,21 @@ public final class AS_RMSMappingQuality implements InfoFieldAnnotation, AS_Stand
         }
     }
 
+    /**
+     *
+     * @param myData    may contain null values
+     */
     protected void parseRawDataString(final ReducibleAnnotationData<Double> myData) {
         final String rawDataString = myData.getRawData();
         //get per-allele data by splitting on allele delimiter
         final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
         for (int i=0; i<rawDataPerAllele.length; i++) {
             final String alleleData = rawDataPerAllele[i];
-            myData.putAttribute(myData.getAlleles().get(i), Double.parseDouble(alleleData));
+            if (alleleData.isEmpty()) {
+                myData.putAttribute(myData.getAlleles().get(i), null);
+            } else {
+                myData.putAttribute(myData.getAlleles().get(i), Double.parseDouble(alleleData));
+            }
         }
     }
 
@@ -240,7 +249,11 @@ public final class AS_RMSMappingQuality implements InfoFieldAnnotation, AS_Stand
                 annotationString += ",";
             }
             if (perAlleleValues.containsKey(current)) {
-                annotationString += String.format(printFormat, Math.sqrt((double) perAlleleValues.get(current) / variantADs.get(current)));
+                if (perAlleleValues.get(current) == null) {
+                    annotationString += VCFConstants.MISSING_VALUE_v4;
+                } else {
+                    annotationString += String.format(printFormat, Math.sqrt((double) perAlleleValues.get(current) / variantADs.get(current)));
+                }
             } else {
                 allele_logger.warn("ERROR: VC allele is not found in annotation alleles -- maybe there was trimming?");
             }

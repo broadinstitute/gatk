@@ -28,7 +28,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
     @Override
     public String getEmptyRawValue() {
-        return "NaN";
+        return "";
     }
 
     @Override

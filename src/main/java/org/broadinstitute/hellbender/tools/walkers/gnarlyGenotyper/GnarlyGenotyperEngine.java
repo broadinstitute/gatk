@@ -135,7 +135,9 @@ public final class GnarlyGenotyperEngine {
                         if (!stripASAnnotations) {
                             //here we still have the non-ref
                             final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), variant);
-                            finalValue.forEach((key, value) -> annotationsToBeModified.put(key, value));
+                            if (finalValue != null) {
+                                finalValue.forEach((key, value) -> annotationsToBeModified.put(key, value));
+                            }
                             if (annotationDBBuilder != null) {
                                 annotationDBBuilder.attribute(ann.getPrimaryRawKey(), variant.getAttribute(ann.getPrimaryRawKey()));
                             }
@@ -144,7 +146,7 @@ public final class GnarlyGenotyperEngine {
                 }
             }
             catch (final Exception e) {
-                throw new IllegalStateException("Something went wrong: ", e);
+                throw new IllegalStateException("Something went wrong at position " + variant.getContig() + ":" + variant.getStart() + ":", e);
             }
         }
         vcfBuilder.attributes(annotationsToBeModified);
