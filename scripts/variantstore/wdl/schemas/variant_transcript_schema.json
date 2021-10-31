@@ -372,6 +372,12 @@
     "mode": "Nullable"
   },
   {
+    "description": "gnomAD: flag filter failure",
+    "name": "gnomad_failed_filter",
+    "type": "Boolean",
+    "mode": "Nullable"
+  },
+  {
     "description": "gnomAD: Max subpopulation frequency.  Need to determine the max subpopulation (i.e. the subpopulation with the highest AF)",
     "name": "gnomad_max_af",
     "type": "Float",

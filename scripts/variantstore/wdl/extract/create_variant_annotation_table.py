@@ -70,6 +70,7 @@ vat_nirvana_gnomad_dictionary = {
   "gnomad_all_af": "allAf", # nullable
   "gnomad_all_ac": "allAc", # nullable
   "gnomad_all_an": "allAn", # nullable
+  "gnomad_failed_filter": "failedFilter" #nullable
 }
 
 vat_nirvana_omim_dictionary = {
