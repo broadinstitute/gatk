@@ -807,6 +807,7 @@ public class ExtractCohortEngine {
             TableReference vetTableRef =
                     new TableReference(fqDatasetName + ".vet_" + String.format("%03d", tableIndex), SchemaUtils.EXTRACT_VET_FIELDS);
 
+            // TODO: Comment as to why (specific sample list clause)
             for (Set<Long> chunkSampleIds : tableMap.get(tableIndex)) {
                 String sampleRestriction = " AND sample_id IN (" + StringUtils.join(chunkSampleIds, ",") + ")";
 
@@ -958,19 +959,19 @@ public class ExtractCohortEngine {
 
         for (final GenericRecord sortedRow : sortedVet) {
             final ExtractCohortRecord vetRow = new ExtractCohortRecord(sortedRow);
-            long v_position = vetRow.getLocation();
-            long v_sample = vetRow.getSampleId();
+            long variantLocation = vetRow.getLocation();
+            long variantSample = vetRow.getSampleId();
 
             // it's possible this variant is actually an upstream deletion before our region of interest,
             // so make sure this is not the case before we the actual variant record and discard
-            if (v_position < minLocation) {
+            if (variantLocation < minLocation) {
                 handlePotentialSpanningDeletion(vetRow, referenceCache);
                 continue;
             }
 
             // new position, fill in remainder of last position data
             // before continuing in to new position
-            if (lastPosition != null && v_position != lastPosition) {
+            if (lastPosition != null && variantLocation != lastPosition) {
 //                logger.info("skipped to new position " + v_position + " from " + lastPosition + " with last sample of " + lastSample);
 
                 // if the last VET was the last sample we 're done
@@ -985,15 +986,14 @@ public class ExtractCohortEngine {
                 lastSample = null;
             }
 
-            // bounds check... what if V is first sample?
             if (lastSample == null) {
-                processReferenceData(currentPositionRecords, sortedReferenceRangeIterator, referenceCache, v_position, minSampleId, v_sample - 1, sampleIdsToExtract);
+                processReferenceData(currentPositionRecords, sortedReferenceRangeIterator, referenceCache, variantLocation, minSampleId, variantSample - 1, sampleIdsToExtract);
             } else {
-                processReferenceData(currentPositionRecords, sortedReferenceRangeIterator, referenceCache, v_position, lastSample + 1, v_sample - 1, sampleIdsToExtract);
+                processReferenceData(currentPositionRecords, sortedReferenceRangeIterator, referenceCache, variantLocation, lastSample + 1, variantSample - 1, sampleIdsToExtract);
             }
 
             // handle the actual variant record
-            currentPositionRecords.merge(v_sample, vetRow, this::mergeSampleRecord);
+            currentPositionRecords.merge(variantSample, vetRow, this::mergeSampleRecord);
 
             // if the variant record was a deletion, fabricate a spanning deletion row for the cache
             // so that a future request for reference state at a position underlying the deletion is
@@ -1004,8 +1004,8 @@ public class ExtractCohortEngine {
             // TODO: really, really, really think this through!!!
             handlePotentialSpanningDeletion(vetRow, referenceCache);
 
-            lastPosition = v_position;
-            lastSample = v_sample;
+            lastPosition = variantLocation;
+            lastSample = variantSample;
         }
 
         // finish writing out reference rows
