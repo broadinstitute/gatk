@@ -228,11 +228,13 @@ task ExtractAnAcAfFromVCF {
         # "sas"
         #]
 
-        ## track the dropped variants with +500 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
-        bcftools view -i 'N_ALT>500 || REF~"N"' ~{local_input_vcf} | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+        ## track the dropped variants with +50 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
+        bcftools view -i 'N_ALT>50 || REF~"N"' ~{local_input_vcf} | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+
+        wc -l track_dropped.tsv
 
         ## filter out sites with too many alt alleles
-        bcftools view -e 'N_ALT>500 || REF~"N"' --no-update ~{local_input_vcf} -Ou | \
+        bcftools view -e 'N_ALT>50 || REF~"N"' --no-update ~{local_input_vcf} -Ou | \
         ## filter out the non-passing sites
         bcftools view  -f 'PASS,.' --no-update -Oz -o filtered.vcf.gz
         ## normalize, left align and split multi allelic sites to new lines, remove duplicate lines
