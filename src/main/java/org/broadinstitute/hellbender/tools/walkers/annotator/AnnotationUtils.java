@@ -6,10 +6,13 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.StringUtils;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFContigHeaderLine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 
@@ -81,6 +84,16 @@ public final class AnnotationUtils {
      */
     public static boolean isAlleleSpecific(final VariantAnnotation annotation) {
         return annotation instanceof AlleleSpecificAnnotation;
+    }
+
+    /**
+     * Helper function to determine if an annotation is allele-specific
+     * @param key the INFO field key for the annotation to be tested
+     * @return true if the annotation is expected to have values per-allele
+     */
+    public static boolean isAlleleSpecific(final String key) {
+        return key.startsWith("AS_") || key.equals(VCFConstants.ALLELE_COUNT_KEY) || key.equals(VCFConstants.ALLELE_FREQUENCY_KEY)
+                || key.equals(GATKVCFConstants.MLE_ALLELE_COUNT_KEY) || key.equals(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY);
     }
 
     public static boolean isAlleleSpecificGatkKey(final String annotationKey) {
