@@ -8,8 +8,8 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
-import org.broadinstitute.hellbender.tools.walkers.annotator.QualByDepth;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -40,6 +40,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     public static final String POSITIONS_ONLY_LONG_NAME = "positions-only";
     public static final double INBREEDING_COEFF_TOLERANCE = 0.001;
 
+    private VariantAnnotatorEngine annotatorEngine;
     private boolean isSingleSample = true;
     private boolean alleleNumberIsDifferent = false;
     private boolean inbreedingCoeffIsDifferent = false;
@@ -119,6 +120,14 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     }  //speed things up a bit
 
     @Override
+    public boolean useVariantAnnotations() { return true;}
+
+    @Override
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+        return Arrays.asList(StandardAnnotation.class, AS_StandardAnnotation.class);
+    }
+
+    @Override
     public void onTraversalStart() {
         if (getDrivingVariantsFeatureInputs().size() != 2) {
             throw new UserException.BadInput("VCFComparator expects exactly two inputs -- one actual and one expected.");
@@ -128,7 +137,9 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             throw new UserException.BadInput("Tool requires exactly one expected input file");
         }
 
-       isSingleSample = getSamplesForVariants().size() == 1 ? true : false;  //if either expected or actual has more than one sample then we're not single-sample
+        annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
+
+        isSingleSample = getSamplesForVariants().size() == 1 ? true : false;  //if either expected or actual has more than one sample then we're not single-sample
     }
 
     @Override
@@ -688,12 +699,20 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         if (vcBuilder.getGenotypes().size() == 1) {
             orderedRelevantAlleles.add(Allele.NON_REF_ALLELE);
         }
+        //subset allele-specific annotations
+        //final List<Map<String,Object>> annotations = GATKVariantContextUtils.splitAttributesIntoPerAlleleLists(variant, Collections.emptyList(), getHeaderForVariants());
+        //final int[] keepAlleleIndices = isSingleSample ? AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(variant.getAlleles(), orderedRelevantAlleles, variant.getStart(), variant.getGenotype(0), false) : AlleleSubsettingUtils.getIndexesOfRelevantAlleles()
+
+
         //NOTE that we use BEST_MATCH_TO_ORIGINAL for post-reblocked VCFs with no hom ref PLs
         final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(variant.getGenotypes(), variant.getGenotype(0).getPloidy(),  //mixed ploidy will be a problem, but we don't do that in practice
                 variant.getAlleles(), orderedRelevantAlleles, null, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL,
                 variant.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false, false);
         vcBuilder.genotypes(gc);
-        return GATKVariantContextUtils.reverseTrimAlleles(vcBuilder.make());
+
+        final Map<String,Object> subsetAnnotations = ReblockGVCF.subsetAnnotationsIfNecessary(annotatorEngine, false, VCFConstants.GENOTYPE_POSTERIORS_KEY, variant, vcBuilder.make());
+
+        return GATKVariantContextUtils.reverseTrimAlleles(vcBuilder.attributes(subsetAnnotations).make());
     }
 
     private boolean isHighQuality(final VariantContext vc) {
@@ -755,6 +774,9 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
 
     private boolean isACEqualEnough(final String key, final List<? extends Object> actualList, final List<? extends Object> expectedList,
                                     final List<Allele> actualAlts, final List<Allele> expectedAlts) {
+        if (actualList.size() != expectedList.size()) {
+            return false;
+        }
         //trimming may drop AC=0 alts, but GATK convention is to put them last, so that shouldn't be an issue
         for (int i = 0; i < actualAlts.size(); i++) {
             if (actualAlts.get(i).equals(Allele.SPAN_DEL)) {
