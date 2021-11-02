@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.cloud.bigquery.storage.v1beta2.BigQueryWriteClient;
+import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -20,6 +21,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 
@@ -33,7 +35,7 @@ public final class PetCreator {
     private PetOrcWriter petOrcWriter = null;
     private PetAvroWriter petAvroWriter = null;
     private PetParquetWriter petParquetWriter = null;
-    private PendingBQWriter petBQJsonWriter = null;
+    private CommittedBQWriter petBQJsonWriter = null;
 
     private RefRangesWriter refRangesWriter = null;
 
@@ -48,6 +50,7 @@ public final class PetCreator {
     private static String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
     private BigQueryWriteClient bqWriteClient;
+    private int rowOffset = 0;
 
 
     public PetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
@@ -67,7 +70,7 @@ public final class PetCreator {
                         throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                     }
                     bqWriteClient = BigQueryWriteClient.create();
-                    petBQJsonWriter = new PendingBQWriter(bqWriteClient, projectId, datasetName,PET_FILETYPE_PREFIX + tableNumber);
+                    petBQJsonWriter = new CommittedBQWriter(bqWriteClient, projectId, datasetName,PET_FILETYPE_PREFIX + tableNumber);
                     break;
                 case TSV:
                     List<String> petHeader = PetCreator.getHeaders();
@@ -99,10 +102,12 @@ public final class PetCreator {
                 }
             }
 
-        } catch (final IOException e) {
-            throw new UserException("Could not create pet outputs", e);
-        } catch (final Exception ex) {
-            throw new UserException("Could not create pet outputs", ex);
+        } catch (final Descriptors.DescriptorValidationException dex) {
+            throw new UserException("Could not create pet outputs", dex);
+        } catch (final IOException ioex) {
+            throw new UserException("Could not create pet outputs", ioex);
+        } catch (final InterruptedException inex) {
+            throw new UserException("Could not create pet outputs", inex);
         }
 
         this.gqStatesToIgnore.add(gqStateToIgnore);
@@ -198,11 +203,14 @@ public final class PetCreator {
                         switch (outputType) {
                             case BQ:
                                 try {
-                                    petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
-                                } catch (Exception ex) {
-                                    // will be Interrupted or Execution Exception
-                                    throw new IOException("BQ exception", ex);
+                                    petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state), rowOffset);
+                                } catch (InterruptedException iex) {
+                                    throw new IOException("BQ interrupted exception", iex);
+                                } catch (ExecutionException eex) {
+                                    throw new IOException("BQ execution exception", eex);
                                 }
+                                // TODO somehow return this value so we can pick up after this if interrupted
+                                rowOffset ++;
                                 break;
                             case TSV:
                                 petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
@@ -370,11 +378,12 @@ public final class PetCreator {
                     break;
                 case BQ:
                     try {
-                        petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
+                        petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state), rowOffset);
                     } catch (Exception ex) {
                         // will be Interrupted or Execution Exception
                         throw new IOException("BQ exception", ex);
                     }
+                    rowOffset++;
                     break;
                 case ORC:
                     petOrcWriter.addRow(location, sampleId, state);
@@ -457,15 +466,16 @@ public final class PetCreator {
     }
 
     public void completeCreation() {
-        if (outputType == CommonCode.OutputType.BQ && petBQJsonWriter != null) {
-            petBQJsonWriter.commitWriteStreams();
-        }
+//        if (outputType == CommonCode.OutputType.BQ && petBQJsonWriter != null) {
+//            petBQJsonWriter.commitWriteStreams();
+//        }
     }
 
     public void closeTool() {
         try {
             switch (outputType) {
                 case BQ:
+                    logger.warn("Final pet row processed: " + rowOffset);
                     if (petBQJsonWriter != null) petBQJsonWriter.close();
                     break;
                 case TSV:
