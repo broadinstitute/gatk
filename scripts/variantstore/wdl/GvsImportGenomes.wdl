@@ -4,6 +4,7 @@ workflow GvsImportGenomes {
 
   input {
     Array[File] input_vcfs
+    Array[File] input_vcf_indexes
     Array[String] external_sample_names
     File interval_list
     String output_directory
@@ -102,15 +103,17 @@ workflow GvsImportGenomes {
   call CreateFOFNs {
     input:
         input_vcf_list = write_lines(input_vcfs),
+        input_vcf_index_list = write_lines(input_vcf_indexes),
         sample_name_list = write_lines(external_sample_names),
         batch_size = batch_size,
         run_uuid = SetLock.run_uuid
   }
 
-  scatter (i in range(length(CreateFOFNs.vcf_batch_fofns))) {
+  scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
     call CreateImportTsvs {
       input:
-        input_vcfs = read_lines(CreateFOFNs.vcf_batch_fofns[i]),
+        input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+        input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         interval_list = interval_list,
         service_account_json_path = service_account_json_path,
@@ -411,6 +414,7 @@ task CheckForDuplicateData {
 task CreateFOFNs {
     input {
         File input_vcf_list
+        File input_vcf_index_list
         File sample_name_list
         Int batch_size
         String run_uuid
@@ -420,6 +424,7 @@ task CreateFOFNs {
          set -e
 
          split -d -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcfs.
+         split -d -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
          split -d -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
      }
 
@@ -433,7 +438,8 @@ task CreateFOFNs {
      }
 
      output {
-         Array[File] vcf_batch_fofns = glob("batched_vcfs.*")
+         Array[File] vcf_batch_vcf_fofns = glob("batched_vcfs.*")
+         Array[File] vcf_batch_vcf_index_fofns = glob("batched_vcf_indexes.*")
          Array[File] vcf_sample_name_fofns = glob("batched_sample_names.*")
      }
 }
@@ -441,6 +447,7 @@ task CreateFOFNs {
 task CreateImportTsvs {
   input {
     Array[File] input_vcfs
+    Array[File] input_vcf_indexes
     Array[String] sample_names
     File interval_list
     String output_directory
@@ -475,6 +482,7 @@ task CreateImportTsvs {
       localization_optional: true
     }
   }
+
   command <<<
       set -e
 
@@ -503,6 +511,7 @@ task CreateImportTsvs {
 
       # translate WDL arrays into BASH arrays
       VCFS_ARRAY=(~{sep=" " input_vcfs})
+      VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
       SAMPLE_NAMES_ARRAY=(~{sep=" " sample_names})
 
       # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
@@ -510,14 +519,13 @@ task CreateImportTsvs {
           input_vcf="${VCFS_ARRAY[$i]}"
           input_vcf_basename=$(basename $input_vcf)
           updated_input_vcf=$input_vcf
-          input_vcf_index="${VCFS_ARRAY[$i]}.tbi"
+          input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
           sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
-          if [ ~{has_service_account_file} = 'true' ]; then
-              gsutil cp $input_vcf .
-              gsutil cp $input_vcf_index .
-              updated_input_vcf=$input_vcf_basename
-          fi
+          # we always do our own localization
+          gsutil cp $input_vcf .
+          gsutil cp $input_vcf_index .
+          updated_input_vcf=$input_vcf_basename
 
           # check whether these files have already been generated
           DO_TSV_GENERATION='true'
