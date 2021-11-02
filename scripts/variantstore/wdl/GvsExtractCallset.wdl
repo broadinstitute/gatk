@@ -14,9 +14,11 @@ workflow GvsExtractCallset {
         File reference_index
         File reference_dict
 
-        String fq_cohort_extract_table_prefix
-        String query_project = data_project
-        String fq_ranges_dataset = "~{data_project}.~{default_dataset}"
+       # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
+       # without a default value, ranges users are forced to specify a value even though it is meaningless
+       String extract_table_prefix = ""
+       String query_project = data_project
+       String fq_ranges_dataset = "~{data_project}.~{default_dataset}"
 
         Boolean do_not_filter_override = false
         String? filter_set_name
@@ -41,12 +43,14 @@ workflow GvsExtractCallset {
 
         String output_file_base_name
         String? output_gcs_dir
-        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20210914/gatk-package-4.2.0.0-406-ga9206a2-SNAPSHOT-local.jar"
+        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_ranges_extract_20211024/gatk-package-4.2.0.0-424-g366f2df-SNAPSHOT-local.jar"
         Int local_disk_for_extract = 150
-    }
 
-    String fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES"
-    String fq_cohort_extract_table  = "~{fq_cohort_extract_table_prefix}__DATA"
+        String fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__SAMPLES"
+        String fq_cohort_extract_table  = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__DATA"
+   }
+
+   Array[String] tables_patterns_for_datetime_check = if (mode == "RANGES") then ["pet_%","vet_%"] else ["~{extract_table_prefix}__%"]
 
     call Utils.SplitIntervals {
       input:
@@ -60,17 +64,12 @@ workflow GvsExtractCallset {
           service_account_json_path = service_account_json_path
     }
 
-    call Utils.GetBQTableLastModifiedDatetime as CohortExtractTableLastModified {
+    call Utils.GetBQTablesMaxLastModifiedTimestamp {
         input:
             query_project = query_project,
-            fq_table = fq_cohort_extract_table,
-            service_account_json_path = service_account_json_path
-    }
-
-    call Utils.GetBQTableLastModifiedDatetime as SamplesTableLastModified {
-        input:
-            query_project = query_project,
-            fq_table = fq_samples_to_extract_table,
+            data_project = data_project,
+            data_dataset = default_dataset,
+            table_patterns = tables_patterns_for_datetime_check,
             service_account_json_path = service_account_json_path
     }
 
@@ -102,7 +101,7 @@ workflow GvsExtractCallset {
                 output_file                     = "${output_file_base_name}_${i}.vcf.gz",
                 output_gcs_dir                  = output_gcs_dir,
                 local_disk                      = local_disk_for_extract,
-                last_modified_timestamps        = [SamplesTableLastModified.last_modified_timestamp, CohortExtractTableLastModified.last_modified_timestamp],
+                max_last_modified_timestamp     = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
                 extract_preemptible_override    = extract_preemptible_override,
                 extract_maxretries_override     = extract_maxretries_override
         }
@@ -172,7 +171,7 @@ task ExtractTask {
         Int local_disk
 
         # for call-caching -- check if DB tables haven't been updated since the last run
-        Array[String] last_modified_timestamps
+        String max_last_modified_timestamp
     }
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
