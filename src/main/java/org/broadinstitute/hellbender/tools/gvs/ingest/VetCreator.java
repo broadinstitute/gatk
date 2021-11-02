@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.cloud.bigquery.storage.v1beta2.BigQueryWriteClient;
+import com.google.protobuf.Descriptors;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import org.json.JSONObject;
 
@@ -32,7 +34,8 @@ public class VetCreator {
     private static String VET_FILETYPE_PREFIX = "vet_";
     private static String PREFIX_SEPARATOR = "_";
     private BigQueryWriteClient bqWriteClient;
-    private PendingBQWriter vetBQJsonWriter = null;
+    private CommittedBQWriter vetBQJsonWriter = null;
+    private int rowOffset = 0;
 
 
     public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName) {
@@ -45,7 +48,7 @@ public class VetCreator {
                         throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                     }
                     bqWriteClient = BigQueryWriteClient.create();
-                    vetBQJsonWriter = new PendingBQWriter(bqWriteClient, projectId, datasetName,VET_FILETYPE_PREFIX + tableNumber);
+                    vetBQJsonWriter = new CommittedBQWriter(bqWriteClient, projectId, datasetName,VET_FILETYPE_PREFIX + tableNumber);
 
                     break;
                 case TSV:
@@ -54,11 +57,12 @@ public class VetCreator {
                     vetWriter = new SimpleXSVWriter(vetOutputFile.toPath(), IngestConstants.SEPARATOR);
                     vetWriter.setHeaderLine(getHeaders());
             }
-
-        } catch (final IOException e) {
-            throw new UserException("Could not create vet outputs", e);
-        } catch (final Exception ex) {
-            throw new UserException("Could not create vet outputs", ex);
+        } catch (final Descriptors.DescriptorValidationException dex) {
+            throw new UserException("Could not create vet outputs", dex);
+        } catch (final IOException ioex) {
+            throw new UserException("Could not create vet outputs", ioex);
+        } catch (final InterruptedException inex) {
+            throw new UserException("Could not create vet outputs", inex);
         }
     }
 
@@ -74,11 +78,13 @@ public class VetCreator {
         switch(outputType) {
             case BQ:
                 try {
-                    vetBQJsonWriter.addJsonRow(createJson(location, variant, Long.parseLong(sampleId)));
+                    vetBQJsonWriter.addJsonRow(createJson(location, variant, Long.parseLong(sampleId)), rowOffset);
                 } catch (Exception ex) {
                     // will be Interrupted or Execution Exception
                     throw new IOException("BQ exception", ex);
                 }
+                // TODO somehow return this value so we can pick up after this if interrupted
+                rowOffset++;
                 break;
             case TSV:
                 // write the variant to the XSV
@@ -124,14 +130,15 @@ public class VetCreator {
     }
 
     public void completeCreation() {
-        if (outputType == CommonCode.OutputType.BQ && vetBQJsonWriter != null) {
-            vetBQJsonWriter.commitWriteStreams();
-        }
+//        if (outputType == CommonCode.OutputType.BQ && vetBQJsonWriter != null) {
+//            vetBQJsonWriter.commitWriteStreams();
+//        }
     }
 
     public void closeTool() {
         if (vetWriter != null) {
             try {
+                logger.warn("Final vet row processed: " + rowOffset);
                 vetWriter.close();
             } catch (final Exception e) {
                 throw new IllegalArgumentException("Couldn't close VET writer", e);
