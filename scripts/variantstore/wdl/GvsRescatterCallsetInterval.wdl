@@ -12,7 +12,7 @@ workflow GvsRescatterCallsetInterval {
     File reference
     File reference_dict
     File reference_index
-    String final_output_gcs_dir
+    String? final_output_gcs_dir
     String? filter_set_name
 
     Int re_scatter_count
@@ -26,12 +26,16 @@ workflow GvsRescatterCallsetInterval {
   }
 
   scatter(i in range(length(intervals_to_scatter))) {
+    # take out leading 0s from interval file name number for VCF and index
+    Int shard_num = intervals_to_scatter[i]
+    String vcf_basename = "${output_file_base_name}_${shard_num}"
+
     call CallsetInterval.GvsExtractCallset as ExtractInterval {
       input:
         data_project = data_project,
         default_dataset = default_dataset,
         fq_cohort_extract_table_prefix = fq_cohort_extract_table_prefix,
-        output_file_base_name = output_file_base_name + '_' + intervals_to_scatter[i],
+        output_file_base_name = vcf_basename,
         reference = reference,
         reference_dict = reference_dict,
         reference_index = reference_index,
@@ -46,7 +50,7 @@ workflow GvsRescatterCallsetInterval {
     call Utils.MergeVCFs as MergeVCFs {
       input:
         input_vcfs = ExtractInterval.output_vcfs,
-        output_vcf_name = "${output_file_base_name}_${intervals_to_scatter[i]}.vcf.gz",
+        output_vcf_name = "${vcf_basename}.vcf.gz",
         output_directory = final_output_gcs_dir,
         merge_disk_override = merge_disk_override,
         service_account_json_path = service_account_json_path
