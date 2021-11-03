@@ -109,6 +109,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_no_streaming
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
@@ -128,6 +129,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-remove-sites-only-step
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
