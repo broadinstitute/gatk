@@ -252,8 +252,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             throw new GATKException("Error writing missing intervals", ioe);
         }
         // Wait until all data has been submitted and in pending state to commit
-        vetTsvCreator.completeCreation();
+        vetTsvCreator.flushBuffer();
+        petTsvCreator.flushBuffer();
+        // must commit pet first
         petTsvCreator.completeCreation();
+        vetTsvCreator.completeCreation();
         return 0;
     }
 

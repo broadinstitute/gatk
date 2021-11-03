@@ -35,7 +35,7 @@ public final class PetCreator {
     private PetOrcWriter petOrcWriter = null;
     private PetAvroWriter petAvroWriter = null;
     private PetParquetWriter petParquetWriter = null;
-    private CommittedBQWriter petBQJsonWriter = null;
+    private PendingBQWriter petBQJsonWriter = null;
 
     private RefRangesWriter refRangesWriter = null;
 
@@ -51,6 +51,7 @@ public final class PetCreator {
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
     private BigQueryWriteClient bqWriteClient;
     private int rowOffset = 0;
+    private Date lastApplyTS = null;
 
 
     public PetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
@@ -70,7 +71,7 @@ public final class PetCreator {
                         throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                     }
                     bqWriteClient = BigQueryWriteClient.create();
-                    petBQJsonWriter = new CommittedBQWriter(bqWriteClient, projectId, datasetName,PET_FILETYPE_PREFIX + tableNumber);
+                    petBQJsonWriter = new PendingBQWriter(bqWriteClient, projectId, datasetName,PET_FILETYPE_PREFIX + tableNumber);
                     break;
                 case TSV:
                     List<String> petHeader = PetCreator.getHeaders();
@@ -203,14 +204,14 @@ public final class PetCreator {
                         switch (outputType) {
                             case BQ:
                                 try {
-                                    petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state), rowOffset);
-                                } catch (InterruptedException iex) {
-                                    throw new IOException("BQ interrupted exception", iex);
-                                } catch (ExecutionException eex) {
+                                    petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
+//                                } catch (InterruptedException iex) {
+//                                    throw new IOException("BQ interrupted exception", iex);
+                                } catch (Exception eex) {
                                     throw new IOException("BQ execution exception", eex);
                                 }
-                                // TODO somehow return this value so we can pick up after this if interrupted
-                                rowOffset ++;
+//                                 TODO somehow return this value so we can pick up after this if interrupted
+//                                rowOffset ++;
                                 break;
                             case TSV:
                                 petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
@@ -378,7 +379,7 @@ public final class PetCreator {
                     break;
                 case BQ:
                     try {
-                        petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state), rowOffset);
+                        petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
                     } catch (Exception ex) {
                         // will be Interrupted or Execution Exception
                         throw new IOException("BQ exception", ex);
@@ -465,17 +466,20 @@ public final class PetCreator {
         return Arrays.stream(PetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
     }
 
+    public void flushBuffer() {
+        petBQJsonWriter.flushBuffer();
+    }
+
     public void completeCreation() {
-//        if (outputType == CommonCode.OutputType.BQ && petBQJsonWriter != null) {
-//            petBQJsonWriter.commitWriteStreams();
-//        }
+        if (outputType == CommonCode.OutputType.BQ && petBQJsonWriter != null) {
+            petBQJsonWriter.commitWriteStreams();
+        }
     }
 
     public void closeTool() {
         try {
             switch (outputType) {
                 case BQ:
-                    logger.warn("Final pet row processed: " + rowOffset);
                     if (petBQJsonWriter != null) petBQJsonWriter.close();
                     break;
                 case TSV:

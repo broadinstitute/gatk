@@ -20,7 +20,21 @@ public class PendingBQWriter extends CommittedBQWriter {
         super(bqWriteClient, projectId, datasetName, tableName, WriteStream.Type.PENDING);
     }
 
+    public void flushBuffer() {
+        try {
+            writeJsonArray(0);
+        } catch (Exception ex) {
+            logger.error("Caught exception writing last records on close", ex);
+        }
+    }
+
     public void commitWriteStreams() {
+//        try {
+//            writeJsonArray(0);
+//        } catch (Exception ex) {
+//            logger.error("Caught exception writing last records on close", ex);
+//        }
+
         FinalizeWriteStreamResponse finalizeResponse =
                 bqWriteClient.finalizeWriteStream(writeStream.getName());
         logger.info("Rows written: " + finalizeResponse.getRowCount());

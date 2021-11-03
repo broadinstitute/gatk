@@ -18,9 +18,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+
+import org.joda.time.DateTime;
 import org.json.JSONObject;
 
 public class VetCreator {
@@ -34,8 +37,9 @@ public class VetCreator {
     private static String VET_FILETYPE_PREFIX = "vet_";
     private static String PREFIX_SEPARATOR = "_";
     private BigQueryWriteClient bqWriteClient;
-    private CommittedBQWriter vetBQJsonWriter = null;
+    private PendingBQWriter vetBQJsonWriter = null;
     private int rowOffset = 0;
+    private Date lastApplyTS;
 
 
     public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName) {
@@ -48,7 +52,7 @@ public class VetCreator {
                         throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                     }
                     bqWriteClient = BigQueryWriteClient.create();
-                    vetBQJsonWriter = new CommittedBQWriter(bqWriteClient, projectId, datasetName,VET_FILETYPE_PREFIX + tableNumber);
+                    vetBQJsonWriter = new PendingBQWriter(bqWriteClient, projectId, datasetName,VET_FILETYPE_PREFIX + tableNumber);
 
                     break;
                 case TSV:
@@ -67,6 +71,7 @@ public class VetCreator {
     }
 
     public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) throws IOException {
+        checkTimestamp();
         int start = variant.getStart();
         long location = SchemaUtils.encodeLocation(variant.getContig(), start);
         List<String> row = createRow(
@@ -78,7 +83,7 @@ public class VetCreator {
         switch(outputType) {
             case BQ:
                 try {
-                    vetBQJsonWriter.addJsonRow(createJson(location, variant, Long.parseLong(sampleId)), rowOffset);
+                    vetBQJsonWriter.addJsonRow(createJson(location, variant, Long.parseLong(sampleId)));
                 } catch (Exception ex) {
                     // will be Interrupted or Execution Exception
                     throw new IOException("BQ exception", ex);
@@ -91,6 +96,15 @@ public class VetCreator {
                 vetWriter.getNewLineBuilder().setRow(row).write();
                 break;
 
+        }
+    }
+
+    private void checkTimestamp() {
+        Date now = new Date();
+        if (lastApplyTS == null) {
+            lastApplyTS = now;
+        } else if (lastApplyTS.getTime() - now.getTime() > 1*60*60*1000){
+            logger.info("Vet Checkpoint " + rowOffset);
         }
     }
 
@@ -129,10 +143,14 @@ public class VetCreator {
         return Arrays.stream(VetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
     }
 
+    public void flushBuffer() {
+        vetBQJsonWriter.flushBuffer();
+    }
+
     public void completeCreation() {
-//        if (outputType == CommonCode.OutputType.BQ && vetBQJsonWriter != null) {
-//            vetBQJsonWriter.commitWriteStreams();
-//        }
+        if (outputType == CommonCode.OutputType.BQ && vetBQJsonWriter != null) {
+            vetBQJsonWriter.commitWriteStreams();
+        }
     }
 
     public void closeTool() {
