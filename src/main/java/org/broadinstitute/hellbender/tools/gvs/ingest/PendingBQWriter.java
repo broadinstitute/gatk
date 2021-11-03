@@ -16,8 +16,8 @@ import java.util.concurrent.ExecutionException;
 public class PendingBQWriter extends CommittedBQWriter {
     static final Logger logger = LogManager.getLogger(PendingBQWriter.class);
 
-    public PendingBQWriter(BigQueryWriteClient bqWriteClient, String projectId, String datasetName, String tableName) throws Descriptors.DescriptorValidationException, InterruptedException, IOException {
-        super(bqWriteClient, projectId, datasetName, tableName, WriteStream.Type.PENDING);
+    public PendingBQWriter(String projectId, String datasetName, String tableName) {
+        super(projectId, datasetName, tableName, WriteStream.Type.PENDING);
     }
 
     public void flushBuffer() {
@@ -29,12 +29,6 @@ public class PendingBQWriter extends CommittedBQWriter {
     }
 
     public void commitWriteStreams() {
-//        try {
-//            writeJsonArray(0);
-//        } catch (Exception ex) {
-//            logger.error("Caught exception writing last records on close", ex);
-//        }
-
         FinalizeWriteStreamResponse finalizeResponse =
                 bqWriteClient.finalizeWriteStream(writeStream.getName());
         logger.info("Rows written: " + finalizeResponse.getRowCount());

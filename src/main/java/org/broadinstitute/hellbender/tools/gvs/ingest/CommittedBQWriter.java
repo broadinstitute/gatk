@@ -20,23 +20,33 @@ public class CommittedBQWriter {
     protected WriteStream writeStream;
     protected JsonStreamWriter writer;
     protected TableName parentTable;
-    protected static int MAX_RETRIES = 3;
-    WriteStream.Type steamType;
-    protected static int BATCH_SIZE = 1000;
+    protected int MAX_RETRIES = 3;
+    protected WriteStream.Type steamType;
+    protected int BATCH_SIZE = 10000;
     protected JSONArray jsonArr = new JSONArray();
 
 
-    public CommittedBQWriter(BigQueryWriteClient bqWriteClient, String projectId, String datasetName, String tableName) throws Descriptors.DescriptorValidationException, InterruptedException, IOException {
-        this(bqWriteClient, projectId, datasetName, tableName, WriteStream.Type.COMMITTED);
+    public void setMaxRetries(int maxRetries) {
+        MAX_RETRIES = maxRetries;
     }
 
-    protected CommittedBQWriter(BigQueryWriteClient bqWriteClient, String projectId, String datasetName, String tableName, WriteStream.Type type) {
-        this.bqWriteClient = bqWriteClient;
+    public void setBatchSize(int batchSize) {
+        BATCH_SIZE = batchSize;
+    }
+
+    public CommittedBQWriter(String projectId, String datasetName, String tableName) {
+        this(projectId, datasetName, tableName, WriteStream.Type.COMMITTED);
+    }
+
+    protected CommittedBQWriter(String projectId, String datasetName, String tableName, WriteStream.Type type) {
         this.parentTable = TableName.of(projectId, datasetName, tableName);
         this.steamType = type;
     }
 
     protected void createStream() throws Descriptors.DescriptorValidationException, InterruptedException, IOException {
+        if (bqWriteClient == null) {
+            bqWriteClient = BigQueryWriteClient.create();
+        }
         WriteStream writeStreamConfig = WriteStream.newBuilder().setType(steamType).build();
         CreateWriteStreamRequest createWriteStreamRequest =
                 CreateWriteStreamRequest.newBuilder()
@@ -45,7 +55,6 @@ public class CommittedBQWriter {
                         .build();
         writeStream = bqWriteClient.createWriteStream(createWriteStreamRequest);
         writer = JsonStreamWriter.newBuilder(writeStream.getName(), writeStream.getTableSchema()).build();
-
     }
 
     public AppendRowsResponse addJsonRow(JSONObject row) throws Descriptors.DescriptorValidationException, ExecutionException, InterruptedException, IOException {
@@ -56,16 +65,19 @@ public class CommittedBQWriter {
         jsonArr.put(row);
 
         if (jsonArr.length() >= BATCH_SIZE) {
-            response = writeJsonArray(0);
+            response = writeJsonArray();
         }
         return response;
+    }
+
+    protected AppendRowsResponse writeJsonArray() throws Descriptors.DescriptorValidationException, ExecutionException, InterruptedException, IOException {
+        return writeJsonArray(0);
     }
 
     protected AppendRowsResponse writeJsonArray(int retryCount) throws Descriptors.DescriptorValidationException, ExecutionException, InterruptedException, IOException {
         AppendRowsResponse response = null;
         try {
             ApiFuture<AppendRowsResponse> future = writer.append(jsonArr);
-            logger.info("Wrote " + jsonArr.length() + " records");
             response = future.get();
             jsonArr = new JSONArray();
         } catch (StatusRuntimeException ex) {
@@ -79,29 +91,12 @@ public class CommittedBQWriter {
             } else {
                 throw ex;
             }
-
-        } catch (Exception ex) {
-            logger.warn(ex);
-            logger.info("creating new stream and retrying");
-            if (retryCount < MAX_RETRIES) {
-                createStream();
-                response = writeJsonArray(retryCount + 1);
-            } else {
-                throw ex;
-            }
         }
     return response;
     }
 
 
     public void close() {
-        if (jsonArr.length() > 0) {
-            try {
-                writeJsonArray(0);
-            } catch (Exception ex) {
-                logger.error("Caught exception writing last records on close", ex);
-            }
-        }
-        writer.close();
+        bqWriteClient.close();
     }
 }

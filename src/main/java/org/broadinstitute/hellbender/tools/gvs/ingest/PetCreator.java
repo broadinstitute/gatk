@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
-import com.google.cloud.bigquery.storage.v1beta2.BigQueryWriteClient;
 import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -49,9 +48,8 @@ public final class PetCreator {
     private static String PET_FILETYPE_PREFIX = "pet_";
     private static String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
-    private BigQueryWriteClient bqWriteClient;
-    private int rowOffset = 0;
-    private Date lastApplyTS = null;
+
+
 
 
     public PetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
@@ -70,8 +68,7 @@ public final class PetCreator {
                     if (projectId == null || datasetName == null) {
                         throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                     }
-                    bqWriteClient = BigQueryWriteClient.create();
-                    petBQJsonWriter = new PendingBQWriter(bqWriteClient, projectId, datasetName,PET_FILETYPE_PREFIX + tableNumber);
+                    petBQJsonWriter = new PendingBQWriter(projectId, datasetName,PET_FILETYPE_PREFIX + tableNumber);
                     break;
                 case TSV:
                     List<String> petHeader = PetCreator.getHeaders();
@@ -103,12 +100,8 @@ public final class PetCreator {
                 }
             }
 
-        } catch (final Descriptors.DescriptorValidationException dex) {
-            throw new UserException("Could not create pet outputs", dex);
         } catch (final IOException ioex) {
             throw new UserException("Could not create pet outputs", ioex);
-        } catch (final InterruptedException inex) {
-            throw new UserException("Could not create pet outputs", inex);
         }
 
         this.gqStatesToIgnore.add(gqStateToIgnore);
@@ -380,11 +373,9 @@ public final class PetCreator {
                 case BQ:
                     try {
                         petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
-                    } catch (Exception ex) {
-                        // will be Interrupted or Execution Exception
+                    } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
                         throw new IOException("BQ exception", ex);
                     }
-                    rowOffset++;
                     break;
                 case ORC:
                     petOrcWriter.addRow(location, sampleId, state);
@@ -466,11 +457,8 @@ public final class PetCreator {
         return Arrays.stream(PetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
     }
 
-    public void flushBuffer() {
+    public void commitData() {
         petBQJsonWriter.flushBuffer();
-    }
-
-    public void completeCreation() {
         if (outputType == CommonCode.OutputType.BQ && petBQJsonWriter != null) {
             petBQJsonWriter.commitWriteStreams();
         }

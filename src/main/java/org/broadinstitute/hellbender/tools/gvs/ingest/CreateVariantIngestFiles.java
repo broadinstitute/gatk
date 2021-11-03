@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
-import com.google.cloud.bigquery.storage.v1beta2.BatchCommitWriteStreamsRequest;
-import com.google.cloud.bigquery.storage.v1beta2.BatchCommitWriteStreamsResponse;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
@@ -40,8 +38,8 @@ import java.util.List;
 public final class CreateVariantIngestFiles extends VariantWalker {
     static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
 
-    private PetCreator petTsvCreator;
-    private VetCreator vetTsvCreator;
+    private PetCreator petCreator;
+    private VetCreator vetCreator;
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
     private String sampleName;
@@ -195,10 +193,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
+        petCreator = new PetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
 
         if (enableVet) {
-            vetTsvCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName);
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName);
         }
 
 
@@ -229,14 +227,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         try {
         // write to VET if NOT reference block and NOT a no call
             if (!variant.isReferenceBlock() && !isNoCall(variant)) {
-                if (enableVet) vetTsvCreator.apply(variant, readsContext, referenceContext, featureContext);
+                if (enableVet) vetCreator.apply(variant, readsContext, referenceContext, featureContext);
             }
         } catch (IOException ioe) {
             throw new GATKException("Error writing VET", ioe);
         }
 
         try {
-            petTsvCreator.apply(variant, intervalsToWrite);
+            petCreator.apply(variant, intervalsToWrite);
         } catch (IOException ioe) {
             throw new GATKException("Error writing PET", ioe);
         }
@@ -247,26 +245,23 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         try {
-            petTsvCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
+            petCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
         } catch (IOException ioe) {
             throw new GATKException("Error writing missing intervals", ioe);
         }
         // Wait until all data has been submitted and in pending state to commit
-        vetTsvCreator.flushBuffer();
-        petTsvCreator.flushBuffer();
-        // must commit pet first
-        petTsvCreator.completeCreation();
-        vetTsvCreator.completeCreation();
+        petCreator.commitData();
+        vetCreator.commitData();
         return 0;
     }
 
     @Override
     public void closeTool() {
-        if (petTsvCreator != null) {
-            petTsvCreator.closeTool();
+        if (petCreator != null) {
+            petCreator.closeTool();
         }
-        if (vetTsvCreator != null) {
-            vetTsvCreator.closeTool();;
+        if (vetCreator != null) {
+            vetCreator.closeTool();;
         }
     }
 
