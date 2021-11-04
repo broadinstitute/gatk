@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.gvs.ingest;
+package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.bigquery.storage.v1beta2.*;

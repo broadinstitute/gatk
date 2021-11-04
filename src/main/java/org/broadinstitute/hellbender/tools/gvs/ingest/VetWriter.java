@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
+import org.broadinstitute.hellbender.utils.bigquery.PendingBQWriter;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 
 import java.io.File;
@@ -23,9 +24,9 @@ import java.util.stream.Collectors;
 
 import org.json.JSONObject;
 
-public class VetCreator {
+public class VetWriter {
 
-    static final Logger logger = LogManager.getLogger(VetCreator.class);
+    static final Logger logger = LogManager.getLogger(VetWriter.class);
 
     private CommonCode.OutputType outputType;
 
@@ -36,7 +37,7 @@ public class VetCreator {
     private PendingBQWriter vetBQJsonWriter = null;
 
 
-    public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName) {
+    public VetWriter(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         try {
