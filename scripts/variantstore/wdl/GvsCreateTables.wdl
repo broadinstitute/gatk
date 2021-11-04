@@ -7,8 +7,9 @@ workflow CreateBQTables {
         String project_id
         String dataset_name
         String? service_account_json_path
-        String pet_schema = "location:INTEGER,sample_id:INTEGER,state:STRING"
-        String vet_schema = "sample_id:INTEGER,location:INTEGER,ref:STRING,alt:STRING,AS_RAW_MQ:STRING,AS_RAW_MQRankSum:STRING,QUALapprox:STRING,AS_QUALapprox:STRING,AS_RAW_ReadPosRankSum:STRING,AS_SB_TABLE:STRING,AS_VarDP:STRING,call_GT:STRING,call_AD:STRING,call_GQ:INTEGER,call_PGT:STRING,call_PID:STRING,call_PL:STRING"
+        String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
+        String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
+        String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
         String uuid = ""
         Int? preemptible_tries
 
@@ -20,7 +21,7 @@ workflow CreateBQTables {
         dataset_name = dataset_name,
         datatype = "pet",
         max_table_id = max_table_id,
-        schema = pet_schema,
+        schema_json = pet_schema_json,
         superpartitioned = "true",
         partitioned = "true",
         uuid = uuid,
@@ -34,12 +35,26 @@ workflow CreateBQTables {
         dataset_name = dataset_name,
         datatype = "vet",
         max_table_id = max_table_id,
-        schema = vet_schema,
+        schema_json = vet_schema_json,
         superpartitioned = "true",
         partitioned = "true",
         uuid = uuid,
         service_account_json_path = service_account_json_path,
         preemptible_tries = preemptible_tries
+    }
+
+    call CreateTables as CreateRefRangesTables {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            datatype = "ref_ranges",
+            max_table_id = max_table_id,
+            schema_json = ref_ranges_schema_json,
+            superpartitioned = "true",
+            partitioned = "true",
+            uuid = uuid,
+            service_account_json_path = service_account_json_path,
+            preemptible_tries = preemptible_tries
     }
 }
 
@@ -55,7 +70,7 @@ task CreateTables {
       String dataset_name
       String datatype
       Int max_table_id
-      String? schema
+      String schema_json
       String superpartitioned
       String partitioned
       String uuid
@@ -113,7 +128,8 @@ task CreateTables {
       set -e
       if [ $BQ_SHOW_RC -ne 0 ]; then
         echo "making table $TABLE"
-        bq --location=US mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE ~{schema}
+        echo '~{schema_json}' > schema.json
+        bq --location=US mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE schema.json
       fi
     done
   >>>
