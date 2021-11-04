@@ -78,40 +78,30 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
-## 4. Prepare Callset
-This step performs the heavy lifting in BigQuery to gather all the data required to create a jointly called VCF.  
+## 4. Extract Cohort
 
-This is done by running the `GvsPrepareCallset` workflow with the following parameters:
-
-
-| Parameter      | Description |
-| ----------------- | ----------- |
-| data_project | The name of the google project containing the dataset |
-| default_dataset      | The name of the dataset  |
-| destination\_cohort\_table_prefix | A unique, descriptive name for the tables containing the callset (e.g. `demo_10_wgs_callset`); you will want to make note of this for use in the next step |
-| sample\_names\_to_extract | A file of sample names to be extracted in the callset (use `gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvs_quickstart_10_samples.txt`) |
-
-
-**Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
-
-## 5. Extract Cohort
-
-This step extracts the data in BigQuery, prepared by `GvsPrepareCallset` and transforms it into a sharded joint called VCF 
+This step extracts the data in BigQuery and transforms it into a sharded joint called VCF incorporating the VQSR filter set
 
 This is done by running the `GvsExtractCallset` workflow with the following parameters:
 
-
+TODO: 
+ - remove "extract_table_prefix" from WDL requirements (why can't we do this yet?)
+ - optimize the samples_to_extract information
+ - we can make "mode" of ranges the default (or at least stick it in the methods config)
+ 
 | Parameter      | Description |
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
 | filter\_set_name | the name of the filter set identifier created in step #3 |
-| fq_cohort\_extract\_table\_prefix | the fully qualified name of the `destination_cohort_table_prefix` from step #4, of the form `<project>.<dataset>.<destination_cohort_table_prefix>` |
+| extract_table_prefix | set to any value |
+| mode | "RANGES" |
+| fq_samples_to_extract_table | <data_project>.<default_dataset>.sample_info |
 | output_file\_base\_name | Base name for generated VCFs |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
-## 6. Your VCF is ready!!
+## 5. Your VCF is ready!!
 
 The sharded VCF outut files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`
 
