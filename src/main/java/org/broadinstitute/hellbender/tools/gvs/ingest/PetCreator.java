@@ -461,9 +461,14 @@ public final class PetCreator {
     }
 
     public void commitData() {
-        petBQJsonWriter.flushBuffer();
-        if (outputType == CommonCode.OutputType.BQ && petBQJsonWriter != null) {
-            petBQJsonWriter.commitWriteStreams();
+        if (outputType == CommonCode.OutputType.BQ) {
+            if (writePetData && petBQJsonWriter != null) {
+                petBQJsonWriter.flushBuffer();
+                petBQJsonWriter.commitWriteStreams();
+            }
+            if (writeReferenceRanges && refRangesWriter != null) {
+                refRangesWriter.commitData();
+            }
         }
     }
 
