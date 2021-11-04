@@ -4,6 +4,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.bigquery.AvroFileReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -19,7 +20,7 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
 
     @Test
     public void testDefinedExtractCohortRecord() {
-        GenericRecord definedInputGenericRecord = new AvroFileReader(getToolTestDataDir() + "test_input_defined.avro").next();
+        GenericRecord definedInputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "test_input_defined.avro")).next();
         ExtractCohortRecord allDefinedRecord = new ExtractCohortRecord(definedInputGenericRecord);
 
         Assert.assertEquals(allDefinedRecord.getContig(), "chr15");
@@ -40,7 +41,7 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
 
     @Test
     public void testNulledExtractCohortRecord() {
-        GenericRecord nulledInputGenericRecord = new AvroFileReader(getToolTestDataDir() + "test_input_nulls.avro").next();
+        GenericRecord nulledInputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "test_input_nulls.avro")).next();
         ExtractCohortRecord someNullsRecord = new ExtractCohortRecord(nulledInputGenericRecord);
 
         Assert.assertEquals(someNullsRecord.getContig(), "chr15");

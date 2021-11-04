@@ -183,3 +183,50 @@ task GetBQTableLastModifiedDatetime {
     cpu: 1
   }
 }
+
+task GetBQTablesMaxLastModifiedTimestamp {
+  # because this is being used to determine if the data has changed, never use call cache
+  meta {
+    volatile: true
+  }
+
+  input {
+    String query_project
+    String data_project
+    String data_dataset
+    Array[String] table_patterns
+    String? service_account_json_path
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+  # ------------------------------------------------
+  # try to get the latest last modified timestamp, in epoch microseconds, for all of the tables that match the provided prefixes
+  command <<<
+    set -e
+    if [ ~{has_service_account_file} = 'true' ]; then
+    gsutil cp ~{service_account_json_path} local.service_account.json
+    gcloud auth activate-service-account --key-file=local.service_account.json
+    fi
+
+    echo "project_id = ~{query_project}" > ~/.bigqueryrc
+
+    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
+    bq --location=US --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
+    "SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM \`~{data_project}\`.~{data_dataset}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like '~{sep="' OR table_name like '" table_patterns}'" > results.txt
+
+    tail -1 results.txt | cut -d, -f1 > max_last_modified_timestamp.txt
+  >>>
+
+  output {
+    String max_last_modified_timestamp = read_string("max_last_modified_timestamp.txt")
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}

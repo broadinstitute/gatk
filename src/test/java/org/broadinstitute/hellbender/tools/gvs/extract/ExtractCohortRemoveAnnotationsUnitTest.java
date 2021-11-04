@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -25,9 +26,12 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 testVCFHeader,
                 null,
                 null,
-                new HashMap<Long, String>(),
+                new HashMap<>(),
                 null,
                 "spec-ops-aou.kc_high_cov_ccdg.exported_cohort_100_test",
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -42,7 +46,8 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 null,
                 false,
                 ExtractCohort.VQSLODFilteringType.NONE,
-                false
+                false,
+                GQStateEnum.SIXTY
         );
 
         List<VariantContext> variantContexts = VariantContextTestUtils.getVariantContexts(ORIGINAL_TEST_FILE); // list variantContexts from VCF file

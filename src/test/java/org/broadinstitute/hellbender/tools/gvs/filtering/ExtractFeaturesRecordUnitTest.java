@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.gvs.filtering;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.bigquery.AvroFileReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -11,7 +12,7 @@ public class ExtractFeaturesRecordUnitTest extends GATKBaseTest {
 
     @Test
     public void testExtractFeaturesRecordDefined() {
-        GenericRecord inputGenericRecord = new AvroFileReader(getToolTestDataDir() + "extract_features_input_defined.avro").next();
+        GenericRecord inputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "extract_features_input_defined.avro")).next();
         ExtractFeaturesRecord allDefinedRecord = new ExtractFeaturesRecord(inputGenericRecord);
 
         Assert.assertEquals(allDefinedRecord.getContig(), "chr10");
@@ -41,7 +42,7 @@ public class ExtractFeaturesRecordUnitTest extends GATKBaseTest {
 
     @Test
     public void testExtractFeaturesRecordNulled() {
-        GenericRecord inputGenericRecord = new AvroFileReader(getToolTestDataDir() + "extract_features_input_nulls.avro").next();
+        GenericRecord inputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "extract_features_input_nulls.avro")).next();
         ExtractFeaturesRecord someNullsRecord = new ExtractFeaturesRecord(inputGenericRecord);
 
         System.out.println(someNullsRecord.getAsMQRankSumFreqTable());

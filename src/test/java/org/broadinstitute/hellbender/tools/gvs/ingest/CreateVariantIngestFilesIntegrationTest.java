@@ -32,7 +32,6 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
                 .add("V", getToolTestDataDir() + input_vcf_file)
                 .add("L", getToolTestDataDir() + interval_list_file)
                 .add("interval-set-rule", "INTERSECTION")
-                .add("mode", "GENOMES")
                 .add("output-type", "TSV")
                 .add("SNM", getToolTestDataDir() + sample_map_file)
                 .add("ref-version", "38")

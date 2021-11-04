@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
+import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -31,7 +32,8 @@ public final class PetTsvCreator {
     private PetAvroWriter petAvroWriter = null;
     private PetParquetWriter petParquetWriter = null;
 
-    private RefRangesAvroWriter refRangesAvroWriter = null;
+    private RefRangesWriter refRangesWriter = null;
+
     private boolean writePetData;
     private boolean writeReferenceRanges;
     private final String sampleId;
@@ -39,8 +41,8 @@ public final class PetTsvCreator {
     private final SAMSequenceDictionary seqDictionary;
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<GQStateEnum>();
     private GenomeLocSortedSet coverageLocSortedSet;
-    private static String PET_FILETYPE_PREFIX = "pet_";
-    private static String REF_RANGES_FILETYPE_PREFIX = "ref_";
+    private final static String PET_FILETYPE_PREFIX = "pet_";
+    private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
 
     public PetTsvCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumberPrefix, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges) {
@@ -74,8 +76,15 @@ public final class PetTsvCreator {
             }
 
             if (writeReferenceRanges) {
-                final File refOutputFile = new File(outputDirectory, REF_RANGES_FILETYPE_PREFIX + tableNumberPrefix + sampleIdentifierForOutputFileName + ".avro");
-                refRangesAvroWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
+                final File refOutputFile = new File(outputDirectory, REF_RANGES_FILETYPE_PREFIX + tableNumberPrefix + sampleIdentifierForOutputFileName + "." + outputType.toString().toLowerCase());
+                switch (outputType) {
+                    case TSV:
+                        refRangesWriter = new RefRangesTsvWriter(refOutputFile.getCanonicalPath());
+                        break;
+                    case AVRO:
+                        refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
+                        break;
+                }
             }
 
         } catch (final IOException e) {
@@ -95,32 +104,6 @@ public final class PetTsvCreator {
         location,
         sample,
         state,
-    }
-
-    public enum GQStateEnum {
-        VARIANT("v"),
-        STAR("*"),
-        ZERO("0"),
-        TEN("1"),
-        TWENTY("2"),
-        THIRTY("3"),
-        FORTY("4"),
-        FIFTY("5"),
-        SIXTY("6"),
-        MISSING("m"),
-        UNKNOWN("u"),
-        NONE("");
-
-        String value;
-
-        GQStateEnum(String value) {
-            this.value = value;
-        }
-
-        public String getValue() {
-            return value;
-        }
-
     }
 
     public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite) throws IOException {
@@ -147,12 +130,28 @@ public final class PetTsvCreator {
                 setCoveredInterval(variantChr, start, end);
 
                 // if we are writing ref ranges, and this is a reference block, write it!
-                if (writeReferenceRanges && variant.isReferenceBlock()) {
-                    refRangesAvroWriter.write(SchemaUtils.encodeLocation(variantChr, start),
-                            Long.parseLong(sampleId),
-                            end - start + 1,
-                            getGQStateEnum(variant.getGenotype(0).getGQ()).value
-                    );
+                if (writeReferenceRanges) {
+                    if (variant.isReferenceBlock()) {
+                        // break up reference blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
+                        int localStart = start;
+                        while ( localStart <= end ) {
+                            int length = Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
+                            refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
+                                    Long.parseLong(sampleId),
+                                    length,
+                                    getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
+                            );
+                            localStart = localStart + length ;
+                        }
+
+                    // write out no-calls as a single-base GQ0 reference (to match PET behavior)
+                    } else if (CreateVariantIngestFiles.isNoCall(variant)) {
+                        refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, start),
+                                Long.parseLong(sampleId),
+                                1,
+                                GQStateEnum.ZERO.getValue()
+                        );
+                    }
                 }
 
                 if (writePetData) {
@@ -249,13 +248,13 @@ public final class PetTsvCreator {
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(start));
             row.add(sampleId);
-            row.add(GQStateEnum.ZERO.value);
+            row.add(GQStateEnum.ZERO.getValue());
             rows.add(row);
         } else if (!variant.isReferenceBlock()) {
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(start));
             row.add(sampleId);
-            row.add(GQStateEnum.VARIANT.value);
+            row.add(GQStateEnum.VARIANT.getValue());
             rows.add(row);
 
             //if variant is variant and has additional positions--must be a deletion: add `*` state
@@ -263,7 +262,7 @@ public final class PetTsvCreator {
                 row = new ArrayList<>();
                 row.add(String.valueOf(i));
                 row.add(sampleId);
-                row.add(GQStateEnum.STAR.value);
+                row.add(GQStateEnum.STAR.getValue());
                 rows.add(row);
             }
         } else {
@@ -275,7 +274,7 @@ public final class PetTsvCreator {
 
                 row.add(String.valueOf(position));
                 row.add(sampleId);
-                row.add(state.value);
+                row.add(state.getValue());
                 rows.add(row);
             }
         }
@@ -296,7 +295,7 @@ public final class PetTsvCreator {
 
             row.add(String.valueOf(position));
             row.add(sampleName);
-            row.add(GQStateEnum.STAR.value);
+            row.add(GQStateEnum.STAR.getValue());
             rows.add(row);
         }
 
@@ -304,11 +303,31 @@ public final class PetTsvCreator {
     }
 
     public void writeMissingPositions(long start, long end, String sampleName) throws IOException {
+        if (writePetData) {
+            // break up missing blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
+            long localStart = start;
+            while ( localStart <= end ) {
+                int length = (int) Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
+                refRangesWriter.write(localStart,
+                        Long.parseLong(sampleId),
+                        length,
+                        GQStateEnum.MISSING.getValue()
+                );
+                localStart = localStart + length ;
+            }
+        }
+
+        if (writePetData) {
+            writeMissingPetPositions(start, end, sampleName);
+        }
+    }
+
+     public void writeMissingPetPositions(long start, long end, String sampleName) throws IOException {
         for (long position = start; position <= end; position++){
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(position));
             row.add(sampleName);
-            row.add(GQStateEnum.MISSING.value);
+            row.add(GQStateEnum.MISSING.getValue());
 
             // TODO refactor - this only needs to be done for non-TSV outputTypes
             long location = Long.parseLong(row.get(0));
@@ -416,7 +435,7 @@ public final class PetTsvCreator {
                     break;
             }
 
-            if (refRangesAvroWriter != null) refRangesAvroWriter.close();
+            if (refRangesWriter != null) refRangesWriter.close();
 
         } catch (final Exception e) {
             throw new IllegalArgumentException("Couldn't close PET writer", e);

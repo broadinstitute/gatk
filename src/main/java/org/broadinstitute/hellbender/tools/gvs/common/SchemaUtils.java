@@ -19,9 +19,9 @@ public class SchemaUtils {
     public static final String BASIC_ARRAY_DATA_FIELD_NAME = "basic_array_data";
     public static final String RAW_ARRAY_DATA_FIELD_NAME = "raw_array_data";
 
-    // TODO remove this one - we should not have this ambiguous field
-//    public static final String SAMPLE_FIELD_NAME = "sample";
     public static final String STATE_FIELD_NAME = "state";
+    public static final String LENGTH_FIELD_NAME = "length";
+
     public static final String REF_ALLELE_FIELD_NAME = "ref";
     public static final String ALT_ALLELE_FIELD_NAME = "alt";
 
@@ -77,16 +77,11 @@ public class SchemaUtils {
     public static final String FILTERS = "filters";
     public static final List<String> FILTER_SET_SITE_FIELDS = Arrays.asList(FILTER_SET_NAME,LOCATION_FIELD_NAME,FILTERS);
 
+    public static final List<String> EXTRACT_VET_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, AS_QUALapprox, QUALapprox, CALL_PL);
+    public static final List<String> EXTRACT_REF_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, LENGTH_FIELD_NAME, STATE_FIELD_NAME);
+
     public static final List<String> COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, CALL_RGQ, QUALapprox, AS_QUALapprox, CALL_PL);
     public static final List<String> COHORT_FIELDS_NO_PL = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, CALL_RGQ, QUALapprox, AS_QUALapprox);
-    public static final List<String> ARRAY_COHORT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_NAME_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ);
-
-    public static final List<String> RAW_ARRAY_COHORT_FIELDS_COMPRESSED =
-            Arrays.asList(BASIC_ARRAY_DATA_FIELD_NAME, RAW_ARRAY_DATA_FIELD_NAME);
-
-    public static final List<String> RAW_ARRAY_COHORT_FIELDS_UNCOMPRESSED =
-            Arrays.asList(SAMPLE_ID_FIELD_NAME, "probe_id", "GT_encoded","NORMX","NORMY","BAF","LRR");
-
 
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SchemaUtils.SAMPLE_NAME_FIELD_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME);
     public static final List<String> YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, VQSLOD, YNG_STATUS);

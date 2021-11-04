@@ -15,9 +15,9 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
+import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
 import org.broadinstitute.hellbender.utils.*;
@@ -61,7 +61,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             shortName = "IG",
             doc = "Ref Block GQ band to ignore, bands of 10 e.g 0-9 get combined to 0, 20-29 get combined to 20",
             optional = true)
-    public PetTsvCreator.GQStateEnum gqStateToIgnore = PetTsvCreator.GQStateEnum.SIXTY;
+    public GQStateEnum gqStateToIgnore = GQStateEnum.SIXTY;
 
     @Argument(fullName = "ignore-above-gq-threshold",
     shortName = "GTIG",
@@ -69,11 +69,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     optional = true)
     public boolean dropAboveGqThreshold = false;
 
-    @Argument(fullName = "write-reference-ranges",
+    @Argument(fullName = "enable-reference-ranges",
             shortName = "rr",
             doc = "write reference ranges data",
             optional = true)
-    public boolean writeReferenceRanges = false;
+    public boolean enableReferenceRanges = false;
 
     @Argument(fullName = "enable-vet",
             shortName = "ev",
@@ -104,12 +104,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             doc = "The external sample name used for the sample. If this parameter is not provided, the sample name in the gvcf file will be used. If providing a sample-name-mapping file, this is the name that must be mapped to the id.",
             optional = true)
     public String sampleNameParam;
-
-    @Argument(fullName = "mode",
-            shortName = "MO",
-            doc = "Type of sample. Default is EXOMES. Valid options are EXOMES, GENOMES",
-            optional = true)
-    public CommonCode.ModeEnum mode = CommonCode.ModeEnum.EXOMES;
 
     @Argument(fullName = "output-type",
             shortName = "ot",
@@ -190,15 +184,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petTsvCreator = new PetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, writeReferenceRanges);
+        petTsvCreator = new PetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges);
 
         if (enableVet) {
-            switch (mode) {
-                case EXOMES:
-                case GENOMES:
-                    vetTsvCreator = new VetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, outputDir);
-                    break;
-            }
+            vetTsvCreator = new VetTsvCreator(sampleIdentifierForOutputFileName, sampleId, tableNumberPrefix, outputDir);
         }
 
 

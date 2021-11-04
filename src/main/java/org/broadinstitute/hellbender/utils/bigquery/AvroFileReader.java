@@ -6,6 +6,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -27,12 +28,10 @@ public class AvroFileReader implements GATKAvroReader {
     // GenericRecord object will be reused.
     private GenericRecord nextRow = null;
 
-    public AvroFileReader(final String avroFileURI ) {
+    public AvroFileReader(final GATKPath avroFilePath ) {
         try {
-            final Path avroFilePath = IOUtils.getPath(avroFileURI);
-
             datumReader = new GenericDatumReader<>();
-            dataFileStream = new DataFileStream<>(Files.newInputStream(avroFilePath), datumReader);
+            dataFileStream = new DataFileStream<>(avroFilePath.getInputStream(), datumReader);
             schema = dataFileStream.getSchema();
         } catch (IOException e ) {
             throw new GATKException("I/O Error", e);
