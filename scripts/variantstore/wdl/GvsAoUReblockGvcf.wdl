@@ -3,7 +3,7 @@ version 1.0
 # This WDL is meant to reblock GVCF files that exist in the DRC buckets.
 # The localization and delocalization of DRC files has been combined into one task to save money.
 # The reblocked Gvcf will be put in an AoU DRC research bucket
-workflow ReblockGvcf {
+workflow GvsAoUReblockGvcf {
 
   input {
     String gvcf
