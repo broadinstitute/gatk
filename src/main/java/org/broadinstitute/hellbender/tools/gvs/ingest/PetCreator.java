@@ -25,8 +25,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 
-public final class PetWriter {
-    private static final Logger logger = LogManager.getLogger(PetWriter.class);
+public final class PetCreator {
+    private static final Logger logger = LogManager.getLogger(PetCreator.class);
 
     private CommonCode.OutputType outputType;
 
@@ -53,7 +53,7 @@ public final class PetWriter {
 
 
 
-    public PetWriter(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
+    public PetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
         this.outputType = outputType;
@@ -72,7 +72,7 @@ public final class PetWriter {
                     petBQJsonWriter = new PendingBQWriter(projectId, datasetName,PET_FILETYPE_PREFIX + tableNumber);
                     break;
                 case TSV:
-                    List<String> petHeader = PetWriter.getHeaders();
+                    List<String> petHeader = PetCreator.getHeaders();
                     petTsvWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
                     petTsvWriter.setHeaderLine(petHeader);
                     break;
@@ -92,6 +92,12 @@ public final class PetWriter {
             if (writeReferenceRanges) {
                 final File refOutputFile = new File(outputDirectory, REF_RANGES_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + "." + outputType.toString().toLowerCase());
                 switch (outputType) {
+                    case BQ:
+                        if (projectId == null || datasetName == null) {
+                            throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
+                        }
+                        refRangesWriter = new RefRangesBQWriter(projectId, datasetName,REF_RANGES_FILETYPE_PREFIX + tableNumber);
+                        break;
                     case TSV:
                         refRangesWriter = new RefRangesTsvWriter(refOutputFile.getCanonicalPath());
                         break;
@@ -138,7 +144,7 @@ public final class PetWriter {
             }
 
             // create PET output if the reference block's GQ is not the one to discard or its a variant
-            if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(PetWriter.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
+            if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(PetCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
 
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
@@ -199,13 +205,9 @@ public final class PetWriter {
                             case BQ:
                                 try {
                                     petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
-//                                } catch (InterruptedException iex) {
-//                                    throw new IOException("BQ interrupted exception", iex);
-                                } catch (Exception eex) {
-                                    throw new IOException("BQ execution exception", eex);
+                                } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
+                                    throw new IOException("BQ exception", ex);
                                 }
-//                                 TODO somehow return this value so we can pick up after this if interrupted
-//                                rowOffset ++;
                                 break;
                             case TSV:
                                 petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
@@ -336,7 +338,7 @@ public final class PetWriter {
     }
 
     public void writeMissingPositions(long start, long end, String sampleName) throws IOException {
-        if (writePetData) {
+        if (writeReferenceRanges) {
             // break up missing blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
             long localStart = start;
             while ( localStart <= end ) {
