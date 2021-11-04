@@ -303,7 +303,7 @@ public final class PetTsvCreator {
     }
 
     public void writeMissingPositions(long start, long end, String sampleName) throws IOException {
-        if (writePetData) {
+        if (writeReferenceRanges) {
             // break up missing blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
             long localStart = start;
             while ( localStart <= end ) {
