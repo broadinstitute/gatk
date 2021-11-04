@@ -99,7 +99,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - ah_refactor_import_writeapi
+         - ah_spike_writeapi
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
