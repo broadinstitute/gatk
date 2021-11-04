@@ -121,8 +121,8 @@ public class VetCreator {
     }
 
     public void commitData() {
-        vetBQJsonWriter.flushBuffer();
         if (outputType == CommonCode.OutputType.BQ && vetBQJsonWriter != null) {
+            vetBQJsonWriter.flushBuffer();
             vetBQJsonWriter.commitWriteStreams();
         }
     }
