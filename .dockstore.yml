@@ -65,9 +65,9 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsReblockGvcf
+   - name: GvsAoUReblockGvcf
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsReblockGvcf.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
      filters:
        branches:
          - master
