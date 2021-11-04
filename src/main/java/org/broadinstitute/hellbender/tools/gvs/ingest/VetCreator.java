@@ -24,9 +24,9 @@ import java.util.stream.Collectors;
 
 import org.json.JSONObject;
 
-public class VetWriter {
+public class VetCreator {
 
-    static final Logger logger = LogManager.getLogger(VetWriter.class);
+    static final Logger logger = LogManager.getLogger(VetCreator.class);
 
     private CommonCode.OutputType outputType;
 
@@ -37,7 +37,7 @@ public class VetWriter {
     private PendingBQWriter vetBQJsonWriter = null;
 
 
-    public VetWriter(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName) {
+    public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         try {

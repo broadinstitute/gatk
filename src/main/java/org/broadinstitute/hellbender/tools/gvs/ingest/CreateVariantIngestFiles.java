@@ -38,8 +38,8 @@ import java.util.List;
 public final class CreateVariantIngestFiles extends VariantWalker {
     static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
 
-    private PetWriter petCreator;
-    private VetWriter vetCreator;
+    private PetCreator petCreator;
+    private VetCreator vetCreator;
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
     private String sampleName;
@@ -193,10 +193,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        petCreator = new PetWriter(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
+        petCreator = new PetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
 
         if (enableVet) {
-            vetCreator = new VetWriter(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName);
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName);
         }
 
 

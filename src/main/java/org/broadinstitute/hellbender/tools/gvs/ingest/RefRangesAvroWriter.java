@@ -13,7 +13,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 
-public class RefRangesAvroWriter implements RefRangesWriter {
+public class RefRangesAvroWriter extends RefRangesWriter {
     private DataFileWriter<GenericData.Record> writer;
     private Schema schema;
 
@@ -23,9 +23,9 @@ public class RefRangesAvroWriter implements RefRangesWriter {
                                     .fields().requiredLong("location").requiredInt("sample_id").requiredInt("length").requiredString("state")
                                     .endRecord();
 
-        
+
         DatumWriter<GenericData.Record> datumWriter = new GenericDatumWriter<GenericData.Record>(schema);
-		
+
         writer = new DataFileWriter<GenericData.Record>(datumWriter);
         writer.setCodec(CodecFactory.deflateCodec(5));
 
@@ -34,7 +34,7 @@ public class RefRangesAvroWriter implements RefRangesWriter {
         } catch (IOException ioe) {
             throw new GATKException("Unable to create AvroWriter", ioe);
         }
-	
+
     }
 
     @Override
