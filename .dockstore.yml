@@ -65,6 +65,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsReblockGvcf
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsReblockGvcf.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - ah_add_reblocking
    - name: GvsRescatterCallsetInterval
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
