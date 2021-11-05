@@ -14,6 +14,7 @@ workflow GvsAoUReblockGvcf {
 
     # pass the service account as a string so a change in the file won't interfere with call caching
     String? service_account_json 
+    String? requester_pays_project
     String? site_id
     String docker_image = "us.gcr.io/broad-gatk/gatk:4.2.2.0"
 
@@ -29,6 +30,7 @@ workflow GvsAoUReblockGvcf {
      output_gvcf_filename = basename(gvcf, ".g.vcf.gz") + ".reblocked.g.vcf.gz",
      service_account_json = service_account_json,
      site_id = site_id,
+     requester_pays_project = requester_pays_project,
      docker_image = docker_image,
      path = "ss_vcf_research/"
   }
@@ -53,13 +55,14 @@ task ReblockAndCopy {
 
     String? service_account_json
     String? site_id
+    String? requester_pays_project
     String path
   }
 
   Int disk_size = (ceil(60 + size(ref_fasta, "GiB") + size(ref_dict, "GiB")) * 2) + 20
 
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-  # String gvcf_path = gvcf
+  String gvcf_path = gvcf
 
   String dir = if defined(site_id) then (
       if select_first([site_id]) == "bi" then "gs://prod-genomics-data-broad/" else
@@ -80,11 +83,9 @@ task ReblockAndCopy {
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json} local.service_account.json
       gcloud auth activate-service-account --key-file=local.service_account.json
+      gsutil -m cp '~{gvcf}' '~{gvcf_index}' .
+      gvcf_path=~{basename(gvcf)}
     fi
-
-    # for requester pays
-    gsutil -m cp '~{gvcf}' '~{gvcf_index}' .
-    # gvcf_path=~{basename(gvcf)}
 
     gatk --java-options "-Xms3g -Xmx3g" \
       ReblockGVCF \
@@ -92,7 +93,8 @@ task ReblockAndCopy {
       -do-qual-approx \
       --floor-blocks -GQB 20 -GQB 30 -GQB 40 \
       -O ~{output_gvcf_filename} \
-      -R ~{ref_fasta}
+      -R ~{ref_fasta} \
+      ~{"--gcs-project-for-requester-pays " + requester_pays_project}
 
     if [ ~{destination} ]; then
       gsutil -m cp ~{output_gvcf_filename} ~{output_gvcf_filename}.tbi ~{destination}
