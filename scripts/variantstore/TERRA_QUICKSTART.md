@@ -41,12 +41,17 @@ These are the required parameters which must be supplied to the workflow:
 
 Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.
 
+TODO: 
+ - we can change the WDLs to make the pet/ref_ranges flags the default
+ 
 These are the required parameters which must be supplied to the workflow:
 
 | Parameter      | Description |
 | ----------------- | ----------- |
 | project_id | The name of the google project containing the dataset |
 | dataset_name      | The name of the dataset you created above       |
+| load_pet      | false       |
+| load_ref_ranges      | true       |
 | output_directory | A unique GCS path to be used for loading, can be in the workspace bucket.  E.g. `gs://fc-124-12-132-123-31/gvs/demo1`)
 
 
