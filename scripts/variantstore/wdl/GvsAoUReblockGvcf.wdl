@@ -13,8 +13,8 @@ workflow GvsAoUReblockGvcf {
     File ref_dict
 
     # pass the service account as a string so a change in the file won't interfere with call caching
-    String service_account_json 
-    String site_id
+    String? service_account_json 
+    String? site_id
     String docker_image = "us.gcr.io/broad-gatk/gatk:4.2.2.0"
 
   }
@@ -51,16 +51,21 @@ task ReblockAndCopy {
     String output_gvcf_filename
     String docker_image
 
-    String service_account_json
-    String site_id
+    String? service_account_json
+    String? site_id
     String path
   }
 
   Int disk_size = (ceil(60 + size(ref_fasta, "GiB") + size(ref_dict, "GiB")) * 2) + 20
-  String dir = 
-    if site_id == "bi" then "gs://prod-genomics-data-broad/" else
-    (if site_id == "bcm" then "gs://prod-genomics-data-baylor/" else
-    (if site_id == "uw" then "gs://prod-genomics-data-northwest/" else "null" ))
+
+  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+  String gvcf_path = ~{gvcf}
+
+  String dir = if defined(site_id) then (
+      if select_first([site_id]) == "bi" then "gs://prod-genomics-data-broad/" else
+      (if select_first([site_id]) == "bcm" then "gs://prod-genomics-data-baylor/" else
+      (if select_first([site_id]) == "uw" then "gs://prod-genomics-data-northwest/" else "null" )))
+    else ""
 
   String destination = dir + path
 
@@ -68,23 +73,28 @@ task ReblockAndCopy {
     set -euo pipefail
 
     if [ ~{dir} == "null" ]; then
-      echo "dir is not set. check site_id - only valid values are ['bi', 'bcm', 'uw']"
+      echo "dir is not set to a valid value: ~{dir}. check site_id - only valid values are ['bi', 'bcm', 'uw']"
       exit 1
     fi
 
-    gsutil cp '~{service_account_json}' local.service_account.json
-    gcloud auth activate-service-account --key-file='local.service_account.json'
-    gsutil -m cp '~{gvcf}' '~{gvcf_index}' .
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gsutil -m cp '~{gvcf}' '~{gvcf_index}' .
+      gvcf_path=~{basename(gvcf)}
+    fi
 
     gatk --java-options "-Xms3g -Xmx3g" \
       ReblockGVCF \
-      -V ~{basename(gvcf)} \
+      -V ~{gvcf_path} \
       -do-qual-approx \
       --floor-blocks -GQB 20 -GQB 30 -GQB 40 \
       -O ~{output_gvcf_filename} \
       -R ~{ref_fasta}
 
-    gsutil -m cp ~{output_gvcf_filename} ~{output_gvcf_filename}.tbi ~{destination}
+    if [ ~{destination} ]; then
+      gsutil -m cp ~{output_gvcf_filename} ~{output_gvcf_filename}.tbi ~{destination}
+    fi
   }
 
   runtime {
