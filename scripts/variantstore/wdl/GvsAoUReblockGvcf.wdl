@@ -74,6 +74,7 @@ task ReblockAndCopy {
 
   command {
     set -euo pipefail
+    set -x
 
     if [ ~{site_id} -a ~{dir} == "null" ]; then
       echo "dir is not set to a valid value: ~{dir}. check site_id - only valid values are ['bi', 'bcm', 'uw']"
@@ -89,7 +90,7 @@ task ReblockAndCopy {
 
     gatk --java-options "-Xms3g -Xmx3g" \
       ReblockGVCF \
-      -V ~{basename(gvcf)} \
+      -V ~{gvcf_path} \
       -do-qual-approx \
       --floor-blocks -GQB 20 -GQB 30 -GQB 40 \
       -O ~{output_gvcf_filename} \
