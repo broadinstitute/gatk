@@ -75,7 +75,7 @@ task ReblockAndCopy {
   command {
     set -euo pipefail
 
-    if [ ~{dir} == "null" ]; then
+    if [ ~{site_id} -a ~{dir} == "null" ]; then
       echo "dir is not set to a valid value: ~{dir}. check site_id - only valid values are ['bi', 'bcm', 'uw']"
       exit 1
     fi
@@ -96,7 +96,7 @@ task ReblockAndCopy {
       -R ~{ref_fasta} \
       ~{"--gcs-project-for-requester-pays " + requester_pays_project}
 
-    if [ ~{destination} ]; then
+    if [ ~{dir} ]; then
       gsutil -m cp ~{output_gvcf_filename} ~{output_gvcf_filename}.tbi ~{destination}
     fi
   }
