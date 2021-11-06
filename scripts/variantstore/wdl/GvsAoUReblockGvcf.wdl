@@ -111,7 +111,7 @@ task ReblockAndCopy {
   }
 
   output {
-    String output_gvcf = destination + output_gvcf_filename
-    String output_gvcf_index = destination + output_gvcf_filename + ".tbi"
+    File output_gvcf = output_gvcf_filename
+    File output_gvcf_index = output_gvcf_filename + ".tbi"
   }
 }
