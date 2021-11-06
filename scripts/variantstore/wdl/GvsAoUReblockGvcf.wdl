@@ -36,8 +36,8 @@ workflow GvsAoUReblockGvcf {
   }
 
   output {
-    String reblocked_gvcf = ReblockAndCopy.output_gvcf
-    String reblocked_gvcf_index = ReblockAndCopy.output_gvcf_index
+    File reblocked_gvcf = ReblockAndCopy.output_gvcf
+    File reblocked_gvcf_index = ReblockAndCopy.output_gvcf_index
   }
 }
 
