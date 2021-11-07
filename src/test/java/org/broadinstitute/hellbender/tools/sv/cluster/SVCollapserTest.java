@@ -453,8 +453,8 @@ public class SVCollapserTest {
                 // Empty case
                 {
                         "sample1",
-                        new List[]{Collections.emptyList()},
-                        new Map[]{createGenotypeTestAttributes(0)},
+                        Collections.singletonList(Collections.emptyList()),
+                        Collections.singletonList(createGenotypeTestAttributes(0)),
                         Allele.REF_N,
                         Collections.emptyList(),
                         GenotypeBuilder.create(
@@ -466,8 +466,8 @@ public class SVCollapserTest {
                 // Extra attribute
                 {
                         "sample1",
-                        new List[]{Collections.emptyList()},
-                        new Map[]{createGenotypeTestAttributes(0, "test")},
+                        Collections.singletonList(Collections.emptyList()),
+                        Collections.singletonList(createGenotypeTestAttributes(0, "test")),
                         Allele.REF_N,
                         Collections.emptyList(),
                         GenotypeBuilder.create(
@@ -479,14 +479,14 @@ public class SVCollapserTest {
                 // Haploid no-call
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.NO_CALL),
                                 Collections.singletonList(Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1),
                                 createGenotypeTestAttributes(1)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.emptyList(),
                         GenotypeBuilder.create(
@@ -498,14 +498,14 @@ public class SVCollapserTest {
                 // Simple ref haploid
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1),
                                 createGenotypeTestAttributes(1)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.emptyList(),
                         GenotypeBuilder.create(
@@ -517,14 +517,14 @@ public class SVCollapserTest {
                 // Simple ref haploid, different ref allele
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_T),
                                 Collections.singletonList(Allele.REF_T)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1),
                                 createGenotypeTestAttributes(1)
-                        },
+                        ),
                         Allele.REF_T,
                         Collections.emptyList(),
                         GenotypeBuilder.create(
@@ -536,14 +536,14 @@ public class SVCollapserTest {
                 // Simple ref haploid, with no-call
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_T),
                                 Collections.singletonList(Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1),
                                 createGenotypeTestAttributes(1)
-                        },
+                        ),
                         Allele.REF_T,
                         Collections.emptyList(),
                         GenotypeBuilder.create(
@@ -555,14 +555,14 @@ public class SVCollapserTest {
                 // Simple ref diploid
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.emptyList(),
                         GenotypeBuilder.create(
@@ -574,14 +574,14 @@ public class SVCollapserTest {
                 // Simple ref diploid, with no-call
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.emptyList(),
                         GenotypeBuilder.create(
@@ -593,14 +593,14 @@ public class SVCollapserTest {
                 // Simple INS cases
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.SV_SIMPLE_INS)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1),
                                 createGenotypeTestAttributes(1)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -611,14 +611,14 @@ public class SVCollapserTest {
                 },
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.NO_CALL),
                                 Collections.singletonList(Allele.SV_SIMPLE_INS)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1),
                                 createGenotypeTestAttributes(1)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -629,14 +629,14 @@ public class SVCollapserTest {
                 },
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.SV_SIMPLE_INS),
                                 Collections.singletonList(Allele.SV_SIMPLE_INS)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1),
                                 createGenotypeTestAttributes(1)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -648,14 +648,14 @@ public class SVCollapserTest {
                 // het preferred over hom ref
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -667,14 +667,14 @@ public class SVCollapserTest {
                 // het preferred over hom var
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -686,16 +686,16 @@ public class SVCollapserTest {
                 // hom more frequent
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -707,18 +707,18 @@ public class SVCollapserTest {
                 // het preferred over both hom ref always and hom var when tied
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -730,22 +730,22 @@ public class SVCollapserTest {
                 // hom is most frequent non-ref
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2),
                                 createGenotypeTestAttributes(2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -757,14 +757,14 @@ public class SVCollapserTest {
                 // triploid - 1 alt
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -775,16 +775,16 @@ public class SVCollapserTest {
                 },
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -796,18 +796,18 @@ public class SVCollapserTest {
                 // triploid - 2 alt
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -819,7 +819,7 @@ public class SVCollapserTest {
                 // triploid - 3 alt
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
@@ -827,8 +827,8 @@ public class SVCollapserTest {
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_INS),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3),
@@ -836,7 +836,7 @@ public class SVCollapserTest {
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3),
                                 createGenotypeTestAttributes(3)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_INS),
                         GenotypeBuilder.create(
@@ -848,14 +848,14 @@ public class SVCollapserTest {
                 // Simple DEL
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.SV_SIMPLE_DEL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1, 1),
                                 createGenotypeTestAttributes(1, 0)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
                         GenotypeBuilder.create(
@@ -867,14 +867,14 @@ public class SVCollapserTest {
                 // Simple DEL, falling back on copy number info when GT not available
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1, 1),
                                 createGenotypeTestAttributes(1, 0)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
                         GenotypeBuilder.create(
@@ -886,14 +886,14 @@ public class SVCollapserTest {
                 // Simple DEL diploid het
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 1)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
                         GenotypeBuilder.create(
@@ -905,14 +905,14 @@ public class SVCollapserTest {
                 // Simple DEL diploid hom var
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 0)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
                         GenotypeBuilder.create(
@@ -924,14 +924,14 @@ public class SVCollapserTest {
                 // Simple DEL diploid hom ref
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
                         GenotypeBuilder.create(
@@ -943,14 +943,14 @@ public class SVCollapserTest {
                 // Simple DEL triploid with 1 alt
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DEL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(3, 3),
                                 createGenotypeTestAttributes(3, 2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DEL),
                         GenotypeBuilder.create(
@@ -963,14 +963,14 @@ public class SVCollapserTest {
                 // Simple DUP, haploid
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.SV_SIMPLE_DUP)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1, 1),
                                 createGenotypeTestAttributes(1, 2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -982,14 +982,14 @@ public class SVCollapserTest {
                 // Simple DUP, haploid, falling back on copy number info when GT not available and inferring the GT
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1, 1),
                                 createGenotypeTestAttributes(1, 2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1001,14 +1001,14 @@ public class SVCollapserTest {
                 // Simple DUP, haploid, copy number 3 but phasing is still unambiguous
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.SV_SIMPLE_DUP)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1, 1),
                                 createGenotypeTestAttributes(1, 3)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1020,14 +1020,14 @@ public class SVCollapserTest {
                 // Simple DUP diploid het
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 3)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1039,14 +1039,14 @@ public class SVCollapserTest {
                 // Simple DUP diploid hom var - has ambiguous alleles
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 4)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1058,14 +1058,14 @@ public class SVCollapserTest {
                 // Simple DUP diploid hom ref
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 2)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1077,14 +1077,14 @@ public class SVCollapserTest {
                 // Simple DUP triploid with 1 alt - unambiguous alleles
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DUP)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(3, 3),
                                 createGenotypeTestAttributes(3, 4)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1096,14 +1096,14 @@ public class SVCollapserTest {
                 // Simple DUP triploid with 2 alts - ambiguous alleles
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(3, 3),
                                 createGenotypeTestAttributes(3, 5)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1115,16 +1115,16 @@ public class SVCollapserTest {
                 // Simple DUP triploid where 1-alt genotype should be prioritized
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DUP),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(3, 3),
                                 createGenotypeTestAttributes(3, 4),
                                 createGenotypeTestAttributes(3, 5)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1136,18 +1136,18 @@ public class SVCollapserTest {
                 // Simple DUP triploid where 2-alt genotype should be prioritized
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N, Allele.SV_SIMPLE_DUP),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(3, 3),
                                 createGenotypeTestAttributes(3, 4),
                                 createGenotypeTestAttributes(3, 5),
                                 createGenotypeTestAttributes(3, 5)
-                        },
+                        ),
                         Allele.REF_N,
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1161,14 +1161,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, haploid hom ref
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.REF_N)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1, 1),
                                 createGenotypeTestAttributes(1, 1)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1180,14 +1180,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, haploid del
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.SV_SIMPLE_DEL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1, 1),
                                 createGenotypeTestAttributes(1, 0)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1199,14 +1199,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, haploid dup
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.REF_N),
                                 Collections.singletonList(Allele.SV_SIMPLE_DUP)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1, 1),
                                 createGenotypeTestAttributes(1, 2)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1218,14 +1218,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, diploid hom ref (ambiguous alleles)
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 2)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1237,14 +1237,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, diploid del het
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 1)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1256,14 +1256,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, diploid del hom
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 0)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1275,14 +1275,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, diploid dup het (ambiguous alleles)
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 3)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1294,14 +1294,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, diploid dup hom (ambiguous alleles)
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.REF_N),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 2),
                                 createGenotypeTestAttributes(2, 4)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1313,14 +1313,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, conflicting del and dup genotypes should result in non-call, haploid
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Collections.singletonList(Allele.SV_SIMPLE_DUP),
                                 Collections.singletonList(Allele.SV_SIMPLE_DEL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(1, 2),
                                 createGenotypeTestAttributes(1, 0)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1332,14 +1332,14 @@ public class SVCollapserTest {
                 // Multi-allelic CNV, conflicting del and dup genotypes should result in non-call, diploid
                 {
                         "sample1",
-                        new List[]{
+                        Lists.newArrayList(
                                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)
-                        },
-                        new Map[]{
+                        ),
+                        Lists.newArrayList(
                                 createGenotypeTestAttributes(2, 1),
                                 createGenotypeTestAttributes(2, 3)
-                        },
+                        ),
                         Allele.REF_N,
                         Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
@@ -1353,13 +1353,13 @@ public class SVCollapserTest {
 
     @Test(dataProvider="collapseSampleGenotypesTestData")
     public void collapseSampleGenotypesTest(final String sampleId,
-                                            final List<Allele>[] alleles,
-                                            final Map<String, Object>[] attributes,
+                                            final List<List<Allele>> alleles,
+                                            final List<Map<String, Object>> attributes,
                                             final Allele refAllele,
                                             final List<Allele> altAlleles,
                                             final Genotype expected) {
-        final List<Genotype> genotypes = IntStream.range(0, alleles.length)
-                .mapToObj(i -> GenotypeBuilder.create(sampleId, alleles[i], attributes[i]))
+        final List<Genotype> genotypes = IntStream.range(0, alleles.size())
+                .mapToObj(i -> GenotypeBuilder.create(sampleId, alleles.get(i), attributes.get(i)))
                 .collect(Collectors.toList());
         final Genotype test = collapser.collapseSampleGenotypes(genotypes, refAllele, altAlleles);
         VariantContextTestUtils.assertGenotypesAreEqual(test, expected);
