@@ -121,7 +121,6 @@ workflows:
          - master
          - kc_ranges_extract
          - ah_var_store
-         - ah_spike_writeapi
    - name: GvsImportSample
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportSample.wdl
@@ -131,7 +130,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - ah_refactor_import_writeapi
+         - ah_spike_writeapi
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
