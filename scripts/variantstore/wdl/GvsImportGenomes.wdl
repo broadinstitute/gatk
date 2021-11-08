@@ -628,8 +628,8 @@ task CreateImportTsvs {
                 -SNM ~{sample_map} \
                 --ref-version 38
 
-              gsutil -m mv pet_*.tsv ~{output_directory}/pet_tsvs/
-              gsutil -m mv ref_ranges_*.tsv ~{output_directory}/ref_ranges_tsvs/
+              ~{if load_pet then "gsutil -m mv pet_*.tsv ~{output_directory}/pet_tsvs/" else ""}
+              ~{if load_ref_ranges then "gsutil -m mv ref_ranges_*.tsv ~{output_directory}/ref_ranges_tsvs/" else ""}
               gsutil -m mv vet_*.tsv ~{output_directory}/vet_tsvs/
           fi
       done
