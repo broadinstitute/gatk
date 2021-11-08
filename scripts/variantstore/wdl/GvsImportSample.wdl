@@ -49,17 +49,6 @@ workflow GvsImportSample {
   
 
  
-  # call SetIsLoadedColumn {
-  #   input:
-  #     load_done = ImportSample.done,
-  #     dataset_name = dataset_name,
-  #     gvs_sample_id = gvs_sample_id,
-  #     service_account_json_path = service_account_json_path,
-  #     project_id = project_id,
-  #     preemptible_tries = preemptible_tries
-  # }
-
-
   output {
     Boolean loaded_in_gvs = true
   }
@@ -206,59 +195,11 @@ task ImportSample {
       preemptible: select_first([preemptible_tries, 5])
       cpu: 1
   }
-  output {
-      String done = "true"
-  }
 }
 
 
 
 
 
-task SetIsLoadedColumn {
-  meta {
-    volatile: true
-  }
-
-  input {
-    String load_done
-    String dataset_name
-    String project_id
-    String gvs_sample_id
-    String? service_account_json_path
-    Int? preemptible_tries
-  }
-
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-  # Array[String] gvs_id_array = read_lines(gvs_ids)
-
-  command <<<
-    set -ex
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{project_id}
-    fi
-
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
-    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id = ~{gvs_sample_id}"
-  >>>
-
-  runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
-    memory: "1 GB"
-    disks: "local-disk 10 HDD"
-    preemptible: select_first([preemptible_tries, 5])
-    cpu: 1
-  }
-
-  output {
-    String done = "done"
-  }
-}
 
 
