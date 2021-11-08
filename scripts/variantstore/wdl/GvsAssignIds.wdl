@@ -205,7 +205,7 @@ response = fapi.upload_entities_tsv('~{workspace_namespace}', '~{workspace_name}
 if response.status_code != 200:
   print(response.status_code)
   print(response.text)
-  exit 1
+  exit(1)
 CODE
   >>>
   runtime {

@@ -52,11 +52,7 @@ These are the required parameters which must be supplied to the workflow:
 | workspace_name      | The name of the workspace       |
 
 
-### 3.2 Create Tables
-TODO: Automate this
-Run this workflow if you are ingesting samples into a table id that hasn't been created yet. 
-
-### 3.3 Load data
+### 3.2 Load data
 
 Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.
 
