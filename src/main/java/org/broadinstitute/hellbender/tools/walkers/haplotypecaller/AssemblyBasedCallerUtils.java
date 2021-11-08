@@ -335,10 +335,10 @@ public final class AssemblyBasedCallerUtils {
                 unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).collect(Collectors.toList());
             }
 
-            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream().filter(a -> {
-                final byte[] bases = a.getBases();
-                return !(Allele.wouldBeNoCallAllele(bases) || Allele.wouldBeNullAllele(bases) || Allele.wouldBeStarAllele(bases) || Allele.wouldBeSymbolicAllele(bases));
-            }).collect(Collectors.toList());
+            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream()
+                    //TODO, update the null allele check when htsjdk adds a NULL_ALLELE constant to Allele
+                    .filter(a -> !(a.equals(Allele.NO_CALL) || a.getDisplayString().equals(String.valueOf(VCFConstants.NULL_ALLELE)) || a.equals(Allele.SPAN_DEL) || a.isSymbolic()))
+                    .collect(Collectors.toList());
 
             // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
             final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledHaplotypes.stream()
