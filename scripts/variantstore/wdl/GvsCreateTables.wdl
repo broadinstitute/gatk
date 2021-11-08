@@ -3,7 +3,7 @@ version 1.0
 workflow CreateBQTables {
 
     input {
-        Int max_table_id
+        Int max_table_id = 1
         String project_id
         String dataset_name
         String? service_account_json_path
