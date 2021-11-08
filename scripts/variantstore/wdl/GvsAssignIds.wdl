@@ -171,7 +171,7 @@ task AssignIds {
 
       # get the max id to create tables for
       max_sample_id=$(cat update.tsv | cut -d, -f2 | sort -r -n | head -1)
-      max_table_id=python -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))"
+      max_table_id=python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))"
 
       # remove the lock table
       bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
