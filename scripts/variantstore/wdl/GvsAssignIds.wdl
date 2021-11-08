@@ -30,6 +30,7 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       datatype = "sample_info",
       schema_json = sample_info_schema_json,
+      max_table_id=1,
       superpartitioned = "false",
       partitioned = "false",
       service_account_json_path = service_account_json_path,
