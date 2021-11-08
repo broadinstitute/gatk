@@ -13,7 +13,7 @@
 ```
 rtg format --output human_REF_SDF /path/to/Homo_sapiens_assembly38.fasta
 ```
-3. Copy truth sample VCFs to your local environment. Make sure you have truth files for all your control samples (e.g. `HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz` for `UW_HG-002` and `BI_HG-002`); you will need these for the "Evaluate" step.  If you are missing any see Appendix A and follow the steps there to add and prepare them.
+3. Copy truth sample VCFs to your local environment. Make sure you have truth files for all your control samples (e.g. `HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz` for `UW_HG-002` and `BI_HG-002`); you will need these for the "Evaluate" step.  If you are missing any see [Appendix A](#appendix-a-new-control-samples) and follow the steps there to add and prepare them.
 ```
 mkdir -p truth && gsutil -m cp gs://broad-dsp-spec-ops/gvs/truth/* truth/
 ```
