@@ -29,12 +29,11 @@ workflow GvsAssignIds {
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "sample_info",
-      schema = sample_info_schema_json,
+      schema_json = sample_info_schema_json,
       superpartitioned = "false",
       partitioned = "false",
       service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries,
-      docker = docker_final
   }
 
   call AssignIds {
