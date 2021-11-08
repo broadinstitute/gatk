@@ -3,7 +3,7 @@ version 1.0
 workflow CreateBQTables {
 
     input {
-        Int? max_table_id = 1
+        Int? max_table_id
         String project_id
         String dataset_name
         String? service_account_json_path
@@ -73,7 +73,7 @@ task CreateTables {
       String schema_json
       String superpartitioned
       String partitioned
-      String uuid
+      String? uuid
       String? service_account_json_path
 
       # runtime
