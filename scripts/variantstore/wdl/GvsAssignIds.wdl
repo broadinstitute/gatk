@@ -7,7 +7,9 @@ workflow GvsAssignIds {
     String project_id
     String dataset_name
     String sample_info_table = "sample_info"
-    String sample_info_schema = "sample_name:STRING,sample_id:INTEGER,is_loaded:BOOLEAN"
+    String sample_info_schema = "sample_name:STRING,sample_id:INTEGER"
+    String workspace_namespace
+    String workspace_name
     String? service_account_json
     Int? preemptible_tries
     File? gatk_override
@@ -17,7 +19,7 @@ workflow GvsAssignIds {
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
 
 
-  call CreateTables as CreateSampleInfoTables {
+  call CreateTables as CreateSampleInfoTable {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
@@ -34,14 +36,23 @@ workflow GvsAssignIds {
       project_id = project_id,
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
-      table_creation_done = CreateSampleInfoTables.done,
+      table_creation_done = CreateSampleInfoTable.done,
       gatk_override = gatk_override,
       service_account_json = service_account_json,
       docker = docker_final,
   }
 
+  call UpdateDataModel {
+    input:
+      workspace_namespace = workspace_namespace,
+      workspace_name = workspace_name,
+      gvs_ids_tsv = AssignIds.gvs_ids_tsv
+  }
+
+
   output {
     Boolean gvs_ids_created = true
+    File gvs_ids_tsv = AssignIds.gvs_ids_tsv
   }
 }
 
@@ -68,9 +79,11 @@ task AssignIds {
 
   command <<<
       set -e
+      set -x
 
       # make sure that sample names were actually passed, fail if empty
-      if [ ~{length(sample_names)} -eq 0 ]; then
+      num_samples=~{length(sample_names)}
+      if [ $num_samples -eq 0 ]; then
         echo "No sample names passed. Exiting"
         exit 1
       fi
@@ -114,12 +127,50 @@ task AssignIds {
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
         "UPDATE ~{dataset_name}.~{sample_info_table} m SET m.sample_id = id_assign.id FROM (SELECT sample_name, $offset + ROW_NUMBER() OVER() as id FROM ~{dataset_name}.~{sample_info_table} WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;"
 
+      # retrieve the list of assigned ids and samples to update the datamodel
+      echo "entity:sample_id,gvs_id" > update.tsv
+      bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n $num_samples \
+        "SELECT sample_name, sample_id from ~{dataset_name}.~{sample_info_table} WHERE sample_id >= $offset" > update.tsv
+      cat update.tsv | sed -e 's/sample_id/gvs_id/' -e 's/sample_name/entity:sample_id/' -e 's/,/\t/g' > gvs_ids.tsv
+
       # remove the lock table
       bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
 
   >>>
   runtime {
       docker: docker
+      memory: "3.75 GB"
+      disks: "local-disk " + 10 + " HDD"
+      cpu: 1
+  }
+  output {
+    File gvs_ids_tsv = "gvs_ids.tsv"
+  }
+}
+
+task UpdateDataModel {
+  input {
+    String workspace_namespace
+    String workspace_name
+    File gvs_ids_tsv
+  }
+  meta {
+    description: "Assigns gvs_id attribute in data model"
+    volatile: true
+  }
+  command <<<
+      # update the data model
+      python3 <<CODE
+from firecloud import api as fapi
+response = fapi.upload_entities_tsv('~{workspace_namespace}', '~{workspace_name}', '~{gvs_ids_tsv}', 'flexible')
+if response.status_code != 200:
+  print(response.status_code)
+  print(response.text)
+  exit 1
+CODE
+  >>>
+  runtime {
+      docker: "broadgdac/fiss"
       memory: "3.75 GB"
       disks: "local-disk " + 10 + " HDD"
       cpu: 1
