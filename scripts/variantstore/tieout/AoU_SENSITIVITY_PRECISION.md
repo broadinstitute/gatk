@@ -98,3 +98,19 @@ rtg roc NA12878_*_roc*/snp_roc.tsv.gz
 rtg roc NA12878_*_roc*/indel_roc.tsv.gz 
 ```
 ## Appendix A: New Control Samples
+"Truth" versions of control samples are from the [Genome in a Bottle Consortium (GIAB)](https://www.nist.gov/programs-projects/genome-bottle) and [releases of their data can be found here](https://ftp-trace.ncbi.nlm.nih.gov/giab/ftp/release/) organized by source.
+1. Download the `.bed`, `.vcf` and index files associated with the control sample.
+2. Convert the calling region GVS is using to BED format
+```
+gsutil cp gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list .
+gatk IntervalListToBed -I wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list -O wgs_calling_regions.hg38.noCentromeres.noTelomeres.bed
+rm wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list
+```
+3. Then intersect with each of the truth datasets (this example is for HG-001):
+```
+bedtools intersect -a wgs_calling_regions.hg38.noCentromeres.noTelomeres.bed -b HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_nosomaticdel_noCENorHET7.bed > HG001.gvs.evaluation.bed
+bedtools intersect -a wgs_calling_regions.hg38.noCentromeres.noTelomeres.bed -b HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed > HG002.gvs.evaluation.bed
+bedtools intersect -a wgs_calling_regions.hg38.noCentromeres.noTelomeres.bed -b HG003_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed > HG003.gvs.evaluation.bed
+bedtools intersect -a wgs_calling_regions.hg38.noCentromeres.noTelomeres.bed -b CHM.full.38.bed.gz > CHM.gvs.evaluation.bed
+```
+4. Copy the GIAB data and the new `evaluation.bed` file to the `gs://broad-dsp-spec-ops/gvs/truth/` directory so the files will be available for future callsets.
