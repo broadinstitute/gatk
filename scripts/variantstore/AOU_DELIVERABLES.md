@@ -9,10 +9,9 @@
     	- Make sure that any samples that have been withdrawn or that have been loaded but should not be in the callset have the is_loaded column set to false.
     3. GvsCreateAltAllele
     4. GvsCreateFilterSet
-<<<<<<< HEAD
         - make note of the "filter_set_name" input used
     5. GvsPrepareCallset
-        - If the ```sample_info``` table contains control samples, create views in your dataset called ```sample_info_without_controls``` populated by the query ```SELECT * FROM `aou-genomics-curation-prod.beta_release.sample_info` where sample_id > 50``` and ```sample_info_controls_only``` populated by the query ```SELECT * FROM `aou-genomics-curation-prod.beta_release.sample_info` where sample_id <= 50```. A run for ```sample_info_without_controls``` will create the tables for the joint callset deliverable.  The run with ```sample_info_controls_only```  (with a distinct `destination_cohort_table_prefix` from the non-control run) will be used for the ["Sensitivity and Precision" deliverable](tieout/AoU_SENSITIVITY_PRECISION.md).
+        - If the ```sample_info``` table contains control samples, create views in your dataset called ```sample_info_without_controls``` populated by the query ```SELECT * FROM `aou-genomics-curation-prod.beta_release.sample_info` where sample_id > 50``` and ```sample_info_controls_only``` populated by the query ```SELECT * FROM `aou-genomics-curation-prod.beta_release.sample_info` where sample_id <= 50```. A run for ```sample_info_without_controls``` will create the tables for the joint callset deliverable.  The run with ```sample_info_controls_only```  (with a distinct `destination_cohort_table_prefix` from the non-control run) will be used for the ["Sensitivity and Precision" deliverable](tieout/AoU_PRECISION_SENSITIVIT.md).
         - If the callset has more than 20K genomes, you will want to set the input "skip_vet_new_insert" to `true` which will run all of the queries except the last one. It will print out the last query that needs to run with flex slots; allocate the flex slots, run the query, and then deallocate them.
     6. GvsExtractCallset
         - include a valid (and secure) "output_gcs_dir" parameter that the service account (see above) has access to, this is where the VCF and interval list files  will go
@@ -28,6 +27,7 @@
 1. location of the VCF and interval_list files ("output_gcs_dir" input from GvsExtractCallset)
 2. fully qualified name of the BigQuery dataset (input "dataset_name" in the workflows)
 3. results of running callset QC
+4. [Precision and sensitivity results](tieout/AoU_PRECISION_SENSITIVITY.md)
 
 ## Cost estimation for BQ queries
 To get cost information for the AoU queries, only the AoU Service account has access.
