@@ -5,6 +5,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.SimpleAllele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -16,7 +17,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public final class Haplotype extends Allele {
+public final class Haplotype extends SimpleAllele {
     private static final long serialVersionUID = 1L;
 
     /**
