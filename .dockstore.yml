@@ -109,9 +109,8 @@ workflows:
      filters:
        branches:
          - master
-         - kc_ranges_extract
          - ah_var_store
-         - kc_no_streaming
+         - kc_fix_rr_load_bug
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
