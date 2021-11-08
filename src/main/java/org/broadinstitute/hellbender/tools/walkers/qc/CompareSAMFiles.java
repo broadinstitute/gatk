@@ -35,8 +35,6 @@ public class CompareSAMFiles extends GATKTool {
     @Argument(fullName = "mode")
     public String mode = "RIBOSOME";
 
-
-
     PeekableIterator<GATKRead> read1Iterator;
     PeekableIterator<GATKRead> read2Iterator;
 

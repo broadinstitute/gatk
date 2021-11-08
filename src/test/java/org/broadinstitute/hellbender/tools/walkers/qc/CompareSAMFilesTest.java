@@ -19,8 +19,9 @@ public class CompareSAMFilesTest extends CommandLineProgramTest {
 
     final String gatkHome = "/Users/tsato/workspace/gatk/tmp/";
 
-    final String ribosomeBamHg19 = "";
-    final String ribosomeBamHg38 = "";
+    final String rHome = "/Volumes/dsde_working/tsato/hydro.gen/Analysis/874_twist_RNA/ribosome2/";
+    final String ribosomeBamHg19 = rHome + "SM-B1511_Ill_Kapa_2_lane_1.query_sorted.hg19.ribosome_pairs.bam";
+    final String ribosomeBamHg38 = rHome + "SM-B1511_Ill_Kapa_2_lane_1.query_sorted.hg38.ribosome_pairs.bam";
 
     @Test
     public void testRibosome(){
