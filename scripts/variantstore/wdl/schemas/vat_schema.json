@@ -54,7 +54,7 @@
     "mode": "Repeated"
   },
   {
-   "description": "Gene symbol.  A variant can have more than one associated gene symbol, since about 3% of genes do overlap",
+   "description": "Gene symbol: a variant can have more than one associated gene symbol, since about 3% of genes do overlap",
    "name": "gene_symbol",
    "type": "String",
    "mode": "Nullable"
