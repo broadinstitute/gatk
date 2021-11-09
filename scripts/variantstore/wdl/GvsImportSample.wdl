@@ -10,8 +10,10 @@ workflow GvsImportSample {
     String project_id
     String dataset_name
     String? service_account_json_path
-    String? drop_state = "SIXTY"
+    String? drop_state = "FORTY"
     Boolean? drop_state_includes_greater_than = false
+    Boolean load_pet = false
+    Boolean load_ref_ranges = true
 
     Int? preemptible_tries
     File? gatk_override = "gs://broad-dsp-spec-ops/scratch/andrea/gatk-ah-writeapi.jar"
@@ -88,7 +90,7 @@ task CheckForDuplicateData {
     # check the INFORMATION_SCHEMA.PARTITIONS table to see if any of input sample names/ids have data loaded into their partitions
     # this returns the list of sample names that do already have data loaded
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-      "SELECT distinct(partition_id) FROM ${INFO_SCHEMA_TABLE} p WHERE (p.partition_id = CAST(~{gvs_sample_id} AS STRING)) AND p.total_logical_bytes > 0 AND table_name like 'pet_%'" | \
+      "SELECT distinct(partition_id) FROM ${INFO_SCHEMA_TABLE} p WHERE (p.partition_id = CAST(~{gvs_sample_id} AS STRING)) AND p.total_logical_bytes > 0 AND (table_name like 'pet_%' OR table_name like 'vet_%')" | \
       sed -e '/partition_id/d' > duplicates
 
     # true if there is data in results
@@ -184,6 +186,8 @@ task ImportSample {
       --dataset-name ~{dataset_name} \
       --output-type BQ \
       --mode GENOMES \
+      --enable-reference-ranges ~{load_ref_ranges} \
+      --enable-pet ~{load_pet} \
       -SN ~{sample_name} \
       --gvs-sample-id ~{gvs_sample_id} \
       --ref-version 38

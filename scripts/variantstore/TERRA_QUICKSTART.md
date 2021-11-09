@@ -34,12 +34,12 @@ These are the required parameters which must be supplied to the workflow:
 | gvcf | The gvcf file to reblock |
 | ref_dict      		| The reference dictionary to use       |
 | ref_fasta      	| The reference to use      |
-| ref_fasta_index   | The reference index       |
+| ref\_fasta_index   | The reference index       |
 
 
 ## 3. Import samples
 ### 3.1 Assign Gvs IDs
-To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set, update the BigQuery dataset with the sample name to ID mapping info and update the data model with the gvs id assigned.
+To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow on a sample set, which will create an unique gvs id, update the BQ sample_info table, and update the data model. 
 
 These are the required parameters which must be supplied to the workflow:
 
@@ -54,23 +54,18 @@ These are the required parameters which must be supplied to the workflow:
 
 ### 3.2 Load data
 
-Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.
+Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportSample` workflow which now works on individual samples. The workflow will check whether data for that sample has already been loaded into GVS.
 
-TODO: 
- - we can change the WDLs to make the pet/ref_ranges flags the default
- 
 These are the required parameters which must be supplied to the workflow:
 
 | Parameter      | Description |
 | ----------------- | ----------- |
 | project_id | The name of the google project containing the dataset |
 | dataset_name      | The name of the dataset you created above       |
-| load_pet      | false       |
-| load\_ref_ranges      | true       |
-| output_directory | A unique GCS path to be used for loading, can be in the workspace bucket.  E.g. `gs://fc-124-12-132-123-31/gvs/demo1`)
+| external\_sample_name | The name of the sample from the data model |
+| gvs\_sample_id | The gvs_id from the data model |
+| interval_list | The interval list to use |
 
-
-**NOTE**: if your workflow fails, you will need to manually remove a lockfile from the output directory.  It is called LOCKFILE, and can be removed with `gsutil rm`
 
 ## 4. Create Alt Allele Table
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.
