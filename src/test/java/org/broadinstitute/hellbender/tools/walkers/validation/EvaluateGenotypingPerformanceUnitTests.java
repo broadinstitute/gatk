@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-public class EvaluateGenotypingPerfromanceUnitTests extends GATKBaseTest {
+public class EvaluateGenotypingPerformanceUnitTests extends GATKBaseTest {
 
     @Test
     void testPearsonCorrelationAggregator() {

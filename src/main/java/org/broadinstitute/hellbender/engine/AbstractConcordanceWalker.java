@@ -14,6 +14,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.File;
@@ -215,40 +216,39 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
 
     protected ConcordanceState getConcordanceState(final Genotype truth, final Genotype eval, final boolean evalWasFiltered) {
         final boolean isTruthPositive = truth != null && isPositive(truth);
-        final boolean isEvalPositive = eval != null && isPositive(eval);
-        final boolean genotypesAgree;
-        if (eval == null) {
-            genotypesAgree = !isTruthPositive;
+        final boolean isEvalPositive = eval != null && isPositive(eval) && !evalWasFiltered;
+        final boolean genotypesAfterFilteringAgree;
+        if (eval == null || evalWasFiltered) {
+            genotypesAfterFilteringAgree = !isTruthPositive;
         } else if (truth == null) {
-            genotypesAgree = !isEvalPositive;
+            genotypesAfterFilteringAgree = !isEvalPositive;
         } else {
-            genotypesAgree = genotypesAgree(truth, eval);
+            genotypesAfterFilteringAgree = genotypesAgree(truth, eval);
         }
 
-        return evaluateConcordanceState(isEvalPositive, isTruthPositive, genotypesAgree, evalWasFiltered);
+        return evaluateConcordanceState(isEvalPositive, isTruthPositive, genotypesAfterFilteringAgree, evalWasFiltered);
     }
 
-    protected ConcordanceState evaluateConcordanceState(final boolean isPositiveEval, final boolean isPositiveTruth, final boolean genotypesAgree, final boolean evalIsFiltered) {
-        final int isPositiveEvalKey = isPositiveEval ? 1 : 0;
-        final int isPoisitveTruthKey = isPositiveTruth ? 1 : 0;
-        final int genotypesAgreeKey = genotypesAgree ? 1 : 0;
-        final int evalIsFilteredKey = evalIsFiltered ? 1 : 0;
-
-        final ConcordanceState concordanceState = concordanceStatesTable[evalIsFilteredKey][genotypesAgreeKey][isPoisitveTruthKey][isPositiveEvalKey];
-
-        if (concordanceState == null) {
-            throw new GATKException("invalid concordance state table input: isPositiveEval = " + isPositiveEval + ", isPositiveTruth = " + isPositiveTruth + ", genotypesAgree = " + genotypesAgree + ", evalIsFiltered = " + evalIsFiltered);
+    protected ConcordanceState evaluateConcordanceState(final boolean isPositiveEval, final boolean isPositiveTruth, final boolean genotypesAfterFilteringAgree, final boolean evalIsFiltered) {
+        Utils.validate(!(evalIsFiltered && isPositiveEval), "isPositiveEval and evalIsFiltered cannot both be true");
+        Utils.validate(!(genotypesAfterFilteringAgree && (isPositiveEval != isPositiveTruth)), "if genotypes agree truth and eval must both be positive or negative");
+        if (genotypesAfterFilteringAgree) {
+            if (isPositiveEval) {
+                return ConcordanceState.TRUE_POSITIVE;
+            } else {
+                return evalIsFiltered ? ConcordanceState.FILTERED_TRUE_NEGATIVE : ConcordanceState.TRUE_NEGATIVE;
+            }
+        } else {
+            if (isPositiveEval) {
+                return ConcordanceState.FALSE_POSITIVE;
+            } else {
+                return evalIsFiltered ? ConcordanceState.FILTERED_FALSE_NEGATIVE : ConcordanceState.FALSE_NEGATIVE;
+            }
         }
-        return concordanceState;
     }
 
     private boolean hasNonRefAlleles(final Collection<Allele> alleles) {
-        for (final Allele allele : alleles) {
-            if (allele.isNonReference()) {
-                return true;
-            }
-        }
-        return false;
+        return alleles.stream().anyMatch(Allele::isNonReference);
     }
 
     protected boolean isPositive(final Genotype genotype) {
@@ -306,10 +306,10 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
                 return TruthVersusEval.truthOnly(truthIterator.next());
             } else {
                 //get all eval records at this location
-                final List<VariantContext> evalVariants = getNextVariantGroup(evalIterator);
+                final List<VariantContext> evalVariants = getAllVariantsAtNextLocus(evalIterator);
 
                 //get all truth records at this location
-                final List<VariantContext> truthVariants = getNextVariantGroup(truthIterator);
+                final List<VariantContext> truthVariants = getAllVariantsAtNextLocus(truthIterator);
 
                 //if there is only one truth and eval at this location, can just return those, otherwise need to match using matching function
                 if (evalVariants.size() == 1 && truthVariants.size() == 1) {
@@ -328,8 +328,9 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
             }
         }
 
-        private List<VariantContext> getNextVariantGroup(final PeekableIterator<VariantContext> iterator) {
-            final List<VariantContext> variants = new LinkedList<>();
+        private List<VariantContext> getAllVariantsAtNextLocus(final PeekableIterator<VariantContext> iterator) {
+            Utils.validateArg(iterator.hasNext(), "AbstractConcordanceWalker asked for next variant in variant group when variant group was empty");
+            final List<VariantContext> variants = new ArrayList<>();
             VariantContext currentVariant = iterator.next();
             variants.add(currentVariant);
             while(iterator.hasNext() && variantContextComparator.compare(currentVariant, iterator.peek()) == 0) {
@@ -342,7 +343,7 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
 
         protected Queue<TruthVersusEval> matchVariants(final List<VariantContext> truthVariants, final List<VariantContext> evalVariants) {
                 //match based on shouldVariantsBeMatched
-                //we expect only a small number of variants in each list, so we a loop is fine
+                //we expect only a small number of variants in each list, so a loop is fine
             final Queue<TruthVersusEval> queue = new ArrayDeque<>();
             Set<VariantContext> unmatchedTruth  = new HashSet<>(truthVariants);
             for (final VariantContext eval : evalVariants) {
