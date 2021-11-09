@@ -108,7 +108,7 @@ workflow GvsCreateFilterSet {
               scatter_count = scatter_count
         }
 
-    scatter(i in range(scatter_count)) {
+    scatter(i in range(length(SplitIntervals.interval_files))) {
         call ExtractFilterTask {
             input:
                 gatk_override            = gatk_override,
