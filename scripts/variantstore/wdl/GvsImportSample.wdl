@@ -189,7 +189,6 @@ task ImportSample {
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
       --output-type BQ \
-      --mode GENOMES \
       --enable-reference-ranges ~{load_ref_ranges} \
       --enable-pet ~{load_pet} \
       -SN ~{sample_name} \
