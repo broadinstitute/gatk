@@ -22,7 +22,7 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
 4. These tools expect re-blocked gVCF files as input.
 
 ## 1. Setup workspace with data model
-The quickstart workspace has a file named sample.tsv that contains the attributes for 26 samples. Load this file into your data table.  This will set up the `sample_id`, `gvcf`, and `research_id` attributes. 
+This workspace has two files you can use to initially populate the data model. Both files are in the `Files` section of the workspace. One named `samples_10.tsv` has 10 samples with already reblocked gvcfs. The other file `samples_3202.tsv` has 3202 samples only a few of which have their reblocked gvcf attributes filled in. 
 
 ## 2. Reblock samples
 Run the GvsAoUReblockGvcf workflow on the samples
@@ -37,9 +37,9 @@ These are the required parameters which must be supplied to the workflow:
 | ref\_fasta_index   | The reference index       |
 
 
-## 3. Import samples
-### 3.1 Assign Gvs IDs
-To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow on a sample set, which will create an unique gvs id, update the BQ sample_info table, and update the data model. 
+## 3. Load data
+### 3.1 Assign Gvs IDs (suggest renaming to GvsPrepareSamples)
+To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow on a sample set, which will create an unique gvs id, update the BQ sample\_info table (creating it if it doesn't exists), and update the data model. This workflow takes care of creating the BQ vet and ref_ranges tables needed for the sample ids generated.
 
 These are the required parameters which must be supplied to the workflow:
 
@@ -52,7 +52,7 @@ These are the required parameters which must be supplied to the workflow:
 | workspace_name      | The name of the workspace       |
 
 
-### 3.2 Load data
+### 3.2 Import Samples
 
 Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportSample` workflow which now works on individual samples. The workflow will check whether data for that sample has already been loaded into GVS.
 
