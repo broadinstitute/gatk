@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -826,10 +825,7 @@ public class Funcotator extends VariantWalker {
      */
     @VisibleForTesting
     static void checkIfAlreadyAnnotated(final VCFHeader vcfHeader, GATKPath drivingVariantFile) {
-        if (vcfHeader.getOtherHeaderLine(FuncotatorConstants.VCF_HEADER_ALREADY_ANNOTATED_1) != null) {
-            throw new UserException.BadInput("Given VCF " +drivingVariantFile+ " has already been annotated!");
-        }
-        else if (vcfHeader.getOtherHeaderLine(FuncotatorConstants.VCF_HEADER_ALREADY_ANNOTATED_2) != null) {
+        if (vcfHeader.getOtherHeaderLine(FuncotatorConstants.FUNCOTATOR_VERSION_VCF_HEADERLINE_KEY) != null) {
             throw new UserException.BadInput("Given VCF " +drivingVariantFile+ " has already been annotated!");
         }
     }
