@@ -43,6 +43,8 @@ workflow GvsImportSample {
         service_account_json_path = service_account_json_path,
         drop_state = drop_state,
         drop_state_includes_greater_than = drop_state_includes_greater_than,
+        load_ref_ranges = load_ref_ranges,
+        load_pet = load_pet,
         gatk_override = gatk_override,
         docker = docker_final,
         preemptible_tries = preemptible_tries,
@@ -126,6 +128,8 @@ task ImportSample {
     String? service_account_json_path
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
+    Boolean load_pet = false
+    Boolean load_ref_ranges = true
 
     Boolean duplicate_check_passed
 
