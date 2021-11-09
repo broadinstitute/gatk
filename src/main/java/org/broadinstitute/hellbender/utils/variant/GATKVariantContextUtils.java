@@ -702,6 +702,19 @@ public final class GATKVariantContextUtils {
         return false;
     }
 
+    /**
+     * Is there a real ALT allele that's not <NON_REF> or * ?
+     * @param alleles   alleles in the called genotype
+     * @return true if the genotype has a called allele that is a "real" alternate
+     */
+    public static boolean genotypeHasConcreteAlt(final List<Allele> alleles) {
+        return alleles.stream().anyMatch(GATKVariantContextUtils::isConcreteAlt);
+    }
+
+    public static boolean isConcreteAlt(final Allele a) {
+        return !a.isReference() && !a.isSymbolic() && !a.equals(Allele.SPAN_DEL);
+    }
+
     public enum GenotypeMergeType {
         /**
          * Make all sample genotypes unique by file. Each sample shared across RODs gets named sample.ROD.

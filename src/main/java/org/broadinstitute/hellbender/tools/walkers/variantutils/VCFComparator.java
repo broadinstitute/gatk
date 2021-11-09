@@ -38,7 +38,6 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     public static final String DP_CHANGE_ALLOWED_LONG_NAME = "dp-change-allowed";
     public static final String RANK_SUM_CHANGE_ALLOWED_LONG_NAME = "ranksum-change-allowed";
     public static final String POSITIONS_ONLY_LONG_NAME = "positions-only";
-    public static final double INBREEDING_COEFF_TOLERANCE = 0.001;
 
     private VariantAnnotatorEngine annotatorEngine;
     private boolean isSingleSample = true;
@@ -62,6 +61,9 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
 
     @Argument(fullName = "qual-change-allowed", optional = true)
     Double QUAL_TOLERANCE = 0.001;
+
+    @Argument(fullName = "inbreeding-coeff-change-allowed", optional = true)
+    Double INBREEDING_COEFF_TOLERANCE = 0.001;
 
     @Argument(fullName = "good-qual-threshold", optional = true, doc = "Variants with QUAL at or above this value are considered high quality and should appear in both files")
     Double GOOD_QUAL_THRESHOLD = 100.0;
@@ -150,6 +152,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
 
         if (variantContexts.size() == 1) {
             final VariantContext vc = variantContexts.get(0);
+            //TODO: if there's a variant that overlaps the requested interval the start may not be in the requested intervals
             if (!MUTE_DIFFS) {
                 throwOrWarn(new UserException("Unmatched variant in " + vc.getSource() + " at position " + vc.getContig() + ":" + vc.getStart()));
             //low coverage sites will have QUAL for singleton hom-vars boosted because of GQ0 hom-refs
@@ -169,11 +172,15 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             final List<VariantContext> matches = variantContexts.stream().filter(v -> v.getStart() == vc.getStart()).collect(Collectors.toList());
             //matches includes vc
             //TODO: matches.size() could be 4 or more, depending on ploidy
-            if (matches.size() == 1 && isHighQuality(vc)
-                    && !vc.getGenotype(0).getAlleles().contains(Allele.SPAN_DEL)) {
-                throwOrWarn(new UserException("Apparent unmatched high quality variant in " + vc.getSource() + " at " + vc.getContig() + ":" + vc.getStart()));
+            if (matches.size() == 1 ) {
+                if (isHighQuality(vc) && hasGoodEvidence(vc)
+                        && !vc.getGenotype(0).getAlleles().contains(Allele.SPAN_DEL)){
+                    throwOrWarn(new UserException("Apparent unmatched high quality variant in " + vc.getSource() + " at " + vc.getContig() + ":" + vc.getStart()));
+                } else {
+                    return;
+                }
             } else {
-                if (!isHighQuality(vc) || (matches.size() < 2 && vc.getGenotype(0).getAlleles().contains(Allele.SPAN_DEL))) { //TODO: check * genotypes somehow
+                if (!isHighQuality(vc) || (isSingleSample && !GATKVariantContextUtils.genotypeHasConcreteAlt(vc.getGenotype(0).getAlleles()))) { //TODO: check * genotypes somehow
                     return;
                 }
                 final VariantContext match;
@@ -183,11 +190,16 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     match = matches.get(1);
                 }
 
-                final VariantContext expectedTrimmed = trimAlleles(vc);
-                final VariantContext actualTrimmed = trimAlleles(match);
+                if (isSingleSample && !GATKVariantContextUtils.genotypeHasConcreteAlt(match.getGenotype(0).getAlleles())) {
+                    throwOrWarn(new UserException("Apparent unmatched high quality variant in " + vc.getSource() + " at " + vc.getContig() + ":" + vc.getStart()));
+                    return;
+                }
 
                 final List<VariantContext> overlappingDels = variantContexts.stream().filter(v -> v.getStart() < vc.getStart() && v.overlaps(vc))
                         .collect(Collectors.toList());
+
+                final VariantContext expectedTrimmed = trimAlleles(vc, overlappingDels);
+                final VariantContext actualTrimmed = trimAlleles(match, overlappingDels);
 
                 //do single-sample GVCF checks, including deletion trimming and dropping
                 if (isSingleSample) {
@@ -230,12 +242,12 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         final Genotype actualGenotype = actualTrimmed.getGenotype(0);
         final List<Allele> actualGenotypeAlleles = actualGenotype.getAlleles();
 
-        if (IGNORE_GENOTYPE_PHASING && !actualHasNewAlleles(match, vc)) {
+        if (IGNORE_GENOTYPE_PHASING && !actualHasNewAlleles(expectedTrimmed, actualTrimmed)) {
             return;
         }
 
         if (!expectedGenotypeAlleles.get(0).equals(actualGenotypeAlleles.get(0)) || !expectedGenotypeAlleles.get(1).equals(actualGenotypeAlleles.get(1))) {  //do use order here so we can check phasing
-            if (expectedGenotypeAlleles.get(1).equals(actualGenotypeAlleles.get(0)) && expectedGenotypeAlleles.get(0).equals(actualGenotypeAlleles.get(1))) {
+            if (expectedGenotype.isPhased() && expectedGenotypeAlleles.get(1).equals(actualGenotypeAlleles.get(0)) && expectedGenotypeAlleles.get(0).equals(actualGenotypeAlleles.get(1))) {
                 throw wrapWithPosition(vc.getContig(), vc.getStart(), new UserException("phasing is swapped. Actual in phaseset "
                         + actualGenotype.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, "") + " has "
                         + actualGenotype.getGenotypeString(false)
@@ -273,7 +285,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     return;
                 } else {
                     final VariantContext overlapper = overlappingDels.get(0);
-                    final VariantContext trimmedOverlapper = trimAlleles(overlapper);
+                    final VariantContext trimmedOverlapper = trimAlleles(overlapper, overlappingDels);
                     if (overlapper.overlaps(vc) && !trimmedOverlapper.overlaps(vc)) {
                         return;
                     }
@@ -285,7 +297,8 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
 
     private boolean hasGoodEvidence(final VariantContext vc) {
         return (vc.getPhredScaledQual() > GOOD_QUAL_THRESHOLD)
-            && (vc.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)/(double)vc.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY,0)) > 5;
+            && (vc.getAttributeAsInt(VCFConstants.DEPTH_KEY,0)/(double)vc.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY,0)) > 5
+                && vc.getGenotypes().stream().filter(g -> !g.isHomRef()).mapToInt(Genotype::getGQ).sum() > GOOD_QUAL_THRESHOLD;
     }
 
     private void areVariantContextsEqualOrderIndependent(final VariantContext actual, final VariantContext expected,
@@ -446,7 +459,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     continue;
                 }
                 final Object actualValue = actual.get(key);
-                if (expectedValue instanceof List && actualValue instanceof List) {
+                if (expectedValue instanceof List && actualValue instanceof List || (key.contains("RAW") || key.equals(GATKVCFConstants.AS_SB_TABLE_KEY))) {
                     // both values are lists, compare element by element
                     final List<? extends Object> expectedList, actualList;
                     if (key.contains("RAW") || key.equals(GATKVCFConstants.AS_SB_TABLE_KEY)) {
@@ -456,17 +469,22 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                         expectedList = (List<Object>) expectedValue;
                         actualList = (List<Object>) actualValue;
                     }
-                    if (actualList.size() != expectedList.size()) {
+                    if (actualList.size() != expectedList.size() && !key.contains("AS_")) {  //TODO: account for subset alleles
                         throw makeVariantExceptionFromDifference("attributes", actual.keySet().toString(),
                                 expected.keySet().toString());
                     }
+                    final List<? extends Object> expectedListCommon, actualListCommon;
                     if (key.equals(VCFConstants.ALLELE_COUNT_KEY) || key.equals(GATKVCFConstants.MLE_ALLELE_COUNT_KEY)) {
                         if (!isACEqualEnough(key, actualList, expectedList, actualAlts, expectedAlts)) {
-                            throw makeVariantExceptionFromDifference(key ,actualList.toString(), expectedList.toString());
+                            throw makeVariantExceptionFromDifference(key, actualList.toString(), expectedList.toString());
                         }
                     }
                     final int iterationEnd = IGNORE_NON_REF_DATA ? expectedList.size()-1 : expectedList.size();  //exclusive
                     for (int i = 0; i < iterationEnd; i++) {
+                        if (i >= actualList.size() || i >= expectedList.size()) {
+                            //TODO: the toStrings here don't do a great job
+                            throw makeVariantExceptionFromDifference(key, actualValue.toString(), expectedValue.toString());
+                        }
                         if (key.equals(GATKVCFConstants.AS_INBREEDING_COEFFICIENT_KEY)) {
                             final double actualPerAlleleValue = Double.parseDouble(actualList.get(i).toString());
                             final double expectedPerAlleleValue = Double.parseDouble(expectedList.get(i).toString());
@@ -683,14 +701,16 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         }
     }
 
-    private VariantContext trimAlleles(final VariantContext variant) {
+    private VariantContext trimAlleles(final VariantContext variant, final List<VariantContext> overlappingDels) {
         final Allele ref = variant.getReference();
         final Set<Allele> relevantAlleles = new LinkedHashSet<>();
         for (final Genotype g : variant.getGenotypes()) {
             final List<Allele> gtAlleles = g.getAlleles();
             relevantAlleles.add(ref);
             if (!gtAlleles.contains(Allele.NO_CALL)) {  //in theory there could be half no-calls, but I've never seen one
-                relevantAlleles.addAll(gtAlleles);
+                if (overlappingDels.size() > 0) {
+                    relevantAlleles.addAll(gtAlleles);
+                } else relevantAlleles.addAll(gtAlleles.stream().filter(GATKVariantContextUtils::isConcreteAlt).collect(Collectors.toList()));
             }
         }
         final VariantContextBuilder vcBuilder = new VariantContextBuilder(variant);

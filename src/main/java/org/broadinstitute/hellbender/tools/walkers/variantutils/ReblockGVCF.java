@@ -394,7 +394,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final Genotype genotype = result.getGenotype(0);
         return (hasGenotypeValuesArray(posteriorsKey, genotype)
                 && (genotype.isHomRef() || isNoCalledHomRef(posteriorsKey, genotype) || (genotype.hasPL() && MathUtils.minElementIndex(genotype.getPL()) == 0))
-                && result.getAlternateAlleles().stream().anyMatch(this::isConcreteAlt));
+                && result.getAlternateAlleles().stream().anyMatch(GATKVariantContextUtils::isConcreteAlt));
     }
 
     /**
@@ -434,22 +434,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
         final List<Allele> finalAlleles = alleleCounts.asAlleleList(vc.getAlleles());
         return (pls != null && pls[0] < rgqThreshold)
-                || !genotypeHasConcreteAlt(finalAlleles)
+                || !GATKVariantContextUtils.genotypeHasConcreteAlt(finalAlleles)
                 || finalAlleles.stream().anyMatch(a -> a.equals(Allele.NON_REF_ALLELE))
                 || (!genotype.hasPL() && !genotype.hasGQ());
-    }
-
-    /**
-     * Is there a real ALT allele that's not <NON_REF> or * ?
-     * @param alleles   alleles in the called genotype
-     * @return true if the genotype has a called allele that is a "real" alternate
-     */
-    private boolean genotypeHasConcreteAlt(final List<Allele> alleles) {
-        return alleles.stream().anyMatch(this::isConcreteAlt);
-    }
-
-    private boolean isConcreteAlt(final Allele a) {
-        return !a.isReference() && !a.isSymbolic() && !a.equals(Allele.SPAN_DEL);
     }
 
     /**
