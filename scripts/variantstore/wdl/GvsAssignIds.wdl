@@ -185,7 +185,7 @@ task AssignIds {
   }
   output {
     File gvs_ids_tsv = "gvs_ids.tsv"
-    Int max_table_id = max_table_id
+    Int max_table_id = "max_table_id"
   }
 }
 
