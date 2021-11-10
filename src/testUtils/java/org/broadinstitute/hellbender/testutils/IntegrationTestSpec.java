@@ -46,6 +46,7 @@ public final class IntegrationTestSpec {
     private final int nOutputFiles;
     private final List<String> expectedFileNames;
     private String tempExtension;
+    private boolean trimWhiteSpace;
 
     //If this field is set to true, bam files will be compared after they get sorted.
     //This is needed as a workaround because Spark tools don't respect a pre-ordered BAMs
@@ -94,6 +95,10 @@ public final class IntegrationTestSpec {
 
     public void setCompareBamFilesSorted(final boolean compareBamFilesSorted) {
         this.compareBamFilesSorted = compareBamFilesSorted;
+    }
+
+    public void setTrimWhiteSpace(final boolean trimWhiteSpace) {
+        this.trimWhiteSpace = trimWhiteSpace;
     }
 
     public void setValidationStringency(final ValidationStringency validationStringency) {
@@ -154,7 +159,7 @@ public final class IntegrationTestSpec {
         executeTest(testName, testClass, args, expectedException);
 
         if (expectedException == null && !expectedFileNames.isEmpty()) {
-            assertMatchingFiles(tmpFiles, expectedFileNames, compareBamFilesSorted, validationStringency);
+            assertMatchingFiles(tmpFiles, expectedFileNames, compareBamFilesSorted, validationStringency, trimWhiteSpace);
             if (expectedIndexExtension != null) {
                 for (final File f : tmpFiles) {
                     final String indexPath = f.getAbsolutePath() + expectedIndexExtension;
@@ -208,6 +213,10 @@ public final class IntegrationTestSpec {
     }
 
     public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles, final boolean compareBamFilesSorted, final ValidationStringency stringency) throws IOException {
+        assertMatchingFiles(resultFiles, expectedFiles, compareBamFilesSorted, stringency, false);
+    }
+
+    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles, final boolean compareBamFilesSorted, final ValidationStringency stringency, final boolean trimWhiteSpace) throws IOException {
         Assert.assertEquals(resultFiles.size(), expectedFiles.size());
         for (int i = 0; i < resultFiles.size(); i++) {
             final File resultFile = resultFiles.get(i);
@@ -219,7 +228,7 @@ public final class IntegrationTestSpec {
             } else if (expectedFileName.endsWith(".bam")) {
                 SamAssertionUtils.assertEqualBamFiles(resultFile, expectedFile, compareBamFilesSorted, stringency);
             } else {
-                assertEqualTextFiles(resultFile, expectedFile);
+                assertEqualTextFiles(resultFile, expectedFile, null, trimWhiteSpace);
             }
         }
     }
