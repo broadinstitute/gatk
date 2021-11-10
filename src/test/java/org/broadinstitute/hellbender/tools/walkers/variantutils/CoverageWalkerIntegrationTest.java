@@ -12,31 +12,25 @@ public class CoverageWalkerIntegrationTest extends CommandLineProgramTest {
     private final String contig = "chr16:10000-10000000";
 
     /** VCF file path (with index in directory) */
-    private final String VariantDataPath = "gs://fc-secure-b116e047-dc4d-49b4-9661-92c38055e426/66c13f31-1b1f-46b5-9521-31c619111f39/JukeboxVC/526242af-f44b-4426-93dc-29c3112bd81b/call-FilterSymbolicAlleles/001029_B0245_NA12878_JBX-045_BC13_E02.fix.vcf.gz";
+    private final String VariantDataPath = ;
     private final File VariantInputData = new File(VariantDataPath);
 
     /** Associated bam with sample */
     private final String BamPath =
-        //    "gs://fc-secure-0c5a3c69-1298-4e9d-8b33-055d9291ad01/e4009d5c-667b-4be4-af5f-be8a5d74e979/JukeboxVC/27935336-5652-4e70-9698-2ee26c9228c4/call-MarkDuplicatesSpark/002404_NA12878-No_DTT-X0015.aligned.sorted.duplicates_marked.bam";
                 "gs://dsde-palantir/SnapshotExperiment2018/NovaSeqCRAMs/NA12878_NA12878_O1D1_SM-G947L_v1_NS.cram";
-        //    "gs://fc-secure-0c5a3c69-1298-4e9d-8b33-055d9291ad01/e4009d5c-667b-4be4-af5f-be8a5d74e979/JukeboxVC/8e54e7ee-0099-4609-aa62-55e786e3c998/call-MarkDuplicatesSpark/002404_NA12878-No_DTT-X0007.aligned.sorted.duplicates_marked.bam";
-        //    private final File BamFile = new File(BamPath);
 
     /** Other bam to compare to */
 //    private final String ExtraBamPath =
-//            "gs://fc-secure-0c5a3c69-1298-4e9d-8b33-055d9291ad01/e4009d5c-667b-4be4-af5f-be8a5d74e979/JukeboxVC/27935336-5652-4e70-9698-2ee26c9228c4/call-MarkDuplicatesSpark/002404_NA12878-No_DTT-X0015.aligned.sorted.duplicates_marked.bam";
 
     /** Output file path */
     private final String outputPath =
-            "/Users/rmagner/Documents/coverage_locuswalker_test.txt";
+            "<my_output_path>/coverage_locuswalker_test.txt";
     private final File outputFile = new File(outputPath);
 
     /** Hmer interval list file */
-    private final File hmerIntervalList = new File("/Users/rmagner/Documents/Data/Reference/HmerData/hmer_hg38.list");
 
     /** Files relating to reference */
-    private final File localRefData = new File("/Users/rmagner/Documents/Data/Reference/Homo_sapiens_assembly38.fasta");
-    private final File hmerRefTable = new File("/Users/rmagner/Documents/Data/Reference/HmerData/hmer_hg38_gt4.table");
+    private final File localRefData = new File("<ref file>");
 
     @Test
     public void testWalker() {
@@ -47,10 +41,8 @@ public class CoverageWalkerIntegrationTest extends CommandLineProgramTest {
 //                "-eB", ExtraBamPath,
                 "-O", outputFile.getPath(),
                 "-R", localRefData.getPath(),
-                "-F", hmerRefTable.getPath(),
                 "-L", contig
         );
-//                "-L", hmerIntervalList.getPath() );
         runCommandLine(args);
     }
 }

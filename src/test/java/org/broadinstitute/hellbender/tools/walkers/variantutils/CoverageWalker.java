@@ -19,8 +19,8 @@ import java.util.stream.Collectors;
 
 @DocumentedFeature
 @CommandLineProgramProperties(
-        oneLineSummary = "Walk through reads at site and look at phantom bases in hmers.",
-        summary = "Walk bam and look at phantom bases in hmers.",
+        oneLineSummary = "Walk through loci and count coverage.",
+        summary = "Walk bam and look at coverage by position.",
         programGroup = ReferenceProgramGroup.class
 )
 
