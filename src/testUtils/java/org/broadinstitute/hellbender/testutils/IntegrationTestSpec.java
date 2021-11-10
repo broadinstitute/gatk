@@ -64,6 +64,7 @@ public final class IntegrationTestSpec {
         this.compareBamFilesSorted = false;
         this.validationStringency = ValidationStringency.DEFAULT_STRINGENCY;
         this.tempExtension = DEFAULT_TEMP_EXTENSION;
+        this.trimWhiteSpace = true;
     }
 
     public IntegrationTestSpec(String args, int nOutputFiles, Class<?> expectedException) {
@@ -77,6 +78,7 @@ public final class IntegrationTestSpec {
         this.compareBamFilesSorted = false;
         this.validationStringency = ValidationStringency.DEFAULT_STRINGENCY;
         this.tempExtension = DEFAULT_TEMP_EXTENSION;
+        this.trimWhiteSpace = true;
     }
 
     public boolean expectsException() {
