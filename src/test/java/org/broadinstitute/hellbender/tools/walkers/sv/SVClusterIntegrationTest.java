@@ -203,7 +203,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(header.getSampleNamesInOrder(), Lists.newArrayList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
 
-        Assert.assertEquals(records.size(), 1355);
+        Assert.assertEquals(records.size(), 1338);
 
         // Check for one record
         int expectedRecordsFound = 0;
@@ -367,14 +367,14 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(header.getSampleNamesInOrder(), Lists.newArrayList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
 
-        Assert.assertEquals(records.size(), 1370);
+        Assert.assertEquals(records.size(), 1353);
 
         // Check for one record
         int expectedRecordsFound = 0;
         for (final VariantContext variant : records) {
             Assert.assertTrue(variant.hasAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
             Assert.assertTrue(variant.hasAttribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE));
-            if (variant.getID().equals("SVx000001b0")) {
+            if (variant.getID().equals("SVx000001ad")) {
                 expectedRecordsFound++;
                 Assert.assertEquals(variant.getContig(), "chr20");
                 Assert.assertEquals(variant.getStart(), 28654436);
@@ -500,14 +500,14 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(header.getSampleNamesInOrder(), Lists.newArrayList("HG00096", "HG00129", "HG00150"));
 
-        Assert.assertEquals(records.size(), 541);
+        Assert.assertEquals(records.size(), 536);
 
         // Check for one record
         int expectedRecordsFound = 0;
         for (final VariantContext variant : records) {
             Assert.assertTrue(variant.hasAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
             Assert.assertTrue(variant.hasAttribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE));
-            if (variant.getID().equals("SVx00000208")) {
+            if (variant.getID().equals("SVx00000203")) {
                 expectedRecordsFound++;
                 Assert.assertEquals(variant.getContig(), "chrY");
                 Assert.assertEquals(variant.getStart(), 10676436);

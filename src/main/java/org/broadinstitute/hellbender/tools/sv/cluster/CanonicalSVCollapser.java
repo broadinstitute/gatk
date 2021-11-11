@@ -756,8 +756,8 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         final int[] startPositions = items.stream().mapToInt(SVCallRecord::getPositionA).sorted().toArray();
         final int[] endPositions = items.stream().mapToInt(SVCallRecord::getPositionB).sorted().toArray();
         //use the mid value of the sorted list so the start and end represent real breakpoint observations
-        final int medianStart = MathUtils.median(startPositions, Percentile.EstimationType.LEGACY);
-        final int medianEnd = MathUtils.median(endPositions, Percentile.EstimationType.LEGACY);
+        final int medianStart = MathUtils.median(startPositions, Percentile.EstimationType.R_1);
+        final int medianEnd = MathUtils.median(endPositions, Percentile.EstimationType.R_1);
         final int newStart;
         final int newEnd;
         switch (breakpointSummaryStrategy) {
@@ -782,9 +782,10 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         }
         if (exampleCall.getType().equals(StructuralVariantType.INS)) {
             // Insertions are a single locus
-            return Pair.of(newStart, newStart + 1);
+            return Pair.of(newStart, newStart);
         } else {
-            return Pair.of(newStart, newEnd);
+            // Do not let end precede start
+            return Pair.of(newStart, Math.max(newEnd, newStart));
         }
     }
 

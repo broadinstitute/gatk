@@ -1645,6 +1645,16 @@ public class SVCollapserTest {
                         new int[]{1021, 1100},
                         new int[]{1011, 1110}
                 },
+                // 3 variants, ends overlap starts
+                {
+                        new int[]{1001, 1011, 1021},
+                        new int[]{1031, 1011, 1021},
+                        StructuralVariantType.DUP,
+                        new int[]{1011, 1021},
+                        new int[]{1001, 1031},
+                        new int[]{1021, 1021}, // min end before max start
+                        new int[]{1011, 1021}
+                },
                 // BND
                 {
                         new int[]{1001, 1011, 1021},
@@ -1660,20 +1670,20 @@ public class SVCollapserTest {
                         new int[]{1001, 1011, 1021},
                         new int[]{1001, 1011, 1021},
                         StructuralVariantType.INS,
-                        new int[]{1011, 1012},
-                        new int[]{1011, 1012},
-                        new int[]{1011, 1012},
-                        new int[]{1011, 1012}
+                        new int[]{1011, 1011},
+                        new int[]{1001, 1001},
+                        new int[]{1021, 1021},
+                        new int[]{1011, 1011}
                 },
                 // INS, different start/end
                 {
                         new int[]{1001, 1011, 1021},
                         new int[]{1011, 1021, 1031},
                         StructuralVariantType.INS,
-                        new int[]{1016, 1017},
-                        new int[]{1016, 1017},
-                        new int[]{1016, 1017},
-                        new int[]{1016, 1017}
+                        new int[]{1011, 1011},
+                        new int[]{1001, 1001},
+                        new int[]{1021, 1021},
+                        new int[]{1011, 1011}
                 }
         };
     }
