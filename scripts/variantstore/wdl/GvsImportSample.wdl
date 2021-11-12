@@ -147,7 +147,6 @@ task ImportSample {
     String docker
   }
 
-  Int disk_size = if defined(drop_state) then 50 else 75
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   meta {
@@ -207,7 +206,7 @@ task ImportSample {
   runtime {
       docker: docker
       memory: "3.75 GB"
-      disks: "local-disk " + disk_size + " HDD"
+      disks: "local-disk 30 HDD"
       preemptible: select_first([preemptible_tries, 5])
       cpu: 1
   }

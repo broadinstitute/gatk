@@ -25,8 +25,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 
-public final class PetCreator {
-    private static final Logger logger = LogManager.getLogger(PetCreator.class);
+public final class RefCreator {
+    private static final Logger logger = LogManager.getLogger(RefCreator.class);
 
     private CommonCode.OutputType outputType;
 
@@ -46,14 +46,14 @@ public final class PetCreator {
     private final SAMSequenceDictionary seqDictionary;
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<GQStateEnum>();
     private GenomeLocSortedSet coverageLocSortedSet;
-    private static String PET_FILETYPE_PREFIX = "pet_";
-    private static String PREFIX_SEPARATOR = "_";
+    private static final String PET_FILETYPE_PREFIX = "pet_";
+    private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
 
 
 
-    public PetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
+    public RefCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writePetData, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
         this.outputType = outputType;
@@ -72,7 +72,7 @@ public final class PetCreator {
                     petBQJsonWriter = new PendingBQWriter(projectId, datasetName,PET_FILETYPE_PREFIX + tableNumber);
                     break;
                 case TSV:
-                    List<String> petHeader = PetCreator.getHeaders();
+                    List<String> petHeader = RefCreator.getHeaders();
                     petTsvWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
                     petTsvWriter.setHeaderLine(petHeader);
                     break;
@@ -144,7 +144,7 @@ public final class PetCreator {
             }
 
             // create PET output if the reference block's GQ is not the one to discard or its a variant
-            if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(PetCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
+            if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(RefCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
 
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
