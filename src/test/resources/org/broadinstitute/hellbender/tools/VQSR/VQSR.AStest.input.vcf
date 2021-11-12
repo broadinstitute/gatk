@@ -119,8 +119,8 @@
 ##INFO=<ID=RAW_MQ,Number=1,Type=Float,Description="Raw data for RMS Mapping Quality">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
-##INFO=<ID=AS_VQSLOD,Number=A,Type=Float,Description="Log odds of being a true variant versus being false under the trained gaussian mixture model">
-##INFO=<ID=AS_culprit,Number=A,Type=String,Description="The annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out">
+##INFO=<ID=AS_VQSLOD,Number=A,Type=String,Description="For each alt allele, the log odds of being a true variant versus being false under the trained gaussian mixture model">
+##INFO=<ID=AS_culprit,Number=A,Type=String,Description="For each alt allele, the annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out">
 ##contig=<ID=1,length=249250621,assembly=b37>
 ##contig=<ID=2,length=243199373,assembly=b37>
 ##contig=<ID=3,length=198022430,assembly=b37>

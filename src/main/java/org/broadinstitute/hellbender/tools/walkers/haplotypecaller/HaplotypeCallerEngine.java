@@ -451,6 +451,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public VCFHeader makeVCFHeader( final SAMSequenceDictionary sequenceDictionary, final Set<VCFHeaderLine>  defaultToolHeaderLines ) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+        headerInfo.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         headerInfo.addAll(defaultToolHeaderLines);
 
         headerInfo.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());

@@ -20,90 +20,90 @@
 ##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
-##contig=<ID=1,length=249250621,assembly=GRCh37>
-##contig=<ID=2,length=243199373,assembly=GRCh37>
-##contig=<ID=3,length=198022430,assembly=GRCh37>
-##contig=<ID=4,length=191154276,assembly=GRCh37>
-##contig=<ID=5,length=180915260,assembly=GRCh37>
-##contig=<ID=6,length=171115067,assembly=GRCh37>
-##contig=<ID=7,length=159138663,assembly=GRCh37>
-##contig=<ID=8,length=146364022,assembly=GRCh37>
-##contig=<ID=9,length=141213431,assembly=GRCh37>
-##contig=<ID=10,length=135534747,assembly=GRCh37>
-##contig=<ID=11,length=135006516,assembly=GRCh37>
-##contig=<ID=12,length=133851895,assembly=GRCh37>
-##contig=<ID=13,length=115169878,assembly=GRCh37>
-##contig=<ID=14,length=107349540,assembly=GRCh37>
-##contig=<ID=15,length=102531392,assembly=GRCh37>
-##contig=<ID=16,length=90354753,assembly=GRCh37>
-##contig=<ID=17,length=81195210,assembly=GRCh37>
-##contig=<ID=18,length=78077248,assembly=GRCh37>
-##contig=<ID=19,length=59128983,assembly=GRCh37>
-##contig=<ID=20,length=63025520,assembly=GRCh37>
-##contig=<ID=21,length=48129895,assembly=GRCh37>
-##contig=<ID=22,length=51304566,assembly=GRCh37>
-##contig=<ID=X,length=155270560,assembly=GRCh37>
-##contig=<ID=Y,length=59373566,assembly=GRCh37>
-##contig=<ID=MT,length=16569,assembly=GRCh37>
-##contig=<ID=GL000207.1,length=4262,assembly=GRCh37>
-##contig=<ID=GL000226.1,length=15008,assembly=GRCh37>
-##contig=<ID=GL000229.1,length=19913,assembly=GRCh37>
-##contig=<ID=GL000231.1,length=27386,assembly=GRCh37>
-##contig=<ID=GL000210.1,length=27682,assembly=GRCh37>
-##contig=<ID=GL000239.1,length=33824,assembly=GRCh37>
-##contig=<ID=GL000235.1,length=34474,assembly=GRCh37>
-##contig=<ID=GL000201.1,length=36148,assembly=GRCh37>
-##contig=<ID=GL000247.1,length=36422,assembly=GRCh37>
-##contig=<ID=GL000245.1,length=36651,assembly=GRCh37>
-##contig=<ID=GL000197.1,length=37175,assembly=GRCh37>
-##contig=<ID=GL000203.1,length=37498,assembly=GRCh37>
-##contig=<ID=GL000246.1,length=38154,assembly=GRCh37>
-##contig=<ID=GL000249.1,length=38502,assembly=GRCh37>
-##contig=<ID=GL000196.1,length=38914,assembly=GRCh37>
-##contig=<ID=GL000248.1,length=39786,assembly=GRCh37>
-##contig=<ID=GL000244.1,length=39929,assembly=GRCh37>
-##contig=<ID=GL000238.1,length=39939,assembly=GRCh37>
-##contig=<ID=GL000202.1,length=40103,assembly=GRCh37>
-##contig=<ID=GL000234.1,length=40531,assembly=GRCh37>
-##contig=<ID=GL000232.1,length=40652,assembly=GRCh37>
-##contig=<ID=GL000206.1,length=41001,assembly=GRCh37>
-##contig=<ID=GL000240.1,length=41933,assembly=GRCh37>
-##contig=<ID=GL000236.1,length=41934,assembly=GRCh37>
-##contig=<ID=GL000241.1,length=42152,assembly=GRCh37>
-##contig=<ID=GL000243.1,length=43341,assembly=GRCh37>
-##contig=<ID=GL000242.1,length=43523,assembly=GRCh37>
-##contig=<ID=GL000230.1,length=43691,assembly=GRCh37>
-##contig=<ID=GL000237.1,length=45867,assembly=GRCh37>
-##contig=<ID=GL000233.1,length=45941,assembly=GRCh37>
-##contig=<ID=GL000204.1,length=81310,assembly=GRCh37>
-##contig=<ID=GL000198.1,length=90085,assembly=GRCh37>
-##contig=<ID=GL000208.1,length=92689,assembly=GRCh37>
-##contig=<ID=GL000191.1,length=106433,assembly=GRCh37>
-##contig=<ID=GL000227.1,length=128374,assembly=GRCh37>
-##contig=<ID=GL000228.1,length=129120,assembly=GRCh37>
-##contig=<ID=GL000214.1,length=137718,assembly=GRCh37>
-##contig=<ID=GL000221.1,length=155397,assembly=GRCh37>
-##contig=<ID=GL000209.1,length=159169,assembly=GRCh37>
-##contig=<ID=GL000218.1,length=161147,assembly=GRCh37>
-##contig=<ID=GL000220.1,length=161802,assembly=GRCh37>
-##contig=<ID=GL000213.1,length=164239,assembly=GRCh37>
-##contig=<ID=GL000211.1,length=166566,assembly=GRCh37>
-##contig=<ID=GL000199.1,length=169874,assembly=GRCh37>
-##contig=<ID=GL000217.1,length=172149,assembly=GRCh37>
-##contig=<ID=GL000216.1,length=172294,assembly=GRCh37>
-##contig=<ID=GL000215.1,length=172545,assembly=GRCh37>
-##contig=<ID=GL000205.1,length=174588,assembly=GRCh37>
-##contig=<ID=GL000219.1,length=179198,assembly=GRCh37>
-##contig=<ID=GL000224.1,length=179693,assembly=GRCh37>
-##contig=<ID=GL000223.1,length=180455,assembly=GRCh37>
-##contig=<ID=GL000195.1,length=182896,assembly=GRCh37>
-##contig=<ID=GL000212.1,length=186858,assembly=GRCh37>
-##contig=<ID=GL000222.1,length=186861,assembly=GRCh37>
-##contig=<ID=GL000200.1,length=187035,assembly=GRCh37>
-##contig=<ID=GL000193.1,length=189789,assembly=GRCh37>
-##contig=<ID=GL000194.1,length=191469,assembly=GRCh37>
-##contig=<ID=GL000225.1,length=211173,assembly=GRCh37>
-##contig=<ID=GL000192.1,length=547496,assembly=GRCh37>
-##contig=<ID=NC_007605,length=171823,assembly=NC_007605.1>
+##contig=<ID=1,length=249250621,assembly=GRCh37,md5=1b22b98cdeb4a9304cb5d48026a85128,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=2,length=243199373,assembly=GRCh37,md5=a0d9851da00400dec1098a9255ac712e,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=3,length=198022430,assembly=GRCh37,md5=fdfd811849cc2fadebc929bb925902e5,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=4,length=191154276,assembly=GRCh37,md5=23dccd106897542ad87d2765d28a19a1,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=5,length=180915260,assembly=GRCh37,md5=0740173db9ffd264d728f32784845cd7,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=6,length=171115067,assembly=GRCh37,md5=1d3a93a248d92a729ee764823acbbc6b,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=7,length=159138663,assembly=GRCh37,md5=618366e953d6aaad97dbe4777c29375e,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=8,length=146364022,assembly=GRCh37,md5=96f514a9929e410c6651697bded59aec,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=9,length=141213431,assembly=GRCh37,md5=3e273117f15e0a400f01055d9f393768,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=10,length=135534747,assembly=GRCh37,md5=988c28e000e84c26d552359af1ea2e1d,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=11,length=135006516,assembly=GRCh37,md5=98c59049a2df285c76ffb1c6db8f8b96,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=12,length=133851895,assembly=GRCh37,md5=51851ac0e1a115847ad36449b0015864,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=13,length=115169878,assembly=GRCh37,md5=283f8d7892baa81b510a015719ca7b0b,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=14,length=107349540,assembly=GRCh37,md5=98f3cae32b2a2e9524bc19813927542e,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=15,length=102531392,assembly=GRCh37,md5=e5645a794a8238215b2cd77acb95a078,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=16,length=90354753,assembly=GRCh37,md5=fc9b1a7b42b97a864f56b348b06095e6,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=17,length=81195210,assembly=GRCh37,md5=351f64d4f4f9ddd45b35336ad97aa6de,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=18,length=78077248,assembly=GRCh37,md5=b15d4b2d29dde9d3e4f93d1d0f2cbc9c,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=19,length=59128983,assembly=GRCh37,md5=1aacd71f30db8e561810913e0b72636d,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=20,length=63025520,assembly=GRCh37,md5=0dec9660ec1efaaf33281c0d5ea2560f,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=21,length=48129895,assembly=GRCh37,md5=2979a6085bfe28e3ad6f552f361ed74d,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=22,length=51304566,assembly=GRCh37,md5=a718acaa6135fdca8357d5bfe94211dd,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=X,length=155270560,assembly=GRCh37,md5=7e0e2e580297b7764e31dbc80c2540dd,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=Y,length=59373566,assembly=GRCh37,md5=1fa3474750af0948bdf97d5a0ee52e51,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=MT,length=16569,assembly=GRCh37,md5=c68f52674c9fb33aef52dcf399755519,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000207.1,length=4262,assembly=GRCh37,md5=f3814841f1939d3ca19072d9e89f3fd7,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000226.1,length=15008,assembly=GRCh37,md5=1c1b2cd1fccbc0a99b6a447fa24d1504,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000229.1,length=19913,assembly=GRCh37,md5=d0f40ec87de311d8e715b52e4c7062e1,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000231.1,length=27386,assembly=GRCh37,md5=ba8882ce3a1efa2080e5d29b956568a4,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000210.1,length=27682,assembly=GRCh37,md5=851106a74238044126131ce2a8e5847c,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000239.1,length=33824,assembly=GRCh37,md5=99795f15702caec4fa1c4e15f8a29c07,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000235.1,length=34474,assembly=GRCh37,md5=118a25ca210cfbcdfb6c2ebb249f9680,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000201.1,length=36148,assembly=GRCh37,md5=dfb7e7ec60ffdcb85cb359ea28454ee9,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000247.1,length=36422,assembly=GRCh37,md5=7de00226bb7df1c57276ca6baabafd15,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000245.1,length=36651,assembly=GRCh37,md5=89bc61960f37d94abf0df2d481ada0ec,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000197.1,length=37175,assembly=GRCh37,md5=6f5efdd36643a9b8c8ccad6f2f1edc7b,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000203.1,length=37498,assembly=GRCh37,md5=96358c325fe0e70bee73436e8bb14dbd,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000246.1,length=38154,assembly=GRCh37,md5=e4afcd31912af9d9c2546acf1cb23af2,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000249.1,length=38502,assembly=GRCh37,md5=1d78abec37c15fe29a275eb08d5af236,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000196.1,length=38914,assembly=GRCh37,md5=d92206d1bb4c3b4019c43c0875c06dc0,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000248.1,length=39786,assembly=GRCh37,md5=5a8e43bec9be36c7b49c84d585107776,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000244.1,length=39929,assembly=GRCh37,md5=0996b4475f353ca98bacb756ac479140,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000238.1,length=39939,assembly=GRCh37,md5=131b1efc3270cc838686b54e7c34b17b,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000202.1,length=40103,assembly=GRCh37,md5=06cbf126247d89664a4faebad130fe9c,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000234.1,length=40531,assembly=GRCh37,md5=93f998536b61a56fd0ff47322a911d4b,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000232.1,length=40652,assembly=GRCh37,md5=3e06b6741061ad93a8587531307057d8,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000206.1,length=41001,assembly=GRCh37,md5=43f69e423533e948bfae5ce1d45bd3f1,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000240.1,length=41933,assembly=GRCh37,md5=445a86173da9f237d7bcf41c6cb8cc62,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000236.1,length=41934,assembly=GRCh37,md5=fdcd739913efa1fdc64b6c0cd7016779,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000241.1,length=42152,assembly=GRCh37,md5=ef4258cdc5a45c206cea8fc3e1d858cf,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000243.1,length=43341,assembly=GRCh37,md5=cc34279a7e353136741c9fce79bc4396,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000242.1,length=43523,assembly=GRCh37,md5=2f8694fc47576bc81b5fe9e7de0ba49e,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000230.1,length=43691,assembly=GRCh37,md5=b4eb71ee878d3706246b7c1dbef69299,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000237.1,length=45867,assembly=GRCh37,md5=e0c82e7751df73f4f6d0ed30cdc853c0,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000233.1,length=45941,assembly=GRCh37,md5=7fed60298a8d62ff808b74b6ce820001,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000204.1,length=81310,assembly=GRCh37,md5=efc49c871536fa8d79cb0a06fa739722,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000198.1,length=90085,assembly=GRCh37,md5=868e7784040da90d900d2d1b667a1383,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000208.1,length=92689,assembly=GRCh37,md5=aa81be49bf3fe63a79bdc6a6f279abf6,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000191.1,length=106433,assembly=GRCh37,md5=d75b436f50a8214ee9c2a51d30b2c2cc,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000227.1,length=128374,assembly=GRCh37,md5=a4aead23f8053f2655e468bcc6ecdceb,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000228.1,length=129120,assembly=GRCh37,md5=c5a17c97e2c1a0b6a9cc5a6b064b714f,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000214.1,length=137718,assembly=GRCh37,md5=46c2032c37f2ed899eb41c0473319a69,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000221.1,length=155397,assembly=GRCh37,md5=3238fb74ea87ae857f9c7508d315babb,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000209.1,length=159169,assembly=GRCh37,md5=f40598e2a5a6b26e84a3775e0d1e2c81,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000218.1,length=161147,assembly=GRCh37,md5=1d708b54644c26c7e01c2dad5426d38c,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000220.1,length=161802,assembly=GRCh37,md5=fc35de963c57bf7648429e6454f1c9db,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000213.1,length=164239,assembly=GRCh37,md5=9d424fdcc98866650b58f004080a992a,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000211.1,length=166566,assembly=GRCh37,md5=7daaa45c66b288847b9b32b964e623d3,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000199.1,length=169874,assembly=GRCh37,md5=569af3b73522fab4b40995ae4944e78e,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000217.1,length=172149,assembly=GRCh37,md5=6d243e18dea1945fb7f2517615b8f52e,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000216.1,length=172294,assembly=GRCh37,md5=642a232d91c486ac339263820aef7fe0,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000215.1,length=172545,assembly=GRCh37,md5=5eb3b418480ae67a997957c909375a73,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000205.1,length=174588,assembly=GRCh37,md5=d22441398d99caf673e9afb9a1908ec5,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000219.1,length=179198,assembly=GRCh37,md5=f977edd13bac459cb2ed4a5457dba1b3,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000224.1,length=179693,assembly=GRCh37,md5=d5b2fc04f6b41b212a4198a07f450e20,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000223.1,length=180455,assembly=GRCh37,md5=399dfa03bf32022ab52a846f7ca35b30,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000195.1,length=182896,assembly=GRCh37,md5=5d9ec007868d517e73543b005ba48535,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000212.1,length=186858,assembly=GRCh37,md5=563531689f3dbd691331fd6c5730a88b,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000222.1,length=186861,assembly=GRCh37,md5=6fe9abac455169f50470f5a6b01d0f59,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000200.1,length=187035,assembly=GRCh37,md5=75e4c8d17cd4addf3917d1703cacaf25,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000193.1,length=189789,assembly=GRCh37,md5=dbb6e8ece0b5de29da56601613007c2a,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000194.1,length=191469,assembly=GRCh37,md5=6ac8f815bf8e845bb3031b73f812c012,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000225.1,length=211173,assembly=GRCh37,md5=63945c3e6962f28ffd469719a747e73c,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=GL000192.1,length=547496,assembly=GRCh37,md5=325ba9e808f669dfeee210fdd7b470ac,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Homo Sapiens">
+##contig=<ID=NC_007605,length=171823,assembly=NC_007605.1,md5=6743bd63b3ff2b5b8985d8933c53290a,URL=http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta,species="Epstein-Barr virus">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
 20	11363591	.	T	A,G	684.25	.	AC=1,2;AF=0.250,0.500;AN=4;BaseQRankSum=-1.560;DP=40;FS=3.081;MLEAC=1,2;MLEAF=0.250,0.500;MQ=60.00;MQRankSum=0.000;QD=20.12;ReadPosRankSum=0.366;SOR=0.132	GT:AD:DP:GQ:PL	0/1/2/2:2,15,17:34:6:698,386,347,327,364,354,43,6,36,308,0,12,285,26,320
