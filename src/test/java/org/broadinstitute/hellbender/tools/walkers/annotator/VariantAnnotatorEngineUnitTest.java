@@ -377,6 +377,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
 
+        headerInfo.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         headerInfo.addAll(new VariantAnnotatorEngine(VariantContextTestUtils.getAllAnnotations(), dbSNPBinding, features, false, false).getVCFAnnotationDescriptions(false));
 
         Assert.assertFalse(headerInfo.contains(null));

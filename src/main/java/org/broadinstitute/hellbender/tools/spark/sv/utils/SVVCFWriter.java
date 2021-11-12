@@ -102,6 +102,7 @@ public class SVVCFWriter {
     @VisibleForTesting
     static VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(GATKSVVCFHeaderLines.getSymbAltAlleleLines());
+        headerLines.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         headerLines.addAll(GATKSVVCFHeaderLines.getInfoLines());
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
         headerLines.addAll(GATKSVVCFHeaderLines.getFormatLines());

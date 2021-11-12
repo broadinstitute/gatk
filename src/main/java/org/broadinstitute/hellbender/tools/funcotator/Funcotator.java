@@ -825,7 +825,7 @@ public class Funcotator extends VariantWalker {
      */
     @VisibleForTesting
     static void checkIfAlreadyAnnotated(final VCFHeader vcfHeader, GATKPath drivingVariantFile) {
-        if (vcfHeader.getOtherHeaderLine(FuncotatorConstants.FUNCOTATOR_VERSION_VCF_HEADERLINE_KEY) != null) {
+        if (vcfHeader.getOtherHeaderLineUnique(FuncotatorConstants.FUNCOTATOR_VERSION_VCF_HEADERLINE_KEY) != null) {
             throw new UserException.BadInput("Given VCF " +drivingVariantFile+ " has already been annotated!");
         }
     }

@@ -25,7 +25,7 @@ public class FuncotatorUnitTest extends GATKBaseTest {
      */
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testCheckWhenAlreadyAnnotated() {
-        final Set<VCFHeaderLine> vcfHeaderLines = new LinkedHashSet<>();
+        final Set<VCFHeaderLine> vcfHeaderLines = VCFHeader.makeHeaderVersionLineSet(VCFHeader.DEFAULT_VCF_VERSION);
         vcfHeaderLines.add(new VCFHeaderLine(
                 FuncotatorConstants.FUNCOTATOR_VERSION_VCF_HEADERLINE_KEY,
                 "content not relevant for this test"));
@@ -44,7 +44,7 @@ public class FuncotatorUnitTest extends GATKBaseTest {
      */
     @Test
     public void testCheckWhenNotAlreadyAnnotated() {
-        final VCFHeader vcfHeader = new VCFHeader(new LinkedHashSet<>());
+        final VCFHeader vcfHeader = new VCFHeader(VCFHeader.makeHeaderVersionLineSet(VCFHeader.DEFAULT_VCF_VERSION));
         Funcotator.checkIfAlreadyAnnotated(vcfHeader, null);
         //this should not throw an exception.
     }

@@ -47,6 +47,8 @@
 ##UG_use_reads_with_bad_mates=false
 ##reference=Homo_sapiens_assembly18.fasta
 ##source=AnnotateVCFwithMAF
+##source=UnifiedGenotyper
+##source=VariantFiltration
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	A	B	C
 1	867694	rs6672356	T	C	1496.26	PASS	AC=6;AF=1.00;AN=6;DP=6;Dels=0.00;HRun=2;HaplotypeScore=11.53;MQ=92.29;MQ0=0;QD=23.75;SB=-709.56;cDNAchange=c.1027T>C;codonchange=c.(1027-1029)TGG>CGG;gene=SAMD11;genomechange=g.chr1:867694T>C;proteinchange=p.W343R;strand=+;transcript=NM_152486;type=Missense	GT:DP:GQ:PL	1/1:2:6:65,6,0	1/1:2:6:71,6,0	1/1:2:6:74,6,0
 1	868252	.	C	T	92.24	PASS	AB=0.56;AC=1;AF=0.167;AN=6;DP=42;Dels=0.00;HRun=0;HaplotypeScore=16.58;MQ=95.56;MQ0=0;QD=9.22;SB=-254.06;cDNAchange=c.1515C>T;codonchange=c.(1513-1515)TCC>TCT;gene=SAMD11;genomechange=g.chr1:868252C>T;proteinchange=p.S505S;strand=+;transcript=NM_152486;type=Synonymous	GT:DP:GQ:PL	0/0:24:72:0,72,937	0/0:10:30:0,30,395	0/1:8:99:128,0,134

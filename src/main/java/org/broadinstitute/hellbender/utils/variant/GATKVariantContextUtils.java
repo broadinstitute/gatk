@@ -55,6 +55,12 @@ public final class GATKVariantContextUtils {
     /**
      * A method that constructs a mutable set of VCF header lines containing the tool name, version, date and command line,
      * and return to the requesting tool.
+     *
+     * This method does not add a ##fileformat line, which is required by VCFHeader constructors, and which determines
+     * the VCF version of the resulting header, to the list of default header lines. Callers must obtain a fileformat
+     * line from {@link VCFHeader#getHeaderVersionLine(VCFHeaderVersion)} and include it in the header line list before
+     * create the header.
+     *
      * @param toolkitShortName  short name for the tool kit, e.g. "gatk"
      * @param toolName          name of the tool
      * @param versionString     version of the tool
@@ -66,7 +72,9 @@ public final class GATKVariantContextUtils {
                                                               final String versionString, final String dateTime,
                                                               final String cmdLine) {
         final Set<VCFHeaderLine> defaultVCFHeaderLines = new HashSet<>();
-        final Map<String, String> simpleHeaderLineMap = new HashMap<>(4);
+        // use a LinkedHashMap to preserve the order of the attributes, which is
+        // necessary since ID must be first for structured header lines
+        final Map<String, String> simpleHeaderLineMap = new LinkedHashMap<>(4);
         simpleHeaderLineMap.put("ID", toolName);
         simpleHeaderLineMap.put("Version", versionString);
         simpleHeaderLineMap.put("Date", dateTime);

@@ -464,6 +464,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
         // https://github.com/broadinstitute/gatk/issues/1116 and
         // Initialize VCF header lines
         Set<VCFHeaderLine> hInfo = getDefaultToolVCFHeaderLines();
+        hInfo.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         VariantRecalibrationUtils.addVQSRStandardHeaderLines(hInfo);
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         if (hasReference()) {

@@ -610,6 +610,7 @@ public final class VariantContextTestUtils {
      */
     public static VCFHeader getCompleteHeader() {
         Set<VCFHeaderLine> lines = new HashSet<>();
+        lines.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
 
         // Adding HTSJDK lines
         VCFStandardHeaderLines.addStandardInfoLines(lines,false, Collections.emptyList());

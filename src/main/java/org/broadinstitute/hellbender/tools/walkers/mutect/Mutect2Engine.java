@@ -201,6 +201,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     public void writeHeader(final VariantContextWriter vcfWriter, final Set<VCFHeaderLine> defaultToolHeaderLines) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+        headerInfo.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         headerInfo.add(new VCFHeaderLine("MutectVersion", MUTECT_VERSION));
         headerInfo.add(new VCFHeaderLine(FilterMutectCalls.FILTERING_STATUS_VCF_KEY, "Warning: unfiltered Mutect 2 calls.  Please run " + FilterMutectCalls.class.getSimpleName() + " to remove false positives."));
         headerInfo.addAll(annotationEngine.getVCFAnnotationDescriptions(false));

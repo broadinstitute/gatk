@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -148,7 +149,10 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
                 IntStream.range(1, 100).boxed().collect(Collectors.toList()),
                 true
                 );
-        final VCFHeader header = new VCFHeader(new HashSet<>(), Collections.singletonList("TESTSAMPLE"));
+        final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>();
+        headerLines.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
+        final VCFHeader header = new VCFHeader(headerLines, Collections.singletonList("TESTSAMPLE"));
+
         header.setSequenceDictionary(new SAMSequenceDictionary(Collections.singletonList(new SAMSequenceRecord("test_contig", 1000))));
         truthWriter.writeHeader(header);
 

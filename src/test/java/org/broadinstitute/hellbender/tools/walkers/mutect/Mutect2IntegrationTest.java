@@ -798,7 +798,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         //check ref conf-specific headers are output
         final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(standardVcf.getAbsolutePath());
         Assert.assertTrue(result.getLeft().hasFormatLine(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY));
-        Assert.assertTrue(result.getLeft().getMetaDataLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG) != null);
+        Assert.assertTrue(result.getLeft().getOtherHeaderLineUnique(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG) != null);
 
         final List<VariantContext> variants = result.getRight();
         final Map<String, VariantContext> variantMap = variants.stream().collect(Collectors.toMap(VariantContextTestUtils::keyForVariant, Function.identity()));

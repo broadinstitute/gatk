@@ -122,6 +122,7 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
     @Override
     public void onTraversalStart() {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>(getDefaultToolVCFHeaderLines());
+        headerInfo.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         headerInfo.add(new VCFInfoHeaderLine(FRACTION_INFO_FIELD, 1, VCFHeaderLineType.Float, "Fraction of samples exhibiting artifact"));
         headerInfo.add(new VCFInfoHeaderLine(BETA_SHAPE_INFO_FIELD, 2, VCFHeaderLineType.Float, "Beta distribution parameters to fit artifact allele fractions"));
 

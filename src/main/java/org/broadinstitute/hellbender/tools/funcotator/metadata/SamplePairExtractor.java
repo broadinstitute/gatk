@@ -40,9 +40,9 @@ public class SamplePairExtractor {
     public static List<TumorNormalPair> extractPossibleTumorNormalPairs(final VCFHeader vcfHeader) {
         Utils.nonNull(vcfHeader);
         // First attempt the M2 nomenclature
-        if (vcfHeader.getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER) != null) {
-            final VCFHeaderLine normalMetaDataLine = vcfHeader.getMetaDataLine(Mutect2Engine.NORMAL_SAMPLE_KEY_IN_VCF_HEADER);
-            return Collections.singletonList(new TumorNormalPair(vcfHeader.getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue(),
+        if (vcfHeader.getOtherHeaderLineUnique(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER) != null) {
+            final VCFHeaderLine normalMetaDataLine = vcfHeader.getOtherHeaderLineUnique(Mutect2Engine.NORMAL_SAMPLE_KEY_IN_VCF_HEADER);
+            return Collections.singletonList(new TumorNormalPair(vcfHeader.getOtherHeaderLineUnique(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue(),
                     (normalMetaDataLine == null ?
                             NO_NORMAL : normalMetaDataLine.getValue())));
         }

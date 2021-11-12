@@ -970,6 +970,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         final VCFFormatHeaderLine formatField = new VCFFormatHeaderLine(SAMPLE_NAME_KEY, 1, VCFHeaderLineType.String,
                                                                         "the name of the sample this genotype came from");
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
+        headerLines.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         headerLines.add(formatField);
         headerLines.add(new VCFFormatHeaderLine(ANOTHER_ATTRIBUTE_KEY, 1, VCFHeaderLineType.Integer, "Another value"));
         headerLines.add(VCFStandardHeaderLines.getFormatLine("GT"));

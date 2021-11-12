@@ -68,7 +68,7 @@ public class AlleleFrequencyQC extends VariantEval {
         if (debugFile == null) {
             outFile.deleteOnExit();
         }
-        sample = getHeaderForVariants().getOtherHeaderLine("sampleAlias").getValue();
+        sample = getHeaderForVariants().getOtherHeaderLineUnique("sampleAlias").getValue();
         super.onTraversalStart();
     }
 

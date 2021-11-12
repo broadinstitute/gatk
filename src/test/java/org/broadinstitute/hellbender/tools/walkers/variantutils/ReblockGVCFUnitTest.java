@@ -395,7 +395,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         builder.setReferenceDictionary(dict);
         final VariantContextWriter vcfWriter = builder.build();
         final GVCFWriter gvcfWriter= new GVCFWriter(vcfWriter, Arrays.asList(20,100), true);
-        final VCFHeader result = new VCFHeader(Collections.emptySet(), Collections.singletonList(VariantContextTestUtils.SAMPLE_NAME));
+        final VCFHeader result = new VCFHeader(VCFHeader.makeHeaderVersionLineSet(VCFHeader.DEFAULT_VCF_VERSION), Collections.singletonList(VariantContextTestUtils.SAMPLE_NAME));
         result.setSequenceDictionary(dict);
         result.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_KEY, 1,
                 VCFHeaderLineType.String,  "genotype"));

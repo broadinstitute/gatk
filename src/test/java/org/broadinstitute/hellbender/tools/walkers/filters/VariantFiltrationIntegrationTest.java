@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.filters;
 
+import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
@@ -96,7 +96,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString("vcfexample2.vcf", " -filter 'DoC < 20 || FisherStrand > 20.0' -filter-name 'foo < foo' "),
                 1,
-                UserException.class
+                TribbleException.class
         );
 
         spec.executeTest("testIllegalFilterName", this);

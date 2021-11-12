@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -73,8 +74,29 @@ public class GatherVcfsCloudIntegrationTest extends CommandLineProgramTest{
             final List<VariantContext> expectedVariants = StreamSupport.stream(Spliterators.spliteratorUnknownSize(expectedReader.iterator(),Spliterator.ORDERED), false).collect(Collectors.toList());
             VariantContextTestUtils.assertEqualVariants(actualVariants, expectedVariants);
 
-            Assert.assertEquals(((VCFHeader) actualReader.getHeader()).getMetaDataInInputOrder(),
-                    ((VCFHeader) expectedReader.getHeader()).getMetaDataInInputOrder());
+            // filter out the ##fileFormat lines before comparison, because the CONVENTIONAL gather method causes
+            // the header version to be upgraded to the current VCF version because it rewrites the output, whereas
+            // the BLOCK method does not
+            final Set<VCFHeaderLine> actualHeaderLines =
+                    ((VCFHeader) actualReader.getHeader()).getMetaDataInInputOrder()
+                            .stream()
+                            .filter(hl -> !hl.getKey().equals("fileFormat"))
+                            .collect(Collectors.toSet());
+            final Set<VCFHeaderLine> expectedHeaderLines =
+                    ((VCFHeader) expectedReader.getHeader()).getMetaDataInInputOrder()
+                            .stream()
+                            .filter(hl -> !hl.getKey().equals("fileFormat"))
+                            .collect(Collectors.toSet());
+
+            final boolean countsMatch = actualHeaderLines.size() == expectedHeaderLines.size();
+            final VCFHeaderLine[] acts = actualHeaderLines.toArray(new VCFHeaderLine[actualHeaderLines.size()]);
+            final VCFHeaderLine[] exps = expectedHeaderLines.toArray(new VCFHeaderLine[actualHeaderLines.size()]);
+            for (int i = 0; i < acts.length; i++) {
+                if (!exps[i].equals(acts[i])) {
+                    System.out.println(String.format("exp: %s\nact: %s\n", exps[i].toString(), acts[i].toString()));
+                }
+            }
+            Assert.assertEquals(actualHeaderLines, expectedHeaderLines);
         }
     }
 

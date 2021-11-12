@@ -166,6 +166,7 @@ public final class VariantsSparkSinkUnitTest extends GATKBaseTest {
                                                       VCFConstants.GENOTYPE_KEY,
                                                       VCFConstants.GENOTYPE_QUALITY_KEY,
                                                       VCFConstants.GENOTYPE_PL_KEY, VCFConstants.DEPTH_KEY);
+        headerlines.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         final SAMSequenceDictionary dict = new SAMSequenceDictionary(
                 Collections.singletonList(new SAMSequenceRecord("1", 100)));
         final VCFHeader header = new VCFHeader(headerlines, Collections.singleton(SAMPLE));

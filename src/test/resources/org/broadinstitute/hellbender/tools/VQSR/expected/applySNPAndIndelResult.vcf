@@ -23,7 +23,7 @@
 ##INFO=<ID=VQSLOD,Number=1,Type=Float,Description="Log odds of being a true variant versus being false under the trained gaussian mixture model">
 ##INFO=<ID=culprit,Number=1,Type=String,Description="The annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out">
 ##INFO=<ID=set,Number=1,Type=String,Description="Source VCF for the merged record in CombineVariants">
-##contig=<ID=20,length=0>
+##contig=<ID=20>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 20	1000177	.	C	T	345	LOW_VQSLOD	AC=43;AF=0.02053;AN=2094;BaseQRankSum=-0.234;DP=3748;DS;FS=5.678;HRun=2;HaplotypeScore=35.9850;InbreedingCoeff=0.0715;MQ=67.54;MQ0=0;MQRankSum=-0.549;QD=0.53;ReadPosRankSum=-13.245;VQSLOD=-1.235e+00;culprit=FS;set=EUR.admix
 20	1000177	.	CA	C	82.64	LOW_VQSLOD	AC=43;AF=0.02053;AN=2094;BaseQRankSum=-0.234;DP=3748;DS;FS=5.678;HRun=2;HaplotypeScore=35.9850;InbreedingCoeff=0.0715;MQ=67.54;MQ0=0;MQRankSum=-0.549;QD=0.53;ReadPosRankSum=-13.245;VQSLOD=-1.238e+00;culprit=HaplotypeScore;set=EUR.admix

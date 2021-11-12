@@ -916,12 +916,13 @@ public final class GATKToolUnitTest extends GATKBaseTest {
         tool.instanceMain(args);
 
         Set<VCFHeaderLine> stdHeaderLines = tool.getDefaultToolVCFHeaderLines();
+        stdHeaderLines.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         VCFHeader hdr = new VCFHeader(stdHeaderLines);
 
-        VCFHeaderLine sourceLine = hdr.getOtherHeaderLine("source");
+        VCFHeaderLine sourceLine = hdr.getOtherHeaderLineUnique("source");
         Assert.assertEquals(sourceLine.getValue(), tool.getClass().getSimpleName());
 
-        VCFIDHeaderLine commandLine = (VCFIDHeaderLine) hdr.getOtherHeaderLine("GATKCommandLine");
+        VCFIDHeaderLine commandLine = (VCFIDHeaderLine) hdr.getOtherHeaderLineUnique("GATKCommandLine");
         Assert.assertEquals(commandLine.getID(), tool.getClass().getSimpleName());
 
         String commandLineString = commandLine.toString();
