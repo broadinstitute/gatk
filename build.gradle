@@ -969,3 +969,10 @@ task installAll{  dependsOn installSpark, installDist }
 installDist.dependsOn downloadGsaLibFile
 
 defaultTasks 'bundle'
+
+allprojects {
+    tasks.withType(JavaCompile).configureEach {
+        options.fork = true
+    }
+
+}
