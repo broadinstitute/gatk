@@ -14,6 +14,7 @@ workflow GvsImportSample {
     Boolean? drop_state_includes_greater_than = false
     Boolean load_pet = false
     Boolean load_ref_ranges = true
+    Boolean load_vet = true
 
     Int? preemptible_tries
     File? gatk_override = "gs://broad-dsp-spec-ops/scratch/andrea/gatk-ah-writeapi.jar"
@@ -32,27 +33,25 @@ workflow GvsImportSample {
       preemptible_tries = preemptible_tries
   }
 
-    call ImportSample {
-      input:
-        input_vcf = input_vcf,
-        sample_name = external_sample_name,
-        gvs_sample_id = gvs_sample_id,
-        project_id = project_id,
-        dataset_name = dataset_name,
-        interval_list = interval_list,
-        service_account_json_path = service_account_json_path,
-        drop_state = drop_state,
-        drop_state_includes_greater_than = drop_state_includes_greater_than,
-        load_ref_ranges = load_ref_ranges,
-        load_pet = load_pet,
-        gatk_override = gatk_override,
-        docker = docker_final,
-        preemptible_tries = preemptible_tries,
-        duplicate_check_passed = CheckForDuplicateData.done
-    }
+  call ImportSample {
+    input:
+      input_vcf = input_vcf,
+      sample_name = external_sample_name,
+      gvs_sample_id = gvs_sample_id,
+      project_id = project_id,
+      dataset_name = dataset_name,
+      interval_list = interval_list,
+      service_account_json_path = service_account_json_path,
+      drop_state = drop_state,
+      drop_state_includes_greater_than = drop_state_includes_greater_than,
+      load_ref_ranges = load_ref_ranges,
+      load_pet = load_pet,
+      gatk_override = gatk_override,
+      docker = docker_final,
+      preemptible_tries = preemptible_tries,
+      duplicate_check_passed = CheckForDuplicateData.done
+  }
   
-
- 
   output {
     Boolean loaded_in_gvs = true
   }
@@ -65,14 +64,21 @@ task CheckForDuplicateData {
       String dataset_name
       String sample_name
       String gvs_sample_id
+      Boolean load_pet
+      Boolean load_ref_ranges
+      Boolean load_vet
       String? service_account_json_path
       # runtime
       Int? preemptible_tries
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  String vet_check = if (load_vet) then "table_name like 'vet_%' OR " else "false"
+  String ref_check = if (load_ref_ranges) then "table_name like 'ref_ranges_%' OR " else "false"
+  String pet_check = if (load_pet) then "table_name like 'pet_%' " else "false"
 
-
+  String table_where_clause = vet_check + ref_check + pet_check
+ 
   command <<<
     set -e
 
@@ -91,8 +97,9 @@ task CheckForDuplicateData {
 
     # check the INFORMATION_SCHEMA.PARTITIONS table to see if any of input sample names/ids have data loaded into their partitions
     # this returns the list of sample names that do already have data loaded
+    if [ ~{pet_check} ] then
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-      "SELECT distinct(partition_id) FROM ${INFO_SCHEMA_TABLE} p WHERE (p.partition_id = CAST(~{gvs_sample_id} AS STRING)) AND p.total_logical_bytes > 0 AND (table_name like 'pet_%' OR table_name like 'vet_%')" | \
+      "SELECT distinct(partition_id) FROM ${INFO_SCHEMA_TABLE} p WHERE (p.partition_id = CAST(~{gvs_sample_id} AS STRING)) AND p.total_logical_bytes > 0 AND (~{table_where_clause})" | \
       sed -e '/partition_id/d' > duplicates
 
     # true if there is data in results
@@ -128,8 +135,9 @@ task ImportSample {
     String? service_account_json_path
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
-    Boolean load_pet = false
-    Boolean load_ref_ranges = true
+    Boolean load_pet
+    Boolean load_ref_ranges
+    Boolean load_vet
 
     Boolean duplicate_check_passed
 
@@ -191,6 +199,7 @@ task ImportSample {
       --output-type BQ \
       --enable-reference-ranges ~{load_ref_ranges} \
       --enable-pet ~{load_pet} \
+      --enable-vet ~{load_vet} \
       -SN ~{sample_name} \
       --gvs-sample-id ~{gvs_sample_id} \
       --ref-version 38
