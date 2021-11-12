@@ -13,7 +13,7 @@ public class PloidyTableTest extends CommandLineProgramTest {
 
     @Test
     public void testCreateTableFromFile() {
-        final Path tablePath = Paths.get( getTestDataDir() + "/walkers/sv/svcluster/1kgp.batch1.ploidy.tsv");
+        final Path tablePath = Paths.get( getTestDataDir() + "/walkers/sv/SVCluster/1kgp.batch1.ploidy.tsv");
         final PloidyTable table = new PloidyTable(tablePath);
 
         Assert.assertEquals(table.get("HG00096", "chr1").intValue(), 2);
