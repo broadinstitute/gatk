@@ -193,7 +193,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
+        if (enablePet || enableReferenceRanges) {
+            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
+        }
 
         if (enableVet) {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName);
@@ -234,7 +236,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         try {
-            refCreator.apply(variant, intervalsToWrite);
+            if (refCreator != null) {
+                refCreator.apply(variant, intervalsToWrite);
+            }
         } catch (IOException ioe) {
             throw new GATKException("Error writing PET", ioe);
         }
@@ -244,14 +248,18 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        try {
-            refCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
-        } catch (IOException ioe) {
-            throw new GATKException("Error writing missing intervals", ioe);
+        if (refCreator != null) {
+            try {
+                refCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
+            } catch (IOException ioe) {
+                throw new GATKException("Error writing missing intervals", ioe);
+            }
+            // Wait until all data has been submitted and in pending state to commit
+            refCreator.commitData();
         }
-        // Wait until all data has been submitted and in pending state to commit
-        refCreator.commitData();
-        vetCreator.commitData();
+        if (vetCreator != null && enableVet) {
+            vetCreator.commitData();
+        }
         return 0;
     }
 
