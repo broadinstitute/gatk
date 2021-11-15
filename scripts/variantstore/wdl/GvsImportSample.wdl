@@ -29,6 +29,9 @@ workflow GvsImportSample {
       dataset_name = dataset_name,
       sample_name = external_sample_name,
       gvs_sample_id = gvs_sample_id,
+      load_pet = load_pet,
+      load_ref_ranges = load_ref_ranges,
+      load_vet = load_vet,
       service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries
   }
