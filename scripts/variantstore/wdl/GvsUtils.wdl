@@ -99,6 +99,7 @@ task SplitIntervals {
     mkdir interval-files
     gatk --java-options "-Xmx2g" SplitIntervals \
     --dont-mix-contigs \
+    --interval-file-num-digits 10 \ ## hardcoding this to a large enough number (1-billion shards) we will not encounter it
     -R ~{ref_fasta} \
     ~{"-L " + intervals} \
     -scatter ~{scatter_count} \
@@ -119,7 +120,7 @@ task SplitIntervals {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.2.0.0"
+    docker: "us.gcr.io/broad-gatk/gatk:4.2.3.0"
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk ~{disk_size} HDD"
