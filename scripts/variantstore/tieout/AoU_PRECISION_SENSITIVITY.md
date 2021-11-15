@@ -43,7 +43,7 @@ Now create single sample gVCFs for the control samples; in this example the samp
 ```
 INPUT_VCF=chr20.vcf.gz
 ~/gatk SelectVariants -V ${INPUT_VCF} -L chr20 --sample-name BI_HG-002 --select-type-to-exclude NO_VARIATION -O BI_HG-002.chr20.vcf.gz
-~/gatk SelectVariants -V ${INPUT_VCF} -L chr20 --sample-name UW_HG-002 --select-type-to-exclude NO_VARIATION -O UW_HG-002.chr20.vcf.gz```
+~/gatk SelectVariants -V ${INPUT_VCF} -L chr20 --sample-name UW_HG-002 --select-type-to-exclude NO_VARIATION -O UW_HG-002.chr20.vcf.gz
 ~/gatk SelectVariants -V ${INPUT_VCF} -L chr20 --sample-name BI_HG-003 --select-type-to-exclude NO_VARIATION -O BI_HG-003.chr20.vcf.gz
 ```
 ## Run Script to Add "AS_MAX_VQSLOD" to VCFs
