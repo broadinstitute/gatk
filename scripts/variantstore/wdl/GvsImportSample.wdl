@@ -49,6 +49,7 @@ workflow GvsImportSample {
       drop_state_includes_greater_than = drop_state_includes_greater_than,
       load_ref_ranges = load_ref_ranges,
       load_pet = load_pet,
+      load_vet = load_vet,
       gatk_override = gatk_override,
       docker = docker_final,
       preemptible_tries = preemptible_tries,
