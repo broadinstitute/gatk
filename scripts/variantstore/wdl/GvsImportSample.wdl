@@ -101,7 +101,6 @@ task CheckForDuplicateData {
 
     # check the INFORMATION_SCHEMA.PARTITIONS table to see if any of input sample names/ids have data loaded into their partitions
     # this returns the list of sample names that do already have data loaded
-    if [ ~{pet_check} ] then
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
       "SELECT distinct(partition_id) FROM ${INFO_SCHEMA_TABLE} p WHERE (p.partition_id = CAST(~{gvs_sample_id} AS STRING)) AND p.total_logical_bytes > 0 AND (~{table_where_clause})" | \
       sed -e '/partition_id/d' > duplicates
