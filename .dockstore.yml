@@ -79,6 +79,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_split_intervals_digits
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
