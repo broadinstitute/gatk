@@ -110,7 +110,8 @@ public class VetCreator {
             } else if (fieldEnum.equals(VetFieldEnum.call_GQ)) {
                 jsonObject.put(fieldEnum.toString(), Integer.valueOf(fieldEnum.getColumnValue(variant)));
             } else {
-                jsonObject.put(fieldEnum.toString(), fieldEnum.getColumnValue(variant));
+                String strVal = fieldEnum.getColumnValue(variant);
+                jsonObject.put(fieldEnum.toString(), strVal == "" ? null : strVal);
             }
         }
         return jsonObject;
