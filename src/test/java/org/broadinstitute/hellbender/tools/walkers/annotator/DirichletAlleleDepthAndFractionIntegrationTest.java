@@ -20,7 +20,7 @@ public class DirichletAlleleDepthAndFractionIntegrationTest extends GatkToolInte
 
     public static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
 
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = true;
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
     @Override
     public String getTestedToolName() {
