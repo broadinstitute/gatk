@@ -10,7 +10,6 @@ workflow CreateBQTables {
         String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
         String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
         String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
-        String? uuid = ""
         Int? preemptible_tries
 
     }
@@ -24,7 +23,6 @@ workflow CreateBQTables {
         schema_json = pet_schema_json,
         superpartitioned = "true",
         partitioned = "true",
-        uuid = uuid,
         service_account_json_path = service_account_json_path,
         preemptible_tries = preemptible_tries
     }
@@ -38,7 +36,6 @@ workflow CreateBQTables {
         schema_json = vet_schema_json,
         superpartitioned = "true",
         partitioned = "true",
-        uuid = uuid,
         service_account_json_path = service_account_json_path,
         preemptible_tries = preemptible_tries
     }
@@ -52,7 +49,6 @@ workflow CreateBQTables {
             schema_json = ref_ranges_schema_json,
             superpartitioned = "true",
             partitioned = "true",
-            uuid = uuid,
             service_account_json_path = service_account_json_path,
             preemptible_tries = preemptible_tries
     }
@@ -73,7 +69,6 @@ task CreateTables {
       String schema_json
       String superpartitioned
       String partitioned
-      String? uuid
       String? service_account_json_path
 
       # runtime
@@ -95,11 +90,6 @@ task CreateTables {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    PREFIX=""
-    if [ -n "~{uuid}" ]; then
-      PREFIX="~{uuid}_"
-    fi
-
     for TABLE_ID in $(seq 1 ~{max_table_id}); do
       PARTITION_STRING=""
       CLUSTERING_STRING=""
@@ -116,9 +106,9 @@ task CreateTables {
 
       if [ ~{superpartitioned} = "true" ]; then
         printf -v PADDED_TABLE_ID "%03d" ${TABLE_ID}
-        TABLE="~{dataset_name}.${PREFIX}~{datatype}_${PADDED_TABLE_ID}"
+        TABLE="~{dataset_name}.~{datatype}_${PADDED_TABLE_ID}"
       else
-        TABLE="~{dataset_name}.${PREFIX}~{datatype}"
+        TABLE="~{dataset_name}.~{datatype}"
       fi
 
       # Check that the table has not been created yet
