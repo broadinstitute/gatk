@@ -66,6 +66,14 @@ These are the required parameters which must be supplied to the workflow:
 | gvs\_sample_id | The gvs_id from the data model |
 | interval_list | The interval list to use |
 
+### 3.3 Update the is_loaded field
+This is currently a manual step.
+Run 
+
+	update `spec-ops-aou.aou_gvs_template.sample_info` set is_loaded = TRUE where cast(sample_id as STRING) in (
+    select partition_id from `spec-ops-aou.aou_gvs_template.INFORMATION_SCHEMA.PARTITIONS` where total_logical_bytes > 0 AND table_name like 'vet_%'
+)
+
 
 ## 4. Create Alt Allele Table
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.
