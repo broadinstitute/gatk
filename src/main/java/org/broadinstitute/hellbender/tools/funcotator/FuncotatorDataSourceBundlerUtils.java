@@ -118,18 +118,41 @@ public class FuncotatorDataSourceBundlerUtils {
      * Builds a map for the specified organism and then returns the file name associated with the given species name.
      * @param orgName The chosen organism.
      * @param speciesName The specific species we want to know the file name for.
-     * @param isFasta Boolean to determine if we are building a Fasta map or a regular map.
-     * @return
+     * @return The file name associated with the given species name.
      */
-    public static String buildMapGetFileName(final String orgName, final String speciesName, final boolean isFasta) {
+    public static String getDatasourceBaseName(final String orgName, final String speciesName) {
 
-        final String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
+        final String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName
+                + "/" + orgNamesAndFileNames.get(orgName);
         // Build map from species names to file names:
-        readUniprotFile(urlName, orgName, isFasta);
+        readUniprotFile(urlName, orgName, false);
 
         // Check to see if specified species name is valid and if so, return the corresponding file name:
         if ( orgNamesMapNames.get(orgName).get(speciesName) == null ) {
-            throw new UserException.BadInput("Given species name: " + speciesName + " is not a valid species for organism: " + orgName + "!");
+            throw new UserException.BadInput("Given species name: " + speciesName +
+                    " is not a valid species for organism: " + orgName + "!");
+        } else{
+            return orgNamesMapNames.get(orgName).get(speciesName);
+        }
+    }
+
+    /**
+     * Builds a map for the specified organism and then returns the file name associated with the given species name.
+     * @param orgName The chosen organism.
+     * @param speciesName The specific species we want to know the file name for.
+     * @return The file name associated with the given species name.
+     */
+    public static String getFastaFileName(final String orgName, final String speciesName) {
+
+        final String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName
+                + "/" + orgNamesAndFileNames.get(orgName);
+        // Build map from species names to file names:
+        readUniprotFile(urlName, orgName, true);
+
+        // Check to see if specified species name is valid and if so, return the corresponding file name:
+        if ( orgNamesMapNames.get(orgName).get(speciesName) == null ) {
+            throw new UserException.BadInput("Given species name: " + speciesName +
+                    " is not a valid species for organism: " + orgName + "!");
         } else{
             return orgNamesMapNames.get(orgName).get(speciesName);
         }

@@ -1,38 +1,38 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+
+import java.io.File;
+import java.io.IOException;
 
 
 /**
  * A unit test suite for the {@link FuncotatorDataSourceBundlerUtils} class.
  * Created by Hailey on 8/5/21.
  */
-public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgramTest{
-
-    //==================================================================================================================
-    // Static Variables:
-    private static final String TEST_WRONG_ORGNAME      = "virus";
-    private static final String TEST_WRONG_SPECIESNAME  = "ashbya_gossypii";
-    private static final String PLANTS_NAME             = "plants";
-    private static final String PLANTS_SPECIES          = "actinidia_chinensis";
-    private static final String PLANTS_FILE_NAME        = "Actinidia_chinensis.Red5_PS1_1.69.0.51.gtf.gz";
-    private static final String PLANTS_FASTA_FILE_NAME  = "Actinidia_chinensis.Red5_PS1_1.69.0.cdna.all.fa.gz";
-    private static final String PROTISTS_SPECIES        = "Aphanomyces astaci GCA_002197585.2";
+public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgramTest {
 
     //==================================================================================================================
     // Data Providers:
 
     @DataProvider
-    Object[][] provideForTestBuildMap() {
+    Object[][] provideForTestGetDatasourceBaseName() {
         return new Object[][] {
-                {
-                        PLANTS_NAME,
-                        PLANTS_SPECIES
-                }
+                { "plants", "actinidia_chinensis", "Actinidia_chinensis.Red5_PS1_1.69.0.51" }
+        };
+    }
+
+    @DataProvider
+    Object[][] provideForTestGetFastaFileName() {
+        return new Object[][] {
+                { "plants", "actinidia_chinensis", "Actinidia_chinensis.Red5_PS1_1.69.0.cdna.all" }
         };
     }
 
@@ -40,8 +40,8 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
     Object[][] provideForTestBuildMapWrong() {
         return new Object[][]{
                 {
-                        PLANTS_NAME,
-                        PROTISTS_SPECIES
+                        "plants",
+                        "Aphanomyces astaci GCA_002197585.2"
                 }
         };
     }
@@ -49,44 +49,51 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
     @DataProvider
     Object[][] provideForTestExtractGtfGz() {
         return new Object[][] {
-                {
-                        IOUtils.getPath("Acyrthosiphon_pisum.Acyr_2.0.51.gtf.gz").toAbsolutePath(),
-                        IOUtils.getPath("Acyrthosiphon_pisum.Acyr_2.0.51.gtf.gtf").toAbsolutePath()
-                },
-                {
-                        "/Users/hfox/Workspace/gatk/Acyrthosiphon_pisum.Acyr_2.0.51.gtf.gz",
-                        "/Users/hfox/Workspace/gatk/Acyrthosiphon_pisum.Acyr_2.0.51.gtf"
-                }
+            {
+                new File(largeFileTestDir + "funcotator/Acyrthosiphon_pisum.Acyr_2.0.51.PARTIAL.gtf.gz").getAbsolutePath(),
+                new File(largeFileTestDir + "funcotator/Acyrthosiphon_pisum.Acyr_2.0.51.PARTIAL.gtf").getAbsolutePath(),
+            },
         };
     }
 
     //==================================================================================================================
     // Tests:
 
-    @Test(dataProvider = "provideForTestBuildMap")
-    void testBuildMap(String orgName, String speciesName) {
+    @Test(dataProvider = "provideForTestGetDatasourceBaseName")
+    void testGetDatasourceBaseName(final String orgName, final String speciesName, final String expectedBaseName) {
 
-        String testCorrectFileName = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(orgName, speciesName, false);
-        if (!testCorrectFileName.equals(PLANTS_FILE_NAME)) {
-            throw new UserException("Incorrect gtf file name. File name should be: " + PLANTS_FILE_NAME + ".");
-        }
+        Assert.assertEquals(
+                expectedBaseName,
+                FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName)
+        );
+    }
 
-        String testCorrectFastaFileName = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(orgName, speciesName, true);
-        if (!testCorrectFastaFileName.equals(PLANTS_FASTA_FILE_NAME)) {
-            throw new UserException("Incorrect fasta file name. File name should be: " + PLANTS_FASTA_FILE_NAME + ".");
-        }
+    @Test(dataProvider = "provideForTestGetFastaFileName")
+    void testGetFastaFileName(final String orgName, final String speciesName, final String expectedFastaName) {
+        Assert.assertEquals(
+                FuncotatorDataSourceBundlerUtils.getFastaFileName(orgName, speciesName),
+                expectedFastaName
+        );
     }
 
     @Test(dataProvider = "provideForTestBuildMapWrong", expectedExceptions = UserException.BadInput.class)
-    void testBuildMapWrong(String orgName, String speciesName) {
-        String testIncorrectFileName = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(orgName, speciesName, false);
-        String incorrectFastaFileName = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(orgName, speciesName, false);
+    void testBuildMapWrong(final String orgName, final String speciesName) {
+        String testIncorrectFileName = FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName);
+        String incorrectFastaFileName = FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName);
     }
 
-
     @Test(dataProvider = "provideForTestExtractGtfGz")
-    void testExtractGtfGz(String gtfGzFilePath, String decompressedFilePath) {
-        FuncotatorDataSourceBundlerUtils.extractGzFile(gtfGzFilePath, decompressedFilePath, true);
+    void testExtractGtfGz(final String gtfGzFilePath, final String expectedFilePath) {
+
+        final File destFile = getSafeNonExistentFile("testExtractGtfGz");
+        FuncotatorDataSourceBundlerUtils.extractGzFile(gtfGzFilePath, destFile.getAbsolutePath(), true);
+
+        try {
+            IntegrationTestSpec.assertEqualTextFiles(destFile, new File(expectedFilePath), "#", false);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Error: IOException encountered during test execution!", ex);
+        }
     }
 
     //To do: write unit tests for testing with an invalid organism name and for testing with an invalid species name

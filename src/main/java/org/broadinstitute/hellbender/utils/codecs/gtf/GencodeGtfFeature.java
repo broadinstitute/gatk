@@ -140,9 +140,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             final String rawFieldValue = trimmedExtraField.substring(splitPoint + 1, trimmedExtraField.length());
             final String fieldValue = StringUtils.remove(rawFieldValue.trim(), '"');
 
-            if( fieldValue.contains(EXTRA_FIELD_KEY_VALUE_SPLITTER) ){
-                throw new UserException("Expected a key/value pair but found several values " + fieldName + "/" + fieldValue);
-            }
+            // NOTE: We now allow spaces in field values, and so no longer throw an exception when parsing GTFs that
+            //       contain spaces in the values.
 
             OptionalField<?> optionalField = null;
 

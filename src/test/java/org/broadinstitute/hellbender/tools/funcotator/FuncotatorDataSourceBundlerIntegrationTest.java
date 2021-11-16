@@ -81,19 +81,17 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
                     FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
                         "octopus_bimaculoides",
                         true,
+                },
+                {
+                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
+                        "absiella_dolichum_dsm_3991_gca_000154285",
+                        true,
+                },
+                {
+                        FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME,
+                        "actinidia_chinensis",
+                        true,
                 }
-//                {
-//                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
-//                        "absiella_dolichum_dsm_3991_gca_000154285/",
-//                        false,
-//                        true
-//                },
-//                {
-//                        FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME,
-//                        "actinidia_chinensis",
-//                        true,
-//                        true
-//                }
         };
     }
 

@@ -103,8 +103,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
         this.baseURL                = baseURL;
         this.baseFastaURL           = baseFastaURL;
 
-        this.fileName               = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(this.dsOrganism, this.speciesName, false);
-        this.fastaFileName          = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(this.dsOrganism, this.speciesName, true);
+        this.fileName               = FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(this.dsOrganism, this.speciesName);
+        this.fastaFileName          = FuncotatorDataSourceBundlerUtils.getFastaFileName(this.dsOrganism, this.speciesName);
 
         this.dsURL                  = baseURL + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION;
         this.dsFastaURL             = baseFastaURL + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + fastaFileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION;
