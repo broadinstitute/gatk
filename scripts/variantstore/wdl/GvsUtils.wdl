@@ -103,6 +103,7 @@ task SplitIntervals {
     ~{"-L " + intervals} \
     -scatter ~{scatter_count} \
     -O interval-files \
+    --interval-file-num-digits 10 \
     ~{split_intervals_extra_args}
     cp interval-files/*.interval_list .
 
@@ -119,7 +120,7 @@ task SplitIntervals {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.2.0.0"
+    docker: "us.gcr.io/broad-gatk/gatk:4.2.3.0"
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk ~{disk_size} HDD"
