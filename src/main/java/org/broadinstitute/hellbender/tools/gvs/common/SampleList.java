@@ -50,7 +50,7 @@ public class SampleList {
     }
 
     protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
-        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "is_loaded is TRUE", executionProjectId, printDebugInformation, originTool);
+        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), null, executionProjectId, printDebugInformation, originTool);
 
         // Add our samples to our map:
         for (final FieldValueList row : queryResults.iterateAll()) {
