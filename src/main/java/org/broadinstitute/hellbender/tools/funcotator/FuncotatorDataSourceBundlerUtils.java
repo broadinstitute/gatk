@@ -263,15 +263,4 @@ public class FuncotatorDataSourceBundlerUtils {
         IOUtils.gunzip(IOUtils.getPath(gzFilePath).toFile(), IOUtils.getPath(decompressedFilePath).toFile());
     }
 
-    /**
-     * Deletes the file found at the given path.
-     * Input {@link String} is to a gzipped gtf or fasta file or to a gtf file.
-     * Will delete the file found at path {@code filePath}.
-     * @param filePath {@link String} path to a gzipped gtf or fasta file or gtf file which will be deleted.
-     */
-    public static void deleteFile(String filePath) {
-        File file = new File(filePath);
-        file.delete();
-    }
-
 }

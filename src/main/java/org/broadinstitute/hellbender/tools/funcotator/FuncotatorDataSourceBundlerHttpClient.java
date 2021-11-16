@@ -220,7 +220,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
                 "# The 0-based index of the column containing the end position for each row\n" +
                 "end_column =\n"
             );
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new UserException("Error. Unable to build file: " + configFilePath);
         }
     }
@@ -233,58 +233,59 @@ public class FuncotatorDataSourceBundlerHttpClient {
               BufferedWriter buffer = new BufferedWriter(writer) ) {
 
             buffer.write(
-            "name = Achilles\n" +
-                "version = 110303\n" +
-                "src_file = achilles_lineage_results.import.txt\n" +
-                "origin_location = UNKNOWN\n" +
-                "preprocessing_script =\n" +
-                "\n" +
-                "# Supported types:\n" +
-                "# simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR Transcript ID\n" +
-                "# locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location\n" +
-                "# gencode      -- Custom datasource class for GENCODE\n" +
-                "#\tcosmic       -- Custom datasource class for COSMIC\n" +
-                "type = simpleXSV\n" +
-                "\n" +
-                "# Required field for GENCODE files.\n" +
-                "# Path to the FASTA file from which to load the sequences for GENCODE transcripts:\n" +
-                "gencode_fasta_path =\n" +
-                "\n" +
-                "# Required field for simpleXSV files.\n" +
-                "# Valid values:\n" +
-                "#     GENE_NAME\n" +
-                "#     TRANSCRIPT_ID\n" +
-                "xsv_key = GENE_NAME\n" +
-                "\n" +
-                "# Required field for simpleXSV files.\n" +
-                "# The 0-based index of the column containing the key on which to match\n" +
-                "xsv_key_column = 0\n" +
-                "\n" +
-                "# Required field for simpleXSV AND locatableXSV files.\n" +
-                "# The delimiter by which to split the XSV file into columns.\n" +
-                "xsv_delimiter = ,\n" +
-                "\n" +
-                "# Required field for simpleXSV files.\n" +
-                "# Whether to permissively match the number of columns in the header and data rows\n" +
-                "# Valid values:\n" +
-                "#     true\n" +
-                "#     false\n" +
-                "xsv_permissive_cols = true\n" +
-                "\n" +
-                "# Required field for locatableXSV files.\n" +
-                "# The 0-based index of the column containing the contig for each row\n" +
-                "contig_column =\n" +
-                "\n" +
-                "# Required field for locatableXSV files.\n" +
-                "# The 0-based index of the column containing the start position for each row\n" +
-                "start_column =\n" +
-                "\n" +
-                "# Required field for locatableXSV files.\n" +
-                "# The 0-based index of the column containing the end position for each row\n" +
-                "end_column ="
+                    """
+                            name = Achilles
+                            version = 110303
+                            src_file = achilles_lineage_results.import.txt
+                            origin_location = UNKNOWN
+                            preprocessing_script =
+
+                            # Supported types:
+                            # simpleXSV    -- Arbitrary separated value table (e.g. CSV), keyed off Gene Name OR Transcript ID
+                            # locatableXSV -- Arbitrary separated value table (e.g. CSV), keyed off a genome location
+                            # gencode      -- Custom datasource class for GENCODE
+                            # cosmic       -- Custom datasource class for COSMIC
+                            type = simpleXSV
+
+                            # Required field for GENCODE files.
+                            # Path to the FASTA file from which to load the sequences for GENCODE transcripts:
+                            gencode_fasta_path =
+
+                            # Required field for simpleXSV files.
+                            # Valid values:
+                            #     GENE_NAME
+                            #     TRANSCRIPT_ID
+                            xsv_key = GENE_NAME
+
+                            # Required field for simpleXSV files.
+                            # The 0-based index of the column containing the key on which to match
+                            xsv_key_column = 0
+
+                            # Required field for simpleXSV AND locatableXSV files.
+                            # The delimiter by which to split the XSV file into columns.
+                            xsv_delimiter = ,
+
+                            # Required field for simpleXSV files.
+                            # Whether to permissively match the number of columns in the header and data rows
+                            # Valid values:
+                            #     true
+                            #     false
+                            xsv_permissive_cols = true
+
+                            # Required field for locatableXSV files.
+                            # The 0-based index of the column containing the contig for each row
+                            contig_column =
+
+                            # Required field for locatableXSV files.
+                            # The 0-based index of the column containing the start position for each row
+                            start_column =
+
+                            # Required field for locatableXSV files.
+                            # The 0-based index of the column containing the end position for each row
+                            end_column ="""
             );
 
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new UserException("Error. Unable to make template config file in location: " + metadataFilePath + "/" + TEMPLATE_CONFIG_FILE_NAME);
         }
     }
@@ -292,8 +293,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * Build a ReadMe file in the correct folder.
      */
     public void buildReadMeFile() {
-        try ( FileWriter writer = new FileWriter(metadataFilePath.toAbsolutePath() + "/" + README_FILE_NAME);
-              BufferedWriter buffer = new BufferedWriter(writer) )
+        try ( final FileWriter writer = new FileWriter(metadataFilePath.toAbsolutePath() + "/" + README_FILE_NAME);
+              final BufferedWriter buffer = new BufferedWriter(writer) )
         {
             buffer.write(
             "################################################################################\n" +

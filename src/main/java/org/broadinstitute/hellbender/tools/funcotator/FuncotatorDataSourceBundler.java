@@ -72,7 +72,6 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     public static final String SPECIES_ARG_LONG_NAME    = "species-name";
     public static final String OVERWRITE_ARG_LONG_NAME            = "overwrite-output-file";
     public static final String OUTPUT_DATASOURCES_FOLDER_ARG_NAME = "output-datasources-folder";
-    public static final String EXTRACT_AFTER_DOWNLOAD             = "extract-after-download";
 
     //==================================================================================================================
     // Private Static Members:
@@ -101,9 +100,6 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
     //==================================================================================================================
     // Private Members:
-
-    // Copy buffer:
-    protected final byte copyBuffer[] = new byte[BUFFER_SIZE_BYTES];
 
     // Arguments:
     @Argument(fullName = BACTERIA_ARG_LONG_NAME,
@@ -304,11 +300,11 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         logger.info("Cleaning up intermediate files...");
 
         // Delete gtf and fasta zip files
-        FuncotatorDataSourceBundlerUtils.deleteFile(bundler.getOutputDestination().toString());
-        FuncotatorDataSourceBundlerUtils.deleteFile(bundler.getFastaOutputDestination().toString());
+        IOUtils.deleteOnExit(bundler.getOutputDestination());
+        IOUtils.deleteOnExit(bundler.getFastaOutputDestination());
 
         // Delete gtf file:
-        FuncotatorDataSourceBundlerUtils.deleteFile(bundler.getDSUnzipPath().toString());
+        IOUtils.deleteOnExit(bundler.getDSUnzipPath());
     }
 
     /**
@@ -316,7 +312,7 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
      * @param baseFolder The name of the base folder for the new data sources.
      */
     private static void makeFolderOrFail(final Path baseFolder) {
-        boolean success = baseFolder.toAbsolutePath().toFile().mkdir();
+        final boolean success = baseFolder.toAbsolutePath().toFile().mkdir();
         if (!success) {
             throw new UserException("Unable to make file.");
         }
