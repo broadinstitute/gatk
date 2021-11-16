@@ -208,9 +208,10 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
-        //extract called genotypes so hom refs with no PLs aren't ambiguous
         if (genomicsDBOptions == null) {
-            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs, true);
+            //extract called genotypes so hom refs with no PLs aren't ambiguous
+            genomicsdbArgs.callGenotypes = true;
+            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs);
         }
         return genomicsDBOptions;
     }

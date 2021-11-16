@@ -25,18 +25,24 @@ public final class GenomicsDBOptions {
     }
 
     public GenomicsDBOptions(final Path reference, GenomicsDBArgumentCollection genomicsdbArgs) {
-        this(reference, genomicsdbArgs, new GenotypeCalculationArgumentCollection(), false);
+        this(reference, genomicsdbArgs, new GenotypeCalculationArgumentCollection());
     }
 
     public GenomicsDBOptions(final Path reference, final GenomicsDBArgumentCollection genomicsdbArgs,
-                             final GenotypeCalculationArgumentCollection genotypeCalcArgs, final boolean forceCallGenotypes) {
+                             final GenotypeCalculationArgumentCollection genotypeCalcArgs) {
         this.reference = reference;
-        this.callGenotypes = genomicsdbArgs.callGenotypes || forceCallGenotypes;
-        this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
-        this.maxGenotypeCount = genotypeCalcArgs.MAX_GENOTYPE_COUNT;
+        this.callGenotypes = genomicsdbArgs.callGenotypes;
         this.useBCFCodec = genomicsdbArgs.useBCFCodec;
         this.sharedPosixFSOptimizations = genomicsdbArgs.sharedPosixFSOptimizations;
         this.useGcsHdfsConnector = genomicsdbArgs.useGcsHdfsConnector;
+        if (genotypeCalcArgs != null) {
+            this.maxDiploidAltAllelesThatCanBeGenotyped = genotypeCalcArgs.MAX_ALTERNATE_ALLELES;
+            this.maxGenotypeCount = genotypeCalcArgs.MAX_GENOTYPE_COUNT;
+        } else {
+            // Some defaults
+            this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
+            this.maxGenotypeCount = GenotypeCalculationArgumentCollection.DEFAULT_MAX_GENOTYPE_COUNT;
+        }
     }
 
     public Path getReference() {
