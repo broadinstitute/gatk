@@ -1,6 +1,6 @@
 version 1.0
 
-import "GvsCreateTables.wdl" as CreateBQTables
+import "GvsCreateTables.wdl" as GvsCreateTables
 
 workflow GvsAssignIds {
 
@@ -16,14 +16,12 @@ workflow GvsAssignIds {
     File? gatk_override
     String? docker        
     String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"}]'
-    String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
-    String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
   }
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
 
 
-  call CreateBQTables.CreateTables as CreateSampleInfoTable {
+  call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
@@ -55,30 +53,13 @@ workflow GvsAssignIds {
       gvs_ids_tsv = AssignIds.gvs_ids_tsv
   }
 
-  call CreateBQTables.CreateTables as CreateVetTables {
+  call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
       input:
       project_id = project_id,
       dataset_name = dataset_name,
-      datatype = "vet",
       max_table_id = AssignIds.max_table_id,
-      schema_json = vet_schema_json,
-      superpartitioned = "true",
-      partitioned = "true",
       service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries
-  }
-
-  call CreateBQTables.CreateTables as CreateRefRangesTables {
-      input:
-          project_id = project_id,
-          dataset_name = dataset_name,
-          datatype = "ref_ranges",
-          max_table_id = AssignIds.max_table_id,
-          schema_json = ref_ranges_schema_json,
-          superpartitioned = "true",
-          partitioned = "true",
-          service_account_json_path = service_account_json_path,
-          preemptible_tries = preemptible_tries
   }
 
   output {
