@@ -96,7 +96,7 @@ public class ReadClipper {
      *
      * @return a list of the operations set up for this read.
      */
-    public List<ClippingOp> getOps() {
+    public List<ClippingOp>getOps() {
         return ops;
     }
 
