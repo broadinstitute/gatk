@@ -109,7 +109,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     //==================================================================================================================
     // Tests:
 
-    @Test( dataProvider = "provideForTestDownload")
+    @Test( dataProvider = "provideForTestDownload", groups = {"cloud"})
     void testDownloadRealDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.add(dsOrgArg, true);
@@ -128,7 +128,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
 
     // To do: need to make some integration tests for running with incorrect input arguments
 
-    @Test( dataProvider = "provideForTestDownloadWrong", expectedExceptions = UserException.BadInput.class)
+    @Test( dataProvider = "provideForTestDownloadWrong", groups = {"cloud"}, expectedExceptions = UserException.BadInput.class)
     void testDownloadWrongDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.add(dsOrgArg, true);

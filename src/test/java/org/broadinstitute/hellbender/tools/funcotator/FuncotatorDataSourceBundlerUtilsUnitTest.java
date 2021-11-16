@@ -78,8 +78,8 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
 
     @Test(dataProvider = "provideForTestBuildMapWrong", expectedExceptions = UserException.BadInput.class)
     void testBuildMapWrong(final String orgName, final String speciesName) {
-        String testIncorrectFileName = FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName);
-        String incorrectFastaFileName = FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName);
+        FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName);
+        FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName);
     }
 
     @Test(dataProvider = "provideForTestExtractGtfGz")
