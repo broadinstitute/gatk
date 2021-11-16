@@ -2340,7 +2340,7 @@ public final class FuncotatorUtils {
         Utils.validateArg(keys.size() == values.size(), "Keys and values were not the same length.");
         return IntStream.range(0, keys.size()).boxed().collect(Collectors.toMap(keys::get,
                 values::get, (x1, x2) -> {
-                    throw new IllegalArgumentException("Should not be able to have duplicate field names.");
+                    throw new IllegalArgumentException("Should not be able to have duplicate field names: " + x1 + " == " + x2);
                 }, LinkedHashMap::new));
     }
 

@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -14,10 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.io.FileOutputStream;
-import java.io.FileInputStream;
 import java.net.URL;
-import java.util.zip.GZIPInputStream;
 
 
 /**
@@ -30,17 +25,15 @@ public class FuncotatorDataSourceBundlerUtils {
     //==================================================================================================================
     // Private Static Members:
 
-    private final static Logger logger = LogManager.getLogger(FuncotatorDataSourceBundlerUtils.class);
-
-    // If we have already initialized the maps then there is no need to build them again:
-    public static boolean haveInitializedMaps = false;
+//    // If we have already initialized the maps then there is no need to build them again:
+//    public static boolean haveInitializedMaps = false;
 
     // These map each species for a given organism to the file name associated with that species name:
-    private static  Map<String, String> bacteriaMap     = new LinkedHashMap<>();
-    private static  Map<String, String> fungiMap        = new LinkedHashMap<>();
-    private static  Map<String, String> metazoaMap      = new LinkedHashMap<>();
-    private static  Map<String, String> plantsMap       = new LinkedHashMap<>();
-    private static  Map<String, String> protistsMap     = new LinkedHashMap<>();
+    private static final Map<String, String> bacteriaMap     = new LinkedHashMap<>();
+    private static final Map<String, String> fungiMap        = new LinkedHashMap<>();
+    private static final Map<String, String> metazoaMap      = new LinkedHashMap<>();
+    private static final Map<String, String> plantsMap       = new LinkedHashMap<>();
+    private static final Map<String, String> protistsMap     = new LinkedHashMap<>();
 
     // File names for the files which will be used to initialize the maps from species name to file name:
     private static final String bacteriaFileName        = "uniprot_report_EnsemblBacteria.txt";
@@ -48,7 +41,6 @@ public class FuncotatorDataSourceBundlerUtils {
     private static final String metazoaFileName         = "uniprot_report_EnsemblMetazoa.txt";
     private static final String plantsFileName          = "uniprot_report_EnsemblPlants.txt";
     private static final String protistsFileName        = "uniprot_report_EnsemblProtists.txt";
-
 
     //==================================================================================================================
     // Public Static Members:
@@ -65,47 +57,55 @@ public class FuncotatorDataSourceBundlerUtils {
     public static final List<Map<String, String>> nullMapValues         = new ArrayList<>();
 
     //==================================================================================================================
+    // Static initializer:
+
+    // Initialize our maps:
+    static {
+        initializeListsAndMaps();
+    }
+
+    //==================================================================================================================
     // Public Static Methods:
 
-    /**
-     * Return the file name associated with the given species and organism.
-     * Note: This function uses the buildMaps helper function which builds all five maps
-     * instead of one, so this function takes longer than buildMapGetFileName.
-     * @param orgName Name of the chosen organism.
-     * @param speciesName Name of the chosen species.
-     */
-    public static String getDSFileName(String orgName, String speciesName) {
+//    /**
+//     * Return the file name associated with the given species and organism.
+//     * Note: This function uses the buildMaps helper function which builds all five maps
+//     * instead of one, so this function takes longer than buildMapGetFileName.
+//     * @param orgName Name of the chosen organism.
+//     * @param speciesName Name of the chosen species.
+//     */
+//    public static String getDSFileName(final String orgName, final String speciesName) {
+//
+//        // Initialize the maps from species name to species file name for each organism:
+//        buildMaps();
+//
+//        // Get the map for this organism:
+//        Map<String, String> tempMap = orgNamesMapNames.get(orgName);
+//
+//        // Check to see if specified species name is valid and if so, return the corresponding file name:
+//        if (tempMap.get(speciesName) == null) {
+//            throw new UserException.BadInput("Given species name: " + speciesName + " is not a valid species for organism: " + orgName + "!");
+//        }
+//        else {
+//            return tempMap.get(speciesName);
+//        }
+//    }
 
-        // Initialize the maps from species name to species file name for each organism:
-        buildMaps();
-
-        // Get the map for this organism:
-        Map<String, String> tempMap = orgNamesMapNames.get(orgName);
-
-        // Check to see if specified species name is valid and if so, return the corresponding file name:
-        if (tempMap.get(speciesName) == null) {
-            throw new UserException.BadInput("Given species name: " + speciesName + " is not a valid species for organism: " + orgName + "!");
-        }
-        else {
-            return tempMap.get(speciesName);
-        }
-    }
-
-    /**
-     * Builds all five maps from species name to file name for the regular data sources.
-     */
-    public static void buildMaps() {
-
-        buildListsAndMaps();
-
-        // Looping through each organism in our list of valid organisms to initialize their maps from species name to species file name:
-        for (String orgName : orgNameKeys) {
-            String urlName =  DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
-            readUniprotFile(urlName, orgName, false);
-        }
-
-        haveInitializedMaps = true;
-    }
+//    /**
+//     * Builds all five maps from species name to file name for the regular data sources.
+//     */
+//    public static void buildMaps() {
+//
+//        buildListsAndMaps();
+//
+//        // Looping through each organism in our list of valid organisms to initialize their maps from species name to species file name:
+//        for (final String orgName : orgNameKeys) {
+//            String urlName =  DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
+//            readUniprotFile(urlName, orgName, false);
+//        }
+//
+//        haveInitializedMaps = true;
+//    }
 
     /**
      * @return The current date in numerical string format (YearMonthDay / yyyyMMdd).
@@ -121,14 +121,9 @@ public class FuncotatorDataSourceBundlerUtils {
      * @param isFasta Boolean to determine if we are building a Fasta map or a regular map.
      * @return
      */
-    public static String buildMapGetFileName(String orgName, String speciesName, boolean isFasta) {
+    public static String buildMapGetFileName(final String orgName, final String speciesName, final boolean isFasta) {
 
-        // Only need to initialize these variables if we have not done it yet
-        if (!isFasta) {
-            buildListsAndMaps();
-        }
-
-        String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
+        final String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
         // Build map from species names to file names:
         readUniprotFile(urlName, orgName, isFasta);
 
@@ -145,7 +140,7 @@ public class FuncotatorDataSourceBundlerUtils {
      * Initializes a map from the organism names to their associated uniprot file name.
      * Initializes a map from the organism names to their associated map objects.
      */
-    public static void buildListsAndMaps() {
+    public static void initializeListsAndMaps() {
         // Initializing list of allowed organism names:
         orgNameKeys.add("bacteria");
         orgNameKeys.add("fungi");
@@ -179,7 +174,7 @@ public class FuncotatorDataSourceBundlerUtils {
      * @param orgName Name of the chosen organism.
      * @param isFasta Boolean indicating if we are downloading the fasta file.
      */
-    public static void readUniprotFile(String urlFilePath, String orgName, boolean isFasta){
+    public static void readUniprotFile(final String urlFilePath, final String orgName, final boolean isFasta){
 
         // Keys will be a list of all of the species for a given organism:
         final List<String> keys = new ArrayList<>();
@@ -200,7 +195,7 @@ public class FuncotatorDataSourceBundlerUtils {
                     keys.add(columnValues[1]);
 
                     // If first character is _, then the first letter is not capitalized:
-                    if (columnValues[1].substring(0, 1).equals("_")) {
+                    if ( columnValues[1].charAt(0) == '_' ) {
                         // Sixth column is the assembly build name, so format is <species name>.<assembly name>
                         fileName = columnValues[1] + "." + columnValues[5];
                     }

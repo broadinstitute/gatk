@@ -30,53 +30,46 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     //==================================================================================================================
     // Helper Methods:
 
-    private String getDataSourceRemoteURL(final String dsTypeArg) {
-        switch (dsTypeArg) {
-            case FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME:
-                return FuncotatorDataSourceBundler.BACTERIA_BASE_URL;
-            case FuncotatorDataSourceBundler.FUNGI_ARG_LONG_NAME:
-                return FuncotatorDataSourceBundler.FUNGI_BASE_URL;
-            case FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME:
-                return FuncotatorDataSourceBundler.METAZOA_BASE_URL;
-            case FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME:
-                return FuncotatorDataSourceBundler.PLANTS_BASE_URL;
-            case FuncotatorDataSourceBundler.PROTISTS_ARG_LONG_NAME:
-                return FuncotatorDataSourceBundler.PROTISTS_BASE_URL;
-            default: throw new GATKException("Data source type does not exist: " + dsTypeArg);
-        }
-    }
+//    private String getDataSourceRemoteURL(final String dsTypeArg) {
+//        return switch ( dsTypeArg ) {
+//            case FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME -> FuncotatorDataSourceBundler.BACTERIA_BASE_URL;
+//            case FuncotatorDataSourceBundler.FUNGI_ARG_LONG_NAME -> FuncotatorDataSourceBundler.FUNGI_BASE_URL;
+//            case FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME -> FuncotatorDataSourceBundler.METAZOA_BASE_URL;
+//            case FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME -> FuncotatorDataSourceBundler.PLANTS_BASE_URL;
+//            case FuncotatorDataSourceBundler.PROTISTS_ARG_LONG_NAME -> FuncotatorDataSourceBundler.PROTISTS_BASE_URL;
+//            default -> throw new GATKException("Data source type does not exist: " + dsTypeArg);
+//        };
+//    }
 
-
-    private void verifyDataSourcesExistThenDeleteThem(final String dsOrgArg, final String dsSpeciesArg, final boolean doExtract) {
-        // Get the path to our files:
-        final Path currentPath          = IOUtils.getPath(".");
-        final Path remoteDataSourcePath = IOUtils.getPath(getDataSourceRemoteURL(dsOrgArg) + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dsOrgArg, dsSpeciesArg) + DataSourceUtils.GTF_GZ_EXTENSION);
-        final Path expectedDownloadedDataSourcePath = currentPath.resolve(remoteDataSourcePath.getFileName().toString());
-
-        // Verify it exists and delete it:
-        verifyDataSourcesExistThenDeleteThem(expectedDownloadedDataSourcePath, doExtract);
-    }
-
-    private void verifyDataSourcesExistThenDeleteThem(final Path expectedDownloadedDataSourcePath, final boolean doExtract) {
-
-        // Make sure our file exists:
-        Assert.assertTrue( Files.exists(expectedDownloadedDataSourcePath) );
-
-        // Clean up the downloaded files:
-        try {
-            Files.delete(expectedDownloadedDataSourcePath);
-            if ( doExtract ) {
-                // Get the base name for our folder.
-                // (this way we get rid of all extensions (i.e. both `tar` and `gz`):
-                final String baseName = expectedDownloadedDataSourcePath.toFile().getName().replace(".gtf.gz", "");
-                final Path   extractedDataSourceFolder = expectedDownloadedDataSourcePath.resolveSibling(baseName);
-                FileUtils.deleteDirectory(extractedDataSourceFolder.toFile());
-            }
-        }
-        catch ( final IOException ex ) {
-            throw new GATKException("Could not clean up downloaded data sources for testDownloadRealDataSources: " + expectedDownloadedDataSourcePath);
-        }
-    }
+//    private void verifyDataSourcesExistThenDeleteThem(final String dsOrgArg, final String dsSpeciesArg, final boolean doExtract) {
+//        // Get the path to our files:
+//        final Path currentPath          = IOUtils.getPath(".");
+//        final Path remoteDataSourcePath = IOUtils.getPath(getDataSourceRemoteURL(dsOrgArg) + "/" + FuncotatorDataSourceBundlerUtils.getDSFileName(dsOrgArg, dsSpeciesArg) + DataSourceUtils.GTF_GZ_EXTENSION);
+//        final Path expectedDownloadedDataSourcePath = currentPath.resolve(remoteDataSourcePath.getFileName().toString());
+//
+//        // Verify it exists and delete it:
+//        verifyDataSourcesExistThenDeleteThem(expectedDownloadedDataSourcePath, doExtract);
+//    }
+//    private void verifyDataSourcesExistThenDeleteThem(final Path expectedDownloadedDataSourcePath, final boolean doExtract) {
+//
+//        // Make sure our file exists:
+//        Assert.assertTrue( Files.exists(expectedDownloadedDataSourcePath) );
+//
+//        // Clean up the downloaded files:
+//        try {
+//            Files.delete(expectedDownloadedDataSourcePath);
+//            if ( doExtract ) {
+//                // Get the base name for our folder.
+//                // (this way we get rid of all extensions (i.e. both `tar` and `gz`):
+//                final String baseName = expectedDownloadedDataSourcePath.toFile().getName().replace(".gtf.gz", "");
+//                final Path   extractedDataSourceFolder = expectedDownloadedDataSourcePath.resolveSibling(baseName);
+//                FileUtils.deleteDirectory(extractedDataSourceFolder.toFile());
+//            }
+//        }
+//        catch ( final IOException ex ) {
+//            throw new GATKException("Could not clean up downloaded data sources for testDownloadRealDataSources: " + expectedDownloadedDataSourcePath);
+//        }
+//    }
 
     //==================================================================================================================
     // Data Providers:

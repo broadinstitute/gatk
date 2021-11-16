@@ -60,8 +60,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
     protected Path dsUnzipPath;
     protected String dsFastaURL;
     protected Path dsFastaPath;
-    protected Path dsFastaUnzipPath;
-    protected Path indexFilePath;
+    protected Path   dsFastaUnzipPath;
+    protected Path   gtfIndexFilePath;
     protected String baseURL;
     protected String speciesName;
     protected String baseFastaURL;
@@ -107,19 +107,21 @@ public class FuncotatorDataSourceBundlerHttpClient {
         this.fastaFileName          = FuncotatorDataSourceBundlerUtils.buildMapGetFileName(this.dsOrganism, this.speciesName, true);
 
         this.dsURL                  = baseURL + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION;
-        this.dsFastaURL             = baseFastaURL + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + fileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION;
+        this.dsFastaURL             = baseFastaURL + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + fastaFileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION;
 
         this.dsPath                 = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION);
         this.dsUnzipPath            = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
-        this.dsFastaPath            = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION);
-        this.dsFastaUnzipPath       = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_UNZIPPED_EXTENSION);
-        this.indexFilePath          = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION + DataSourceUtils.IDX_EXTENSION);
+
+        this.dsFastaPath            = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fastaFileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION);
+        this.dsFastaUnzipPath       = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fastaFileName + DataSourceUtils.FASTA_UNZIPPED_EXTENSION);
+
+        this.gtfIndexFilePath       = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION + DataSourceUtils.IDX_EXTENSION);
 
         this.outputDestination      = this.dsPath.toAbsolutePath();
         this.outputUnzippedDest     = this.dsUnzipPath.toAbsolutePath();
         this.outputFastaDest        = this.dsFastaPath.toAbsolutePath();
         this.outputFastaUnzipDest   = this.dsFastaUnzipPath.toAbsolutePath();
-        this.outputIndexDest        = this.indexFilePath.toAbsolutePath();
+        this.outputIndexDest        = this.gtfIndexFilePath.toAbsolutePath();
 
         this.configFilePath         = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + ENSEMBL_CONFIG_NAME);
         this.metadataFilePath       = IOUtils.getPath(outputFolder + "/");
@@ -373,7 +375,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
         // Index the GTF File
         // TODO: Fix this:
         IndexFeatureFile indexer = new IndexFeatureFile();
-        indexer.indexGTF(dsReorderedGtfPath.toAbsolutePath(), indexFilePath.toAbsolutePath());
+        indexer.indexGTF(dsReorderedGtfPath.toAbsolutePath(), gtfIndexFilePath.toAbsolutePath());
     }
 
     /**
@@ -384,9 +386,9 @@ public class FuncotatorDataSourceBundlerHttpClient {
         PythonScriptExecutor executor = new PythonScriptExecutor(true);
         final List<String> args = new ArrayList<>();
 
-        args.add("./" + gtfFilePath.toString());
+        args.add(gtfFilePath.toString());
         args.add("--output-file");
-        args.add("./" + dsReorderedGtfPath);
+        args.add(dsReorderedGtfPath.toAbsolutePath().toString());
         boolean success = executor.executeScript("./scripts/funcotator/data_sources/fixGencodeOrdering.py", null, args);
         if (!success) {
             throw new UserException("Error. Unable to sort gtf file by genomic coordinates.");
@@ -494,6 +496,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * @return A copy of the {@link Path} used as the index file path for this {@link FuncotatorDataSourceBundlerHttpClient}.
      */
     public Path getIndexPath() {
-        return this.indexFilePath;
+        return this.gtfIndexFilePath;
     }
 }
