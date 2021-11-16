@@ -52,6 +52,12 @@ workflow CreateBQTables {
             service_account_json_path = service_account_json_path,
             preemptible_tries = preemptible_tries
     }
+
+    output {
+      String petDone = CreatePetTables.done
+      String vetDone = CreateVetTables.done
+      String refDone = CreateRefRangesTables.done
+    }
 }
 
 
