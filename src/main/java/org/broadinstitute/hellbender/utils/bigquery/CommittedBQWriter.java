@@ -97,6 +97,9 @@ public class CommittedBQWriter {
 
 
     public void close() {
+        if (writer != null) {
+            writer.close();
+        }
         if (bqWriteClient != null) {
             bqWriteClient.close();
         }
