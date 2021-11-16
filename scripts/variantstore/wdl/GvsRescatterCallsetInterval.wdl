@@ -7,7 +7,7 @@ workflow GvsRescatterCallsetInterval {
   input {
     String data_project
     String default_dataset
-    String fq_cohort_extract_table_prefix
+    String extract_table_prefix
     String output_file_base_name
     File reference
     File reference_dict
@@ -34,7 +34,7 @@ workflow GvsRescatterCallsetInterval {
       input:
         data_project = data_project,
         default_dataset = default_dataset,
-        fq_cohort_extract_table_prefix = fq_cohort_extract_table_prefix,
+        extract_table_prefix = extract_table_prefix,
         output_file_base_name = vcf_basename,
         reference = reference,
         reference_dict = reference_dict,
