@@ -123,38 +123,4 @@ public final class IndexFeatureFile extends CommandLineProgram {
             throw new UserException.CouldNotIndexFile(featurePath.toPath(), e);
         }
     }
-
-    public void indexGTF(Path featurePath, Path idxFilePath) {
-        if (!Files.isReadable(featurePath)) {
-            throw new UserException.CouldNotReadInputFile(featurePath);
-        }
-        // Get the right codec for the file to be indexed. This call will throw an appropriate exception
-        // if featureFile is not in a supported format or is unreadable.
-//        final FeatureCodec<? extends Feature, ?> codecName = new EnsemblGtfCodec();
-        final FeatureCodec<? extends Feature, ?> codec = new ProgressReportingDelegatingCodec<>(
-                FeatureManager.getCodecForFile(featurePath), ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES);
-        try {
-            final Index index = IndexFactory.createDynamicIndex(featurePath, codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
-            if (index instanceof TabixIndex) {
-                final Path indexPath = Tribble.tabixIndexPath(featurePath);
-                try {
-                    index.write(indexPath);
-                } catch (final IOException e) {
-                    throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
-                }
-            } else {
-                final Path indexPath = Tribble.indexPath(featurePath);
-                try {
-                    index.write(indexPath);
-                } catch (final IOException e) {
-                    throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
-                }
-            }
-        } catch (TribbleException e) {
-            // Underlying cause here is usually a malformed file, but can also be things like
-            // "codec does not support tabix"
-            throw new UserException.CouldNotIndexFile(featurePath, e);
-        }
-        logger.info("Successfully wrote index to " + idxFilePath);
-    }
 }

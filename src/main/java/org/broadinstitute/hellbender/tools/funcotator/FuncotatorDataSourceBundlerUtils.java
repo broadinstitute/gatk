@@ -1,11 +1,26 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureCodec;
+import htsjdk.tribble.Tribble;
+import htsjdk.tribble.TribbleException;
+import htsjdk.tribble.index.Index;
+import htsjdk.tribble.index.IndexFactory;
+import htsjdk.tribble.index.tabix.TabixIndex;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.FeatureManager;
+import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
+import org.broadinstitute.hellbender.utils.codecs.ProgressReportingDelegatingCodec;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.io.IOException;
@@ -21,6 +36,7 @@ import java.net.URL;
  * Created by Hailey on 8/2/21.
  */
 public class FuncotatorDataSourceBundlerUtils {
+    private static final Logger logger = LogManager.getLogger(FuncotatorDataSourceBundlerUtils.class);
 
     //==================================================================================================================
     // Private Static Members:
@@ -261,6 +277,44 @@ public class FuncotatorDataSourceBundlerUtils {
     public static void extractGzFile(final String gzFilePath, final String decompressedFilePath, final boolean doOverwrite) {
         IOUtils.ensurePathIsOkForOutput(IOUtils.getPath(decompressedFilePath), doOverwrite);
         IOUtils.gunzip(IOUtils.getPath(gzFilePath).toFile(), IOUtils.getPath(decompressedFilePath).toFile());
+    }
+
+    /**
+     * Create an index for a GTF file.
+     * @param featurePath {@link Path} of the GTF file to be indexed.
+     * @param idxFilePath {@link Path} to which to write the index.
+     */
+    public static void indexGTF(final Path featurePath, final Path idxFilePath) {
+        if (!Files.isReadable(featurePath)) {
+            throw new UserException.CouldNotReadInputFile(featurePath);
+        }
+        // Get the right codec for the file to be indexed. This call will throw an appropriate exception
+        // if featureFile is not in a supported format or is unreadable.
+        final FeatureCodec<? extends Feature, ?> codec = new ProgressReportingDelegatingCodec<>(
+                FeatureManager.getCodecForFile(featurePath), ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES);
+        try {
+            final Index index = IndexFactory.createDynamicIndex(featurePath, codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
+            if (index instanceof TabixIndex ) {
+                final Path indexPath = Tribble.tabixIndexPath(featurePath);
+                try {
+                    index.write(indexPath);
+                } catch (final IOException e) {
+                    throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
+                }
+            } else {
+                final Path indexPath = Tribble.indexPath(featurePath);
+                try {
+                    index.write(indexPath);
+                } catch (final IOException e) {
+                    throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
+                }
+            }
+        } catch ( TribbleException e) {
+            // Underlying cause here is usually a malformed file, but can also be things like
+            // "codec does not support tabix"
+            throw new UserException.CouldNotIndexFile(featurePath, e);
+        }
+        logger.info("Successfully wrote index to " + idxFilePath);
     }
 
 }

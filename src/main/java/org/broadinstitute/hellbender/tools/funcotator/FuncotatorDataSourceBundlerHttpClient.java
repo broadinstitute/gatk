@@ -374,8 +374,10 @@ public class FuncotatorDataSourceBundlerHttpClient {
 
         // Index the GTF File
         // TODO: Fix this:
-        IndexFeatureFile indexer = new IndexFeatureFile();
-        indexer.indexGTF(dsReorderedGtfPath.toAbsolutePath(), gtfIndexFilePath.toAbsolutePath());
+//        IndexFeatureFile indexer = new IndexFeatureFile();
+//        indexer.indexGTF(dsReorderedGtfPath.toAbsolutePath(), gtfIndexFilePath.toAbsolutePath());
+
+        FuncotatorDataSourceBundlerUtils.indexGTF(dsReorderedGtfPath.toAbsolutePath(), gtfIndexFilePath.toAbsolutePath());
     }
 
     /**
