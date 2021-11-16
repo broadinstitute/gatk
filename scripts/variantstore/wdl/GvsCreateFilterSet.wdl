@@ -14,6 +14,7 @@ workflow GvsCreateFilterSet {
 
         String data_project
         String default_dataset
+        String? sample_table = "sample_info"
 
         String query_project = data_project
         Array[String]? query_labels
@@ -78,7 +79,7 @@ workflow GvsCreateFilterSet {
     Int huge_disk = select_first([huge_disk_override, "2000"])
     Int preemptible_tries = select_first([preemptible_tries_override, "3"])
 
-    String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
+    String fq_sample_table = "~{data_project}.~{default_dataset}.~{sample_table}"
     String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
     String fq_info_destination_table = "~{data_project}.~{default_dataset}.filter_set_info"
     String fq_tranches_destination_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
@@ -315,7 +316,7 @@ task GetNumSamplesLoaded {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-        "SELECT COUNT(*) as num_rows FROM ~{fq_sample_table} WHERE is_loaded = true" > num_rows.csv
+        "SELECT COUNT(*) as num_rows FROM ~{fq_sample_table}" > num_rows.csv
 
         NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
