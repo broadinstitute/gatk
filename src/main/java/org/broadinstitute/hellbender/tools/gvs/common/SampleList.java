@@ -50,7 +50,7 @@ public class SampleList {
     }
 
     protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
-        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), null, executionProjectId, printDebugInformation, originTool);
+        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), executionProjectId, printDebugInformation, originTool);
 
         // Add our samples to our map:
         for (final FieldValueList row : queryResults.iterateAll()) {
@@ -77,11 +77,11 @@ public class SampleList {
     }
 
     private TableResult querySampleTable(
-        String fqSampleTableName, String whereClause, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
+        String fqSampleTableName, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
         // Get the query string:
         final String sampleListQueryString =
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
-                " FROM `" + fqSampleTableName + "` " + ((whereClause!=null)?" WHERE ":"") + whereClause;
+                " FROM `" + fqSampleTableName + "` ";
 
         Map<String, String> labelForQuery = new HashMap<String, String>();
         if (originTool.isPresent()) {
