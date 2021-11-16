@@ -1,19 +1,13 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 
@@ -78,19 +72,19 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     private Object[][] provideForTestDownload() {
         return new Object[][]{
                 {
-                    FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
-                        "octopus_bimaculoides",
-                        true,
+                    FuncotatorDataSourceBundler.OrganismKingdom.METAZOA,
+                    "octopus_bimaculoides",
+                    true,
                 },
                 {
-                        FuncotatorDataSourceBundler.BACTERIA_ARG_LONG_NAME,
-                        "absiella_dolichum_dsm_3991_gca_000154285",
-                        true,
+                    FuncotatorDataSourceBundler.OrganismKingdom.BACTERIA,
+                    "absiella_dolichum_dsm_3991_gca_000154285",
+                    true,
                 },
                 {
-                        FuncotatorDataSourceBundler.PLANTS_ARG_LONG_NAME,
-                        "actinidia_chinensis",
-                        true,
+                    FuncotatorDataSourceBundler.OrganismKingdom.PLANTS,
+                    "actinidia_chinensis",
+                    true,
                 }
         };
     }
@@ -99,9 +93,9 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     private Object[][] provideForTestDownloadWrong() {
         return new Object[][] {
                 {
-                    FuncotatorDataSourceBundler.METAZOA_ARG_LONG_NAME,
-                        "absiella_dolichum_dsm_3991_gca_000154285",
-                        false,
+                    FuncotatorDataSourceBundler.OrganismKingdom.METAZOA,
+                    "absiella_dolichum_dsm_3991_gca_000154285",
+                    false,
                 }
         };
     }
@@ -110,14 +104,14 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     // Tests:
 
     @Test( dataProvider = "provideForTestDownload", groups = {"cloud"})
-    void testDownloadRealDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite) {
+    void testDownloadRealDataSources (final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String dsSpeciesArg, final boolean doOverwrite) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
-        arguments.add(dsOrgArg, true);
-        arguments.add("species-name", dsSpeciesArg);
+        arguments.add(FuncotatorDataSourceBundler.ORGANISM_KINGDOM_ARG_LONG_NAME, kingdom);
+        arguments.add(FuncotatorDataSourceBundler.SPECIES_ARG_LONG_NAME, dsSpeciesArg);
         arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
 
         final Path basePath = getSafeNonExistentPath(dsSpeciesArg);
-        arguments.add(FuncotatorDataSourceBundler.OUTPUT_DATASOURCES_FOLDER_ARG_NAME, basePath.toUri().toString());
+        arguments.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, basePath.toUri().toString());
 
         runCommandLine(arguments);
 
@@ -129,14 +123,14 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     // To do: need to make some integration tests for running with incorrect input arguments
 
     @Test( dataProvider = "provideForTestDownloadWrong", groups = {"cloud"}, expectedExceptions = UserException.BadInput.class)
-    void testDownloadWrongDataSources (final String dsOrgArg, final String dsSpeciesArg, final boolean doOverwrite) {
+    void testDownloadWrongDataSources (final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String dsSpeciesArg, final boolean doOverwrite) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
-        arguments.add(dsOrgArg, true);
-        arguments.add("species-name", dsSpeciesArg);
+        arguments.add(FuncotatorDataSourceBundler.ORGANISM_KINGDOM_ARG_LONG_NAME, kingdom);
+        arguments.add(FuncotatorDataSourceBundler.SPECIES_ARG_LONG_NAME, dsSpeciesArg);
         arguments.add(FuncotatorDataSourceBundler.OVERWRITE_ARG_LONG_NAME, doOverwrite);
 
         final Path basePath = getSafeNonExistentPath(dsSpeciesArg);
-        arguments.add(FuncotatorDataSourceBundler.OUTPUT_DATASOURCES_FOLDER_ARG_NAME, basePath.toUri().toString());
+        arguments.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, basePath.toUri().toString());
 
         runCommandLine(arguments);
     }

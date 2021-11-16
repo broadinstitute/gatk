@@ -36,11 +36,11 @@ public class FuncotatorDataSourceBundlerHttpClient {
 
     //==================================================================================================================
     // Public Static Members:
-    public static final String ENSEMBL_CONFIG_NAME          = "ensembl.config";
-    public static final String MANIFEST_FILE_NAME           = "MANIFEST.txt";
-    public static final String TEMPLATE_CONFIG_FILE_NAME    = "template.config";
-    public static final String README_FILE_NAME             = "README.txt";
-    public static final String SCRIPT_PATH                  = "./scripts/funcotator/data_sources/fixGencodeOrdering.py";
+    public static final String ENSEMBL_CONFIG_NAME        = "ensembl.config";
+    public static final String MANIFEST_FILE_NAME         = "MANIFEST.txt";
+    public static final String TEMPLATE_CONFIG_FILE_NAME  = "template.config";
+    public static final String README_FILE_NAME           = "README.txt";
+    public static final Path   SCRIPT_PATH                = IOUtils.getPath("scripts/funcotator/data_sources/fixGencodeOrdering.py");
 
     //==================================================================================================================
     // Private Static Members:
@@ -52,7 +52,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
     // Data variables:
     protected Path outputFolder;
 
-    protected String dsOrganism;
+    protected FuncotatorDataSourceBundler.OrganismKingdom kingdom;
     protected String fileName;
     protected String fastaFileName;
     protected String dsURL;
@@ -62,9 +62,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
     protected Path dsFastaPath;
     protected Path   dsFastaUnzipPath;
     protected Path   gtfIndexFilePath;
-    protected String baseURL;
     protected String speciesName;
-    protected String baseFastaURL;
     protected Path outputDestination;
     protected Path outputUnzippedDest;
     protected Path outputFastaDest;
@@ -89,50 +87,46 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * {@link FuncotatorDataSourceBundlerHttpClient}
      * This internal constructor is to be used by the class itself.
      * @param outputFolder The {@link Path} into which to place the new data source supporting files.
-     * @param dsOrganism The {@link String} representing the chosen organism.
+     * @param kingdom {@link FuncotatorDataSourceBundler.OrganismKingdom} representing the chosen species' kingdom.
      * @param speciesName The {@link String} representing the chosen division.
-     * @param baseURL The {@link String} representing the base url for the chosen organism.
-     * @param baseFastaURL The {@link String} representing the base url for the fasta file for the chosen organism.
      */
-    protected FuncotatorDataSourceBundlerHttpClient(final Path outputFolder, final String dsOrganism, final String speciesName, final String baseURL, final String baseFastaURL) {
+    protected FuncotatorDataSourceBundlerHttpClient(final Path outputFolder, final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String speciesName) {
 
-        this.outputFolder  = outputFolder;
+        this.outputFolder         = outputFolder;
 
-        this.dsOrganism             = dsOrganism;
-        this.speciesName            = speciesName;
-        this.baseURL                = baseURL;
-        this.baseFastaURL           = baseFastaURL;
+        this.kingdom              = kingdom;
+        this.speciesName          = speciesName;
 
-        this.fileName               = FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(this.dsOrganism, this.speciesName);
-        this.fastaFileName          = FuncotatorDataSourceBundlerUtils.getFastaFileName(this.dsOrganism, this.speciesName);
+        this.fileName             = FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(kingdom.toString(), this.speciesName);
+        this.fastaFileName        = FuncotatorDataSourceBundlerUtils.getFastaFileName(kingdom.toString(), this.speciesName);
 
-        this.dsURL                  = baseURL + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION;
-        this.dsFastaURL             = baseFastaURL + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + fastaFileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION;
+        this.dsURL                = kingdom.getBaseUrl() + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION;
+        this.dsFastaURL           = kingdom.getBaseFastaUrl() + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + fastaFileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION;
 
-        this.dsPath                 = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION);
-        this.dsUnzipPath            = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
+        this.dsPath               = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION);
+        this.dsUnzipPath          = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
 
-        this.dsFastaPath            = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fastaFileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION);
-        this.dsFastaUnzipPath       = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fastaFileName + DataSourceUtils.FASTA_UNZIPPED_EXTENSION);
+        this.dsFastaPath          = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fastaFileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION);
+        this.dsFastaUnzipPath     = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fastaFileName + DataSourceUtils.FASTA_UNZIPPED_EXTENSION);
 
-        this.gtfIndexFilePath       = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION + DataSourceUtils.IDX_EXTENSION);
+        this.gtfIndexFilePath     = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION + DataSourceUtils.IDX_EXTENSION);
 
-        this.outputDestination      = this.dsPath.toAbsolutePath();
-        this.outputUnzippedDest     = this.dsUnzipPath.toAbsolutePath();
-        this.outputFastaDest        = this.dsFastaPath.toAbsolutePath();
-        this.outputFastaUnzipDest   = this.dsFastaUnzipPath.toAbsolutePath();
-        this.outputIndexDest        = this.gtfIndexFilePath.toAbsolutePath();
+        this.outputDestination    = this.dsPath.toAbsolutePath();
+        this.outputUnzippedDest   = this.dsUnzipPath.toAbsolutePath();
+        this.outputFastaDest      = this.dsFastaPath.toAbsolutePath();
+        this.outputFastaUnzipDest = this.dsFastaUnzipPath.toAbsolutePath();
+        this.outputIndexDest      = this.gtfIndexFilePath.toAbsolutePath();
 
-        this.configFilePath         = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + ENSEMBL_CONFIG_NAME);
-        this.metadataFilePath       = IOUtils.getPath(outputFolder + "/");
+        this.configFilePath       = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + ENSEMBL_CONFIG_NAME);
+        this.metadataFilePath     = IOUtils.getPath(outputFolder + "/");
 
-        this.dsGtfReadMeURL         = baseURL + speciesName + "/" + DataSourceUtils.README_EXTENSION;
-        this.dsFastaReadMeURL       = baseURL + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + DataSourceUtils.README_EXTENSION;
+        this.dsGtfReadMeURL       = kingdom.getBaseUrl() + speciesName + "/" + DataSourceUtils.README_EXTENSION;
+        this.dsFastaReadMeURL     = kingdom.getBaseUrl() + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + DataSourceUtils.README_EXTENSION;
 
-        this.dsGtfReadMePath        = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.GTF_README_EXTENSION);
-        this.dsFastaReadMePath      = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.FASTA_README_EXTENSION);
-        this.dsFastaDictPath        = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_DICT_EXTENSION);
-        this.dsReorderedGtfPath     = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.REORDERED_EXTENSION + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
+        this.dsGtfReadMePath      = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.GTF_README_EXTENSION);
+        this.dsFastaReadMePath    = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.FASTA_README_EXTENSION);
+        this.dsFastaDictPath      = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_DICT_EXTENSION);
+        this.dsReorderedGtfPath   = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.REORDERED_EXTENSION + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
     }
 
     /**
@@ -166,8 +160,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * Build a config file for the data source we have downloaded.
      */
     public void buildConfigFile() {
-        try ( FileWriter writer = new FileWriter(configFilePath.toAbsolutePath().toString());
-              BufferedWriter buffer = new BufferedWriter(writer) )
+        try ( final FileWriter writer = new FileWriter(configFilePath.toAbsolutePath().toString());
+              final BufferedWriter buffer = new BufferedWriter(writer) )
         {
             buffer.write(
                 "name = Ensembl\n" +
@@ -229,13 +223,13 @@ public class FuncotatorDataSourceBundlerHttpClient {
      * Build the template config file in the correct folder.
      */
     public void buildTemplateConfigFile() {
-        try ( FileWriter writer = new FileWriter(metadataFilePath.toAbsolutePath() + "/" + TEMPLATE_CONFIG_FILE_NAME);
-              BufferedWriter buffer = new BufferedWriter(writer) ) {
+        try ( final FileWriter writer = new FileWriter(metadataFilePath.toAbsolutePath() + "/" + TEMPLATE_CONFIG_FILE_NAME);
+              final BufferedWriter buffer = new BufferedWriter(writer) ) {
 
             buffer.write(
-            "name = Achilles\n" +
+            "name = DATASOURCE_NAME\n" +
                 "version = 110303\n" +
-                "src_file = achilles_lineage_results.import.txt\n" +
+                "src_file = SOURCE_DATA_FILE\n" +
                 "origin_location = UNKNOWN\n" +
                 "preprocessing_script =\n" +
                 "\n" +
@@ -288,6 +282,18 @@ public class FuncotatorDataSourceBundlerHttpClient {
             throw new UserException("Error. Unable to make template config file in location: " + metadataFilePath + "/" + TEMPLATE_CONFIG_FILE_NAME);
         }
     }
+
+    private String getInvocationLine() {
+        return "gatk FuncotatorDataSourceBundler --" +
+                FuncotatorDataSourceBundler.ORGANISM_KINGDOM_ARG_LONG_NAME +
+                " " +
+                kingdom.name() +
+                " --" +
+                FuncotatorDataSourceBundler.SPECIES_ARG_LONG_NAME +
+                " " +
+                speciesName;
+    }
+
     /**
      * Build a ReadMe file in the correct folder.
      */
@@ -295,6 +301,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
         try ( final FileWriter writer = new FileWriter(metadataFilePath.toAbsolutePath() + "/" + README_FILE_NAME);
               final BufferedWriter buffer = new BufferedWriter(writer) )
         {
+            final String invocationLine = getInvocationLine();
+
             buffer.write(
             "################################################################################\n" +
                 "# Funcotator Data Sources Bundler Package README\n" +
@@ -305,9 +313,9 @@ public class FuncotatorDataSourceBundlerHttpClient {
                 "+---------------------------------------------+ \n" +
                 "\n" +
                 "Version:          0.0." + FuncotatorDataSourceBundlerUtils.getCurrentDateString() + "\n" +
-                "Use Case:         species name\n" +
-                "Source:           ./gatk -bundler.dsOrganism -species-name bundler.speciesName \n" +
-                "Alternate Source: ./gatk -bundler.dsOrganism -species-name bundler.speciesName \n" +
+                "Use Case:         " + speciesName + "\n" +
+                "Source:           " + invocationLine + "\n" +
+                "Alternate Source: " + invocationLine + "\n" +
                 "\n" +
                 "################################################################################\n" +
                 "\n" +
@@ -353,11 +361,13 @@ public class FuncotatorDataSourceBundlerHttpClient {
         try ( FileWriter writer = new FileWriter(metadataFilePath.toAbsolutePath() + "/" + MANIFEST_FILE_NAME);
               BufferedWriter buffer = new BufferedWriter(writer) )
         {
+            final String invocationLine = getInvocationLine();
+
             buffer.write(
             "Version:          0.0." + FuncotatorDataSourceBundlerUtils.getCurrentDateString() + "\n" +
                 "Use Case:         " + speciesName + "\n" +
-                "Source:           ./gatk FuncotatorDataSourceBundler -" + dsOrganism + "-species-name " + speciesName + "\n" +
-                "Alternate Source: ./gatk FuncotatorDataSourceBundler -" + dsOrganism + "-species-name " + speciesName + "\n"
+                "Source:           " + invocationLine + "\n" +
+                "Alternate Source: " + invocationLine + "\n"
             );
 
         } catch (IOException e) {
@@ -373,10 +383,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
         sortGtfFileByGenomicCoordinates(dsUnzipPath);
 
         // Index the GTF File
-        // TODO: Fix this:
-//        IndexFeatureFile indexer = new IndexFeatureFile();
-//        indexer.indexGTF(dsReorderedGtfPath.toAbsolutePath(), gtfIndexFilePath.toAbsolutePath());
-
         FuncotatorDataSourceBundlerUtils.indexGTF(dsReorderedGtfPath.toAbsolutePath(), gtfIndexFilePath.toAbsolutePath());
     }
 
@@ -391,7 +397,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
         args.add(gtfFilePath.toString());
         args.add("--output-file");
         args.add(dsReorderedGtfPath.toAbsolutePath().toString());
-        boolean success = executor.executeScript("./scripts/funcotator/data_sources/fixGencodeOrdering.py", null, args);
+        boolean success = executor.executeScript(SCRIPT_PATH.toAbsolutePath().toString(), null, args);
         if (!success) {
             throw new UserException("Error. Unable to sort gtf file by genomic coordinates.");
         }

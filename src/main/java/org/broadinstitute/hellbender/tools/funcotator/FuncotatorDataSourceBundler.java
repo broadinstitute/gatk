@@ -1,13 +1,11 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.reference.FastaSequenceIndexCreator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -17,11 +15,11 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import picard.sam.CreateSequenceDictionary;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 /**
@@ -64,80 +62,50 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
     //==================================================================================================================
     // Public Static Members:
 
-    public static final String BACTERIA_ARG_LONG_NAME   = "bacteria";
-    public static final String FUNGI_ARG_LONG_NAME      = "fungi";
-    public static final String METAZOA_ARG_LONG_NAME    = "metazoa";
-    public static final String PLANTS_ARG_LONG_NAME     = "plants";
-    public static final String PROTISTS_ARG_LONG_NAME   = "protists";
-    public static final String SPECIES_ARG_LONG_NAME    = "species-name";
-    public static final String OVERWRITE_ARG_LONG_NAME            = "overwrite-output-file";
-    public static final String OUTPUT_DATASOURCES_FOLDER_ARG_NAME = "output-datasources-folder";
-
-    //==================================================================================================================
-    // Private Static Members:
+    public static final String ORGANISM_KINGDOM_ARG_LONG_NAME = "organism-kingdom";
+    public static final String SPECIES_ARG_LONG_NAME          = "species-name";
+    public static final String OVERWRITE_ARG_LONG_NAME     = "overwrite-output-file";
 
     // Set to always get the latest version of the data sources:
-    private static final String  BASE_URL = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION;
+    private static final String BASE_URL = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION;
 
-    // Will maybe make these private again
-    @VisibleForTesting
-    public static final String BACTERIA_BASE_URL      = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION;
-    public static final String FUNGI_BASE_URL         = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-    public static final String METAZOA_BASE_URL       = BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-    public static final String PLANTS_BASE_URL        = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
-    public static final String PROTISTS_BASE_URL      = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION;
+    public enum OrganismKingdom {
+        BACTERIA(BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION,
+                BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION),
+        FUNGI(BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION,
+                BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION) ,
+        METAZOA(BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION,
+                BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION),
+        PLANTS(BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION,
+                BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION),
+        PROTISTS(BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.GTF_EXTENSION,
+                BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION);
 
-    public static final String BACTERIA_BASE_FASTA    = BASE_URL + DataSourceUtils.BACTERIA_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION + DataSourceUtils.BACTERIA_COLLECTION_EXTENSION;
-    public static final String FUNGI_BASE_FASTA       = BASE_URL + DataSourceUtils.FUNGI_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION;
-    public static final String METAZOA_BASE_FASTA     = BASE_URL + DataSourceUtils.METAZOA_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION;
-    public static final String PLANTS_BASE_FASTA      = BASE_URL + DataSourceUtils.PLANTS_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION;
-    public static final String PROTISTS_BASE_FASTA    = BASE_URL + DataSourceUtils.PROTISTS_DS_EXTENSION + DataSourceUtils.FASTA_EXTENSION;
+        OrganismKingdom(final String baseUrl, final String baseFasta) {
+            this.baseUrl = baseUrl;
+            this.baseFastaUrl = baseFasta;
+        }
 
-    //==================================================================================================================
-    // Private Static Members:
-    protected static final int BUFFER_SIZE_BYTES    = 1024 * 1024;
+        private final String baseUrl;
+        private final String baseFastaUrl;
 
+        public String getBaseUrl() { return baseUrl; }
+        public String getBaseFastaUrl() { return baseFastaUrl; }
+
+        @Override
+        public String toString() {
+            return this.name().toLowerCase();
+        }
+    }
 
     //==================================================================================================================
     // Private Members:
 
     // Arguments:
-    @Argument(fullName = BACTERIA_ARG_LONG_NAME,
-            shortName  = BACTERIA_ARG_LONG_NAME,
-            doc = "Download data sources for bacteria.",
-            optional = true)
-    private boolean getBacteriaDataSources = false;
-
-    @Argument(fullName = FUNGI_ARG_LONG_NAME,
-            shortName  = FUNGI_ARG_LONG_NAME,
-            doc = "Download data sources for fungi.",
-            optional = true)
-    private boolean getFungiDataSources = false;
-
-    @Argument(fullName = METAZOA_ARG_LONG_NAME,
-            shortName  = METAZOA_ARG_LONG_NAME,
-            doc = "Download data sources for metazoa.",
-            optional = true)
-    private boolean getMetazoaDataSources = false;
-
-    @Argument(fullName = PLANTS_ARG_LONG_NAME,
-            shortName  = PLANTS_ARG_LONG_NAME,
-            doc = "Download data sources for plants.",
-            optional = true)
-    private boolean getPlantsDataSources = false;
-
-    @Argument(fullName = PROTISTS_ARG_LONG_NAME,
-            shortName  = PROTISTS_ARG_LONG_NAME,
-            doc = "Download data sources for protists.",
-            optional = true)
-    private boolean getProtistsDataSources = false;
-
-    @Argument(
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "Output location for the data sources.",
-            optional = true)
-    protected File outputFile;
+    @Argument(fullName = ORGANISM_KINGDOM_ARG_LONG_NAME,
+            shortName = ORGANISM_KINGDOM_ARG_LONG_NAME,
+            doc = "Kingdom of the organism for which to download datasources.")
+    private OrganismKingdom kingdom;
 
     @Argument(
             shortName = SPECIES_ARG_LONG_NAME,
@@ -151,10 +119,9 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             optional = true)
     private boolean overwriteOutputFile = false;
 
-    @Argument(fullName = OUTPUT_DATASOURCES_FOLDER_ARG_NAME,
-            shortName  = OUTPUT_DATASOURCES_FOLDER_ARG_NAME,
-            doc = "Location in which to put the output datasources.",
-            optional = true)
+    @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            doc = "Output location for the data sources.")
     private String outputDatasourcesFolder = null;
 
     //==================================================================================================================
@@ -165,72 +132,25 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
     @Override
     protected void onStartup() {
-
-        // Make sure the user specified an organism data source to bundle
-        if ((!getBacteriaDataSources) && (!getFungiDataSources) && (!getMetazoaDataSources) && (!getPlantsDataSources) && (!getProtistsDataSources)) {
-            throw new UserException("Must select either bacteria, fungi, metazoa, plants, or protists data sources.");
-        }
-
-        // Make sure the user specified a species data source to bundle
-        if (speciesName == null) {
-            throw new UserException("Must specify a species to bundle data sources for.");
-        }
-
         if (overwriteOutputFile) {
             logger.info("Overwrite ENABLED. Will overwrite existing data sources download.");
         }
-
     }
 
     @Override
     protected Object doWork() {
-
-        final String dataSourceOrganism;
-        final String baseURL;
-        final String baseFastaURL;
-
-        // Get the correct data source:
-        if ( getBacteriaDataSources ) {
-            dataSourceOrganism = "bacteria";
-            baseURL = BACTERIA_BASE_URL;
-            baseFastaURL = BACTERIA_BASE_FASTA;
-
-        } else if ( getFungiDataSources ) {
-            dataSourceOrganism = "fungi";
-            baseURL = FUNGI_BASE_URL;
-            baseFastaURL = FUNGI_BASE_FASTA;
-
-        } else if ( getMetazoaDataSources ) {
-            dataSourceOrganism = "metazoa";
-            baseURL = METAZOA_BASE_URL;
-            baseFastaURL = METAZOA_BASE_FASTA;
-
-        } else if ( getPlantsDataSources ) {
-            dataSourceOrganism = "plants";
-            baseURL = PLANTS_BASE_URL;
-            baseFastaURL = PLANTS_BASE_FASTA;
-
-        } else {
-            dataSourceOrganism = "protists";
-            baseURL = PROTISTS_BASE_URL;
-            baseFastaURL = PROTISTS_BASE_FASTA;
-        }
-
-        downloadAndValidateDataSources(dataSourceOrganism, speciesName, baseURL, baseFastaURL);
+        downloadAndValidateDataSources();
 
         // Token return value:
         return true;
     }
 
     //==================================================================================================================
-    // Static Methods:
-
-    //==================================================================================================================
     // Instance Methods:
 
-    private void downloadAndValidateDataSources(final String dsOrganism, final String dsSpecies, final String baseURL, final String baseFastaURL) {
+    private void downloadAndValidateDataSources() {
 
-        logger.info(dsOrganism + ":" + dsSpecies + " data sources selected.");
+        logger.info(kingdom.toString() + ":" + speciesName + " data sources selected.");
 
         // Get or create a named location to put our data sources:
         final String outputFolder;
@@ -238,16 +158,16 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             outputFolder = outputDatasourcesFolder;
         }
         else {
-            outputFolder = speciesName + "_dataSources.v0.0." + FuncotatorDataSourceBundlerUtils.getCurrentDateString();
+            outputFolder = this.speciesName + "_dataSources.v0.0." + FuncotatorDataSourceBundlerUtils.getCurrentDateString();
         }
 
         // Make folders to put data sources in:
         logger.info("Creating output folder for datasources: " + outputFolder);
-        makeDataSourcesFolderStructure(outputFolder, speciesName);
+        makeDataSourcesFolderStructure(outputFolder, this.speciesName);
 
         // Make the bundler object:
         final FuncotatorDataSourceBundlerHttpClient bundler = new FuncotatorDataSourceBundlerHttpClient(
-                IOUtils.getPath(outputFolder), dsOrganism, speciesName, baseURL, baseFastaURL
+                IOUtils.getPath(outputFolder), kingdom, this.speciesName
         );
 
         // ===================================
