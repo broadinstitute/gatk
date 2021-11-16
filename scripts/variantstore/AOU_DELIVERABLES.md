@@ -11,11 +11,11 @@
     4. GvsCreateFilterSet
         - make note of the "filter_set_name" input used
     5. GvsPrepareCallset
-        - If the ```sample_info``` table contains control samples, create views in your dataset called ```sample_info_without_controls``` populated by the query ```SELECT * FROM `aou-genomics-curation-prod.beta_release.sample_info` where sample_id > 50``` and ```sample_info_controls_only``` populated by the query ```SELECT * FROM `aou-genomics-curation-prod.beta_release.sample_info` where sample_id <= 50```. A run for ```sample_info_without_controls``` will create the tables for the joint callset deliverable.  The run with ```sample_info_controls_only```  (with a distinct `destination_cohort_table_prefix` from the non-control run) will be used for the ["Sensitivity and Precision" deliverable](tieout/AoU_PRECISION_SENSITIVIT.md).
+        - If the ```sample_info``` table contains control samples, create views in your dataset called ```sample_info_without_controls``` populated by the query ```SELECT * FROM `aou-genomics-curation-prod.beta_release.sample_info` where sample_id > 50``` and ```sample_info_controls_only``` populated by the query ```SELECT * FROM `aou-genomics-curation-prod.beta_release.sample_info` where sample_id <= 50```. A run for ```sample_info_without_controls``` will create the tables for the joint callset deliverable.  The run with ```sample_info_controls_only```  (with a distinct `destination_cohort_table_prefix` from the non-control run) will be used for the ["Sensitivity and Precision" deliverable](tieout/AoU_PRECISION_SENSITIVITY.md).
         - If the callset has more than 20K genomes, you will want to set the input "skip_vet_new_insert" to `true` which will run all of the queries except the last one. It will print out the last query that needs to run with flex slots; allocate the flex slots, run the query, and then deallocate them.
     6. GvsExtractCallset
         - include a valid (and secure) "output_gcs_dir" parameter that the service account (see above) has access to, this is where the VCF and interval list files  will go
-        - use the last part of "fq_cohort_extract_table_prefix" from `GvsPrepareCallset` for the input "extract_table_prefix"
+        - use "fq_cohort_extract_table_prefix" without the project id or dataset name from `GvsPrepareCallset` for the input "extract_table_prefix"
     7. Run [process to create callset statistics](callset_QC/README.md), for which you need
         1. permission to query table `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites`
         2. the data_project you used for all the GVS WDLs
