@@ -1,17 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.coverage;
 
-import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GatkToolIntegrationTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 
-import static org.testng.Assert.*;
 
 public class CoveredIntervalFinderIntegrationTest extends GatkToolIntegrationTest {
 

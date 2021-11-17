@@ -72,7 +72,9 @@ public class SimpleXSVWriter implements Closeable {
         if (headerMap != null) {
             throw new GATKException("Cannot modify header line once set");
         }
-        outputWriter.writeNext(columns.toArray(new String[0]), false);
+        if (displayHeader) {
+            outputWriter.writeNext(columns.toArray(new String[0]), false);
+        }
         expectedNumColumns = columns.size();
 
         // Create the mapping between header and column
