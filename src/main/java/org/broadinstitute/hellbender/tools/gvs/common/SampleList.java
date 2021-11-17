@@ -64,24 +64,24 @@ public class SampleList {
     protected void initializeMaps(File cohortSampleFile) {
         try {
             Files.readAllLines(cohortSampleFile.toPath(), StandardCharsets.US_ASCII).stream()
-                    .map(s -> s.split(","))
-                    .forEach(tokens -> {
-                        long id = Long.parseLong(tokens[0]);
-                        String name = tokens[1];
-                        sampleIdMap.put(id, name);
-                        sampleNameMap.put(name, id);
-                    });
+                .map(s -> s.split(","))
+                .forEach(tokens -> {
+                    long id = Long.parseLong(tokens[0]);
+                    String name = tokens[1];
+                    sampleIdMap.put(id, name);
+                    sampleNameMap.put(name, id);
+                });
         } catch (IOException e) {
             throw new IllegalArgumentException("Could not parse --cohort-sample-file", e);
         }
     }
 
     private TableResult querySampleTable(
-            String fqSampleTableName, String whereClause, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
+        String fqSampleTableName, String whereClause, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
         // Get the query string:
         final String sampleListQueryString =
                 "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
-                        " FROM `" + fqSampleTableName + "` " + ((whereClause!=null)?" WHERE ":"") + whereClause;
+                " FROM `" + fqSampleTableName + "` " + ((whereClause!=null)?" WHERE ":"") + whereClause;
 
         Map<String, String> labelForQuery = new HashMap<String, String>();
         if (originTool.isPresent()) {
