@@ -314,8 +314,6 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             Utils.nonNull(genomicsDBOptions, "GenomicsDBOptions must not be null. Calling tool may not read from a GenomicsDB data source.");
         }
 
-        logger.info("max_alt_alleles={}, max_genotype_count={}", genomicsDBOptions.getMaxDiploidAltAllelesThatCanBeGenotyped(), genomicsDBOptions.getMaxGenotypeCount());
-
         // Create a feature reader without requiring an index.  We will require one ourselves as soon as
         // a query by interval is attempted.
         this.featureReader = getFeatureReader(featureInput, targetFeatureType,
