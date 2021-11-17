@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -16,6 +17,7 @@ import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import picard.sam.CreateSequenceDictionary;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Map;
@@ -84,13 +86,16 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         OrganismKingdom(final String baseUrl, final String baseFasta) {
             this.baseUrl = baseUrl;
             this.baseFastaUrl = baseFasta;
+            uniprotFileName = "uniprot_report_Ensembl" + this.name().substring(0,1).toUpperCase() + this.name().substring(1).toLowerCase() + ".txt";
         }
 
         private final String baseUrl;
         private final String baseFastaUrl;
+        private final String uniprotFileName;
 
         public String getBaseUrl() { return baseUrl; }
         public String getBaseFastaUrl() { return baseFastaUrl; }
+        public String getUniprotFileName() { return uniprotFileName; }
 
         @Override
         public String toString() {
@@ -220,11 +225,15 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
         logger.info("Cleaning up intermediate files...");
 
         // Delete gtf and fasta zip files
-        IOUtils.deleteOnExit(bundler.getOutputDestination());
-        IOUtils.deleteOnExit(bundler.getFastaOutputDestination());
+        try {
+            Files.delete(bundler.getOutputDestination());
+            Files.delete(bundler.getFastaOutputDestination());
 
-        // Delete gtf file:
-        IOUtils.deleteOnExit(bundler.getDSUnzipPath());
+            // Delete gtf file:
+            Files.delete(bundler.getDSUnzipPath());
+        } catch (final IOException ex) {
+            throw new GATKException("ERROR: Could not clean up intermediate files!", ex);
+        }
     }
 
     /**

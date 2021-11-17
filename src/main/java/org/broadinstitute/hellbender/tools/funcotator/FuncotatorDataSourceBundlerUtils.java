@@ -44,20 +44,6 @@ public class FuncotatorDataSourceBundlerUtils {
 //    // If we have already initialized the maps then there is no need to build them again:
 //    public static boolean haveInitializedMaps = false;
 
-    // These map each species for a given organism to the file name associated with that species name:
-    private static final Map<String, String> bacteriaMap     = new LinkedHashMap<>();
-    private static final Map<String, String> fungiMap        = new LinkedHashMap<>();
-    private static final Map<String, String> metazoaMap      = new LinkedHashMap<>();
-    private static final Map<String, String> plantsMap       = new LinkedHashMap<>();
-    private static final Map<String, String> protistsMap     = new LinkedHashMap<>();
-
-    // File names for the files which will be used to initialize the maps from species name to file name:
-    private static final String bacteriaFileName        = "uniprot_report_EnsemblBacteria.txt";
-    private static final String fungiFileName           = "uniprot_report_EnsemblFungi.txt";
-    private static final String metazoaFileName         = "uniprot_report_EnsemblMetazoa.txt";
-    private static final String plantsFileName          = "uniprot_report_EnsemblPlants.txt";
-    private static final String protistsFileName        = "uniprot_report_EnsemblProtists.txt";
-
     //==================================================================================================================
     // Public Static Members:
 
@@ -65,12 +51,7 @@ public class FuncotatorDataSourceBundlerUtils {
     public static final String SEPARATOR_CHARACTER                      = ".";
     public static final String SEQUENCE_TYPE_AND_STATUS                 = "cdna.all";
 
-    public static Map<String, String> orgNamesAndFileNames              = new LinkedHashMap<>();
     public static Map<String, Map<String, String>> orgNamesMapNames     = new LinkedHashMap<>();
-
-    public static final List<String> orgNameKeys                        = new ArrayList<>();
-    public static final List<String> fileNameValues                     = new ArrayList<>();
-    public static final List<Map<String, String>> nullMapValues         = new ArrayList<>();
 
     //==================================================================================================================
     // Static initializer:
@@ -132,45 +113,47 @@ public class FuncotatorDataSourceBundlerUtils {
 
     /**
      * Builds a map for the specified organism and then returns the file name associated with the given species name.
-     * @param orgName The chosen organism.
+     * @param kingdom {@link FuncotatorDataSourceBundler.OrganismKingdom} representing the chosen species' kingdom.
      * @param speciesName The specific species we want to know the file name for.
      * @return The file name associated with the given species name.
      */
-    public static String getDatasourceBaseName(final String orgName, final String speciesName) {
+    public static String getDatasourceBaseName(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String speciesName) {
 
-        final String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName
-                + "/" + orgNamesAndFileNames.get(orgName);
+        final String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + kingdom.toString()
+                + "/" + kingdom.getUniprotFileName();
         // Build map from species names to file names:
-        readUniprotFile(urlName, orgName, false);
+        readUniprotFile(urlName, kingdom.toString(), false);
 
         // Check to see if specified species name is valid and if so, return the corresponding file name:
-        if ( orgNamesMapNames.get(orgName).get(speciesName) == null ) {
+        if ( orgNamesMapNames.get(kingdom.toString()).get(speciesName) == null ) {
             throw new UserException.BadInput("Given species name: " + speciesName +
-                    " is not a valid species for organism: " + orgName + "!");
+                    " is not a valid species for organism: " + kingdom + "!");
         } else{
-            return orgNamesMapNames.get(orgName).get(speciesName);
+            return orgNamesMapNames.get(kingdom.toString()).get(speciesName);
         }
     }
 
     /**
      * Builds a map for the specified organism and then returns the file name associated with the given species name.
-     * @param orgName The chosen organism.
+     * @param kingdom {@link FuncotatorDataSourceBundler.OrganismKingdom} representing the chosen species' kingdom.
      * @param speciesName The specific species we want to know the file name for.
      * @return The file name associated with the given species name.
      */
-    public static String getFastaFileName(final String orgName, final String speciesName) {
+    public static String getFastaFileName(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String speciesName) {
 
-        final String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName
-                + "/" + orgNamesAndFileNames.get(orgName);
+        final String urlName = DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + kingdom.toString()
+                + "/" + kingdom.getUniprotFileName();
+
         // Build map from species names to file names:
-        readUniprotFile(urlName, orgName, true);
+        // NOTE: This is getting the data for the FASTA file here with the third argument:
+        readUniprotFile(urlName, kingdom.toString(), true);
 
         // Check to see if specified species name is valid and if so, return the corresponding file name:
-        if ( orgNamesMapNames.get(orgName).get(speciesName) == null ) {
+        if ( orgNamesMapNames.get(kingdom.toString()).get(speciesName) == null ) {
             throw new UserException.BadInput("Given species name: " + speciesName +
-                    " is not a valid species for organism: " + orgName + "!");
+                    " is not a valid species for organism: " + kingdom + "!");
         } else{
-            return orgNamesMapNames.get(orgName).get(speciesName);
+            return orgNamesMapNames.get(kingdom.toString()).get(speciesName);
         }
     }
 
@@ -180,31 +163,9 @@ public class FuncotatorDataSourceBundlerUtils {
      * Initializes a map from the organism names to their associated map objects.
      */
     public static void initializeListsAndMaps() {
-        // Initializing list of allowed organism names:
-        orgNameKeys.add("bacteria");
-        orgNameKeys.add("fungi");
-        orgNameKeys.add("metazoa");
-        orgNameKeys.add("plants");
-        orgNameKeys.add("protists");
-
-        // Initializing list of file names for each organism:
-        fileNameValues.add(bacteriaFileName);
-        fileNameValues.add(fungiFileName);
-        fileNameValues.add(metazoaFileName);
-        fileNameValues.add(plantsFileName);
-        fileNameValues.add(protistsFileName);
-
-        // Initializing list of map names for each organism:
-        nullMapValues.add(bacteriaMap);
-        nullMapValues.add(fungiMap);
-        nullMapValues.add(metazoaMap);
-        nullMapValues.add(plantsMap);
-        nullMapValues.add(protistsMap);
-
-        // Creating map from the organism names to their corresponding file names:
-        orgNamesAndFileNames = FuncotatorUtils.createLinkedHashMapFromLists(orgNameKeys, fileNameValues);
-        // Creating map from the organism names to their corresponding map objects:
-        orgNamesMapNames = FuncotatorUtils.createLinkedHashMapFromLists(orgNameKeys, nullMapValues);
+        for ( final FuncotatorDataSourceBundler.OrganismKingdom k : FuncotatorDataSourceBundler.OrganismKingdom.values() ) {
+            orgNamesMapNames.put(k.toString(), new LinkedHashMap<>());
+        }
     }
 
     /**

@@ -25,14 +25,14 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
     @DataProvider
     Object[][] provideForTestGetDatasourceBaseName() {
         return new Object[][] {
-                { "plants", "actinidia_chinensis", "Actinidia_chinensis.Red5_PS1_1.69.0.51" }
+                { FuncotatorDataSourceBundler.OrganismKingdom.PLANTS, "actinidia_chinensis", "Actinidia_chinensis.Red5_PS1_1.69.0.51" }
         };
     }
 
     @DataProvider
     Object[][] provideForTestGetFastaFileName() {
         return new Object[][] {
-                { "plants", "actinidia_chinensis", "Actinidia_chinensis.Red5_PS1_1.69.0.cdna.all" }
+                { FuncotatorDataSourceBundler.OrganismKingdom.PLANTS, "actinidia_chinensis", "Actinidia_chinensis.Red5_PS1_1.69.0.cdna.all" }
         };
     }
 
@@ -40,7 +40,7 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
     Object[][] provideForTestBuildMapWrong() {
         return new Object[][]{
                 {
-                        "plants",
+                        FuncotatorDataSourceBundler.OrganismKingdom.PLANTS,
                         "Aphanomyces astaci GCA_002197585.2"
                 }
         };
@@ -60,26 +60,25 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
     // Tests:
 
     @Test(dataProvider = "provideForTestGetDatasourceBaseName")
-    void testGetDatasourceBaseName(final String orgName, final String speciesName, final String expectedBaseName) {
+    void testGetDatasourceBaseName(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String speciesName, final String expectedBaseName) {
 
         Assert.assertEquals(
                 expectedBaseName,
-                FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName)
+                FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(kingdom, speciesName)
         );
     }
 
     @Test(dataProvider = "provideForTestGetFastaFileName")
-    void testGetFastaFileName(final String orgName, final String speciesName, final String expectedFastaName) {
+    void testGetFastaFileName(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String speciesName, final String expectedFastaName) {
         Assert.assertEquals(
-                FuncotatorDataSourceBundlerUtils.getFastaFileName(orgName, speciesName),
+                FuncotatorDataSourceBundlerUtils.getFastaFileName(kingdom, speciesName),
                 expectedFastaName
         );
     }
 
     @Test(dataProvider = "provideForTestBuildMapWrong", expectedExceptions = UserException.BadInput.class)
-    void testBuildMapWrong(final String orgName, final String speciesName) {
-        FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName);
-        FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(orgName, speciesName);
+    void testBuildMapWrong(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String speciesName) {
+        FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(kingdom, speciesName);
     }
 
     @Test(dataProvider = "provideForTestExtractGtfGz")

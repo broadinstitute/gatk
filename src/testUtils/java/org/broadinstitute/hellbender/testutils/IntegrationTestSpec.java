@@ -267,7 +267,7 @@ public final class IntegrationTestSpec {
           final String expectedLine = expected.next();
           final String actualLine = actual.next();
           if ( !actualLine.equals(expectedLine) ) {
-            logger.error( "Line number " + i + " (not counting comments) expected " +
+            logger.error( "Actual File: " + resultFile + "\nExpected File: " + expectedFile + "\nLine number " + i + " (not counting comments) expected " +
                 expectedLine + " actual " + actualLine + '\n' +
                 "Expected :" + expectedLine  + '\n' +
                 "Actual   :" + actualLine  + '\n'

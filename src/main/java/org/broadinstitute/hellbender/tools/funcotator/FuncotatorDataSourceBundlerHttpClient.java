@@ -97,8 +97,8 @@ public class FuncotatorDataSourceBundlerHttpClient {
         this.kingdom              = kingdom;
         this.speciesName          = speciesName;
 
-        this.fileName             = FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(kingdom.toString(), this.speciesName);
-        this.fastaFileName        = FuncotatorDataSourceBundlerUtils.getFastaFileName(kingdom.toString(), this.speciesName);
+        this.fileName             = FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(kingdom, this.speciesName);
+        this.fastaFileName        = FuncotatorDataSourceBundlerUtils.getFastaFileName(kingdom, this.speciesName);
 
         this.dsURL                = kingdom.getBaseUrl() + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION;
         this.dsFastaURL           = kingdom.getBaseFastaUrl() + speciesName + "/" + DataSourceUtils.CDNA_EXTENSION + fastaFileName + "." + DataSourceUtils.FASTA_GZ_EXTENSION;
