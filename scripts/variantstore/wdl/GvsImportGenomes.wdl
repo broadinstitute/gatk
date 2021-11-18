@@ -11,7 +11,7 @@ workflow GvsImportGenomes {
     String dataset_name
 
     String? service_account_json_path
-    String? drop_state = "FOURTY"
+    String? drop_state = "FORTY"
     Boolean? drop_state_includes_greater_than = false
 
     Int batch_size = 1
@@ -95,18 +95,21 @@ workflow GvsImportGenomes {
 
 
 task CheckForDuplicateData {
-    input{
+    input {
       String project_id
       String dataset_name
       Array[String] sample_names
       String? service_account_json_path
       # runtime
       Int? preemptible_tries
-  }
+    }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   Int num_samples = length(sample_names)
 
+  meta {
+    volatile: true
+  }
 
   command <<<
     set -e
