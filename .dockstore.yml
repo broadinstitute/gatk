@@ -72,7 +72,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-	 - ah_aou_reblocking_param
+         - ah_aou_reblocking_param
    - name: GvsRescatterCallsetInterval
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
