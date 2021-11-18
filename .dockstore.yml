@@ -66,6 +66,7 @@ workflows:
          - master
          - ah_var_store
          - ah_spike_writeapi
+         - kc_write_wdl
    - name: GvsRescatterCallsetInterval
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
