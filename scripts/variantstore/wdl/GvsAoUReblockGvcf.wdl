@@ -62,7 +62,7 @@ task ReblockAndCopy {
   Int disk_size = (ceil(60 + size(ref_fasta, "GiB") + size(ref_dict, "GiB")) * 2) + 20
 
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-  String gvcf_path = if (defined(service_account_json)) then gvcf else basename(gvcf)
+  String gvcf_path = if (defined(service_account_json)) then basename(gvcf) else gvcf
 
   String dir = if defined(site_id) then (
       if select_first([site_id]) == "bi" then "gs://prod-genomics-data-broad/" else
