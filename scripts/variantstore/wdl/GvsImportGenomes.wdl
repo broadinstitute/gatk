@@ -974,6 +974,11 @@ task GetSampleIds {
       min_sample_id=$(tail -1 results | cut -d, -f1)
       max_sample_id=$(tail -1 results | cut -d, -f2)
 
+      if [ max_sample_id -eq 0 ]; then
+        echo "Max id is 0. Exiting"
+        exit 1
+      fi
+
       python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
       python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
