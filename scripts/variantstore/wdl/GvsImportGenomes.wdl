@@ -52,7 +52,7 @@ workflow GvsImportGenomes {
         sample_map = select_first([sample_map])
     }
   }
-  
+
   if (!defined(sample_map)) {
     call GetSampleIds {
       input:
@@ -358,7 +358,7 @@ task GetMaxTableIdLegacy {
   input {
     File sample_map
     Int samples_per_table = 4000
- 
+
     # runtime
     Int? preemptible_tries
   }
@@ -531,6 +531,9 @@ task CreateImportTsvs {
 
   parameter_meta {
     input_vcfs: {
+      localization_optional: true
+    }
+    input_vcf_indexes: {
       localization_optional: true
     }
   }

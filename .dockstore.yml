@@ -117,6 +117,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_import_indexes_localization
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
