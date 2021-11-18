@@ -121,7 +121,7 @@ workflows:
      filters:
        branches:
          - master
-         - kc_ranges_extract
+         - kc_write_wdl
          - ah_var_store
    - name: GvsImportSample
      subclass: WDL
