@@ -136,6 +136,8 @@ public class VetCreator {
                 throw new IllegalArgumentException("Couldn't close VET writer", e);
             }
         }
-
+        if (vetBQJsonWriter != null) {
+            vetBQJsonWriter.close();
+        }
     }
 }
