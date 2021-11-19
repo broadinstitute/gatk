@@ -24,7 +24,6 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         final File outputDir = createTempDir("output_dir");
         final List<String> expectedOutputFiles = new ArrayList<>(Arrays.asList(
                 getToolTestDataDir() + "expected.pet_001_NA12878.tsv",
-                getToolTestDataDir() + "expected.sample_info_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.vet_001_NA12878.tsv"));
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -46,7 +45,6 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
 
         final List<File> expectedFileNames = new ArrayList<>(Arrays.asList(
                 new File(outputDir + "/pet_001_" + input_vcf_file + ".tsv"),
-                new File(outputDir + "/sample_info_001_" + input_vcf_file + ".tsv"),
                 new File(outputDir + "/vet_001_" + input_vcf_file + ".tsv")
         ));
 
