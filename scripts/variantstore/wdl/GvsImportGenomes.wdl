@@ -974,6 +974,7 @@ task GetSampleIds {
       min_sample_id=$(tail -1 results | cut -d, -f1)
       max_sample_id=$(tail -1 results | cut -d, -f2)
 
+      # no samples have been loaded or we don't have the right external_sample_names or something else is wrong, bail
       if [ $max_sample_id -eq 0 ]; then
         echo "Max id is 0. Exiting"
         exit 1
