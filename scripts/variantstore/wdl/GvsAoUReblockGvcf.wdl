@@ -36,8 +36,8 @@ workflow GvsAoUReblockGvcf {
   }
 
   output {
-    File reblocked_gvcf = ReblockAndCopy.output_gvcf
-    File reblocked_gvcf_index = ReblockAndCopy.output_gvcf_index
+    String reblocked_gvcf = ReblockAndCopy.output_gvcf
+    String reblocked_gvcf_index = ReblockAndCopy.output_gvcf_index
   }
 }
 
@@ -110,7 +110,7 @@ task ReblockAndCopy {
   }
 
   output {
-    File output_gvcf = output_gvcf_filename
-    File output_gvcf_index = output_gvcf_filename + ".tbi"
+    String output_gvcf = destination + output_gvcf_filename
+    String output_gvcf_index = destination + output_gvcf_filename + ".tbi"
   }
 }
