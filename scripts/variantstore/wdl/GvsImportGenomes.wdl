@@ -52,7 +52,7 @@ workflow GvsImportGenomes {
         sample_map = select_first([sample_map])
     }
   }
-  
+
   if (!defined(sample_map)) {
     call GetSampleIds {
       input:
@@ -358,7 +358,7 @@ task GetMaxTableIdLegacy {
   input {
     File sample_map
     Int samples_per_table = 4000
- 
+
     # runtime
     Int? preemptible_tries
   }
@@ -531,6 +531,9 @@ task CreateImportTsvs {
 
   parameter_meta {
     input_vcfs: {
+      localization_optional: true
+    }
+    input_vcf_indexes: {
       localization_optional: true
     }
   }
@@ -970,6 +973,12 @@ task GetSampleIds {
       # prep for being able to return min table id
       min_sample_id=$(tail -1 results | cut -d, -f1)
       max_sample_id=$(tail -1 results | cut -d, -f2)
+
+      # no samples have been loaded or we don't have the right external_sample_names or something else is wrong, bail
+      if [ $max_sample_id -eq 0 ]; then
+        echo "Max id is 0. Exiting"
+        exit 1
+      fi
 
       python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
       python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
