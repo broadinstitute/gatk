@@ -9,6 +9,7 @@ import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import de.javakaffee.kryoserializers.guava.ImmutableMapSerializer;
 import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.SimpleAllele;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.spark.serializer.KryoRegistrator;
@@ -68,10 +69,12 @@ public class GATKRegistrator implements KryoRegistrator {
                 return new VCFInfoHeaderLine("TMP", 2, VCFHeaderLineType.String, "");
             }
         });
-        registration = kryo.register(Allele.class);
-        registration.setInstantiator(new ObjectInstantiator<Allele>() {
-            public Allele newInstance() {
-                return Allele.create("TCGA");
+        registration = kryo.register(SimpleAllele.class);
+        registration.setInstantiator(new ObjectInstantiator<SimpleAllele>() {
+            public SimpleAllele newInstance() {
+                // this typecast is a little sketchy since it assumes that Allele.create returns a
+                // SimpleAllele, but some day that may not be true
+                return (SimpleAllele) Allele.create("TCGA");
             }
         });
     }
