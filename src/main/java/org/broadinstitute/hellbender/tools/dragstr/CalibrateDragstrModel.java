@@ -27,6 +27,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import htsjdk.samtools.SAMSequenceDictionaryUtils;
 import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -45,7 +46,6 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.BinaryTableReader;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.AutoCloseableCollection;
@@ -250,7 +250,7 @@ public class CalibrateDragstrModel extends GATKTool {
     }
 
     private void checkSequenceDictionaryCompatibility(final SAMSequenceDictionary reference, final SAMSequenceDictionary strTable) {
-        final SequenceDictionaryUtils.SequenceDictionaryCompatibility compatibility = SequenceDictionaryUtils.compareDictionaries(reference, strTable, false);
+        final SAMSequenceDictionaryUtils.SequenceDictionaryCompatibility compatibility = SAMSequenceDictionaryUtils.compareDictionaries(reference, strTable, false);
         switch (compatibility) {
             case IDENTICAL: return;
             case SUPERSET: return;

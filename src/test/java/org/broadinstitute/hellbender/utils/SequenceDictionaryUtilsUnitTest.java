@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceDictionaryUtils;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,38 +15,34 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.utils.SequenceDictionaryUtils.*;
-import static org.broadinstitute.hellbender.utils.SequenceDictionaryUtils.SequenceDictionaryCompatibility.*;
+import static htsjdk.samtools.SAMSequenceDictionaryUtils.SequenceDictionaryCompatibility.*;
 
 public final class SequenceDictionaryUtilsUnitTest extends GATKBaseTest {
 
     private static Logger logger = LogManager.getLogger(SequenceDictionaryUtilsUnitTest.class);
 
-    @DataProvider( name = "testSequenceRecordsAreEquivalentDataProvider" )
-    public Object[][] testSequenceRecordsAreEquivalentDataProvider() {
-        final SAMSequenceRecord CHRM_HG19 = new SAMSequenceRecord("chrM", 16571);
-        final SAMSequenceRecord CHR_NONSTANDARD1 = new SAMSequenceRecord("NonStandard1", 8675309);
-        final SAMSequenceRecord CHR1_HG19_WITH_UNKNOWN_LENGTH = new SAMSequenceRecord(CHR1_HG19.getSequenceName(), SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH);
-        final SAMSequenceRecord CHR1_HG19_WITH_DIFFERENT_LENGTH = new SAMSequenceRecord(CHR1_HG19.getSequenceName(), 123456);
-        return new Object[][]{
-                {CHR1_HG19, CHR1_HG19, true},
-                {CHR1_HG19, CHRM_HG19, false},
-                {CHR1_HG19, CHR_NONSTANDARD1, false},
-                {null, null, true},
-                {CHR1_HG19, null, false},
-                {null, CHR1_HG19, false},
-                {CHR1_HG19, CHR1_HG19_WITH_UNKNOWN_LENGTH, true},
-                {CHR1_HG19, CHR1_HG19_WITH_DIFFERENT_LENGTH, false},
-                {CHR1_HG19_WITH_UNKNOWN_LENGTH, CHR1_HG19, true},
-                {CHR1_HG19_WITH_DIFFERENT_LENGTH, CHR1_HG19, false},
-        };
-    }
+    // The following sets of contig records are used to perform the non-canonical human ordering check.
+    // This check ensures that the order is 1,2,3... instead of 1, 10, 11, 12...2, 20, 21...
 
-    @Test(dataProvider = "testSequenceRecordsAreEquivalentDataProvider")
-    public void testSequenceRecordsAreEquivalent(final SAMSequenceRecord one, final SAMSequenceRecord two, final boolean expected){
-        final boolean actual = SequenceDictionaryUtils.sequenceRecordsAreEquivalent(one, two);
-        Assert.assertEquals(actual, expected);
-    }
+    // hg18
+    private static final SAMSequenceRecord CHR1_HG18 = new SAMSequenceRecord("chr1", 247249719);
+    private static final SAMSequenceRecord CHR2_HG18 = new SAMSequenceRecord("chr2", 242951149);
+    private static final SAMSequenceRecord CHR10_HG18 = new SAMSequenceRecord("chr10", 135374737);
+
+    // hg19
+    private static final SAMSequenceRecord CHR1_HG19 = new SAMSequenceRecord("chr1", 249250621);
+    private static final SAMSequenceRecord CHR2_HG19 = new SAMSequenceRecord("chr2", 243199373);
+    private static final SAMSequenceRecord CHR10_HG19 = new SAMSequenceRecord("chr10", 135534747);
+
+    // b36
+    private static final SAMSequenceRecord CHR1_B36 = new SAMSequenceRecord("1", 247249719);
+    private static final SAMSequenceRecord CHR2_B36 = new SAMSequenceRecord("2", 242951149);
+    private static final SAMSequenceRecord CHR10_B36 = new SAMSequenceRecord("10", 135374737);
+
+    // b37
+    private static final SAMSequenceRecord CHR1_B37 = new SAMSequenceRecord("1", 249250621);
+    private static final SAMSequenceRecord CHR2_B37 = new SAMSequenceRecord("2", 243199373);
+    private static final SAMSequenceRecord CHR10_B37 = new SAMSequenceRecord("10", 135534747);
 
     @DataProvider( name = "SequenceDictionaryDataProvider" )
     public Object[][] generateSequenceDictionaryTestData() {
@@ -202,17 +199,17 @@ public final class SequenceDictionaryUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test( dataProvider = "SequenceDictionaryDataProvider" )
-    public void testSequenceDictionaryValidation( final List<SAMSequenceRecord> firstDictionaryContigs,
-                                                  final List<SAMSequenceRecord> secondDictionaryContigs,
-                                                  final SequenceDictionaryUtils.SequenceDictionaryCompatibility dictionaryCompatibility, //not needed by this test
-                                                  final Class<? extends UserException> expectedExceptionUponValidation,
-                                                  final boolean requireSuperset,
-                                                  final boolean checkContigOrdering) {
+    public void testSequenceDictionaryValidation(final List<SAMSequenceRecord> firstDictionaryContigs,
+                                                 final List<SAMSequenceRecord> secondDictionaryContigs,
+                                                 final SAMSequenceDictionaryUtils.SequenceDictionaryCompatibility dictionaryCompatibility, //not needed by this test
+                                                 final Class<? extends UserException> expectedExceptionUponValidation,
+                                                 final boolean requireSuperset,
+                                                 final boolean checkContigOrdering) {
         final SAMSequenceDictionary firstDictionary = createSequenceDictionary(firstDictionaryContigs);
         final SAMSequenceDictionary secondDictionary = createSequenceDictionary(secondDictionaryContigs);
         final String testDescription = String.format("First dictionary: %s  Second dictionary: %s",
-                SequenceDictionaryUtils.getDictionaryAsString(firstDictionary),
-                SequenceDictionaryUtils.getDictionaryAsString(secondDictionary));
+                SAMSequenceDictionaryUtils.getDictionaryAsString(firstDictionary),
+                SAMSequenceDictionaryUtils.getDictionaryAsString(secondDictionary));
         Exception exceptionThrown = null;
         try {
             SequenceDictionaryUtils.validateDictionaries(
@@ -239,28 +236,6 @@ public final class SequenceDictionaryUtilsUnitTest extends GATKBaseTest {
                             exceptionThrown != null ? exceptionThrown.getClass().getSimpleName() : "none",
                             testDescription));
         }
-    }
-
-    @Test( dataProvider = "SequenceDictionaryDataProvider" )
-    public void testSequenceDictionaryComparison( final List<SAMSequenceRecord> firstDictionaryContigs,
-                                                  final List<SAMSequenceRecord> secondDictionaryContigs,
-                                                  final SequenceDictionaryUtils.SequenceDictionaryCompatibility dictionaryCompatibility,
-                                                  final Class<? extends UserException> expectedExceptionUponValidation,
-                                                  final boolean requireSuperset,
-                                                  final boolean checkContigOrdering) {
-
-        final SAMSequenceDictionary firstDictionary = createSequenceDictionary(firstDictionaryContigs);
-        final SAMSequenceDictionary secondDictionary = createSequenceDictionary(secondDictionaryContigs);
-        final String testDescription = String.format("First dictionary: %s  Second dictionary: %s",
-                SequenceDictionaryUtils.getDictionaryAsString(firstDictionary),
-                SequenceDictionaryUtils.getDictionaryAsString(secondDictionary));
-
-        final SequenceDictionaryUtils.SequenceDictionaryCompatibility reportedCompatibility =
-                SequenceDictionaryUtils.compareDictionaries(firstDictionary, secondDictionary, checkContigOrdering);
-
-        Assert.assertTrue(reportedCompatibility == dictionaryCompatibility,
-                String.format("Dictionary comparison should have returned %s but instead returned %s. %s",
-                        dictionaryCompatibility, reportedCompatibility, testDescription));
     }
 
     @DataProvider(name = "StandardValidationIgnoresContigOrderData")
@@ -342,16 +317,4 @@ public final class SequenceDictionaryUtilsUnitTest extends GATKBaseTest {
         return new SAMSequenceDictionary(clonedContigs);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testGetContigNamesListExpectingException() {
-        getContigNamesList(null);
-    }
-
-    @Test
-    public void testGetContigNamesList() {
-
-        final SAMSequenceDictionary samSequenceDictionary = new SAMSequenceDictionary(Arrays.asList(CHR1_B37, CHR2_B37, CHR10_B37));
-
-        Assert.assertEquals(getContigNamesList(samSequenceDictionary), Arrays.asList("1", "2", "10"));
-    }
 }

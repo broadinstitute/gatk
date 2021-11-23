@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.dragstr;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceDictionaryUtils;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -8,7 +9,6 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.utils.BinaryTableReader;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dragstr.STRTableFile;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -76,8 +76,8 @@ public final class ComposeSTRTableFileIntegrationTest extends CommandLineProgram
         final STRTableFile actualTable = STRTableFile.open(new GATKPath(actualFile.toString()));
         final SAMSequenceDictionary actualDictionary = actualTable.dictionary();
         final SAMSequenceDictionary expectedDictionary = ReferenceUtils.loadFastaDictionary(testCase.dict);
-        Assert.assertSame(SequenceDictionaryUtils.compareDictionaries(actualDictionary, expectedDictionary, true),
-                SequenceDictionaryUtils.SequenceDictionaryCompatibility.IDENTICAL);
+        Assert.assertSame(SAMSequenceDictionaryUtils.compareDictionaries(actualDictionary, expectedDictionary, true),
+                SAMSequenceDictionaryUtils.SequenceDictionaryCompatibility.IDENTICAL);
         final Map<Integer, List<ExpectedLocus>> allExpected;
         try (final ExpectedTableReader reader = new ExpectedTableReader(testCase.dragenOutput)) {
             allExpected = reader.stream()
