@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -17,7 +18,7 @@ import java.io.IOException;
  * A unit test suite for the {@link FuncotatorDataSourceBundlerUtils} class.
  * Created by Hailey on 8/5/21.
  */
-public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgramTest {
+public class FuncotatorDataSourceBundlerUtilsUnitTest extends GATKBaseTest {
 
     //==================================================================================================================
     // Data Providers:
@@ -63,9 +64,9 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
     void testGetDatasourceBaseName(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String speciesName, final String expectedBaseName) {
 
         Assert.assertEquals(
-                expectedBaseName,
-                FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(kingdom, speciesName)
-        );
+                FuncotatorDataSourceBundlerUtils.getDatasourceBaseName(kingdom, speciesName),
+                expectedBaseName
+                );
     }
 
     @Test(dataProvider = "provideForTestGetFastaFileName")
@@ -94,6 +95,4 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends CommandLineProgram
             throw new GATKException("Error: IOException encountered during test execution!", ex);
         }
     }
-
-    //To do: write unit tests for testing with an invalid organism name and for testing with an invalid species name
 }

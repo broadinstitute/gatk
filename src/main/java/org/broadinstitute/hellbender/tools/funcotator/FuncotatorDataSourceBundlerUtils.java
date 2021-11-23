@@ -11,13 +11,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.DataSourceUtils;
 import org.broadinstitute.hellbender.utils.codecs.ProgressReportingDelegatingCodec;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.io.File;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,19 +38,15 @@ public class FuncotatorDataSourceBundlerUtils {
     private static final Logger logger = LogManager.getLogger(FuncotatorDataSourceBundlerUtils.class);
 
     //==================================================================================================================
-    // Private Static Members:
-
-//    // If we have already initialized the maps then there is no need to build them again:
-//    public static boolean haveInitializedMaps = false;
-
-    //==================================================================================================================
     // Public Static Members:
 
     public static final String ENSEMBL_VERSION                          = "51";
     public static final String SEPARATOR_CHARACTER                      = ".";
     public static final String SEQUENCE_TYPE_AND_STATUS                 = "cdna.all";
 
-    public static Map<String, Map<String, String>> orgNamesMapNames     = new LinkedHashMap<>();
+    public static final int NUM_UNIPROT_COLUMNS = 11;
+
+    private static final Map<String, Map<String, String>> orgNamesMapNames     = new LinkedHashMap<>();
 
     //==================================================================================================================
     // Static initializer:
@@ -60,49 +55,6 @@ public class FuncotatorDataSourceBundlerUtils {
     static {
         initializeListsAndMaps();
     }
-
-    //==================================================================================================================
-    // Public Static Methods:
-
-//    /**
-//     * Return the file name associated with the given species and organism.
-//     * Note: This function uses the buildMaps helper function which builds all five maps
-//     * instead of one, so this function takes longer than buildMapGetFileName.
-//     * @param orgName Name of the chosen organism.
-//     * @param speciesName Name of the chosen species.
-//     */
-//    public static String getDSFileName(final String orgName, final String speciesName) {
-//
-//        // Initialize the maps from species name to species file name for each organism:
-//        buildMaps();
-//
-//        // Get the map for this organism:
-//        Map<String, String> tempMap = orgNamesMapNames.get(orgName);
-//
-//        // Check to see if specified species name is valid and if so, return the corresponding file name:
-//        if (tempMap.get(speciesName) == null) {
-//            throw new UserException.BadInput("Given species name: " + speciesName + " is not a valid species for organism: " + orgName + "!");
-//        }
-//        else {
-//            return tempMap.get(speciesName);
-//        }
-//    }
-
-//    /**
-//     * Builds all five maps from species name to file name for the regular data sources.
-//     */
-//    public static void buildMaps() {
-//
-//        buildListsAndMaps();
-//
-//        // Looping through each organism in our list of valid organisms to initialize their maps from species name to species file name:
-//        for (final String orgName : orgNameKeys) {
-//            String urlName =  DataSourceUtils.DATA_SOURCES_BASE_URL + DataSourceUtils.DATA_SOURCES_VERSION + orgName + "/" + orgNamesAndFileNames.get(orgName);
-//            readUniprotFile(urlName, orgName, false);
-//        }
-//
-//        haveInitializedMaps = true;
-//    }
 
     /**
      * @return The current date in numerical string format (YearMonthDay / yyyyMMdd).
@@ -186,11 +138,16 @@ public class FuncotatorDataSourceBundlerUtils {
         try {
             URL uniprotURL = new URL(urlFilePath);
             // Using Scanner object to read in the data on the web page specified by the given url:
-            try {
-                Scanner inputStream = new Scanner(uniprotURL.openStream());
+            try (final Scanner inputStream = new Scanner(uniprotURL.openStream())){
                 while (inputStream.hasNextLine()) {
                     String data = inputStream.nextLine();
                     String[] columnValues = data.split("\t");
+
+                    // Make sure we have the right number of columns:
+                    if (columnValues.length != NUM_UNIPROT_COLUMNS ) {
+                        throw new GATKException("Uniprot file contains unexpected number of columns: " + columnValues.length + " != " + NUM_UNIPROT_COLUMNS);
+                    }
+
                     // Second column is the species name, these will be the keys in the map from species name to file name:
                     keys.add(columnValues[1]);
 
@@ -210,9 +167,7 @@ public class FuncotatorDataSourceBundlerUtils {
                         // Otherwise, add the ensembl version number for regular data files:
                         values.add(fileName + "." + ENSEMBL_VERSION);
                     }
-
                 }
-                inputStream.close();
 
                 // Creating new linked hash map using keys and values lists and then putting this map as the value for the
                 // correct organism:
@@ -255,20 +210,12 @@ public class FuncotatorDataSourceBundlerUtils {
                 FeatureManager.getCodecForFile(featurePath), ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES);
         try {
             final Index index = IndexFactory.createDynamicIndex(featurePath, codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
-            if (index instanceof TabixIndex ) {
-                final Path indexPath = Tribble.tabixIndexPath(featurePath);
-                try {
-                    index.write(indexPath);
-                } catch (final IOException e) {
-                    throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
-                }
-            } else {
-                final Path indexPath = Tribble.indexPath(featurePath);
-                try {
-                    index.write(indexPath);
-                } catch (final IOException e) {
-                    throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
-                }
+            logger.info("Creating Tribble index.");
+            final Path indexPath = Tribble.indexPath(featurePath);
+            try {
+                index.write(indexPath);
+            } catch (final IOException e) {
+                throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexPath, e);
             }
         } catch ( TribbleException e) {
             // Underlying cause here is usually a malformed file, but can also be things like

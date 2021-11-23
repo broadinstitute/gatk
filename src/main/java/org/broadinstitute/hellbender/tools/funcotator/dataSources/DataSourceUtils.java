@@ -113,7 +113,7 @@ final public class DataSourceUtils {
     public static final String CONFIG_FILE_FIELD_NAME_LOOKAHEAD_CACHE_BP   = "lookAheadCacheBp";
 
     //==================================================================================================================
-    // Public Static Members:
+    // Public Static Members used by DataSourceBundler:
     public static final String DATA_SOURCES_BASE_URL                       = "http://ftp.ensemblgenomes.org/pub/";
     public static final String DATA_SOURCES_VERSION                        = "current/";
     public static final String OTHER_CURRENT_EXTENSION                     = "current_gtf/";

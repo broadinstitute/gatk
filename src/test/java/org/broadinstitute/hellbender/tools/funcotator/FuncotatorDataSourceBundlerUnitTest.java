@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -16,7 +19,7 @@ import java.nio.file.Path;
  * Created by Hailey on 8/3/21.
  */
 
-public class FuncotatorDataSourceBundlerUnitTest extends CommandLineProgramTest{
+public class FuncotatorDataSourceBundlerUnitTest extends GATKBaseTest {
 
     //==================================================================================================================
     // Data Providers:
@@ -33,15 +36,12 @@ public class FuncotatorDataSourceBundlerUnitTest extends CommandLineProgramTest{
 
     @Test(dataProvider = "provideForTestMakeDataSourcesFolderStructure")
     public void testMakeDataSourcesFolderStructure(final String speciesName) {
+        final Path   tempDir    = BaseTest.getSafeNonExistentPath(speciesName);
+        IOUtils.deleteOnExit(tempDir);
 
-        try {
-            final Path   tempDir    = Files.createTempDirectory(speciesName);
-            final String folderName = tempDir.toString() + "data_sources_" + speciesName;
+        final String folderName = tempDir.toString() + "/" + "data_sources_" + speciesName;
+        FuncotatorDataSourceBundler.makeDataSourcesFolderStructure(folderName, speciesName, true);
 
-            FuncotatorDataSourceBundler.makeDataSourcesFolderStructure(folderName, speciesName);
-        }
-        catch ( final IOException ex ) {
-            throw new UserException("Could not complete test!", ex);
-        }
+        Assert.assertTrue(Files.exists(IOUtils.getPath(folderName)));
     }
 }

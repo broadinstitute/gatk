@@ -37,6 +37,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
     //==================================================================================================================
     // Public Static Members:
     public static final String ENSEMBL_CONFIG_NAME        = "ensembl.config";
+    public static final int ENSEMBL_VERSION               = 104;
     public static final String MANIFEST_FILE_NAME         = "MANIFEST.txt";
     public static final String TEMPLATE_CONFIG_FILE_NAME  = "template.config";
     public static final String README_FILE_NAME           = "README.txt";
@@ -50,35 +51,28 @@ public class FuncotatorDataSourceBundlerHttpClient {
     // Private Members:
 
     // Data variables:
-    protected Path outputFolder;
+    private final Path outputFolder;
 
-    protected FuncotatorDataSourceBundler.OrganismKingdom kingdom;
-    protected String fileName;
-    protected String fastaFileName;
-    protected String dsURL;
-    protected Path dsPath;
-    protected Path dsUnzipPath;
-    protected String dsFastaURL;
-    protected Path dsFastaPath;
-    protected Path   dsFastaUnzipPath;
-    protected Path   gtfIndexFilePath;
-    protected String speciesName;
-    protected Path outputDestination;
-    protected Path outputUnzippedDest;
-    protected Path outputFastaDest;
-    protected Path outputFastaUnzipDest;
-    protected Path outputIndexDest;
-    protected Path configFilePath;
-    protected Path metadataFilePath;
-    protected String dsGtfReadMeURL;
-    protected String dsFastaReadMeURL;
-    protected Path dsGtfReadMePath;
-    protected Path dsFastaReadMePath;
-    protected Path dsFastaDictPath;
-    protected Path dsReorderedGtfPath;
-
-    // Copy buffer:
-    public static byte[] copyBuffer = new byte[BUFFER_SIZE_BYTES];
+    private final FuncotatorDataSourceBundler.OrganismKingdom kingdom;
+    private final String fileName;
+    private final String fastaFileName;
+    private final String dsURL;
+    private final Path dsPath;
+    private final Path dsUnzipPath;
+    private final String dsFastaURL;
+    private final Path dsFastaPath;
+    private final Path   dsFastaUnzipPath;
+    private final Path   gtfIndexFilePath;
+    private final String speciesName;
+    private final Path outputDestination;
+    private final Path outputFastaDest;
+    private final Path configFilePath;
+    private final Path metadataFilePath;
+    private final String dsGtfReadMeURL;
+    private final String dsFastaReadMeURL;
+    private final Path dsGtfReadMePath;
+    private final Path dsFastaReadMePath;
+    private final Path dsReorderedGtfPath;
 
     //==================================================================================================================
     // Constructors:
@@ -112,10 +106,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
         this.gtfIndexFilePath     = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + "." + DataSourceUtils.GTF_GZ_EXTENSION + DataSourceUtils.IDX_EXTENSION);
 
         this.outputDestination    = this.dsPath.toAbsolutePath();
-        this.outputUnzippedDest   = this.dsUnzipPath.toAbsolutePath();
         this.outputFastaDest      = this.dsFastaPath.toAbsolutePath();
-        this.outputFastaUnzipDest = this.dsFastaUnzipPath.toAbsolutePath();
-        this.outputIndexDest      = this.gtfIndexFilePath.toAbsolutePath();
 
         this.configFilePath       = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + ENSEMBL_CONFIG_NAME);
         this.metadataFilePath     = IOUtils.getPath(outputFolder + "/");
@@ -125,7 +116,6 @@ public class FuncotatorDataSourceBundlerHttpClient {
 
         this.dsGtfReadMePath      = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.GTF_README_EXTENSION);
         this.dsFastaReadMePath    = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + DataSourceUtils.FASTA_README_EXTENSION);
-        this.dsFastaDictPath      = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.FASTA_DICT_EXTENSION);
         this.dsReorderedGtfPath   = IOUtils.getPath(outputFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName + "/" + fileName + DataSourceUtils.REORDERED_EXTENSION + DataSourceUtils.GTF_UNZIPPED_EXTENSION);
     }
 
@@ -165,7 +155,7 @@ public class FuncotatorDataSourceBundlerHttpClient {
         {
             buffer.write(
                 "name = Ensembl\n" +
-                "version = 104\n" +
+                "version = " + ENSEMBL_VERSION + "\n" +
                 "src_file = " + fileName + ".REORDERED.gtf"+ "\n" +
                 "origin_location = " + dsURL + " \n" +
                 "preprocessing_script = FuncotatorDataSourceBundler \n" +
@@ -421,6 +411,11 @@ public class FuncotatorDataSourceBundlerHttpClient {
         // Creating an HttpGet object to send the request to the server:
         final HttpGet request = new HttpGet(url);
 
+        // Copy buffer:
+        byte[] copyBuffer = new byte[BUFFER_SIZE_BYTES];
+
+        int totalBytesRead = 0;
+        int byteCounter = 0;
         try {
             // Using an HttpResponse class object to catch the response from the server
             final HttpResponse response = client.execute(request);
@@ -444,6 +439,14 @@ public class FuncotatorDataSourceBundlerHttpClient {
 
                     // Write to our output:
                     outputStream.write(copyBuffer, 0, bytesRead);
+
+                    // Let user know we're actually doing something.
+                    byteCounter += bytesRead;
+                    totalBytesRead += bytesRead;
+                    if (byteCounter > (1024 * 1024 * 100)) {
+                        logger.info("Bytes downloaded: " + totalBytesRead);
+                        byteCounter = 0;
+                    }
                 }
             }
             catch (final IOException ex) {

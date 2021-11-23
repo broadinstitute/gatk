@@ -69,7 +69,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     // Tests:
 
     @Test(dataProvider = "provideForTestDownload", groups = { "cloud" })
-    void testDownloadRealDataSources(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String dsSpeciesArg) {
+    public void testDownloadRealDataSources(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String dsSpeciesArg) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.add(FuncotatorDataSourceBundler.ORGANISM_KINGDOM_ARG_LONG_NAME, kingdom);
         arguments.add(FuncotatorDataSourceBundler.SPECIES_ARG_LONG_NAME, dsSpeciesArg);
@@ -86,7 +86,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     // To do: need to make some integration tests for running with incorrect input arguments
 
     @Test(dataProvider = "provideForTestDownloadWrong", groups = { "cloud" }, expectedExceptions = UserException.BadInput.class)
-    void testDownloadWrongDataSources(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String dsSpeciesArg) {
+    public void testDownloadWrongDataSources(final FuncotatorDataSourceBundler.OrganismKingdom kingdom, final String dsSpeciesArg) {
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.add(FuncotatorDataSourceBundler.ORGANISM_KINGDOM_ARG_LONG_NAME, kingdom);
         arguments.add(FuncotatorDataSourceBundler.SPECIES_ARG_LONG_NAME, dsSpeciesArg);
@@ -98,7 +98,7 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
     }
 
     @Test(groups = { "cloud" })
-    void testDownloadDatasourcesWithValidation() {
+    public void testDownloadDatasourcesWithValidation() {
 
         final FuncotatorDataSourceBundler.OrganismKingdom kingdom      = FuncotatorDataSourceBundler.OrganismKingdom.BACTERIA;
         final String                                      dsSpeciesArg = "absiella_dolichum_dsm_3991_gca_000154285";

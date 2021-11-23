@@ -34,15 +34,56 @@ import java.util.stream.Collectors;
  * </p>
  *
  * <p>
- * To download, package and extract the data sources, you can invoke {@link FuncotatorDataSourceBundler} in the following way:
+ * The currently supported kingdoms are:
+ * </p>
+ * <ul>
+ *     <li>bacteria</li>
+ *     <li>protists</li>
+ *     <li>fungi</li>
+ *     <li>plants</li>
+ *     <li>metazoa</li>
+ * </ul>
+ *
+ * <p>
+ *     A list of supported species for each kingdom can be found at the following web addresses:
+ * </p>
+ * <table>
+ *     <th>
+ *         <td>Kingdom</td><td>Web Address(es)</td>
+ *     </th>
+ *     <tr>
+ *         <td>bacteria</td>
+ *         <td><a href="http://ftp.ensemblgenomes.org/pub/bacteria/current/uniprot_report_EnsemblBacteria.txt">http://ftp.ensemblgenomes.org/pub/bacteria/current/uniprot_report_EnsemblBacteria.txt</a></td>
+ *     </tr>
+ *     <tr>
+ *         <td>protists</td>
+ *         <td><a href="http://ftp.ensemblgenomes.org/pub/protists/current/uniprot_report_EnsemblProtists.txt">http://ftp.ensemblgenomes.org/pub/protists/current/uniprot_report_EnsemblProtists.txt</a></td>
+ *     </tr>
+ *     <tr>
+ *         <td>fungi</td>
+ *         <td><a href="http://ftp.ensemblgenomes.org/pub/fungi/current/uniprot_report_EnsemblFungi.txt">http://ftp.ensemblgenomes.org/pub/fungi/current/uniprot_report_EnsemblFungi.txt</a></td>
+ *     </tr>
+ *     <tr>
+ *         <td>plants</td>
+ *         <td><a href="http://ftp.ensemblgenomes.org/pub/plants/current/uniprot_report_EnsemblPlants.txt">http://ftp.ensemblgenomes.org/pub/plants/current/uniprot_report_EnsemblPlants.txt</a></td>
+ *     </tr>
+ *     <tr>
+ *         <td>metazoa</td>
+ *         <td><a href="http://ftp.ensemblgenomes.org/pub/metazoa/current/uniprot_report_EnsemblMetazoa.txt">http://ftp.ensemblgenomes.org/pub/metazoa/current/uniprot_report_EnsemblMetazoa.txt</a></td>
+ *     </tr>
+ * </table>
+ *
+ * <p>
+ * To download, package and extract the data sources, you can invoke {@link FuncotatorDataSourceBundler} as follows:
  *      <ul>
  *          ./gatk FuncotatorDataSourceBundler \
- *          -organismName \
- *          -species-name speciesName \
+ *          --organism-kingdom kingdom \
+ *          --species-name speciesName \
  *          -O outputFile \
  *          --overwrite-output-file
  *          --extract-data-source
  *      </ul>
+ * Note: Both a kingdom and a species are required.
  * </p>
  *
  * <h3>Notes</h3>
@@ -126,7 +167,8 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
 
     @Argument(shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName  = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "Output location for the data sources.")
+            doc = "Output location for the data sources.  Cannot be a bucket.",
+            optional = true)
     private String outputDatasourcesFolder = null;
 
     //==================================================================================================================
@@ -166,9 +208,15 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             outputFolder = this.speciesName + "_dataSources.v0.0." + FuncotatorDataSourceBundlerUtils.getCurrentDateString();
         }
 
+        // Check if the output folder exists:
+        if (Files.exists(IOUtils.getPath(outputFolder)) && !overwriteOutputFile) {
+            logger.error("Output folder already exists: " + outputFolder);
+            throw new UserException("Output folder for datasources already exists (" + outputFolder + ").  Cannot continue.");
+        }
+
         // Make folders to put data sources in:
         logger.info("Creating output folder for datasources: " + outputFolder);
-        makeDataSourcesFolderStructure(outputFolder, this.speciesName);
+        makeDataSourcesFolderStructure(outputFolder, this.speciesName, overwriteOutputFile);
 
         // Make the bundler object:
         final FuncotatorDataSourceBundlerHttpClient bundler = new FuncotatorDataSourceBundlerHttpClient(
@@ -240,7 +288,12 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
      * Create a folder with the given path or raise an exception.
      * @param baseFolder The name of the base folder for the new data sources.
      */
-    private static void makeFolderOrFail(final Path baseFolder) {
+    private static void makeFolderOrFail(final Path baseFolder, final Boolean existOK) {
+
+        if (Files.exists(baseFolder) && existOK) {
+            return;
+        }
+
         final boolean success = baseFolder.toAbsolutePath().toFile().mkdir();
         if (!success) {
             throw new UserException("Unable to make file.");
@@ -252,15 +305,15 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
      * @param baseFolder The name of the base folder for the new data sources.
      * @param speciesName The name of the species for which to create data sources.
      */
-    public static void makeDataSourcesFolderStructure(final String baseFolder, final String speciesName) {
+    public static void makeDataSourcesFolderStructure(final String baseFolder, final String speciesName, final Boolean overwriteOutputFile) {
         // Base folder:
-        makeFolderOrFail(IOUtils.getPath(baseFolder));
+        makeFolderOrFail(IOUtils.getPath(baseFolder), overwriteOutputFile);
 
         // Subfolder for GTF:
-        makeFolderOrFail(IOUtils.getPath(baseFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION));
+        makeFolderOrFail(IOUtils.getPath(baseFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION), overwriteOutputFile);
 
         // Subfolder for species:
-        makeFolderOrFail(IOUtils.getPath(baseFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName));
+        makeFolderOrFail(IOUtils.getPath(baseFolder + "/" + DataSourceUtils.ENSEMBL_EXTENSION + "/" + speciesName), overwriteOutputFile);
     }
 }
 
