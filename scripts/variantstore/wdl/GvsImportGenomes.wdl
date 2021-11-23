@@ -198,7 +198,7 @@ task CreateLoadStatusTempTable {
         UUID=$(cat /proc/sys/kernel/random/uuid)
 
         LOAD_STATUS_TABLE="~{dataset_name}.sample_load_status_${UUID}"
-        echo $LOAD_STATUS_TABLE > table_name.txt
+        echo "~{project_id}.${LOAD_STATUS_TABLE}" > fq_table_name.txt
 
         # create a temp table with the sample_names
         bq --project_id=~{project_id} mk ${LOAD_STATUS_TABLE} "sample_id:INTEGER"
@@ -211,7 +211,7 @@ task CreateLoadStatusTempTable {
         cpu: 1
     }
     output {
-        String fq_load_status_table_name = read_string("table_name.txt")
+        String fq_load_status_table_name = read_string("fq_table_name.txt")
     }
 }
 
