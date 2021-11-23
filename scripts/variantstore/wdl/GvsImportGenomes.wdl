@@ -200,8 +200,8 @@ task CreateLoadStatusTempTable {
         LOAD_STATUS_TABLE="~{dataset_name}.sample_load_status_${UUID}"
         echo "~{project_id}.${LOAD_STATUS_TABLE}" > fq_table_name.txt
 
-        # create a temp table with the sample_names
-        bq --project_id=~{project_id} mk ${LOAD_STATUS_TABLE} "sample_id:INTEGER"
+        # create a temp table with the sample_names, expires after 7 days
+        bq --project_id=~{project_id} mk --expiration 604800 ${LOAD_STATUS_TABLE} "sample_id:INTEGER"
 
     >>>
     runtime {
@@ -404,9 +404,7 @@ task SetIsLoadedColumn {
 
     # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true " \
-    "WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE total_logical_bytes > 0 AND table_name LIKE \"vet_%\") " \
-    "OR sample_id IN (SELECT sample_id FROM ~{fq_load_status_table_name})"
+    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE total_logical_bytes > 0 AND table_name LIKE \"vet_%\") OR sample_id IN (SELECT sample_id FROM `~{fq_load_status_table_name})`"
 
     bq --project_id=~{project_id} rm -f -t ~{fq_load_status_table_name}
   >>>
