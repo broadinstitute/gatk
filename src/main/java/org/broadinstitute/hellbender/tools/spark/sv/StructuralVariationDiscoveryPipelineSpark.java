@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceDictionaryUtils;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.logging.log4j.LogManager;
@@ -305,7 +306,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
         final Broadcast<SAMFileHeader> headerBroadcast = svDiscoveryInputMetaData.getSampleSpecificData().getHeaderBroadcast();
         final SAMFileHeader headerForReads = headerBroadcast.getValue();
         final SAMReadGroupRecord contigAlignmentsReadGroup = new SAMReadGroupRecord(SVUtils.GATKSV_CONTIG_ALIGNMENTS_READ_GROUP_ID);
-        final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(referenceSequenceDictionaryBroadcast.getValue());
+        final List<String> refNames = SAMSequenceDictionaryUtils.getContigNamesList(referenceSequenceDictionaryBroadcast.getValue());
 
         return ctx.parallelize(
                 assembledEvidenceResults
@@ -391,7 +392,7 @@ public class StructuralVariationDiscoveryPipelineSpark extends GATKSparkTool {
                                                                                    final JavaSparkContext ctx) {
 
             final SAMFileHeader cleanHeader = new SAMFileHeader(header.getSequenceDictionary());
-            final List<String> refNames = SequenceDictionaryUtils.getContigNamesList(header.getSequenceDictionary());
+            final List<String> refNames = SAMSequenceDictionaryUtils.getContigNamesList(header.getSequenceDictionary());
 
             return ctx.parallelize(alignedAssemblyOrExcuseList)
                     .filter(AlignedAssemblyOrExcuse::isNotFailure)
