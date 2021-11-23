@@ -144,7 +144,7 @@ task CheckForDuplicateData {
       "WITH items as (SELECT s.sample_id, s.sample_name, s.is_loaded FROM ${TEMP_TABLE} t left outer join ${SAMPLE_INFO_TABLE} s on (s.sample_name = t.sample_name)) " \
       "SELECT i.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%' OR table_name like 'pet_%')" \
       "UNION DISTINCT " \
-      "SELECT i.sample_name FROM items WHERE is_loaded = True " \
+      "SELECT i.sample_name FROM items i WHERE i.is_loaded = True " \
       | sed -e '/sample_name/d' > duplicates
 
       # remove the temp table
