@@ -49,6 +49,13 @@ workflow GvsImportGenomes {
       service_account_json_path = service_account_json_path
   }
 
+  call CreateLoadStatusTempTable {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      service_account_json_path = service_account_json_path
+  }
+
   call CreateFOFNs {
     input:
         input_vcf_list = write_lines(input_vcfs),
@@ -62,6 +69,7 @@ workflow GvsImportGenomes {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
+        fq_load_status_table_name = CreateLoadStatusTempTable.fq_load_status_table_name,
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
@@ -80,11 +88,10 @@ workflow GvsImportGenomes {
   call SetIsLoadedColumn {
     input:
       load_done = LoadData.done,
-      dataset_name = dataset_name,
-      gvs_ids = GetSampleIds.gvs_ids,
-      service_account_json_path = service_account_json_path,
       project_id = project_id,
-      preemptible_tries = preemptible_tries
+      dataset_name = dataset_name,
+      fq_load_status_table_name = CreateLoadStatusTempTable.fq_load_status_table_name,
+      service_account_json_path = service_account_json_path,
   }
 
 
@@ -134,9 +141,11 @@ task CheckForDuplicateData {
     # check the INFORMATION_SCHEMA.PARTITIONS table to see if any of input sample names/ids have data loaded into their partitions
     # this returns the list of sample names that do already have data loaded
     bq --location=US --project_id=~{project_id} query --format=csv -n ~{num_samples} --use_legacy_sql=false \
-      "WITH items as (SELECT s.sample_id, s.sample_name FROM ${TEMP_TABLE} t left outer join ${SAMPLE_INFO_TABLE} s on (s.sample_name = t.sample_name)) " \
-      "SELECT i.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND table_name like 'pet_%'" | \
-      sed -e '/sample_name/d' > duplicates
+      "WITH items as (SELECT s.sample_id, s.sample_name, s.is_loaded FROM ${TEMP_TABLE} t left outer join ${SAMPLE_INFO_TABLE} s on (s.sample_name = t.sample_name)) " \
+      "SELECT i.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%' OR table_name like 'pet_%')" \
+      "UNION DISTINCT " \
+      "SELECT i.sample_name FROM items WHERE is_loaded = True " \
+      | sed -e '/sample_name/d' > duplicates
 
       # remove the temp table
       bq --project_id=~{project_id} rm -f -t ${TEMP_TABLE}
@@ -160,6 +169,50 @@ task CheckForDuplicateData {
       Boolean done = true
       File? duplicates = "duplicates"
   }
+}
+
+task CreateLoadStatusTempTable {
+    input {
+        String project_id
+        String dataset_name
+        String? service_account_json_path
+    }
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    meta {
+        volatile: true
+    }
+
+    command <<<
+        set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
+          gcloud config set project ~{project_id}
+        fi
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        UUID=$(cat /proc/sys/kernel/random/uuid)
+
+        LOAD_STATUS_TABLE="~{dataset_name}.sample_load_status_${UUID}"
+        echo $LOAD_STATUS_TABLE > table_name.txt
+
+        # create a temp table with the sample_names
+        bq --project_id=~{project_id} mk ${LOAD_STATUS_TABLE} "sample_id:INTEGER"
+
+    >>>
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        disks: "local-disk 10 HDD"
+        cpu: 1
+    }
+    output {
+        String fq_load_status_table_name = read_string("table_name.txt")
+    }
 }
 
 task CreateFOFNs {
@@ -201,6 +254,7 @@ task LoadData {
     Array[String] sample_names
     File interval_list
     File sample_map
+    String fq_load_status_table_name
     String? service_account_json_path
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
@@ -225,8 +279,6 @@ task LoadData {
 
   meta {
     description: "Load data into BigQuery using the Write Api"
-
-    # TODO: is this right?  should this call cache?
     volatile: true
   }
 
@@ -279,6 +331,7 @@ task LoadData {
               --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
               --project-id ~{project_id} \
               --dataset-name ~{dataset_name} \
+              --fq-load-status-table-name ~{fq_load_status_table_name} \
               --output-type BQ \
               --enable-reference-ranges ~{load_ref_ranges} \
               --enable-pet ~{load_pet} \
@@ -332,13 +385,11 @@ task SetIsLoadedColumn {
     Array[String] load_done
     String dataset_name
     String project_id
-    File gvs_ids
+    String fq_load_status_table_name
     String? service_account_json_path
-    Int? preemptible_tries
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-  Array[String] gvs_id_array = read_lines(gvs_ids)
 
   command <<<
     set -ex
@@ -353,14 +404,17 @@ task SetIsLoadedColumn {
 
     # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE partition_id in ('~{sep="\',\'" gvs_id_array}') AND total_logical_bytes > 0 AND table_name LIKE \"vet_%\")"
+    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true " \
+    "WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE total_logical_bytes > 0 AND table_name LIKE \"vet_%\") " \
+    "OR sample_id IN (SELECT sample_id FROM ~{fq_load_status_table_name})"
+
+    bq --project_id=~{project_id} rm -f -t ~{fq_load_status_table_name}
   >>>
 
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
-    preemptible: select_first([preemptible_tries, 5])
     cpu: 1
   }
 

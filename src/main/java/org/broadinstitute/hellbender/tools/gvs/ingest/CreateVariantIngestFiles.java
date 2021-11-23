@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
@@ -21,10 +22,14 @@ import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.bigquery.CommittedBQWriter;
+import org.broadinstitute.hellbender.utils.bigquery.PendingBQWriter;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Ingest variant walker
@@ -104,6 +109,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public String sampleNameParam;
 
+    @Argument(fullName = "fq-load-status-table-name",
+            doc = "Table to insert the sample_id when a sample has been successfully loaded",
+            optional = true)
+    public String fqLoadStatusTableName;
+
     @Argument(fullName = "output-type",
             shortName = "ot",
             doc = "[Experimental] Output file format: TSV, ORC, PARQUET or BQ [default=TSV].",
@@ -176,6 +186,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             sampleId = String.valueOf(sampleIdParam);
         } else {
             sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
+        }
+
+        // ensure this is a fully qualified table name with three components
+        if (fqLoadStatusTableName != null && fqLoadStatusTableName.split("\\.").length != 3) {
+            throw new IllegalArgumentException("fq-load-status-table-name must be a fully qualified name <project>.<dataset>.<table>");
         }
 
         // TODO when we pass in the full file path or gvs_id as an input arg, use path here instead or gvs_id in addition
@@ -257,8 +272,31 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // Wait until all data has been submitted and in pending state to commit
             refCreator.commitData();
         }
+
         if (vetCreator != null && enableVet) {
             vetCreator.commitData();
+        }
+
+        // Update the "is_loaded" flag in the sample_info table
+        if (fqLoadStatusTableName != null) {
+
+            PendingBQWriter statusWriter = null;
+            try {
+                String[] parts = fqLoadStatusTableName.split("\\.");
+                statusWriter = new PendingBQWriter(parts[0], parts[1], parts[2]);
+
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sample_id", Long.parseLong(sampleId));
+                statusWriter.addJsonRow(jsonObject);
+                statusWriter.flushBuffer();
+                statusWriter.commitWriteStreams();
+            } catch (IOException | Descriptors.DescriptorValidationException | ExecutionException | InterruptedException e) {
+                throw new GATKException("Error writing sample load status", e);
+            } finally {
+                if (statusWriter != null) {
+                    statusWriter.close();
+                }
+            }
         }
         return 0;
     }
