@@ -227,8 +227,9 @@ public class ExtractCohortEngine {
             }
         } else {
             if (cohortTableRef != null) {
-                final StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID);
-                createVariantsFromUnsortedResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+                try (StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID)) {
+                    createVariantsFromUnsortedResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+                }
             } else {
                 final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);
                 createVariantsFromUnsortedResult(avroFileReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
@@ -816,12 +817,13 @@ public class ExtractCohortEngine {
                 // because it would break the clustering indexing
                 final String vetRowRestriction =
                         "location >= " + (minLocation - IngestConstants.MAX_DELETION_SIZE + 1)+ " AND location <= " + maxLocation + sampleRestriction;
-                final StorageAPIAvroReader vetReader = new StorageAPIAvroReader(vetTableRef, vetRowRestriction, projectID);
-                if (sortedVet == null) {
-                    sortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
-                }
+                try (StorageAPIAvroReader vetReader = new StorageAPIAvroReader(vetTableRef, vetRowRestriction, projectID)) {
+                    if (sortedVet == null) {
+                        sortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
+                    }
 
-                addToVetSortingCollection(sortedVet, vetReader, vbs);
+                    addToVetSortingCollection(sortedVet, vetReader, vbs);
+                }
             }
         }
         return sortedVet;
@@ -848,12 +850,13 @@ public class ExtractCohortEngine {
                 // NOTE: MUST be written as location >= minLocation - MAX_REFERENCE_BLOCK_BASES +1 to not break cluster pruning in BigQuery
                 final String refRowRestriction =
                         "location >= " + (minLocation - IngestConstants.MAX_REFERENCE_BLOCK_BASES + 1) + " AND location <= " + maxLocation + sampleRestriction;
-                final StorageAPIAvroReader refReader = new StorageAPIAvroReader(refTableRef, refRowRestriction, projectID);
-                if (sortedReferenceRange == null) {
-                    sortedReferenceRange = getAvroSortingCollection(refReader.getSchema(), localSortMaxRecordsInRam);
-                }
 
-                addToRefSortingCollection(sortedReferenceRange, refReader, vbs);
+                try (StorageAPIAvroReader refReader = new StorageAPIAvroReader(refTableRef, refRowRestriction, projectID)) {
+                    if (sortedReferenceRange == null) {
+                        sortedReferenceRange = getAvroSortingCollection(refReader.getSchema(), localSortMaxRecordsInRam);
+                    }
+                    addToRefSortingCollection(sortedReferenceRange, refReader, vbs);
+                }
             }
         }
 
