@@ -172,7 +172,7 @@ public class ExtractCohort extends ExtractTool {
             shortName = "irs",
             doc = "Reference state to be inferred from GVS, must match what was used during loading",
             optional = true)
-    public GQStateEnum inferredReferenceState = GQStateEnum.SIXTY;
+    public GQStateEnum inferredReferenceState = GQStateEnum.FORTY;
 
     protected static VCFHeader generateVcfHeader(Set<String> sampleNames,
                                                  final SAMSequenceDictionary sequenceDictionary,
