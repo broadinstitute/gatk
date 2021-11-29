@@ -16,7 +16,7 @@ workflow GvsImportGenomes {
     String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
 
     String? service_account_json_path
-    String? drop_state = "SIXTY"
+    String? drop_state = "FORTY"
     Boolean? drop_state_includes_greater_than = false
     Boolean load_pet = true
     Boolean load_ref_ranges = false
