@@ -6,7 +6,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.mutect.AlignmentData;
+import org.broadinstitute.hellbender.tools.walkers.mutect.AlignmentAndReferenceContext;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -74,7 +74,7 @@ public final class AssemblyRegion implements Locatable {
      */
     private boolean hasBeenFinalized;
 
-    private List<AlignmentData> alignmentData = new ArrayList<>();
+    private List<AlignmentAndReferenceContext> alignmentData = new ArrayList<>();
 
     /**
      * Create a new AssemblyRegion containing no reads
@@ -126,7 +126,7 @@ public final class AssemblyRegion implements Locatable {
      *
      * @return The list of AlignmentData objects associated with ActiveRegion.
      */
-    public List<AlignmentData> getAlignmentData() {
+    public List<AlignmentAndReferenceContext> getAlignmentData() {
         return alignmentData;
     }
 
@@ -134,7 +134,7 @@ public final class AssemblyRegion implements Locatable {
      * Method for adding alignment data to the collection of AlignmentData associated with
      * the ActiveRegion.
      */
-    public void addAllAlignmentData(List<AlignmentData> alignmentData) {
+    public void addAllAlignmentData(List<AlignmentAndReferenceContext> alignmentData) {
         this.alignmentData.addAll(alignmentData);
     }
 

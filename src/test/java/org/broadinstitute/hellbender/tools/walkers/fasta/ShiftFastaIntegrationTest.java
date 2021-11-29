@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.fasta;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.FastaTestUtils;
@@ -28,23 +27,4 @@ public class ShiftFastaIntegrationTest extends CommandLineProgramTest {
         FastaTestUtils.assertFastaFilesContainTheSameSequence(out.toPath(), SHIFTED_MITO_REF.toPath());
     }
 
-    @Test
-    public void testShift() {
-        final File out1 = BaseTest.createTempFile("shifted_example", ".fasta");
-        ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addReference(EXAMPLE_REF)
-                .addOutput(out1)
-                .add("shift-back-output", "shiftback.chain");
-
-        runCommandLine(args);
-
-        final File out2 = BaseTest.createTempFile("reshifted_example", ".fasta");
-        ArgumentsBuilder args2 = new ArgumentsBuilder();
-        args2.addReference(out1)
-                .addOutput(out2)
-                .add("shift-back-output", "shiftback.chain");
-
-        runCommandLine(args2);
-        FastaTestUtils.assertFastaFilesContainTheSameSequenceCaseInsensitive(out2.toPath(), EXAMPLE_REF.toPath());
-    }
 }

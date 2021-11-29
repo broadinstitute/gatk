@@ -247,17 +247,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
                 .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
 
-        // BG & AH create VariantContext list for our 2 additional snps
-/*
-        VariantContextBuilder firstSNP = new VariantContextBuilder("pileup", "gi|395136682|gb|CP003248.1|", 104814, 104814, Arrays.asList(Allele.create("T", true), Allele.create("G")));
-        VariantContextBuilder secondSNP = new VariantContextBuilder("pileup", "gi|395136682|gb|CP003248.1|", 104821, 104821, Arrays.asList(Allele.create("C", true), Allele.create("A")));
-        ArrayList<VariantContext> forcedPileupAlleles = new ArrayList<>(Arrays.asList(firstSNP.make(), secondSNP.make()));
-*/
-
-        List<VariantContext> forcedPileupAlleles = Collections.emptyList();
-        if(MTAC.usePileupDetection){
-            forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData());
-        }
+        final List<VariantContext> forcedPileupAlleles= MTAC.usePileupDetection ?
+                PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData()) :
+                Collections.emptyList();
 
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, givenAlleles, forcedPileupAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, MTAC.maxMnpDistance, assembledEventMapVcfOutputWriter);
@@ -501,7 +493,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      */
     private List<VariantContext> referenceModelForNoVariation(final AssemblyRegion region) {
         // don't correct overlapping base qualities because we did that upstream
-        AssemblyBasedCallerUtils.finalizeRegion(region, false, true, (byte)9, header, samplesList, false, false);  //take off soft clips and low Q tails before we calculate likelihoods
+        AssemblyBasedCallerUtils.finalizeRegion(region, false, true, (byte)9, header, samplesList, false, false, MTAC.usePileupDetection);  //take off soft clips and low Q tails before we calculate likelihoods
         final SimpleInterval paddedLoc = region.getPaddedSpan();
         final Haplotype refHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(region, paddedLoc, referenceReader);
         final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
