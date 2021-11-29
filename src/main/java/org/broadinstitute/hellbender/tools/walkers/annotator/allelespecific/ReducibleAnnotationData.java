@@ -18,7 +18,7 @@ public class ReducibleAnnotationData<T> {
      */
     public ReducibleAnnotationData(final String inputData) {
         rawData = inputData;
-        attributeMap = new HashMap<>();
+        attributeMap = new LinkedHashMap<>();
         attributeMap.put(Allele.NO_CALL, null);
     }
 
