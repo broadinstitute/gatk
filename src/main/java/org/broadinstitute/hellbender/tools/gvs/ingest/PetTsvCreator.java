@@ -372,6 +372,7 @@ public final class PetTsvCreator {
 
     // this is ugly.... I think we need to rework the enum to better handle the new use cases
     // but just getting this going.
+    // are we going to phase out the PET option? Can we clean this all up? or is the change to forty like exactly why this is important?
     public static Set<GQStateEnum> getGQStateEnumGreaterThan(GQStateEnum s){
         Set<GQStateEnum> ret = new HashSet<GQStateEnum>();
 
