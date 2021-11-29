@@ -4,7 +4,7 @@
   "GvsImportGenomes.external_samples_names": "${this.samples.research_id}",
 
   "GvsImportGenomes.interval_list": "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
-  "GvsImportGenomes.drop_state": "SIXTY",
+  "GvsImportGenomes.drop_state": "FORTY",
 
   "GvsImportGenomes.project_id": "PROJECT_ID",
   "GvsImportGenomes.dataset_name": "DATASET_NAME",
