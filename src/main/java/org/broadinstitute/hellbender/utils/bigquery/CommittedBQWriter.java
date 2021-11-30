@@ -13,7 +13,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-public class CommittedBQWriter {
+public class CommittedBQWriter implements AutoCloseable {
     static final Logger logger = LogManager.getLogger(CommittedBQWriter.class);
 
     protected BigQueryWriteClient bqWriteClient;
