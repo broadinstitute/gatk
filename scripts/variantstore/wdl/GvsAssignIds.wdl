@@ -33,7 +33,7 @@ workflow GvsAssignIds {
       preemptible_tries = preemptible_tries,
   }
 
-  call GvsCreateTables.CreateTables as CreateSampleInfoTable {
+  call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
     input:
         project_id = project_id,
         dataset_name = dataset_name,
