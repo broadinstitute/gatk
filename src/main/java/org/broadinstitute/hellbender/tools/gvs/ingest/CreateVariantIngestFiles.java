@@ -1,5 +1,15 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import com.google.api.core.ApiFuture;
+import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.Table;
+import com.google.cloud.bigquery.TableId;
+import com.google.cloud.bigquery.storage.v1beta2.AppendRowsResponse;
+import com.google.cloud.bigquery.storage.v1beta2.JsonStreamWriter;
+import com.google.cloud.bigquery.storage.v1beta2.TableName;
+import com.google.cloud.bigquery.storage.v1beta2.TableSchema;
 import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
@@ -24,10 +34,12 @@ import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
 import org.broadinstitute.hellbender.tools.gvs.extract.ExtractCohortFilterRecord;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.CommittedBQWriter;
 import org.broadinstitute.hellbender.utils.bigquery.PendingBQWriter;
 import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -54,6 +66,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private VetCreator vetCreator;
     private enum LoadStatus { STARTED, FINISHED };
     private List<String> LOAD_STATUS_TABLE_REF_FIELDS = Arrays.asList("sample_id", "status", "event_timestamp");
+    private TableName loadStatusTable;
+    private Schema loadStatusTableSchema;
+
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
     private String sampleName;
@@ -174,17 +189,29 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     }
 
     private void writeLoadStatus(LoadStatus status) {
-        try (PendingBQWriter statusWriter = new PendingBQWriter(projectID, datasetName, loadStatusTableName) ) {
+
+        // This uses the _default stream since it (a) commits immediately and (b) doesn't count
+        // towards the CreateStreamWriter quota
+        try (JsonStreamWriter writer =
+                     JsonStreamWriter.newBuilder(loadStatusTable.toString(), loadStatusTableSchema).build()) {
+
+            // Create a JSON object that is compatible with the table schema.
+            JSONArray jsonArr = new JSONArray();
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("sample_id", Long.parseLong(sampleId));
             jsonObject.put("status", status.toString());
-
             jsonObject.put("event_timestamp", System.currentTimeMillis());
-            statusWriter.addJsonRow(jsonObject);
-            statusWriter.flushBuffer();
-            statusWriter.commitWriteStreams();
-        } catch (IOException | Descriptors.DescriptorValidationException | ExecutionException | InterruptedException e) {
-            throw new GATKException("Error writing sample load status", e);
+            jsonArr.put(jsonObject);
+
+            ApiFuture<AppendRowsResponse> future = writer.append(jsonArr);
+            AppendRowsResponse response = future.get();
+
+            logger.info("Load status " + status + " appended successfully");
+        } catch (ExecutionException | InterruptedException | Descriptors.DescriptorValidationException | IOException e) {
+            // If the wrapped exception is a StatusRuntimeException, check the state of the operation.
+            // If the state is INTERNAL, CANCELLED, or ABORTED, you can retry. For more information, see:
+            // https://grpc.github.io/grpc-java/javadoc/io/grpc/StatusRuntimeException.html
+            throw new GATKException(e.getMessage());
         }
     }
 
@@ -237,6 +264,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // check the load status table to see if this sample has already been loaded...
         if (outputType == CommonCode.OutputType.BQ) {
+            BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
+            loadStatusTable = TableName.of(projectID, datasetName, loadStatusTableName);
+
+            Table table = bigquery.getTable(TableId.of(projectID, datasetName, loadStatusTableName));
+            loadStatusTableSchema = table.getDefinition().getSchema();
+
             verifySampleIsNotLoaded();
         }
 
