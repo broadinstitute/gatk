@@ -9,13 +9,12 @@ workflow GvsAssignIds {
     String project_id
     String dataset_name
     String sample_info_table = "sample_info"
-    String workspace_namespace
-    String workspace_name
     String? service_account_json_path
     Int? preemptible_tries
     File? gatk_override
     String? docker        
     String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"}]'
+    String sample_load_status_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
   }
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
@@ -34,6 +33,19 @@ workflow GvsAssignIds {
       preemptible_tries = preemptible_tries,
   }
 
+  call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
+    input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "sample_load_status",
+        schema_json = sample_load_status_json,
+        max_table_id=1,
+        superpartitioned = "false",
+        partitioned = "false",
+        service_account_json_path = service_account_json_path,
+        preemptible_tries = preemptible_tries,
+  }
+
   call AssignIds {
     input:
       sample_names = external_sample_names,
@@ -44,13 +56,6 @@ workflow GvsAssignIds {
       gatk_override = gatk_override,
       service_account_json_path = service_account_json_path,
       docker = docker_final,
-  }
-
-  call UpdateDataModel {
-    input:
-      workspace_namespace = workspace_namespace,
-      workspace_name = workspace_name,
-      gvs_ids_tsv = AssignIds.gvs_ids_tsv
   }
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
@@ -167,31 +172,3 @@ task AssignIds {
   }
 }
 
-task UpdateDataModel {
-  input {
-    String workspace_namespace
-    String workspace_name
-    File gvs_ids_tsv
-  }
-  meta {
-    description: "Assigns gvs_id attribute in data model"
-    volatile: true
-  }
-  command <<<
-      # update the data model
-      python3 <<CODE
-from firecloud import api as fapi
-response = fapi.upload_entities_tsv('~{workspace_namespace}', '~{workspace_name}', '~{gvs_ids_tsv}', 'flexible')
-if response.status_code != 200:
-  print(response.status_code)
-  print(response.text)
-  exit(1)
-CODE
-  >>>
-  runtime {
-      docker: "broadgdac/fiss"
-      memory: "3.75 GB"
-      disks: "local-disk " + 10 + " HDD"
-      cpu: 1
-  }
-}

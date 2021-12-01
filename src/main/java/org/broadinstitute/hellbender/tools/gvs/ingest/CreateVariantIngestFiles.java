@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -20,11 +22,21 @@ import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
+import org.broadinstitute.hellbender.tools.gvs.extract.ExtractCohortFilterRecord;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.bigquery.CommittedBQWriter;
+import org.broadinstitute.hellbender.utils.bigquery.PendingBQWriter;
+import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Ingest variant walker
@@ -40,6 +52,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private RefCreator refCreator;
     private VetCreator vetCreator;
+    private enum LoadStatus { STARTED, FINISHED };
+    private List<String> LOAD_STATUS_TABLE_REF_FIELDS = Arrays.asList("sample_id", "status", "event_timestamp");
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
     private String sampleName;
@@ -104,6 +118,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public String sampleNameParam;
 
+    @Argument(fullName = "load-status-table-name",
+            doc = "Table to insert the sample_id when a sample has been successfully loaded",
+            optional = true)
+    public String loadStatusTableName = "sample_load_status";
+
     @Argument(fullName = "output-type",
             shortName = "ot",
             doc = "[Experimental] Output file format: TSV, ORC, PARQUET or BQ [default=TSV].",
@@ -154,6 +173,21 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         return pathParts[pathParts.length - 1];
     }
 
+    private void writeLoadStatus(LoadStatus status) {
+        try (PendingBQWriter statusWriter = new PendingBQWriter(projectID, datasetName, loadStatusTableName) ) {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("sample_id", Long.parseLong(sampleId));
+            jsonObject.put("status", status.toString());
+
+            jsonObject.put("event_timestamp", System.currentTimeMillis());
+            statusWriter.addJsonRow(jsonObject);
+            statusWriter.flushBuffer();
+            statusWriter.commitWriteStreams();
+        } catch (IOException | Descriptors.DescriptorValidationException | ExecutionException | InterruptedException e) {
+            throw new GATKException("Error writing sample load status", e);
+        }
+    }
+
     @Override
     public void onTraversalStart() {
         //set up output directory
@@ -201,7 +235,22 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName);
         }
 
+        // check the load status table to see if this sample has already been loaded...
+        if (outputType == CommonCode.OutputType.BQ) {
+            verifySampleIsNotLoaded();
+        }
 
+    }
+
+    private void verifySampleIsNotLoaded() {
+        TableReference loadStatusTableRef = new TableReference(projectID, datasetName, loadStatusTableName, LOAD_STATUS_TABLE_REF_FIELDS);
+
+        try (StorageAPIAvroReader reader = new StorageAPIAvroReader(loadStatusTableRef, "sample_id = " + sampleId, projectID)) {
+            for (final GenericRecord queryRow : reader) {
+                // we expect NO records!!
+                throw new GATKException("Sample Id " + sampleId + " has already been (partially) loaded!");
+            }
+        }
     }
 
     @Override
@@ -248,6 +297,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        if (outputType == CommonCode.OutputType.BQ) {
+            writeLoadStatus(LoadStatus.STARTED);
+        }
+
         if (refCreator != null) {
             try {
                 refCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
@@ -257,9 +310,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // Wait until all data has been submitted and in pending state to commit
             refCreator.commitData();
         }
+
         if (vetCreator != null && enableVet) {
             vetCreator.commitData();
         }
+
+        // upload the load status table
+        if (outputType == CommonCode.OutputType.BQ) {
+            writeLoadStatus(LoadStatus.FINISHED);
+        }
+
         return 0;
     }
 

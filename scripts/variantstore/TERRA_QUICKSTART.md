@@ -43,15 +43,17 @@ These are the required parameters which must be supplied to the workflow:
 
 Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.
 
+This workflow should be run on a **sample set** as the root entity, for the quickstart that is the `gvs_demo_10` sample set.
+
 These are the required parameters which must be supplied to the workflow:
 
 | Parameter      | Description |
 | ----------------- | ----------- |
 | dataset_name      | The name of the dataset you created above       |
 | project_id | The name of the google project containing the dataset |
-| external_sample_names | from datamodel  (e.g `this.sample_id`)     |
-| gvs_sample_id | GVS Id for this sample; from datamodel (e.g. `this.gvs_id`) |
-| input_vcf | reblocked gvcf for this sample; from datamodel (e.g. `hg38_reblocked_gvcf`) |
+| external_sample_names | from datamodel  (e.g `this.samples.sample_id`)     |
+| input_vcf | reblocked gvcf for this sample; from datamodel (e.g. `this.samples.hg38_reblocked_gvcf`) |
+| input_vcf_indexes | reblocked gvcf indexes for this sample; from datamodel (e.g. `this.samples.hg38_reblocked_gvcf_index`) |
 | interval_list | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
 
 
