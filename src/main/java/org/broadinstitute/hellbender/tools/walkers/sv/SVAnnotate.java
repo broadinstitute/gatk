@@ -15,9 +15,9 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.ClosedSVInterval;
+import org.broadinstitute.hellbender.utils.ClosedSVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gtf.*;
 
@@ -561,8 +561,8 @@ public final class SVAnnotate extends VariantWalker {
         final List<SVSegment> intervals = new ArrayList<>();
         final String chrom = variant.getContig();
         final int pos = variant.getStart();
-        final String chr2 = variant.getAttributeAsString(GATKSVVCFConstants.END_CONTIG_ATTRIBUTE, "NONE");
-        final int end2 = variant.getAttributeAsInt(GATKSVVCFConstants.END_CONTIG_POSITION, pos); // TODO: what if no end2 for CTX, BND with 2nd break on other contig?
+        final String chr2 = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, "NONE");
+        final int end2 = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, pos); // TODO: what if no end2 for CTX, BND with 2nd break on other contig?
         if (overallSVType.equals(StructuralVariantAnnotationType.CPX)) {
             final List<String> cpxIntervalsString = variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, "NONE");
             for (String cpxInterval : cpxIntervalsString) {

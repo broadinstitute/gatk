@@ -1,6 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.sv.utils;
-
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+package org.broadinstitute.hellbender.utils;
 
 public final class ClosedSVInterval extends SVInterval {
     private final int contig;

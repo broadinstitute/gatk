@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import org.apache.commons.compress.utils.Sets;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.ClosedSVInterval;
+import org.broadinstitute.hellbender.utils.ClosedSVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfGeneFeature;

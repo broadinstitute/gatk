@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSetSpark;
 import org.broadinstitute.hellbender.tools.spark.utils.LongIterator;
+import org.broadinstitute.hellbender.utils.ClosedSVInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
