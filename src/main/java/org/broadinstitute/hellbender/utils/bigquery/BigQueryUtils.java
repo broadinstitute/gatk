@@ -151,7 +151,8 @@ public final class BigQueryUtils {
         Table table = bigquery.getTable(TableId.of(projectID, datasetName, tableName));
 
         StandardTableDefinition tdd = table.getDefinition();
-        Long rows = tdd.getStreamingBuffer().getEstimatedRows();
+        StandardTableDefinition.StreamingBuffer buffer = tdd.getStreamingBuffer();
+        Long rows = (buffer == null) ? 0 : buffer.getEstimatedRows();
         return (rows == null) ? 0 : rows.longValue();
     }
 
