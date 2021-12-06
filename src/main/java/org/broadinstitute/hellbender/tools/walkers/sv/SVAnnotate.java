@@ -95,7 +95,7 @@ public final class SVAnnotate extends VariantWalker {
     private Map<String, Integer> contigNameToID;
     private String[] contigIDToName;
     private int maxContigLength;
-    private enum StructuralVariantAnnotationType {
+    protected enum StructuralVariantAnnotationType {
         DEL,
         DUP,
         INS,
@@ -119,9 +119,12 @@ public final class SVAnnotate extends VariantWalker {
     protected static final class SVSegment {
         protected final StructuralVariantAnnotationType intervalSVType;
         protected final SimpleInterval interval;
-        private SVSegment(final StructuralVariantAnnotationType svType, final SimpleInterval interval) {
+        protected SVSegment(final StructuralVariantAnnotationType svType, final SimpleInterval interval) {
             this.intervalSVType = svType;
             this.interval = interval;
+        }
+        public boolean equals(SVSegment other) {
+            return this.interval.equals(other.interval) && this.intervalSVType.equals(other.intervalSVType);
         }
     }
 
@@ -493,7 +496,7 @@ public final class SVAnnotate extends VariantWalker {
         // TODO: return consequence instead? easier for unit tests...
     }
 
-    private StructuralVariantAnnotationType getSVType(final VariantContext variant) {
+    protected static StructuralVariantAnnotationType getSVType(final VariantContext variant) {
         // TODO: haha majorly clean this up
         // return variant.getStructuralVariantType().name();
         final Allele alt = variant.getAlternateAllele(0); // TODO: any chance of multiallelic alt field for SV?
@@ -540,12 +543,14 @@ public final class SVAnnotate extends VariantWalker {
     }
 
     private static StructuralVariantAnnotationType getAnnotationTypeForBreakend(VariantContext variant,
+                                                                                String complexType,
                                                                                 int maxBreakendLen, int svLen,
                                                                                 String chrom, String chr2) {
         StructuralVariantAnnotationType annotateAs = StructuralVariantAnnotationType.BND;
-        if (variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, "NONE").contains("CTX")) {
+        if (complexType.contains("CTX")) {
             annotateAs = StructuralVariantAnnotationType.CTX;
         } else if (maxBreakendLen > 0 && chrom.equals(chr2) && svLen <= maxBreakendLen) {
+            // if maxBreakendLenForOverlapAnnotation argument provided, annotate as DUP or DEL if applicable
             final String strand = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, "NONE");
             if (strand.equals(GATKSVVCFConstants.BND_DELETION_STRANDS)) {
                 annotateAs = StructuralVariantAnnotationType.DEL;
@@ -556,9 +561,10 @@ public final class SVAnnotate extends VariantWalker {
         return annotateAs;
     }
 
-    private static List<SVSegment> getSVSegments(VariantContext variant, StructuralVariantAnnotationType overallSVType,
+    protected static List<SVSegment> getSVSegments(VariantContext variant, StructuralVariantAnnotationType overallSVType,
                                           int maxBreakendLen) {
         final List<SVSegment> intervals = new ArrayList<>();
+        final String complexType = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, "NONE");
         final String chrom = variant.getContig();
         final int pos = variant.getStart();
         final String chr2 = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, "NONE");
@@ -568,6 +574,9 @@ public final class SVAnnotate extends VariantWalker {
             for (String cpxInterval : cpxIntervalsString) {
                 intervals.add(parseCPXIntervalString(cpxInterval));
             }
+            if (complexType.contains("dDUP")) {
+                intervals.add(new SVSegment(StructuralVariantAnnotationType.INS, new SimpleInterval(chrom, pos, pos + 1)));
+            }
         } else if (overallSVType.equals(StructuralVariantAnnotationType.CTX)) {
             intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));  // CHROM:POS-POS+1
             // annotate both breakpoints of translocation - CHR2:END2-END2+1
@@ -576,14 +585,25 @@ public final class SVAnnotate extends VariantWalker {
         } else if (overallSVType.equals(StructuralVariantAnnotationType.BND)){
             final int svLen = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0); // TODO: what if no SVLEN and chr2 == chrom?
             // if BND representation of CTX event, get intervals as if BND but annotate as CTX
-            StructuralVariantAnnotationType annotateAs = getAnnotationTypeForBreakend(variant, maxBreakendLen, svLen, chrom, chr2);
-            intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, pos, pos)));
-            if (chr2.equals(chrom)) {
-                intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, pos + svLen, pos + svLen)));
-            } else if (!chr2.equals("NONE")) {
-                // BND has CHR2 field and it is not equal to the main contig
-                intervals.add(new SVSegment(annotateAs, new SimpleInterval(chr2, end2, end2))); // if no end2 would just add duplicate segment which is ok
-            } // TODO: else parse ALT field? Or just annotate this position and annotate the rest in the other records?
+            StructuralVariantAnnotationType annotateAs = getAnnotationTypeForBreakend(variant, complexType, maxBreakendLen, svLen, chrom, chr2);
+            if (annotateAs.equals(StructuralVariantAnnotationType.DEL) || annotateAs.equals(StructuralVariantAnnotationType.DUP)) {
+                intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, pos, pos + svLen)));
+            } else {
+                intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, pos, pos)));
+                if (chr2.equals(chrom)) {
+                    // will either have END2 or SVLEN - check which is in INFO and use that for second breakpoint
+                    if (svLen > 0) {
+                        intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, pos + svLen, pos + svLen)));
+                    } else if (end2 != pos) {
+                        intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, end2, end2)));
+                    }
+                } else if (!chr2.equals("NONE")) {
+                    // BND has CHR2 field and it is not equal to the main contig
+                    intervals.add(new SVSegment(annotateAs, new SimpleInterval(chr2, end2, end2))); // if no end2 would just add duplicate segment which is ok
+                } // TODO: else parse ALT field? Or just annotate this position and annotate the rest in the other records?
+            }
+        } else if (overallSVType.equals(StructuralVariantAnnotationType.INS)) {
+            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chrom, pos, pos + 1)));
         } else {
             intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));
         }

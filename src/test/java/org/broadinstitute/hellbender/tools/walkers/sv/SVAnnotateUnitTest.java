@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.compress.utils.Sets;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.ClosedSVInterval;
@@ -14,6 +15,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.sql.Array;
 import java.util.*;
 
 import static java.util.Objects.isNull;
@@ -282,6 +284,166 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         expectedAfter.put(GATKSVVCFConstants.LOF, "HES4,KLHL17,NOC2L,PERM1,PLEKHN1");
 
         Assert.assertEquals(expectedAfter, SVAnnotate.formatVariantConsequenceDict(before));
+    }
+
+    // create list of SV segments with SAME SVTYPE - convenience function for testing
+    private List<SVAnnotate.SVSegment> createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType svType, SimpleInterval[] intervals) {
+        List<SVAnnotate.SVSegment> segments = new ArrayList<>();
+        for (SimpleInterval interval : intervals) {
+            segments.add(new SVAnnotate.SVSegment(svType, interval));
+        }
+        return segments;
+    }
+
+    private Map<String, SVAnnotate.StructuralVariantAnnotationType> createSVTypeByVariantIDMap() {
+        Map<String, SVAnnotate.StructuralVariantAnnotationType> SVTypeByVariantID = new HashMap<>();
+        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1", SVAnnotate.StructuralVariantAnnotationType.CTX);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M1", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M3", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_INV_chr2_5", SVAnnotate.StructuralVariantAnnotationType.INV);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M2", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M4", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_DEL_chr22_1", SVAnnotate.StructuralVariantAnnotationType.DEL);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_DUP_chr22_1", SVAnnotate.StructuralVariantAnnotationType.DUP);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_INS_chr22_1", SVAnnotate.StructuralVariantAnnotationType.INS);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_INS_chr22_2", SVAnnotate.StructuralVariantAnnotationType.INS);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_1", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_CNV_chr22_1", SVAnnotate.StructuralVariantAnnotationType.CNV);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_3", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_7", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_CPX_chr22_1", SVAnnotate.StructuralVariantAnnotationType.CPX);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_14", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_16", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_16_M1", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_16_M2", SVAnnotate.StructuralVariantAnnotationType.BND);
+        SVTypeByVariantID.put("ref_panel_1kg_v1_CPX_chr22_3", SVAnnotate.StructuralVariantAnnotationType.CPX);
+        return SVTypeByVariantID;
+    }
+
+    private Map<String, List<SVAnnotate.SVSegment>> createSegmentsByVariantIDMap() {
+        Map<String, List<SVAnnotate.SVSegment>> segmentsByVariantID = new HashMap<>();
+        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                        new SimpleInterval[]{ new SimpleInterval("chr2", 86263976, 86263977),
+                                new SimpleInterval("chr19", 424309, 424310) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M1",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                        new SimpleInterval[]{ new SimpleInterval("chr2", 86263976, 86263976) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M3",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                        new SimpleInterval[]{ new SimpleInterval("chr2", 86263977, 86263977) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_INV_chr2_5",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.INV,
+                        new SimpleInterval[]{ new SimpleInterval("chr2", 205522308, 205522384) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M2",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                        new SimpleInterval[]{ new SimpleInterval("chr19", 424309, 424309) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M4",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                        new SimpleInterval[]{ new SimpleInterval("chr19", 424310, 424310) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_DEL_chr22_1",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DEL,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 10510000, 10694100) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_DUP_chr22_1",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DUP,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 10524000, 10710000) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_INS_chr22_1",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.INS,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 10532563, 10532564) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_INS_chr22_2",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.INS,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 10572758, 10572759) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_1",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 10717890, 10717890),
+                                new SimpleInterval("chr22", 10723060, 10723060) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_CNV_chr22_1",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CNV,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 10774600, 10784500) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_3",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 10930458, 10930458),
+                                new SimpleInterval("chr22", 11564561, 11564561) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_7",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 17636024, 17636024),
+                                new SimpleInterval("chr22", 17646733, 17646733) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_CPX_chr22_1",
+                Arrays.asList(new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INV,
+                                new SimpleInterval("chr22", 20267228, 20267614)),
+                        new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.DUP,
+                                new SimpleInterval("chr22", 20267228, 20267614)),
+                        new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INS,
+                                new SimpleInterval("chr22", 18971159, 18971160))));
+        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_14",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 22120897, 22120897),
+                                new SimpleInterval("chrX", 126356858, 126356858) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_16",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 22196261, 22196261),
+                                new SimpleInterval("chr22", 22904986, 22904986) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_16_M1",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 22196261, 22196261) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_16_M2",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 22904986, 22904986) }));
+        segmentsByVariantID.put("ref_panel_1kg_v1_CPX_chr22_3",
+                Arrays.asList(new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.DUP,
+                                new SimpleInterval("chr22", 36533058, 36533299)),
+                        new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INV,
+                                new SimpleInterval("chr22", 36533058, 36538234))));
+        return segmentsByVariantID;
+    }
+
+    // create copy of segments answers and update as needed if maxBreakendLenForOverlapAnnotation = 15000
+    private Map<String, List<SVAnnotate.SVSegment>> createSegmentsByVariantIDMapForBNDOverlap(Map<String, List<SVAnnotate.SVSegment>> segmentsByVariantID) {
+        Map<String, List<SVAnnotate.SVSegment>> updated = new HashMap<>(segmentsByVariantID);
+        updated.put("ref_panel_1kg_v1_BND_chr22_1",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DUP,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 10717890, 10723060)}));
+        updated.put("ref_panel_1kg_v1_BND_chr22_7",
+                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DEL,
+                        new SimpleInterval[]{ new SimpleInterval("chr22", 17636024, 17646733)}));
+        return updated;
+    }
+
+    private void assertSegmentListEqual(List<SVAnnotate.SVSegment> segmentsA, List<SVAnnotate.SVSegment> segmentsB) {
+        int lengthA = segmentsA.size();
+        if (lengthA != segmentsB.size()) {
+            Assert.fail("Segment lists differ in length");
+        }
+        for (int i = 0; i < lengthA; i++) {
+            SVAnnotate.SVSegment segmentA = segmentsA.get(i);
+            SVAnnotate.SVSegment segmentB = segmentsB.get(i);
+            if (!segmentA.equals(segmentB)) {
+                Assert.fail("Segment items differ");
+            }
+        }
+    }
+
+    @Test
+    public void testGetSVTypeAndSegments() {
+        Map<String, SVAnnotate.StructuralVariantAnnotationType> SVTypeByVariantID = createSVTypeByVariantIDMap();
+        Map<String, List<SVAnnotate.SVSegment>> segmentsByVariantID = createSegmentsByVariantIDMap();
+        Map<String, List<SVAnnotate.SVSegment>> segmentsWithBNDOverlapsByVariantID = createSegmentsByVariantIDMapForBNDOverlap(segmentsByVariantID);
+        final File typesVCFFile = new File(getToolTestDataDir() + "types.vcf");
+        final FeatureDataSource<VariantContext> typesVariants = new FeatureDataSource<>(typesVCFFile);
+        for (VariantContext variant : typesVariants) {
+            final String variantID = variant.getID();
+            SVAnnotate.StructuralVariantAnnotationType actualSVType = SVAnnotate.getSVType(variant);
+            Assert.assertEquals(actualSVType, SVTypeByVariantID.get(variantID));
+
+            List<SVAnnotate.SVSegment> actualSegments = SVAnnotate.getSVSegments(variant, actualSVType, -1);
+            // Assert.assertEquals(actualSegments, segmentsByVariantID.get(variantID));
+            List<SVAnnotate.SVSegment> expectedSegments = segmentsByVariantID.get(variantID);
+            assertSegmentListEqual(actualSegments, expectedSegments);
+
+            List<SVAnnotate.SVSegment> actualSegmentsWithBNDOverlap = SVAnnotate.getSVSegments(variant, actualSVType, 15000);
+            // Assert.assertEquals(actualSegmentsWithBNDOverlap, segmentsByVariantID.get(variantID));
+            assertSegmentListEqual(actualSegmentsWithBNDOverlap, segmentsWithBNDOverlapsByVariantID.get(variantID));
+        }
     }
 
     // noncoding and promoter annotation unit tests
