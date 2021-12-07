@@ -172,8 +172,7 @@ public final class SVAnnotate extends VariantWalker {
 
     protected static int getTranscriptionStartSite(GencodeGtfTranscriptFeature transcript) {
         final boolean negativeStrand = isNegativeStrand(transcript);
-        final int tss = negativeStrand ? transcript.getEnd() : transcript.getStart();  // GTF codec reassigns start to be earlier in contig
-        return tss;
+        return negativeStrand ? transcript.getEnd() : transcript.getStart();  // GTF codec reassigns start to be earlier in contig;
     }
 
     protected static ClosedSVInterval getPromoterInterval(GencodeGtfTranscriptFeature transcript, int promoterWindow,
@@ -222,7 +221,7 @@ public final class SVAnnotate extends VariantWalker {
         for (final FullBEDFeature feature : BEDSource) {
             // BED feature already does start+1 conversion to closed interval
             try {
-                BEDIntervalTree.put(locatableToClosedSVInterval(feature, contigNameToID), feature.getName()); // TODO: handle this in a function to convert Locatable to SVInterval
+                BEDIntervalTree.put(locatableToClosedSVInterval(feature, contigNameToID), feature.getName());
             } catch (IllegalArgumentException e) {
                 continue;  // if BED input contains chromosome not in VCF sequence dictionary, just ignore it
             }
@@ -368,7 +367,7 @@ public final class SVAnnotate extends VariantWalker {
         if (MSVExonOverlapClassifications.contains(consequence)) {
             return GATKSVVCFConstants.MSV_EXON_OVERLAP;
         } else {
-            return consequence;  // TODO: MCNV classifications ???
+            return consequence;
         }
     }
 
@@ -499,7 +498,7 @@ public final class SVAnnotate extends VariantWalker {
     protected static StructuralVariantAnnotationType getSVType(final VariantContext variant) {
         // TODO: haha majorly clean this up
         // return variant.getStructuralVariantType().name();
-        final Allele alt = variant.getAlternateAllele(0); // TODO: any chance of multiallelic alt field for SV?
+        final Allele alt = variant.getAlternateAllele(0);
         if (alt.isBreakpoint()) {
             if (variant.hasAttribute(GATKSVVCFConstants.CPX_INTERVALS)) {
                 return StructuralVariantAnnotationType.CPX;
@@ -526,7 +525,6 @@ public final class SVAnnotate extends VariantWalker {
                                       final Set<String> MSVExonOverlapClassifications,
                                       final Map<String,Integer> contigNameToID,
                                       final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree) {
-        // TODO: method to convert SimpleInterval > SVInterval? Or switch to always using one or the other - could I use SimpleInterval as base for ClosedIntervalTree?
         final Iterator<SVIntervalTree.Entry<GencodeGtfTranscriptFeature>> gtfTranscriptsForVariant =
                 gtfIntervalTree.overlappers(locatableToClosedSVInterval(variantInterval, contigNameToID));
         for (Iterator<SVIntervalTree.Entry<GencodeGtfTranscriptFeature>> it = gtfTranscriptsForVariant; it.hasNext(); ) {
@@ -568,7 +566,7 @@ public final class SVAnnotate extends VariantWalker {
         final String chrom = variant.getContig();
         final int pos = variant.getStart();
         final String chr2 = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, "NONE");
-        final int end2 = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, pos); // TODO: what if no end2 for CTX, BND with 2nd break on other contig?
+        final int end2 = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, pos);
         if (overallSVType.equals(StructuralVariantAnnotationType.CPX)) {
             final List<String> cpxIntervalsString = variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, "NONE");
             for (String cpxInterval : cpxIntervalsString) {
@@ -581,9 +579,9 @@ public final class SVAnnotate extends VariantWalker {
             intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));  // CHROM:POS-POS+1
             // annotate both breakpoints of translocation - CHR2:END2-END2+1
             intervals.add(new SVSegment(overallSVType,
-                    new SimpleInterval(chr2, end2, end2 + 1))); // TODO: when to add +1 to end? CTX +1, BND without?
+                    new SimpleInterval(chr2, end2, end2 + 1)));
         } else if (overallSVType.equals(StructuralVariantAnnotationType.BND)){
-            final int svLen = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0); // TODO: what if no SVLEN and chr2 == chrom?
+            final int svLen = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
             // if BND representation of CTX event, get intervals as if BND but annotate as CTX
             StructuralVariantAnnotationType annotateAs = getAnnotationTypeForBreakend(variant, complexType, maxBreakendLen, svLen, chrom, chr2);
             if (annotateAs.equals(StructuralVariantAnnotationType.DEL) || annotateAs.equals(StructuralVariantAnnotationType.DUP)) {
