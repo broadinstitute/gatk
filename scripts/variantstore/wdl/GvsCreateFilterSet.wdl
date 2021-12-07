@@ -316,7 +316,7 @@ task GetNumSamplesLoaded {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-        "SELECT COUNT(*) as num_rows FROM ~{fq_sample_table}" > num_rows.csv
+        "SELECT COUNT(*) as num_rows FROM ~{fq_sample_table} WHERE is_loaded = true" > num_rows.csv
 
         NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
