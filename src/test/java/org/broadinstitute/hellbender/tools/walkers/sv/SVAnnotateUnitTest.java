@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.compress.utils.Sets;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.ClosedSVInterval;
@@ -15,7 +17,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.sql.Array;
 import java.util.*;
 
 import static java.util.Objects.isNull;
@@ -286,127 +287,13 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         Assert.assertEquals(expectedAfter, SVAnnotate.formatVariantConsequenceDict(before));
     }
 
-    // create list of SV segments with SAME SVTYPE - convenience function for testing
+    // create list of SV segments with SAME SVTYPE - convenience function for testing getSVSegments
     private List<SVAnnotate.SVSegment> createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType svType, SimpleInterval[] intervals) {
         List<SVAnnotate.SVSegment> segments = new ArrayList<>();
         for (SimpleInterval interval : intervals) {
             segments.add(new SVAnnotate.SVSegment(svType, interval));
         }
         return segments;
-    }
-
-    private Map<String, SVAnnotate.StructuralVariantAnnotationType> createSVTypeByVariantIDMap() {
-        Map<String, SVAnnotate.StructuralVariantAnnotationType> SVTypeByVariantID = new HashMap<>();
-        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1", SVAnnotate.StructuralVariantAnnotationType.CTX);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M1", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M3", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_INV_chr2_5", SVAnnotate.StructuralVariantAnnotationType.INV);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M2", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M4", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_DEL_chr22_1", SVAnnotate.StructuralVariantAnnotationType.DEL);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_DUP_chr22_1", SVAnnotate.StructuralVariantAnnotationType.DUP);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_INS_chr22_1", SVAnnotate.StructuralVariantAnnotationType.INS);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_INS_chr22_2", SVAnnotate.StructuralVariantAnnotationType.INS);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_1", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_CNV_chr22_1", SVAnnotate.StructuralVariantAnnotationType.CNV);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_3", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_7", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_CPX_chr22_1", SVAnnotate.StructuralVariantAnnotationType.CPX);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_14", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_16", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_16_M1", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_BND_chr22_16_M2", SVAnnotate.StructuralVariantAnnotationType.BND);
-        SVTypeByVariantID.put("ref_panel_1kg_v1_CPX_chr22_3", SVAnnotate.StructuralVariantAnnotationType.CPX);
-        return SVTypeByVariantID;
-    }
-
-    private Map<String, List<SVAnnotate.SVSegment>> createSegmentsByVariantIDMap() {
-        Map<String, List<SVAnnotate.SVSegment>> segmentsByVariantID = new HashMap<>();
-        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
-                        new SimpleInterval[]{ new SimpleInterval("chr2", 86263976, 86263977),
-                                new SimpleInterval("chr19", 424309, 424310) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M1",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
-                        new SimpleInterval[]{ new SimpleInterval("chr2", 86263976, 86263976) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M3",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
-                        new SimpleInterval[]{ new SimpleInterval("chr2", 86263977, 86263977) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_INV_chr2_5",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.INV,
-                        new SimpleInterval[]{ new SimpleInterval("chr2", 205522308, 205522384) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M2",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
-                        new SimpleInterval[]{ new SimpleInterval("chr19", 424309, 424309) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_CTX_chr2_1_M4",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
-                        new SimpleInterval[]{ new SimpleInterval("chr19", 424310, 424310) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_DEL_chr22_1",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DEL,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 10510000, 10694100) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_DUP_chr22_1",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DUP,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 10524000, 10710000) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_INS_chr22_1",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.INS,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 10532563, 10532564) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_INS_chr22_2",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.INS,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 10572758, 10572759) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_1",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 10717890, 10717890),
-                                new SimpleInterval("chr22", 10723060, 10723060) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_CNV_chr22_1",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CNV,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 10774600, 10784500) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_3",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 10930458, 10930458),
-                                new SimpleInterval("chr22", 11564561, 11564561) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_7",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 17636024, 17636024),
-                                new SimpleInterval("chr22", 17646733, 17646733) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_CPX_chr22_1",
-                Arrays.asList(new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INV,
-                                new SimpleInterval("chr22", 20267228, 20267614)),
-                        new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.DUP,
-                                new SimpleInterval("chr22", 20267228, 20267614)),
-                        new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INS,
-                                new SimpleInterval("chr22", 18971159, 18971160))));
-        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_14",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 22120897, 22120897),
-                                new SimpleInterval("chrX", 126356858, 126356858) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_16",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 22196261, 22196261),
-                                new SimpleInterval("chr22", 22904986, 22904986) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_16_M1",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 22196261, 22196261) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_BND_chr22_16_M2",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 22904986, 22904986) }));
-        segmentsByVariantID.put("ref_panel_1kg_v1_CPX_chr22_3",
-                Arrays.asList(new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.DUP,
-                                new SimpleInterval("chr22", 36533058, 36533299)),
-                        new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INV,
-                                new SimpleInterval("chr22", 36533058, 36538234))));
-        return segmentsByVariantID;
-    }
-
-    // create copy of segments answers and update as needed if maxBreakendLenForOverlapAnnotation = 15000
-    private Map<String, List<SVAnnotate.SVSegment>> createSegmentsByVariantIDMapForBNDOverlap(Map<String, List<SVAnnotate.SVSegment>> segmentsByVariantID) {
-        Map<String, List<SVAnnotate.SVSegment>> updated = new HashMap<>(segmentsByVariantID);
-        updated.put("ref_panel_1kg_v1_BND_chr22_1",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DUP,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 10717890, 10723060)}));
-        updated.put("ref_panel_1kg_v1_BND_chr22_7",
-                createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DEL,
-                        new SimpleInterval[]{ new SimpleInterval("chr22", 17636024, 17646733)}));
-        return updated;
     }
 
     private void assertSegmentListEqual(List<SVAnnotate.SVSegment> segmentsA, List<SVAnnotate.SVSegment> segmentsB) {
@@ -423,31 +310,202 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test
-    public void testGetSVTypeAndSegments() {
-        Map<String, SVAnnotate.StructuralVariantAnnotationType> SVTypeByVariantID = createSVTypeByVariantIDMap();
-        Map<String, List<SVAnnotate.SVSegment>> segmentsByVariantID = createSegmentsByVariantIDMap();
-        Map<String, List<SVAnnotate.SVSegment>> segmentsWithBNDOverlapsByVariantID = createSegmentsByVariantIDMapForBNDOverlap(segmentsByVariantID);
-        final File typesVCFFile = new File(getToolTestDataDir() + "types.vcf");
-        final FeatureDataSource<VariantContext> typesVariants = new FeatureDataSource<>(typesVCFFile);
-        for (VariantContext variant : typesVariants) {
-            final String variantID = variant.getID();
-            SVAnnotate.StructuralVariantAnnotationType actualSVType = SVAnnotate.getSVType(variant);
-            Assert.assertEquals(actualSVType, SVTypeByVariantID.get(variantID));
-
-            List<SVAnnotate.SVSegment> actualSegments = SVAnnotate.getSVSegments(variant, actualSVType, -1);
-            // Assert.assertEquals(actualSegments, segmentsByVariantID.get(variantID));
-            List<SVAnnotate.SVSegment> expectedSegments = segmentsByVariantID.get(variantID);
-            assertSegmentListEqual(actualSegments, expectedSegments);
-
-            List<SVAnnotate.SVSegment> actualSegmentsWithBNDOverlap = SVAnnotate.getSVSegments(variant, actualSVType, 15000);
-            // Assert.assertEquals(actualSegmentsWithBNDOverlap, segmentsByVariantID.get(variantID));
-            assertSegmentListEqual(actualSegmentsWithBNDOverlap, segmentsWithBNDOverlapsByVariantID.get(variantID));
+    private VariantContext createVariantContext(String chrom, int pos, int end, String chr2, Integer end2, String ref,
+                                                String alt, Integer svLen, String strands, String cpxType,
+                                                List<String> cpxIntervals) {
+        final Map<String, Object> attributes = new HashMap<>();
+        if (chr2 != null) {
+            attributes.put(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, chr2);
         }
+        if (end2 != null) {
+            attributes.put(GATKSVVCFConstants.END2_ATTRIBUTE, end2);
+        }
+        if (svLen != null) {
+            attributes.put(GATKSVVCFConstants.SVLEN, svLen);
+        }
+        if (strands != null) {
+            attributes.put(GATKSVVCFConstants.STRANDS_ATTRIBUTE, strands);
+        }
+        if (cpxType != null) {
+            attributes.put(GATKSVVCFConstants.CPX_TYPE, cpxType);
+        }
+        if (cpxIntervals != null) {
+            attributes.put(GATKSVVCFConstants.CPX_INTERVALS, cpxIntervals);
+        }
+
+        return new VariantContextBuilder()
+                .source("source")
+                .id("id")
+                .chr(chrom)
+                .start(pos)
+                .stop(end)
+                .alleles(Arrays.asList(Allele.REF_N, alt != null ? Allele.create(alt, false) : Allele.ALT_N))
+                .attributes(attributes)
+                .make();
+    }
+
+    @DataProvider(name = "typesAndSegments")
+    public Object[][] getSVTypesAndSegmentsTestData() {
+        return new Object[][] {
+                { createVariantContext("chr2", 86263976, 86263977, "chr19", 424309, "N",
+                        "<CTX>", null, null, "CTX_PP/QQ", null),
+                        SVAnnotate.StructuralVariantAnnotationType.CTX,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                                new SimpleInterval[]{ new SimpleInterval("chr2", 86263976, 86263977),
+                                        new SimpleInterval("chr19", 424309, 424310) }),
+                        null },
+                { createVariantContext("chr2", 86263976, 86263976, null, 424309, "G",
+                        "G]chr19:424309]", null, null,"CTX_PP/QQ", null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        Arrays.asList(new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                                new SimpleInterval("chr2", 86263976, 86263976))),
+                        null},
+                { createVariantContext("chr2", 86263977, 86263977, null, 424309, "A",
+                        "[chr19:424310[A", null, null, "CTX_PP/QQ", null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        Arrays.asList(new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                                new SimpleInterval("chr2", 86263977, 86263977))),
+                        null },
+                { createVariantContext("chr2", 205522308, 205522384, "chr2", null, "N",
+                        "<INV>", 76, null, null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.INV,
+                        Arrays.asList(new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INV,
+                                new SimpleInterval("chr2", 205522308, 205522384))),
+                        null },
+                { createVariantContext("chr19", 424309, 424309, null, 424309, "T",
+                        "T]chr2:86263976]", null, null, "CTX_PP/QQ", null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        Arrays.asList(new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                                new SimpleInterval("chr19", 424309, 424309))),
+                        null },
+                { createVariantContext("chr19", 424310, 424310, null, 424309, "C",
+                        "[chr2:86263977[C", null, null, "CTX_PP/QQ", null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        Arrays.asList(new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.CTX,
+                                new SimpleInterval("chr19", 424310, 424310))),
+                        null },
+                { createVariantContext("chr22", 10510000, 10694100, "chr22", null, "N",
+                        "<DEL>", 184100, null, null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.DEL,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DEL,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 10510000, 10694100)}),
+                        null},
+                { createVariantContext("chr22", 10524000, 10710000, "chr22", null, "N",
+                        "<DUP>", 186000, null, null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.DUP,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DUP,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 10524000, 10710000)}),
+                        null },
+                { createVariantContext("chr22", 10532563, 10532611, "chr22", null, "N",
+                        "<INS:ME:ALU>", 245, null, null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.INS,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.INS,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 10532563, 10532564)}),
+                        null },
+                { createVariantContext("chr22", 10572758, 10572788, "chr22", null, "N",
+                        "<INS>", 57, null, null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.INS,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.INS,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 10572758, 10572759)}),
+                        null },
+                { createVariantContext("chr22", 10717890, 10717890, "chr22", null, "N",
+                        "<BND>", 5170, "-+", null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 10717890, 10717890),
+                                        new SimpleInterval("chr22", 10723060, 10723060) }),
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DUP,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 10717890, 10723060)}) },
+                { createVariantContext("chr22", 10774600, 10784500, "chr22", null, "N",
+                        "<CNV>", 9900, null, null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.CNV,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.CNV,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 10774600, 10784500)}),
+                        null },
+                { createVariantContext("chr22", 10930458, 10930458, "chr22", 11564561, "N",
+                        "<BND>", 634103, "--", null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 10930458, 10930458),
+                                        new SimpleInterval("chr22", 11564561, 11564561) }),
+                        null },
+                { createVariantContext("chr22", 17636024, 17636024, "chr22", null, "N",
+                        "<BND>", 10709, "+-", null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 17636024, 17636024),
+                                        new SimpleInterval("chr22", 17646733, 17646733) }),
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DEL,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 17636024, 17646733)}) },
+                { createVariantContext("chr22", 18971159, 18971435, "chr22", null, "N",
+                        "<CPX>", 386, null, "dDUP", Arrays.asList("INV_chr22:20267228-20267614","DUP_chr22:20267228-20267614")),
+                        SVAnnotate.StructuralVariantAnnotationType.CPX,
+                        Arrays.asList(
+                                new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INV,
+                                        new SimpleInterval("chr22", 20267228, 20267614)),
+                                new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.DUP,
+                                        new SimpleInterval("chr22", 20267228, 20267614)),
+                                new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INS,
+                                        new SimpleInterval("chr22", 18971159, 18971160))),
+                        null },
+                { createVariantContext("chr22", 22120897, 22120897, "chrX", 126356858, "N",
+                        "<BND>", -1, "++", null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 22120897, 22120897),
+                                        new SimpleInterval("chrX", 126356858, 126356858) }),
+                        null },
+                { createVariantContext("chr22", 22196261, 22196261, "chr22", null, "N",
+                        "<BND>", 708725, "+-", null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 22196261, 22196261),
+                                        new SimpleInterval("chr22", 22904986, 22904986) }),
+                        null },
+                { createVariantContext("chr22", 22196261, 22196261, null, null, "A",
+                        "A[chr22:22904986[", null, "+-", null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 22196261, 22196261) }),
+                        null },
+                { createVariantContext("chr22", 22904986, 22904986, null, null, "T",
+                        "]chr22:22196261]T", null, "+-", null, null),
+                        SVAnnotate.StructuralVariantAnnotationType.BND,
+                        createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.BND,
+                                new SimpleInterval[]{ new SimpleInterval("chr22", 22904986, 22904986) }),
+                        null },
+                { createVariantContext("chr22", 36533058, 36538234, "chr22", null, "N",
+                        "<CPX>", 5176, null, "dupINV", Arrays.asList("DUP_chr22:36533058-36533299","INV_chr22:36533058-36538234")),
+                        SVAnnotate.StructuralVariantAnnotationType.CPX,
+                        Arrays.asList(
+                                new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.DUP,
+                                        new SimpleInterval("chr22", 36533058, 36533299)),
+                                new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INV,
+                                        new SimpleInterval("chr22", 36533058, 36538234))),
+                        null }
+        };
+    }
+
+    @Test(dataProvider = "typesAndSegments")
+    public void testGetSVTypeAndSegments(
+            final VariantContext variant,
+            final SVAnnotate.StructuralVariantAnnotationType expectedSVType,
+            final List<SVAnnotate.SVSegment> expectedSVSegments,
+            final List<SVAnnotate.SVSegment> expectedSVSegmentsWithBNDOverlap
+    ) {
+        SVAnnotate.StructuralVariantAnnotationType actualSVType = SVAnnotate.getSVType(variant);
+        Assert.assertEquals(actualSVType, expectedSVType);
+
+        List<SVAnnotate.SVSegment> actualSegments = SVAnnotate.getSVSegments(variant, actualSVType, -1);
+        assertSegmentListEqual(actualSegments, expectedSVSegments);
+
+        List<SVAnnotate.SVSegment> actualSegmentsWithBNDOverlap = SVAnnotate.getSVSegments(variant, actualSVType,
+                15000);
+        assertSegmentListEqual(actualSegmentsWithBNDOverlap,
+                expectedSVSegmentsWithBNDOverlap != null ? expectedSVSegmentsWithBNDOverlap : expectedSVSegments);
     }
 
     // noncoding and promoter annotation unit tests
-    // getSVSegments and getSVType
     // interval trees? getContigIDFromName?
     // variantOverlapsTranscriptionStartSite
 }
