@@ -3,9 +3,12 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.bigquery.storage.v1beta2.AppendRowsResponse;
 import com.google.cloud.bigquery.storage.v1beta2.JsonStreamWriter;
 import com.google.cloud.bigquery.storage.v1beta2.TableName;
@@ -32,6 +35,7 @@ import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
+import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.extract.ExtractCohortFilterRecord;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
@@ -65,7 +69,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private RefCreator refCreator;
     private VetCreator vetCreator;
     private enum LoadStatus { STARTED, FINISHED };
-    private List<String> LOAD_STATUS_TABLE_REF_FIELDS = Arrays.asList("sample_id", "status", "event_timestamp");
     private TableName loadStatusTable;
     private Schema loadStatusTableSchema;
 
@@ -264,11 +267,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // check the load status table to see if this sample has already been loaded...
         if (outputType == CommonCode.OutputType.BQ) {
-            BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
             loadStatusTable = TableName.of(projectID, datasetName, loadStatusTableName);
 
+            BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
             Table table = bigquery.getTable(TableId.of(projectID, datasetName, loadStatusTableName));
             loadStatusTableSchema = table.getDefinition().getSchema();
+
+            StandardTableDefinition tdd = table.getDefinition();
+            if (BigQueryUtils.getEstimatedRowsInStreamingBuffer(projectID, datasetName, loadStatusTableName) > 0 ) {
+                logger.info("Found estimated rows in streaming buffer!!! " + tdd.getStreamingBuffer().getEstimatedRows());
+            }
 
             verifySampleIsNotLoaded();
         }
@@ -276,13 +284,33 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     }
 
     private void verifySampleIsNotLoaded() {
-        TableReference loadStatusTableRef = new TableReference(projectID, datasetName, loadStatusTableName, LOAD_STATUS_TABLE_REF_FIELDS);
+        String query = "SELECT " + SchemaUtils.LOAD_STATUS_FIELD_NAME +
+                       " FROM `" + projectID + "." + datasetName + "." + loadStatusTableName + "` " +
+                       " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId;
 
-        try (StorageAPIAvroReader reader = new StorageAPIAvroReader(loadStatusTableRef, "sample_id = " + sampleId, projectID)) {
-            for (final GenericRecord queryRow : reader) {
-                // we expect NO records!!
-                throw new GATKException("Sample Id " + sampleId + " has already been (partially) loaded!");
+        TableResult result = BigQueryUtils.executeQuery(projectID, query, true, null);
+
+        int startedCount = 0;
+        int finishedCount = 0;
+        for ( final FieldValueList row : result.iterateAll() ) {
+            final String status = row.get(0).getStringValue();
+            if (LoadStatus.STARTED.toString().equals(status)) {
+                startedCount++;
+            } else if (LoadStatus.FINISHED.toString().equals(status)) {
+                finishedCount++;
             }
+
+        }
+
+        // if fully loaded, exit successfully!
+        if (startedCount == 1 && finishedCount == 1) {
+            logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
+            System.exit(0);
+        }
+
+        // otherwise if there are any records, exit
+        if (startedCount > 0 || finishedCount > 0) {
+            throw new GATKException("Sample Id " + sampleId + " has already been partially loaded!");
         }
     }
 
