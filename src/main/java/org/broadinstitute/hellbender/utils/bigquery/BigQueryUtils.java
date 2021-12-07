@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.cloud.bigquery.*;
 import com.google.cloud.bigquery.storage.v1.*;
+import com.google.cloud.bigquery.storage.v1beta2.TableName;
 import com.google.common.base.Preconditions;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
@@ -140,6 +141,19 @@ public final class BigQueryUtils {
                         .build();
 
         return submitQueryAndWaitForResults( bigQuery, queryConfig );
+    }
+
+    /**
+     * @return estimated number of rows in the BigQuery vortex streaming buffer
+     */
+    public static long getEstimatedRowsInStreamingBuffer(String projectID, String datasetName, String tableName ) {
+        BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
+        Table table = bigquery.getTable(TableId.of(projectID, datasetName, tableName));
+
+        StandardTableDefinition tdd = table.getDefinition();
+        StandardTableDefinition.StreamingBuffer buffer = tdd.getStreamingBuffer();
+        Long rows = (buffer == null) ? 0 : buffer.getEstimatedRows();
+        return (rows == null) ? 0 : rows.longValue();
     }
 
     /**
