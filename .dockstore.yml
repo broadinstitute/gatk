@@ -107,7 +107,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - ah_spike_writeapi
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -116,6 +115,7 @@ workflows:
      filters:
        branches:
          - master
+         - kc_ranges_extract
          - ah_var_store
          - rsa_rescattering_wf
    - name: GvsImportGenomes
