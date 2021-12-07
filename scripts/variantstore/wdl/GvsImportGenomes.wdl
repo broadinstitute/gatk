@@ -292,7 +292,8 @@ task LoadData {
   >>>
   runtime {
       docker: docker
-      memory: "3.75 GB"
+      maxRetries: 3
+      memory: "6 GB"
       disks: "local-disk 50 HDD"
       preemptible: select_first([preemptible_tries, 5])
       cpu: 1
