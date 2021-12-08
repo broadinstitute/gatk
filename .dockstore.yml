@@ -60,7 +60,7 @@ workflows:
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
      testParameterFiles:
-          -  /scripts/mitochondria_m2_wdl/test_mitochondria_m2_wdl.json
+          -  /scripts/mitochondria_m2_wdl/ExampleInputsMitochondriaPipeline.json
      filters:
          branches:
              - master
@@ -74,7 +74,7 @@ workflows:
              - master
    - name: mutect2_pon
      subclass: WDL
-     primaryDescriptorPath: /scripts/mutect2_wdl/mutect2_pon.wd
+     primaryDescriptorPath: /scripts/mutect2_wdl/mutect2_pon.wdl
      filters:
          branches:
              - master
