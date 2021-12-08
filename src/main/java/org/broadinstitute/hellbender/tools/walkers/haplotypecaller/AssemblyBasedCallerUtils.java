@@ -691,7 +691,6 @@ public final class AssemblyBasedCallerUtils {
     /**
      * Construct the mapping from call (variant context) to phase set ID
      *
-     * @param totalAvailableHaplotypes the total number haplotypes that support alternate alleles of called variants
      * @param originalCalls    the original unphased calls
      * @param haplotypeMap     mapping from alternate allele to the set of haplotypes that contain that allele
      * @return a map from each variant context to a pair with the phase set ID and phase group of the alt allele
