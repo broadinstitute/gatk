@@ -115,7 +115,6 @@ workflows:
      filters:
        branches:
          - master
-         - kc_ranges_extract
          - ah_var_store
          - rsa_rescattering_wf
    - name: GvsImportGenomes
