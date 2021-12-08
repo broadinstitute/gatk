@@ -14,6 +14,7 @@ workflow GvsCreateFilterSet {
 
         String data_project
         String default_dataset
+        String? sample_table = "sample_info"
 
         String query_project = data_project
         Array[String]? query_labels
@@ -78,7 +79,7 @@ workflow GvsCreateFilterSet {
     Int huge_disk = select_first([huge_disk_override, "2000"])
     Int preemptible_tries = select_first([preemptible_tries_override, "3"])
 
-    String fq_sample_table = "~{data_project}.~{default_dataset}.sample_info"
+    String fq_sample_table = "~{data_project}.~{default_dataset}.~{sample_table}"
     String fq_alt_allele_table = "~{data_project}.~{default_dataset}.alt_allele"
     String fq_info_destination_table = "~{data_project}.~{default_dataset}.filter_set_info"
     String fq_tranches_destination_table = "~{data_project}.~{default_dataset}.filter_set_tranches"

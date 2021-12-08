@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-public class RefRangesTsvWriter implements RefRangesWriter {
+public class RefRangesTsvWriter extends RefRangesWriter {
     private BufferedWriter writer;
     private final static char SEPARATOR = IngestConstants.SEPARATOR;
 

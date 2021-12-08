@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsCreateTables.wdl" as GvsCreateTables
+
 workflow GvsAssignIds {
 
   input {
@@ -7,25 +9,41 @@ workflow GvsAssignIds {
     String project_id
     String dataset_name
     String sample_info_table = "sample_info"
-    String sample_info_schema = "sample_name:STRING,sample_id:INTEGER,is_loaded:BOOLEAN"
-    String? service_account_json
+    String? service_account_json_path
     Int? preemptible_tries
     File? gatk_override
-    String? docker
+    String? docker        
+    String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"}]'
+    String sample_load_status_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
   }
 
   String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
 
 
-  call CreateTables as CreateSampleInfoTables {
+  call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "sample_info",
-      schema = sample_info_schema,
-      service_account_json = service_account_json,
+      schema_json = sample_info_schema_json,
+      max_table_id=1,
+      superpartitioned = "false",
+      partitioned = "false",
+      service_account_json_path = service_account_json_path,
       preemptible_tries = preemptible_tries,
-      docker = docker_final
+  }
+
+  call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
+    input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "sample_load_status",
+        schema_json = sample_load_status_json,
+        max_table_id=1,
+        superpartitioned = "false",
+        partitioned = "false",
+        service_account_json_path = service_account_json_path,
+        preemptible_tries = preemptible_tries,
   }
 
   call AssignIds {
@@ -34,14 +52,24 @@ workflow GvsAssignIds {
       project_id = project_id,
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
-      table_creation_done = CreateSampleInfoTables.done,
+      table_creation_done = CreateSampleInfoTable.done,
       gatk_override = gatk_override,
-      service_account_json = service_account_json,
+      service_account_json_path = service_account_json_path,
       docker = docker_final,
+  }
+
+  call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
+      input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      max_table_id = AssignIds.max_table_id,
+      service_account_json_path = service_account_json_path,
+      preemptible_tries = preemptible_tries
   }
 
   output {
     Boolean gvs_ids_created = true
+    File gvs_ids_tsv = AssignIds.gvs_ids_tsv
   }
 }
 
@@ -51,15 +79,17 @@ task AssignIds {
     String project_id
     String dataset_name
     String sample_info_table
-    String? service_account_json
+    String? service_account_json_path
     String table_creation_done
+    Int samples_per_table = 4000
+
     # runtime
     File? gatk_override
     String docker
 
   }
 
-  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   meta {
     description: "Assigns Ids to samples"
@@ -68,9 +98,11 @@ task AssignIds {
 
   command <<<
       set -e
+      set -x
 
       # make sure that sample names were actually passed, fail if empty
-      if [ ~{length(sample_names)} -eq 0 ]; then
+      num_samples=~{length(sample_names)}
+      if [ $num_samples -eq 0 ]; then
         echo "No sample names passed. Exiting"
         exit 1
       fi
@@ -78,7 +110,7 @@ task AssignIds {
       export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
       if [ ~{has_service_account_file} = 'true' ]; then
-        gsutil cp ~{service_account_json} local.service_account.json
+        gsutil cp ~{service_account_json_path} local.service_account.json
         gcloud auth activate-service-account --key-file=local.service_account.json
       fi
 
@@ -114,6 +146,16 @@ task AssignIds {
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
         "UPDATE ~{dataset_name}.~{sample_info_table} m SET m.sample_id = id_assign.id FROM (SELECT sample_name, $offset + ROW_NUMBER() OVER() as id FROM ~{dataset_name}.~{sample_info_table} WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;"
 
+      # retrieve the list of assigned ids and samples to update the datamodel
+      echo "entity:sample_id,gvs_id" > update.tsv
+      bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n $num_samples \
+        "SELECT sample_name, sample_id from ~{dataset_name}.~{sample_info_table} WHERE sample_id >= $offset" > update.tsv
+      cat update.tsv | sed -e 's/sample_id/gvs_id/' -e 's/sample_name/entity:sample_id/' -e 's/,/\t/g' > gvs_ids.tsv
+
+      # get the max id to create tables for
+      max_sample_id=$(cat update.tsv | cut -d, -f2 | sort -r -n | head -1)
+      python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_table_id
+
       # remove the lock table
       bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
 
@@ -124,61 +166,9 @@ task AssignIds {
       disks: "local-disk " + 10 + " HDD"
       cpu: 1
   }
-}
-
-# Creates the necessary sample_info table
-task CreateTables {
-  meta {
-    volatile: true
-  }
-
-	input {
-      String project_id
-      String dataset_name
-      String datatype
-      String? schema
-      String? service_account_json
-
-      # runtime
-      Int? preemptible_tries
-      String docker
-    }
-
-    String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-
-  command <<<
-    set -e
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
-
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-    TABLE="~{dataset_name}.~{datatype}"
-
-    # Check that the table has not been created yet
-    set +e
-    bq show --project_id ~{project_id} $TABLE > /dev/null
-    BQ_SHOW_RC=$?
-    set -e
-    if [ $BQ_SHOW_RC -ne 0 ]; then
-      echo "making table $TABLE"
-      bq --location=US mk --project_id=~{project_id} $TABLE ~{schema}
-    fi
-  >>>
-
   output {
-    String done = "true"
-  }
-
-  runtime {
-    docker: docker
-    memory: "3 GB"
-    disks: "local-disk 10 HDD"
-    preemptible: select_first([preemptible_tries, 5])
-    cpu: 1
+    File gvs_ids_tsv = "gvs_ids.tsv"
+    Int max_table_id = read_int("max_table_id")
   }
 }
 

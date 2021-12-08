@@ -98,6 +98,15 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsCreateTables
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateTables.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl

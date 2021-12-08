@@ -7,7 +7,6 @@ Through this QuickStart you will learn how to use the Broad Genomic Variant Stor
 
 The sequencing data in this quickstart came from the [AnVIL 1000G High Coverage workspace](https://app.terra.bio/#workspaces/anvil-datastorage/1000G-high-coverage-2019)
 
-**Note:** VQSR dies with the default/recommended configuration, so we set SNP max-gaussians to 4 here.
 
 ## Prerequisites
 
@@ -19,38 +18,44 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
     - BigQuery data editor
     - BigQuery job user
     - BigQuery Read Session User
-4. These tools expect re-blocked gVCF files as input.
+4. These tools expect re-blocked gVCF files as input, which are provided in this workspace
 
 ## 1. Import Data
-In order to load data into BigQuery without hitting daily load limits, we recommend you group your input files into samples sets and follow these steps for each sample set.
 
 A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Run the two import workflows against this sample set by selecting "sample_set" as the root entity type ("Step 1") and `gvs_demo-10` for the data ("Step 2").  If you are creating your own sample set, note that the sample table should have a column for the re-blocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files need to be in the same location.
 
 ## 1.1 Assign Gvs IDs
 To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set and update the BigQuery dataset with the sample name to ID mapping info.
 
+This workflow should be run on a **sample set** as the root entity, for the quickstart that is the `gvs_demo_10` sample set.
+
 These are the required parameters which must be supplied to the workflow:
 
-| Parameter      | Description |
-| ----------------- | ----------- |
-| project_id | The name of the google project containing the dataset |
-| dataset_name      | The name of the dataset you created above       |
-
+| Parameter             | Description |
+| --------------------- | ----------- |
+| project_id            | The name of the google project containing the dataset |
+| dataset_name          | The name of the dataset you created above       |
+| external_sample_names | datamodel  (e.g `this.samples.sample_id`)     |
+| workspace_namespace   | name of the current workspace namespace |
+| workspace_name        | name of the current workspace |
 
 ## 1.2 Load data
 
 Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.
 
+This workflow should be run on a **sample set** as the root entity, for the quickstart that is the `gvs_demo_10` sample set.
+
 These are the required parameters which must be supplied to the workflow:
 
 | Parameter      | Description |
 | ----------------- | ----------- |
-| project_id | The name of the google project containing the dataset |
 | dataset_name      | The name of the dataset you created above       |
-| output_directory | A unique GCS path to be used for loading, can be in the workspace bucket.  E.g. `gs://fc-124-12-132-123-31/gvs/demo1`)
+| project_id | The name of the google project containing the dataset |
+| external_sample_names | from datamodel  (e.g `this.samples.sample_id`)     |
+| input_vcf | reblocked gvcf for this sample; from datamodel (e.g. `this.samples.hg38_reblocked_gvcf`) |
+| input_vcf_indexes | reblocked gvcf indexes for this sample; from datamodel (e.g. `this.samples.hg38_reblocked_gvcf_index`) |
+| interval_list | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
 
-
-**NOTE**: if your workflow fails, you will need to manually remove a lockfile from the output directory.  It is called LOCKFILE, and can be removed with `gsutil rm`
 
 ## 2. Create Alt Allele Table
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.
@@ -74,30 +79,18 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| filter\_set_name | A unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 4  |
+| filter_set_name | A unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 4  |
+| output_file_base_name | TODO: should be defaulted and optional |
+| SNPsVariantRecalibratorClassic.max-gaussians | 4 |
+| wgs_intervals | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
 
-**Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
-
-## 4. Prepare Callset
-This step performs the heavy lifting in BigQuery to gather all the data required to create a jointly called VCF.  
-
-This is done by running the `GvsPrepareCallset` workflow with the following parameters:
-
-
-| Parameter      | Description |
-| ----------------- | ----------- |
-| data_project | The name of the google project containing the dataset |
-| default_dataset      | The name of the dataset  |
-| destination\_cohort\_table_prefix | A unique, descriptive name for the tables containing the callset (e.g. `demo_10_wgs_callset`); you will want to make note of this for use in the next step |
-| sample\_names\_to_extract | A file of sample names to be extracted in the callset (use `gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvs_quickstart_10_samples.txt`) |
-| skip\_pet\_new_insert | Set to true if your data set is greather than 20k samples. Then copy the sql from the log and execute with flex slots |
-
+**Note:** VQSR dies with the default/recommended configuration, so we set SNPsVariantRecalibratorClassic.max-gaussians to 4 here.
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
 ## 5. Extract Cohort
 
-This step extracts the data in BigQuery, prepared by `GvsPrepareCallset` and transforms it into a sharded joint called VCF 
+This step extracts the data in BigQuery into a sharded joint called VCF 
 
 This is done by running the `GvsExtractCallset` workflow with the following parameters:
 
@@ -106,13 +99,14 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | ----------------- | ----------- |
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| filter\_set_name | the name of the filter set identifier created in step #3 |
-| fq_cohort\_extract\_table\_prefix | the fully qualified name of the `destination_cohort_table_prefix` from step #4, of the form `<project>.<dataset>.<destination_cohort_table_prefix>` |
 | output_file\_base\_name | Base name for generated VCFs |
+| filter\_set_name | the name of the filter set identifier created in step #3 |
+| fq_samples_to_extract_table | fully qualified table name of the samples to extract (e.g. <project>.<dataset>.sample_info) |
+| scatter_count | scatter count for extract (e.g. 100 for quickstart) |
+| wgs_intervals | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
 ## 6. Your VCF is ready!!
 
-The sharded VCF outut files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`
-
+The sharded VCF output files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`

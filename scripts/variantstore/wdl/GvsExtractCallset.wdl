@@ -37,7 +37,7 @@ workflow GvsExtractCallset {
         Int? extract_maxretries_override
         Int? split_intervals_disk_size_override
 
-        String mode = "PET"
+        String mode = "RANGES"
        
         String? service_account_json_path
 
