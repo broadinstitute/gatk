@@ -384,7 +384,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         final Genotype newG = VariantContextTestUtils.makeG("sample1", LONG_REF, LONG_SNP, 41, 0, 37, 200, 100, 200);
         final VariantContext regenotypedVC = makeDeletionVC("", Arrays.asList(LONG_REF, LONG_SNP, Allele.NON_REF_ALLELE), LONG_REF.length(), newG);
 
-        final Map<String, Object> subsetAnnotations = ReblockGVCF.subsetAnnotationsIfNecessary(annotationEngine, true, null, originalVC, regenotypedVC);
+        final Map<String, Object> subsetAnnotations = ReblockGVCF.subsetAnnotationsIfNecessary(annotationEngine, true, null, originalVC, regenotypedVC, null);
         Assert.assertTrue(subsetAnnotations.containsKey(VCFConstants.DEPTH_KEY));
         Assert.assertEquals(subsetAnnotations.get(VCFConstants.DEPTH_KEY), 93);
 

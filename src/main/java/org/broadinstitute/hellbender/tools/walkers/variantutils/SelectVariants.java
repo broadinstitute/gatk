@@ -1031,8 +1031,7 @@ public final class SelectVariants extends VariantWalker {
             // fix the PL and AD values if sub has fewer alleles than original vc
             final GenotypesContext subGenotypesWithOldAlleles = sub.getGenotypes();  //we need sub for the right samples, but PLs still go with old alleles
             newGC = sub.getNAlleles() == vc.getNAlleles() ? subGenotypesWithOldAlleles :
-                    AlleleSubsettingUtils.subsetAlleles(subGenotypesWithOldAlleles, 0, vc.getAlleles(),
-                            sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
+                    AlleleSubsettingUtils.subsetAlleles(vc.getStart(), subGenotypesWithOldAlleles, 0, vc.getAlleles(), sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, getHeaderForVariants());
         } else {
             newGC = sub.getGenotypes();
         }

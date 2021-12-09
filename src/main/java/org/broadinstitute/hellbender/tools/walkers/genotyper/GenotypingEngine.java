@@ -136,8 +136,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
             final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles, false);
             final GenotypesContext reducedGenotypes = allelesToKeep.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc,
-                            GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL);  //with no PLs in some reblocked GVCFs, no-calls are just going to cause problems, so keep 0/0 genotypes as such without trying to recall
+                    AlleleSubsettingUtils.subsetAlleles(vc.getStart(), vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc, GenotypeAssignmentMethod.SET_TO_NO_CALL, null);
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
@@ -186,7 +185,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // create the genotypes
         //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod);
+                AlleleSubsettingUtils.subsetAlleles(vc.getStart(), vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod, null);
 
         if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
             final double log10NoVariantPosterior = phredNoVariantPosteriorProbability(outputAlleles, genotypes) * -.1;

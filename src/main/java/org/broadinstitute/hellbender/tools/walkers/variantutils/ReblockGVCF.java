@@ -99,6 +99,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     private static final Logger logger = LogManager.getLogger(ReblockGVCF.class);
     private static final OneShotLogger genotypeLogger = new OneShotLogger(ReblockGVCF.class);
+    private static final OneShotLogger annotationLogger = new OneShotLogger(ReblockGVCF.class);  //OneShotLoggers only log one warning, not one of each type/message
 
     public static final String DROP_LOW_QUALS_ARG_NAME = "drop-low-quals";
     public static final String RGQ_THRESHOLD_LONG_NAME = "rgq-threshold-to-no-call";
@@ -293,14 +294,14 @@ public final class ReblockGVCF extends MultiVariantWalker {
             }
             if (!genotype.hasPL()) {
                 if (genotype.hasGQ()) {
-                    logger.warn("PL is missing for hom ref genotype at at least one position for sample " + genotype.getSampleName() + ": " + originalVC.getContig() + ":" + originalVC.getStart() +
+                    genotypeLogger.warn("PL is missing for hom ref genotype at at least one position for sample " + genotype.getSampleName() + ": " + originalVC.getContig() + ":" + originalVC.getStart() +
                             ".  Using GQ to determine quality.");
                     vcfWriter.add(originalVC);
                 } else {
                     final String message = "Homozygous reference genotypes must contain GQ or PL. Both are missing for hom ref genotype at "
                             + originalVC.getContig() + ":" + originalVC.getStart();
                     if (allowMissingHomRefData) {
-                        logger.warn(message);
+                        genotypeLogger.warn(message);
                         final VariantContextBuilder vcBuilder = new VariantContextBuilder(originalVC);
                         final GenotypeBuilder gBuilder = new GenotypeBuilder(genotype);
                         vcBuilder.genotypes(gBuilder.GQ(0).PL(new int[]{0,0,0}).make());
@@ -326,7 +327,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 return;
             }
             //make sure result has annotations so we don't have to keep originalVC around
-            result = new VariantContextBuilder(regenotyped).attributes(subsetAnnotationsIfNecessary(annotationEngine, doQualApprox, posteriorsKey, originalVC, regenotyped)).make();
+            result = new VariantContextBuilder(regenotyped).attributes(
+                    subsetAnnotationsIfNecessary(annotationEngine, doQualApprox, posteriorsKey, originalVC, regenotyped, getHeaderForVariants())).make();
         }
 
 
@@ -350,7 +352,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
     }
 
     /**
-     *  Make sure annotations are updated if alleles are dropped
+     *  Make sure INFO and FORMAT annotations are updated if alleles are dropped
      * @param doQualApprox  output a QUALapprox INFO attribute?
      * @param posteriorsKey if not null, the key for genotype posteriors in this VCF version
      * @param originalVC    the original variant context with the full set of alleles
@@ -360,7 +362,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @VisibleForTesting
     static Map<String, Object> subsetAnnotationsIfNecessary(final VariantAnnotatorEngine annotationEngine,
                                                             final boolean doQualApprox, final String posteriorsKey,
-                                                            final VariantContext originalVC, final VariantContext regenotyped) {
+                                                            final VariantContext originalVC, final VariantContext regenotyped,
+                                                            final VCFHeader header) {
         final Map<String, Object> newAnnotations;
         if (regenotyped.getNAlleles() != originalVC.getNAlleles()) {
             final Permutation<Allele> allelePermutation = new IndexedAlleleList<>(originalVC.getAlleles()).
@@ -368,7 +371,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
             final int[] relevantIndices = IntStream.range(0, regenotyped.getAlleles().size())
                     .map(n -> allelePermutation.fromIndex(n)).toArray();
             newAnnotations = new LinkedHashMap<>();
-            composeUpdatedAnnotations(newAnnotations, doQualApprox, posteriorsKey, originalVC, annotationEngine, relevantIndices, regenotyped);
+            composeUpdatedAnnotations(newAnnotations, doQualApprox, posteriorsKey, originalVC, annotationEngine, relevantIndices, regenotyped, header);
         } else {
             newAnnotations = originalVC.getAttributes();
         }
@@ -511,9 +514,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 //we care about the best alt even though it's getting removed because NON_REF should get the best likelihoods
                 //it shouldn't matter that we're passing in different alt alleles since the GenotypesContext only knows
                 // the called alleles and this is a reference genotype that will stay hom-ref
-                final GenotypesContext context = AlleleSubsettingUtils.subsetAlleles(lowQualVariant.getGenotypes(),
+                final GenotypesContext context = AlleleSubsettingUtils.subsetAlleles(lowQualVariant.getStart(), lowQualVariant.getGenotypes(),
                         genotype.getPloidy(), lowQualVariant.getAlleles(), Arrays.asList(inputRefAllele, bestAlt),
-                        null, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL);  //BEST_MATCH to avoid no-calling low qual genotypes
+                        null, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, getHeaderForVariants());  //BEST_MATCH to avoid no-calling low qual genotypes
                 final Genotype subsetG = context.get(0);
                 gb = new GenotypeBuilder(subsetG).noAttributes();  //remove attributes because hom ref blocks shouldn't have posteriors
                 //subsetting may strip GQ and PLs for low qual genotypes
@@ -566,8 +569,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final List<Allele> newAlleleSetUntrimmed = new ArrayList<>(variant.getAlleles());
         if(allelesNeedSubsetting && !keepAllAlts) {
             newAlleleSetUntrimmed.removeAll(allelesToDrop);
-            final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(variant.getGenotypes(), genotype.getPloidy(), variant.getAlleles(),
-                    newAlleleSetUntrimmed, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN);
+            final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(variant.getStart(), variant.getGenotypes(), genotype.getPloidy(), variant.getAlleles(),
+                    newAlleleSetUntrimmed, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
+                    getHeaderForVariants());
             if (gc.get(0).isHomRef() || !gc.get(0).hasGQ() || gc.get(0).getAlleles().contains(Allele.NO_CALL)) {  //could be low quality or no-call after subsetting
                 if (dropLowQuals) {
                     return null;
@@ -603,7 +607,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final List<Genotype> genotypesArray = removeNonRefADs(updatedAllelesGenotype, updatedAllelesVC.getAlleleIndex(Allele.NON_REF_ALLELE));
         builder.genotypes(genotypesArray);
 
-        composeUpdatedAnnotations(attrMap, doQualApprox, posteriorsKey, variant, annotationEngine, relevantIndices, updatedAllelesVC);
+        composeUpdatedAnnotations(attrMap, doQualApprox, posteriorsKey, variant, annotationEngine, relevantIndices, updatedAllelesVC, getHeaderForVariants());
 
         return builder.attributes(attrMap).unfiltered().make();
     }
@@ -674,7 +678,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
      * @param updatedAllelesVC  variant context with final set of alleles
      */
     private static void composeUpdatedAnnotations(final Map<String, Object> destination, final boolean doQualApprox, final String posteriorsKey, final VariantContext variant, final VariantAnnotatorEngine annotationEngine,
-                                                  final int[] relevantIndices, final VariantContext updatedAllelesVC) {
+                                                  final int[] relevantIndices, final VariantContext updatedAllelesVC, final VCFHeader header) {
         updateMQAnnotations(destination, variant);
 
         final boolean allelesNeedSubsetting = relevantIndices.length < variant.getNAlleles();
@@ -684,7 +688,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final Genotype updatedAllelesGenotype = updatedAllelesVC.getGenotype(0);
         if (doQualApprox) {
             if (hasGenotypeValuesArray(posteriorsKey, updatedAllelesGenotype)) {
-                addQualAnnotations(destination, posteriorsKey, annotationEngine, updatedAllelesVC);
+                addQualAnnotations(destination, posteriorsKey, annotationEngine, updatedAllelesVC, header);
             }
         } else {  //manually copy annotations that might be from reblocking and aren't part of AnnotationEngine
             if (variant.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
@@ -718,16 +722,106 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final List<Allele> finalAlleles = alleleCounts.asAlleleList(variant.getAlleles());
         hasPLAndPosteriorMismatch = !finalAlleles.containsAll(origG.getAlleles());
 
-        if (origG.isNoCall() || hasPLAndPosteriorMismatch) {  //might be homRef if posteriors and PLs don't agree
+        if (origG.isNoCall() || hasPLAndPosteriorMismatch || !formatAnnotationsHaveCorrectLength(variant.getNAlleles(), origG, getHeaderForVariants())) {  //might be homRef if posteriors and PLs don't agree
             final Genotype noCallGT = variant.getGenotype(0);
             final GenotypeBuilder builderToCallAlleles = new GenotypeBuilder(noCallGT);
             //TODO: update to support DRAGEN posteriors
             GATKVariantContextUtils.makeGenotypeCall(noCallGT.getPloidy(), builderToCallAlleles, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
                     noCallGT.getLikelihoods().getAsVector(), variant.getAlleles(), null);
-            return builderToCallAlleles.make();
+            final Map<String,Object> fixedAttributes = fixFormatAnnotations(variant.getNAlleles(),origG, getHeaderForVariants(), variant.getStart());
+            return builderToCallAlleles.noAttributes().attributes(fixedAttributes).make();  //noAttributes trick in case we drop some during fixing
         } else {
             return variant.getGenotype(0);
         }
+    }
+
+    public static boolean formatAnnotationsHaveCorrectLength(final int nAlleles, final Genotype g, final VCFHeader header) {
+        boolean looksGood = true;
+        for (final Map.Entry<String,Object> entry : g.getExtendedAttributes().entrySet()) {
+            final VCFFormatHeaderLine line = header.getFormatHeaderLine(entry.getKey());
+            final VCFHeaderLineCount count = line.getCountType();
+            if (count.equals(VCFHeaderLineCount.R)) {
+                looksGood &= VariantContextGetters.attributeToList(g.getExtendedAttribute(entry.getKey())).size() == nAlleles;
+            } else if (count.equals(VCFHeaderLineCount.A)) {
+                looksGood &= VariantContextGetters.attributeToList(g.getExtendedAttribute(entry.getKey())).size() == (nAlleles-1); //-1 to not count ref
+            } else if (count.equals(VCFHeaderLineCount.G)) {
+                looksGood &= VariantContextGetters.attributeToList(g.getExtendedAttribute(entry.getKey())).size() == GenotypeLikelihoods.numLikelihoods(nAlleles, g.getPloidy());
+            }
+        }
+        return looksGood;
+    }
+
+    public static Map<String,Object> fixFormatAnnotations(final int nAlleles, final Genotype g, final VCFHeader header, final int start) {
+        final Map<String,Object> returnMap = new LinkedHashMap<>();
+        for (final Map.Entry<String,Object> entry : g.getExtendedAttributes().entrySet()) {
+            final VCFFormatHeaderLine line = header.getFormatHeaderLine(entry.getKey());
+            final VCFHeaderLineCount count = line.getCountType();
+            final VCFHeaderLineType type = line.getType();
+            Object emptyValue;
+            if (type.equals(VCFHeaderLineType.Integer)) {
+                emptyValue = 0;
+            } else if (type.equals(VCFHeaderLineType.Float)) {
+                emptyValue = 0.0;
+            } else if (type.equals(VCFHeaderLineType.Flag)) {
+                emptyValue = false;
+            } else {
+                emptyValue = "";
+            }
+            String logMessage = "";
+            if (count.equals(VCFHeaderLineCount.G) || count.equals(VCFHeaderLineCount.A) || count.equals(VCFHeaderLineCount.R)) {
+                final List<Object> originalValues = VariantContextGetters.attributeToList(entry.getValue());
+                if (count.equals(VCFHeaderLineCount.R)) {
+                    int lengthDiff = originalValues.size() - nAlleles;
+                    if (lengthDiff == 0) {
+                        returnMap.put(entry.getKey(), entry.getValue());
+                    } else {
+                        logMessage += "At position " + start + " R-length attribute size didn't match expected count.";
+                        if (lengthDiff == -1) {
+                            final List<Object> paddedValues = new ArrayList<>(originalValues);
+                            paddedValues.add(emptyValue);
+                            returnMap.put(entry.getKey(), paddedValues);
+                        } else if (lengthDiff == 1) {
+                            final List<Object> trimmedValues = new ArrayList<>(originalValues);
+                            trimmedValues.remove(trimmedValues.size() - 1);
+                            returnMap.put(entry.getKey(), trimmedValues);
+                        } else {
+                            logMessage += "  R-length attribute cannot be subset and will be omitted.";
+                        }
+                        annotationLogger.warn(logMessage);
+                    }
+                } else if (count.equals(VCFHeaderLineCount.A)) {
+                    int lengthDiff = originalValues.size() - (nAlleles - 1); //-1 to get ALT count
+                    if (lengthDiff == 0) {
+                        returnMap.put(entry.getKey(), entry.getValue());
+                    } else {
+                        logMessage += "At position " + start + " A-length attribute size didn't match expected count.";
+                        if (lengthDiff == -1) {
+                            final List<Object> paddedValues = new ArrayList<>(originalValues);
+                            paddedValues.add(emptyValue);
+                            returnMap.put(entry.getKey(), paddedValues);
+                        } else if (lengthDiff == 1) {
+                            final List<Object> trimmedValues = new ArrayList<>(originalValues);
+                            trimmedValues.remove(trimmedValues.size() - 1);
+                            returnMap.put(entry.getKey(), trimmedValues);
+                        } else {
+                            logMessage += "  A-length attribute cannot be subset and will be omitted.";
+                        }
+                        annotationLogger.warn(logMessage);
+                    }
+                } else if (count.equals(VCFHeaderLineCount.G)) {
+                        final int lengthDiff = originalValues.size() - GenotypeLikelihoods.numLikelihoods(nAlleles, g.getPloidy());
+                        if (lengthDiff == 0) {
+                            returnMap.put(entry.getKey(), entry.getValue());
+                        } else {
+                            annotationLogger.warn("At position " + start + " G-length attribute size didn't match expected count -- annotation cannot be subset to relevant ALT alleles and will be dropped");
+                            continue;
+                        }
+                }
+            } else {
+                returnMap.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return returnMap;
     }
 
     /**
@@ -758,7 +852,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
      * @param posteriorsKey if not null, the key for genotype posteriors in this VCF version
      * @param updatedAllelesVC  variant context without uncalled alts
      */
-    private static void addQualAnnotations(final Map<String, Object> destination, final String posteriorsKey, final VariantAnnotatorEngine annotationEngine, final VariantContext updatedAllelesVC) {
+    private static void addQualAnnotations(final Map<String, Object> destination, final String posteriorsKey,
+                                           final VariantAnnotatorEngine annotationEngine, final VariantContext updatedAllelesVC,
+                                           final VCFHeader header) {
         final Genotype updatedAllelesGenotype = updatedAllelesVC.getGenotype(0);
         destination.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, updatedAllelesGenotype.getPL()[0]);
         int varDP = QualByDepth.getDepth(updatedAllelesVC.getGenotypes(), null);
@@ -776,9 +872,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
                     continue;
                 }
                 //TODO: this isn't going to work for DRAGEN's genotype posteriors
-                final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(updatedAllelesVC.getGenotypes(),
+                final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(updatedAllelesVC.getStart(), updatedAllelesVC.getGenotypes(),
                         updatedAllelesGenotype.getPloidy(), updatedAllelesVC.getAlleles(), Arrays.asList(updatedAllelesVC.getReference(), alt), null,
-                        GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL);
+                        GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, header);
                 //assignment method doesn't really matter as long as we don't zero out PLs; don't need depth to get PLs for quals
 
                 final Genotype subsettedGenotype = gc.get(0);

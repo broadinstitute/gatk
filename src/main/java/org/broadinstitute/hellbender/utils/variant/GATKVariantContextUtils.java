@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.variant;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.TribbleException;
 import htsjdk.utils.ValidationUtils;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -1687,7 +1688,7 @@ public final class GATKVariantContextUtils {
                         genotypeAssignmentMethodUsed != GenotypeAssignmentMethod.SET_TO_NO_CALL)
                     AlleleSubsettingUtils.addInfoFieldAnnotations(vc, builder, keepOriginalChrCounts);
 
-                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(),2,vc.getAlleles(), alleles, null, genotypeAssignmentMethodUsed));
+                builder.genotypes(AlleleSubsettingUtils.subsetAlleles(vc.getStart(), vc.getGenotypes(),2,vc.getAlleles(), alleles, null, genotypeAssignmentMethodUsed, null));
                 final VariantContext trimmed = trimAlleles(builder.make(), trimLeft, true);
                 biallelics.add(trimmed);
             }

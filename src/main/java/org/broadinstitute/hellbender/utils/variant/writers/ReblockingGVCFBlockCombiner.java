@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.iterators.PushPullTransformer;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
 import java.util.*;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
  * Combines variants into GVCF blocks.
  */
 public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
-    private static final Logger logger = LogManager.getLogger(ReblockingGVCFBlockCombiner.class);
+    private static final OneShotLogger logger = new OneShotLogger(LogManager.getLogger(ReblockingGVCFBlockCombiner.class));
 
     private final List<VariantContextBuilder> homRefBlockBuffer = new ArrayList<>(10);  //10 is a generous estimate for the number of overlapping deletions
     private static final Comparator<? super VariantContextBuilder> VCB_COMPARATOR = Comparator.comparingLong(VariantContextBuilder::getStart);
