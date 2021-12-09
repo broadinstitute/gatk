@@ -50,7 +50,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     }
 
     // transcription start sites and initTree() method for testing annotateNearestTranscriptionStartSite()
-    private static ClosedSVInterval[] transcriptionStartSites = {
+    private static final ClosedSVInterval[] transcriptionStartSites = {
             new ClosedSVInterval(0, 100, 101),
             new ClosedSVInterval(1, 150, 151),
             new ClosedSVInterval(1, 200, 201),
@@ -99,10 +99,9 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         }
     }
 
-    private final FeatureDataSource<GencodeGtfGeneFeature> loadToyGTFSource() {
+    private FeatureDataSource<GencodeGtfGeneFeature> loadToyGTFSource() {
         final File toyGTFFile = new File(getToolTestDataDir() + "EMMA1.gtf");
-        final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = new FeatureDataSource<>(toyGTFFile);
-        return toyGTFSource;
+        return new FeatureDataSource<>(toyGTFFile);
     }
 
     @Test
@@ -140,12 +139,11 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
             GATKSVVCFConstants.COPY_GAIN,
             GATKSVVCFConstants.TSS_DUP);
 
-    private final GencodeGtfTranscriptFeature loadToyGtfTranscript() {
+    private GencodeGtfTranscriptFeature loadToyGtfTranscript() {
         FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         // get only first gene, EMMA1, which has only one transcript
         final GencodeGtfGeneFeature toyGene = toyGTFSource.iterator().next();
-        final GencodeGtfTranscriptFeature toyTranscript = toyGene.getTranscripts().get(0);
-        return toyTranscript;
+        return toyGene.getTranscripts().get(0);
     }
 
     @DataProvider(name = "toyIntervalVariants")
@@ -279,12 +277,12 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         SVAnnotate.updateVariantConsequenceDict(before, GATKSVVCFConstants.LOF, "HES4");
         SVAnnotate.updateVariantConsequenceDict(before, GATKSVVCFConstants.TSS_DUP, "ISG15");
 
-        Map<String, String> expectedAfter = new HashMap<>();
-        expectedAfter.put(GATKSVVCFConstants.DUP_PARTIAL, "SAMD11");
-        expectedAfter.put(GATKSVVCFConstants.TSS_DUP, "ISG15");
-        expectedAfter.put(GATKSVVCFConstants.LOF, "HES4,KLHL17,NOC2L,PERM1,PLEKHN1");
+        Map<String, Object> expectedAfter = new HashMap<>();
+        expectedAfter.put(GATKSVVCFConstants.DUP_PARTIAL, Arrays.asList("SAMD11"));
+        expectedAfter.put(GATKSVVCFConstants.TSS_DUP, Arrays.asList("ISG15"));
+        expectedAfter.put(GATKSVVCFConstants.LOF, Arrays.asList("HES4", "KLHL17", "NOC2L", "PERM1", "PLEKHN1"));
 
-        Assert.assertEquals(expectedAfter, SVAnnotate.formatVariantConsequenceDict(before));
+        Assert.assertEquals(expectedAfter, SVAnnotate.sortVariantConsequenceDict(before));
     }
 
     // create list of SV segments with SAME SVTYPE - convenience function for testing getSVSegments
@@ -332,14 +330,14 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         if (cpxIntervals != null) {
             attributes.put(GATKSVVCFConstants.CPX_INTERVALS, cpxIntervals);
         }
-
         return new VariantContextBuilder()
                 .source("source")
                 .id("id")
                 .chr(chrom)
                 .start(pos)
                 .stop(end)
-                .alleles(Arrays.asList(Allele.REF_N, alt != null ? Allele.create(alt, false) : Allele.ALT_N))
+                .alleles(Arrays.asList(ref != null ? Allele.create(ref, true) : Allele.REF_N,
+                        alt != null ? Allele.create(alt, false) : Allele.ALT_N))
                 .attributes(attributes)
                 .make();
     }
@@ -505,7 +503,100 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
                 expectedSVSegmentsWithBNDOverlap != null ? expectedSVSegmentsWithBNDOverlap : expectedSVSegments);
     }
 
-    // noncoding and promoter annotation unit tests
+    private Map<String, Object> createAttributesMap(List<String> keys, List<Object> values) {
+        Map<String, Object> attributes = new HashMap<>();
+        int len = keys.size();
+        if (len != values.size()) {
+            throw new IllegalArgumentException("Length of keys list != length of values list");
+        }
+        for (int i = 0; i < len; i++) {
+            Object value = values.get(i);
+            attributes.put(keys.get(i), value.getClass() == String.class ? Arrays.asList(value) : value);
+        }
+        return attributes;
+    }
+
+    @DataProvider(name = "toyIntegratedVariants")
+    public Object[][] getAnnotateStructuralVariantTestData() {
+        return new Object[][]{
+                { createVariantContext("chr1", 10, 50, null, null, null,
+                        "<CNV>", 40, null, null, null),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.PROMOTER, GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("EMMA1", true)) },
+                { createVariantContext("chr1", 50, 450, null, null, null,
+                        "<DEL>", 400, null, null, null),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.LOF, GATKSVVCFConstants.NONCODING_BREAKPOINT,
+                                        GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("EMMA1", "DNase", false)) },
+                { createVariantContext("chr1", 1100, 1700, null, null, null,
+                        "<INV>", 600, null, null, null),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.NONCODING_SPAN, GATKSVVCFConstants.NEAREST_TSS,
+                                        GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("Enhancer", "EMMA1", true)) },
+                { createVariantContext("chr1", 1300, 1800, null, null, null,
+                        "<INS:LINE1>", 42, null, null, null),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.NONCODING_BREAKPOINT, GATKSVVCFConstants.NEAREST_TSS,
+                                        GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("Enhancer", "EMMA1", true)) },
+                { createVariantContext("chr1", 2000, 2200, null, null, null,
+                        "<DUP>", 42, null, null, null),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.DUP_PARTIAL,GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("EMMA2", false)) },
+                { createVariantContext("chr1", 3100, 3300, null, null, null,
+                        "<DUP>", 200, null, null, null),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.PROMOTER,GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("EMMA2", true)) }
+        };
+    }
+
+    private SVIntervalTree<String> createNoncodingIntervalTree() {
+        final SVIntervalTree<String> BEDIntervalTree = new SVIntervalTree<>();
+        final List<ClosedSVInterval> intervals = Arrays.asList(
+                new ClosedSVInterval(0, 400, 500),
+                new ClosedSVInterval(0, 1200, 1600)
+        );
+        final List<String> names = Arrays.asList("DNase", "Enhancer");
+        for (int i = 0; i < names.size(); i++) {
+            BEDIntervalTree.put(intervals.get(i), names.get(i));
+        }
+        return BEDIntervalTree;
+    }
+
+    // tests full integrated annotateStructuralVariant process, with a focus on noncoding & promoter annotation
+    // and logic controlling when to annotate TSS and intergenic, since protein-coding and TSS annotation
+    // is tested elsewhere
+    @Test(dataProvider = "toyIntegratedVariants")
+    public void testAnnotateStructuralVariant(
+            final VariantContext variant,
+            final Map<String, Object> expectedAttributes
+    ) {
+        final Map<String,Integer> contigNameToID = new HashMap<>();
+        contigNameToID.put("chr1", 0);
+        final String[] contigIDToName = new String[]{"chr1"};
+        final int promoterWindow = 200;
+        final int maxBreakendLen = -1;
+        final int maxContigLength = 5000;
+
+        FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
+        final SVAnnotate.GTFIntervalTreesContainer gtfTrees = SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, promoterWindow);
+        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
+        final SVIntervalTree<String> promoterIntervalTree = gtfTrees.promoterIntervalTree;
+        final SVIntervalTree<String> transcriptionStartSiteTree = gtfTrees.transcriptionStartSiteTree;
+        final SVIntervalTree<String> nonCodingIntervalTree = createNoncodingIntervalTree();
+
+        final Map<String, Object> actualAttributes = SVAnnotate.annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
+                transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications, contigNameToID,
+                contigIDToName, maxBreakendLen, maxContigLength);
+
+        Assert.assertEquals(expectedAttributes, actualAttributes);
+    }
+
     // interval trees? getContigIDFromName?
     // variantOverlapsTranscriptionStartSite
 }
