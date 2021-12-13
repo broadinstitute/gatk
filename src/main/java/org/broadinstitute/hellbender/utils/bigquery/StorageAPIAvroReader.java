@@ -100,7 +100,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
                         new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema()));
 
                 logger.info("Storage API Session ID: " + session.getName());
-                logger.info("Storage API Estimated Bytes Scanned for " + tableRef.getFQTableName() + " :" + getEstimatedTotalBytesScanned());
+                logger.info("Storage API Estimated Bytes Scanned for " + tableRef.getFQTableName() + ":" + getEstimatedTotalBytesScanned());
 
                 // Use the first stream to perform reading.
                 String streamName = session.getStreams(0).getName();
