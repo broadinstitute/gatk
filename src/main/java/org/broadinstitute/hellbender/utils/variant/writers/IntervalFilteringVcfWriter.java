@@ -5,6 +5,7 @@ import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
+import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -19,12 +20,13 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
     /**
      * Comparison modes which allow matching intervals in different ways.
      */
-    public enum Mode {
+    public enum Mode implements CommandLineParser.ClpEnum {
 
         /**
          * Matches if the query starts within any of the given intervals.
          */
-        STARTS_IN{
+        STARTS_IN("starts within any of the given intervals"){
+
             @Override
             boolean test(OverlapDetector<? extends Locatable> detector, final VariantContext query) {
                 final SimpleInterval startPosition = new SimpleInterval(query.getContig(), query.getStart(), query.getStart());
@@ -35,7 +37,7 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
         /**
          * Matches if the query ends within any of the given intervals
          */
-        ENDS_IN{
+        ENDS_IN("ends within any of the given intervals"){
             @Override
             boolean test(final OverlapDetector<? extends Locatable> detector, final VariantContext query) {
                 final SimpleInterval endPosition = new SimpleInterval(query.getContig(), query.getEnd(), query.getEnd());
@@ -46,17 +48,19 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
         /**
          * Matches if any part of the query overlaps any one of the given intervals
          */
-        OVERLAPS{
+        OVERLAPS("overlaps any of the given intervals"){
             @Override
             boolean test(final OverlapDetector<? extends Locatable> detector, final VariantContext query) {
                 return detector.overlapsAny(query);
             }
         },
 
+        // TODO finish this exception here...
         /**
-         * Matches if the entirety of the query is contained within one of the intervals
+         * Matches if the entirety of the query is contained within one of the intervals.  Note that adjacent intervals
+         * may be merged into a single interval depending on the values in
          */
-        CONTAINED {
+        CONTAINED("contained completely within a contiguous block of intervals without overlap") {
             @Override
             boolean test(final OverlapDetector<? extends Locatable> detector, final VariantContext query) {
                 final Set<? extends Locatable> overlaps = detector.getOverlaps(query);
@@ -70,14 +74,16 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
         },
 
         /**
-         * Always matches, may be used to not perform any filtering, alternatively a
+         * Always matches, may be used to not perform any filtering
          */
-        ANYWHERE {
+        ANYWHERE("no filtering") {
             @Override
             boolean test(final OverlapDetector<? extends Locatable> detector, final VariantContext query) {
                 return true;
             }
         };
+
+        private final String doc;
 
         /**
          * @param detector The OverlapDetector to compare against
@@ -85,6 +91,15 @@ public class IntervalFilteringVcfWriter implements VariantContextWriter {
          * @return true iff the variant matches the given intervals
          */
         abstract boolean test(OverlapDetector<? extends Locatable> detector, VariantContext query);
+
+        private Mode(String doc){
+            this.doc = doc;
+
+        }
+        @Override
+        public String getHelpDoc() {
+            return doc;
+        }
     }
 
     private final VariantContextWriter writer;
