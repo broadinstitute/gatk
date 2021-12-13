@@ -3,16 +3,18 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.bigquery.storage.v1beta2.AppendRowsResponse;
-import com.google.cloud.bigquery.storage.v1beta2.JsonStreamWriter;
-import com.google.cloud.bigquery.storage.v1beta2.TableName;
-import com.google.cloud.bigquery.storage.v1beta2.TableSchema;
+import com.google.cloud.bigquery.storage.v1.AppendRowsResponse;
+import com.google.cloud.bigquery.storage.v1.JsonStreamWriter;
+import com.google.cloud.bigquery.storage.v1.TableFieldSchema;
+import com.google.cloud.bigquery.storage.v1.TableName;
+import com.google.cloud.bigquery.storage.v1.TableSchema;
 import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
@@ -70,7 +72,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private VetCreator vetCreator;
     private enum LoadStatus { STARTED, FINISHED };
     private TableName loadStatusTable;
-    private Schema loadStatusTableSchema;
+    private TableSchema loadStatusTableSchema;
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
@@ -271,7 +273,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
             BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
             Table table = bigquery.getTable(TableId.of(projectID, datasetName, loadStatusTableName));
-            loadStatusTableSchema = table.getDefinition().getSchema();
+            loadStatusTableSchema = getLoadStatusTableSchema();
 
             StandardTableDefinition tdd = table.getDefinition();
             if (BigQueryUtils.getEstimatedRowsInStreamingBuffer(projectID, datasetName, loadStatusTableName) > 0 ) {
@@ -281,6 +283,20 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             verifySampleIsNotLoaded();
         }
 
+    }
+
+    private TableSchema getLoadStatusTableSchema() {
+        TableSchema.Builder builder = TableSchema.newBuilder();
+        builder.addFields(
+                TableFieldSchema.newBuilder().setName(SchemaUtils.SAMPLE_ID_FIELD_NAME).setType(TableFieldSchema.Type.NUMERIC).setMode(TableFieldSchema.Mode.REQUIRED).build()
+        );
+        builder.addFields(
+                TableFieldSchema.newBuilder().setName(SchemaUtils.LOAD_STATUS_FIELD_NAME).setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.REQUIRED).build()
+        );
+        builder.addFields(
+                TableFieldSchema.newBuilder().setName(SchemaUtils.LOAD_STATUS_EVENT_TIMESTAMP_NAME).setType(TableFieldSchema.Type.TIMESTAMP).setMode(TableFieldSchema.Mode.REQUIRED).build()
+        );
+        return builder.build();
     }
 
     private void verifySampleIsNotLoaded() {

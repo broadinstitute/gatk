@@ -341,7 +341,8 @@ public class ExtractCohort extends ExtractTool {
 
         if ( engine != null ) {
             logger.info(String.format("***Processed %d total sites", engine.getTotalNumberOfSites()));
-            logger.info(String.format("***Processed %d total variants", engine.getTotalNumberOfVariants()));
+            logger.info(String.format("***Processed %d total variants", engine.getTotalNumberOfVariants()));            logger.info(String.format("***Processed %d total variants", engine.getTotalNumberOfVariants()));
+            logger.info(String.format("***Read API scanned %d bytes", engine.getTotalEstimatedBytesScanned()));
         }
 
         // Close up our writer if we have to:

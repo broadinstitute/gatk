@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
+import com.google.cloud.bigquery.storage.v1.ReadSession;
 import com.google.common.collect.Sets;
 import static java.util.stream.Collectors.toList;
 import htsjdk.samtools.util.CloseableIterator;
@@ -75,6 +76,7 @@ public class ExtractCohortEngine {
     private int totalNumberOfSites = 0;
     private int totalRangeRecords = 0;
     private int totalIrrelevantRangeRecords = 0;
+    private long totalEstimatedBytesScanned = 0;
 
     private final GATKPath cohortAvroFileName;
 
@@ -158,6 +160,12 @@ public class ExtractCohortEngine {
 
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
     int getTotalNumberOfSites() { return totalNumberOfSites; }
+    long getTotalEstimatedBytesScanned() { return totalEstimatedBytesScanned; }
+
+    private void processBytesScanned(StorageAPIAvroReader reader) {
+        long bytes = reader.getEstimatedTotalBytesScanned();
+        totalEstimatedBytesScanned += bytes;
+    }
 
     public void traverse() {
         //First allele here is the ref, followed by the alts associated with that ref. We need this because at this point the alleles haven't been joined and remapped to one reference allele.
@@ -196,6 +204,7 @@ public class ExtractCohortEngine {
                     fullYngMap.get(location).putIfAbsent(ref, new HashMap<>());
                     fullYngMap.get(location).get(ref).put(alt, yng);
                 }
+                processBytesScanned(reader);
             }
         }
 
@@ -207,6 +216,7 @@ public class ExtractCohortEngine {
                     List<String> filters = Arrays.asList(queryRow.get(SchemaUtils.FILTERS).toString().split(","));
                     siteFilterMap.put(location, filters);
                 }
+                processBytesScanned(reader);
             }
         }
 
@@ -229,6 +239,7 @@ public class ExtractCohortEngine {
             if (cohortTableRef != null) {
                 try (StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID)) {
                     createVariantsFromUnsortedResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+                    processBytesScanned(storageAPIAvroReader);
                 }
             } else {
                 final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);
@@ -823,6 +834,7 @@ public class ExtractCohortEngine {
                     }
 
                     addToVetSortingCollection(sortedVet, vetReader, vbs);
+                    processBytesScanned(vetReader);
                 }
             }
         }
@@ -856,6 +868,7 @@ public class ExtractCohortEngine {
                         sortedReferenceRange = getAvroSortingCollection(refReader.getSchema(), localSortMaxRecordsInRam);
                     }
                     addToRefSortingCollection(sortedReferenceRange, refReader, vbs);
+                    processBytesScanned(refReader);
                 }
             }
         }
