@@ -72,11 +72,11 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
     String testClassesUnpacked = "$System.env.CP_DIR"
 
     dependsOn testOnPackagedReleaseJar
-    executionData testOnPackagedReleaseJar
-    additionalSourceDirs = files(sourceSets.main.allJava.srcDirs)
+    executionData.from testOnPackagedReleaseJar
+    additionalSourceDirs.from = files(sourceSets.main.allJava.srcDirs)
 
-    sourceDirectories = files(sourceFiles)
-    classDirectories =  files(testClassesUnpacked)
+    sourceDirectories.from = files(sourceFiles)
+    classDirectories.from = files(testClassesUnpacked)
 
     group = "Reporting"
     description = "Generate Jacoco coverage reports after running tests inside the docker image."
