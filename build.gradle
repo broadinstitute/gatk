@@ -14,7 +14,7 @@ plugins {
     id 'signing'
     id "jacoco"
     id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib
-    id "com.github.johnrengelman.shadow" version "5.0.0"    //used to build the shadow and sparkJars
+    id "com.github.johnrengelman.shadow" version "6.1.0"    //used to build the shadow and sparkJars
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
     id 'com.palantir.git-version' version '0.5.1' //version helper
 }
@@ -70,8 +70,8 @@ final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
 
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.3.2')
-final bigQueryVersion = System.getProperty('bigQuery.version', '2.3.3')
-final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.5.0')
+final bigQueryVersion = System.getProperty('bigQuery.version', '2.5.1')
+final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.7.0')
 
 final guavaVersion = System.getProperty('guava.version', '27.1-jre')
 final testNGVersion = '7.0.0'
@@ -184,7 +184,7 @@ configurations.all {
         force 'com.google.guava:guava:' + guavaVersion
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
-        force 'com.google.protobuf:protobuf-java:3.8.0'
+        force 'com.google.protobuf:protobuf-java:3.19.0'
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
