@@ -424,7 +424,7 @@ group = 'org.broadinstitute'
 tasks.withType(Jar) {
     manifest {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
-                'Implementation-Version': version,
+                'Implementation-Version': archiveVersion,
                 'Toolkit-Short-Name' : 'GATK',
                 'Main-Class': project.mainClassName,
                 'Picard-Version': picardVersion,
@@ -440,7 +440,7 @@ wrapper {
 
 tasks.withType(ShadowJar) {
     from(project.sourceSets.main.output)
-    baseName = project.name + '-package'
+    archiveBaseName = project.name + '-package'
     mergeServiceFiles()
     relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
     zip64 true
@@ -537,12 +537,12 @@ task collectBundleIntoDir(type: Copy) {
 task bundle(type: Zip) {
     dependsOn collectBundleIntoDir
 
-    baseName = project.name + "-" + project.version
-    destinationDir file("$buildDir")
-    archiveName baseName + ".zip"
+    archiveBaseName = project.name + "-" + project.version
+    destinationDirectory = file("$buildDir")
+    archiveFileName = archiveBaseName.get() + '.zip'
 
     from("$buildDir/bundle-files-collected")
-    into(baseName)
+    into(archiveBaseName)
 
     doLast {
         logger.lifecycle("Created GATK distribution in ${destinationDir}/${archiveName}")
@@ -588,8 +588,8 @@ task pythonPackageArchive(type: Zip) {
         assert file("src/main/python/org/broadinstitute/hellbender/").exists()
     }
 
-    destinationDir file("${buildDir}")
-    archiveName pythonPackageArchiveName
+    destinationDirectory = file("${buildDir}")
+    archiveFileName = pythonPackageArchiveName
     from("src/main/python/org/broadinstitute/hellbender/")
     into("/")
 
@@ -622,7 +622,7 @@ task sourcesJar(type: Jar) {
 }
 
 task testUtilsJar(type: Jar){
-    baseName = "$project.name-test-utils"
+    archiveBaseName = "$project.name-test-utils"
     from sourceSets.testUtils.output
 }
 
@@ -652,13 +652,13 @@ task testUtilsJavadoc(type: Javadoc) {
 }
 
 task testUtilsJavadocJar(type: Jar, dependsOn: testUtilsJavadoc){
-    baseName = "$project.name-test-utils"
+    archiveBaseName = "$project.name-test-utils"
     classifier = 'javadoc'
     from "$docBuildDir/testUtilsJavadoc"
 }
 
 task testUtilsSourcesJar(type: Jar){
-    baseName = "$project.name-test-utils"
+    archiveBaseName = "$project.name-test-utils"
     classifier = 'sources'
     from sourceSets.testUtils.allSource
 }
