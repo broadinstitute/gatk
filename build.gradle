@@ -435,7 +435,7 @@ tasks.withType(Jar) {
 }
 
 wrapper {
-    gradleVersion = '5.6'
+    gradleVersion = '6.9.1'
 }
 
 tasks.withType(ShadowJar) {
@@ -690,6 +690,9 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.hellbender.utils.help.GATKHelpDoclet"
 
+    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
+    options.noTimestamp(false)
+
     outputs.dir(gatkDocDir)
     options.destinationDirectory(gatkDocDir)
 
@@ -726,6 +729,9 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
 
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.barclay.help.BashTabCompletionDoclet"
+
+    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
+    options.noTimestamp(false)
 
     outputs.dir(tabCompletionDir)
     options.destinationDirectory(tabCompletionDir)
@@ -784,6 +790,9 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
     classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.hellbender.utils.help.GATKWDLDoclet"
+
+    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
+    options.noTimestamp(false)
 
     outputs.dir(gatkWDLDir)
     options.destinationDirectory(gatkWDLDir)
