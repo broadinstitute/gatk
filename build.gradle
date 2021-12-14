@@ -14,7 +14,7 @@ plugins {
     id 'signing'
     id "jacoco"
     id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib
-    id "com.github.johnrengelman.shadow" version "5.0.0"    //used to build the shadow and sparkJars
+    id "com.github.johnrengelman.shadow" version "6.1.0"    //used to build the shadow and sparkJars
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
     id 'com.palantir.git-version' version '0.5.1' //version helper
 }
