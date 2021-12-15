@@ -187,7 +187,7 @@ public final class AS_RMSMappingQuality implements InfoFieldAnnotation, AS_Stand
      * Takes combined raw annotation data sums, and calculates per allele the average root mean squared from the raw data
      * using expected Allele Depth counts data.
      *
-     * Will output delineated doubles in the format: sqrt(TotalAllele1RMS/Allele1Depth)|sqrt(TotalAllele1RMS/Allele1Depth)|...
+     * Will output delimited doubles in the format: sqrt(TotalAllele1RMS/Allele1Depth)|sqrt(TotalAllele2RMS/Allele2Depth)|...
      */
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
