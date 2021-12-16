@@ -2,7 +2,6 @@
 buildscript {
     repositories {
         mavenCentral()
-        jcenter() // for shadow plugin
      }
 }
 
@@ -14,7 +13,7 @@ plugins {
 
 repositories {
     mavenCentral()
-    jcenter()
+
     maven {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
