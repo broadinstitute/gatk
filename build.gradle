@@ -458,7 +458,7 @@ tasks.withType(ShadowJar) {
 apply from: "testsettings.gradle"
 
 shadowJar {
-    configurations = [project.configurations.runtime]
+    configurations = [project.configurations.runtimeClasspath]
     classifier = 'local'
     mergeServiceFiles('reference.conf')
     doLast {
@@ -497,7 +497,7 @@ task shadowTestJar(type: ShadowJar){
     group = "Shadow"
     description = " A minimal jar that only contains the extra dependencies needed for running the tests that arent packaged in the main shadow jar"
     from {
-        (project.configurations.testRuntime - project.configurations.runtime ).collect {
+        (project.configurations.testRuntimeClasspath - project.configurations.runtimeClasspath ).collect {
             it.isDirectory() ? it : it.getName().endsWith(".jar") ? zipTree(it) : it
         }
     }
