@@ -71,7 +71,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         SampleList sampleList = SampleList.singletonSampleList("tumor");
         Byte minbq = 9;
         // NOTE: this test MUST be run with correctOverlappingBaseQualities enabled otherwise this test can succeed even with unsafe code
-        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, true, false);
+        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, true, false, false);
 
         // make sure that the original reads are not changed due to finalizeRegion()
         Assert.assertTrue(reads.get(0).convertToSAMRecord(header).equals(orgRead0));

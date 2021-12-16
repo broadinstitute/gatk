@@ -584,8 +584,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         List<VariantContext> forcedPileupAlleles = Collections.emptyList();
-        if(hcArgs.usePileupDetection){
-            forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(region.getAlignmentData());
+        if(hcArgs.pileupDetectionArgs.usePileupDetection){
+            forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(region.getAlignmentData(), hcArgs.pileupDetectionArgs, readsHeader);
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed

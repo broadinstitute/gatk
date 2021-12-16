@@ -247,8 +247,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
                 .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
 
-        final List<VariantContext> forcedPileupAlleles= MTAC.usePileupDetection ?
-                PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData()) :
+        final List<VariantContext> forcedPileupAlleles= MTAC.pileupDetectionArgs.usePileupDetection ?
+                PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData(), MTAC.pileupDetectionArgs, header) :
                 Collections.emptyList();
 
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, givenAlleles, forcedPileupAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
@@ -493,7 +493,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      */
     private List<VariantContext> referenceModelForNoVariation(final AssemblyRegion region) {
         // don't correct overlapping base qualities because we did that upstream
-        AssemblyBasedCallerUtils.finalizeRegion(region, false, true, (byte)9, header, samplesList, false, false, MTAC.usePileupDetection);  //take off soft clips and low Q tails before we calculate likelihoods
+        AssemblyBasedCallerUtils.finalizeRegion(region, false, true, (byte)9, header, samplesList, false, false, MTAC.pileupDetectionArgs.usePileupDetection);  //take off soft clips and low Q tails before we calculate likelihoods
         final SimpleInterval paddedLoc = region.getPaddedSpan();
         final Haplotype refHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(region, paddedLoc, referenceReader);
         final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
