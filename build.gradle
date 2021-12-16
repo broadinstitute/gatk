@@ -208,16 +208,16 @@ sourceSets {
 
 // Dependency change for including MLLib
 configurations {
-    testUtilsCompile.extendsFrom compile
-    testUtilsRuntime.extendsFrom runtime
+    testUtilsImplementation.extendsFrom implementation
+    testUtilsRuntimeClasspath.extendsFrom runtimeClasspath
 
-    testCompile.extendsFrom testUtilsCompile
-    testRuntime.extendsFrom testUtilsRuntime
+    testImplementation.extendsFrom testUtilsImplementation
+    testRuntimeClasspath.extendsFrom testUtilsRuntimeClasspath
 
-    compile.exclude module: 'jul-to-slf4j'
-    compile.exclude module: 'javax.servlet'
-    compile.exclude module: 'servlet-api'
-    compile.exclude group: 'com.esotericsoftware.kryo'
+    implementation.exclude module: 'jul-to-slf4j'
+    implementation.exclude module: 'javax.servlet'
+    implementation.exclude module: 'servlet-api'
+    implementation.exclude group: 'com.esotericsoftware.kryo'
 
     externalSourceConfiguration {
         // External sources we need for doc and tab completion generation tasks (i.e., Picard sources)
@@ -225,7 +225,7 @@ configurations {
     }
 
     sparkConfiguration {
-        extendsFrom runtime
+        extendsFrom runtimeClasspath
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
@@ -249,7 +249,7 @@ final javadocJDKFiles = ToolProvider.getSystemToolClassLoader() == null ? files(
 dependencies {
     // javadoc utilities; compile/test only to prevent redistribution of sdk jars
     compileOnly(javadocJDKFiles)
-    testCompile(javadocJDKFiles)
+    testImplementation(javadocJDKFiles)
 
     implementation 'org.broadinstitute:barclay:' + barclayVersion
     // Library for configuration:
@@ -337,7 +337,7 @@ dependencies {
 
     // Dependency change for including MLLib
     implementation('org.objenesis:objenesis:1.2')
-    testCompile('org.objenesis:objenesis:2.1')
+    testImplementation('org.objenesis:objenesis:2.1')
 
     // Comment the next lines to disable native code proxies in Spark MLLib
     implementation('com.github.fommil.netlib:netlib-native_ref-osx-x86_64:1.1:natives')
@@ -375,14 +375,14 @@ dependencies {
     implementation('net.grey-panther:natural-comparator:1.1')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
 
-    testUtilsCompile sourceSets.main.output
-    testUtilsCompile 'org.testng:testng:' + testNGVersion
-    testUtilsCompile 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
+    testUtilsImplementation sourceSets.main.output
+    testUtilsImplementation 'org.testng:testng:' + testNGVersion
+    testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
 
-    testCompile sourceSets.testUtils.output
+    testImplementation sourceSets.testUtils.output
 
-    testCompile "org.mockito:mockito-core:2.28.2"
-    testCompile "com.google.jimfs:jimfs:1.1"
+    testImplementation "org.mockito:mockito-core:2.28.2"
+    testImplementation "com.google.jimfs:jimfs:1.1"
 }
 
 //add gatk launcher script to the jar as a resource
