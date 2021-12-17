@@ -1,5 +1,5 @@
 {
-  "RemoveInfoFieldAnnotationsFromVcf.gatk_docker": "broadinstitute/gatk-nightly:2019-01-11-4.0.12.0-22-ga74e571fe-SNAPSHOT",
+  "RemoveInfoFieldAnnotationsFromVcf.gatk_docker": "broadinstitute/gatk:4.2.4.0",
 
   "RemoveInfoFieldAnnotationsFromVcf.variant_vcfs": [ "gs://gnomad-public/release/2.1/vcf/exomes/gnomad.exomes.r2.1.sites.vcf.bgz", "gs://gnomad-public/release/2.1/vcf/genomes/gnomad.genomes.r2.1.sites.vcf.bgz" ],
 

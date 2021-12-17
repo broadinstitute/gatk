@@ -1,5 +1,5 @@
 {
-  "RemoveInfoFieldAnnotationsFromVcf.gatk_docker": "broadinstitute/gatk-nightly:2019-01-11-4.0.12.0-22-ga74e571fe-SNAPSHOT",
+  "RemoveInfoFieldAnnotationsFromVcf.gatk_docker": "broadinstitute/gatk:4.2.4.0",
 
   "RemoveInfoFieldAnnotationsFromVcf.variant_vcfs": [ "gs://broad-dsde-methods-jonn/gnomAD_2.1_Liftover_hg38/exome/gnomad.exomes.r2.1.sites.liftoverToHg38.vcf.gz" ],
 
