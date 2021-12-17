@@ -9,7 +9,7 @@ buildscript {
 plugins {
     id "java"           // set up default java compile and test tasks
     id "application"    // provides installDist
-    id 'maven'          // record code coverage during test execution
+    id 'maven-publish'
     id 'signing'
     id "jacoco"
     id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib
@@ -889,84 +889,84 @@ configurations.archives.artifacts.removeAll {it.file =~ '.tar$'}
  * Sign non-snapshot releases with our secret key.  This should never need to be invoked directly.
  */
 signing {
-    required { isRelease && gradle.taskGraph.hasTask("uploadArchives") }
-    sign configurations.archives
+    required { isRelease && gradle.taskGraph.hasTask("publish") }
+    sign publishing.publications
 }
 
-def gatkArtifactFilter = { artifact, file -> artifact.name == 'gatk' }
-def gatkTestUtilsArtifactFilter = {artifact, file -> artifact.name == 'gatk-test-utils' }
 def basePomConfiguration = {
-    packaging 'jar'
-    description 'Development on GATK 4'
-    url 'http://github.com/broadinstitute/gatk'
+    packaging = 'jar'
+    description = 'Development on GATK 4'
+    url = 'http://github.com/broadinstitute/gatk'
 
     scm {
-        url 'scm:git@github.com:broadinstitute/gatk.git'
-        connection 'scm:git@github.com:broadinstitute/gatk.git'
-        developerConnection 'scm:git@github.com:broadinstitute/gatk.git'
+        url = 'scm:git@github.com:broadinstitute/gatk.git'
+        connection = 'scm:git@github.com:broadinstitute/gatk.git'
+        developerConnection = 'scm:git@github.com:broadinstitute/gatk.git'
     }
 
     developers {
         developer {
-            id = "gatkdev"
-            name = "GATK Development Team"
-            email = "gatk-dev-public@broadinstitute.org"
+            id = 'gatkdev'
+            name = 'GATK Development Team'
+            email = 'gatk-dev-public@broadinstitute.org'
         }
     }
 
     licenses {
         license {
-            name 'Apache 2.0'
-            url 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
-            distribution 'repo'
+            name = 'Apache 2.0'
+            url = 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
+            distribution = 'repo'
         }
     }
 }
 
-install {
-    install {
-        repositories.mavenInstaller {
-            addFilter('gatk', gatkArtifactFilter)
-                    .project(basePomConfiguration)
-                    .project{ name "GATK4"}
-            
-            addFilter('gatk-test-utils', gatkTestUtilsArtifactFilter)
-                    .project(basePomConfiguration)
-                    .project{ name "GATK4 Test Utilities" }
+publishing {
+    publications {
+        gatk(MavenPublication) {
+            from components.java
+            artifactId = "gatk"
+            pom basePomConfiguration
+
+            artifact sourcesJar
+            artifact javadocJar
+        }
+
+        testUtils(MavenPublication) {
+            artifactId = "gatk-test-utils"
+            pom basePomConfiguration
+
+            artifact testUtilsJar
+            artifact testUtilsSourcesJar
+            artifact testUtilsJavadocJar
+
+        }
+    }
+
+    repositories {
+        maven {
+            name = "SonaType"
+            url =  "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            credentials {
+                username = project.findProperty("sonatypeUsername")
+                password = project.findProperty("sonatypePassword")
+            }
+        }
+
+        maven {
+            name = "Artifactory"
+            url = "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/"
+            credentials {
+                username = System.env.ARTIFACTORY_USERNAME
+                password = System.env.ARTIFACTORY_PASSWORD
+            }
         }
     }
 }
-/**
- * Upload a release to sonatype.  You must be an authorized uploader and have your sonatype
- * username and password information in your gradle properties file.  See the readme for more info.
- *
- * For releasing to your local maven repo, use gradle install
- */
-uploadArchives {
+
+publish {
     doFirst {
         println "Attempting to upload version:$version"
-    }
-    repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-
-            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: project.findProperty("sonatypeUsername"), password: project.findProperty("sonatypePassword"))
-            }
-
-            snapshotRepository(url: "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/") {
-                authentication(userName: System.env.ARTIFACTORY_USERNAME, password: System.env.ARTIFACTORY_PASSWORD)
-            }
-
-            addFilter('gatk-test-utils', gatkTestUtilsArtifactFilter)
-                    .project(basePomConfiguration)
-                    .project{ name "GATK4 Test Utilities" }
-
-            addFilter('gatk', gatkArtifactFilter)
-                    .project(basePomConfiguration)
-                    .project{ name "GATK4"}
-
-        }
     }
 }
 
