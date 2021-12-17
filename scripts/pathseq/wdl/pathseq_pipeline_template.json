@@ -18,5 +18,5 @@
   "PathSeqPipeline.PathSeqFilter.filter_bwa_image": "gs://gatk-best-practices/pathseq/resources/pathseq_host.fa.img",
   "PathSeqPipeline.PathSeqScore.taxonomy_file": "gs://gatk-best-practices/pathseq/resources/meats.min2k.db",
 
-  "PathSeqPipeline.gatk_docker": "broadinstitute/gatk:4.1.7.0"
+  "PathSeqPipeline.gatk_docker": "broadinstitute/gatk:4.2.4.0"
 }

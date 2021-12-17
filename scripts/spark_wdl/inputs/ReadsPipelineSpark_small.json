@@ -4,7 +4,7 @@
   "ReadsPipelineSparkWorkflow.output_vcf": "gs://broad-spark-eval-test-data/small/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.vcf",
   "ReadsPipelineSparkWorkflow.known_sites": "gs://broad-spark-eval-test-data/small/dbsnp_138.b37.20.21.vcf",
   "ReadsPipelineSparkWorkflow.emit_reference_confidence": "NONE",
-  "ReadsPipelineSparkWorkflow.gatk_docker": "broadinstitute/gatk:4.1.2.0",
+  "ReadsPipelineSparkWorkflow.gatk_docker": "broadinstitute/gatk:4.2.4.0",
   "ReadsPipelineSparkWorkflow.gatk": "/gatk/gatk",
   "ReadsPipelineSparkWorkflow.gatk_spark_jar": "/gatk/gatk-spark.jar",
   "ReadsPipelineSparkWorkflow.gcloud_project": "broad-gatk-collab",

@@ -1,6 +1,6 @@
 {
   "CNNScoreVariantsWorkflow.calling_intervals": "gs://broad-references/hg19/v0/wgs_calling_regions.v1.chr20.interval_list",
-  "CNNScoreVariantsWorkflow.gatk_docker": "broadinstitute/gatk",
+  "CNNScoreVariantsWorkflow.gatk_docker": "broadinstitute/gatk:4.2.4.0",
   "CNNScoreVariantsWorkflow.input_vcf": "gs://broad-dsde-methods-sam/cnn-variant/vcfs/chr20_tiny_tf_python_gpu.vcf.gz",
   "CNNScoreVariantsWorkflow.input_vcf_index": "gs://broad-dsde-methods-sam/cnn-variant/vcfs/chr20_tiny_tf_python_gpu.vcf.gz.tbi",
   "CNNScoreVariantsWorkflow.output_prefix": "g94982_b37_chr20_tiny",

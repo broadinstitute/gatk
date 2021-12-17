@@ -1,5 +1,5 @@
 {
-  "TestWDLTool.dockerImage": "broadinstitute/gatk:1.2.3.4",
+  "TestWDLTool.dockerImage": "broadinstitute/gatk:4.2.4.0",
   "TestWDLTool.gatk": "gatk",
   "TestWDLTool.memoryRequirements": "8G",
   "TestWDLTool.diskRequirements": "local-disk 40 HDD",
