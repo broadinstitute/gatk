@@ -921,6 +921,12 @@ def basePomConfiguration = {
     }
 }
 
+
+//remove the shadow jar from the published component
+components.java.withVariantsFromConfiguration(project.configurations.shadowRuntimeElements) {
+    skip()
+}
+
 publishing {
     publications {
         gatk(MavenPublication) {
