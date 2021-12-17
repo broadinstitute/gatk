@@ -12,8 +12,8 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id "jacoco"
-    id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib
-    id "com.github.johnrengelman.shadow" version "6.1.0"    //used to build the shadow and sparkJars
+    id "de.undercouch.download" version "4.1.2" //used for downloading GSA lib
+    id "com.github.johnrengelman.shadow" version "7.1.1"    //used to build the shadow and sparkJars
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
     id 'com.palantir.git-version' version '0.5.1' //version helper
 }
@@ -409,8 +409,8 @@ def createSymlinks(archivePath, symlinkLocation) {
 def createGatkSymlinks(destinationDir, archivePath, suffix, baseJarName, secondaryBaseJarName) {
     def finalSuffix = (suffix == "") ? "" : ("-" + suffix)
 
-    def symlinkLocation = destinationDir.toString() + "/" + baseJarName + finalSuffix + ".jar"
-    def symlinkLocation2 = destinationDir.toString() + "/" + secondaryBaseJarName + finalSuffix + ".jar"
+    def symlinkLocation = destinationDir.getAsFile().get().toString() + "/" + baseJarName + finalSuffix + ".jar"
+    def symlinkLocation2 = destinationDir.getAsFile().get().toString() + "/" + secondaryBaseJarName + finalSuffix + ".jar"
 
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
@@ -433,7 +433,7 @@ tasks.withType(Jar) {
 }
 
 wrapper {
-    gradleVersion = '6.9.1'
+    gradleVersion = '7.3.2'
 }
 
 tasks.withType(ShadowJar) {
@@ -457,13 +457,13 @@ apply from: "testsettings.gradle"
 
 shadowJar {
     configurations = [project.configurations.runtimeClasspath]
-    classifier = 'local'
+    archiveClassifier = 'local'
     mergeServiceFiles('reference.conf')
     doLast {
         // Create a symlink to the newly created jar.  The name will be gatk.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDir.toString(), archivePath, "", baseJarName, secondaryBaseJarName)
+        createGatkSymlinks(destinationDirectory, archivePath, "", baseJarName, secondaryBaseJarName)
     }
 }
 
@@ -473,12 +473,12 @@ task sparkJar(type: ShadowJar) {
     group = "Shadow"
     description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
     configurations = [project.configurations.sparkConfiguration]
-    classifier = 'spark'
+    archiveClassifier = 'spark'
     doLast {
         // Create a symlink to the newly created jar.  The name will be gatk.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDir.toString(), archivePath, classifier, baseJarName, secondaryBaseJarName)
+        createGatkSymlinks(destinationDirectory, archivePath, archiveClassifier, baseJarName, secondaryBaseJarName)
     }
 }
 
@@ -487,7 +487,7 @@ task shadowTestClassJar(type: ShadowJar){
     group = "Shadow"
     from sourceSets.test.output
     description = "Create a jar that packages the compiled test classes"
-    classifier = "test"
+    archiveClassifier = "test"
 }
 
 // A minimal jar that only contains the extra dependencies needed for running the tests
@@ -499,7 +499,7 @@ task shadowTestJar(type: ShadowJar){
             it.isDirectory() ? it : it.getName().endsWith(".jar") ? zipTree(it) : it
         }
     }
-    classifier = "testDependencies"
+    archiveClassifier = "testDependencies"
 }
 
 task collectBundleIntoDir(type: Copy) {
@@ -555,8 +555,8 @@ jacocoTestReport {
     getAdditionalSourceDirs().from(sourceSets.main.allJava.srcDirs)
 
     reports {
-        xml.enabled = true
-        html.enabled = true
+        xml.required = true
+        html.required = true
     }
 }
 
@@ -610,13 +610,13 @@ task localDevCondaEnv(type: Exec) {
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
+    archiveClassifier = 'javadoc'
     from "$docBuildDir/javadoc"
 }
 
 task sourcesJar(type: Jar) {
     from sourceSets.main.allSource
-    classifier = 'sources'
+    archiveClassifier = 'sources'
 }
 
 task testUtilsJar(type: Jar){
@@ -651,13 +651,13 @@ task testUtilsJavadoc(type: Javadoc) {
 
 task testUtilsJavadocJar(type: Jar, dependsOn: testUtilsJavadoc){
     archiveBaseName = "$project.name-test-utils"
-    classifier = 'javadoc'
+    archiveClassifier = 'javadoc'
     from "$docBuildDir/testUtilsJavadoc"
 }
 
 task testUtilsSourcesJar(type: Jar){
     archiveBaseName = "$project.name-test-utils"
-    classifier = 'sources'
+    archiveClassifier = 'sources'
     from sourceSets.testUtils.allSource
 }
 
