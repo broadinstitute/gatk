@@ -2,7 +2,6 @@
 buildscript {
     repositories {
         mavenCentral()
-        jcenter() // for shadow plugin
      }
 }
 
@@ -14,7 +13,7 @@ plugins {
 
 repositories {
     mavenCentral()
-    jcenter()
+
     maven {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
@@ -72,11 +71,11 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
     String testClassesUnpacked = "$System.env.CP_DIR"
 
     dependsOn testOnPackagedReleaseJar
-    executionData.from testOnPackagedReleaseJar
-    additionalSourceDirs.from = files(sourceSets.main.allJava.srcDirs)
+    executionData testOnPackagedReleaseJar
+    additionalSourceDirs.setFrom(sourceSets.main.allJava.srcDirs)
 
-    sourceDirectories.from = files(sourceFiles)
-    classDirectories.from = files(testClassesUnpacked)
+    sourceDirectories.setFrom(sourceFiles)
+    classDirectories.setFrom(testClassesUnpacked)
 
     group = "Reporting"
     description = "Generate Jacoco coverage reports after running tests inside the docker image."
