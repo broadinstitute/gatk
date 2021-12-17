@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.filtering;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import io.grpc.netty.shaded.io.netty.util.internal.StringUtil;
 
+import io.netty.util.internal.StringUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;

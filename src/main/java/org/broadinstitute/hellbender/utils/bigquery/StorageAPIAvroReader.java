@@ -44,6 +44,8 @@ public class StorageAPIAvroReader implements GATKAvroReader {
     // GenericRecord object will be reused.
     private GenericRecord nextRow = null;
 
+    private final ReadSession session;
+
     public StorageAPIAvroReader(final TableReference tableRef) {
         this(tableRef, null, null);
     }
@@ -89,8 +91,8 @@ public class StorageAPIAvroReader implements GATKAvroReader {
                             .setReadSession(sessionBuilder)
                             .setMaxStreamCount(1);
 
-            final ReadSession session = client.createReadSession(builder.build());
-            if (session.getStreamsCount() > 0) {
+            this.session = client.createReadSession(builder.build());
+            if (this.session.getStreamsCount() > 0) {
 
                 this.schema = new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema());
 
@@ -98,6 +100,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
                         new org.apache.avro.Schema.Parser().parse(session.getAvroSchema().getSchema()));
 
                 logger.info("Storage API Session ID: " + session.getName());
+                logger.info("Storage API Estimated Bytes Scanned for " + tableRef.getFQTableName() + ":" + getEstimatedTotalBytesScanned());
 
                 // Use the first stream to perform reading.
                 String streamName = session.getStreams(0).getName();
@@ -113,6 +116,10 @@ public class StorageAPIAvroReader implements GATKAvroReader {
         } catch ( IOException e ) {
             throw new GATKException("I/O Error", e);
         }
+    }
+
+    public long getEstimatedTotalBytesScanned() {
+        return session.getEstimatedTotalBytesScanned();
     }
 
     private void loadNextRow() {
