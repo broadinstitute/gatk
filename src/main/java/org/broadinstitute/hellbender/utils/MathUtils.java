@@ -1,19 +1,22 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
-import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.MathArrays;
 import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.OptionalDouble;
 import java.util.function.*;
 import java.util.stream.Collectors;
 
@@ -32,8 +35,8 @@ public final class MathUtils {
     public static final double LOG10_ONE_THIRD = -Math.log10(3.0);
     public static final double LOG_ONE_THIRD = -Math.log(3.0);
     public static final double INV_LOG_2 = 1.0 / Math.log(2.0);
-    private static final double LOG_10 = Math.log(10);
-    private static final double INV_LOG_10 = 1.0 / LOG_10;
+    public static final double LOG_10 = Math.log(10);
+    public static final double INV_LOG_10 = 1.0 / LOG_10;
     public static final double LOG10_E = Math.log10(Math.E);
 
     private static final double ROOT_TWO_PI = Math.sqrt(2.0 * Math.PI);
@@ -160,6 +163,11 @@ public final class MathUtils {
     public static int median(final int[] values) {
         Utils.nonNull(values);
         return (int) FastMath.round(new Median().evaluate(Arrays.stream(values).mapToDouble(n -> n).toArray()));
+    }
+
+    public static int median(final int[] values, final Percentile.EstimationType type) {
+        Utils.nonNull(values);
+        return (int) FastMath.round(new Median().withEstimationType(type).evaluate(Arrays.stream(values).mapToDouble(n -> n).toArray()));
     }
 
     public static double dotProduct(double[] a, double[] b){
@@ -900,6 +908,18 @@ public final class MathUtils {
         return min;
     }
 
+    public static int minElementIndex(final int[] array) {
+        Utils.nonNull(array);
+        Utils.validateArg(array.length > 0, "array may not be empty");
+
+        int minI = 0;
+        for (int i = 1; i < array.length; i++) {
+            if (array[i] < array[minI])
+                minI = i;
+        }
+        return minI;
+    }
+
     public static boolean isValidLog10Probability(final double result) { return result <= 0.0; }
 
     public static boolean isValidProbability(final double result) {
@@ -1140,5 +1160,34 @@ public final class MathUtils {
     public static final double fastBernoulliEntropy(final double p) {
         final double product = p * (1 - p);
         return product * (11 + 33 * product) / (2 + 20 * product);
+    }
+
+    // find zero of a monotonic function with binary search
+    public static OptionalDouble binarySearchFindZero(final DoubleUnaryOperator func, final double lower,
+                                                      final double upper, final double precision) {
+        double bottom = lower;
+        double top = upper;
+        while (top - bottom > precision) {
+            final double mid = (bottom + top)/2;
+            final double bottomVal = func.applyAsDouble(bottom);
+            final double topVal = func.applyAsDouble(top);
+            final double midVal = func.applyAsDouble(mid);
+
+            // if top and bottom are same sign, there may be a zero between them, but the assumption of monotonicity
+            // does not hold
+            if (FastMath.signum(bottomVal) == FastMath.signum(topVal)) {
+                return OptionalDouble.empty();
+            }
+
+
+            // bracket the zero
+            if (FastMath.signum(bottomVal) == FastMath.signum(midVal)) {
+                bottom = mid;
+            } else {
+                top = mid;
+            }
+        }
+        return OptionalDouble.of((bottom+top)/2);
+
     }
 }

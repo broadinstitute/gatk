@@ -135,7 +135,9 @@ public final class GnarlyGenotyperEngine {
                         if (!stripASAnnotations) {
                             //here we still have the non-ref
                             final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), variant);
-                            finalValue.forEach((key, value) -> annotationsToBeModified.put(key, value));
+                            if (finalValue != null) {
+                                finalValue.forEach((key, value) -> annotationsToBeModified.put(key, value));
+                            }
                             if (annotationDBBuilder != null) {
                                 annotationDBBuilder.attribute(ann.getPrimaryRawKey(), variant.getAttribute(ann.getPrimaryRawKey()));
                             }
@@ -144,7 +146,7 @@ public final class GnarlyGenotyperEngine {
                 }
             }
             catch (final Exception e) {
-                throw new IllegalStateException("Something went wrong: ", e);
+                throw new IllegalStateException("Something went wrong at position " + variant.getContig() + ":" + variant.getStart() + ":", e);
             }
         }
         vcfBuilder.attributes(annotationsToBeModified);
@@ -225,7 +227,7 @@ public final class GnarlyGenotyperEngine {
             final int refCount = Math.max(numCalledAlleles / 2 - gtCounts.get(1) - gtCounts.get(2), 0);
             //homRefs don't get counted properly because ref blocks aren't annotated
             gtCounts.set(0, refCount);
-            final Pair<Integer, Double> eh = ExcessHet.calculateEH(variant, new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles / 2);
+            final Pair<Integer, Double> eh = ExcessHet.calculateEH(new GenotypeCounts(gtCounts.get(0), gtCounts.get(1), gtCounts.get(2)), numCalledAlleles / 2);
             vcfBuilder.attribute(GATKVCFConstants.EXCESS_HET_KEY, String.format("%.4f", eh.getRight()));
             vcfBuilder.rmAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY);
             if (annotationDBBuilder != null) {

@@ -472,4 +472,10 @@ public class UserException extends RuntimeException {
 
         public VQSRNegativeModelFailure(String message) { super(message); }
     }
+
+    public static final class ValidationFailure extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public ValidationFailure(String message) { super(message); }
+    }
 }

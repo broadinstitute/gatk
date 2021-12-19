@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
@@ -66,7 +67,7 @@ import java.util.List;
  * <ul>
  * <li>This tool will only process biallelic het SNP sites. If your callset contains multiallelic sites, they will be ignored.
  * Optionally, you can subset your callset to just biallelic variants using e.g.
- * <a href="org_broadinstitute_gatk_tools_walkers_variantutils_SelectVariants.php">SelectVariants</a>
+ * SelectVariants
  * with the option "-restrictAllelesTo BIALLELIC".</li>
  * </ul>
  * <p>
@@ -173,6 +174,11 @@ public class ASEReadCounter extends LocusWalker {
         }
         final String header = "contig" + separator + "position" + separator + "variantID" + separator + "refAllele" + separator + "altAllele" + separator + "refCount" + separator + "altCount" + separator + "totalCount" + separator + "lowMAPQDepth" + separator + "lowBaseQDepth" + separator + "rawDepth" + separator + "otherBases" + separator + "improperPairs";
         outputStream.println(header);
+
+        variants.stream()
+                .filter(vFeature -> ((VCFHeader)getHeaderForFeatures(vFeature)).getGenotypeSamples().isEmpty())
+                .forEach(vFeature -> logger.warn("\n#####################################################################################################\nVariant input file "+vFeature.getName()+" lacks genotype fields. Variants from this file will produce no results in the output.\n#####################################################################################################"));
+
     }
 
     @Override

@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AssemblyComplexity;
@@ -88,6 +89,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final File FILTERING_DIR = new File(toolsTestDir, "mutect/filtering");
 
     private static final File GNOMAD_WITHOUT_AF_SNIPPET = new File(toolsTestDir, "mutect/gnomad-without-af.vcf");
+    private static final File UNPARSIMONIOUS_GNOMAD_SNIPPET = new File(toolsTestDir, "mutect/unparsimonious_germline.vcf");
 
     private static final double TLOD_MATCH_EPSILON = 0.05;
     private static final double VARIANT_TLOD_MATCH_PCT = 0.01;
@@ -469,6 +471,40 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 args -> args.addInterval(new SimpleInterval("20:10837425-10837426")));
     }
 
+    // make sure we have fixed a bug where germline resources with less parsimonious representations (eg AC -> TC when M2 calls A->T) still
+    // yield a correct annotation
+    @Test
+    public void testUnparsimoniousGermlineResource() {
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final int position1 = 1366255;
+        final int position2 = 1401389;
+        final int position3 = 2289449;
+        final double defaultAF = 9.78e-7;
+        final String interval1 = "20:" + (position1 - 1000) + "-" + (position1 + 1000);
+        final String interval2 = "20:" + (position2 - 1000) + "-" + (position2 + 1000);
+        final String interval3 = "20:" + (position3 - 1000) + "-" + (position3 + 1000);
+        runMutect2(DREAM_4_TUMOR, unfilteredVcf, interval1, b37Reference, Optional.of(UNPARSIMONIOUS_GNOMAD_SNIPPET),
+                args -> args.addInterval(interval2).addInterval(interval3).add(M2ArgumentCollection.DEFAULT_AF_LONG_NAME, defaultAF)
+                        .addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+
+        // when we call on these intervals we should get variants 20:1366255 G->A, 20:1401389 G->C, and 20:2289449 TCTGGGGACAAA->T
+        // In the germline resource file the alleles are represented as GT -> AT (equivalent to G->A), GT -> CA (not equivalent to G->C),
+        // and TCTGGGGACAAA->TAA (equivalent to TCTGGGGACA->T) with an extraneous TCTGGGGACAAA->T, respectively
+        // In the first case, we should get AF = 0.1 from GG -> AG = G -> A; in the second case we should get the default AF; in the third case
+        // we should get AF = 0.1 from TCTGGGGACAAA->TAA and NOT AF = 0.2 from TCTGGGGACAAA->T
+
+        final Map<Integer, double[]> startToAFArray = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toMap(VariantContext::getStart,
+                vc -> MathUtils.applyToArray(VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_KEY), x -> Math.pow(10, -x))));
+
+        Assert.assertTrue(startToAFArray.containsKey(position1));
+        Assert.assertTrue(startToAFArray.containsKey(position2));
+        Assert.assertTrue(startToAFArray.containsKey(position3));
+
+        Assert.assertEquals(startToAFArray.get(position1), new double[] {0.1}, 1e-8);
+        Assert.assertEquals(startToAFArray.get(position2), new double[] {defaultAF}, 1e-8);
+        Assert.assertEquals(startToAFArray.get(position3), new double[] {0.1}, 1e-8);
+    }
+
     @Test
     public void testContaminationFilter() {
         Utils.resetRandomGenerator();
@@ -631,6 +667,38 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // vcf sequence dicts don't match ref
         runFilterMutectCalls(unfiltered, filteredVcf, MITO_REF.getAbsolutePath(),
                 args -> args.add(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true),
+                args -> args.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
+                args -> args.add(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
+                args -> args.add(M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, 1),
+                args -> args.add(M2FiltersArgumentCollection.UNIQUE_ALT_READ_COUNT_LONG_NAME, 2),
+                args -> {
+                    intervals.stream().map(SimpleInterval::new).forEach(args::addInterval);
+                    return args;
+                });
+
+        final List<Set<String>> actualFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(VariantContext::getFilters).collect(Collectors.toList());
+
+        final List<List<String>> actualASFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(vc -> AnnotationUtils.decodeAnyASListWithRawDelim(vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, ""))).collect(Collectors.toList());
+        Assert.assertEquals(actualASFilters, expectedASFilters);
+
+        Assert.assertEquals(actualFilters.size(), expectedFilters.size());
+        for (int n = 0; n < actualFilters.size(); n++) {
+            Assert.assertTrue(actualFilters.get(n).containsAll(expectedFilters.get(n)), "Actual filters missing some expected filters: " + SetUtils.difference(expectedFilters.get(n), actualFilters.get(n)));
+            Assert.assertTrue(expectedFilters.get(n).containsAll(actualFilters.get(n)), "Expected filters missing some actual filters: " + SetUtils.difference(actualFilters.get(n), expectedFilters.get(n)));
+        }
+
+        Assert.assertEquals(actualFilters, expectedFilters);
+    }
+
+    @Test(dataProvider = "vcfsForFiltering")
+    public void testFilterMicrobial(File unfiltered, final double minAlleleFraction, final List<String> intervals, List<Set<String>> expectedFilters, List<List<String>> expectedASFilters)  {
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        // vcf sequence dicts don't match ref
+        runFilterMutectCalls(unfiltered, filteredVcf, MITO_REF.getAbsolutePath(),
+                args -> args.add(M2ArgumentCollection.MICROBIAL_MODE_LONG_NAME, true),
                 args -> args.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
                 args -> args.add(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
                 args -> args.add(M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, 1),
@@ -893,6 +961,51 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         for (final String header : GATKVCFConstants.MUTECT_FILTER_NAMES){
             Assert.assertTrue(filteredHeader.hasFilterLine(header));
         }
+    }
+
+
+    @DataProvider(name="ExposureOfSmithWatermanParametersTestInputs")
+    public Object[][] getExposureOfSmithWatermanParametersTestInputs() {
+        return new Object[][] {
+                {NA12878_20_21_WGS_bam, b37_reference_20_21}
+        };
+    }
+
+    /**
+     * See {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest#testExposureOfSmithWatermanParametersIsConsistentWithPastResults}.
+     */
+    @Test(dataProvider="ExposureOfSmithWatermanParametersTestInputs")
+    public void testExposureOfSmithWatermanParametersIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testExposureOfSmithWatermanParametersIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(toolsTestDir + "mutect", "expected.testExposureOfSmithWatermanParameters.M2.gatk4.vcf");
+
+        final String outputPath = output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_DANGLING_END_MATCH_VALUE_LONG_NAME, "1",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_DANGLING_END_MISMATCH_PENALTY_LONG_NAME, "-2",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_DANGLING_END_GAP_OPEN_PENALTY_LONG_NAME, "-3",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_DANGLING_END_GAP_EXTEND_PENALTY_LONG_NAME, "-4",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_MATCH_VALUE_LONG_NAME, "5",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_MISMATCH_PENALTY_LONG_NAME, "-6",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_GAP_OPEN_PENALTY_LONG_NAME, "-7",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_GAP_EXTEND_PENALTY_LONG_NAME, "-8",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_READ_TO_HAPLOTYPE_MATCH_VALUE_LONG_NAME, "9",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_READ_TO_HAPLOTYPE_MISMATCH_PENALTY_LONG_NAME, "-10",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_OPEN_PENALTY_LONG_NAME, "-11",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_EXTEND_PENALTY_LONG_NAME, "-12",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
 
     @SafeVarargs

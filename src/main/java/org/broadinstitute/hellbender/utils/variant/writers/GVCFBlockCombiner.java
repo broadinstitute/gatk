@@ -30,7 +30,6 @@ import static org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter.GVC
  */
 public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
     final RangeMap<Integer, Range<Integer>> gqPartitions;
-    final int defaultPloidy;
     final boolean floorBlocks;
     final Queue<VariantContext> toOutput = new ArrayDeque<>();
 
@@ -43,9 +42,8 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
 
     GVCFBlock currentBlock = null;
 
-    public GVCFBlockCombiner(List<Number> gqPartitions, int defaultPloidy, boolean floorBlocks) {
+    public GVCFBlockCombiner(List<? extends Number> gqPartitions, boolean floorBlocks) {
         this.gqPartitions = parsePartitions(gqPartitions);
-        this.defaultPloidy = defaultPloidy;
         this.floorBlocks = floorBlocks;
     }
 
@@ -61,7 +59,7 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
      * @return a list of HomRefBlocks accepting bands of genotypes qualities split at the points specified in gqPartitions
      */
     @VisibleForTesting
-    RangeMap<Integer,Range<Integer>> parsePartitions(final List<Number> gqPartitions) {
+    RangeMap<Integer,Range<Integer>> parsePartitions(final List<? extends Number> gqPartitions) {
         Utils.nonEmpty(gqPartitions);
         Utils.containsNoNull(gqPartitions, "The list of GQ partitions contains a null integer");
         final RangeMap<Integer, Range<Integer>> result = TreeRangeMap.create();
@@ -164,8 +162,7 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
         }
 
         // create the block, add g to it, and return it for use
-        final HomRefBlock block = new HomRefBlock(vc, partition.lowerEndpoint(), partition.upperEndpoint(), defaultPloidy);
-        block.add(vc.getStart(), vc.getAttributeAsInt(VCFConstants.END_KEY, vc.getStart()), g);
+        final HomRefBlock block = new HomRefBlock(vc, partition.lowerEndpoint(), partition.upperEndpoint(), g.getPloidy());
         return block;
     }
 
@@ -195,7 +192,9 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
         }
 
         final Genotype g = vc.getGenotype(0);
-        if (g.isHomRef() && vc.hasAlternateAllele(Allele.NON_REF_ALLELE) && vc.isBiallelic()) {
+        if ((g.isHomRef()
+                || (g.isNoCall() && g.hasPL() && g.getPL()[0] == 0)) && vc.hasAlternateAllele(Allele.NON_REF_ALLELE) && vc.isBiallelic()) {
+                //genotypes with PL=0,0,0 get treated as zero confidence hom refs
             // create bands
             final VariantContext maybeCompletedBand = addHomRefSite(vc, g);
             if (maybeCompletedBand != null) {

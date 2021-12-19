@@ -10,7 +10,6 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
-
 /**
  * Implements the DRAGstr parameter estimation routine.
  */
@@ -138,23 +137,26 @@ final class DragstrParametersEstimator {
             }
         }
         int rightFlank; accum = 0;
-        for (rightFlank = hyperParameters.maxRepeatLength; rightFlank > 0;) {
+        for (rightFlank = hyperParameters.maxRepeatLength; rightFlank > 1;) {
             if ((accum += cases.get(period, --rightFlank).size()) >= hyperParameters.minLociCount) {
                 break;
             }
         }
-        if (rightFlank < leftFlank) {
-            throw new UserException.BadInput("not enough cases for period " + period);
+
+        final ArrayDeque<IntRange> pending = new ArrayDeque<>(hyperParameters.maxRepeatLength);
+
+        if (rightFlank >= leftFlank) {
+            // We fill 'pending' with the repeat-length groups that will be analyze:
+            // [1 .. leftFlank], leftFlank + 1, leftFlank + 2, ... , [rightFlank .. maxRepeats+]
+            pending.add(new IntRange(1, leftFlank));
+            for (leftFlank++; leftFlank <= rightFlank; leftFlank++) {
+                pending.add(new IntRange(leftFlank));
+            }
+            pending.add(new IntRange(++rightFlank, hyperParameters.maxRepeatLength));
+        } else { // no enough data we simply put all repeat lengths is one single group:
+            pending.add(new IntRange(1, hyperParameters.maxRepeatLength));
         }
 
-        // We fill 'pending' with the repeat-length groups that will be analyze:
-        // [1 .. leftFlank], leftFlank + 1, leftFlank + 2, ... , [rightFlank .. maxRepeats+]
-        final ArrayDeque<IntRange> pending = new ArrayDeque<>(hyperParameters.maxRepeatLength);
-        pending.add(new IntRange(1, leftFlank));
-        for (leftFlank++; leftFlank <= rightFlank; leftFlank++) {
-            pending.add(new IntRange(leftFlank));
-        }
-        pending.add(new IntRange(++rightFlank, hyperParameters.maxRepeatLength));
         IntRange last = null;
 
         // Done will contain the ranges already processed.

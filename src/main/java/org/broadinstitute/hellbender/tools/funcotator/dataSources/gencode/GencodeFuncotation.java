@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * A class to represent a Functional Annotation.  Each instance represents the annotations on a single transcript.

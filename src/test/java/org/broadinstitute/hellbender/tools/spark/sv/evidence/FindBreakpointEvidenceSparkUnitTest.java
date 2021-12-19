@@ -9,10 +9,12 @@ import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSetSpark;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMapSpark;
 import org.broadinstitute.hellbender.tools.spark.utils.IntHistogram;
 import org.broadinstitute.hellbender.utils.IntHistogramTest;
+import org.broadinstitute.hellbender.utils.SVInterval;
+import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
@@ -95,8 +97,8 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
         killSet.add(SVKmerizer.toKmer(seq2,kmer));
         Assert.assertEquals( killSet.size(), 2);
 
-        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNameMultiMap =
-                new HopscotchUniqueMultiMap<>(expectedAssemblyQNames.size());
+        final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNameMultiMap =
+                new HopscotchUniqueMultiMapSpark<>(expectedAssemblyQNames.size());
 
         // an empty qname map should produce a "too few kmers" disposition for the interval
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList =
@@ -109,10 +111,10 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
         expectedQNames.stream()
                 .map(qName -> new QNameAndInterval(qName, 0))
                 .forEach(qNameMultiMap::add);
-        final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> actualKmerAndIntervalSet =
-                new HopscotchUniqueMultiMap<>(
+        final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> actualKmerAndIntervalSet =
+                new HopscotchUniqueMultiMapSpark<>(
                         FindBreakpointEvidenceSpark.getKmerIntervals(params, readMetadataExpected, ctx, qNameMultiMap,
-                                1, new HopscotchSet<>(0),
+                                1, new HopscotchSetSpark<>(0),
                                 reads, filter, logger)._2());
         final Set<SVKmer> actualKmers = new HashSet<>(SVUtils.hashMapCapacity(actualKmerAndIntervalSet.size()));
         for ( final KmerAndInterval kmerAndInterval : actualKmerAndIntervalSet ) {
@@ -125,8 +127,8 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
     public void getAssemblyQNamesTest() {
         final Set<SVKmer> expectedKmers = SVFileUtils.readKmersFile(kmersFile, params.kSize);
-        final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerAndIntervalSet =
-                new HopscotchUniqueMultiMap<>(expectedKmers.size());
+        final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmerAndIntervalSet =
+                new HopscotchUniqueMultiMapSpark<>(expectedKmers.size());
         expectedKmers.stream().
                 map(kmer -> new KmerAndInterval(kmer, 0))
                 .forEach(kmerAndIntervalSet::add);
@@ -140,8 +142,8 @@ public final class FindBreakpointEvidenceSparkUnitTest extends GATKBaseTest {
 
     @Test(groups = "sv")
     public void generateFastqsTest() {
-        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNameMultiMap =
-                new HopscotchUniqueMultiMap<>(expectedAssemblyQNames.size());
+        final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNameMultiMap =
+                new HopscotchUniqueMultiMapSpark<>(expectedAssemblyQNames.size());
         expectedAssemblyQNames.stream()
                 .map(qName -> new QNameAndInterval(qName, 0))
                 .forEach(qNameMultiMap::add);

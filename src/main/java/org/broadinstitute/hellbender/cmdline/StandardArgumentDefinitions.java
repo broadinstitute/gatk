@@ -28,6 +28,7 @@ public final class StandardArgumentDefinitions {
     public static final String CREATE_OUTPUT_BAM_MD5_LONG_NAME = "create-output-bam-md5";
     public static final String CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME = "create-output-variant-index";
     public static final String CREATE_OUTPUT_VARIANT_MD5_LONG_NAME = "create-output-variant-md5";
+    public static final String MAX_VARIANTS_PER_SHARD_LONG_NAME = "max-variants-per-shard";
     public static final String METRIC_ACCUMULATION_LEVEL_LONG_NAME = "metric-accumulation-level";
     public static final String CLOUD_PREFETCH_BUFFER_LONG_NAME = "cloud-prefetch-buffer";
     public static final String CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME = "cloud-index-prefetch-buffer";

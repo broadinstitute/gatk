@@ -16,6 +16,8 @@ public final class DiscordantPairEvidence implements Feature {
     final boolean startStrand;
     final boolean endStrand;
 
+    public final static String BCI_VERSION = "1.0";
+
     public DiscordantPairEvidence(final String sample, final String startContig, final int start, final boolean startStrand,
                                   final String endContig, final int end, final boolean endStrand) {
         Utils.nonNull(sample);

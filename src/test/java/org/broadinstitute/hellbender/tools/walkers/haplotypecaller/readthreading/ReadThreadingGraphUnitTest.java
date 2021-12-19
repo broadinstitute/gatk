@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreadin
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.Kmer;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -20,6 +22,7 @@ import java.util.stream.Collectors;
 
 public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
     private static final boolean DEBUG = false;
+    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentConstants.STANDARD_NGS;
 
     public static byte[] getBytes(final String alignment) {
         return alignment.replace("-","").getBytes();
@@ -293,7 +296,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         rtgraph.addRead(read, header);
-        rtgraph.setMinMatchingBasesToDangingEndRecovery(numLeadingMatchesAllowed);
+        rtgraph.setMinMatchingBasesToDanglingEndRecovery(numLeadingMatchesAllowed);
         rtgraph.buildGraphIfNecessary();
 
         // confirm that we have just a single dangling tail
@@ -309,7 +312,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
 
         // confirm that the SW alignment agrees with our expectations
         final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink, 0, 4, false, SmithWatermanJavaAligner
-                .getInstance());
+                .getInstance(), DANGLING_END_SW_PARAMETERS);
 
         if ( result == null ) {
             Assert.assertFalse(cigarIsGood);
@@ -359,7 +362,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final GATKRead read1 = ArtificialReadUtils.createArtificialRead(alt1.getBytes(), Utils.dupBytes((byte) 30, alt1.length()), alt1.length() + "M");
         final GATKRead read2 = ArtificialReadUtils.createArtificialRead(alt2.getBytes(), Utils.dupBytes((byte) 30, alt2.length()), alt2.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-        rtgraph.setMinMatchingBasesToDangingEndRecovery(1);
+        rtgraph.setMinMatchingBasesToDanglingEndRecovery(1);
         rtgraph.addRead(read2, header);
         rtgraph.addRead(read1, header);
         rtgraph.buildGraphIfNecessary();
@@ -374,7 +377,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
 
             // confirm that the SW alignment agrees with our expectations
             final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink,
-                    0, 2, false, SmithWatermanJavaAligner.getInstance());
+                    0, 2, false, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
             Assert.assertNotNull(result);
             Assert.assertTrue(ReadThreadingGraph.cigarIsOkayToMerge(result.cigar, false, true));
 
@@ -419,7 +422,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
 
             // confirm that the SW alignment agrees with our expectations
             final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstDownwardsReferencePath(altSink,
-                    0, 4, true, SmithWatermanJavaAligner.getInstance());
+                    0, 4, true, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
             Assert.assertNotNull(result);
             Assert.assertTrue(ReadThreadingGraph.cigarIsOkayToMerge(result.cigar, false, true));
 
@@ -526,7 +529,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(alt.getBytes(), Utils.dupBytes((byte) 30, alt.length()), alt.length() + "M");
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         rtgraph.addRead(read, header);
-        rtgraph.setMinMatchingBasesToDangingEndRecovery(numLeadingMatchesAllowed);
+        rtgraph.setMinMatchingBasesToDanglingEndRecovery(numLeadingMatchesAllowed);
         rtgraph.buildGraphIfNecessary();
 
         // confirm that we have just a single dangling head
@@ -542,7 +545,7 @@ public final class ReadThreadingGraphUnitTest extends GATKBaseTest {
 
         // confirm that the SW alignment agrees with our expectations
         final ReadThreadingGraph.DanglingChainMergeHelper result = rtgraph.generateCigarAgainstUpwardsReferencePath(altSource, 0, 1, false, SmithWatermanJavaAligner
-                .getInstance());
+                .getInstance(), DANGLING_END_SW_PARAMETERS);
 
         if ( result == null ) {
             Assert.assertFalse(shouldBeMerged);

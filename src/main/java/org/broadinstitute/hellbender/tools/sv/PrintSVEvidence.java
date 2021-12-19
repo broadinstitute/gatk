@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.Feature;
-import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
@@ -10,15 +12,16 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.codecs.BafEvidenceCodec;
-import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
-import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
-import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
-import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
+import org.broadinstitute.hellbender.utils.codecs.*;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.zip.GZIPOutputStream;
 
 /**
- * Prints SV evidence records. Can be used with -L to retrieve records on a set of intervals. Supports streaming input
- * from GCS buckets.
+ * Prints SV evidence records. Can be used with -L to retrieve records on a set of intervals.
+ * Supports streaming input from GCS buckets.
  *
  * <h3>Inputs</h3>
  *
@@ -27,7 +30,10 @@ import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
  *         Coordinate-sorted and indexed evidence file URI
  *     </li>
  *     <li>
- *         Reference sequence dictionary
+ *         Sequence dictionary (or reference) if the input file is tab-delimited text
+ *     </li>
+ *     <li>
+ *         Sample name(s) if the input file is tab-delimited text other than read depth
  *     </li>
  * </ul>
  *
@@ -35,7 +41,8 @@ import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
  *
  * <ul>
  *     <li>
- *         Coordinate-sorted evidence file, automatically indexed if ending with ".gz"
+ *         Coordinate-sorted evidence file with a name that matches the input file evidence type,
+ *         automatically indexed if ending with ".gz" or ".bci"
  *     </li>
  * </ul>
  *
@@ -59,7 +66,7 @@ import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 )
 @ExperimentalFeature
 @DocumentedFeature
-public final class PrintSVEvidence extends FeatureWalker<Feature> {
+public final class PrintSVEvidence <F extends Feature> extends FeatureWalker<F> {
 
     public static final String EVIDENCE_FILE_NAME = "evidence-file";
     public static final String COMPRESSION_LEVEL_NAME = "compression-level";
@@ -68,15 +75,17 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
             doc = "Input file URI with extension '"
                     + SplitReadEvidenceCodec.FORMAT_SUFFIX + "', '"
                     + DiscordantPairEvidenceCodec.FORMAT_SUFFIX + "', '"
+                    + LocusDepthCodec.FORMAT_SUFFIX + "', '"
                     + BafEvidenceCodec.FORMAT_SUFFIX + "', or '"
-                    + DepthEvidenceCodec.FORMAT_SUFFIX + "' (may be gzipped).",
+                    + DepthEvidenceCodec.FORMAT_SUFFIX + "' (may be gzipped). "
+                    + "Can also handle bci rather than txt files.",
             fullName = EVIDENCE_FILE_NAME
     )
     private GATKPath inputFilePath;
 
     @Argument(
             doc = "Output file with an evidence extension matching the input. Will be indexed if it has a " +
-                    "block-compressed extension (e.g. '.gz').",
+                    "block-compressed extension (e.g. '.gz' or '.bci').",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
@@ -89,17 +98,43 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
     )
     private int compressionLevel = 4;
 
-    private FeatureOutputStream<DiscordantPairEvidence> peStream;
-    private FeatureOutputStream<SplitReadEvidence> srStream;
-    private FeatureOutputStream<BafEvidence> bafStream;
-    private FeatureOutputStream<DepthEvidence> rdStream;
-    private FeatureCodec<? extends Feature, ?> featureCodec;
-    private Class<? extends Feature> evidenceClass;
+    @Argument(doc = "List of sample names", fullName = "sample-names", optional = true)
+    private List<String> sampleNames = new ArrayList<>();
+
+    @Argument(doc = "Output file for sample names", fullName = "sample-list-dump", optional = true)
+    private GATKPath sampleListOutputFile;
+
+    @Argument(doc = "Output file for contig dictionary", fullName = "sequence-dict-dump", optional = true)
+    private GATKPath dictionaryOutputFile;
+
+    private FeatureSink<F> outputSink;
+    private Class<F> evidenceClass;
+
+    private static final List<FeatureOutputCodec<? extends Feature, ? extends FeatureSink<?>>> outputCodecs =
+            new ArrayList<>(10);
+    static {
+        outputCodecs.add(new BafEvidenceCodec());
+        outputCodecs.add(new DepthEvidenceCodec());
+        outputCodecs.add(new DiscordantPairEvidenceCodec());
+        outputCodecs.add(new LocusDepthCodec());
+        outputCodecs.add(new SplitReadEvidenceCodec());
+        outputCodecs.add(new BafEvidenceBCICodec());
+        outputCodecs.add(new DepthEvidenceBCICodec());
+        outputCodecs.add(new DiscordantPairEvidenceBCICodec());
+        outputCodecs.add(new LocusDepthBCICodec());
+        outputCodecs.add(new SplitReadEvidenceBCICodec());
+    }
 
     @Override
-    protected boolean isAcceptableFeatureType(final Class<? extends Feature> featureType) {
-        return featureType.equals(BafEvidence.class) || featureType.equals(DepthEvidence.class)
-                || featureType.equals(DiscordantPairEvidence.class) || featureType.equals(SplitReadEvidence.class);
+    @SuppressWarnings("unchecked")
+    protected boolean isAcceptableFeatureType( final Class<? extends Feature> featureType ) {
+        for ( final FeatureOutputCodec<?, ?> codec : outputCodecs ) {
+            if ( featureType.equals(codec.getFeatureType()) ) {
+                evidenceClass = (Class<F>)featureType;
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -110,77 +145,101 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-        featureCodec = FeatureManager.getCodecForFile(inputFilePath.toPath());
-        evidenceClass = featureCodec.getFeatureType();
-        initializeOutput();
-        writeHeader();
+        final FeaturesHeader header = getHeader();
+        if ( sampleListOutputFile != null ) {
+            dumpSamples(sampleListOutputFile, header.getSampleNames());
+        }
+        if ( dictionaryOutputFile != null ) {
+            dumpDictionary(dictionaryOutputFile, header.getDictionary());
+        }
+        initializeOutput(header);
     }
 
-    private void initializeOutput() {
-        if (evidenceClass.equals(DiscordantPairEvidence.class)) {
-            peStream = new FeatureOutputStream<>(outputFilePath, featureCodec, DiscordantPairEvidenceCodec::encode,
-                    getBestAvailableSequenceDictionary(), compressionLevel);
-        } else if (evidenceClass.equals(SplitReadEvidence.class)) {
-            srStream = new FeatureOutputStream<>(outputFilePath, featureCodec, SplitReadEvidenceCodec::encode,
-                    getBestAvailableSequenceDictionary(), compressionLevel);
-        } else if (evidenceClass.equals(BafEvidence.class)) {
-            bafStream = new FeatureOutputStream<>(outputFilePath, featureCodec, BafEvidenceCodec::encode,
-                    getBestAvailableSequenceDictionary(), compressionLevel);
-        } else if (evidenceClass.equals(DepthEvidence.class)) {
-            rdStream = new FeatureOutputStream<>(outputFilePath, featureCodec, DepthEvidenceCodec::encode,
-                    getBestAvailableSequenceDictionary(), compressionLevel);
+    private FeaturesHeader getHeader() {
+        final SAMSequenceDictionary dict;
+        final List<String> samples;
+        final Object headerObj = getDrivingFeaturesHeader();
+        if ( headerObj instanceof FeaturesHeader ) {
+            final FeaturesHeader header = (FeaturesHeader)headerObj;
+            dict = header.getDictionary() == null ?
+                    getBestAvailableSequenceDictionary() :
+                    header.getDictionary();
+            samples = header.getSampleNames() == null ? sampleNames : header.getSampleNames();
         } else {
-            throw new UserException.BadInput("Unsupported evidence type: " + evidenceClass.getSimpleName());
+            dict = getBestAvailableSequenceDictionary();
+            samples = sampleNames;
+        }
+        return new FeaturesHeader(evidenceClass.getSimpleName(), "?", dict, samples);
+    }
+
+    private static void dumpSamples( final GATKPath outputPath, final List<String> sampleNames ) {
+        try ( final BufferedWriter writer = writerForPath(outputPath) ) {
+            for ( final String sampleName : sampleNames ) {
+                writer.write(sampleName);
+                writer.newLine();
+            }
+        } catch ( final IOException ioe ) {
+            throw new UserException("can't open sample-list-dump file: " + outputPath, ioe);
         }
     }
 
-    private void writeHeader() {
-        final Object header = getDrivingFeaturesHeader();
-        if (header != null) {
-            if (header instanceof String) {
-                if (peStream != null) {
-                    peStream.writeHeader((String) header);
-                } else if (srStream != null) {
-                    srStream.writeHeader((String) header);
-                } else if (bafStream != null) {
-                    bafStream.writeHeader((String) header);
-                } else {
-                    rdStream.writeHeader((String) header);
-                }
-            } else {
-                throw new IllegalArgumentException("Expected header object of type " + String.class.getSimpleName());
+    private static void dumpDictionary( final GATKPath outputPath, final SAMSequenceDictionary dict ) {
+        try ( final BufferedWriter writer = writerForPath(outputPath) ) {
+            for ( final SAMSequenceRecord record : dict.getSequences() ) {
+                writer.write(record.getSAMString());
+                writer.newLine();
+            }
+        } catch ( final IOException ioe ) {
+            throw new UserException("can't open sequence-dict-dump file: " + outputPath, ioe);
+        }
+    }
+
+    private static BufferedWriter writerForPath( final GATKPath outputPath ) throws IOException {
+        OutputStream stream = outputPath.getOutputStream();
+        if ( IOUtil.hasBlockCompressedExtension(outputPath.toPath()) ) {
+            stream = new GZIPOutputStream(stream);
+        }
+        return new BufferedWriter(new OutputStreamWriter(stream));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void initializeOutput( final FeaturesHeader header ) {
+        final FeatureOutputCodec<?, ?> outputCodec = findOutputCodec(outputFilePath);
+        final Class<?> outputClass = outputCodec.getFeatureType();
+        if ( !evidenceClass.equals(outputClass) ) {
+            throw new UserException("The input file contains " + evidenceClass.getSimpleName() +
+                    " features, but the output file would be expected to contain " +
+                    outputClass.getSimpleName() + " features.  Please choose an output file name " +
+                    "appropriate for the evidence type.");
+        }
+        outputSink = (FeatureSink<F>)outputCodec.makeSink(outputFilePath,
+                                                            header.getDictionary(),
+                                                            header.getSampleNames(),
+                                                            compressionLevel);
+    }
+
+    private static FeatureOutputCodec<?, ?> findOutputCodec( final GATKPath outputFilePath ) {
+        final String outputFileName = outputFilePath.toString();
+        for ( final FeatureOutputCodec<?, ?> codec : outputCodecs ) {
+            if ( codec.canDecode(outputFileName) ) {
+                return codec;
             }
         }
+        throw new UserException("no codec found for path " + outputFileName);
     }
 
     @Override
-    public void apply(final Feature feature,
+    public void apply(final F feature,
                       final ReadsContext readsContext,
                       final ReferenceContext referenceContext,
                       final FeatureContext featureContext) {
-        if (peStream != null) {
-            peStream.add((DiscordantPairEvidence) feature);
-        } else if (srStream != null) {
-            srStream.add((SplitReadEvidence) feature);
-        } else if (bafStream != null) {
-            bafStream.add((BafEvidence) feature);
-        } else {
-            rdStream.add((DepthEvidence) feature);
-        }
+        outputSink.write(feature);
     }
 
     @Override
     public Object onTraversalSuccess() {
         super.onTraversalSuccess();
-        if (peStream != null) {
-            peStream.close();
-        } else if (srStream != null) {
-            srStream.close();
-        } else if (bafStream != null) {
-            bafStream.close();
-        } else {
-            rdStream.close();
-        }
+        outputSink.close();
         return null;
     }
 }

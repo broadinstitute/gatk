@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Redu
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -44,6 +45,7 @@ public final class VariantAnnotatorEngine {
     private final boolean keepRawCombinedAnnotations;
 
     private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
+    private final static OneShotLogger jumboAnnotationsLogger = new OneShotLogger(VariantAnnotatorEngine.class);
     private boolean hasLoggedJumboGenotypeWarning = false;
 
     /**
@@ -124,6 +126,16 @@ public final class VariantAnnotatorEngine {
      */
     public List<InfoFieldAnnotation> getInfoAnnotations() {
         return Collections.unmodifiableList(infoAnnotations);
+    }
+
+    /**
+     *
+     * @param infoAnnotationClassName   the name of the Java class, NOT the annotation VCF key
+     * @return  true if the VariantAnnotatorEngine will apply the given annotation class
+     */
+    public boolean hasInfoAnnotation(final String infoAnnotationClassName) {
+        return getInfoAnnotations().stream()
+                .anyMatch(infoFieldAnnotation -> infoFieldAnnotation.getClass().getSimpleName().equals(infoAnnotationClassName));
     }
 
     /**
@@ -221,7 +233,9 @@ public final class VariantAnnotatorEngine {
                         final List<ReducibleAnnotationData<?>> annotationValue = (List<ReducibleAnnotationData<?>>)
                                 annotationMap.get(rawKey);
                         final Map<String, Object> annotationsFromCurrentType = currentASannotation.combineRawData(allelesList, annotationValue);
-                        combinedAnnotations.putAll(annotationsFromCurrentType);
+                        if (annotationsFromCurrentType != null) {
+                            combinedAnnotations.putAll(annotationsFromCurrentType);
+                        }
                         //remove all the raw keys for the annotation because we already used all of them in combineRawData
                         annotationMap.keySet().removeAll(currentASannotation.getRawKeyNames());
                     }
@@ -258,9 +272,14 @@ public final class VariantAnnotatorEngine {
                 }
             }
         }
-        //this is manual because the AS_QUAL "rawKey" get added by genotyping
+        //this is manual because:
+        // * the AS_QUAL "rawKey" get added by genotyping
+        // * QualByDepth isn't Reducible and doesn't have raw keys
         if (!keepRawCombinedAnnotations) {
             variantAnnotations.remove(GATKVCFConstants.AS_QUAL_KEY);
+            variantAnnotations.remove(GATKVCFConstants.RAW_QUAL_APPROX_KEY);
+            variantAnnotations.remove(GATKVCFConstants.VARIANT_DEPTH_KEY);
+            variantAnnotations.remove(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY);
         }
 
         // generate a new annotated VC

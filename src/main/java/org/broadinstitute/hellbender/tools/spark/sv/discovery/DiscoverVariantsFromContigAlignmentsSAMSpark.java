@@ -22,7 +22,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscovery
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AlignedContig;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.alignment.AssemblyContigAlignmentsRDDProcessor;
 import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.ContigChimericAlignmentIterativeInterpreter;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVIntervalTree;
+import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVVCFWriter;
 

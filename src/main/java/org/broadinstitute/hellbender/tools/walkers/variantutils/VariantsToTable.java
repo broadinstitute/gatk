@@ -240,10 +240,8 @@ public final class VariantsToTable extends VariantWalker {
             final List<String> fields = new ArrayList<>();
             fields.addAll(fieldsToTake);
             fields.addAll(asFieldsToTake);
-            final String header = new StringBuilder(Utils.join("\t", fields))
-                    .append("\t")
-                    .append(createGenotypeHeader())
-                    .toString();
+            fields.addAll(createGenotypeFields());
+            final String header = Utils.join("\t", fields);
             outputStream.println(header);
         }
     }
@@ -273,26 +271,21 @@ public final class VariantsToTable extends VariantWalker {
         return s.endsWith("*");
     }
 
-    private String createGenotypeHeader() {
-        boolean firstEntry = true;
+    private List<String> createGenotypeFields() {
         final List<String> allGenotypeFieldsToTake = new ArrayList<>(genotypeFieldsToTake);
         allGenotypeFieldsToTake.addAll(asGenotypeFieldsToTake);
 
-        final StringBuilder sb = new StringBuilder();
+        final List<String> genotypeFields = new ArrayList<>();
         for ( final String sample : samples ) {
             for ( final String gf : allGenotypeFieldsToTake ) {
-                if ( firstEntry ) {
-                    firstEntry = false;
-                } else {
-                    sb.append("\t");
-                }
                 // spaces in sample names are legal but wreak havoc in R data frames
-                sb.append(sample.replace(" ","_"));
-                sb.append('.');
-                sb.append(gf);
+                final StringBuilder sb = new StringBuilder(sample.replace(" ","_"))
+                        .append(".")
+                        .append(gf);
+                genotypeFields.add(sb.toString());
             }
         }
-        return sb.toString();
+        return genotypeFields;
     }
 
     private void emitMoltenizedOutput(final List<String> record) {

@@ -31,6 +31,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 " --variant does_not_exist.vcf -O %s",
                 1, UserException.CouldNotReadInputFile.class);
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testComplexVariantsToTable-FAIL", this);
     }
 
@@ -40,6 +41,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                 " --variant " + getToolTestDataDir() + "soap_gatk_annotated.noChr_lines.vcf" +
                 " -O /does_not_exists/txt.table",
                 1, UserException.CouldNotCreateOutputFile.class);
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testComplexVariantsToTable-FAIL", this);
     }
 
@@ -48,6 +50,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 variantsToTableCmd("--error-if-missing-data"),
                 1, UserException.class);
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testComplexVariantsToTable-FAIL", this);
     }
 
@@ -59,6 +62,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " -O %s",
                 1,
                 UserException.class);
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testUnfilteredGenotypeFields-FAIL", this);
     }
 
@@ -67,6 +71,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 variantsToTableCmdNoSamples(" -F CHROM -F POS -F ID -F REF -F ALT -F QUAL -F FILTER -F TRANSITION -F EVENTLENGTH"),
                 Arrays.asList(getToolTestDataDir() + "expected.vcfexample.noSamples.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testNoSamples", this);
     }
 
@@ -76,6 +81,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                 variantsToTableCmdNoSamples(" -GF DP"),
                 1,
                 UserException.class);
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testNoSamples", this);
     }
 
@@ -84,6 +90,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 variantsToTableCmd(""),
                 Arrays.asList(getToolTestDataDir() + "expected.soap_gatk_annotated.noChr_lines.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testComplexVariantsToTable", this);
     }
 
@@ -92,6 +99,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 variantsToTableMultiAllelicCmd(""),
                 Arrays.asList(getToolTestDataDir() + "expected.multiallelic.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testMultiAllelicOneRecord", this);
     }
 
@@ -100,6 +108,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 variantsToTableMultiAllelicCmd(" -SMA"),
                 Arrays.asList(getToolTestDataDir() + "expected.multiallelic.SMA.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testMultiAllelicSplitRecords", this);
     }
 
@@ -110,6 +119,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " -GF RD" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.vcfexample2.GF_RD.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testGenotypeFields", this);
     }
 
@@ -120,6 +130,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " -GF RD -GF FT" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.vcfexample2.GF_RD.FT.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testUnfilteredGenotypeFields", this);
     }
 
@@ -132,6 +143,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " -SMA" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.multiallelic_gt.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testMultiallelicGenotypeFields", this);
     }
 
@@ -142,6 +154,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " -GF RD -GF GT -GF GQ" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.vcfexample2.GF_RD.GF_GT.GF_GT.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testGenotypeFieldsWithInline", this);
     }
 
@@ -155,6 +168,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " -SMA -F CHROM -F POS -F REF -F ALT -F FOO -ASF TLOD -ASGF TLOD -ASGF AD -ASGF MMQ -ASGF BAR -raw" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.threeSamples.2alts.MT.txt"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testGenotypeFieldsWithInline", this);
 
         //asking for allele-specific fields without splitting produces reasonable output
@@ -163,6 +177,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " -F CHROM -F POS -F REF -F ALT -ASGF TLOD -ASGF AD -ASGF MMQ -raw" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.threeSamples.2alts.MT.noSplit.txt"));
+        spec2.setTrimWhiteSpace(false);
         spec2.executeTest("testGenotypeFieldsWithInline", this);
 
         //A-type INFO annotations work
@@ -171,6 +186,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " -SMA -F CHROM -F POS -F REF -F ALT -ASF AS_BaseQRankSum -ASGF AD -raw -ASF AS_FilterStatus" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.ASindelVQSR.txt"));
+        spec4.setTrimWhiteSpace(false);
         spec4.executeTest("testGenotypeFieldsWithInline", this);
     }
 
@@ -181,6 +197,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " -GF PL" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.vcfexample.withMLE.GF_PL.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testGenotypeFields", this);
     }
 
@@ -192,6 +209,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " --moltenize" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.vcfexample2.moltenize.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testMoltenOutput", this);
     }
 
@@ -203,6 +221,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " --moltenize" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.vcfexample2.GF_RD.moltenize.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testMoltenOutputWithGenotypeFields", this);
     }
 
@@ -214,6 +233,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
                         " --moltenize -SMA" +
                         " -O %s",
                 Arrays.asList(getToolTestDataDir() + "expected.multiallelic.moltenize.SMA.table"));
+        spec.setTrimWhiteSpace(false);
         spec.executeTest("testMoltenOutputWithMultipleAlleles", this);
     }
 }

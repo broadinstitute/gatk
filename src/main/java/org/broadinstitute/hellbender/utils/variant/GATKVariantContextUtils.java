@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.variant;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.TribbleException;
@@ -177,6 +178,32 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+     *  Find the indices in one allele list (or OptionalInt.empty() if none exists) in another list of alleles
+     *  We assume that reference alleles are the first element of each list and don't assume that either list is in its minimal representation
+     * @param alleles1  The alleles whose indices we want to find within {@code alleles2}
+     * @param alleles2  The alleles where we find the occurrence of alleles1
+     * @return  Example: alleles1 = {A, G, T}; alleles2 = {AA, GA, CC} output = {0,1,EMPTY}
+     */
+    public static List<OptionalInt> alleleIndices(final List<Allele> alleles1, final List<Allele> alleles2) {
+        Utils.validateArg(!alleles1.isEmpty() && !alleles2.isEmpty(), "alleles lists must at least contain a reference allele.");
+        final Allele ref1 = alleles1.get(0);
+        final Allele ref2 = alleles2.get(0);
+        Utils.validateArg(ref1.isReference() && ref2.isReference(), "First allele in each list must be reference.");
+
+        final Allele commonRef = determineReferenceAllele(ref1, ref2);
+        final Map<Allele, Allele> alleles1ToCommon = createAlleleMapping(commonRef, ref1, alleles1.subList(1, alleles1.size()));
+        final Map<Allele, Allele> alleles2ToCommon = createAlleleMapping(commonRef, ref2, alleles2.subList(1, alleles2.size()));
+
+        final Map<Allele, Integer> commonToIndex2 = IntStream.range(0, alleles2.size()).boxed()
+                .collect(Collectors.toMap(n -> alleles2ToCommon.get(alleles2.get(n)), n -> n));
+
+        return alleles1.stream()
+                .map(a -> commonToIndex2.getOrDefault(alleles1ToCommon.get(a), -1))
+                .map(n -> n < 0 ? OptionalInt.empty() : OptionalInt.of(n))
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Determines the common reference allele
      *
      * @param VCs    the list of VariantContexts
@@ -283,10 +310,19 @@ public final class GATKVariantContextUtils {
             throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is BEST_MATCH_TO_ORIGINAL");
         }
         if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL) {
-            gb.alleles(noCallAlleles(ploidy)).noGQ();
-        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN) {
+            gb.alleles(noCallAlleles(ploidy));
+        } else if (assignmentMethod == GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN ||
+                    assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
             if ( genotypeLikelihoods == null || !isInformative(genotypeLikelihoods) ) {
-                gb.alleles(noCallAlleles(ploidy)).noGQ();
+                if (assignmentMethod == GenotypeAssignmentMethod.PREFER_PLS) {
+                    if (originalGT == null) {
+                        throw new IllegalArgumentException("original GT cannot be null if assignmentMethod is PREFER_PLS");
+                    } else {
+                        gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
+                    }
+                } else {
+                    gb.alleles(noCallAlleles(ploidy)).noGQ();
+                }
             } else {
                 final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
                 final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
@@ -294,8 +330,9 @@ public final class GATKVariantContextUtils {
 
                 final List<Allele> finalAlleles = alleleCounts.asAlleleList(allelesToUse);
                 if (finalAlleles.contains(Allele.NON_REF_ALLELE)) {
-                    gb.alleles(GATKVariantContextUtils.noCallAlleles(ploidy));
-                    gb.PL(new int[genotypeLikelihoods.length]);
+                    final Allele ref = allelesToUse.stream().filter(Allele::isReference).collect(Collectors.toList()).get(0);
+                    gb.alleles(Collections.nCopies(ploidy, ref));
+                    gb.PL(new int[genotypeLikelihoods.length]).log10PError(0);
                 } else {
                     gb.alleles(finalAlleles);
                 }
@@ -307,12 +344,7 @@ public final class GATKVariantContextUtils {
         } else if (assignmentMethod == GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS) {
             gb.alleles(noCallAlleles(ploidy)).noGQ().noAD().noPL().noAttributes();
         } else if (assignmentMethod == GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL) {
-            final List<Allele> best = new LinkedList<>();
-            final Allele ref = allelesToUse.get(0);
-            for (final Allele originalAllele : originalGT) {
-                best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
-            }
-            gb.alleles(best);
+            gb.alleles(bestMatchToOriginalGT(allelesToUse, originalGT));
         } else if (assignmentMethod == GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES) {
             if (gpc == null) {
                 throw new GATKException("cannot uses posteriors without an genotype prior calculator present");
@@ -340,7 +372,17 @@ public final class GATKVariantContextUtils {
         }
     }
 
-    private static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] /**/log10Posteriors) {
+    private static List<Allele> bestMatchToOriginalGT(final List<Allele> allelesToUse, final List<Allele> originalGT) {
+        final List<Allele> best = new LinkedList<>();
+        final Allele ref = allelesToUse.get(0);
+        for (final Allele originalAllele : originalGT) {
+            best.add((allelesToUse.contains(originalAllele) || originalAllele.isNoCall()) ? originalAllele : ref);
+        }
+        return best;
+    }
+
+    @VisibleForTesting
+    static double getGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] /**/log10Posteriors) {
         if (bestGenotypeIndex < 0) {
             return CommonInfo.NO_LOG10_PERROR;
         } else {
@@ -348,14 +390,14 @@ public final class GATKVariantContextUtils {
                 case 0:
                 case 1: return CommonInfo.NO_LOG10_PERROR;
                 case 2: return bestGenotypeIndex == 0 ? log10Posteriors[1] : log10Posteriors[0];
-                case 3: return Math.min(0, MathUtils.log10SumLog10(
+                case 3: return Math.min(0.0, MathUtils.log10SumLog10(
                                  log10Posteriors[ bestGenotypeIndex == 0 ? 2 : bestGenotypeIndex - 1],
                                  log10Posteriors[ bestGenotypeIndex == 2 ? 0 : bestGenotypeIndex + 1]));
                 default:
                     if (bestGenotypeIndex == 0) {
-                        return MathUtils.log10SumLog10(log10Posteriors, 1, log10Posteriors.length);
+                        return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors, 1, log10Posteriors.length));
                     } else if (bestGenotypeIndex == log10Posteriors.length - 1) {
-                        return MathUtils.log10SumLog10(log10Posteriors, 0, bestGenotypeIndex);
+                        return Math.min(0.0, MathUtils.log10SumLog10(log10Posteriors, 0, bestGenotypeIndex));
                     } else {
                         return Math.min(0.0, MathUtils.log10SumLog10(
                                 MathUtils.log10sumLog10(log10Posteriors, 0, bestGenotypeIndex),
@@ -1235,7 +1277,15 @@ public final class GATKVariantContextUtils {
      */
     public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
                                                            final Allele inputRef, final List<Allele> inputAlts) {
-        Utils.validate( refAllele.length() > inputRef.length(), () -> "BUG: inputRef="+inputRef+" is longer than refAllele="+refAllele);
+        Utils.validate( refAllele.length() >= inputRef.length(), () -> "BUG: inputRef="+inputRef+" is longer than refAllele="+refAllele);
+
+        // frequent simple case where there is already a common reference
+        if (refAllele.length() == inputRef.length()) {
+            final Map<Allele, Allele> map = new LinkedHashMap<>();
+            inputAlts.forEach(a -> map.put(a,a));
+            return map;
+        }
+
         final byte[] extraBases = Arrays.copyOfRange(refAllele.getBases(), inputRef.length(), refAllele.length());
 
         final Map<Allele, Allele> map = new LinkedHashMap<>();
@@ -1349,12 +1399,12 @@ public final class GATKVariantContextUtils {
     public static VariantContext trimAlleles(final VariantContext inputVC, final boolean trimForward, final boolean trimReverse) {
         Utils.nonNull(inputVC);
 
-        if ( inputVC.getNAlleles() <= 1 || inputVC.getAlleles().stream().anyMatch(a -> a.length() == 1) ) {
+        if ( inputVC.getNAlleles() <= 1 || inputVC.getAlleles().stream().anyMatch(a -> a.length() == 1 && !a.equals(Allele.SPAN_DEL)) ) {
             return inputVC;
         }
 
-        final List<byte[]> sequences = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic()).map(Allele::getBases).collect(Collectors.toList());
-        final List<IndexRange> ranges = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic()).map(a -> new IndexRange(0, a.length())).collect(Collectors.toList());
+        final List<byte[]> sequences = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic() && !a.equals(Allele.SPAN_DEL)).map(Allele::getBases).collect(Collectors.toList());
+        final List<IndexRange> ranges = inputVC.getAlleles().stream().filter(a -> !a.isSymbolic() && !a.equals(Allele.SPAN_DEL)).map(a -> new IndexRange(0, a.length())).collect(Collectors.toList());
 
         final Pair<Integer, Integer> shifts = AlignmentUtils.normalizeAlleles(sequences, ranges, 0, true);
         final int endTrim = shifts.getRight();
@@ -1390,7 +1440,7 @@ public final class GATKVariantContextUtils {
         final Map<Allele, Allele> originalToTrimmedAlleleMap = new LinkedHashMap<>();
 
         for (final Allele a : inputVC.getAlleles()) {
-            if (a.isSymbolic()) {
+            if (a.isSymbolic() || a.equals(Allele.SPAN_DEL)) {
                 alleles.add(a);
                 originalToTrimmedAlleleMap.put(a, a);
             } else {

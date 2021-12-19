@@ -155,6 +155,7 @@ public final class ArgumentsBuilder {
         return add(StandardArgumentDefinitions.VARIANT_LONG_NAME, vcf);
     }
 
+
     //FLAG
 
     public ArgumentsBuilder addFlag(final String argumentName) {

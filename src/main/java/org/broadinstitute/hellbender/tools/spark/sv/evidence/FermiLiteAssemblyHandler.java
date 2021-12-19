@@ -4,7 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMultiMapSpark;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
@@ -128,7 +128,7 @@ public final class FermiLiteAssemblyHandler implements FindBreakpointEvidenceSpa
 
         // make a map of assembled kmers
         final int capacity = assembly.getContigs().stream().mapToInt(tig -> tig.getSequence().length - kmerSize + 1).sum();
-        final HopscotchMultiMap<SVKmerShort, ContigLocation, KmerLocation> kmerMap = new HopscotchMultiMap<>(capacity);
+        final HopscotchMultiMapSpark<SVKmerShort, ContigLocation, KmerLocation> kmerMap = new HopscotchMultiMapSpark<>(capacity);
         assembly.getContigs().forEach(tig -> {
             int contigOffset = 0;
             final Iterator<SVKmer> contigKmerItr = new SVKmerizer(tig.getSequence(), kmerSize, new SVKmerShort());

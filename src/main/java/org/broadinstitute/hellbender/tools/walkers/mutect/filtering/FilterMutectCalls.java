@@ -4,7 +4,6 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -119,6 +118,7 @@ public final class FilterMutectCalls extends MultiplePassVariantWalker {
                 .filter(line -> !line.getKey().equals(FILTERING_STATUS_VCF_KEY)) //remove header line from Mutect2 stating that calls are unfiltered.
                 .collect(Collectors.toSet());
         headerLines.add(new VCFHeaderLine(FILTERING_STATUS_VCF_KEY, "These calls have been filtered by " + FilterMutectCalls.class.getSimpleName() + " to label false positives with a list of failed filters and true positives with PASS."));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.POLYMERASE_SLIPPAGE_QUAL_KEY));
 
         // all possible filters, even allele specific (since they can apply to the site as well
         GATKVCFConstants.MUTECT_FILTER_NAMES.stream().map(GATKVCFHeaderLines::getFilterLine).forEach(headerLines::add);

@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscoveryArgumentCollection;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.IntHistogramTest;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;

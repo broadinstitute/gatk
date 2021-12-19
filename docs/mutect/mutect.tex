@@ -510,8 +510,9 @@ Let us now roughly estimate the error bars on this result.  The main source of r
 \end{align}
 And therefore the standard error on $\hat{\chi}$ comes out to the square root of the sum of these per-site variances, divided by the denominator of Eq. \ref{contamination_estimate}, that is,
 \begin{equation}
-{\rm std}(\hat \chi) = \frac{\sqrt{  \sum_s \left[ (1 - f_s) d_s \hat{\chi}(1 - \hat{\chi}) + f_s(1 - f_s) d_s^2 \hat{\chi}^2  \right] }}{\sum_s d_s (1 - f_s) }
+{\rm std}(\chi) = \frac{\sqrt{  \sum_s \left[ (1 - f_s) d_s \chi(1 - \chi) + f_s(1 - f_s) d_s^2 \chi^2  \right] }}{\sum_s d_s (1 - f_s) }
 \end{equation}
+However, $\chi$ is not the same as its estimator $\hat{\chi}$.  We can define the maximum of a confidence interval as the largest $\chi$ such $\chi - {\rm std}(\chi) < \hat{\chi}$.  We can define the minimum similarly.  Note that in the case where contamination is small and we estimate $\hat{\chi} = 0$ the variance grows linearly with $\chi$ for small $\chi$, hence the standard deviation grows faster than linear
 
 It remains to describe how we determine which sites are hom alt.  The fundamental challenge here is that in cancer samples loss of heterozygosity may cause het sites to look like hom alt sites.  Our strategy is to partition the genome into allelic copy-number segments, then infer the minor allele fraction of those segments.  We segment the genome just as in GATK CNV, using a kernel segmenter with a Gaussian kernel computed on the alt fraction.  A nonlinear kernel is important because each segment is multimodal, with peaks for hom ref, alt minor het, alt major het, and hom alt.  
 

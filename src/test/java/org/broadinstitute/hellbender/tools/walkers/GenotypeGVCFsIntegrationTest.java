@@ -7,11 +7,15 @@ import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -20,6 +24,8 @@ import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -45,7 +51,7 @@ import java.util.stream.Stream;
 public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     // If true, update the expected outputs in tests that assert an exact match vs. prior output,
-    // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=GenotypeGVCFsIntegrationTest"
+    // instead of actually running the tests. Can be used with "./gradlew test --tests org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFsIntegrationTest"
     // to update all of the exact-match tests at once. After you do this, you should look at the
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
     private static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
@@ -101,6 +107,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 {new File(largeFileTestDir + "gvcfs/gatk3.7_30_ga4f720357.24_sample.21.g.vcf"), new File( largeFileTestDir + "gvcfs/gatk3.7_30_ga4f720357.24_sample.21.expected.vcf"), NO_EXTRA_ARGS, b38_reference_20_21},
                 {getTestFile("chr21.bad.pl.g.vcf"), getTestFile( "chr21.bad.pl.gatk3.7_30_ga4f720357.expected.vcf"), Arrays.asList("-L", "chr21:28341770-28341790"), b38_reference_20_21},
                 {new File(largeFileTestDir + "gvcfs/combined.gatk3.7_30_ga4f720357.g.vcf.gz"),  new File(largeFileTestDir + "gvcfs/combined.gatk3.7_30_ga4f720357.expected.vcf"), NO_EXTRA_ARGS, b38_reference_20_21},
+
                 //Tests for Allele-Specific Annotations
                 {new File(ALLELE_SPECIFIC_DIRECTORY, "NA12878.AS.chr20snippet.g.vcf"), getTestFile( "AS_Annotations.gatk3.7_30_ga4f720357.expected.vcf"), Arrays.asList( "-A", "ClippingRankSumTest", "-G", "AS_StandardAnnotation", "-G", "StandardAnnotation"), b37_reference_20_21},
                 {new File(ALLELE_SPECIFIC_DIRECTORY, "NA12878.AS.chr20snippet.g.vcf"), getTestFile( "AS_Annotations.keepRawCombined.expected.vcf"), Arrays.asList( "-A", "ClippingRankSumTest", "-G", "AS_StandardAnnotation", "-G", "StandardAnnotation", "-keep-combined"), b37_reference_20_21},
@@ -138,19 +145,12 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                         getTestFile( "expected/testSpanningDeletion.vcf"),
                         Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,096,905-10,096,907 -L 20:10624924-10624926"),
                         b37_reference_20_21},
+
                 // test site 20:10,012,730-10,012,740 to force coverage around LowQual site
                 {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
                         getTestFile( "expected/includeLowQualSites.vcf"),
                         Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,012,730-10,012,740"),
                         b37_reference_20_21}
-        };
-    }
-
-    @DataProvider(name = "gvcfWithPPs")
-    public Object[][] gvcfWithPPs() {
-        return new Object[][] {
-                {getTestFile("../../GenomicsDBImport/expected.testGVCFMode.gatk4.posteriors.g.vcf"),
-                        getTestFile( "expected.posteriors.genotyped.vcf"), NO_EXTRA_ARGS, b37_reference_20_21}
         };
     }
 
@@ -334,11 +334,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     private void assertGenotypesMatch(File input, File expected, List<String> additionalArguments, String reference) throws IOException {
         runGenotypeGVCFSAndAssertSomething(input, expected, additionalArguments, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes,
                 reference);
-    }
-
-    @Test(dataProvider = "gvcfWithPPs")
-    public void assertPPsAreStripped(File input, File expected, List<String> extraArgs, String reference) throws IOException {
-        runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, VariantContextTestUtils::assertGenotypePosteriorsAttributeWasRemoved, reference);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -680,5 +675,134 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         for (final int n : new int[] {1, 2, 3}) {
             Assert.assertTrue(actualVC.get(n).getAlternateAlleles().stream().anyMatch(a -> a == Allele.SPAN_DEL));
         }
+    }
+
+    @Test
+    public void testWithReblockedGVCF() {
+        final File reblockedGVCF = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/twoReblocked.g.vcf");
+        final File output = createTempFile("reblockedAndGenotyped", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(b37_reference_20_21)
+                .addVCF(reblockedGVCF)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
+        Assert.assertFalse(actualVC.stream().anyMatch(vc -> vc.getGenotype(1).isHomRef() && vc.getGenotype(1).hasPL()));  //second sample has a bunch of 0/0s -- shouldn't have PLs
+
+        final File bigCombinedReblockedGVCF = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/combineReblocked.g.vcf");
+        final File cohortOutput = createTempFile("biggerCohort.rb", ".vcf");
+
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.addReference(hg38Reference)
+                .addVCF(bigCombinedReblockedGVCF)
+                .addOutput(cohortOutput);
+        runCommandLine(args2);
+
+        final List<VariantContext> outputVCs = VariantContextTestUtils.getVariantContexts(cohortOutput);
+        final VariantContext vc0 = outputVCs.get(0);
+        Assert.assertTrue(vc0.getAttributeAsDouble(GATKVCFConstants.EXCESS_HET_KEY, 1000.0) < 10.0);
+        Assert.assertTrue(vc0.hasAttribute(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));  //will get dropped if homRefs aren't counted
+        Assert.assertEquals(vc0.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0), 362);
+        Assert.assertEquals(vc0.getAlternateAlleles().size(), 1);  //had another low quality alt
+        Assert.assertEquals(vc0.getAlternateAllele(0).getBaseString(), "G");
+        Assert.assertTrue(vc0.getGenotypes().stream().allMatch(g -> g.isCalled() && g.hasGQ() && g.hasDP()));
+
+        final VariantContext vc1 = outputVCs.get(1);
+        Assert.assertTrue(vc1.getAttributeAsDouble(GATKVCFConstants.EXCESS_HET_KEY, 1000.0) < 10.0); //will be ~72 if homRefs aren't counted
+        Assert.assertTrue(vc1.hasAttribute(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));
+        Assert.assertEquals(vc1.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0), 362);
+        Assert.assertEquals(vc1.getAlternateAlleles().size(), 3);
+        Assert.assertTrue(vc1.isIndel());
+        Assert.assertTrue(vc0.getGenotypes().stream().allMatch(g -> g.isCalled() && g.hasGQ() && g.hasDP()));
+
+        final File withAndWithoutPLs = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/compareWithoutPLs.g.vcf");
+        final File compareICvalues = createTempFile("compareICvalues", ".vcf");
+        final ArgumentsBuilder args3 = new ArgumentsBuilder();
+        args3.addReference(hg38Reference)
+                .addVCF(withAndWithoutPLs)
+                .addOutput(compareICvalues);
+        runCommandLine(args3);
+
+        //requires InbreedingCoeff to use isCalledAndDiploidWithLikelihoodsOrWithGQ for sampleNum
+        final List<VariantContext> compareICvariants = VariantContextTestUtils.getVariantContexts(compareICvalues);
+        final VariantContext vcWithPLs = compareICvariants.get(0);
+        final VariantContext vcWithoutPLs = compareICvariants.get(1);
+        Assert.assertTrue(vcWithPLs.hasAttribute(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));
+        Assert.assertTrue(vcWithoutPLs.hasAttribute(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));
+        final double ic1 = vcWithPLs.getAttributeAsDouble(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, 0);
+        final double ic2 = vcWithoutPLs.getAttributeAsDouble(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, 0);
+        Assert.assertTrue(ic1 > 0);  //make sure lookup worked, otherwise 0 == 0
+        Assert.assertTrue(ic2 > 0); //if GQ0s with no data are output as hom-ref, then ic2 is ~0.7
+        Assert.assertEquals(ic1, ic2, 0.1); //there will be some difference because the old version zeros out low depth hom-refs and makes them no-calls
+        Assert.assertEquals(vcWithoutPLs.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0), 114);  //don't count no-calls that are PL=[0,0,0] in classic VCF
+    }
+
+    @Test
+    public void testMissingDPVariant() {
+        final File inputNoDP = getTestFile("homVarNoDP.g.vcf");
+        final File outputNoDP = createTempFile("outputNoDP", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(hg38Reference)
+                .addVCF(inputNoDP)
+                .addOutput(outputNoDP)
+                .add(GenotypeCalculationArgumentCollection.CALL_CONFIDENCE_SHORT_NAME, 0);
+        runCommandLine(args);
+
+        final List<VariantContext> noDPVCs = VariantContextTestUtils.getVariantContexts(outputNoDP);
+        Assert.assertEquals(noDPVCs.size(), 0);
+
+        final File input1DP = getTestFile("homVar1DP.g.vcf");
+        final File output1DP = createTempFile("output1DP" ,".vcf");
+
+        final ArgumentsBuilder args2 = new ArgumentsBuilder();
+        args2.addReference(hg38Reference)
+                .addVCF(input1DP)
+                .addOutput(output1DP)
+                .add(StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, "StandardAnnotation")
+                .add(StandardArgumentDefinitions.ANNOTATION_GROUP_SHORT_NAME, "AS_StandardAnnotation");
+        runCommandLine(args2);
+
+        //interfaces can't have static methods, so we have to create an annotation class to query its keys
+        final AS_QualByDepth annotation = new AS_QualByDepth();
+        final List<VariantContext> oneDPVCs = VariantContextTestUtils.getVariantContexts(output1DP);
+        Assert.assertEquals(oneDPVCs.size(), 1);
+        final VariantContext vc = oneDPVCs.get(0);
+        Assert.assertTrue(vc.getAttributes().keySet().containsAll(annotation.getKeyNames()));
+        Assert.assertFalse(vc.getAttributes().keySet().contains(annotation.getPrimaryRawKey()));
+        Assert.assertFalse(vc.getAttributes().keySet().contains(annotation.getSecondaryRawKeys().get(0)));
+        Assert.assertFalse(vc.getAttributes().keySet().contains(annotation.getSecondaryRawKeys().get(1)));
+    }
+
+    //as for issue #7483 where two GVCFs merged with GenomicsDB produce some empty annotations fields
+    @Test
+    public void testOnEmptyAnnotations() {
+        final String input = getTestDataDir() + "/walkers/GnarlyGenotyper/emptyASAnnotations.g.vcf";
+        final File output = createTempFile("GGVCFsOutput", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .add("G", "StandardAnnotation")
+                .add("G", "AS_StandardAnnotation")
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final VariantContext vc = outputData.getRight().get(0);
+        //span del (*) has empty data, but gets "genotyped out"
+        Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
+        final List<String> mqs = vc.getAttributeAsStringList(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY,"");
+        Assert.assertEquals(mqs.size(), 1);
+        Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.AS_FISHER_STRAND_KEY));
+        final List<String> fss = vc.getAttributeAsStringList(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY,"");
+        Assert.assertEquals(fss.size(), 1);
+        Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY));
+        final List<String> sors = vc.getAttributeAsStringList(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY,"");
+        Assert.assertEquals(sors.size(), 1);
     }
 }

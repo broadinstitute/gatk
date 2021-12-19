@@ -188,7 +188,10 @@ public final class ProteinChangeInfo {
 
             aaStartPos = proteinChangeStartIndex + 1;
             aaEndPos = aaStartPos + numRefAminoAcids - 1;
-            refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, proteinChangeStartIndex + numRefAminoAcids);
+
+            final int endCoord = Math.min(proteinChangeStartIndex + numRefAminoAcids, referenceProteinSequence.length());
+
+            refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, endCoord);
             altAaSeq = "";
         }
         else {
@@ -202,8 +205,11 @@ public final class ProteinChangeInfo {
             aaStartPos = proteinChangeStartIndex + 1;
             aaEndPos = aaStartPos + numRefAminoAcids + endOffset;
 
-            refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, aaEndPos);
-            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, aaStartPos + numAltAminoAcids + endOffset);
+            final int refEndCoord = Math.min(aaEndPos, referenceProteinSequence.length());
+            refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, refEndCoord);
+
+            final int altEndCoord = Math.min(aaStartPos + numAltAminoAcids + endOffset, alternateProteinSequence.length());
+            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, altEndCoord);
 
             // Trim our state for this deletion:
             trimDeletionProteinChangeVariables();
@@ -273,7 +279,8 @@ public final class ProteinChangeInfo {
                     (strand == Strand.POSITIVE ? 1 : 0);
             aaEndPos = aaStartPos + 1;
             refAaSeq = "";
-            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, proteinChangeStartIndex + numAltAminoAcids );
+            final int endCoord = Math.min(proteinChangeStartIndex + numAltAminoAcids, alternateProteinSequence.length());
+            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, endCoord );
         }
         else {
             // To start with, we fill in the information naively corresponding to the potentially
@@ -284,7 +291,8 @@ public final class ProteinChangeInfo {
             aaEndPos = aaStartPos + numRefAminoAcids;
 
             refAaSeq = referenceProteinSequence.substring(proteinChangeStartIndex, aaEndPos);
-            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, aaStartPos + numAltAminoAcids);
+            final int endCoord = Math.min(aaStartPos + numAltAminoAcids, alternateProteinSequence.length());
+            altAaSeq = alternateProteinSequence.substring(proteinChangeStartIndex, endCoord);
 
             // Trim our state for this insertion:
             trimInsertionProteinChangeVariables();

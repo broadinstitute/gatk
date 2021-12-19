@@ -103,4 +103,8 @@ public final class ReferenceUtils {
     public static byte[] getRefBaseAtPosition(final ReferenceSequenceFile reference, final String contig, final int start) {
         return reference.getSubsequenceAt(contig, start, start).getBases();
     }
+
+    public static byte[] getRefBasesAtPosition(final ReferenceSequenceFile reference, final String contig, final int start, final int length) {
+        return reference.getSubsequenceAt(contig, start, start+length-1).getBases();
+    }
 }

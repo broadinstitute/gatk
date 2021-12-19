@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
+import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;

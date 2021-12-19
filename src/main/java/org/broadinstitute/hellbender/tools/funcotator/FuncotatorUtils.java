@@ -2153,9 +2153,17 @@ public final class FuncotatorUtils {
         final List<String> badLetters = Arrays.asList(",", ";", "=", "\t", VcfOutputRenderer.HEADER_LISTED_FIELD_DELIMITER, " ", "\n", VcfOutputRenderer.ALL_TRANSCRIPT_DELIMITER);
 
         // Encoded version:
-        final List<String> cleanLetters = badLetters.stream().map(
-                s -> "_%" + String.format("%02X", s.getBytes(StandardCharsets.US_ASCII)[0]) + "_")
-                .collect(Collectors.toList());
+        final List<String> cleanLetters = new ArrayList<>();
+        for(String s: badLetters) {
+            final String hex;
+            if (s.getBytes(StandardCharsets.US_ASCII)[0] < 16) {
+                hex = "_%0"+Integer.toHexString(s.getBytes(StandardCharsets.US_ASCII)[0] & 0xFF).toUpperCase()+ "_";
+            }
+            else {
+                hex = "_%" +Integer.toHexString(s.getBytes(StandardCharsets.US_ASCII)[0] & 0xFF).toUpperCase() + "_";
+            }
+            cleanLetters.add(hex);
+        }
 
         // Now replace them:
         return StringUtils.replaceEach(individualFuncotationField, badLetters.toArray(new String[]{}), cleanLetters.toArray(new String[]{}));

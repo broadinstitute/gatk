@@ -2,6 +2,7 @@ language: java
 dist: bionic
 group: travis_lts
 git:
+  # We intentionally check out the entire repo history because we hit errors during the build if the most recent tag isn't in our history for `git describe`
   depth: 9999999
   lfs_skip_smudge: true
 jdk:
@@ -25,6 +26,7 @@ env:
   #limit gradle jvm memory and disable daemon
   - GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false"
   #google cloud stuff
+  - export CLOUDSDK_CONFIG=${PWD}/config
   - export CLOUDSDK_CORE_DISABLE_PROMPTS=1
   - export GCLOUD_HOME=$HOME/gcloud/google-cloud-sdk/bin
   - export CLOUDSDK_PYTHON_SITEPACKAGES=1
@@ -72,9 +74,9 @@ before_install:
       travis_terminate 0;
     fi;
   fi;
-- if [[ $TRAVIS_SECURE_ENV_VARS == true && $TEST_DOCKER == true ]]; then
+- if [[ $TRAVIS_SECURE_ENV_VARS == true ]]; then
     echo "Logging in to dockerhub";
-    docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
+    docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_TOKEN;
   fi
 - REPORT_PATH=${TRAVIS_BRANCH}_${TRAVIS_JOB_NUMBER};
 - if [[ $TRAVIS_SECURE_ENV_VARS == true && $TRAVIS_EVENT_TYPE != cron ]]; then
@@ -84,7 +86,7 @@ before_install:
     if [[ ${TESTS_REQUIRE_GCLOUD} == true ]]; then
       scripts/travis/install_and_authenticate_to_gcloud.sh;
     fi;
-    openssl aes-256-cbc -K $encrypted_4823d58debd3_key -iv $encrypted_4823d58debd3_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
+    openssl aes-256-cbc -K $encrypted_8ebb1ef83f64_key -iv $encrypted_8ebb1ef83f64_iv -in resources_for_CI/github_deploy_key.enc -out ~/.ssh/id_rsa -d;
     chmod 600 ~/.ssh/id_rsa;
     echo "Testing github authentication:";
     ssh -T git@github.com;
@@ -179,7 +181,6 @@ script:
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
 # This also constructs the Docker image and uploads it to https://cloud.docker.com/u/broadinstitute/repository/docker/broadinstitute/gatk-nightly/
 - if [[ $TRAVIS_BRANCH == master && $TRAVIS_EVENT_TYPE == cron && $UPLOAD == true ]]; then
-  docker login --username=$DOCKER_SERVICE_LOGIN --password=$DOCKER_SERVICE_PASS;
   $GCLOUD_HOME/gcloud components -q update gsutil;
   gsutil ls -l gs://gatk-nightly-builds | grep gatk | sort -r -k 2 | grep -o '\S\+$' | tail -n +11 | xargs -I {} gsutil rm {};
   ./gradlew bundle;

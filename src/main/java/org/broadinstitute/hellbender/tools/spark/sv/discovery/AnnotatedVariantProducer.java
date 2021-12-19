@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.StructuralVariationDiscovery
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
+import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 

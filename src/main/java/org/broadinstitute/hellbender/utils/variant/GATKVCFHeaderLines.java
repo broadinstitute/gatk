@@ -137,6 +137,8 @@ public class GATKVCFHeaderLines {
         addFormatLine(new VCFFormatHeaderLine(F1R2_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of reads in F1R2 pair orientation supporting each allele"));
         addFormatLine(new VCFFormatHeaderLine(F2R1_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of reads in F2R1 pair orientation supporting each allele"));
         addFormatLine(new VCFFormatHeaderLine(FEATURIZED_READ_SETS_KEY, 1, VCFHeaderLineType.Integer, "Featurized read sets by allele for Mutect3 training"));
+        addFormatLine(new VCFFormatHeaderLine(FRAGMENT_ALLELE_DEPTHS, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of fragments supporting each allele."));
+
 
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed"));
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_FREQUENCY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed"));
@@ -175,9 +177,8 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(QUAL_BY_DEPTH_KEY, 1, VCFHeaderLineType.Float, "Variant Confidence/Quality by Depth"));
         addInfoLine(new VCFInfoHeaderLine(AS_QUAL_BY_DEPTH_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele-specific Variant Confidence/Quality by Depth"));
         addInfoLine(new VCFInfoHeaderLine(AS_QUAL_KEY, 1, VCFHeaderLineType.Float, "Allele-specific Variant Qual Score"));
-        addInfoLine(new VCFInfoHeaderLine(AS_RAW_QUAL_APPROX_KEY, 1, VCFHeaderLineType.String, "Allele-specific Variant Qual approximation"));
-        addInfoLine(new VCFInfoHeaderLine(RAW_QUAL_APPROX_KEY, 1, VCFHeaderLineType.Integer, "Sum of PL[0] values; used to approximate the QUAL score"));
         addInfoLine(new VCFInfoHeaderLine(AS_RAW_QUAL_APPROX_KEY, 1, VCFHeaderLineType.String, "Allele-specific QUAL approximations"));
+        addInfoLine(new VCFInfoHeaderLine(RAW_QUAL_APPROX_KEY, 1, VCFHeaderLineType.Integer, "Sum of PL[0] values; used to approximate the QUAL score"));
         addInfoLine(new VCFInfoHeaderLine(VARIANT_DEPTH_KEY, 1, VCFHeaderLineType.Integer, "(informative) depth over variant genotypes"));
         addInfoLine(new VCFInfoHeaderLine(AS_VARIANT_DEPTH_KEY, 1, VCFHeaderLineType.String, "Allele-specific (informative) depth over variant genotypes -- including ref, RAW format"));
         addInfoLine(new VCFInfoHeaderLine(AS_ALT_ALLELE_DEPTH_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Allele-specific (informative) depth for alt alleles over variant genotypes; effectively sum of ADs"));

@@ -246,6 +246,11 @@ public final class FeatureManager implements AutoCloseable {
         featureSources.put(featureInput, new FeatureDataSource<>(featureInput, featureQueryLookahead, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, genomicsDBOptions));
     }
 
+    <F extends Feature> void addToFeatureSources (final FeatureInput<F> featureInput,
+                                                  final FeatureDataSource<F> featureDataSource) {
+        featureSources.put(featureInput, featureDataSource);
+    }
+
     /**
      * Given a ArgumentDefinition for an argument known to be of type FeatureInput (or a Collection thereof), retrieves the type
      * parameter for the FeatureInput (eg., for FeatureInput<VariantContext> or List<FeatureInput<VariantContext>>
@@ -373,6 +378,22 @@ public final class FeatureManager implements AutoCloseable {
     public <T extends Feature> Iterator<T> getFeatureIterator(final FeatureInput<T> featureDescriptor) {
         final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
         return dataSource.iterator();
+    }
+
+    /**
+     * As above, but takes an optional list of intervals to examine.
+     * @param featureDescriptor FeatureInput to scan
+     * @param intervals The userIntervals to examine (may be null)
+     * @param <T> Feature type
+     * @return An iterator over the Features
+     */
+    public <T extends Feature> Iterator<T> getFeatureIterator( final FeatureInput<T> featureDescriptor,
+                                                               final List<SimpleInterval> intervals ) {
+        final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
+        dataSource.setIntervalsForTraversal(intervals);
+        final Iterator<T> itr = dataSource.iterator();
+        dataSource.setIntervalsForTraversal(null);
+        return itr;
     }
 
     /**

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
 /**
  * Arguments to be be used by the {@link Funcotator} {@link org.broadinstitute.hellbender.engine.GATKTool},
@@ -39,5 +40,13 @@ public class FuncotatorVariantArgumentCollection extends BaseFuncotatorArgumentC
             doc = "Variants within this many bases of the 3' end of a transcript (and not overlapping any part of the transcript itself) will be annotated as being in the 3' flanking region of that transcript"
     )
     public int threePrimeFlankSize = FuncotatorArgumentDefinitions.THREE_PRIME_FLANK_SIZE_DEFAULT_VALUE;
+
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.REANNOTATE_VCF_LONG_NAME,
+            optional = true,
+            doc = "When input VCF has already been annotated, still annotate again."
+    )
+    public boolean reannotateVCF = false;
+
 
 }

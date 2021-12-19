@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.samples.Trio;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -75,7 +76,7 @@ public abstract class PedigreeAnnotation implements VariantAnnotation {
     }
 
     /**
-     * Setter for pedigree file and founderIDs to be used by the GATKAnnotationPluginDescriptor to handle duplicated annotaiton
+     * Setter for pedigree file and founderIDs to be used by the GATKAnnotationPluginDescriptor to handle duplicated annotation
      * arguments between InbreedingCoeff and ExcessHet
      */
     public void setPedigreeFile(GATKPath pedigreeFile) {
@@ -100,5 +101,14 @@ public abstract class PedigreeAnnotation implements VariantAnnotation {
         if ((founderIds == null || founderIds.isEmpty()) && pedigreeFile == null) {
             logger.warn(this.getClass().getSimpleName() + " annotation will not be calculated, no 'founder-id' or 'pedigree' arguments provided");
         }
+    }
+
+    /**
+     * This is a getter for the pedigree file, which could be null.
+     *
+     * @return The pedigree file
+     */
+    public @Nullable GATKPath getPedigreeFile() {
+        return pedigreeFile;
     }
 }

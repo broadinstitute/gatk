@@ -32,18 +32,16 @@ public class GVCFWriter implements VariantContextWriter {
      * A <= X < B
      * B <= X < C
      * X >= C
-     *
      * @param underlyingWriter the ultimate destination of the GVCF records
      * @param gqPartitions     a list of GQ partitions, this list must be non-empty and every element must be larger than previous element
-     * @param defaultPloidy    the assumed ploidy for input variant context without one.
      */
-    public GVCFWriter(final VariantContextWriter underlyingWriter, final List<Number> gqPartitions, final int defaultPloidy, final boolean floorBlocks) {
+    public GVCFWriter(final VariantContextWriter underlyingWriter, final List<? extends Number> gqPartitions, final boolean floorBlocks) {
         this.underlyingWriter = Utils.nonNull(underlyingWriter);
-        this.gvcfBlockCombiner = new GVCFBlockCombiner(gqPartitions, defaultPloidy, floorBlocks);
+        this.gvcfBlockCombiner = new GVCFBlockCombiner(gqPartitions, floorBlocks);
     }
 
-    public GVCFWriter(final VariantContextWriter underlyingWriter, final List<Number> gqPartitions, final int defaultPloidy) {
-        this(underlyingWriter, gqPartitions, defaultPloidy, false);
+    public GVCFWriter(final VariantContextWriter underlyingWriter, final List<? extends Number> gqPartitions) {
+        this(underlyingWriter, gqPartitions, false);
     }
 
 
@@ -92,7 +90,7 @@ public class GVCFWriter implements VariantContextWriter {
         output();
     }
 
-    private void output() {
+    void output() {
         if (gvcfBlockCombiner.hasFinalizedItems()) {
             gvcfBlockCombiner.consumeFinalizedItems().forEach(underlyingWriter::add);
         }

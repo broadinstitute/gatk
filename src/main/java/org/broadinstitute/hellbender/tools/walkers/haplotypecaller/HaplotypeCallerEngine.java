@@ -11,6 +11,7 @@ import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -36,7 +37,6 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -93,6 +93,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     // writes Haplotypes to a bam file when the -bamout option is specified
     private Optional<HaplotypeBAMWriter> haplotypeBAMWriter;
+    // writes Variants from assembly graph
+    private Optional<VariantContextWriter> assembledEventMapVcfOutputWriter;
+    private Optional<PriorityQueue<VariantContext>> assembledEventMapVariants;
 
     private Set<String> sampleSet;
     private SampleList samplesList;
@@ -239,6 +242,16 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, createBamOutIndex, createBamOutMD5, readsHeader);
         assemblyEngine = hcArgs.createReadThreadingAssembler();
+        assembledEventMapVcfOutputWriter = Optional.ofNullable(hcArgs.assemblerArgs.debugAssemblyVariantsOut != null ?
+                GATKVariantContextUtils.createVCFWriter(
+                        new GATKPath(hcArgs.assemblerArgs.debugAssemblyVariantsOut).toPath(),
+                        readsHeader.getSequenceDictionary(),
+                        false,
+                        Options.DO_NOT_WRITE_GENOTYPES, Options.INDEX_ON_THE_FLY)
+                : null);
+        assembledEventMapVariants = Optional.ofNullable(hcArgs.assemblerArgs.debugAssemblyVariantsOut != null ?
+                new PriorityQueue<>(200, new VariantContextComparator(readsHeader.getSequenceDictionary())) : null);
+        assembledEventMapVcfOutputWriter.ifPresent(writer -> writeHeader(writer, readsHeader.getSequenceDictionary(), new HashSet<>()));
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs, !hcArgs.softClipLowQualityEnds);
     }
 
@@ -381,7 +394,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if ( hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF ) {
             try {
-                writer = new GVCFWriter(writer, new ArrayList<Number>(hcArgs.GVCFGQBands), hcArgs.standardArgs.genotypeArgs.samplePloidy, hcArgs.floorBlocks);
+                writer = new GVCFWriter(writer, hcArgs.GVCFGQBands, hcArgs.floorBlocks);
             } catch ( IllegalArgumentException e ) {
                 throw new CommandLineException.BadArgumentValue("GQBands", "are malformed: " + e.getMessage());
             }
@@ -571,6 +584,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
+        ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, hcArgs.maxMnpDistance, assembledEventMapVcfOutputWriter);
 
         if (assemblyDebugOutStream != null) {
             try {
@@ -654,7 +668,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads);
 
         // Realign reads to their best haplotype.
-        final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner);
+        final SWParameters readToHaplotypeSWParameters = hcArgs.getReadToHaplotypeSWParameters();
+        final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner, readToHaplotypeSWParameters);
         readLikelihoods.changeEvidence(readRealignments);
 
         // Note: we used to subset down at this point to only the "best" haplotypes in all samples for genotyping, but there
@@ -775,6 +790,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();
         }
+        assembledEventMapVcfOutputWriter.ifPresent(writer -> {assembledEventMapVariants.get().forEach(writer::add); writer.close();});
         if ( referenceReader != null){
             try {
                 referenceReader.close();

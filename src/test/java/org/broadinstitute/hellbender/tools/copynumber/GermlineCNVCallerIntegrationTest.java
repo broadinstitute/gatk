@@ -5,8 +5,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineDenoisingModelArgumentCollection;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -69,6 +69,22 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
                         CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
                 .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
                 .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case");
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(groups = {"python"}, expectedExceptions = IllegalArgumentException.class)
+    public void testCaseWithHiddenArguments() {
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        Arrays.stream(TEST_COUNT_FILES, 0, 5).forEach(argsBuilder::addInput);
+        argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.CASE.name())
+                .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
+                        CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
+                .add(CopyNumberStandardArgument.MODEL_LONG_NAME,
+                        new File(OUTPUT_DIR, "test-germline-cnv-cohort-model").getAbsolutePath())
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-case");
+        // add argument that is not applicable in CASE mode
+        argsBuilder.add(GermlineDenoisingModelArgumentCollection.INTERVAL_PSI_SCALE_LONG_NAME, 0.1);
         runCommandLine(argsBuilder);
     }
 

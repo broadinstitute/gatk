@@ -44,4 +44,8 @@ public class FuncotatorConstants {
             Arrays.asList(B37_MITOCHONDRIAL_CONTIG_NAME, HG19_MITOCHONDRIAL_CONTIG_NAME, HG38_MITOCHONDRIAL_CONTIG_NAME)
     );
 
+    /** Name of the header line key which indicates that a file has already been annotated. */
+    public static final String FUNCOTATOR_VERSION_VCF_HEADERLINE_KEY = "Funcotator Version";
+
+
 }

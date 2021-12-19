@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.io;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import htsjdk.samtools.util.FileExtensions;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -730,5 +731,28 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         IOUtils.deleteRecursively(gcsFolderPath);
         Assert.assertFalse(Files.exists(gcsFilePath));
         Assert.assertFalse(Files.exists(IOUtils.getPath(gcsFolder)));
+    }
+
+    @DataProvider(name = "ExtensionRemoverProvider")
+    public Object[][] getExtensionData() {
+        // Files, expected to support serial iteration (false if any input is a .sam)
+        return new Object[][] {
+                { "" },
+                { "/path/to" },
+                { "gs://bucket/subdir" }
+        };
+    }
+
+    @Test(dataProvider = "ExtensionRemoverProvider")
+    public void testRemoveExtension(final String basePathString) {
+        final Path baseFilePath = Paths.get(basePathString, "test_file");
+        final List<String> extensionsList = new ArrayList<>(FileExtensions.VCF_LIST.size() + 1);
+        extensionsList.add("");
+        extensionsList.addAll(FileExtensions.VCF_LIST);
+        for (final String extension : extensionsList) {
+            final Path inputPath = Paths.get(baseFilePath.toString() + extension);
+            final Path outputPath = IOUtils.removeExtension(inputPath, FileExtensions.VCF_LIST);
+            Assert.assertEquals(outputPath, baseFilePath);
+        }
     }
 }

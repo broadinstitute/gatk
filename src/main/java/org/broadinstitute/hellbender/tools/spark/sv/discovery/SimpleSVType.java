@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.discovery.inference.NovelAdj
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.EvidenceTargetLink;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Collections;

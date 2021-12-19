@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.genomicsdb;
 import com.googlecode.protobuf.format.JsonFormat;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.genomicsdb.importer.GenomicsDBImporter;
@@ -10,12 +12,11 @@ import org.genomicsdb.model.GenomicsDBExportConfiguration;
 import org.genomicsdb.model.GenomicsDBVidMapProto;
 
 import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.genomicsdb.GenomicsDBUtils.isGenomicsDBArray;
+import static org.genomicsdb.GenomicsDBUtils.readEntireFile;
 
 /**
  * Utility class containing various methods for working with GenomicsDB
@@ -46,7 +47,7 @@ public class GenomicsDBUtils {
      * Note that the recommendation is to perform this operation during the import phase
      * as only a limited set of mappings can be changed during export.
      *
-     * @param importer
+     * @param importer that imports bcf/vcf streams into GenomicsDB
      */
     public static void updateImportProtobufVidMapping(GenomicsDBImporter importer) {
         //Get the in-memory Protobuf structure representing the vid information.
@@ -79,6 +80,10 @@ public class GenomicsDBUtils {
                 GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, ELEMENT_WISE_SUM);
         vidMapPB = updateAlleleSpecificINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, ELEMENT_WISE_INT_SUM);
+        vidMapPB = updateFieldSetDisableRemapMissingAlleleToNonRef(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, true);
+        vidMapPB = updateFieldSetDisableRemapMissingAlleleToNonRef(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.AS_SB_TABLE_KEY, true);
 
         importer.updateProtobufVidMapping(vidMapPB);
     }
@@ -95,6 +100,9 @@ public class GenomicsDBUtils {
     public static GenomicsDBExportConfiguration.ExportConfiguration createExportConfiguration(final String workspace,
                                                                                               final String callsetJson, final String vidmapJson,
                                                                                               final String vcfHeader, final GenomicsDBOptions genomicsDBOptions) {
+        if (genomicsDBOptions.useGcsHdfsConnector()) {
+          org.genomicsdb.GenomicsDBUtils.useGcsHdfsConnector(true);
+        }
         final GenomicsDBExportConfiguration.ExportConfiguration.Builder exportConfigurationBuilder =
                 GenomicsDBExportConfiguration.ExportConfiguration.newBuilder()
                         .setWorkspace(workspace)
@@ -109,8 +117,6 @@ public class GenomicsDBUtils {
                         .setMaxGenotypeCount(genomicsDBOptions.getMaxGenotypeCount())
                         .setEnableSharedPosixfsOptimizations(genomicsDBOptions.sharedPosixFSOptimizations());
 
-        final Path arrayFolder = Paths.get(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME).toAbsolutePath();
-
         // For the multi-interval support, we create multiple arrays (directories) in a single workspace -
         // one per interval. So, if you wish to import intervals ("chr1", [ 1, 100M ]) and ("chr2", [ 1, 100M ]),
         // you end up with 2 directories named chr1$1$100M and chr2$1$100M. So, the array names depend on the
@@ -124,13 +130,11 @@ public class GenomicsDBUtils {
         // will be backward compatible with respect to reads. Hence, if a directory named genomicsdb_array is found,
         // the array name is passed to the GenomicsDBFeatureReader otherwise the array names are generated from the
         // directory entries.
-        if (Files.exists(arrayFolder)) {
+        if (isGenomicsDBArray(workspace, GenomicsDBConstants.DEFAULT_ARRAY_NAME)) {
             exportConfigurationBuilder.setArrayName(GenomicsDBConstants.DEFAULT_ARRAY_NAME);
         } else {
             exportConfigurationBuilder.setGenerateArrayNameFromPartitionBounds(true);
         }
-
-
 
         return exportConfigurationBuilder.build();
     }
@@ -151,9 +155,7 @@ public class GenomicsDBUtils {
     public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final String vidmapJson)
             throws IOException {
         final GenomicsDBVidMapProto.VidMappingPB.Builder vidMapBuilder = GenomicsDBVidMapProto.VidMappingPB.newBuilder();
-        try (final Reader reader = Files.newBufferedReader(IOUtils.getPath(vidmapJson))) {
-            JsonFormat.merge(reader, vidMapBuilder);
-        }
+        JsonFormat.merge(readEntireFile(vidmapJson), vidMapBuilder);
         return vidMapBuilder.build();
     }
 
@@ -261,5 +263,68 @@ public class GenomicsDBUtils {
         }
         return vidMapPB;
     }
+
+    /**
+     * Update vid Protobuf field to set whether missing allele should be remapped with value from NON_REF
+     * @param vidMapPB input vid object
+     * @param fieldNameToIndexInVidFieldsList name to index in list
+     * @param fieldName INFO field name
+     * @param value boolean value - true to disable remapping missing value with value from NON_REF
+     * @return updated vid Protobuf object if field exists, else return original protobuf object
+     */
+    public static GenomicsDBVidMapProto.VidMappingPB updateFieldSetDisableRemapMissingAlleleToNonRef(
+            final GenomicsDBVidMapProto.VidMappingPB vidMapPB,
+            final Map<String, Integer> fieldNameToIndexInVidFieldsList,
+            final String fieldName,
+            final boolean value)
+    {
+        int fieldIdx = fieldNameToIndexInVidFieldsList.containsKey(fieldName)
+                ? fieldNameToIndexInVidFieldsList.get(fieldName) : -1;
+        if(fieldIdx >= 0) {
+            //Would need to rebuild vidMapPB - so get top level builder first
+            GenomicsDBVidMapProto.VidMappingPB.Builder updatedVidMapBuilder = vidMapPB.toBuilder();
+            //To update the list element corresponding to fieldName, we get the builder for that specific list element
+            GenomicsDBVidMapProto.GenomicsDBFieldInfo.Builder infoBuilder =
+                    updatedVidMapBuilder.getFieldsBuilder(fieldIdx);
+
+            infoBuilder.setDisableRemapMissingWithNonRef(value);
+            //Rebuild full vidMap
+            return updatedVidMapBuilder.build();
+        }
+        return vidMapPB;
+    }
+
+    /*
+     * Changes relative local file paths to be absolute file paths. Cloud Datastore paths are left unchanged
+     * @param path to the resource
+     * @return an absolute file path if the original path was a relative file path, otherwise the original path
+     */
+    public static String genomicsDBGetAbsolutePath(String path) {
+        Utils.nonNull(path);
+        if (path.contains("://")) {
+            return path;
+        } else {
+            return BucketUtils.makeFilePathAbsolute(path);
+        }
+    }
+
+    /**
+     * Appends path to the given parent path. The parent path could be a URI or a File.
+     * @param parentPath the folder to append the path
+     * @param path the path relative to dir
+     * @return the appended path as String
+     */
+    public static String genomicsDBApppendPaths(String parentPath, String path) {
+        if (parentPath != null && parentPath.contains("://")) {
+            if (parentPath.endsWith("/")) {
+                return parentPath + path;
+            } else {
+                return parentPath + "/" + path;
+            }
+        } else {
+            return IOUtils.appendPathToDir(parentPath, path);
+        }
+    }
+
 
 }
