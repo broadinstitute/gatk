@@ -44,6 +44,7 @@ public final class VariantAnnotatorEngine {
     private final boolean keepRawCombinedAnnotations;
 
     private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
+    private boolean hasLoggedJumboGenotypeWarning = false;
 
     /**
      * Creates an annotation engine from a list of selected annotations output from command line parsing
@@ -355,8 +356,11 @@ public final class VariantAnnotatorEngine {
                                                final Optional<AlleleLikelihoods<Fragment, Allele>> fragmentLikelihoods,
                                                final Optional<AlleleLikelihoods<Fragment, Haplotype>> haplotypeLikelihoods,
                                                final Predicate<VariantAnnotation> addAnnot) {
-        if (!jumboGenotypeAnnotations.isEmpty() && !fragmentLikelihoods.isPresent() || !haplotypeLikelihoods.isPresent()) {
-            logger.warn("Jumbo genotype annotations requested but fragment likelihoods or haplotype likelihoods were not given.");
+        if (!jumboGenotypeAnnotations.isEmpty() && (!fragmentLikelihoods.isPresent() || !haplotypeLikelihoods.isPresent())) {
+            if (!hasLoggedJumboGenotypeWarning) {
+                logger.warn("Jumbo genotype annotations requested but fragment likelihoods or haplotype likelihoods were not given. This will only be logged once.");
+                hasLoggedJumboGenotypeWarning = true;
+            }
         }
         if ( genotypeAnnotations.isEmpty() && jumboGenotypeAnnotations.isEmpty()) {
             return vc.getGenotypes();
