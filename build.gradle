@@ -933,6 +933,7 @@ publishing {
             from components.java
             artifactId = "gatk"
             pom basePomConfiguration
+            pom.name = "GATK4"
 
             artifact sourcesJar
             artifact javadocJar
@@ -941,6 +942,7 @@ publishing {
         testUtils(MavenPublication) {
             artifactId = "gatk-test-utils"
             pom basePomConfiguration
+            pom.name = "GATK4 Test Utilities"
 
             artifact testUtilsJar
             artifact testUtilsSourcesJar
