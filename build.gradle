@@ -3,18 +3,17 @@
 buildscript {
     repositories {
         mavenCentral()
-        jcenter() // for shadow plugin
      }
 }
 
 plugins {
     id "java"           // set up default java compile and test tasks
     id "application"    // provides installDist
-    id 'maven'          // record code coverage during test execution
+    id 'maven-publish'
     id 'signing'
     id "jacoco"
-    id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib
-    id "com.github.johnrengelman.shadow" version "5.0.0"    //used to build the shadow and sparkJars
+    id "de.undercouch.download" version "4.1.2" //used for downloading GSA lib
+    id "com.github.johnrengelman.shadow" version "7.1.1"    //used to build the shadow and sparkJars
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
     id 'com.palantir.git-version' version '0.5.1' //version helper
 }
@@ -48,7 +47,6 @@ task downloadGsaLibFile(type: Download) {
 
 repositories {
     mavenCentral()
-    jcenter()
 
     maven {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
@@ -208,16 +206,16 @@ sourceSets {
 
 // Dependency change for including MLLib
 configurations {
-    testUtilsCompile.extendsFrom compile
-    testUtilsRuntime.extendsFrom runtime
+    testUtilsImplementation.extendsFrom implementation
+    testUtilsRuntimeClasspath.extendsFrom runtimeClasspath
 
-    testCompile.extendsFrom testUtilsCompile
-    testRuntime.extendsFrom testUtilsRuntime
+    testImplementation.extendsFrom testUtilsImplementation
+    testRuntimeClasspath.extendsFrom testUtilsRuntimeClasspath
 
-    compile.exclude module: 'jul-to-slf4j'
-    compile.exclude module: 'javax.servlet'
-    compile.exclude module: 'servlet-api'
-    compile.exclude group: 'com.esotericsoftware.kryo'
+    implementation.exclude module: 'jul-to-slf4j'
+    implementation.exclude module: 'javax.servlet'
+    implementation.exclude module: 'servlet-api'
+    implementation.exclude group: 'com.esotericsoftware.kryo'
 
     externalSourceConfiguration {
         // External sources we need for doc and tab completion generation tasks (i.e., Picard sources)
@@ -225,7 +223,7 @@ configurations {
     }
 
     sparkConfiguration {
-        extendsFrom runtime
+        extendsFrom runtimeClasspath
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
@@ -249,15 +247,15 @@ final javadocJDKFiles = ToolProvider.getSystemToolClassLoader() == null ? files(
 dependencies {
     // javadoc utilities; compile/test only to prevent redistribution of sdk jars
     compileOnly(javadocJDKFiles)
-    testCompile(javadocJDKFiles)
+    testImplementation(javadocJDKFiles)
 
-    compile 'org.broadinstitute:barclay:' + barclayVersion
+    implementation 'org.broadinstitute:barclay:' + barclayVersion
     // Library for configuration:
-    compile 'org.aeonbits.owner:owner:1.0.9'
+    implementation 'org.aeonbits.owner:owner:1.0.9'
 
-    compile 'com.github.broadinstitute:picard:' + picardVersion
+    implementation 'com.github.broadinstitute:picard:' + picardVersion
     externalSourceConfiguration 'com.github.broadinstitute:picard:' + picardVersion + ':sources'
-    compile ('org.genomicsdb:genomicsdb:' + genomicsdbVersion)  {
+    implementation ('org.genomicsdb:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'log4j-api'
         exclude module: 'log4j-core'
         exclude module: 'spark-core_2.12'
@@ -265,59 +263,59 @@ dependencies {
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
-    compile 'com.opencsv:opencsv:3.4'
-    compile 'com.google.guava:guava:' + guavaVersion
-    compile 'com.github.samtools:htsjdk:'+ htsjdkVersion
-    compile(googleCloudNioDependency) {
+    implementation 'com.opencsv:opencsv:3.4'
+    implementation 'com.google.guava:guava:' + guavaVersion
+    implementation 'com.github.samtools:htsjdk:'+ htsjdkVersion
+    implementation(googleCloudNioDependency) {
         transitive = false
     }
 
-    compile 'com.google.cloud:google-cloud-bigquery:' + bigQueryVersion
-    compile 'com.google.cloud:google-cloud-bigquerystorage:1.5.1'
+    implementation 'com.google.cloud:google-cloud-bigquery:' + bigQueryVersion
+    implementation 'com.google.cloud:google-cloud-bigquerystorage:1.5.1'
 
-    compile "gov.nist.math.jama:gov.nist.math.jama:1.1.1"
+    implementation "gov.nist.math.jama:gov.nist.math.jama:1.1.1"
 
     // this comes built-in when running on Google Dataproc, but the library
     // allows us to read from GCS also when testing locally (or on non-Dataproc clusters,
     // should we want to)
-    compile 'com.google.cloud.bigdataoss:gcs-connector:1.9.4-hadoop3'
+    implementation 'com.google.cloud.bigdataoss:gcs-connector:1.9.4-hadoop3'
 
-    compile 'org.apache.logging.log4j:log4j-api:' + log4j2Version
-    compile 'org.apache.logging.log4j:log4j-core:' + log4j2Version
+    implementation 'org.apache.logging.log4j:log4j-api:' + log4j2Version
+    implementation 'org.apache.logging.log4j:log4j-core:' + log4j2Version
     // include the apache commons-logging bridge that matches the log4j version we use so
     // messages that originate with dependencies that use commons-logging (such as jexl)
     // are routed to log4j
-    compile 'org.apache.logging.log4j:log4j-jcl:' + log4j2Version
+    implementation 'org.apache.logging.log4j:log4j-jcl:' + log4j2Version
 
-    compile 'org.apache.commons:commons-lang3:3.5'
-    compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.apache.commons:commons-collections4:4.1'
-    compile 'org.apache.commons:commons-vfs2:2.0'
-    compile 'org.apache.commons:commons-configuration2:2.4'
-    compile 'org.apache.httpcomponents:httpclient:4.5.12'
-    compile 'commons-beanutils:commons-beanutils:1.9.3'
-    compile 'commons-io:commons-io:2.5'
-    compile 'org.reflections:reflections:0.9.10'
+    implementation 'org.apache.commons:commons-lang3:3.5'
+    implementation 'org.apache.commons:commons-math3:3.5'
+    implementation 'org.apache.commons:commons-collections4:4.1'
+    implementation 'org.apache.commons:commons-vfs2:2.0'
+    implementation 'org.apache.commons:commons-configuration2:2.4'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.12'
+    implementation 'commons-beanutils:commons-beanutils:1.9.3'
+    implementation 'commons-io:commons-io:2.5'
+    implementation 'org.reflections:reflections:0.9.10'
 
-    compile 'it.unimi.dsi:fastutil:7.0.6'
+    implementation 'it.unimi.dsi:fastutil:7.0.6'
 
-    compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
-    compile 'org.broadinstitute:gatk-native-bindings:1.0.0'
+    implementation 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
+    implementation 'org.broadinstitute:gatk-native-bindings:1.0.0'
 
-    compile 'org.ojalgo:ojalgo:44.0.0'
-    compile ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
+    implementation 'org.ojalgo:ojalgo:44.0.0'
+    implementation ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
         exclude group: 'org.apache.commons'
     }
-    compile ('org.apache.spark:spark-mllib_' + scalaVersion + ':' + sparkVersion) {
+    implementation ('org.apache.spark:spark-mllib_' + scalaVersion + ':' + sparkVersion) {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
     }
-    compile 'com.thoughtworks.paranamer:paranamer:2.8'
+    implementation 'com.thoughtworks.paranamer:paranamer:2.8'
 
-    compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    compile('org.bdgenomics.adam:adam-core-spark2_' + scalaVersion + ':0.28.0') {
+    implementation 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
+    implementation('org.bdgenomics.adam:adam-core-spark2_' + scalaVersion + ':0.28.0') {
         exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.scala-lang'
@@ -325,64 +323,64 @@ dependencies {
         exclude module: 'hadoop-bam'
     }
 
-    compile 'org.jgrapht:jgrapht-core:0.9.1'
+    implementation 'org.jgrapht:jgrapht-core:0.9.1'
 
-    compile('org.disq-bio:disq:' + disqVersion)
-    compile('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
-    compile('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
+    implementation('org.disq-bio:disq:' + disqVersion)
+    implementation('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
+    implementation('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 
-    compile('de.javakaffee:kryo-serializers:0.41') {
+    implementation('de.javakaffee:kryo-serializers:0.41') {
         exclude module: 'kryo' // use Spark's version
     }
 
     // Dependency change for including MLLib
-    compile('org.objenesis:objenesis:1.2')
-    testCompile('org.objenesis:objenesis:2.1')
+    implementation('org.objenesis:objenesis:1.2')
+    testImplementation('org.objenesis:objenesis:2.1')
 
     // Comment the next lines to disable native code proxies in Spark MLLib
-    compile('com.github.fommil.netlib:netlib-native_ref-osx-x86_64:1.1:natives')
-    compile('com.github.fommil.netlib:netlib-native_ref-linux-x86_64:1.1:natives')
-    compile('com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives')
-    compile('com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives')
+    implementation('com.github.fommil.netlib:netlib-native_ref-osx-x86_64:1.1:natives')
+    implementation('com.github.fommil.netlib:netlib-native_ref-linux-x86_64:1.1:natives')
+    implementation('com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives')
+    implementation('com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives')
 
     // Dependency change for including MLLib
-    compile('com.esotericsoftware:kryo:3.0.3'){
+    implementation('com.esotericsoftware:kryo:3.0.3'){
         exclude group: 'com.esotericsoftware', module: 'reflectasm'
         exclude group: 'org.ow2.asm', module: 'asm'
     }
 
     // Dependency change for including MLLib
-    compile('com.esotericsoftware:reflectasm:1.10.0:shaded') {
+    implementation('com.esotericsoftware:reflectasm:1.10.0:shaded') {
         transitive = false
     }
 
-    compile('com.intel.gkl:gkl:0.8.8') {
+    implementation('com.intel.gkl:gkl:0.8.8') {
         exclude module: 'htsjdk'
     }
 
-    compile 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
-    compile 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
+    implementation 'org.broadinstitute:gatk-bwamem-jni:1.0.4'
+    implementation 'org.broadinstitute:gatk-fermilite-jni:1.2.0'
 
-    compile 'org.broadinstitute:http-nio:0.1.0-rc1'
+    implementation 'org.broadinstitute:http-nio:0.1.0-rc1'
 
     // Required for COSMIC Funcotator data source:
-    compile 'org.xerial:sqlite-jdbc:3.36.0.3'
+    implementation 'org.xerial:sqlite-jdbc:3.36.0.3'
     
     // Required for SV Discovery machine learning
-    compile group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
+    implementation group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
 
     // natural sort
-    compile('net.grey-panther:natural-comparator:1.1')
-    compile('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
+    implementation('net.grey-panther:natural-comparator:1.1')
+    implementation('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
 
-    testUtilsCompile sourceSets.main.output
-    testUtilsCompile 'org.testng:testng:' + testNGVersion
-    testUtilsCompile 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
+    testUtilsImplementation sourceSets.main.output
+    testUtilsImplementation 'org.testng:testng:' + testNGVersion
+    testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion
 
-    testCompile sourceSets.testUtils.output
+    testImplementation sourceSets.testUtils.output
 
-    testCompile "org.mockito:mockito-core:2.28.2"
-    testCompile "com.google.jimfs:jimfs:1.1"
+    testImplementation "org.mockito:mockito-core:2.28.2"
+    testImplementation "com.google.jimfs:jimfs:1.1"
 }
 
 //add gatk launcher script to the jar as a resource
@@ -411,8 +409,8 @@ def createSymlinks(archivePath, symlinkLocation) {
 def createGatkSymlinks(destinationDir, archivePath, suffix, baseJarName, secondaryBaseJarName) {
     def finalSuffix = (suffix == "") ? "" : ("-" + suffix)
 
-    def symlinkLocation = destinationDir.toString() + "/" + baseJarName + finalSuffix + ".jar"
-    def symlinkLocation2 = destinationDir.toString() + "/" + secondaryBaseJarName + finalSuffix + ".jar"
+    def symlinkLocation = destinationDir.getAsFile().get().toString() + "/" + baseJarName + finalSuffix + ".jar"
+    def symlinkLocation2 = destinationDir.getAsFile().get().toString() + "/" + secondaryBaseJarName + finalSuffix + ".jar"
 
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
@@ -424,7 +422,7 @@ group = 'org.broadinstitute'
 tasks.withType(Jar) {
     manifest {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
-                'Implementation-Version': version,
+                'Implementation-Version': archiveVersion,
                 'Toolkit-Short-Name' : 'GATK',
                 'Main-Class': project.mainClassName,
                 'Picard-Version': picardVersion,
@@ -435,12 +433,12 @@ tasks.withType(Jar) {
 }
 
 wrapper {
-    gradleVersion = '5.6'
+    gradleVersion = '7.3.2'
 }
 
 tasks.withType(ShadowJar) {
     from(project.sourceSets.main.output)
-    baseName = project.name + '-package'
+    archiveBaseName = project.name + '-package'
     mergeServiceFiles()
     relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
     zip64 true
@@ -458,14 +456,14 @@ tasks.withType(ShadowJar) {
 apply from: "testsettings.gradle"
 
 shadowJar {
-    configurations = [project.configurations.runtime]
-    classifier = 'local'
+    configurations = [project.configurations.runtimeClasspath]
+    archiveClassifier = 'local'
     mergeServiceFiles('reference.conf')
     doLast {
         // Create a symlink to the newly created jar.  The name will be gatk.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDir.toString(), archivePath, "", baseJarName, secondaryBaseJarName)
+        createGatkSymlinks(destinationDirectory, archivePath, "", baseJarName, secondaryBaseJarName)
     }
 }
 
@@ -475,12 +473,12 @@ task sparkJar(type: ShadowJar) {
     group = "Shadow"
     description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
     configurations = [project.configurations.sparkConfiguration]
-    classifier = 'spark'
+    archiveClassifier = 'spark'
     doLast {
         // Create a symlink to the newly created jar.  The name will be gatk.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDir.toString(), archivePath, classifier, baseJarName, secondaryBaseJarName)
+        createGatkSymlinks(destinationDirectory, archivePath, archiveClassifier, baseJarName, secondaryBaseJarName)
     }
 }
 
@@ -489,7 +487,7 @@ task shadowTestClassJar(type: ShadowJar){
     group = "Shadow"
     from sourceSets.test.output
     description = "Create a jar that packages the compiled test classes"
-    classifier = "test"
+    archiveClassifier = "test"
 }
 
 // A minimal jar that only contains the extra dependencies needed for running the tests
@@ -497,11 +495,11 @@ task shadowTestJar(type: ShadowJar){
     group = "Shadow"
     description = " A minimal jar that only contains the extra dependencies needed for running the tests that arent packaged in the main shadow jar"
     from {
-        (project.configurations.testRuntime - project.configurations.runtime ).collect {
+        (project.configurations.testRuntimeClasspath - project.configurations.runtimeClasspath ).collect {
             it.isDirectory() ? it : it.getName().endsWith(".jar") ? zipTree(it) : it
         }
     }
-    classifier = "testDependencies"
+    archiveClassifier = "testDependencies"
 }
 
 task collectBundleIntoDir(type: Copy) {
@@ -537,12 +535,12 @@ task collectBundleIntoDir(type: Copy) {
 task bundle(type: Zip) {
     dependsOn collectBundleIntoDir
 
-    baseName = project.name + "-" + project.version
-    destinationDir file("$buildDir")
-    archiveName baseName + ".zip"
+    archiveBaseName = project.name + "-" + project.version
+    destinationDirectory = file("$buildDir")
+    archiveFileName = archiveBaseName.get() + ".zip"
 
     from("$buildDir/bundle-files-collected")
-    into(baseName)
+    into(archiveBaseName)
 
     doLast {
         logger.lifecycle("Created GATK distribution in ${destinationDir}/${archiveName}")
@@ -557,8 +555,8 @@ jacocoTestReport {
     getAdditionalSourceDirs().from(sourceSets.main.allJava.srcDirs)
 
     reports {
-        xml.enabled = true
-        html.enabled = true
+        xml.required = true
+        html.required = true
     }
 }
 
@@ -588,8 +586,8 @@ task pythonPackageArchive(type: Zip) {
         assert file("src/main/python/org/broadinstitute/hellbender/").exists()
     }
 
-    destinationDir file("${buildDir}")
-    archiveName pythonPackageArchiveName
+    destinationDirectory = file("${buildDir}")
+    archiveFileName = pythonPackageArchiveName
     from("src/main/python/org/broadinstitute/hellbender/")
     into("/")
 
@@ -612,17 +610,17 @@ task localDevCondaEnv(type: Exec) {
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
+    archiveClassifier = 'javadoc'
     from "$docBuildDir/javadoc"
 }
 
 task sourcesJar(type: Jar) {
     from sourceSets.main.allSource
-    classifier = 'sources'
+    archiveClassifier = 'sources'
 }
 
 task testUtilsJar(type: Jar){
-    baseName = "$project.name-test-utils"
+    archiveBaseName = "$project.name-test-utils"
     from sourceSets.testUtils.output
 }
 
@@ -652,14 +650,14 @@ task testUtilsJavadoc(type: Javadoc) {
 }
 
 task testUtilsJavadocJar(type: Jar, dependsOn: testUtilsJavadoc){
-    baseName = "$project.name-test-utils"
-    classifier = 'javadoc'
+    archiveBaseName = "$project.name-test-utils"
+    archiveClassifier = 'javadoc'
     from "$docBuildDir/testUtilsJavadoc"
 }
 
 task testUtilsSourcesJar(type: Jar){
-    baseName = "$project.name-test-utils"
-    classifier = 'sources'
+    archiveBaseName = "$project.name-test-utils"
+    archiveClassifier = 'sources'
     from sourceSets.testUtils.allSource
 }
 
@@ -689,6 +687,9 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
     classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.hellbender.utils.help.GATKHelpDoclet"
+
+    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
+    options.noTimestamp(false)
 
     outputs.dir(gatkDocDir)
     options.destinationDirectory(gatkDocDir)
@@ -726,6 +727,9 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
 
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.barclay.help.BashTabCompletionDoclet"
+
+    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
+    options.noTimestamp(false)
 
     outputs.dir(tabCompletionDir)
     options.destinationDirectory(tabCompletionDir)
@@ -784,6 +788,9 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
     classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.hellbender.utils.help.GATKWDLDoclet"
+
+    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
+    options.noTimestamp(false)
 
     outputs.dir(gatkWDLDir)
     options.destinationDirectory(gatkWDLDir)
@@ -882,84 +889,83 @@ configurations.archives.artifacts.removeAll {it.file =~ '.tar$'}
  * Sign non-snapshot releases with our secret key.  This should never need to be invoked directly.
  */
 signing {
-    required { isRelease && gradle.taskGraph.hasTask("uploadArchives") }
-    sign configurations.archives
+    required { isRelease && gradle.taskGraph.hasTask("publish") }
+    sign publishing.publications
 }
 
-def gatkArtifactFilter = { artifact, file -> artifact.name == 'gatk' }
-def gatkTestUtilsArtifactFilter = {artifact, file -> artifact.name == 'gatk-test-utils' }
 def basePomConfiguration = {
-    packaging 'jar'
-    description 'Development on GATK 4'
-    url 'http://github.com/broadinstitute/gatk'
+    packaging = 'jar'
+    description = 'Development on GATK 4'
+    url = 'http://github.com/broadinstitute/gatk'
 
     scm {
-        url 'scm:git@github.com:broadinstitute/gatk.git'
-        connection 'scm:git@github.com:broadinstitute/gatk.git'
-        developerConnection 'scm:git@github.com:broadinstitute/gatk.git'
+        url = 'scm:git@github.com:broadinstitute/gatk.git'
+        connection = 'scm:git@github.com:broadinstitute/gatk.git'
+        developerConnection = 'scm:git@github.com:broadinstitute/gatk.git'
     }
 
     developers {
         developer {
-            id = "gatkdev"
-            name = "GATK Development Team"
-            email = "gatk-dev-public@broadinstitute.org"
+            id = 'gatkdev'
+            name = 'GATK Development Team'
+            email = 'gatk-dev-public@broadinstitute.org'
         }
     }
 
     licenses {
         license {
-            name 'Apache 2.0'
-            url 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
-            distribution 'repo'
+            name = 'Apache 2.0'
+            url = 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
+            distribution = 'repo'
         }
     }
 }
 
-install {
-    install {
-        repositories.mavenInstaller {
-            addFilter('gatk', gatkArtifactFilter)
-                    .project(basePomConfiguration)
-                    .project{ name "GATK4"}
-            
-            addFilter('gatk-test-utils', gatkTestUtilsArtifactFilter)
-                    .project(basePomConfiguration)
-                    .project{ name "GATK4 Test Utilities" }
+
+//remove the shadow jar from the published component
+components.java.withVariantsFromConfiguration(project.configurations.shadowRuntimeElements) {
+    skip()
+}
+
+publishing {
+    publications {
+        gatk(MavenPublication) {
+            from components.java
+            artifactId = "gatk"
+            pom basePomConfiguration
+            pom.name = "GATK4"
+
+            artifact sourcesJar
+            artifact javadocJar
+        }
+
+        testUtils(MavenPublication) {
+            artifactId = "gatk-test-utils"
+            pom basePomConfiguration
+            pom.name = "GATK4 Test Utilities"
+
+            artifact testUtilsJar
+            artifact testUtilsSourcesJar
+            artifact testUtilsJavadocJar
+
+        }
+    }
+
+    repositories {
+        maven {
+            name = isRelease ? "SonaType" : "Artifactory"
+            url =  isRelease ? "https://oss.sonatype.org/service/local/staging/deploy/maven2/" : "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/"
+            credentials {
+                username = isRelease ? project.findProperty("sonatypeUsername") : System.env.ARTIFACTORY_USERNAME
+                password = isRelease ? project.findProperty("sonatypePassword") : System.env.ARTIFACTORY_PASSWORD
+            }
         }
     }
 }
-/**
- * Upload a release to sonatype.  You must be an authorized uploader and have your sonatype
- * username and password information in your gradle properties file.  See the readme for more info.
- *
- * For releasing to your local maven repo, use gradle install
- */
-uploadArchives {
+
+publish {
     doFirst {
         println "Attempting to upload version:$version"
-    }
-    repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-
-            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: project.findProperty("sonatypeUsername"), password: project.findProperty("sonatypePassword"))
-            }
-
-            snapshotRepository(url: "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/") {
-                authentication(userName: System.env.ARTIFACTORY_USERNAME, password: System.env.ARTIFACTORY_PASSWORD)
-            }
-
-            addFilter('gatk-test-utils', gatkTestUtilsArtifactFilter)
-                    .project(basePomConfiguration)
-                    .project{ name "GATK4 Test Utilities" }
-
-            addFilter('gatk', gatkArtifactFilter)
-                    .project(basePomConfiguration)
-                    .project{ name "GATK4"}
-
-        }
     }
 }
 
