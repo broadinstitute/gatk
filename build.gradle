@@ -951,20 +951,11 @@ publishing {
 
     repositories {
         maven {
-            name = "SonaType"
-            url =  "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            name = isRelease ? "SonaType" : "Artifactory"
+            url =  isRelease ? "https://oss.sonatype.org/service/local/staging/deploy/maven2/" : "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/"
             credentials {
-                username = project.findProperty("sonatypeUsername")
-                password = project.findProperty("sonatypePassword")
-            }
-        }
-
-        maven {
-            name = "Artifactory"
-            url = "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/"
-            credentials {
-                username = System.env.ARTIFACTORY_USERNAME
-                password = System.env.ARTIFACTORY_PASSWORD
+                username = isRelease ? project.findProperty("sonatypeUsername") : System.env.ARTIFACTORY_USERNAME
+                password = isRelease ? project.findProperty("sonatypePassword") : System.env.ARTIFACTORY_PASSWORD
             }
         }
     }
