@@ -72,6 +72,7 @@ final bigQueryVersion = System.getProperty('bigQuery.version', '2.5.1')
 final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.7.0')
 
 final guavaVersion = System.getProperty('guava.version', '27.1-jre')
+final log4j2Version = System.getProperty('log4j2Version', '2.17.0')
 final testNGVersion = '7.0.0'
 
 // Using the shaded version to avoid conflicts between its protobuf dependency
@@ -282,12 +283,12 @@ dependencies {
     // should we want to)
     implementation 'com.google.cloud.bigdataoss:gcs-connector:1.9.4-hadoop3'
 
-    implementation 'org.apache.logging.log4j:log4j-api:2.3'
-    implementation 'org.apache.logging.log4j:log4j-core:2.3'
+    implementation 'org.apache.logging.log4j:log4j-api:' + log4j2Version
+    implementation 'org.apache.logging.log4j:log4j-core:' + log4j2Version
     // include the apache commons-logging bridge that matches the log4j version we use so
     // messages that originate with dependencies that use commons-logging (such as jexl)
     // are routed to log4j
-    implementation 'org.apache.logging.log4j:log4j-jcl:2.3'
+    implementation 'org.apache.logging.log4j:log4j-jcl:' + log4j2Version
 
     implementation 'org.apache.commons:commons-lang3:3.5'
     implementation 'org.apache.commons:commons-math3:3.5'
