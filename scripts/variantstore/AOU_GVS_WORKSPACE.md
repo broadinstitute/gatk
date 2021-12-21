@@ -37,6 +37,11 @@ These are the required parameters which must be supplied to the workflow:
 | ref\_fasta_index  | The reference index       |
 
 
+**Note:**
+GVS defaults to expect reblocking v2 such that GQ40 is the highest quality band
+If the data is reblocked with v1 and GQ50 and GQ60 are both present in the gVCFs, this will need to be set in the GvsImportSample step and the GvsExtractCallset step
+drop_state="SIXTY" (the default is "FORTY")
+
 ## 3. Load data
 ### 3.1 Assign Gvs IDs (suggest renaming to GvsPrepareSamples)
 To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow on a sample set, which will create an unique gvs id, update the BQ sample\_info table (creating it if it doesn't exists), and update the data model. This workflow takes care of creating the BQ vet and ref_ranges tables needed for the sample ids generated.
@@ -130,10 +135,13 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
-Sometimes this workflow will fail because the Gaussians have not cenverged. Dont panic! It can happen to anyone's data!
-The first step in this case will be to adjust the Guassian for the failed step (there are two possible steps: model creation for the SNPS and model creation for the InDels) to a lower number.
-You can then kick off the workflow again. If that still does not work, or you would prefer to not change the number of Guassians, then you can remove a column from the model creation
-TODO: How do you remove a column from the model creation?
+Sometimes this workflow will fail because the Gaussians have not converged. Dont panic! It can happen to anyone's data!
+The first step in this case will be to adjust the Guassian for the failed step (there are two possible steps: model creation for the SNPS and model creation for the InDels) to a lower number. 
+By default, in the WDL, the max number of guassians attempted is 4 for InDels and 6 for SNPs
+You can then kick off the workflow again. 
+If that still does not work, or you would prefer to not change the max number of Guassians initially tried, then you can remove a column from the model creation
+eg you can remove "AS_SOR" from snp_recalibration_annotation_values and run the workflow again.
+When running the workflow additional times, make sure to change the filter_set_name (and for consistency the output_file_basename) so that the results do not overwrite the previous run
 
 ## 6. Extract Cohort
 
