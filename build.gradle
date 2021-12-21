@@ -69,7 +69,7 @@ final disqVersion = System.getProperty('disq.version','0.3.6')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.2')
 final bigQueryVersion = System.getProperty('bigQuery.version', '1.117.1')
 final guavaVersion = System.getProperty('guava.version', '27.1-jre')
-final log4j2Version = System.getProperty('log4j2Version', '2.16.0')
+final log4j2Version = System.getProperty('log4j2Version', '2.17.0')
 final testNGVersion = '7.0.0'
 
 // Using the shaded version to avoid conflicts between its protobuf dependency
