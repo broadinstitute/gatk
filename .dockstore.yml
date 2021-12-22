@@ -117,6 +117,7 @@ workflows:
          - master
          - ah_var_store
          - rsa_rescattering_wf
+         - rc_add_dropstate_extract_wdl
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl

@@ -14,6 +14,9 @@ workflow GvsExtractCallset {
         File reference_index
         File reference_dict
 
+        # For reblocking v1, the default is "SIXTY" instead of "FORTY"
+        String? drop_state = "FORTY"
+
        # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
        # without a default value, ranges users are forced to specify a value even though it is meaningless
        String extract_table_prefix = ""
@@ -98,6 +101,7 @@ workflow GvsExtractCallset {
                 excluded_intervals              = excluded_intervals,
                 emit_pls                        = emit_pls,
                 service_account_json_path       = service_account_json_path,
+                drop_state                      = drop_state,
                 output_file                     = "${output_file_base_name}_${i}.vcf.gz",
                 output_gcs_dir                  = output_gcs_dir,
                 local_disk                      = local_disk_for_extract,
@@ -140,6 +144,7 @@ task ExtractTask {
 
         Int interval_index
         File intervals
+        String? drop_state
 
         String fq_cohort_extract_table
         String read_project_id
@@ -217,6 +222,7 @@ task ExtractTask {
                 -O ~{output_file} \
                 --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
                 --sample-table ~{fq_samples_to_extract_table} \
+                ~{"--inferred-reference-state " + drop_state} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id} \
