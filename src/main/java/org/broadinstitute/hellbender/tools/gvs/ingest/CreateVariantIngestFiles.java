@@ -279,7 +279,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private TableSchema getLoadStatusTableSchema() {
         TableSchema.Builder builder = TableSchema.newBuilder();
         builder.addFields(
-                TableFieldSchema.newBuilder().setName(SchemaUtils.SAMPLE_ID_FIELD_NAME).setType(TableFieldSchema.Type.NUMERIC).setMode(TableFieldSchema.Mode.REQUIRED).build()
+                TableFieldSchema.newBuilder().setName(SchemaUtils.SAMPLE_ID_FIELD_NAME).setType(TableFieldSchema.Type.INT64).setMode(TableFieldSchema.Mode.REQUIRED).build()
         );
         builder.addFields(
                 TableFieldSchema.newBuilder().setName(SchemaUtils.LOAD_STATUS_FIELD_NAME).setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.REQUIRED).build()
