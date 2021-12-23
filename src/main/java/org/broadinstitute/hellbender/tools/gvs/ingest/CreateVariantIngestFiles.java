@@ -1,21 +1,9 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
-import com.google.api.core.ApiFuture;
 import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.BigQueryOptions;
-import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
-import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.bigquery.storage.v1beta2.AppendRowsResponse;
-import com.google.cloud.bigquery.storage.v1beta2.JsonStreamWriter;
-import com.google.cloud.bigquery.storage.v1beta2.TableFieldSchema;
-import com.google.cloud.bigquery.storage.v1beta2.TableName;
-import com.google.cloud.bigquery.storage.v1beta2.TableSchema;
-import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
@@ -36,16 +24,12 @@ import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Ingest variant walker
@@ -61,9 +45,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private RefCreator refCreator;
     private VetCreator vetCreator;
-    private enum LoadStatus { STARTED, FINISHED };
-    private TableName loadStatusTable;
-    private TableSchema loadStatusTableSchema;
+    private LoadStatus loadStatus;
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
@@ -184,32 +166,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         return pathParts[pathParts.length - 1];
     }
 
-    private void writeLoadStatus(LoadStatus status) {
 
-        // This uses the _default stream since it (a) commits immediately and (b) doesn't count
-        // towards the CreateStreamWriter quota
-        try (JsonStreamWriter writer =
-                     JsonStreamWriter.newBuilder(loadStatusTable.toString(), loadStatusTableSchema).build()) {
-
-            // Create a JSON object that is compatible with the table schema.
-            JSONArray jsonArr = new JSONArray();
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("sample_id", Long.parseLong(sampleId));
-            jsonObject.put("status", status.toString());
-            jsonObject.put("event_timestamp", System.currentTimeMillis());
-            jsonArr.put(jsonObject);
-
-            ApiFuture<AppendRowsResponse> future = writer.append(jsonArr);
-            AppendRowsResponse response = future.get();
-
-            logger.info("Load status " + status + " appended successfully");
-        } catch (ExecutionException | InterruptedException | Descriptors.DescriptorValidationException | IOException e) {
-            // If the wrapped exception is a StatusRuntimeException, check the state of the operation.
-            // If the state is INTERNAL, CANCELLED, or ABORTED, you can retry. For more information, see:
-            // https://grpc.github.io/grpc-java/javadoc/io/grpc/StatusRuntimeException.html
-            throw new GATKException(e.getMessage());
-        }
-    }
 
     @Override
     public void onTraversalStart() {
@@ -260,65 +217,23 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // check the load status table to see if this sample has already been loaded...
         if (outputType == CommonCode.OutputType.BQ) {
-            loadStatusTable = TableName.of(projectID, datasetName, loadStatusTableName);
+            loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
 
-            BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
-            Table table = bigquery.getTable(TableId.of(projectID, datasetName, loadStatusTableName));
-            loadStatusTableSchema = getLoadStatusTableSchema();
-
-            StandardTableDefinition tdd = table.getDefinition();
-            if (BigQueryUtils.getEstimatedRowsInStreamingBuffer(projectID, datasetName, loadStatusTableName) > 0 ) {
-                logger.info("Found estimated rows in streaming buffer!!! " + tdd.getStreamingBuffer().getEstimatedRows());
+            long streamingBufferRows = BigQueryUtils.getEstimatedRowsInStreamingBuffer(projectID, datasetName, loadStatusTableName);
+            if (streamingBufferRows > 0 ) {
+                logger.info("Found estimated rows in streaming buffer!!! " + streamingBufferRows);
             }
 
-            verifySampleIsNotLoaded();
-        }
-
-    }
-
-    private TableSchema getLoadStatusTableSchema() {
-        TableSchema.Builder builder = TableSchema.newBuilder();
-        builder.addFields(
-                TableFieldSchema.newBuilder().setName(SchemaUtils.SAMPLE_ID_FIELD_NAME).setType(TableFieldSchema.Type.INT64).setMode(TableFieldSchema.Mode.REQUIRED).build()
-        );
-        builder.addFields(
-                TableFieldSchema.newBuilder().setName(SchemaUtils.LOAD_STATUS_FIELD_NAME).setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.REQUIRED).build()
-        );
-        builder.addFields(
-                TableFieldSchema.newBuilder().setName(SchemaUtils.LOAD_STATUS_EVENT_TIMESTAMP_NAME).setType(TableFieldSchema.Type.TIMESTAMP).setMode(TableFieldSchema.Mode.REQUIRED).build()
-        );
-        return builder.build();
-    }
-
-    private void verifySampleIsNotLoaded() {
-        String query = "SELECT " + SchemaUtils.LOAD_STATUS_FIELD_NAME +
-                       " FROM `" + projectID + "." + datasetName + "." + loadStatusTableName + "` " +
-                       " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId;
-
-        TableResult result = BigQueryUtils.executeQuery(projectID, query, true, null);
-
-        int startedCount = 0;
-        int finishedCount = 0;
-        for ( final FieldValueList row : result.iterateAll() ) {
-            final String status = row.get(0).getStringValue();
-            if (LoadStatus.STARTED.toString().equals(status)) {
-                startedCount++;
-            } else if (LoadStatus.FINISHED.toString().equals(status)) {
-                finishedCount++;
+            LoadStatus.LoadState state = loadStatus.getSampleLoadState(Long.parseLong(sampleId));
+            if (state == LoadStatus.LoadState.COMPLETE) {
+                logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
+                System.exit(0);
+            } else if (state == LoadStatus.LoadState.PARTIAL) {
+                throw new GATKException("Sample Id " + sampleId + " has already been partially loaded!");
             }
 
         }
 
-        // if fully loaded, exit successfully!
-        if (startedCount == 1 && finishedCount == 1) {
-            logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
-            System.exit(0);
-        }
-
-        // otherwise if there are any records, exit
-        if (startedCount > 0 || finishedCount > 0) {
-            throw new GATKException("Sample Id " + sampleId + " has already been partially loaded!");
-        }
     }
 
     @Override
@@ -366,7 +281,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         if (outputType == CommonCode.OutputType.BQ) {
-            writeLoadStatus(LoadStatus.STARTED);
+            loadStatus.writeLoadStatusStarted(Long.parseLong(sampleId));
         }
 
         if (refCreator != null) {
@@ -385,7 +300,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // upload the load status table
         if (outputType == CommonCode.OutputType.BQ) {
-            writeLoadStatus(LoadStatus.FINISHED);
+            loadStatus.writeLoadStatusFinished(Long.parseLong(sampleId));
         }
 
         return 0;
