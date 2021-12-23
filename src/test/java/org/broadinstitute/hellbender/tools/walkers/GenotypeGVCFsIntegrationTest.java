@@ -265,8 +265,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         args.add("2"); // Too small max_alternate_alleles arg to GenomicsDB, should fail
         try {
             File output = runGenotypeGVCFS(genomicsDBUri, expected, args, reference);
-            Assert.assertTrue(output.exists());
-        } catch (Exception e) {
+            Assert.fail("Expected exception not thrown");
+        } catch (IllegalStateException e) {
            // Pass
         }
 
