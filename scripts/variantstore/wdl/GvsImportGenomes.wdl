@@ -17,7 +17,7 @@ workflow GvsImportGenomes {
     Int batch_size = 1
 
     Int? preemptible_tries
-    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20211217/gatk-package-4.2.0.0-448-gff251d6-SNAPSHOT-local.jar"
+    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_fix_type_20211222/gatk-package-4.2.0.0-451-gbfb465a-SNAPSHOT-local.jar"
     String? docker
   }
 
