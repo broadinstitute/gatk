@@ -249,7 +249,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
             hcArgs.likelihoodArgs.enableDynamicReadDisqualification = true;
             hcArgs.likelihoodArgs.expectedErrorRatePerBase = 0.03;
             hcArgs.standardArgs.genotypeArgs.genotypeAssignmentMethod = GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES;
-            hcArgs.standardArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = 3.0;
+            hcArgs.standardArgs.genotypeArgs.standardConfidenceForCalling = 3.0;
             hcArgs.standardArgs.genotypeArgs.usePosteriorProbabilitiesToCalculateQual = true;
             assemblyRegionArgs.indelPaddingForGenotyping = 150;
         }

@@ -174,7 +174,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     protected GenomicsDBOptions getGenomicsDBOptions() {
         if (genomicsDBOptions == null) {
             genomicsdbArgs.callGenotypes = CALL_GENOTYPES;
-            genotypeArgs.MAX_ALTERNATE_ALLELES = PIPELINE_MAX_ALT_COUNT;
+            genotypeArgs.maxAlternateAlleles = PIPELINE_MAX_ALT_COUNT;
             genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs);
         }
         return genomicsDBOptions;
@@ -196,7 +196,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         setupVCFWriter(inputVCFHeader, samples);
 
-        genotyperEngine = new GnarlyGenotyperEngine(keepAllSites, genotypeArgs.MAX_ALTERNATE_ALLELES, SUMMARIZE_PLs, stripASAnnotations);
+        genotyperEngine = new GnarlyGenotyperEngine(keepAllSites, genotypeArgs.maxAlternateAlleles, SUMMARIZE_PLs, stripASAnnotations);
 
         Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
         //not InfoFieldAnnotation.class because we don't want AS_InbreedingCoeff

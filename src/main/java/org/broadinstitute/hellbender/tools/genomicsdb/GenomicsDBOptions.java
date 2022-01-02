@@ -36,8 +36,8 @@ public final class GenomicsDBOptions {
         this.sharedPosixFSOptimizations = genomicsdbArgs.sharedPosixFSOptimizations;
         this.useGcsHdfsConnector = genomicsdbArgs.useGcsHdfsConnector;
         if (genotypeCalcArgs != null) {
-            this.maxDiploidAltAllelesThatCanBeGenotyped = genotypeCalcArgs.MAX_ALTERNATE_ALLELES;
-            this.maxGenotypeCount = genotypeCalcArgs.MAX_GENOTYPE_COUNT;
+            this.maxDiploidAltAllelesThatCanBeGenotyped = genotypeCalcArgs.maxAlternateAlleles;
+            this.maxGenotypeCount = genotypeCalcArgs.maxGenotypeCount;
         } else {
             // Some defaults
             this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
