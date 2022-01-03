@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.HDF5SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
@@ -27,16 +28,13 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.SimpleCount;
-import org.broadinstitute.hellbender.utils.IntervalMergingRule;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -119,6 +117,9 @@ public final class CollectReadCounts extends ReadWalker {
     )
     private Format format = Format.HDF5;
 
+    @Argument(doc = "Output file for per-interval fragment counts.", fullName = "fragment-histogram")
+    private File fragmentHistogramFile = null;
+
     /**
      * Metadata contained in the BAM file.
      */
@@ -134,6 +135,11 @@ public final class CollectReadCounts extends ReadWalker {
     private CachedOverlapDetector<SimpleInterval> intervalCachedOverlapDetector;
 
     private Multiset<SimpleInterval> intervalMultiset;
+
+    private Map<SimpleInterval, int[]> perIntervalFragmentSizeDist;
+
+    private static final int MAX_FRAGMENT_SIZE = 500;
+    private int numOffTargetReads = 0;
 
     @Override
     public boolean requiresIntervals() {
@@ -165,6 +171,12 @@ public final class CollectReadCounts extends ReadWalker {
         intervals = intervalArgumentCollection.getIntervals(sequenceDictionary);
         intervalMultiset = HashMultiset.create(intervals.size());
 
+        perIntervalFragmentSizeDist = new HashMap<>();
+        for (SimpleInterval interval : intervals){
+            perIntervalFragmentSizeDist.put(interval, new int[MAX_FRAGMENT_SIZE]);
+        }
+
+
         logger.info("Collecting read counts...");
     }
 
@@ -175,6 +187,11 @@ public final class CollectReadCounts extends ReadWalker {
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
+        // To avoid double counting, only count the first of pair
+        if (read.isSecondOfPair()){
+            return;
+        }
+
         if (currentContig == null || !read.getContig().equals(currentContig)) {
             //if we are on a new contig, create an OverlapDetector covering the contig
             currentContig = read.getContig();
@@ -188,9 +205,16 @@ public final class CollectReadCounts extends ReadWalker {
 
         //if read doesn't overlap any of the provided intervals, do nothing
         if (overlappingInterval == null) {
+            numOffTargetReads++;
             return;
         }
+
         intervalMultiset.add(overlappingInterval);
+
+        final int fragmentSize = read.getFragmentLength();
+        final int[] histogram = perIntervalFragmentSizeDist.get(overlappingInterval);
+        histogram[Math.min(Math.abs(fragmentSize), MAX_FRAGMENT_SIZE - 1)] += 1;
+
     }
 
     @Override
@@ -210,7 +234,38 @@ public final class CollectReadCounts extends ReadWalker {
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
-        return null;
+        try (PrintWriter pw = new PrintWriter(fragmentHistogramFile)){
+            // Write header
+            StringJoiner header = new StringJoiner("\t");
+            header.add("contig");
+            header.add("start");
+            header.add("end");
+            for (int j = 0; j < MAX_FRAGMENT_SIZE; j++){
+                header.add(Integer.toString(j)); // Add fragment sizes
+            }
+            pw.println(header);
+
+            for (SimpleInterval interval : intervals) {
+                StringJoiner sj = new StringJoiner("\t");
+                final int[] histogram = perIntervalFragmentSizeDist.get(interval);
+                sj.add(interval.getContig());
+                sj.add(Integer.toString(interval.getStart()));
+                sj.add(Integer.toString(interval.getEnd()));
+
+                for (int i = 0; i < histogram.length; i++){
+                    sj.add(Integer.toBinaryString(histogram[i]));
+                }
+                int sum = Arrays.stream(histogram).sum();
+
+                int check =  sj.length();
+
+                pw.println(sj);
+            }
+        } catch (IOException e){
+            throw new UserException("IO Error writing to " + fragmentHistogramFile.getAbsolutePath(), e);
+        }
+
+        return "SUCCESS";
     }
 
     /**
