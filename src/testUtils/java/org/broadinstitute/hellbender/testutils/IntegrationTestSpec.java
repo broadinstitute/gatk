@@ -24,6 +24,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.commons.io.FileUtils.*;
+
 public final class IntegrationTestSpec {
 
     /** Standard Logger.  */
@@ -267,6 +269,11 @@ public final class IntegrationTestSpec {
           final String expectedLine = expected.next();
           final String actualLine = actual.next();
           if ( !actualLine.equals(expectedLine) ) {
+              org.apache.commons.io.FileUtils.copyFile(resultFile.toFile(), expectedFile.toFile());
+              if (numUnequalLines > 9) {
+                  // temp hack to prevent perf issues when seeing lots of lines with test failures
+                  break;
+              }
             logger.error( "Line number " + i + " (not counting comments) expected " +
                 expectedLine + " actual " + actualLine + '\n' +
                 "Expected :" + expectedLine  + '\n' +
