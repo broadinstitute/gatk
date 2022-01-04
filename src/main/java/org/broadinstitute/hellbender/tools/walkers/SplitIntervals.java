@@ -4,40 +4,40 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.AbstractFeatureReader;
-import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.GATKIntervalListScatterMode;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.WeightedInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import picard.cmdline.programgroups.IntervalsManipulationProgramGroup;
 import picard.util.IntervalList.IntervalListScatterMode;
 import picard.util.IntervalList.IntervalListScatterer;
-import spire.math.interval.Overlap;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -124,7 +124,7 @@ public class SplitIntervals extends GATKTool {
     private int minContigSize = 0;
 
     @Argument(fullName = SUBDIVISION_MODE_lONG_NAME, shortName = SUBDIVISION_MODE_SHORT_NAME, doc = "How to divide intervals.")
-    private IntervalListScatterMode subdivisionMode = IntervalListScatterMode.INTERVAL_SUBDIVISION;
+    private GATKIntervalListScatterMode subdivisionMode = GATKIntervalListScatterMode.INTERVAL_SUBDIVISION;
 
     @Argument(doc = "The directory into which to write the scattered interval sub-directories.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -146,8 +146,8 @@ public class SplitIntervals extends GATKTool {
     @Argument(doc = "BED file of genomic weights, represented by the score field", fullName = WEIGHTS_BED_FILE_FULL_NAME, optional = true)
     public File weightsBedFile;
 
-    @Argument(doc = "Default weight (per base) to use if weight not found in BED file", fullName = DEFAULT_WEIGHT_FULL_NAME, optional = true)
-    public long defaultWeightPerBase = 0L;
+    @Argument(doc = "Default weight (per base) to use if weight not found in BED file", fullName = DEFAULT_WEIGHT_FULL_NAME, optional = true, minValue = 1)
+    public long defaultWeightPerBase = 1L;
 
     @Override
     public void onTraversalStart() {
@@ -156,6 +156,8 @@ public class SplitIntervals extends GATKTool {
         if (!outputDir.exists() && !outputDir.mkdir()) {
             throw new RuntimeIOException("Unable to create directory: " + outputDir.getAbsolutePath());
         }
+
+        assertWeightsFileArgumentsAreValid();
 
         // in general dictionary will be from the reference, but using -I reads.bam or -F variants.vcf
         // to use the sequence dict from a bam or vcf is also supported
@@ -167,15 +169,12 @@ public class SplitIntervals extends GATKTool {
                 .collect(Collectors.toList());
 
         final IntervalList intervalList = new IntervalList(sequenceDictionary);
-
-        // the non-weighted mode
-        // TODO: replace with test against enum of scatter mode
-        if (true) { // non-weighted mode
-            intervals.stream().map(si -> new Interval(si.getContig(), si.getStart(), si.getEnd())).forEach(intervalList::add);
-        } else { // weighted mode
-            intervalList.addOther(
-                    preprocessIntervalsWithWeights(intervalList.getHeader(), intervals)
-            );
+        if (subdivisionMode == GATKIntervalListScatterMode.INTERVAL_SUBDIVISION_BY_WEIGHT) { // weighted mode
+            intervalList.addOther(preprocessIntervalsWithWeights(intervalList.getHeader(), intervals));
+        } else { // non-weighted mode
+            intervals.stream()
+                    .map(si -> new Interval(si.getContig(), si.getStart(), si.getEnd()))
+                    .forEach(intervalList::add);
         }
 
         final IntervalListScatterer scatterer = subdivisionMode.make();
@@ -186,7 +185,7 @@ public class SplitIntervals extends GATKTool {
                 scattered.stream().flatMap(il -> il.getIntervals().stream()
                         .collect(Collectors.groupingBy(Interval::getContig)).entrySet().stream()    // group each interval list into sublists
                         .sorted(Comparator.comparingInt(entry -> sequenceDictionary.getSequenceIndex(entry.getKey())))  // sort entries by contig
-                        .map(entry -> entry.getValue()) // discard the keys and just keep the lists of intervals
+                        .map(Map.Entry::getValue) // discard the keys and just keep the lists of intervals
                         .map(list -> {
                             final IntervalList singleContigList = new IntervalList(sequenceDictionary);
                             singleContigList.addall(list);
@@ -199,57 +198,80 @@ public class SplitIntervals extends GATKTool {
         IntStream.range(0, scatteredFinal.size()).forEach(n -> scatteredFinal.get(n).write(new File(outputDir, prefix + String.format(formatString, n) + extension)));
     }
 
+    private void assertWeightsFileArgumentsAreValid() {
+        if(subdivisionMode == GATKIntervalListScatterMode.INTERVAL_SUBDIVISION_BY_WEIGHT
+                && weightsBedFile == null) {
+            throw new CommandLineException("If --" + SUBDIVISION_MODE_lONG_NAME + " " + GATKIntervalListScatterMode.INTERVAL_SUBDIVISION_BY_WEIGHT +
+                    " is specified than --" + WEIGHTS_BED_FILE_FULL_NAME + " must be provided.");
+        } else if(subdivisionMode != GATKIntervalListScatterMode.INTERVAL_SUBDIVISION_BY_WEIGHT
+                    && weightsBedFile != null){
+            throw new CommandLineException(" --" + WEIGHTS_BED_FILE_FULL_NAME + " is only valid if --"
+                    + SUBDIVISION_MODE_lONG_NAME + " " + GATKIntervalListScatterMode.INTERVAL_SUBDIVISION_BY_WEIGHT +
+                    " is specified." );
+        }
+    }
+
     @Override
     public void traverse() { }  // no traversal for this tool!
 
     protected IntervalList preprocessIntervalsWithWeights(SAMFileHeader header, Collection<SimpleInterval> intervals) {
-        OverlapDetector<WeightedInterval> od;
-        try {
-            // read the BED of weights
-            FeatureReader<BEDFeature> bedReader = AbstractFeatureReader.getFeatureReader(weightsBedFile.getAbsolutePath(), new BEDCodec(), false);
-            List<WeightedInterval> weights = new ArrayList<>();
-            bedReader.iterator().stream().map(f -> new WeightedInterval(f.getContig(), f.getStart(), f.getEnd(), f.getScore())).forEach(weights::add);
 
-            // weights should be entirely disjoint sets of intervals
-            IntervalUtils.validateNoOverlappingIntervals(weights);
-
-            // create the overlap detector
-            od = OverlapDetector.create(weights);
-        } catch (IOException e) {
-            throw new GATKException("Error reading BED file", e);
+        // read the BED of weights
+        final List<WeightedInterval> weights;
+        try (final FeatureReader<BEDFeature> bedReader = AbstractFeatureReader.getFeatureReader(weightsBedFile.getAbsolutePath(), new BEDCodec(), false)) {
+            weights = new ArrayList<>();
+            bedReader.iterator().stream()
+                    .peek(SplitIntervals::assertBedFeatureHasScore)
+                    .map(f -> new WeightedInterval(f, f.getScore()))
+                    .forEach(weights::add);
+        } catch (final IOException e) {
+            throw new UserException.CouldNotReadInputFile("Error reading BED file " + weightsBedFile.getName(), e);
         }
 
+        // weights should be entirely disjoint sets of intervals
+        IntervalUtils.validateNoOverlappingIntervals(weights);
+
+        // create the overlap detector
+        final OverlapDetector<WeightedInterval> od = OverlapDetector.create(weights);
+
         final IntervalList intervalList = new IntervalList(header);
-        for (SimpleInterval si : intervals) {
-            List<WeightedInterval> l = applyWeightsToInterval(header, new Interval(si.getContig(), si.getStart(), si.getEnd()), od, defaultWeightPerBase);
+        for (final SimpleInterval si : intervals) {
+            final List<WeightedInterval> l = applyWeightsToInterval(header, new Interval(si), od, defaultWeightPerBase);
             intervalList.addall(Collections.unmodifiableList(l));
         }
 
         return intervalList;
     }
 
-    protected static List<WeightedInterval> applyWeightsToInterval(SAMFileHeader header, Interval interval, OverlapDetector<WeightedInterval> weightsOverlapDetector, long defaultWeightPerBase) {
-        List<WeightedInterval> outputIntervals = new ArrayList<>();
+    private static void assertBedFeatureHasScore(BEDFeature f) {
+            if(!(f.getScore() > 0)){
+                throw new UserException("Weights file must include positive scores for every position, problem at "
+                        + IntervalUtils.locatableToString(f));
+            }
+    }
 
-        for( WeightedInterval w : weightsOverlapDetector.getOverlaps(interval) ) {
-            float weightPerBase = w.getWeight() / (float) w.length();
+    protected static List<WeightedInterval> applyWeightsToInterval(SAMFileHeader header, Interval interval, OverlapDetector<WeightedInterval> weightsOverlapDetector, long defaultWeightPerBase) {
+        final List<WeightedInterval> outputIntervals = new ArrayList<>();
+
+        for( final WeightedInterval w : weightsOverlapDetector.getOverlaps(interval) ) {
+            final double weightPerBase = w.getWeight() / (double) w.length();
             // System.out.println("Weight per base of " + weightPerBase + " from length " + w.length() + " from interval " + w );
 
             // get the weighted piece and add it to the output
-            Interval piece = interval.intersect(w);
-            outputIntervals.add(new WeightedInterval(piece, (float) piece.length() * weightPerBase ));
+            final Interval piece = interval.intersect(w);
+            outputIntervals.add(new WeightedInterval(piece, (double) piece.length() * weightPerBase ));
         }
 
         // now we need to emit any pieces of the interval that were not covered by a weight
-        IntervalList original = new IntervalList(header);
+        final IntervalList original = new IntervalList(header);
         original.add(interval);
 
-        IntervalList weighted = new IntervalList(header);
+        final IntervalList weighted = new IntervalList(header);
         weighted.addall(Collections.unmodifiableList(outputIntervals));
 
-        IntervalList uncovered = IntervalList.subtract(original, weighted);
-        for( Interval piece : uncovered ) {
-            outputIntervals.add(new WeightedInterval(piece, (float) piece.length() * defaultWeightPerBase ));
+        final IntervalList uncovered = IntervalList.subtract(original, weighted);
+        for( final Interval piece : uncovered ) {
+            outputIntervals.add(new WeightedInterval(piece, (double) piece.length() * defaultWeightPerBase ));
         }
 
         IntervalUtils.validateNoOverlappingIntervals(outputIntervals);

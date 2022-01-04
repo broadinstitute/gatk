@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.GATKIntervalListScatterMode;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -16,6 +17,7 @@ import org.testng.annotations.Test;
 import picard.util.IntervalList.IntervalListScatterMode;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,7 +28,7 @@ import java.util.stream.Stream;
 /**
  * Created by David Benjamin on 4/25/17.
  */
-public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
+public class    SplitIntervalsIntegrationTest extends CommandLineProgramTest {
 
     private static final GenomeLocParser GLP = new GenomeLocParser(ReferenceDataSource.of(IOUtils.getPath(b37Reference)).getSequenceDictionary());
     private static final DecimalFormat formatter = new DecimalFormat("0000");
@@ -46,6 +48,26 @@ public class SplitIntervalsIntegrationTest extends CommandLineProgramTest {
         verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_NUMBER_OF_DIGITS, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
         checkIntervalSizes(scatterCount, outputDir, 1000000, SplitIntervals.DEFAULT_NUMBER_OF_DIGITS, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
     }
+
+    @Test
+    public void testOneIntervalWithWeights() {
+        final int scatterCount = 5;
+
+        final File outputDir = new File("out");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInterval("1:1-100")
+                .addReference(b37Reference)
+                .add(SplitIntervals.SCATTER_COUNT_SHORT_NAME, scatterCount)
+                .add(SplitIntervals.WEIGHTS_BED_FILE_FULL_NAME, "intervals.bed")
+                .add(SplitIntervals.SUBDIVISION_MODE_lONG_NAME, GATKIntervalListScatterMode.INTERVAL_SUBDIVISION_BY_WEIGHT)
+                .addOutput(outputDir);
+
+        runCommandLine(args);
+        verifyScatteredFilesExist(scatterCount, outputDir, SplitIntervals.DEFAULT_NUMBER_OF_DIGITS, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
+        checkIntervalSizes(scatterCount, outputDir, 100, SplitIntervals.DEFAULT_NUMBER_OF_DIGITS, SplitIntervals.DEFAULT_PREFIX, SplitIntervals.DEFAULT_EXTENSION);
+    }
+
 
     @Test
     public void testOneIntervalFilenamePrefix() {
