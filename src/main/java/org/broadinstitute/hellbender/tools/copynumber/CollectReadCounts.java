@@ -253,7 +253,7 @@ public final class CollectReadCounts extends ReadWalker {
                 sj.add(Integer.toString(interval.getEnd()));
 
                 for (int i = 0; i < histogram.length; i++){
-                    sj.add(Integer.toBinaryString(histogram[i]));
+                    sj.add(Integer.toString(histogram[i]));
                 }
                 int sum = Arrays.stream(histogram).sum();
 
