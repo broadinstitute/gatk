@@ -408,6 +408,7 @@ task GetSampleIds {
       TEMP_TABLE="~{dataset_name}.sample_names_to_load "
       # bq --location=US mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE schema.json
       # TODO does this need a hash for the temp table name!??!
+      # TODO this needs a time to live
       bq --project_id=~{project_id} mk ${TEMP_TABLE} "sample_name:STRING"
 
       # 2. load external sample names into temp table
