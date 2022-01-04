@@ -128,6 +128,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-268-import-more-samples
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
