@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##FILTER=<ID=LOW_VQSLOD,Description="VQSLOD < 0.0">
 ##FILTER=<ID=PASS,Description="Site contains at least one allele that passes filters">
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
@@ -25,8 +25,8 @@
 ##INFO=<ID=set,Number=1,Type=String,Description="Source VCF for the merged record in CombineVariants">
 ##contig=<ID=20>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
-20	1000177	.	C	T	345	LOW_VQSLOD	AC=43;AF=0.02053;AN=2094;BaseQRankSum=-0.234;DP=3748;DS;FS=5.678;HRun=2;HaplotypeScore=35.9850;InbreedingCoeff=0.0715;MQ=67.54;MQ0=0;MQRankSum=-0.549;QD=0.53;ReadPosRankSum=-13.245;VQSLOD=-1.235e+00;culprit=FS;set=EUR.admix
-20	1000177	.	CA	C	82.64	LOW_VQSLOD	AC=43;AF=0.02053;AN=2094;BaseQRankSum=-0.234;DP=3748;DS;FS=5.678;HRun=2;HaplotypeScore=35.9850;InbreedingCoeff=0.0715;MQ=67.54;MQ0=0;MQRankSum=-0.549;QD=0.53;ReadPosRankSum=-13.245;VQSLOD=-1.238e+00;culprit=HaplotypeScore;set=EUR.admix
-20	1000382	.	C	G	456	LOW_VQSLOD	AC=19;AF=0.00996;AN=1908;BaseQRankSum=3.153;DP=1249;FS=12.307;HRun=0;HaplotypeScore=25.9702;InbreedingCoeff=0.0716;MQ=49.54;MQ0=22;MQRankSum=-5.327;QD=2.71;ReadPosRankSum=-8.146;VQSLOD=-5.678e-01;culprit=FS;set=ASN.admix
-20	1000382	.	CCAAT	C	246.44	LOW_VQSLOD	AC=19;AF=0.00996;AN=1908;BaseQRankSum=3.153;DP=1249;FS=12.307;HRun=0;HaplotypeScore=25.9702;InbreedingCoeff=0.0716;MQ=49.54;MQ0=22;MQRankSum=-5.327;QD=2.71;ReadPosRankSum=-8.146;VQSLOD=-5.534e-01;culprit=HaplotypeScore;set=ASN.admix
-20	1000442	rs112800484	TTTCA	T	28592.75	PASS	AC=1034;AF=0.69583;AN=1486;BaseQRankSum=19.864;DB;DP=1304;FS=31.497;HRun=0;HaplotypeScore=17.6398;InbreedingCoeff=0.2728;MQ=46.55;MQ0=85;MQRankSum=-6.417;QD=30.65;ReadPosRankSum=-2.058;VQSLOD=3.59;culprit=QD;set=EUR.admix
+20	1000177	.	C	T	345	LOW_VQSLOD	AC=43;AF=0.021;AN=2094;BaseQRankSum=-2.340e-01;DP=3748;DS;FS=5.68;HRun=2;HaplotypeScore=35.99;InbreedingCoeff=0.072;MQ=67.54;MQ0=0;MQRankSum=-5.490e-01;QD=0.530;ReadPosRankSum=-1.325e+01;VQSLOD=-1.235e+00;culprit=FS;set=EUR.admix
+20	1000177	.	CA	C	82.64	LOW_VQSLOD	AC=43;AF=0.021;AN=2094;BaseQRankSum=-2.340e-01;DP=3748;DS;FS=5.68;HRun=2;HaplotypeScore=35.99;InbreedingCoeff=0.072;MQ=67.54;MQ0=0;MQRankSum=-5.490e-01;QD=0.530;ReadPosRankSum=-1.325e+01;VQSLOD=-1.238e+00;culprit=HaplotypeScore;set=EUR.admix
+20	1000382	.	C	G	456	LOW_VQSLOD	AC=19;AF=9.960e-03;AN=1908;BaseQRankSum=3.15;DP=1249;FS=12.31;HRun=0;HaplotypeScore=25.97;InbreedingCoeff=0.072;MQ=49.54;MQ0=22;MQRankSum=-5.327e+00;QD=2.71;ReadPosRankSum=-8.146e+00;VQSLOD=-5.678e-01;culprit=FS;set=ASN.admix
+20	1000382	.	CCAAT	C	246.44	LOW_VQSLOD	AC=19;AF=9.960e-03;AN=1908;BaseQRankSum=3.15;DP=1249;FS=12.31;HRun=0;HaplotypeScore=25.97;InbreedingCoeff=0.072;MQ=49.54;MQ0=22;MQRankSum=-5.327e+00;QD=2.71;ReadPosRankSum=-8.146e+00;VQSLOD=-5.534e-01;culprit=HaplotypeScore;set=ASN.admix
+20	1000442	rs112800484	TTTCA	T	28592.75	PASS	AC=1034;AF=0.696;AN=1486;BaseQRankSum=19.86;DB;DP=1304;FS=31.50;HRun=0;HaplotypeScore=17.64;InbreedingCoeff=0.273;MQ=46.55;MQ0=85;MQRankSum=-6.417e+00;QD=30.65;ReadPosRankSum=-2.058e+00;VQSLOD=3.59;culprit=QD;set=EUR.admix

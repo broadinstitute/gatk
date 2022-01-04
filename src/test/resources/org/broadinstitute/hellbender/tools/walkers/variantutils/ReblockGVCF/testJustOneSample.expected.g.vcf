@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
 ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
@@ -44,4 +44,4 @@
 ##contig=<ID=chr20,length=64444167,assembly=Homo_sapiens_assembly38.fasta>
 ##source=SelectVariants
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA1
-chr20	69771	.	TAAAAA	T,<NON_REF>	60.77	.	BaseQRankSum=0.937;DP=7;MQ=34.15;MQRankSum=1.300;RAW_GT_COUNT=0,1,0;RAW_MQandDP=8164,7;ReadPosRankSum=1.754	GT:AD:DP:GQ:PL:SB	0/1:0,0,0:0:20:20,0,119,101,128,229:0,4,0,3
+chr20	69771	.	TAAAAA	T,<NON_REF>	60.77	.	BaseQRankSum=0.937;DP=7;MQ=34.15;MQRankSum=1.30;RAW_GT_COUNT=0,1,0;RAW_MQandDP=8164,7;ReadPosRankSum=1.75	GT:AD:DP:GQ:PL:SB	0/1:0,0,0:0:20:20,0,119,101,128,229:0,4,0,3

@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
@@ -16,10 +16,10 @@
 ##INFO=<ID=SpanningDeletions,Number=1,Type=Integer,Description="No spanning deletions">
 ##reference=human_b36_both.fasta
 ##source=UnifiedGenotyper
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA11894	
-1	10020400	.	C	T	30.66	.	AC=1;AF=0.500;AFrange=0.01-0.09,95%;AN=2;AlleleBalance=0.72;DoC=193;HomopolymerRun=0;MAPQ0=0;NS=60;RMSMAPQ=177.45;SB=-0.02;SpanningDeletions=0	GT:GQ	0/1:1	
-1	10020416	.	G	A,T	40.12	.	AC=1,0;AF=0.500,0.00;AFrange=0.01-0.10,95%;AN=2;AlleleBalance=0.73;DoC=166;HomopolymerRun=0;MAPQ0=0;NS=60;RMSMAPQ=176.69;SB=-0.01;SpanningDeletions=0	GT:GQ	1/0:1	
-1	10020484	.	A	C,T	55.89	.	AC=1,0;AF=0.500,0.00;AFrange=0.01-0.09,95%;AN=2;AlleleBalance=0.76;DoC=239;HomopolymerRun=0;MAPQ0=0;NS=60;RMSMAPQ=181.59;SB=-0.03;SpanningDeletions=0	GT:GQ	0/1:2	
-1	10020485	.	G	A,T	32.66	.	AC=1,0;AF=0.500,0.00;AFrange=0.01-0.08,95%;AN=2;AlleleBalance=0.75;DoC=237;HomopolymerRun=1;MAPQ0=0;NS=60;RMSMAPQ=180.16;SB=-0.02;SpanningDeletions=0	GT:GQ	1/0:1	
-1	10020492	.	T	A,G	44.35	.	AC=1,0;AF=0.500,0.00;AFrange=0.01-0.09,95%;AN=2;AlleleBalance=0.68;DoC=284;HomopolymerRun=1;MAPQ0=0;NS=60;RMSMAPQ=184.59;SB=-0.04;SpanningDeletions=0	GT:GQ	1/0:1	
-1	10020615	.	C	T,A	162.10	.	AC=0,0;AF=0.00,0.00;AFrange=0.01-0.10,95%;AN=2;AlleleBalance=0.72;DoC=285;HomopolymerRun=0;MAPQ0=0;NS=60;RMSMAPQ=195.54;SB=-67.56;SpanningDeletions=0	GT:GQ	0/0:2	
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA11894
+1	10020400	.	C	T	30.66	.	AC=1;AF=0.500;AFrange=0.01-0.09,95%25;AN=2;AlleleBalance=0.720;DoC=193;HomopolymerRun=0;MAPQ0=0;NS=60.00;RMSMAPQ=177.45;SB=-2.000e-02;SpanningDeletions=0	GT:GQ	0/1:1
+1	10020416	.	G	A,T	40.12	.	AC=1,0;AF=0.500,0.00;AFrange=0.01-0.10,95%25;AN=2;AlleleBalance=0.730;DoC=166;HomopolymerRun=0;MAPQ0=0;NS=60.00;RMSMAPQ=176.69;SB=-1.000e-02;SpanningDeletions=0	GT:GQ	1/0:1
+1	10020484	.	A	C,T	55.89	.	AC=1,0;AF=0.500,0.00;AFrange=0.01-0.09,95%25;AN=2;AlleleBalance=0.760;DoC=239;HomopolymerRun=0;MAPQ0=0;NS=60.00;RMSMAPQ=181.59;SB=-3.000e-02;SpanningDeletions=0	GT:GQ	0/1:2
+1	10020485	.	G	A,T	32.66	.	AC=1,0;AF=0.500,0.00;AFrange=0.01-0.08,95%25;AN=2;AlleleBalance=0.750;DoC=237;HomopolymerRun=1;MAPQ0=0;NS=60.00;RMSMAPQ=180.16;SB=-2.000e-02;SpanningDeletions=0	GT:GQ	1/0:1
+1	10020492	.	T	A,G	44.35	.	AC=1,0;AF=0.500,0.00;AFrange=0.01-0.09,95%25;AN=2;AlleleBalance=0.680;DoC=284;HomopolymerRun=1;MAPQ0=0;NS=60.00;RMSMAPQ=184.59;SB=-4.000e-02;SpanningDeletions=0	GT:GQ	1/0:1
+1	10020615	.	C	T,A	162.10	.	AC=0,0;AF=0.00,0.00;AFrange=0.01-0.10,95%25;AN=2;AlleleBalance=0.720;DoC=285;HomopolymerRun=0;MAPQ0=0;NS=60.00;RMSMAPQ=195.54;SB=-6.756e+01;SpanningDeletions=0	GT:GQ	0/0:2

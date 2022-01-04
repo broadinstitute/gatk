@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
@@ -6,4 +6,4 @@
 ##INFO=<ID=KG_FREQ,Number=1,Type=Float,Description="x">
 ##INFO=<ID=KG_FREQ.AF,Number=1,Type=Float,Description="x">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
-1	10006296	bar	C	T	63.56	.	KG_FREQ=0.1;KG_FREQ.AF=0.3
+1	10006296	bar	C	T	63.56	.	KG_FREQ=0.100;KG_FREQ.AF=0.300

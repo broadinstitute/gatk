@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##FORMAT=<ID=RD,Number=1,Type=Integer,Description="Read Depth (only filtered reads used for calling)">
@@ -20,5 +20,5 @@
 ##reference=human_b36_both.fasta
 ##source=UnifiedGenotyper
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA06994	NA07037	NA11894	NA11992
-1	10020400	.	C	T	30.66	.	AF=0.03;AFrange=0.01-0.09,95%;AlleleBalance=0.72;DoC=193;FisherStrand=9.8;HomopolymerRun=0;MAPQ0=0;NS=60;OnOffGenotype=1.00;RMSMAPQ=177.45;SB=-0.02;SpanningDeletions=0	GT:GQ	0/1:1	./.:2	0/0:1	./.:0
-1	10020408	.	C	A	57.15	.	AF=0.05;AFrange=0.01-0.11,95%;AlleleBalance=0.73;DoC=179;FisherStrand=17.9;HomopolymerRun=0;MAPQ0=0;NS=60;OnOffGenotype=1.00;RMSMAPQ=174.11;SB=-0.02;SpanningDeletions=0	GT:GQ	1/0:1	0/0:1	1/1:0	0/0:1
+1	10020400	.	C	T	30.66	.	AF=0.030;AFrange=0.01-0.09,95%25;AlleleBalance=0.720;DoC=193;FisherStrand=9.80;HomopolymerRun=0;MAPQ0=0;NS=60.00;OnOffGenotype=1.00;RMSMAPQ=177.45;SB=-2.000e-02;SpanningDeletions=0	GT:GQ	0/1:1	./.:2	0/0:1	./.:0
+1	10020408	.	C	A	57.15	.	AF=0.050;AFrange=0.01-0.11,95%25;AlleleBalance=0.730;DoC=179;FisherStrand=17.90;HomopolymerRun=0;MAPQ0=0;NS=60.00;OnOffGenotype=1.00;RMSMAPQ=174.11;SB=-2.000e-02;SpanningDeletions=0	GT:GQ	1/0:1	0/0:1	1/1:0	0/0:1

@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##FILTER=<ID=LowQual,Description="Low quality">
 ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
@@ -110,7 +110,7 @@
 ##contig=<ID=GL000225.1,length=211173>
 ##contig=<ID=GL000192.1,length=547496>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12891	NA12892
-1	564477	.	A	G	0	.	AC=0;AF=0.00;AN=6;DP=32;FS=0.000;MLEAC=0;MLEAF=0.00;MQ0=0;set=Intersection	GT:AD:DP:GQ:PL	0/0:19,0:19:57:0,57,632	0/0:3,0:3:9:0,9,109	0/0:10,0:10:30:0,30,356
-1	1172907	.	C	T	0	.	AC=2;AF=0.333;AN=6;DP=18;FS=0.000;MQ=60.00;MQ0=0;set=Intersection	GT:AD:DP:GQ:PL	0/1:2,6:8:38:150,0,38	0/0:8,0:8:24:0,24,225	0/1:1,1:2:21:28,0,21
+1	564477	.	A	G	0	.	AC=0;AF=0.00;AN=6;DP=32;FS=0.00;MLEAC=0;MLEAF=0.00;MQ0=0;set=Intersection	GT:AD:DP:GQ:PL	0/0:19,0:19:57:0,57,632	0/0:3,0:3:9:0,9,109	0/0:10,0:10:30:0,30,356
+1	1172907	.	C	T	0	.	AC=2;AF=0.333;AN=6;DP=18;FS=0.00;MQ=60.00;MQ0=0;set=Intersection	GT:AD:DP:GQ:PL	0/1:2,6:8:38:150,0,38	0/0:8,0:8:24:0,24,225	0/1:1,1:2:21:28,0,21
 1	244397794	.	G	C	198.77	.	AC=3;AF=0.500;AN=6;DP=26;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;set=Intersection	GT:AD:DP:GQ:PL	0/1:2,4:6:50:123,0,50	0/1:3,8:11:72:227,0,72	0/1:6,3:9:79:79,0,175
-1	245706160	.	T	C	0	.	AC=2;AF=0.333;AN=6;DP=32;FS=0.000;MQ=60.00;MQ0=0;set=Intersection	GT:AD:DP:GQ:PL	0/1:2,6:8:21:178,0,21	0/0:11,0:11:33:0,33,388	0/1:9,3:12:44:44,0,279
+1	245706160	.	T	C	0	.	AC=2;AF=0.333;AN=6;DP=32;FS=0.00;MQ=60.00;MQ0=0;set=Intersection	GT:AD:DP:GQ:PL	0/1:2,6:8:21:178,0,21	0/0:11,0:11:33:0,33,388	0/1:9,3:12:44:44,0,279
