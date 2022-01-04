@@ -397,8 +397,30 @@ task GetSampleIds {
       echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
       # get the current maximum id, or 0 if there are none
+      #bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+      #  "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > results
+
+
+      # the above query is causing an out of bounds error that I'm hoping to solve by loading the data into a temp table and doing a join
+      # SO load in and create a temp table with all the sample names in external_sample_names
+
+      # 1. create temp table with the sample_names
+      TEMP_TABLE="~{dataset_name}.sample_names_to_load "
+      # bq --location=US mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE schema.json
+      # TODO does this need a hash for the temp table name!??!
+      bq --project_id=~{project_id} mk ${TEMP_TABLE} "sample_name:STRING"
+
+      # 2. load external sample names into temp table
+      NAMES_FILE=~{write_lines(external_sample_names)}
+      bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
+
+      # 3. get the max from the temp table
+
+      # get the current maximum id, or 0 if there are none
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > results
+        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM ~{dataset_name}.~{table_name} AS samples JOIN ${TEMP_TABLE} AS temp ON samples.sample_name=temp.sample_name" > results
+
+
 
       # prep for being able to return min table id
       min_sample_id=$(tail -1 results | cut -d, -f1)
