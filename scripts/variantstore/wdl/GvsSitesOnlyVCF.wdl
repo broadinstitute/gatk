@@ -248,8 +248,8 @@ task ExtractAnAcAfFromVCF {
         ## clean up unneeded file
         rm normalized.vcf.gz
 
-        ## During normalization, sometimes duplicate variamts appear but with different calculations. This seems to be a bug in bcftools. For now we arre dropping all duplicate variants
-        ## The say in which this is done is a bit hamfisted and should be optimized in the future.
+        ## During normalization, sometimes duplicate variamts appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
+        ## The way in which this is done is a bit hamfisted and should be optimized in the future.
         ## to locate the duplicates, we first make a file of just the first 5 columns
         bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
@@ -333,7 +333,6 @@ task AnnotateVCF {
         echo "Creating custom annotations"
         mkdir customannotations_dir
         CUSTOM_ANNOTATIONS_FOLDER="$PWD/customannotations_dir"
-        ## TODO this is a pass thru
 
         # Add AC/AN/AF as custom annotations
         ## use --skip-ref once you are on a later version of nirvana
