@@ -300,7 +300,7 @@ public class GenotypeGVCFsEngine
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         final VariantContext regenotypedVC = builder.genotypes(newGenotypes).make();
 
-        final int maxAltAlleles = genotypingEngine.getConfiguration().genotypeArgs.MAX_ALTERNATE_ALLELES;
+        final int maxAltAlleles = genotypingEngine.getConfiguration().genotypeArgs.maxAlternateAlleles;
         List<Allele> allelesToKeep;
 
         //we need to make sure all alleles pass the tlodThreshold

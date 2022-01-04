@@ -5,7 +5,6 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.io.Serializable;
@@ -127,7 +126,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * Note that the default was changed from 10.0 to 30.0 in version 4.1.0.0 to accompany the switch to use the the new quality score by default.
      */
     @Argument(fullName = CALL_CONFIDENCE_LONG_NAME, shortName = CALL_CONFIDENCE_SHORT_NAME, doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
-    public double STANDARD_CONFIDENCE_FOR_CALLING = DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING;
+    public double standardConfidenceForCalling = DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING;
 
     /**
      * If there are more than this number of alternate alleles presented to the genotyper (either through discovery or GENOTYPE_GIVEN ALLELES),
@@ -135,11 +134,11 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * scales exponentially based on the number of alternate alleles.  Unless there is a good reason to change the default value, we highly recommend
      * that you not play around with this parameter.
      *
-     * See also {@link #MAX_GENOTYPE_COUNT}.
+     * See also {@link #maxGenotypeCount}.
      */
     @Advanced
     @Argument(fullName = MAX_ALTERNATE_ALLELES_LONG_NAME, doc = "Maximum number of alternate alleles to genotype", optional = true)
-    public int MAX_ALTERNATE_ALLELES = DEFAULT_MAX_ALTERNATE_ALLELES;
+    public int maxAlternateAlleles = DEFAULT_MAX_ALTERNATE_ALLELES;
 
     /**
      * If there are more than this number of genotypes at a locus presented to the genotyper, then only this many genotypes will be used.
@@ -152,17 +151,18 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * Unless there is a good reason to change the default value, we highly recommend that you not play around with this parameter.
      *
      * The maximum number of alternative alleles used in the genotyping step will be the lesser of the two:
-     * 1. the largest number of alt alleles, given ploidy, that yields a genotype count no higher than {@link #MAX_GENOTYPE_COUNT}
-     * 2. the value of {@link #MAX_ALTERNATE_ALLELES}
+     * 1. the largest number of alt alleles, given ploidy, that yields a genotype count no higher than {@link #maxGenotypeCount}
+     * 2. the value of {@link #maxAlternateAlleles}
      *
-     * See also {@link #MAX_ALTERNATE_ALLELES}.
+     * See also {@link #maxAlternateAlleles}.
      */
     @Advanced
     @Argument(fullName = MAX_GENOTYPE_COUNT_LONG_NAME, doc = "Maximum number of genotypes to consider at any site", optional = true)
-    public int MAX_GENOTYPE_COUNT = DEFAULT_MAX_GENOTYPE_COUNT;
+    public int maxGenotypeCount = DEFAULT_MAX_GENOTYPE_COUNT;
 
     /**
-     *   Sample ploidy - equivalent to number of chromosomes per pool. In pooled experiments this should be = # of samples in pool * individual sample ploidy
+     *   Sample ploidy - equivalent to number of chromoso
+     *   mes per pool. In pooled experiments this should be = # of samples in pool * individual sample ploidy
      */
     @Argument(shortName = SAMPLE_PLOIDY_SHORT_NAME, fullName = SAMPLE_PLOIDY_LONG_NAME, doc="Ploidy (number of chromosomes) per sample. For pooled data, set to (Number of samples in each pool * Sample Ploidy).", optional=true)
     public int samplePloidy = HomoSapiensConstants.DEFAULT_PLOIDY;

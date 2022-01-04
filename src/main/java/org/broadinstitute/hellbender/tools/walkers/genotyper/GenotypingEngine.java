@@ -127,7 +127,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
         final int defaultPloidy = configuration.genotypeArgs.samplePloidy;
-        final int maxAltAlleles = configuration.genotypeArgs.MAX_ALTERNATE_ALLELES;
+        final int maxAltAlleles = configuration.genotypeArgs.maxAlternateAlleles;
 
         VariantContext reducedVC = vc;
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
@@ -305,7 +305,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 // we want to keep the NON_REF symbolic allele but only in the absence of a non-symbolic allele, e.g.
                 // if we combined a ref / NON_REF gVCF with a ref / alt gVCF
                 final boolean isNonRefWhichIsLoneAltAllele = alternativeAlleleCount == 1 && allele.equals(Allele.NON_REF_ALLELE);
-                final boolean isPlausible = afCalculationResult.passesThreshold(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
+                final boolean isPlausible = afCalculationResult.passesThreshold(allele, configuration.genotypeArgs.standardConfidenceForCalling);
 
                 //it's possible that the upstream deletion that spanned this site was not emitted, mooting the symbolic spanning deletion allele
                 final boolean isSpuriousSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
@@ -414,7 +414,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     protected final boolean passesCallThreshold(final double conf) {
-        return conf >= configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING;
+        return conf >= configuration.genotypeArgs.standardConfidenceForCalling;
     }
 
     protected Map<String,Object> composeCallAttributes(final VariantContext vc, final List<Integer> alleleCountsofMLE,

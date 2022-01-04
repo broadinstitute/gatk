@@ -260,10 +260,22 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     public void assertMatchingGenotypesFromGenomicsDB(File input, File expected, Locatable interval, String reference) throws IOException {
         final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, interval);
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
-        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, NO_EXTRA_ARGS, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
+        final List<String> args = new ArrayList<String>();
+        args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
+        args.add("2"); // Too small max_alternate_alleles arg to GenomicsDB, should fail
+        try {
+            File output = runGenotypeGVCFS(genomicsDBUri, expected, args, reference);
+            Assert.fail("Expected exception not thrown");
+        } catch (IllegalStateException e) {
+           // Pass
+        }
+
+        args.clear();
+        args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
+        args.add("8");
+        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, args, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
 
         // The default option with GenomicsDB input uses VCFCodec for decoding, test BCFCodec explicitly
-        final List<String> args = new ArrayList<String>();
         args.add("--"+GenomicsDBArgumentCollection.USE_BCF_CODEC_LONG_NAME);
         runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, args, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
     }
@@ -362,9 +374,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         );
     }
 
-    private void runGenotypeGVCFSAndAssertSomething(String input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
+    private File runGenotypeGVCFS(String input, File expected, List<String> additionalArguments, String reference) {
         final File output = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected : createTempFile("genotypegvcf", ".vcf");
-
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addReference(new File(reference))
                 .add("V", input)
@@ -376,6 +387,13 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         Utils.resetRandomGenerator();
         runCommandLine(args);
+
+        return output;
+    }
+
+    private void runGenotypeGVCFSAndAssertSomething(String input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
+        final File output = runGenotypeGVCFS(input, expected, additionalArguments, reference);
+        Assert.assertTrue(output.exists());
 
         if (! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
             final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
