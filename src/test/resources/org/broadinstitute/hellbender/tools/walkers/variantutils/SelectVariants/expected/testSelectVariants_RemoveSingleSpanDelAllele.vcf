@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##ALT=<ID=*:DEL,Description="Represents any possible spanning deletion allele at this location">
 ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
 ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">

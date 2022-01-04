@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
 ##FILTER=<ID=lowDP,Description="GQ < 20">
 ##FILTER=<ID=lowGQ,Description="DP < 10">

@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##FILTER=<ID=bar,Description="bar filter">
 ##FILTER=<ID=baz,Description="baz filter">
 ##FILTER=<ID=foo,Description="foo filter">

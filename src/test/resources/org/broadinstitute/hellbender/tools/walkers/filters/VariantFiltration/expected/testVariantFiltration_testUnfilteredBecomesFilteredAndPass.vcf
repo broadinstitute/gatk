@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##FILTER=<ID=LowQual,Description="Low quality">
 ##FILTER=<ID=SNP_FS,Description="FS > 60.0">
 ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">

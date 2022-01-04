@@ -1,4 +1,4 @@
-##fileformat=VCFv4.2
+##fileformat=VCFv4.3
 ##FILTER=<ID=base_qual,Description="alt median base quality">
 ##FILTER=<ID=blacklisted_site,Description="Overlaps a user-input mask">
 ##FILTER=<ID=clustered_events,Description="Clustered events observed in the tumor">
