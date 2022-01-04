@@ -168,9 +168,10 @@ public class SplitIntervals extends GATKTool {
         final IntervalList intervalList = new IntervalList(sequenceDictionary);
 
         // the non-weighted mode
-        if (false) {
+        // TODO: replace with test against enum of scatter mode
+        if (true) { // non-weighted mode
             intervals.stream().map(si -> new Interval(si.getContig(), si.getStart(), si.getEnd())).forEach(intervalList::add);
-        } else {
+        } else { // weighted mode
 
             // first read the BED
             final FeatureReader<BEDFeature> bedReader = AbstractFeatureReader.getFeatureReader(weightsBedFile.getAbsolutePath(), new BEDCodec(), false);
