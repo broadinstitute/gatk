@@ -20,4 +20,13 @@ public class WeightedInterval extends Interval {
         super(sequence, start, end, negative, name);
         this.weight = weight;
     }
+
+    public float getWeight() {
+        return weight;
+    }
+
+    @Override
+    public String toString() {
+        return getContig() + ":" + getStart() + "-" + getEnd() + "\t" + getStrand().encode() + "\t" + ((null == getName()) ? '.' : getName()) + "\t" + getWeight();
+    }
 }
