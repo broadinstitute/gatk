@@ -50,7 +50,7 @@ public class IntervalListScattererWithSubdivisionByWeight implements IntervalLis
             return CollectionUtil.makeList(interval, null);
         }
 
-        // if there's 1 base remaining and it's heavier than allowed it gets its own interval
+        // if there's 1 base remaining and it's heavier than allowed it gets added since it can't be split down below
         if (targetWeight < weightedInterval.getWeight() && weightedInterval.length() == 1){
             return CollectionUtil.makeList(interval, null);
         }
