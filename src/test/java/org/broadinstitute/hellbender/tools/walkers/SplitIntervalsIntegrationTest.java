@@ -232,12 +232,17 @@ public class    SplitIntervalsIntegrationTest extends CommandLineProgramTest {
     }
 
     private static List<SimpleInterval> readIntervals(final File intervalsFile) {
-        return Utils.stream(IntervalList.fromFile(intervalsFile)).map(SimpleInterval::new).collect(Collectors.toList());
+        return Utils.stream(IntervalList.fromFile(intervalsFile))
+                .map(SimpleInterval::new)
+                .collect(Collectors.toList());
     }
 
     private static void checkIntervalSizes(final int scatterCount, final File outputDir, final long expectedTotalLength, final int numDigits, String prefix, String extension) {
         final long splitLength = expectedTotalLength / scatterCount;
-        getExpectedScatteredFiles(scatterCount, outputDir, numDigits, prefix, extension).forEach(f -> Assert.assertEquals(readIntervals(f).stream().mapToLong(SimpleInterval::size).sum(), splitLength, 100));
+        getExpectedScatteredFiles(scatterCount, outputDir, numDigits, prefix, extension)
+                .forEach(f -> Assert.assertEquals(readIntervals(f).stream()
+                        .mapToLong(SimpleInterval::size)
+                        .sum(), splitLength, 100));
     }
 
     private static void checkTotalSize(final int scatterCount, final File outputDir, final long expectedTotalLength, final int numDigits, String prefix, String extension) {

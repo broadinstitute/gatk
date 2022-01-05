@@ -50,11 +50,16 @@ public class IntervalListScattererWithSubdivisionByWeight implements IntervalLis
             return CollectionUtil.makeList(interval, null);
         }
 
+        // if there's 1 base left and it's heavier than allowed it gets it's own interval
+        if (targetWeight < weightedInterval.getWeight() && weightedInterval.length() == 1){
+            return CollectionUtil.makeList(interval, null);
+        }
+
         if (targetWeight == 0) {
             return CollectionUtil.makeList(null, interval);
         }
 
-        final int targetBases = Math.min(1, (int)(targetWeight / weightedInterval.getPerBaseWeight()));
+        final int targetBases = Math.max(1, (int)((double)targetWeight / weightedInterval.getPerBaseWeight()));
         final int splitPoint = interval.getStart() + targetBases;
 
 
