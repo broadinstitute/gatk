@@ -52,7 +52,7 @@ public class IntervalListScattererWithSubdivisionByWeight implements IntervalLis
 
         // if there's 1 base left and it's heavier than allowed it gets it's own interval
         if (targetWeight < weightedInterval.getWeight() && weightedInterval.length() == 1){
-            return CollectionUtil.makeList(interval, null);
+            return CollectionUtil.makeList(null, interval);
         }
 
         if (targetWeight == 0) {
