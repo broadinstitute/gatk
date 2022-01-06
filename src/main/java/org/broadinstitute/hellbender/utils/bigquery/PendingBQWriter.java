@@ -14,7 +14,9 @@ public class PendingBQWriter extends CommittedBQWriter {
 
     public void flushBuffer() {
         try {
-            writeJsonArray(0);
+            if (jsonArr.length() > 0) {
+                writeJsonArray(0);
+            }
         } catch (Exception ex) {
             throw new GATKException("Caught exception writing last records on close of " + writeStream.getName(), ex);
         }
