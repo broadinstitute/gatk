@@ -1,5 +1,5 @@
 {
-  "MergeVcfsWorkflow.gatk_docker": "broadinstitute/gatk:4.2.4.0",
+  "MergeVcfsWorkflow.gatk_docker": "broadinstitute/gatk:4.2.4.1",
 
   "MergeVcfsWorkflow.variant_vcfs": [ "gs://gnomad-public/release/2.1/vcf/exomes/gnomad.exomes.r2.1.sites.vcf.bgz", "gs://gnomad-public/release/2.1/vcf/genomes/gnomad.genomes.r2.1.sites.vcf.bgz" ],
   "MergeVcfsWorkflow.output_vcf_file_name": "gnomad.genomes.r2.1.sites.exome_and_genome.vcf.bgz",

@@ -1,5 +1,5 @@
 {
-  "SubsetGenomicInfoFieldToAlleleFrequencies.gatk_docker": "broadinstitute/gatk:4.2.4.0",
+  "SubsetGenomicInfoFieldToAlleleFrequencies.gatk_docker": "broadinstitute/gatk:4.2.4.1",
   "SubsetGenomicInfoFieldToAlleleFrequencies.gnomad_vcf": "gs://gnomad-public/release/2.1/vcf/genomes/gnomad.genomes.r2.1.sites.vcf.bgz",
   "SubsetGenomicInfoFieldToAlleleFrequencies.gnomad_version": "2.1",
 

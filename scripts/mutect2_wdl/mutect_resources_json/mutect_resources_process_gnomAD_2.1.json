@@ -1,5 +1,5 @@
 {
-  "MutectResources.gatk_docker": "broadinstitute/gatk:4.2.4.0",
+  "MutectResources.gatk_docker": "broadinstitute/gatk:4.2.4.1",
   "MutectResources.gnomad": "gs://gnomad-public/release/2.1/vcf/genomes/gnomad.genomes.r2.1.sites.vcf.bgz",
   "MutectResources.gnomad_idx": "gs://gnomad-public/release/2.1/vcf/genomes/gnomad.genomes.r2.1.sites.vcf.bgz.tbi",
   "MutectResources.gnomad_version": "2.1",

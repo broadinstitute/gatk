@@ -8,6 +8,6 @@
   "VariantClassifierPlots.truth_sample": "HG001",
   "VariantClassifierPlots.intervals": "gs://broad-dsde-methods/cnn-variant-score/beds/HG001_NA12878_GRCh38_GIAB_highconf.interval_list",
   "VariantClassifierPlots.rscript": "gs://broad-dsde-methods/cnn-variant-score/scripts/vcf_analysis.R",
-  "VariantClassifierPlots.gatk_docker": "broadinstitute/gatk:4.2.4.0",
+  "VariantClassifierPlots.gatk_docker": "broadinstitute/gatk:4.2.4.1",
   "VariantClassifierPlots.preemptible_attempts": "0"
 }

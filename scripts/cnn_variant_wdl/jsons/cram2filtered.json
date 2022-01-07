@@ -19,7 +19,7 @@
   "Cram2FilteredVcf.indel_tranches": " --indel-tranche 99.5 ",
   "Cram2FilteredVcf.tensor_type":"read_tensor",
   "Cram2FilteredVcf.calling_intervals": "gs://broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
-  "Cram2FilteredVcf.gatk_docker": "broadinstitute/gatk:4.2.4.0",
+  "Cram2FilteredVcf.gatk_docker": "broadinstitute/gatk:4.2.4.1",
   "Cram2FilteredVcf.preemptible_attempts": 10,
   "Cram2FilteredVcf.inference_batch_size": 8,
   "Cram2FilteredVcf.transfer_batch_size": 32,

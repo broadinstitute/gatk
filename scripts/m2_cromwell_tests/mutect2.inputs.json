@@ -1,5 +1,5 @@
 {
-  "Mutect2.gatk_docker": "broadinstitute/gatk:4.2.4.0",
+  "Mutect2.gatk_docker": "broadinstitute/gatk:4.2.4.1",
 
   "Mutect2.intervals": "gs://gatk-best-practices/somatic-b37/whole_exome_agilent_1.1_refseq_plus_3_boosters.Homo_sapiens_assembly19.baits.interval_list",
   "Mutect2.scatter_count": 50,

@@ -10,7 +10,7 @@
   "Cram2TrainedModel.truth_bed": "gs://broad-dsde-methods-sam/cnn-variant/beds/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_nosomaticdel_noCENorHET7.bed",
   "Cram2TrainedModel.calling_intervals": "gs://broad-references/hg38/v0/wgs_calling_regions.hg38.interval_list",
   "Cram2TrainedModel.extra_args": "-stand-call-conf 0 -A Coverage -A ChromosomeCounts -A BaseQuality -A FragmentLength -A MappingQuality -A ReadPosition ",
-  "Cram2TrainedModel.gatk_docker": "broadinstitute/gatk:4.2.4.0",
+  "Cram2TrainedModel.gatk_docker": "broadinstitute/gatk:4.2.4.1",
   "Cram2TrainedModel.gatk_override": "gs://broad-dsde-methods-sam/cnn-variant/jars/sf_gatk2.jar",
   "Cram2TrainedModel.preemptible_attempts": 0,
   "Cram2TrainedModel.disk_space_gb": 300,

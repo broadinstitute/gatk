@@ -1,5 +1,5 @@
 {
-  "IndexFeatureFile.gatk_docker": "broadinstitute/gatk:4.2.4.0",
+  "IndexFeatureFile.gatk_docker": "broadinstitute/gatk:4.2.4.1",
 
   "IndexFeatureFile.variant_vcfs": [ "gs://broad-dsde-methods/cromwell-execution-36/MergeVcfsWorkflow/dfe2553a-fe37-4717-9d53-56054708c564/call-MergeVcfs/gnomad.genomes.r2.1.sites.liftoverToHg38.vcf.gz" ],
 
