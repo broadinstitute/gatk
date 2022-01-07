@@ -437,7 +437,7 @@ task GetSampleIds {
       python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
-        "SELECT sample_id, sample_name FROM ~{dataset_name}.~{table_name} AS samples JOIN ${TEMP_TABLE} AS temp ON samples.sample_name=temp.sample_name" > sample_map
+        "SELECT sample_id, samples.sample_name FROM ~{dataset_name}.~{table_name} AS samples JOIN ${TEMP_TABLE} AS temp ON samples.sample_name=temp.sample_name" > sample_map
 
       cut -d, -f1 sample_map > gvs_ids
 
