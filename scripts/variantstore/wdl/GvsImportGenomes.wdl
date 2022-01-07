@@ -396,7 +396,20 @@ task GetSampleIds {
 
       echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-      # create temp table with the sample_names and load external sample names into temp table
+      # create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
+       set +e
+       TEMP_TABLE="~{dataset_name}.sample_names_to_load"
+       bq show --project_id ~{project_id} ${TEMP_TABLE} > /dev/null
+       BQ_SHOW_RC=$?
+       set -e
+
+       # if there is already a table of sample names or something else is wrong, bail
+       if [ $BQ_SHOW_RC -eq 0 ]; then
+         echo "There is already a list of sample names. This may need manual cleanup. Exiting"
+         exit 1
+       fi
+
+      echo "Creating the external sample name list table ${TEMP_TABLE}"
       TEMP_TABLE="~{dataset_name}.sample_names_to_load"
       bq --project_id=~{project_id} mk ${TEMP_TABLE} "sample_name:STRING"
       NAMES_FILE=~{write_lines(external_sample_names)}
