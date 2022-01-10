@@ -1796,12 +1796,12 @@ public class CanonicalSVCollapserUnitTest {
     @Test(expectedExceptions = { IllegalArgumentException.class })
     public void testUnsupportedCNVAltAlleles() throws IllegalArgumentException {
         final List<Allele> siteAltAlleles = Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_INS);
-        collapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 1);
+        CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 1);
     }
 
     @Test(expectedExceptions = { IllegalArgumentException.class })
     public void testUnsupportedCNVAltAllele() throws IllegalArgumentException {
         final List<Allele> siteAltAlleles = Collections.singletonList(Allele.SV_SIMPLE_INS);
-        collapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 2);
+        CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 2);
     }
 }
