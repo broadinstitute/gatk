@@ -129,15 +129,13 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
     protected List<Genotype> harmonizeAltAlleles(final List<Allele> sortedAltAlleles, final List<Genotype> collapsedGenotypes) {
         Utils.nonNull(sortedAltAlleles);
         Utils.nonNull(collapsedGenotypes);
-        final List<Allele> genotypeAltAlleles = collapsedGenotypes.stream()
+        final Set<Allele> genotypeAltAlleles = collapsedGenotypes.stream()
                 .map(Genotype::getAlleles)
                 .flatMap(List::stream)
                 .filter(SVCallRecordUtils::isAltAllele)
-                .distinct()
-                .sorted()
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
         // Alt alleles match already, or some alts vanished in genotype collapsing (and we keep them)
-        if (genotypeAltAlleles.equals(sortedAltAlleles) || sortedAltAlleles.containsAll(genotypeAltAlleles)) {
+        if (sortedAltAlleles.containsAll(genotypeAltAlleles)) {
             return collapsedGenotypes;
         }
         // One or more subtypes were collapsed - need to replace genotype alt alleles
@@ -320,6 +318,8 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         }
 
         // Ploidy 0
+        // TODO : we may not want to always throw away alleles here. For example, in the case of segmental
+        //  duplications on chromosome Y.
         if (expectedCopyNumber == 0) {
             return Collections.emptyList();
         }
@@ -535,6 +535,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
             return Collections.emptyList();
         } else if (expectedCopyNumber == 1) {
             // At this point know it's a DUP, and since it's haploid the phasing is unambiguous
+            // TODO : May not be a simple DUP, need a more general Allele for possible multi-copy DUP
             return Collections.singletonList(Allele.SV_SIMPLE_DUP);
         } else if (copyNumber == expectedCopyNumber + 1) {
             // Case where we can resolve alleles
@@ -622,7 +623,8 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                 .collect(Collectors.groupingBy(Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toSet())));
         for (final Map.Entry<String, Set<Object>> entry : genotypeFields.entrySet()) {
             if (entry.getKey().equals(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
-                // Handled elsewhere
+                // Copy number attribute set later using special logic in collapseSampleCopyNumber
+                // Unit testing is easier with this design
                 continue;
             } else if (entry.getKey().equals(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT)) {
                 // Set after loop

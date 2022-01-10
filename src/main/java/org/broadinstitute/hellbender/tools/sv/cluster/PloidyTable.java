@@ -8,10 +8,8 @@ import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class PloidyTable {
 
@@ -22,11 +20,13 @@ public class PloidyTable {
             final TableReader<PloidyRecord> reader = TableUtils.reader(path, (columns, exceptionFactory) ->
                 (dataLine) -> {
                     final String sample = dataLine.get(0);
-                    final int numColumns = dataLine.columns().columnCount();
-                    final List<String> contigs = columns.names().subList(1, numColumns);
-                    final List<Integer> ploidy = IntStream.range(1, numColumns).map(i -> dataLine.getInt(i))
-                            .boxed().collect(Collectors.toList());
-                    return new PloidyRecord(sample, contigs, ploidy);
+                    final Map<String, Integer> dataMap = new HashMap<>();
+                    for (int i = 1; i < columns.columnCount(); i++) {
+                        final String contig = columns.names().get(i);
+                        final Integer ploidy = dataLine.getInt(i);
+                        dataMap.put(contig, ploidy);
+                    }
+                    return new PloidyRecord(sample, dataMap);
                 }
             );
             samplePloidyMap = reader.stream().collect(Collectors.toMap(PloidyRecord::getSample, r -> r));
@@ -38,9 +38,7 @@ public class PloidyTable {
 
     public PloidyTable(final Map<String, Map<String, Integer>> samplePloidyMap) {
         this.samplePloidyMap = samplePloidyMap.entrySet().stream()
-                .collect(Collectors.toMap(p -> p.getKey(), p -> new PloidyRecord(p.getKey(),
-                        p.getValue().entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList()),
-                        p.getValue().entrySet().stream().map(Map.Entry::getValue).collect(Collectors.toList()))));
+                .collect(Collectors.toMap(p -> p.getKey(), p -> new PloidyRecord(p.getKey(), p.getValue())));
     }
 
     public Integer get(final String sample, final String contig) {
@@ -52,14 +50,9 @@ public class PloidyTable {
         private final String sample;
         private final Map<String, Integer> ploidyMap;
 
-        public PloidyRecord(final String sample, final List<String> contigs, final List<Integer> ploidy) {
-            Utils.validateArg(contigs.size() == ploidy.size(), "Expected " + contigs.size() +
-                    " ploidy values but found " + ploidy.size());
+        public PloidyRecord(final String sample, final Map<String, Integer> ploidyMap) {
             this.sample = sample;
-            this.ploidyMap = new HashMap<>();
-            for (int i = 0; i < contigs.size(); i++) {
-                ploidyMap.put(contigs.get(i), ploidy.get(i));
-            }
+            this.ploidyMap = ploidyMap;
         }
 
         public String getSample() {

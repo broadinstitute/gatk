@@ -51,7 +51,8 @@ import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSeg
  * <p>The tool determines whether two given variants should cluster based following criteria:</p>
  * <ul>
  *     <li>
- *         Matching SV type, with the exception of DEL/DUP combinations when --enable-cnv is used.
+ *         Matching SV type. DEL and DUP are considered matching SV types if --enable-cnv is used and merged into
+ *         a multi-allelic CNV type.
  *     </li>
  *     <li>
  *         Matching breakend strands (BND and INV only)
@@ -88,16 +89,16 @@ import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSeg
  * </ul>
  *
  * <p>Interval overlap, breakend window, and sample overlap parameters are defined for three combinations of event types
- * using the ALGORITHMS field:</p>
+ * using the ALGORITHMS field, which describes the type of evidence that was used to call the variant:</p>
  * <ul>
  *     <li>
- *         Depth-only - both variants have only "depth" ALGORITHMS
+ *         Depth-only - both variants have solely "depth" ALGORITHMS
  *     </li>
  *     <li>
- *         Evidenced/PESR - both variants at least one non-depth entry in ALGORITHMS
+ *         PESR (paired-end/split-read) - both variants have at least one non-depth entry in ALGORITHMS
  *     </li>
  *     <li>
- *         Mixed - one variant is depth-only and the other is not
+ *         Mixed - one variant is depth-only and the other is PESR
  *     </li>
  * </ul>
  *
@@ -108,7 +109,7 @@ import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSeg
  *         SVTYPE - event type (DEL, DUP, CNV, INS, INV, BND)
  *     </li>
  *     <li>
- *         SVLEN - variant length (INS only, if known)
+ *         SVLEN - variant length for INS only, if known
  *     </li>
  *     <li>
  *         STRANDS - breakend strands ("++", "+-", "-+", or "--") (BND and INV only)
@@ -216,7 +217,7 @@ public final class SVCluster extends MultiVariantWalker {
     private GATKPath outputFile;
 
     /**
-     * Expected format is tab-delimited and contains a header with the first column SAMPLES and remaining columns
+     * Expected format is tab-delimited and contains a header with the first column SAMPLE and remaining columns
      * contig names. Each row corresponds to a sample, with the sample ID in the first column and contig ploidy
      * integers in their respective columns.
      */
@@ -234,7 +235,7 @@ public final class SVCluster extends MultiVariantWalker {
     private String variantPrefix = null;
 
     /**
-     * When enabled, DEL/DUP variants can be clustered together and the resulting record with have SVTYPE of CNV.
+     * When enabled, DEL and DUP variants will be clustered together. The resulting records with have an SVTYPE of CNV.
      */
     @Argument(
             doc = "Enable clustering DEL/DUP variants together as CNVs (does not apply to CNV defragmentation)",
@@ -291,13 +292,13 @@ public final class SVCluster extends MultiVariantWalker {
             CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN;
 
     @Argument(fullName = DEFRAG_PADDING_FRACTION_LONG_NAME,
-            doc = "Padding as a fraction of variant length (CNV defragmentation only)",
+            doc = "Padding as a fraction of variant length for CNV defragmentation mode.",
             optional = true
     )
     private double defragPaddingFraction = CNVLinkage.DEFAULT_PADDING_FRACTION;
 
     @Argument(fullName = DEFRAG_SAMPLE_OVERLAP_LONG_NAME,
-            doc = "Minimum sample overlap fraction (CNV defragmentation only)",
+            doc = "Minimum sample overlap fraction. Use instead of --depth-sample-overlap in CNV defragmentation mode.",
             optional = true
     )
     private double defragSampleOverlapFraction = CNVLinkage.DEFAULT_SAMPLE_OVERLAP;
@@ -360,10 +361,10 @@ public final class SVCluster extends MultiVariantWalker {
                     clusterParameterArgs.getDepthParameters(), clusterParameterArgs.getMixedParameters(),
                     clusterParameterArgs.getPESRParameters());
         } else {
-            throw new UnsupportedOperationException("Unsupported algorithm: " + algorithm.name());
+            throw new IllegalArgumentException("Unsupported algorithm: " + algorithm.name());
         }
 
-        outputBuffer = new OutputSortingBuffer();
+        outputBuffer = new OutputSortingBuffer(clusterEngine);
         writer = createVCFWriter(outputFile);
         writer.writeHeader(createHeader());
         currentContig = null;
@@ -470,14 +471,16 @@ public final class SVCluster extends MultiVariantWalker {
 
     private final class OutputSortingBuffer {
         private final TreeSet<SVCallRecord> buffer;
+        private final SVClusterEngine<SVCallRecord> engine;
 
-        public OutputSortingBuffer() {
-            buffer = new TreeSet<>(SVCallRecordUtils.getCallComparator(dictionary));
+        public OutputSortingBuffer(final SVClusterEngine<SVCallRecord> engine) {
+            this.buffer = new TreeSet<>(SVCallRecordUtils.getCallComparator(dictionary));
+            this.engine = engine;
         }
 
         public List<SVCallRecord> flush() {
-            buffer.addAll(clusterEngine.getOutput());
-            final Integer minActiveStart = clusterEngine.getMinActiveStartingPosition();
+            buffer.addAll(engine.getOutput());
+            final Integer minActiveStart = engine.getMinActiveStartingPosition();
             final int minPos = minActiveStart == null ? Integer.MAX_VALUE : minActiveStart;
             final List<SVCallRecord> result = buffer.stream()
                     .filter(record -> !record.getContigA().equals(currentContig) || record.getPositionA() < minPos)
@@ -488,8 +491,8 @@ public final class SVCluster extends MultiVariantWalker {
         }
 
         public List<SVCallRecord> forceFlush() {
-            buffer.addAll(clusterEngine.forceFlushAndGetOutput());
-            final List<SVCallRecord> result = new ArrayList<>(buffer);
+            buffer.addAll(engine.forceFlushAndGetOutput());
+            final List<SVCallRecord> result = buffer.stream().sorted(recordComparator).collect(Collectors.toList());
             buffer.clear();
             return result;
         }

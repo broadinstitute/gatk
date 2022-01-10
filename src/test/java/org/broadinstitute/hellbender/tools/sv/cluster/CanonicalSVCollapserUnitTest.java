@@ -20,7 +20,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class SVCollapserTest {
+public class CanonicalSVCollapserUnitTest {
 
     private static final CanonicalSVCollapser collapser = new CanonicalSVCollapser(
             SVTestUtils.hg38Reference,
@@ -1791,5 +1791,17 @@ public class SVCollapserTest {
     @Test(dataProvider= "alleleCollapserComparatorTestData")
     public void alleleCollapserComparatorTest(final List<Allele> allelesA, final List<Allele> allelesB, final int expectedResult) {
         Assert.assertEquals(alleleComparator.compare(allelesA, allelesB), expectedResult);
+    }
+
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testUnsupportedCNVAltAlleles() throws IllegalArgumentException {
+        final List<Allele> siteAltAlleles = Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_INS);
+        collapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 1);
+    }
+
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testUnsupportedCNVAltAllele() throws IllegalArgumentException {
+        final List<Allele> siteAltAlleles = Collections.singletonList(Allele.SV_SIMPLE_INS);
+        collapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 2);
     }
 }

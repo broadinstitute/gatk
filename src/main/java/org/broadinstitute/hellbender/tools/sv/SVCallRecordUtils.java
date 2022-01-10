@@ -71,12 +71,12 @@ public final class SVCallRecordUtils {
         if (svtype.equals(StructuralVariantType.BND) || svtype.equals(StructuralVariantType.INV)) {
             builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
         }
-        if (record.getGenotypes().stream().anyMatch(g -> g.getAlleles().isEmpty())) {
-            // htsjdk vcf encoder does not allow genotypes to have empty alleles
-            builder.genotypes(record.getGenotypes().stream().map(SVCallRecordUtils::sanitizeEmptyGenotype).collect(Collectors.toList()));
-        } else {
-            builder.genotypes(record.getGenotypes());
+        final GenotypesContext genotypes = GenotypesContext.create(record.getGenotypes().size());
+        for (final Genotype g : record.getGenotypes()) {
+            genotypes.add(sanitizeEmptyGenotype(g));
         }
+        // htsjdk vcf encoder does not allow genotypes to have empty alleles
+        builder.genotypes(record.getGenotypes().stream().map(SVCallRecordUtils::sanitizeEmptyGenotype).collect(Collectors.toList()));
         return builder;
     }
 
@@ -92,12 +92,14 @@ public final class SVCallRecordUtils {
     }
 
     /**
-     * Creates a new {@link GenotypesContext} object augmented with the given sample set. Samples with existing
-     * genotypes are not touched. Samples without genotypes are assigned the provided sets of alleles and attributes.
-     * @param genotypes base genotypes
+     * Populates genotypes for samples not present in the given record. Samples with existing genotypes are not
+     * touched. Samples without genotypes are assigned one according to the provided default reference allele
+     * and ploidy, specified by the {@link GATKSVVCFConstants#EXPECTED_COPY_NUMBER_FORMAT} value. If the record
+     * represents a CNV, the {@link GATKSVVCFConstants#COPY_NUMBER_FORMAT} is also set.
+     * @param record record containing the genotypes
      * @param samples samples which the resulting genotypes must contain (existing samples are ignored)
-     * @param alleles alleles to apply to all new genotypes, must be length equal to the ploidy for the sample
-     * @param attributes attributes to apply to all new genotypes
+     * @param refAlleleDefault default allele to use for samples without genotypes
+     * @param ploidyTable ploidy table, which must contain at least all samples with missing genotypes
      * @return genotypes augmented with missing samples
      */
     public static GenotypesContext populateGenotypesForMissingSamplesWithAlleles(final SVCallRecord record,
