@@ -1175,6 +1175,7 @@ public class ExtractCohortEngine {
         if (toSampleId >= fromSampleId) {
             SortedSet<Long> samples = sampleIdsToExtract.subSet(fromSampleId, toSampleId + 1); // subset is start-inclusive, end-exclusive
 
+            // List<Long> samples = sampleIdsToExtract.stream().filter(x -> x >= fromSampleId && x <= toSampleId).sorted().collect(toList());
             for (Long s : samples) {
                 ExtractCohortRecord e = processReferenceData(sortedReferenceRangeIterator, referenceCache, location, s);
                 currentPositionRecords.merge(s, e, this::mergeSampleRecord);
