@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
-import com.google.cloud.bigquery.storage.v1.ReadSession;
 import com.google.common.collect.Sets;
 import static java.util.stream.Collectors.toList;
-import htsjdk.samtools.util.CloseableIterator;
+
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -86,7 +85,7 @@ public class ExtractCohortEngine {
     private final String filterSetName;
 
     private final GQStateEnum inferredReferenceState;
-
+    private final boolean presortedAvroFiles;
 
     public ExtractCohortEngine(final String projectID,
                                final VariantContextWriter vcfWriter,
@@ -114,7 +113,8 @@ public class ExtractCohortEngine {
                                final boolean emitPLs,
                                final ExtractCohort.VQSLODFilteringType VQSLODFilteringType,
                                final boolean excludeFilteredSites,
-                               final GQStateEnum inferredReferenceState
+                               final GQStateEnum inferredReferenceState,
+                               final boolean presortedAvroFiles
     ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
@@ -156,6 +156,8 @@ public class ExtractCohortEngine {
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
 
         this.inferredReferenceState = inferredReferenceState;
+
+        this.presortedAvroFiles = presortedAvroFiles;
     }
 
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
@@ -230,10 +232,12 @@ public class ExtractCohortEngine {
                 throw new GATKException("Can not process cross-contig boundaries for Ranges implementation");
             }
 
+            SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
+
             if (vetRangesFQDataSet != null) {
-                createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, this.sampleIdToName.keySet(), minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+                createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
             } else {
-                createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, this.sampleIdToName.keySet(), minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+                createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested, presortedAvroFiles);
             }
         } else {
             if (cohortTableRef != null) {
@@ -296,13 +300,16 @@ public class ExtractCohortEngine {
             if (intervalsOverlapDetector.overlapsAny(simpleInverval)) {
                 vbs.setVariant(location);
                 sortingCollection.add(queryRow);
-                if (recordsProcessed++ % 1000000 == 0) {
+                if (++recordsProcessed % 1000000 == 0) {
                     long endTime = System.currentTimeMillis();
                     logger.info("Processed " + recordsProcessed + " VET records in " + (endTime - startTime) + " ms");
                     startTime = endTime;
                 }
             }
         }
+
+        long endTime = System.currentTimeMillis();
+        logger.info("Processed " + recordsProcessed + " VET records in " + (endTime - startTime) + " ms");
 
         sortingCollection.printTempFileStats();
         return sortingCollection;
@@ -320,12 +327,15 @@ public class ExtractCohortEngine {
                 sortingCollection.add(queryRow);
             }
 
-            if (recordsProcessed++ % 1000000 == 0) {
+            if (++recordsProcessed % 1000000 == 0) {
                 long endTime = System.currentTimeMillis();
                 logger.info("Processed " + recordsProcessed + " Reference Ranges records in " + (endTime - startTime) + " ms");
                 startTime = endTime;
             }
         }
+
+        long endTime = System.currentTimeMillis();
+        logger.info("Processed " + recordsProcessed + " Reference Ranges records in " + (endTime - startTime) + " ms");
 
         sortingCollection.printTempFileStats();
         return sortingCollection;
@@ -880,7 +890,7 @@ public class ExtractCohortEngine {
 
     private void createVariantsFromUnsortedBigQueryRanges(
             final String fqDatasetName,
-            final Set<Long> sampleIdsToExtract,
+            final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
             final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
@@ -918,31 +928,44 @@ public class ExtractCohortEngine {
     private void createVariantsFromUnsortedAvroRanges(
             final GATKPath vetAvroFileName,
             final GATKPath refRangesAvroFileName,
-            final Set<Long> sampleIdsToExtract,
+            final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
             final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
             final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
             final HashMap<Long, List<String>> siteFilterMap,
-            final boolean noVqslodFilteringRequested) {
+            final boolean noVqslodFilteringRequested,
+            final boolean presortedAvroFiles) {
 
         final AvroFileReader vetReader = new AvroFileReader(vetAvroFileName);
         final AvroFileReader refRangesReader = new AvroFileReader(refRangesAvroFileName);
 
-        VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
+        Iterable<GenericRecord> sortedVet;
+        Iterable<GenericRecord> sortedReferenceRange;
 
-        SortingCollection<GenericRecord> sortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
-        addToVetSortingCollection(sortedVet, vetReader, vbs);
+        if (presortedAvroFiles) {
+            sortedVet = vetReader;
+            sortedReferenceRange = refRangesReader;
+        } else {
+            VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
 
-        SortingCollection<GenericRecord>sortedReferenceRange = getAvroSortingCollection(refRangesReader.getSchema(), localSortMaxRecordsInRam);
-        addToRefSortingCollection(sortedReferenceRange, refRangesReader, vbs);
+            SortingCollection<GenericRecord> localSortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
+            addToVetSortingCollection(localSortedVet, vetReader, vbs);
+
+            SortingCollection<GenericRecord> localSortedReferenceRange = getAvroSortingCollection(refRangesReader.getSchema(), localSortMaxRecordsInRam);
+            addToRefSortingCollection(localSortedReferenceRange, refRangesReader, vbs);
+
+            sortedVet = localSortedVet;
+            sortedReferenceRange = localSortedReferenceRange;
+        }
 
         createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+
     }
 
-    private void createVariantsFromSortedRanges(final Set<Long> sampleIdsToExtract,
-                                                final SortingCollection<GenericRecord> sortedVet,
-                                                SortingCollection<GenericRecord> sortedReferenceRange,
+    private void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
+                                                final Iterable<GenericRecord> sortedVet,
+                                                Iterable<GenericRecord> sortedReferenceRange,
                                                 final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
                                                 final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                                 final HashMap<Long, List<String>> siteFilterMap,
@@ -971,7 +994,7 @@ public class ExtractCohortEngine {
         // NOTE: if OverlapDetector takes too long, try using RegionChecker from tws_sv_local_assembler
         final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
 
-        CloseableIterator<GenericRecord> sortedReferenceRangeIterator = sortedReferenceRange.iterator();
+        Iterator<GenericRecord> sortedReferenceRangeIterator = sortedReferenceRange.iterator();
 
         for (final GenericRecord sortedRow : sortedVet) {
             final ExtractCohortRecord vetRow = new ExtractCohortRecord(sortedRow);
@@ -1049,16 +1072,21 @@ public class ExtractCohortEngine {
         }
     }
 
-    private void processReferenceData(Map<Long, ExtractCohortRecord> currentPositionRecords, CloseableIterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long fromSampleId, long toSampleId, Set<Long> sampleIdsToExtract) {
+    private void processReferenceData(Map<Long, ExtractCohortRecord> currentPositionRecords, Iterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long fromSampleId, long toSampleId, SortedSet<Long> sampleIdsToExtract) {
+        // in the case where there are two adjacent samples with variants, this method is called where from is greater than to
+        // this is ok, there is just no reference data to process but subSet will throw an exception so we handle it with this if block
+        if (toSampleId >= fromSampleId) {
+            SortedSet<Long> samples = sampleIdsToExtract.subSet(fromSampleId, toSampleId + 1); // subset is start-inclusive, end-exclusive
 
-        List<Long> samples = sampleIdsToExtract.stream().filter(x -> x >= fromSampleId && x <= toSampleId).sorted().collect(toList());
-        for(Long s : samples) {
-            ExtractCohortRecord e = processReferenceData(sortedReferenceRangeIterator, referenceCache, location, s);
-            currentPositionRecords.merge(s, e, this::mergeSampleRecord);
+            // List<Long> samples = sampleIdsToExtract.stream().filter(x -> x >= fromSampleId && x <= toSampleId).sorted().collect(toList());
+            for (Long s : samples) {
+                ExtractCohortRecord e = processReferenceData(sortedReferenceRangeIterator, referenceCache, location, s);
+                currentPositionRecords.merge(s, e, this::mergeSampleRecord);
+            }
         }
     }
 
-    private ExtractCohortRecord processReferenceData(CloseableIterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
+    private ExtractCohortRecord processReferenceData(Iterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
         String state = processReferenceDataFromCache(referenceCache, location, sampleId);
 
         if (state == null) {
@@ -1101,7 +1129,7 @@ public class ExtractCohortEngine {
         }
     }
 
-    private String processReferenceDataFromStream(CloseableIterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
+    private String processReferenceDataFromStream(Iterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
         while(sortedReferenceRangeIterator.hasNext()) {
             final ReferenceRecord refRow = new ReferenceRecord(sortedReferenceRangeIterator.next());
             totalRangeRecords++;

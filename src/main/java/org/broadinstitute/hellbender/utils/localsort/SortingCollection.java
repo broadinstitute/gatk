@@ -226,8 +226,11 @@ public class SortingCollection<T> implements Iterable<T> {
      */
     public void spillToDisk() {
         try {
+            long startTime = System.currentTimeMillis();
             Arrays.parallelSort(this.ramRecords, 0, this.numRecordsInRam, this.comparator);
+            log.info(String.format("%d records in ram sorted in %d ms. ", numRecordsInRam, System.currentTimeMillis() - startTime));
 
+            startTime = System.currentTimeMillis();
             final Path f = newTempFile();
             try (OutputStream os
                          = tempStreamFactory.wrapTempOutputStream(Files.newOutputStream(f), Defaults.BUFFER_SIZE)) {
@@ -242,6 +245,7 @@ public class SortingCollection<T> implements Iterable<T> {
                 throw new RuntimeIOException("Problem writing temporary file " + f.toUri() +
                         ".  Try setting TMP_DIR to a file system with lots of space.", ex);
             }
+            log.info(String.format("%d records in ram spilled to disk in %d ms. ", numRecordsInRam, System.currentTimeMillis() - startTime));
 
             this.numRecordsInRam = 0;
             this.files.add(f);
@@ -464,10 +468,13 @@ public class SortingCollection<T> implements Iterable<T> {
         private int iterationIndex = 0;
 
         InMemoryIterator() {
+            long startTime = System.currentTimeMillis();
             Arrays.parallelSort(SortingCollection.this.ramRecords,
                     0,
                     SortingCollection.this.numRecordsInRam,
                     SortingCollection.this.comparator);
+            log.info(String.format("%d records in ram sorted in %d ms. ", numRecordsInRam, System.currentTimeMillis() - startTime));
+
         }
 
         @Override

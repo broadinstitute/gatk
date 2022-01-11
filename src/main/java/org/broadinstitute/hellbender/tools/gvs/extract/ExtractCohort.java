@@ -88,7 +88,7 @@ public class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "vet-avro-file-name",
-            doc = "Path to unsorted data from Vet table in Avro format",
+            doc = "Path to data from Vet table in Avro format",
             mutex = {"cohort-extract-table"},
             optional = true
     )
@@ -96,11 +96,19 @@ public class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "ref-ranges-avro-file-name",
-            doc = "Path to unsorted data from Vet table in Avro format",
+            doc = "Path to data from Vet table in Avro format",
             mutex = {"cohort-extract-table"},
             optional = true
     )
     private GATKPath refRangesAvroFileName = null;
+
+    @Argument(
+            fullName = "presorted-avro-files",
+            doc = "Indicates if Avro data is pre-sorted",
+            mutex = {"cohort-extract-table"},
+            optional = true
+    )
+    private boolean presortedAvroFiles = false;
 
     @Argument(
             fullName = "filter-set-name",
@@ -318,7 +326,8 @@ public class ExtractCohort extends ExtractTool {
                 emitPLs,
                 vqslodfilteringType,
                 excludeFilteredSites,
-                inferredReferenceState);
+                inferredReferenceState,
+                presortedAvroFiles);
 
         vcfWriter.writeHeader(header);
     }
