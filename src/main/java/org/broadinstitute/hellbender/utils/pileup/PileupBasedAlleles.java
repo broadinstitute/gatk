@@ -28,8 +28,8 @@ public final class PileupBasedAlleles {
      * that are visible in the pileups but might be dropped from assembly for any number of reasons. The basic algorithm works
      * as follows:
      *  - iterate over every pileup and count alt bases
-     *      - (unfinished) detect insertions overlapping this site (CURRENTLY ONLY WORKS FOR INSERTIONS)
-     *  - count "bad" reads as defined by Illumina filtering for puleup detection of variants {@Link #evaluateBadRead}
+     *      - (beta) detect insertions overlapping this site (CURRENTLY ONLY WORKS FOR INSERTIONS)
+     *  - count "bad" reads as defined by Illumina filtering for pileup detection of variants {@Link #evaluateBadRead}
      *  - For each detected alt, evaluate if the number of alternate bases are sufficient to make the call and make a VariantContext.
      *
      * @param alignmentAndReferenceContextList  List of stored pileups and reference context information where every element is a base from the active region.
@@ -40,7 +40,7 @@ public final class PileupBasedAlleles {
      */
     public static ArrayList<VariantContext> getPileupVariantContexts(final List<AlignmentAndReferenceContext> alignmentAndReferenceContextList, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForReads) {
 
-        final ArrayList<VariantContext> pileupSNPsList = new ArrayList<>();
+        final ArrayList<VariantContext> pileupVariantList = new ArrayList<>();
 
         // Iterate over every base
         for(AlignmentAndReferenceContext alignmentAndReferenceContext : alignmentAndReferenceContextList) {
@@ -60,8 +60,7 @@ public final class PileupBasedAlleles {
             for (PileupElement element : pileup) {
                 final byte eachBase = element.getBase();
 
-                // check to see that the base is not ref and that the alleles are one of these bases - ATCGN
-                // TODO: AH & BG add a better check for acceptable alleles for eachBase
+                // check to see that the base is not ref (and non-deletion) and increment the alt counts (and evaluate if the read is "bad")
                 if (refBase != eachBase && eachBase != 'D') {
                     incrementAltCount(eachBase, altCounts);
                     totalAltReads++;
@@ -97,7 +96,7 @@ public final class PileupBasedAlleles {
 
                 alleles.add(Allele.create(maxAlt.get().getKey()));
                 final VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
-                pileupSNPsList.add(pileupSNP.make());
+                pileupVariantList.add(pileupSNP.make());
             }
 
             // Evaluate the detected INDEL alleles for this site
@@ -110,17 +109,17 @@ public final class PileupBasedAlleles {
 
                     indelAlleles.add(Allele.create((char)referenceContext.getBase() + maxIns.get().getKey()));
                     final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), indelAlleles);
-                    pileupSNPsList.add(pileupInsertion.make());
+                    pileupVariantList.add(pileupInsertion.make());
                 }
             }
         }
 
-        return pileupSNPsList;
+        return pileupVariantList;
     }
 
     /**
      * Apply the filters to discovered alleles
-     * - Does it have greater than snpThreshold percentage of bases support in the pileups?
+     * - Does it have greater than snpThreshold fraction of bases support in the pileups?
      * - Does it have greater than pileupAbsoluteDepth number of reads supporting it?
      * - Are the reads supporting alts at the site greater than badReadThreshold percent "good"? //TODO evaluate if this is worth doing on a per-allele basis or otherwise
      */
@@ -141,20 +140,20 @@ public final class PileupBasedAlleles {
      * @param read
      * @param referenceContext
      * @param args
-     * @param headerForRead TODO get rid of this sam record coversion
-     * @return
+     * @param headerForRead TODO get rid of this sam record conversion
+     * @return true if any of the "badness" heuristics suggest we should consider the read suspect, false otherwise.
      */
     @VisibleForTesting
     static boolean evaluateBadRead(final GATKRead read, final ReferenceContext referenceContext, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForRead) {
         if (args.badReadProperPair && !read.isProperlyPaired()) {
             return true;
         }
-        if (args.badReadSecondary && (read.isSecondaryAlignment() || read.hasAttribute("SA"))) {
+        if (args.badReadSecondaryOrSupplementary && (read.isSecondaryAlignment() || read.hasAttribute("SA"))) {
             return true;
         }
 
 
-        //TODO this conversion is really unnecessary...
+        //TODO this conversion is really unnecessary. Perhaps we should expose a new SequenceUtil like NM tag calculation?...
         SAMRecord samRecordForRead = read.convertToSAMRecord(headerForRead);
 
         // Assert that the edit distance for the read is in line
@@ -169,11 +168,11 @@ public final class PileupBasedAlleles {
         }
 
         //TODO add threshold descibed by illumina about insert size compared to the average
-        if (args.templateLenghtStd > 0 && args.templateLengthMean > 0) {
+        if (args.templateLengthStd > 0 && args.templateLengthMean > 0) {
             int templateLength = samRecordForRead.getInferredInsertSize();
-            // This is an illumina magic number... possibly decide to
-            if (templateLength < args.templateLengthMean - 2.25*args.templateLenghtStd
-                    || templateLength > args.templateLengthMean + 2.25*args.templateLenghtStd) {
+            // This is an illumina magic number... Its possible none of this is particularly important for Functional Equivalency.
+            if (templateLength < args.templateLengthMean - 2.25 * args.templateLengthStd
+                    || templateLength > args.templateLengthMean + 2.25 * args.templateLengthStd) {
                 return true;
             }
         }
