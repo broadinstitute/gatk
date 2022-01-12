@@ -47,7 +47,8 @@ public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
                 false,
                 ExtractCohort.VQSLODFilteringType.NONE,
                 false,
-                GQStateEnum.SIXTY
+                GQStateEnum.SIXTY,
+                false
         );
 
         List<VariantContext> variantContexts = VariantContextTestUtils.getVariantContexts(ORIGINAL_TEST_FILE); // list variantContexts from VCF file
