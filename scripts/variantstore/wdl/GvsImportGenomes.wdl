@@ -437,7 +437,7 @@ task GetSampleIds {
 
       cut -d, -f1 sample_map > gvs_ids
 
-      // delete the table that was only needed for this ingest
+      ## delete the table that was only needed for this ingest
       bq --project_id=~{project_id} rm -f=true ${TEMP_TABLE}
 
   >>>
