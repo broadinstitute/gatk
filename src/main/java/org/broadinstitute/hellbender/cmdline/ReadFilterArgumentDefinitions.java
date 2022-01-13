@@ -30,6 +30,8 @@ public final class ReadFilterArgumentDefinitions {
     public static final String FILTER_TOO_SHORT_NAME = "filter-too-short";
     public static final String DONT_REQUIRE_SOFT_CLIPS_BOTH_ENDS_NAME = "dont-require-soft-clips-both-ends";
 
+    public static final String MAXIMUM_END_CLIPPED_BASES = "max-clipped-bases";
+
     public static final String PL_FILTER_NAME_LONG_NAME = "platform-filter-name";
 
     public static final String BLACK_LISTED_LANES_LONG_NAME = "black-listed-lanes";
