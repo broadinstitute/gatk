@@ -43,7 +43,6 @@ import java.util.List;
 )
 public final class ExcessiveEndClippedReadFilter extends ReadFilter {
     static final long serialVersionUID = 1L;
-    private final Logger logger = LogManager.getLogger(this.getClass());
 
     @Argument(fullName = ReadFilterArgumentDefinitions.MAXIMUM_END_CLIPPED_BASES,
             doc = "Maximum number of clipped bases on either end of a given read",
