@@ -426,6 +426,7 @@ public class ExtractCohortEngine {
         }
     }
 
+
     private void processSampleRecordsForLocation(final long location,
                                                  final Iterable<ExtractCohortRecord> sampleRecordsAtPosition,
                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
@@ -435,7 +436,7 @@ public class ExtractCohortEngine {
                                                  final ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
 
         final List<VariantContext> unmergedCalls = new ArrayList<>();
-        final Set<String> currentPositionSamplesSeen = new HashSet<>();
+        final List<String> currentPositionSamplesSeen = new ArrayList<>(sampleNames.size());
         boolean currentPositionHasVariant = false;
         final int currentPosition = SchemaUtils.decodePosition(location);
         final String contig = SchemaUtils.decodeContig(location);
@@ -464,6 +465,8 @@ public class ExtractCohortEngine {
             if (sampleName == null) {
                 throw new GATKException("Unable to translate sample id " + sampleRecord.getSampleId() + " to sample name");
             }
+
+            //PERF: BOTTLENECK (13%)
             currentPositionSamplesSeen.add(sampleName);
             ++numRecordsAtPosition;
 
@@ -523,7 +526,7 @@ public class ExtractCohortEngine {
     }
 
     private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls,
-                                        final Set<String> currentVariantSamplesSeen,
+                                        final List<String> currentVariantSamplesSeen,
                                         final boolean currentPositionHasVariant,
                                         final long location,
                                         final String contig,
@@ -539,7 +542,7 @@ public class ExtractCohortEngine {
         }
 
         // Find samples for dropped state and synthesize. If not arrays use GQ 60
-        final Set<String> samplesNotEncountered = Sets.difference(sampleNames, currentVariantSamplesSeen);
+        final Set<String> samplesNotEncountered = Sets.difference(sampleNames, Sets.newHashSet(currentVariantSamplesSeen));
         for ( final String missingSample : samplesNotEncountered ) {
             unmergedCalls.add(createRefSiteVariantContextWithGQ(missingSample, contig, start, refAllele, inferredReferenceState.getReferenceGQ()));
         }
@@ -575,15 +578,12 @@ public class ExtractCohortEngine {
             filteredVC = sfBuilder.filters(newFilters).make();
         }
 
-        // clean up extra annotations
-        final VariantContext finalVC = removeAnnotations(filteredVC);
-
-        if ( finalVC != null ) {
+        if ( filteredVC != null ) {
             // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
-            if (finalVC.isNotFiltered() || !excludeFilteredSites) {
-                vcfWriter.add(finalVC);
+            if (filteredVC.isNotFiltered() || !excludeFilteredSites) {
+                vcfWriter.add(filteredVC);
             }
-            progressMeter.update(finalVC);
+            progressMeter.update(filteredVC);
         }
     }
 
@@ -640,17 +640,6 @@ public class ExtractCohortEngine {
         // TODO: add in other annotations we need in output (like AF, etc?)
         final VariantContext filteredVC = builder.make();
         return filteredVC;
-    }
-
-    protected VariantContext removeAnnotations(VariantContext vc) {
-
-        final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
-                                                                      GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
-                                                                      GATKVCFConstants.FISHER_STRAND_KEY));
-
-        builder.rmAttributes(rmAnnotationList);
-        return builder.make();
     }
 
     private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
@@ -1194,6 +1183,7 @@ public class ExtractCohortEngine {
 
     private String processReferenceDataFromCache(Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
 
+        // PERF: bottleneck (iterator and remove) 6%
         Iterator<ReferenceRecord> iter = referenceCache.get(sampleId).iterator();
         while (iter.hasNext()) {
             ReferenceRecord row = iter.next();

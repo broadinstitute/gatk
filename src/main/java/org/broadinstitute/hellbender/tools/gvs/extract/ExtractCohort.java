@@ -21,6 +21,11 @@ import org.broadinstitute.hellbender.tools.gvs.common.SampleList;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.common.ExtractTool;
 import org.broadinstitute.hellbender.tools.gvs.common.FilterSensitivityTools;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
+import org.broadinstitute.hellbender.tools.walkers.annotator.Coverage;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -235,6 +240,16 @@ public class ExtractCohort extends ExtractTool {
         header.setSequenceDictionary(sequenceDictionary);
 
         return header;
+    }
+
+    @Override
+    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<Annotation> getDefaultVariantAnnotations() {
+        return Collections.singletonList(new ChromosomeCounts());
     }
 
     @Override
