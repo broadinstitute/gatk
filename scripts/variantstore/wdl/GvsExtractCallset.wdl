@@ -40,17 +40,20 @@ workflow GvsExtractCallset {
         Int? extract_maxretries_override
         Int? split_intervals_disk_size_override
 
-        String mode = "RANGES"
+        String mode = "RANGES-PREPARED"
        
         String? service_account_json_path
 
         String output_file_base_name
         String? output_gcs_dir
-        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_extract_perf_20220111/gatk-package-4.2.0.0-455-g40a40bc-SNAPSHOT-local.jar"
+        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_ranges_prepare_20220118/gatk-package-4.2.0.0-457-g95280a4-SNAPSHOT-local.jar"
         Int local_disk_for_extract = 150
 
         String fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__SAMPLES"
         String fq_cohort_extract_table  = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__DATA"
+        
+        String fq_ranges_cohort_vet_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__VET_DATA"
+        String fq_ranges_cohort_ref_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__REF_DATA"
    }
 
    Array[String] tables_patterns_for_datetime_check = if (mode == "RANGES") then ["pet_%","vet_%"] else ["~{extract_table_prefix}__%"]
@@ -87,6 +90,8 @@ workflow GvsExtractCallset {
                 interval_index                  = i,
                 intervals                       = SplitIntervals.interval_files[i],
                 fq_cohort_extract_table         = fq_cohort_extract_table,
+                fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
+                fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
                 read_project_id                 = query_project,
                 mode                            = mode,
                 do_not_filter_override          = do_not_filter_override,
@@ -147,6 +152,8 @@ task ExtractTask {
         String? drop_state
 
         String fq_cohort_extract_table
+        String fq_ranges_cohort_ref_extract_table
+        String fq_ranges_cohort_vet_extract_table
         String read_project_id
         String output_file
         String? output_gcs_dir
@@ -208,8 +215,10 @@ task ExtractTask {
                 ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
 
-        if [ ~{mode} = "RANGES" ]; then
+        if [ ~{mode} = "RANGES-RAW" ]; then
             MODE_ARGS="--mode RANGES --vet-ranges-fq-dataset ~{fq_ranges_dataset} "
+        elif [ ~{mode} = "RANGES-PREPARED"]
+            MODE_ARGS="--mode RANGES --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} "
         else
             MODE_ARGS="--mode PET --cohort-extract-table ~{fq_cohort_extract_table} "
         fi

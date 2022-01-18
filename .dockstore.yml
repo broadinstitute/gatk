@@ -118,6 +118,7 @@ workflows:
          - ah_var_store
          - rsa_rescattering_wf
          - rc_add_dropstate_extract_wdl
+         - kc_ranges_prepare
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -137,6 +138,16 @@ workflows:
          - master
          - ah_var_store
          - ah_flag_in_prepare
+   - name: GvsPrepareCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsPrepareRangesCallset.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - kc_ranges_prepare
    - name: GvsSitesOnlyVCF
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsSitesOnlyVCF.wdl
