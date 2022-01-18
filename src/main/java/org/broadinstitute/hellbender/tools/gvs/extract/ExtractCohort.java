@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Coverage;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -249,7 +250,9 @@ public class ExtractCohort extends ExtractTool {
 
     @Override
     public List<Annotation> getDefaultVariantAnnotations() {
-        return Collections.singletonList(new ChromosomeCounts());
+        return  Arrays.asList(
+                new ChromosomeCounts()
+        );
     }
 
     @Override
