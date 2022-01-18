@@ -1,18 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 final class ScikitLearnVariantTrainArgumentCollection {
 
