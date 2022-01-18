@@ -80,6 +80,10 @@ public class ExtractCohortEngine {
     private final GATKPath cohortAvroFileName;
 
     private final String vetRangesFQDataSet;
+
+    private final String fqRangesExtractVetTable;
+    private final String fqRangesExtractRefTable;
+
     private final GATKPath vetAvroFileName;
     private final GATKPath refRangesAvroFileName;
     private final String filterSetName;
@@ -97,6 +101,8 @@ public class ExtractCohortEngine {
                                final String cohortTableName,
                                final GATKPath cohortAvroFileName,
                                final String vetRangesFQDataSet,
+                               final String fqRangesExtractVetTable,
+                               final String fqRangesExtractRefTable,
                                final GATKPath vetAvroFileName,
                                final GATKPath refRangesAvroFileName,
                                final List<SimpleInterval> traversalIntervals,
@@ -130,6 +136,8 @@ public class ExtractCohortEngine {
                 new TableReference(cohortTableName, emitPLs ? SchemaUtils.COHORT_FIELDS : SchemaUtils.COHORT_FIELDS_NO_PL);
 
         this.vetRangesFQDataSet = vetRangesFQDataSet;
+        this.fqRangesExtractVetTable = fqRangesExtractVetTable;
+        this.fqRangesExtractRefTable = fqRangesExtractRefTable;
 
         this.cohortAvroFileName = cohortAvroFileName;
         this.vetAvroFileName = vetAvroFileName;
@@ -233,8 +241,9 @@ public class ExtractCohortEngine {
             }
 
             SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
-
-            if (vetRangesFQDataSet != null) {
+            if (fqRangesExtractVetTable != null) {
+                createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+            } else if (vetRangesFQDataSet != null) {
                 createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
             } else {
                 createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested, presortedAvroFiles);
@@ -925,6 +934,94 @@ public class ExtractCohortEngine {
         createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
     }
 
+    //
+    // BEGIN REF RANGES COHORT EXTACT
+    //
+    private void createVariantsFromUnsortedExtractTableBigQueryRanges(
+            final String fqVetTable,
+            final String fqRefTable,
+            final SortedSet<Long> sampleIdsToExtract,
+            final Long minLocation,
+            final Long maxLocation,
+            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+            final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
+            final HashMap<Long, List<String>> siteFilterMap,
+            final boolean noVqslodFilteringRequested) {
+
+        // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
+        if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
+            throw new GATKException("Can not process cross-contig boundaries");
+        }
+
+        VariantBitSet vbs = new VariantBitSet(minLocation, maxLocation);
+
+        SortingCollection<GenericRecord> sortedVet = createSortedVetCollectionFromExtractTableBigQuery(projectID,
+                fqVetTable,
+                minLocation,
+                maxLocation,
+                localSortMaxRecordsInRam,
+                vbs);
+
+
+        SortingCollection<GenericRecord> sortedReferenceRange = createSortedReferenceRangeCollectionFromExtractTableBigQuery(projectID,
+                fqRefTable,
+                minLocation,
+                maxLocation,
+                localSortMaxRecordsInRam,
+                vbs);
+
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+    }
+
+    private SortingCollection<GenericRecord> createSortedVetCollectionFromExtractTableBigQuery(final String projectID,
+                                                                                   final String fqVetTable,
+                                                                                   final Long minLocation,
+                                                                                   final Long maxLocation,
+                                                                                   final int localSortMaxRecordsInRam,
+                                                                                   final VariantBitSet vbs
+    ) {
+
+        TableReference tableRef =
+                new TableReference(fqVetTable, SchemaUtils.EXTRACT_VET_FIELDS);
+
+        // We need to look upstream MAX_DELETION_SIZE bases in case there is a deletion that begins before
+        // the requested range, but spans into our processing range.  We don't use a "length" or end position
+        // because it would break the clustering indexing
+        final String vetRowRestriction =
+                "location >= " + (minLocation - IngestConstants.MAX_DELETION_SIZE + 1)+ " AND location <= " + maxLocation;
+        try (StorageAPIAvroReader vetReader = new StorageAPIAvroReader(tableRef, vetRowRestriction, projectID)) {
+            SortingCollection<GenericRecord> sortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
+            addToVetSortingCollection(sortedVet, vetReader, vbs);
+            processBytesScanned(vetReader);
+            return sortedVet;
+        }
+    }
+
+    private SortingCollection<GenericRecord> createSortedReferenceRangeCollectionFromExtractTableBigQuery(final String projectID,
+                                                                                              final String fqRefTable,
+                                                                                              final Long minLocation,
+                                                                                              final Long maxLocation,
+                                                                                              final int localSortMaxRecordsInRam,
+                                                                                              final VariantBitSet vbs
+    ) {
+
+        TableReference tableRef = new TableReference(fqRefTable, SchemaUtils.EXTRACT_REF_FIELDS);
+
+        // NOTE: MUST be written as location >= minLocation - MAX_REFERENCE_BLOCK_BASES +1 to not break cluster pruning in BigQuery
+        final String refRowRestriction =
+                "location >= " + (minLocation - IngestConstants.MAX_REFERENCE_BLOCK_BASES + 1) + " AND location <= " + maxLocation;
+
+        try (StorageAPIAvroReader refReader = new StorageAPIAvroReader(tableRef, refRowRestriction, projectID)) {
+            SortingCollection<GenericRecord> sortedReferenceRange = getAvroSortingCollection(refReader.getSchema(), localSortMaxRecordsInRam);
+            addToRefSortingCollection(sortedReferenceRange, refReader, vbs);
+            processBytesScanned(refReader);
+            return sortedReferenceRange;
+        }
+    }
+
+    //
+    // END REF RANGES COHORT EXTRACT
+    //
     private void createVariantsFromUnsortedAvroRanges(
             final GATKPath vetAvroFileName,
             final GATKPath refRangesAvroFileName,

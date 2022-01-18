@@ -86,6 +86,21 @@ public class ExtractCohort extends ExtractTool {
     )
     private String vetRangesFQDataSet = null;
 
+
+    @Argument(
+            fullName = "vet-ranges-extract-fq-table",
+            doc = "EXPERIMENTAL - ",
+            optional = true
+    )
+    private String fqRangesExtractVetTable = null;
+
+    @Argument(
+            fullName = "ref-ranges-extract-fq-table",
+            doc = "EXPERIMENTAL - ",
+            optional = true
+    )
+    private String fqRangesExtractRefTable = null;
+
     @Argument(
             fullName = "vet-avro-file-name",
             doc = "Path to data from Vet table in Avro format",
@@ -287,10 +302,11 @@ public class ExtractCohort extends ExtractTool {
 
         // if there is an avro file, the BQ specific parameters are unnecessary,
         // but they all are required if there is no avro file
-        if ((cohortAvroFileName == null && vetAvroFileName == null && refRangesAvroFileName == null) && (projectID == null || (cohortTable == null && vetRangesFQDataSet == null))) {
-            throw new UserException("Project id (--project-id) and cohort table (--cohort-extract-table) are required " +
-                "if no avro file (--cohort-avro-file-name or --vet-avro-file-name and --ref-ranges-avro-file-name) is provided.");
-        }
+        // KCIBUL: revisit!!!
+//        if ((cohortAvroFileName == null && vetAvroFileName == null && refRangesAvroFileName == null) && (projectID == null || (cohortTable == null && vetRangesFQDataSet == null))) {
+//            throw new UserException("Project id (--project-id) and cohort table (--cohort-extract-table) are required " +
+//                "if no avro file (--cohort-avro-file-name or --vet-avro-file-name and --ref-ranges-avro-file-name) is provided.");
+//        }
 
         // if there is a sample file, the BQ specific parameters are unnecessary,
         // but without a sample file, both a sample-table and a project-id are needed
@@ -310,6 +326,8 @@ public class ExtractCohort extends ExtractTool {
                 cohortTable,
                 cohortAvroFileName,
                 vetRangesFQDataSet,
+                fqRangesExtractVetTable,
+                fqRangesExtractRefTable,
                 vetAvroFileName,
                 refRangesAvroFileName,
                 traversalIntervals,
