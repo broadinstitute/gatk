@@ -305,12 +305,12 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
 
     private void addVariantDatum(final VariantContext vc, final FeatureContext context) {
         if( vc != null && ( IGNORE_ALL_FILTERS || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()) ) ) {
-            if( GMMVariantTrainDataManager.checkVariationClass( vc, VTAC.MODE ) && !VTAC.useASannotations) {
+            if( ScikitLearnVariantTrainDataManager.checkVariationClass( vc, VTAC.MODE ) && !VTAC.useASannotations) {
                 addDatum(reduceSum, true, context, vc, null, null);
             }
             else if( VTAC.useASannotations ) {
                 for (final Allele allele : vc.getAlternateAlleles()) {
-                    if (!GATKVCFConstants.isSpanningDeletion(allele) && GMMVariantTrainDataManager.checkVariationClass(vc, allele, VTAC.MODE)) {
+                    if (!GATKVCFConstants.isSpanningDeletion(allele) && ScikitLearnVariantTrainDataManager.checkVariationClass(vc, allele, VTAC.MODE)) {
                         //note that this may not be the minimal representation for the ref and alt allele
                         addDatum(reduceSum, true, context, vc, vc.getReference(), allele);
                     }
