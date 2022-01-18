@@ -95,7 +95,7 @@ task PrepareRangesCallsetTask {
             gsutil cp  ~{sample_names_to_extract} sample_names_file
         fi
 
-        python3 /app/create_ranges_cohort_extract_data_table \
+        python3 /app/create_ranges_cohort_extract_data_table.py \
             --fq_ranges_dataset ~{fq_petvet_dataset} \
             --fq_temp_table_dataset ~{fq_temp_table_dataset} \
             --fq_destination_dataset ~{fq_destination_dataset} \
