@@ -217,7 +217,7 @@ task ExtractTask {
 
         if [ ~{mode} = "RANGES-RAW" ]; then
             MODE_ARGS="--mode RANGES --vet-ranges-fq-dataset ~{fq_ranges_dataset} "
-        elif [ ~{mode} = "RANGES-PREPARED"]
+        elif [ ~{mode} = "RANGES-PREPARED" ]; then
             MODE_ARGS="--mode RANGES --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} "
         else
             MODE_ARGS="--mode PET --cohort-extract-table ~{fq_cohort_extract_table} "
