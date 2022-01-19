@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramIntegrationTest;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
-public class TrainVariantAnnotationModelIntegrationTest extends CommandLineProgramIntegrationTest {
+public class TrainVariantAnnotationModelIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void test1kgp50ExomesSNP() {

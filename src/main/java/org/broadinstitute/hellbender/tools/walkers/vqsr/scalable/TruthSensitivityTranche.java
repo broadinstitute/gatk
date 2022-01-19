@@ -6,6 +6,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
 import java.io.ByteArrayOutputStream;
@@ -16,58 +18,57 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /*
  * TODO
  */
-final class TruthSensitivityTranche extends Tranche {
-    private static final int CURRENT_VERSION = 5;
+final class TruthSensitivityTranche {
+    private static final int CURRENT_VERSION = 6;
 
-    private static final Comparator<TruthSensitivityTranche> TRUTH_SENSITIVITY_ORDER = (tranche1, tranche2) -> Double.compare(tranche1.targetTruthSensitivity, tranche2.targetTruthSensitivity);
+    private static final Comparator<TruthSensitivityTranche> TRUTH_SENSITIVITY_ORDER = Comparator.comparingDouble(tranche -> tranche.targetTruthSensitivity);
 
     private static final Logger logger = LogManager.getLogger(TruthSensitivityTranche.class);
 
-    //Note: visibility is set to package-local for testing
-    final double targetTruthSensitivity;
+    private static final String DEFAULT_TRANCHE_NAME = "anonymous";
+    private static final String COMMENT_STRING = "#";
+    private static final String VALUE_SEPARATOR = ",";
+    private static final int EXPECTED_COLUMN_COUNT = 9;
 
-    public TruthSensitivityTranche(
-            final double targetTruthSensitivity,
-            final double minScore,
-            final int numNovel,
-            final double novelTiTv,
-            final int accessibleTruthSites,
-            final int callsAtTruthSites,
-            final VariantTypeMode mode) {
-        this(targetTruthSensitivity, minScore, numNovel, novelTiTv, accessibleTruthSites, callsAtTruthSites, mode, "anonymous");
-    }
+    private final String name;
+    private final int numNovel;
+    private final double minScore;
+    private final VariantTypeMode mode;
+    private final double novelTiTv;
+    private final int accessibleTruthSites;
+    private final int callsAtTruthSites;
+    private final double targetTruthSensitivity;
 
-    public TruthSensitivityTranche(
-            final double targetTruthSensitivity,
-            final double minScore,
-            final int numNovel,
-            final double novelTiTv,
-            final int accessibleTruthSites,
-            final int callsAtTruthSites,
-            final VariantTypeMode mode,
-            final String name) {
-        super(name, numNovel, minScore, mode, novelTiTv, accessibleTruthSites, callsAtTruthSites);
-        if (targetTruthSensitivity < 0.0 || targetTruthSensitivity > 100.0) {
-            throw new GATKException("Target FDR is unreasonable " + targetTruthSensitivity);
-        }
-
-        if (numNovel < 0) {
-            throw new GATKException("Invalid tranche - no. variants is < 0 : novel " + numNovel);
-        }
-
-        if (name == null) {
-            throw new GATKException("BUG -- name cannot be null");
-        }
+    private TruthSensitivityTranche(final double targetTruthSensitivity,
+                                    final int numNovel,
+                                    final double novelTiTv,
+                                    final double minScore,
+                                    final String name,
+                                    final VariantTypeMode mode,
+                                    final int accessibleTruthSites,
+                                    final int callsAtTruthSites) {
+        // TODO more validation
+        Utils.nonNull(name);
+        ParamUtils.isPositiveOrZero(numNovel, "Number of novel variants cannot be negative.");
+        ParamUtils.inRange(targetTruthSensitivity, 0., 100.,"Target truth sensitivity must be in [0, 100].");
 
         this.targetTruthSensitivity = targetTruthSensitivity;
-
+        this.numNovel = numNovel;
+        this.novelTiTv = novelTiTv;
+        this.minScore = minScore;
+        this.name = name;
+        this.mode = mode;
+        this.accessibleTruthSites = accessibleTruthSites;
+        this.callsAtTruthSites = callsAtTruthSites;
     }
 
-    public Double getTrancheIndex() {
+    public double getTargetTruthSensitivity() {
         return targetTruthSensitivity;
     }
 
@@ -96,7 +97,7 @@ final class TruthSensitivityTranche extends Tranche {
      * Returns a list of tranches, sorted from most to least specific, read in from file f.
      * @throws IOException if there are problems reading the file.
      */
-    public static List<TruthSensitivityTranche> readTranches(final GATKPath f) throws IOException{
+    static List<TruthSensitivityTranche> readTranches(final GATKPath f) throws IOException{
         String[] header = null;
         final List<TruthSensitivityTranche> tranches = new ArrayList<>();
 
@@ -123,13 +124,14 @@ final class TruthSensitivityTranche extends Tranche {
                     }
                     tranches.add(new TruthSensitivityTranche(
                             getRequiredDouble(bindings, "targetTruthSensitivity"),
-                            getRequiredDouble(bindings, "minScore"),
                             getRequiredInteger(bindings, "numNovel"),
                             getRequiredDouble(bindings, "novelTiTv"),
-                            getOptionalInteger(bindings, "accessibleTruthSites", -1),
-                            getOptionalInteger(bindings, "callsAtTruthSites", -1),
+                            getRequiredDouble(bindings, "minScore"),
+                            bindings.get("filterName"),
                             VariantTypeMode.valueOf(bindings.get("mode")),
-                            bindings.get("filterName")));
+                            getOptionalInteger(bindings, "accessibleTruthSites", -1),
+                            getOptionalInteger(bindings, "callsAtTruthSites", -1)
+                    ));
                 }
             }
         }
@@ -144,7 +146,7 @@ final class TruthSensitivityTranche extends Tranche {
         private double[] runningSensitivity;
         private final int nTrueSites;
 
-        public TruthSensitivityMetric(final int nTrueSites) {
+        TruthSensitivityMetric(final int nTrueSites) {
             this.name = "TruthSensitivity";
             this.nTrueSites = nTrueSites;
         }
@@ -153,39 +155,49 @@ final class TruthSensitivityTranche extends Tranche {
             return name;
         }
 
-        public double getThreshold(final double tranche) {
-            return 1.0 - tranche/100.0; // tranche of 1 => 99% sensitivity target
-        }
-
-        public void calculateRunningMetric(final List<VariantDatum> data) {
-            int nCalledAtTruth = 0;
-            runningSensitivity = new double[data.size()];
-
-            for ( int i = data.size() - 1; i >= 0; i-- ) {
-                VariantDatum datum = data.get(i);
-                nCalledAtTruth += datum.atTruthSite ? 1 : 0;
-                runningSensitivity[i] = 1 - nCalledAtTruth / (1.0 * nTrueSites);
-            }
-        }
-
-        public double getRunningMetric(final int i) {
+        double getRunningMetric(final int i) {
             return runningSensitivity[i];
+        }
+
+        private static double getThreshold(final double tranche) {
+            return 1. - tranche / 100.; // tranche of 1 => 99% sensitivity target
+        }
+
+        private void calculateRunningMetric(final List<Boolean> isTruth) {
+            int nCalledAtTruth = 0;
+            runningSensitivity = new double[isTruth.size()];
+
+            for (int i = isTruth.size() - 1; i >= 0; i--) {
+                nCalledAtTruth += isTruth.get(i) ? 1 : 0;
+                runningSensitivity[i] = 1 - nCalledAtTruth / (1. * nTrueSites);
+            }
         }
     }
 
-    public static List<TruthSensitivityTranche> findTranches(final List<VariantDatum> data, final double[] trancheThresholds, final TruthSensitivityMetric metric, final VariantTypeMode mode) {
-        logger.info(String.format("Finding %d tranches for %d variants", trancheThresholds.length, data.size()));
+    static List<TruthSensitivityTranche> findTranches(final List<Double> scores,
+                                                      final List<Boolean> isTransition,
+                                                      final List<Boolean> isTruth,
+                                                      final List<Double> trancheThresholds,
+                                                      final TruthSensitivityMetric metric,
+                                                      final VariantTypeMode mode) {
+        // TODO validate lengths
+        logger.info(String.format("Finding %d tranches for %d variants", trancheThresholds.size(), scores.size()));
 
-        data.sort(VariantDatum.VariantDatumLODComparator);
-        metric.calculateRunningMetric(data);
+        final List<Integer> indicesSortedByScore = IntStream.range(0, scores.size()).boxed()
+                .sorted(Comparator.comparingDouble(scores::get))
+                .collect(Collectors.toList());
+        final List<Double> sortedScores = indicesSortedByScore.stream().map(scores::get).collect(Collectors.toList());
+        final List<Boolean> sortedIsTransition = indicesSortedByScore.stream().map(isTransition::get).collect(Collectors.toList());
+        final List<Boolean> sortedIsTruth = indicesSortedByScore.stream().map(isTruth::get).collect(Collectors.toList());
+        metric.calculateRunningMetric(sortedIsTruth);
 
-        List<TruthSensitivityTranche> tranches = new ArrayList<>();
-        for ( double trancheThreshold : trancheThresholds ) {
-            TruthSensitivityTranche t = findTranche(data, metric, trancheThreshold, mode);
+        List<TruthSensitivityTranche> tranches = new ArrayList<>(trancheThresholds.size());
+        for (double trancheThreshold : trancheThresholds) {
+            TruthSensitivityTranche t = findTranche(sortedScores, sortedIsTransition, sortedIsTruth, metric, trancheThreshold, mode);
 
             if ( t == null ) {
                 if (tranches.isEmpty()) {
-                    throw new UserException(String.format("Couldn't find any tranche containing variants with a %s > %.2f. Are you sure the truth files contain unfiltered variants which overlap the input data?", metric.getName(), metric.getThreshold(trancheThreshold)));
+                    throw new UserException(String.format("Couldn't find any tranche containing variants with a %s > %.2f. Are you sure the truth files contain unfiltered variants which overlap the input data?", metric.getName(), TruthSensitivityMetric.getThreshold(trancheThreshold)));
                 }
                 break;
             }
@@ -193,24 +205,25 @@ final class TruthSensitivityTranche extends Tranche {
             tranches.add(t);
         }
 
-        tranches.sort(TruthSensitivityTranche.TRUTH_SENSITIVITY_ORDER);
+        tranches.sort(TRUTH_SENSITIVITY_ORDER);
         return tranches;
     }
 
-    private static TruthSensitivityTranche findTranche(final List<Double> scores,
-                                                       final List<Boolean> isTransition,
-                                                       final List<Boolean> isTruth,
+    private static TruthSensitivityTranche findTranche(final List<Double> sortedScores,
+                                                       final List<Boolean> sortedIsTransition,
+                                                       final List<Boolean> sortedIsTruth,
                                                        final TruthSensitivityMetric metric,
                                                        final double trancheThreshold,
-                                                       final VariantTypeMode mode ) {
-        logger.debug(String.format("  TruthSensitivityTranche threshold %.2f => selection metric threshold %.3f", trancheThreshold, metric.getThreshold(trancheThreshold)));
+                                                       final VariantTypeMode mode) {
+        // TODO validate lengths
+        logger.debug(String.format("  TruthSensitivityTranche threshold %.2f => selection metric threshold %.3f", trancheThreshold, TruthSensitivityMetric.getThreshold(trancheThreshold)));
 
-        double metricThreshold = metric.getThreshold(trancheThreshold);
-        int n = data.size();
-        for ( int i = 0; i < n; i++ ) {
-            if ( metric.getRunningMetric(i) >= metricThreshold ) {
+        double metricThreshold = TruthSensitivityMetric.getThreshold(trancheThreshold);
+        int n = sortedScores.size();
+        for (int i = 0; i < n; i++) {
+            if (metric.getRunningMetric(i) >= metricThreshold) {
                 // we've found the largest group of variants with sensitivity >= our target truth sensitivity
-                TruthSensitivityTranche t = trancheOfVariants(scores, isTransition, isTruth, i, trancheThreshold, mode);
+                TruthSensitivityTranche t = trancheOfVariants(sortedScores, sortedIsTransition, sortedIsTruth, i, trancheThreshold, mode);
                 logger.debug(String.format("  Found tranche for %.3f: %.3f threshold starting with variant %d; running score is %.3f ",
                         trancheThreshold, metricThreshold, i, metric.getRunningMetric(i)));
                 logger.debug(String.format("  TruthSensitivityTranche is %s", t));
@@ -221,14 +234,116 @@ final class TruthSensitivityTranche extends Tranche {
         return null;
     }
 
-    private static TruthSensitivityTranche trancheOfVariants(final List<Double> scores,
-                                                             final List<Boolean> isTransition,
-                                                             final List<Boolean> isTruth,
+    private static TruthSensitivityTranche trancheOfVariants(final List<Double> sortedScores,
+                                                             final List<Boolean> sortedIsTransition,
+                                                             final List<Boolean> sortedIsTruth,
                                                              final int minI,
-                                                             final double ts,
+                                                             final double targetTruthSensitivity,
                                                              final VariantTypeMode mode) {
-        final Tranche basicTranche = Tranche.trancheOfVariants(scores, isTransition, isTruth, minI, mode);
-        return new TruthSensitivityTranche(ts, basicTranche.minScore, basicTranche.numNovel, basicTranche.novelTiTv, basicTranche.accessibleTruthSites, basicTranche.callsAtTruthSites, mode, DEFAULT_TRANCHE_NAME);
+        int numNovel = 0;
+        int novelTi = 0;
+        int novelTv = 0;
+
+        final double minScore = sortedScores.get(minI);
+        for (int i = 0; i < sortedScores.size(); i++) {
+            if (sortedScores.get(i) >= minScore) {
+                numNovel++;
+                if (sortedIsTransition.get(i)) {
+                    novelTi++;
+                } else {
+                    novelTv++;
+                }
+            }
+        }
+
+        final double novelTiTv = novelTi / Math.max(novelTv, 1.);
+
+        final int accessibleTruthSites = countCallsAtTruth(sortedScores, sortedIsTruth, Double.NEGATIVE_INFINITY);
+        final int callsAtTruthSites = countCallsAtTruth(sortedScores, sortedIsTruth, minScore);
+
+        return new TruthSensitivityTranche(targetTruthSensitivity, numNovel, novelTiTv, minScore, DEFAULT_TRANCHE_NAME, mode, accessibleTruthSites, callsAtTruthSites);
     }
 
+    public static class TrancheComparator implements Comparator<TruthSensitivityTranche> {
+        @Override
+        public int compare(final TruthSensitivityTranche tranche1,
+                           final TruthSensitivityTranche tranche2) {
+            //no matter what type of tranche we have, we want the output in order of increasing sensitivity, as measured by calls at truth sites
+            return Double.compare(tranche1.callsAtTruthSites, tranche2.callsAtTruthSites);
+        }
+    }
+
+    /**
+     * Returns an appropriately formatted string representing the raw tranches file on disk.
+     */
+    static String tranchesString(final List<TruthSensitivityTranche> tranches) {
+        try (final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+             final PrintStream stream = new PrintStream(bytes)) {
+            if (tranches.size() > 1)
+                tranches.sort(new TrancheComparator());
+
+            TruthSensitivityTranche prev = null;
+            for (final TruthSensitivityTranche t : tranches) {
+                stream.print(t.getTrancheString(prev));
+                prev = t;
+            }
+
+            return bytes.toString();
+        }
+        catch (final IOException e) {
+            throw new GATKException("IOException while converting tranche to a string");
+        }
+    }
+
+    private String getTrancheString(final TruthSensitivityTranche prev) {
+        return String.format("%.2f,%d,%.4f,%.4f,VQSRTranche%s%.2fto%.2f,%s,%d,%d,%.4f%n",
+                targetTruthSensitivity, numNovel, novelTiTv, minScore, mode.toString(),
+                (prev == null ? 0.0 : prev.targetTruthSensitivity), targetTruthSensitivity, mode.toString(), accessibleTruthSites, callsAtTruthSites, getTruthSensitivity());
+
+    }
+
+    private static double getRequiredDouble(final Map<String, String> bindings,
+                                            final String key) {
+        if (bindings.containsKey(key)) {
+            try {
+                return Double.parseDouble(bindings.get(key));
+            } catch (final NumberFormatException e){
+                throw new UserException.MalformedFile("Malformed tranches file. Invalid value for key " + key);
+            }
+        } else {
+            throw new UserException.MalformedFile("Malformed tranches file. Missing required key " + key);
+        }
+    }
+
+    private static int getRequiredInteger(final Map<String, String> bindings,
+                                          final String key) {
+        if (bindings.containsKey(key)) {
+            try{
+                return Integer.parseInt(bindings.get(key));
+            } catch (final NumberFormatException e){
+                throw new UserException.MalformedFile("Malformed tranches file. Invalid value for key " + key);
+            }
+        } else {
+            throw new UserException.MalformedFile("Malformed tranches file. Missing required key " + key);
+        }
+    }
+
+    private static int getOptionalInteger(final Map<String, String> bindings, final String key,
+                                          final int defaultValue) {
+        try {
+            return Integer.parseInt(bindings.getOrDefault(key, String.valueOf(defaultValue)));
+        } catch (final NumberFormatException e){
+            throw new UserException.MalformedFile("Malformed tranches file. Invalid value for key " + key);
+        }
+    }
+
+    private double getTruthSensitivity() {
+        return accessibleTruthSites > 0 ? callsAtTruthSites / ((double) accessibleTruthSites) : 0.;
+    }
+
+    static int countCallsAtTruth(final List<Double> scores,
+                                 final List<Boolean> isTruth,
+                                 final double minScore) {
+        return (int) IntStream.range(0, scores.size()).filter(i -> isTruth.get(i) && scores.get(i) >= minScore).count();
+    }
 }
