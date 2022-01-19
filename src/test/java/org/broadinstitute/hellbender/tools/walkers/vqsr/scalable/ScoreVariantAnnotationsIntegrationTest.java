@@ -8,7 +8,7 @@ import static org.testng.Assert.*;
 public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 
     @Test
-    public void test1kgp50Exomes() {
+    public void test1kgp50ExomesSNP() {
         final String[] arguments = {
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
