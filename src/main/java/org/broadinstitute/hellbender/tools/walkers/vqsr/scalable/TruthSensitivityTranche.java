@@ -68,10 +68,6 @@ final class TruthSensitivityTranche {
         this.callsAtTruthSites = callsAtTruthSites;
     }
 
-    public double getTargetTruthSensitivity() {
-        return targetTruthSensitivity;
-    }
-
     public static String printHeader() {
         try (final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
              final PrintStream stream = new PrintStream(bytes)) {
@@ -111,7 +107,7 @@ final class TruthSensitivityTranche {
                 if (header == null) {  //reading the header
                     header = vals;
                     if (header.length != EXPECTED_COLUMN_COUNT) {
-                        throw new UserException.MalformedFile(f, "Expected 11 elements in header line " + line);
+                        throw new UserException.MalformedFile(f, String.format("Expected %d elements in header line %s", EXPECTED_COLUMN_COUNT, line));
                     }
                 } else {
                     if (header.length != vals.length) {
@@ -345,5 +341,37 @@ final class TruthSensitivityTranche {
                                  final List<Boolean> isTruth,
                                  final double minScore) {
         return (int) IntStream.range(0, scores.size()).filter(i -> isTruth.get(i) && scores.get(i) >= minScore).count();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getNumSites() {
+        return numSites;
+    }
+
+    public double getMinScore() {
+        return minScore;
+    }
+
+    public VariantTypeMode getMode() {
+        return mode;
+    }
+
+    public double getTiTv() {
+        return tiTv;
+    }
+
+    public int getAccessibleTruthSites() {
+        return accessibleTruthSites;
+    }
+
+    public int getCallsAtTruthSites() {
+        return callsAtTruthSites;
+    }
+
+    public double getTargetTruthSensitivity() {
+        return targetTruthSensitivity;
     }
 }
