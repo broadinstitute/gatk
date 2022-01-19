@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
+import com.google.common.primitives.Doubles;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -20,6 +21,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * TODO
@@ -107,9 +109,16 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
         logger.info("Training complete.");
 
         final File outputScoresFile = new File(outputPrefix + ".scores.hdf5");
-        try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresFile, HDF5File.OpenMode.READ_ONLY)) {
+        try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresFile, HDF5File.OpenMode.READ_ONLY);
+             final HDF5File inputAnnotationsHDF5File = new HDF5File(annotationsHDF5File, HDF5File.OpenMode.READ_ONLY)) {
             IOUtils.canReadFile(outputScoresFileHDF5File.getFile());
-            final double[] scores = outputScoresFileHDF5File.readDoubleArray("/scores");
+            final List<Double> scores = Doubles.asList(outputScoresFileHDF5File.readDoubleArray("/scores"));
+            final List<Boolean> isTransition = Arrays.stream(inputAnnotationsHDF5File.readDoubleArray("/data/is_transition"))
+                    .mapToObj(d -> (d == 1))
+                    .collect(Collectors.toList());
+            final List<Boolean> isTruth = Arrays.stream(inputAnnotationsHDF5File.readDoubleArray("/data/is_truth"))
+                    .mapToObj(d -> (d == 1))
+                    .collect(Collectors.toList());
 
             // Find the VQSLOD cutoff values which correspond to the various tranches of calls requested by the user
             final int nCallsAtTruth = TrancheManager.countCallsAtTruth(dataManager.getData(), Double.NEGATIVE_INFINITY);

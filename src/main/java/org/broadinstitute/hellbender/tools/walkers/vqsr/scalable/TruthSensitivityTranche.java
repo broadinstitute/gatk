@@ -221,12 +221,12 @@ final class TruthSensitivityTranche extends Tranche {
         return null;
     }
 
-    protected static TruthSensitivityTranche trancheOfVariants(final List<Double> scores,
-                                                               final List<Boolean> isTransition,
-                                                               final List<Boolean> isTruth,
-                                                               final int minI,
-                                                               final double ts,
-                                                               final VariantTypeMode mode ) {
+    private static TruthSensitivityTranche trancheOfVariants(final List<Double> scores,
+                                                             final List<Boolean> isTransition,
+                                                             final List<Boolean> isTruth,
+                                                             final int minI,
+                                                             final double ts,
+                                                             final VariantTypeMode mode) {
         final Tranche basicTranche = Tranche.trancheOfVariants(scores, isTransition, isTruth, minI, mode);
         return new TruthSensitivityTranche(ts, basicTranche.minScore, basicTranche.numNovel, basicTranche.novelTiTv, basicTranche.accessibleTruthSites, basicTranche.callsAtTruthSites, mode, DEFAULT_TRANCHE_NAME);
     }

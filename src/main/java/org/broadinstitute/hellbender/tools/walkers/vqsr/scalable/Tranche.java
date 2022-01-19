@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,6 +11,7 @@ import java.io.PrintStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 /**
  * TODO
@@ -20,13 +23,13 @@ public class Tranche {
     static final String VALUE_SEPARATOR = ",";
     static final int EXPECTED_COLUMN_COUNT = 9;
 
+    final String name;
+    final int numNovel;
+    final double minScore;
+    private final VariantTypeMode mode;
+    final double novelTiTv;
     protected final int accessibleTruthSites;
     protected final int callsAtTruthSites;
-    final double minScore;  //minimum value of Score in this tranche
-    final double novelTiTv;  //titv value of novel sites in this tranche
-    final int numNovel;      //number of novel sites in this tranche
-    final VariantTypeMode mode;
-    final String name;       //Name of the tranche
 
     public Tranche(final String name,
                    final int numNovel,
@@ -35,13 +38,8 @@ public class Tranche {
                    final double novelTiTv,
                    final int accessibleTruthSites,
                    final int callsAtTruthSites) {
-        if (numNovel < 0) {
-            throw new GATKException("Invalid tranche - no. variants is < 0 : novel " + numNovel);
-        }
-
-        if (name == null) {
-            throw new GATKException("BUG -- name cannot be null");
-        }
+        Utils.nonNull(name);
+        ParamUtils.isPositiveOrZero(numNovel, "Number of novel variants cannot be negative.");
 
         this.name = name;
         this.numNovel = numNovel;
@@ -99,13 +97,15 @@ public class Tranche {
                                      final int minI,
                                      final VariantTypeMode mode) {
         // TODO validate lengths
-        int numNovel = 0, novelTi = 0, novelTv = 0;
+        int numNovel = 0;
+        int novelTi = 0;
+        int novelTv = 0;
 
-        final double minScore = data.get(minI).score;
-        for (final VariantDatum datum : data) {
-            if (datum.score >= minScore) {
+        final double minScore = scores.get(minI);
+        for (int i = 0; i < scores.size(); i++) {
+            if (scores.get(i) >= minScore) {
                 numNovel++;
-                if (datum.isTransition) {
+                if (isTransition.get(i)) {
                     novelTi++;
                 } else {
                     novelTv++;
@@ -113,10 +113,10 @@ public class Tranche {
             }
         }
 
-        final double novelTiTv = novelTi / Math.max(1.0 * novelTv, 1.0);
+        final double novelTiTv = novelTi / Math.max(novelTv, 1.);
 
-        final int accessibleTruthSites = VariantDatum.countCallsAtTruth(data, Double.NEGATIVE_INFINITY);
-        final int nCallsAtTruth = VariantDatum.countCallsAtTruth(data, minScore);
+        final int accessibleTruthSites = countCallsAtTruth(scores, isTruth, Double.NEGATIVE_INFINITY);
+        final int nCallsAtTruth = countCallsAtTruth(scores, isTruth, minScore);
 
         return new Tranche("unnamed", numNovel, minScore, mode, novelTiTv, accessibleTruthSites, nCallsAtTruth);
     }
@@ -130,39 +130,37 @@ public class Tranche {
                 throw new UserException.MalformedFile("Malformed tranches file. Invalid value for key " + key);
             }
         } else {
-            throw new UserException.MalformedFile("Malformed tranches file.  Missing required key " + key);
-        }
-    }
-
-    static double getOptionalDouble(final Map<String, String> bindings, final String key, final double defaultValue) {
-        try{
-            return Double.parseDouble(bindings.getOrDefault(key, String.valueOf(defaultValue)));
-        } catch (NumberFormatException e){
-            throw new UserException.MalformedFile("Malformed tranches file. Invalid value for key " + key);
+            throw new UserException.MalformedFile("Malformed tranches file. Missing required key " + key);
         }
     }
 
     static int getRequiredInteger(final Map<String, String> bindings, final String key) {
-        if ( bindings.containsKey(key) ) {
+        if (bindings.containsKey(key)) {
             try{
                 return Integer.parseInt(bindings.get(key));
-            } catch (NumberFormatException e){
+            } catch (final NumberFormatException e){
                 throw new UserException.MalformedFile("Malformed tranches file. Invalid value for key " + key);
             }
         } else {
-            throw new UserException.MalformedFile("Malformed tranches file.  Missing required key " + key);
+            throw new UserException.MalformedFile("Malformed tranches file. Missing required key " + key);
         }
     }
 
     static int getOptionalInteger(final Map<String, String> bindings, final String key, final int defaultValue) {
-        try{
+        try {
             return Integer.parseInt(bindings.getOrDefault(key, String.valueOf(defaultValue)));
-        } catch (NumberFormatException e){
+        } catch (final NumberFormatException e){
             throw new UserException.MalformedFile("Malformed tranches file. Invalid value for key " + key);
         }
     }
 
     private double getTruthSensitivity() {
-        return accessibleTruthSites > 0 ? callsAtTruthSites / (1.0*accessibleTruthSites) : 0.0;
+        return accessibleTruthSites > 0 ? callsAtTruthSites / ((double) accessibleTruthSites) : 0.;
+    }
+
+    private static int countCallsAtTruth(final List<Double> scores,
+                                         final List<Boolean> isTruth,
+                                         final double minScore) {
+        return (int) IntStream.range(0, scores.size()).filter(i -> isTruth.get(i) && scores.get(i) >= minScore).count();
     }
 }
