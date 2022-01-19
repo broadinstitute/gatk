@@ -5,7 +5,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
-public final class ExtractAnnotationsIntegrationTest extends CommandLineProgramTest {
+public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
     @Test
     public void test1kgp50Exomes() {
         final String[] arguments = {

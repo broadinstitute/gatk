@@ -37,7 +37,7 @@ import java.util.TreeSet;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public class ExtractAnnotations extends MultiVariantWalker {
+public class VariantAnnotationWalker extends MultiVariantWalker {
 
     /**
      * Any set of VCF files to use as lists of training or truth sites.
@@ -48,12 +48,6 @@ public class ExtractAnnotations extends MultiVariantWalker {
             fullName = StandardArgumentDefinitions.RESOURCE_LONG_NAME,
             doc = "") // TODO
     private List<FeatureInput<VariantContext>> resource = new ArrayList<>();
-
-    @Argument(
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Output annotations HDF5 file.")
-    private File outputAnnotationsHDF5File;
 
     @Argument(
             fullName = "mode",
@@ -98,22 +92,23 @@ public class ExtractAnnotations extends MultiVariantWalker {
     @Advanced
     @Argument(
             fullName = "trust-all-polymorphic",
-            doc = "Trust that all the input training sets unfiltered records contain only polymorphic sites to decrease runtime.",
+            doc = "Trust that unfiltered records in the resources contain only polymorphic sites to decrease runtime.",
             optional = true)
     private boolean trustAllPolymorphic = false;
 
-    private VariantDataManager dataManager;
+    VariantDataManager dataManager;
+    boolean isExtractTrainingAndTruthOnly;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     private final List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>(10);
+
+    public void beforeOnTraversalStart() {
+        // override
+    }
 
     @Override
     public void onTraversalStart() {
 
-        // fail early if we cannot create the output file
-        if ((outputAnnotationsHDF5File.exists() && !outputAnnotationsHDF5File.canWrite()) ||
-                (!outputAnnotationsHDF5File.exists() && !outputAnnotationsHDF5File.getAbsoluteFile().getParentFile().canWrite())) {
-            throw new UserException(String.format("Cannot create output annotations HDF5 file at %s.", outputAnnotationsHDF5File));
-        }
+        beforeOnTraversalStart();
 
         dataManager = new VariantDataManager(new ArrayList<>(useAnnotations), useASannotations, trustAllPolymorphic);
 
@@ -173,12 +168,12 @@ public class ExtractAnnotations extends MultiVariantWalker {
                                  final FeatureContext context) {
         if (vc != null && (ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
             if (VariantDataManager.checkVariationClass(vc, mode) && !useASannotations) {
-                dataManager.addDatum(context, vc, null, null);
+                dataManager.addDatum(context, vc, null, null, isExtractTrainingAndTruthOnly);
             } else if (useASannotations) {
                 for (final Allele allele : vc.getAlternateAlleles()) {
                     if (!GATKVCFConstants.isSpanningDeletion(allele) && VariantDataManager.checkVariationClass(vc, allele, mode)) {
                         //note that this may not be the minimal representation for the ref and alt allele
-                        dataManager.addDatum(context, vc, vc.getReference(), allele);
+                        dataManager.addDatum(context, vc, vc.getReference(), allele, isExtractTrainingAndTruthOnly);
                     }
                 }
             }
@@ -190,25 +185,22 @@ public class ExtractAnnotations extends MultiVariantWalker {
 
         consumeQueuedVariants(); // finish processing any queued variants
 
-        if (dataManager.getData().isEmpty()) {
-            throw new GATKException("None of the specified input variants were present in the resource VCFs.");
-        }
-        logger.info(String.format("Extracted annotations for %s truth variants.", dataManager.getData().stream().filter(v -> v.atTruthSite).count()));
-        logger.info(String.format("Extracted annotations for %s total variants.", dataManager.getData().size()));
-
-        writeAnnotationsHDF5(outputAnnotationsHDF5File);
-
-        logger.info(String.format("Annotations written to %s.", outputAnnotationsHDF5File.getAbsolutePath()));
+        afterTraversalSuccess();
 
         return true;
     }
 
-    private void writeAnnotationsHDF5(final File file) {
+    public void afterTraversalSuccess() {
+        // override
+    }
+
+    void writeAnnotationsHDF5(final File file) {
         try (final HDF5File hdf5File = new HDF5File(file, HDF5File.OpenMode.CREATE)) { // TODO allow appending
             IOUtils.canReadFile(hdf5File.getFile());
 
             hdf5File.makeStringArray("/data/annotation_names", dataManager.getAnnotationKeys().toArray(new String[0]));
             hdf5File.makeDoubleMatrix("/data/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new));
+            hdf5File.makeDoubleArray("/data/is_transition", dataManager.getData().stream().mapToDouble(vd -> vd.isTransition ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
         } catch (final RuntimeException exception) {

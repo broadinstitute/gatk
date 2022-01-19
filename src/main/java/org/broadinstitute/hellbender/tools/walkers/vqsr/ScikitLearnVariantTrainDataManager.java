@@ -38,7 +38,7 @@ public class ScikitLearnVariantTrainDataManager {
 
     public ScikitLearnVariantTrainDataManager(final List<String> annotationKeys, final ScikitLearnVariantTrainArgumentCollection VTAC) {
         this.data = Collections.emptyList();
-        final List<String> uniqueAnnotations = annotationKeys.stream().distinct().collect(Collectors.toList());
+        final List<String> uniqueAnnotations = annotationKeys.stream().distinct().sorted().collect(Collectors.toList());
         if (annotationKeys.size() != uniqueAnnotations.size()) {
             logger.warn("Ignoring duplicate annotations for recalibration %s.", Utils.getDuplicatedItems(annotationKeys));
         }
