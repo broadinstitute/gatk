@@ -193,6 +193,8 @@ public class ExtractAnnotations extends MultiVariantWalker {
         if (dataManager.getData().isEmpty()) {
             throw new GATKException("None of the specified input variants were present in the resource VCFs.");
         }
+        logger.info(String.format("Extracted annotations for %s truth variants.", dataManager.getData().stream().filter(v -> v.atTruthSite).count()));
+        logger.info(String.format("Extracted annotations for %s total variants.", dataManager.getData().size()));
 
         writeAnnotationsHDF5(outputAnnotationsHDF5File);
 
@@ -209,8 +211,6 @@ public class ExtractAnnotations extends MultiVariantWalker {
             hdf5File.makeDoubleMatrix("/data/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new));
             hdf5File.makeDoubleArray("/data/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
-
-            logger.info(String.format("Annotations written to %s.", file.getAbsolutePath()));
         } catch (final RuntimeException exception) {
             throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
                     exception, file.getAbsolutePath()));
