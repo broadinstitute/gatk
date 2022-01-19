@@ -1,11 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -15,8 +11,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;

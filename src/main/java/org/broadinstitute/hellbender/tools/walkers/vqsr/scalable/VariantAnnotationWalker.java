@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
