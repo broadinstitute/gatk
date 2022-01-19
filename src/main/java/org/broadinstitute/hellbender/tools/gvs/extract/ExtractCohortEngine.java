@@ -270,15 +270,15 @@ public class ExtractCohortEngine {
         final Comparator<GenericRecord> sortingCollectionComparator = new Comparator<GenericRecord>() {
             @Override
             public int compare( GenericRecord o1, GenericRecord o2 ) {
-                final long firstPosition = Long.parseLong(o1.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-                final long secondPosition = Long.parseLong(o2.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
+                final long firstPosition = (Long) o1.get(SchemaUtils.LOCATION_FIELD_NAME);
+                final long secondPosition = (Long) o2.get(SchemaUtils.LOCATION_FIELD_NAME);
 
                 final int result = Long.compare(firstPosition, secondPosition);
                 if (result != 0) {
                     return result;
                 } else {
-                    final long firstSample = Long.parseLong(o1.get(SchemaUtils.SAMPLE_ID_FIELD_NAME).toString());
-                    final long secondSample = Long.parseLong(o2.get(SchemaUtils.SAMPLE_ID_FIELD_NAME).toString());
+                    final long firstSample = (Long) o1.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
+                    final long secondSample = (Long) o2.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
                     return Long.compare(firstSample, secondSample);
                 }
             }
@@ -330,7 +330,7 @@ public class ExtractCohortEngine {
 
         for (final GenericRecord queryRow : avroReader) {
             long location = (Long) queryRow.get(SchemaUtils.LOCATION_FIELD_NAME);
-            int length = Integer.parseInt(queryRow.get(SchemaUtils.LENGTH_FIELD_NAME).toString());
+            int length = ((Long) queryRow.get(SchemaUtils.LENGTH_FIELD_NAME)).intValue();
 
             if (vbs.containsVariant(location, location + length) ) {
                 sortingCollection.add(queryRow);
