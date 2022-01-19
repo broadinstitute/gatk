@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -11,8 +15,11 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 final class VariantDataManager {
@@ -43,7 +50,8 @@ final class VariantDataManager {
     void addDatum(final FeatureContext featureContext, 
                   final VariantContext vc, 
                   final Allele refAllele, 
-                  final Allele altAllele) {
+                  final Allele altAllele,
+                  final boolean isExtractTrainingAndTruthOnly) {
         final VariantDatum datum = new VariantDatum();
 
         // Populate the datum with lots of fields from the VariantContext, unfortunately the VC is too big so we just
@@ -55,14 +63,14 @@ final class VariantDataManager {
         // non-deterministic because order of calls depends on load of machine TODO SL: not sure what this means?
         datum.loc = new SimpleInterval(vc);
 
-        datum.isSNP = vc.isSNP() && vc.isBiallelic();
+        datum.isTransition = vc.isSNP() && vc.isBiallelic() && GATKVariantContextUtils.isTransition(vc);
 
         // Loop through the training data sets and if they overlap this locus (and allele, if applicable) then update
         // the training status appropriately. The locus used to find training set variants is retrieved
         // by parseTrainingSets from the FeatureContext argument.
         parseTrainingSets(featureContext, vc, datum, useASannotations, trustAllPolymorphic);
 
-        if (datum.atTrainingSite || datum.atTruthSite) {
+        if (!isExtractTrainingAndTruthOnly || (datum.atTrainingSite || datum.atTruthSite)) {
             data.add(datum);
         }
     }
@@ -227,5 +235,10 @@ final class VariantDataManager {
             default:
                 throw new IllegalStateException("Encountered unknown mode: " + mode);
         }
+    }
+
+    public void setScores(final List<VariantDatum> data,
+                          final double[] scores) {
+        IntStream.range(0, data.size()).forEach(i -> data.get(i).score = scores[i]);
     }
 }
