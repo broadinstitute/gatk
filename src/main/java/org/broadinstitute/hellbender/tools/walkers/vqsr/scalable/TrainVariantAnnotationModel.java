@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
@@ -52,6 +53,13 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             doc = "Output prefix.")
     private String outputPrefix;
 
+    // TODO get rid of this argument, it's only needed for tranches
+    @Argument(
+            fullName = "mode",
+            shortName = "mode",
+            doc = "Variant type to extract")
+    public VariantTypeMode mode = VariantTypeMode.SNP;
+
     /**
      * Add truth sensitivity slices through the call set at the given values. The default values are 100.0, 99.9, 99.0, and 90.0
      * which will result in 4 estimated tranches in the final call set: the full set of calls (100% sensitivity at the accessible
@@ -65,17 +73,19 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             optional = true)
     private List<Double> truthSensitivityTranches = new ArrayList<>(Arrays.asList(100.0, 99.9, 99.0, 90.0));
 
-    private PrintStream tranchesStream;
-
     @Override
     protected Object doWork() {
 
         IOUtils.canReadFile(pythonScriptFile);
+        IOUtils.canReadFile(annotationsHDF5File);
+        IOUtils.canReadFile(hyperparametersJSONFile);
 
         PythonScriptExecutor.checkPythonEnvironmentForPackage("sklearn");
         PythonScriptExecutor.checkPythonEnvironmentForPackage("dill");
 
+        // TODO fail early for outputs
         final File outputTranchesFile = new File(outputPrefix + ".tranches.csv");
+        final PrintStream tranchesStream;
         try {
             tranchesStream = new PrintStream(outputTranchesFile);
         } catch (final FileNotFoundException e) {
@@ -96,22 +106,21 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
 
         logger.info("Training complete.");
 
-//        final File outputScoresFile = new File(outputPrefix + ".scores.hdf5");
-//        try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresFile, HDF5File.OpenMode.READ_ONLY)) {
-//            IOUtils.canReadFile(outputScoresFileHDF5File.getFile());
-//            final double[] scores = outputScoresFileHDF5File.readDoubleArray("/scores");
-//            dataManager.setScores(dataManager.getData(), scores);
-//        } catch (final RuntimeException exception) {
-//            throw new GATKException(String.format("Exception encountered during reading of scores from %s: %s",
-//                    outputScoresFile.getAbsolutePath(), exception));
-//        }
+        final File outputScoresFile = new File(outputPrefix + ".scores.hdf5");
+        try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresFile, HDF5File.OpenMode.READ_ONLY)) {
+            IOUtils.canReadFile(outputScoresFileHDF5File.getFile());
+            final double[] scores = outputScoresFileHDF5File.readDoubleArray("/scores");
 
-//        // Find the VQSLOD cutoff values which correspond to the various tranches of calls requested by the user
-//        final int nCallsAtTruth = TrancheManager.countCallsAtTruth(dataManager.getData(), Double.NEGATIVE_INFINITY);
-//        final TrancheManager.SelectionMetric metric = new TrancheManager.TruthSensitivityMetric(nCallsAtTruth);
-//        final List<? extends Tranche> tranches = TrancheManager.findTranches(dataManager.getData(), truthSensitivityTranches, metric, VTAC.MODE);
-//        tranchesStream.print(TruthSensitivityTranche.printHeader());
-//        tranchesStream.print(Tranche.tranchesString(tranches));
+            // Find the VQSLOD cutoff values which correspond to the various tranches of calls requested by the user
+            final int nCallsAtTruth = TrancheManager.countCallsAtTruth(dataManager.getData(), Double.NEGATIVE_INFINITY);
+            final TrancheManager.SelectionMetric metric = new TrancheManager.TruthSensitivityMetric(nCallsAtTruth);
+            final List<? extends Tranche> tranches = TrancheManager.findTranches(dataManager.getData(), truthSensitivityTranches, metric, mode);
+            tranchesStream.print(TruthSensitivityTranche.printHeader());
+            tranchesStream.print(Tranche.tranchesString(tranches));
+        } catch (final RuntimeException exception) {
+            throw new GATKException(String.format("Exception encountered during reading of scores from %s: %s",
+                    outputScoresFile.getAbsolutePath(), exception));
+        }
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 

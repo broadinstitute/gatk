@@ -14,6 +14,7 @@ public class TrainVariantAnnotationModelIntegrationTest extends CommandLineProgr
                 "-O", "/home/slee/working/vqsr/scalable/train-test/test.snp",
                 "--python-script", "/home/slee/working/vqsr/scalable/train-test/isolation-forest.py",
                 "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
+                "-mode", "SNP",
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
@@ -26,6 +27,7 @@ public class TrainVariantAnnotationModelIntegrationTest extends CommandLineProgr
                 "-O", "/home/slee/working/vqsr/scalable/train-test/test.indel",
                 "--python-script", "/home/slee/working/vqsr/scalable/train-test/isolation-forest.py",
                 "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
+                "-mode", "INDEL",
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
