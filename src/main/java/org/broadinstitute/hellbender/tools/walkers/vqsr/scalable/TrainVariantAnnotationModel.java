@@ -120,15 +120,15 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
                     .mapToObj(d -> (d == 1))
                     .collect(Collectors.toList());
 
-            // Find the VQSLOD cutoff values which correspond to the various tranches of calls requested by the user
+            // Find the score cutoff values which correspond to the various tranches of calls requested by the user
             final int nCallsAtTruth = TruthSensitivityTranche.countCallsAtTruth(scores, isTruth, Double.NEGATIVE_INFINITY);
             final TruthSensitivityTranche.TruthSensitivityMetric metric = new TruthSensitivityTranche.TruthSensitivityMetric(nCallsAtTruth);
             final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(scores, isTransition, isTruth, truthSensitivityTranches, metric, mode);
             tranchesStream.print(TruthSensitivityTranche.printHeader());
             tranchesStream.print(TruthSensitivityTranche.tranchesString(tranches));
         } catch (final RuntimeException exception) {
-            throw new GATKException(String.format("Exception encountered during reading of scores from %s: %s",
-                    outputScoresFile.getAbsolutePath(), exception));
+            throw new GATKException(String.format("Exception encountered during reading of scores from %s or annotations from %s: %s",
+                    outputScoresFile.getAbsolutePath(), annotationsHDF5File.getAbsolutePath(), exception));
         }
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));

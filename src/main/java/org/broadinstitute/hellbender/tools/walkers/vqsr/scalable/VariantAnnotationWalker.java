@@ -84,7 +84,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
     @Argument(
             fullName = "ignore-all-filters",
-            doc = "If specified, the variant recalibrator will ignore all input filters. Useful to rerun the VQSR from a filtered output file.",
+            doc = "If specified, ignore all input filters.",
             optional = true)
     private boolean ignoreAllFilters = false;
 

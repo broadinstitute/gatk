@@ -37,17 +37,17 @@ final class TruthSensitivityTranche {
     private static final int EXPECTED_COLUMN_COUNT = 9;
 
     private final String name;
-    private final int numNovel;
+    private final int numSites;
     private final double minScore;
     private final VariantTypeMode mode;
-    private final double novelTiTv;
+    private final double tiTv;
     private final int accessibleTruthSites;
     private final int callsAtTruthSites;
     private final double targetTruthSensitivity;
 
     private TruthSensitivityTranche(final double targetTruthSensitivity,
-                                    final int numNovel,
-                                    final double novelTiTv,
+                                    final int numSites,
+                                    final double tiTv,
                                     final double minScore,
                                     final String name,
                                     final VariantTypeMode mode,
@@ -55,12 +55,12 @@ final class TruthSensitivityTranche {
                                     final int callsAtTruthSites) {
         // TODO more validation
         Utils.nonNull(name);
-        ParamUtils.isPositiveOrZero(numNovel, "Number of novel variants cannot be negative.");
+        ParamUtils.isPositiveOrZero(numSites, "Number of variants cannot be negative.");
         ParamUtils.inRange(targetTruthSensitivity, 0., 100.,"Target truth sensitivity must be in [0, 100].");
 
         this.targetTruthSensitivity = targetTruthSensitivity;
-        this.numNovel = numNovel;
-        this.novelTiTv = novelTiTv;
+        this.numSites = numSites;
+        this.tiTv = tiTv;
         this.minScore = minScore;
         this.name = name;
         this.mode = mode;
@@ -78,7 +78,7 @@ final class TruthSensitivityTranche {
 
             stream.println("# Variant quality score tranches file");
             stream.println("# Version number " + CURRENT_VERSION);
-            stream.println("targetTruthSensitivity,numNovel,novelTiTv,minScore,filterName,mode,accessibleTruthSites,callsAtTruthSites,truthSensitivity");
+            stream.println("targetTruthSensitivity,numSites,tiTv,minScore,filterName,mode,accessibleTruthSites,callsAtTruthSites,truthSensitivity");
 
             return bytes.toString();
         }
@@ -89,8 +89,8 @@ final class TruthSensitivityTranche {
 
     @Override
     public String toString() {
-        return String.format("TruthSensitivityTranche targetTruthSensitivity=%.2f minScore=%.4f novel=(%d @ %.4f) truthSites(%d accessible, %d called), name=%s]",
-                targetTruthSensitivity, minScore, numNovel, novelTiTv, accessibleTruthSites, callsAtTruthSites, name);
+        return String.format("TruthSensitivityTranche targetTruthSensitivity=%.2f minScore=%.4f numSites=(%d @ %.4f) truthSites(%d accessible, %d called), name=%s]",
+                targetTruthSensitivity, minScore, numSites, tiTv, accessibleTruthSites, callsAtTruthSites, name);
     }
 
     /**
@@ -124,8 +124,8 @@ final class TruthSensitivityTranche {
                     }
                     tranches.add(new TruthSensitivityTranche(
                             getRequiredDouble(bindings, "targetTruthSensitivity"),
-                            getRequiredInteger(bindings, "numNovel"),
-                            getRequiredDouble(bindings, "novelTiTv"),
+                            getRequiredInteger(bindings, "numSites"),
+                            getRequiredDouble(bindings, "tiTv"),
                             getRequiredDouble(bindings, "minScore"),
                             bindings.get("filterName"),
                             VariantTypeMode.valueOf(bindings.get("mode")),
@@ -240,28 +240,28 @@ final class TruthSensitivityTranche {
                                                              final int minI,
                                                              final double targetTruthSensitivity,
                                                              final VariantTypeMode mode) {
-        int numNovel = 0;
-        int novelTi = 0;
-        int novelTv = 0;
+        int numSites = 0;
+        int ti = 0;
+        int tv = 0;
 
         final double minScore = sortedScores.get(minI);
         for (int i = 0; i < sortedScores.size(); i++) {
             if (sortedScores.get(i) >= minScore) {
-                numNovel++;
+                numSites++;
                 if (sortedIsTransition.get(i)) {
-                    novelTi++;
+                    ti++;
                 } else {
-                    novelTv++;
+                    tv++;
                 }
             }
         }
 
-        final double novelTiTv = novelTi / Math.max(novelTv, 1.);
+        final double tiTv = ti / Math.max(tv, 1.);
 
         final int accessibleTruthSites = countCallsAtTruth(sortedScores, sortedIsTruth, Double.NEGATIVE_INFINITY);
         final int callsAtTruthSites = countCallsAtTruth(sortedScores, sortedIsTruth, minScore);
 
-        return new TruthSensitivityTranche(targetTruthSensitivity, numNovel, novelTiTv, minScore, DEFAULT_TRANCHE_NAME, mode, accessibleTruthSites, callsAtTruthSites);
+        return new TruthSensitivityTranche(targetTruthSensitivity, numSites, tiTv, minScore, DEFAULT_TRANCHE_NAME, mode, accessibleTruthSites, callsAtTruthSites);
     }
 
     public static class TrancheComparator implements Comparator<TruthSensitivityTranche> {
@@ -297,7 +297,7 @@ final class TruthSensitivityTranche {
 
     private String getTrancheString(final TruthSensitivityTranche prev) {
         return String.format("%.2f,%d,%.4f,%.4f,VQSRTranche%s%.2fto%.2f,%s,%d,%d,%.4f%n",
-                targetTruthSensitivity, numNovel, novelTiTv, minScore, mode.toString(),
+                targetTruthSensitivity, numSites, tiTv, minScore, mode.toString(),
                 (prev == null ? 0.0 : prev.targetTruthSensitivity), targetTruthSensitivity, mode.toString(), accessibleTruthSites, callsAtTruthSites, getTruthSensitivity());
 
     }
