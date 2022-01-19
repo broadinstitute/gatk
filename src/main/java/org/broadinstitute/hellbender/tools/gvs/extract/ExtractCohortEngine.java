@@ -696,7 +696,8 @@ public class ExtractCohortEngine {
         }
 
         // Add inferred genotypes
-        for (int sampleId = samplesNotEncountered.nextSetBit(0); sampleId >= 0; sampleId = samplesNotEncountered.nextSetBit(sampleId+1)) {
+        // painful casting back and forth between int and Long (as used in the map).  Good candidate to simplify
+        for (Long sampleId = Long.valueOf(samplesNotEncountered.nextSetBit(0)); sampleId >= 0; sampleId = Long.valueOf(samplesNotEncountered.nextSetBit(sampleId.intValue()+1))) {
             genotypeBuilder.reset(false);
             genotypeBuilder.name(sampleIdToName.get(sampleId));
             genotypeBuilder.alleles(gtAlleles);
