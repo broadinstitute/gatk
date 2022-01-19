@@ -10,6 +10,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.IntStream;
 
 public class TrancheManager {
 
@@ -156,11 +157,5 @@ public class TrancheManager {
         }
 
         return null;
-    }
-
-    public static int countCallsAtTruth(final List<VariantDatum> data, double minLOD ) {
-        int n = 0;
-        for ( VariantDatum d : data ) { n += (d.atTruthSite && d.score >= minLOD ? 1 : 0); }
-        return n;
     }
 }
