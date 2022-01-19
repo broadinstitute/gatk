@@ -14,11 +14,11 @@ import org.testng.annotations.Test;
 public class ScikitLearnVariantTrainIntegrationTest extends CommandLineProgramTest {
 
     @Test
-    public void test1kgp50Exomes() {
+    public void test1kgp50ExomesSNP() {
         final String[] arguments = {
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/monolithic-test/test",
+                "-O", "/home/slee/working/vqsr/scalable/monolithic-test/test.snp",
                 "--python-script", "/home/slee/working/vqsr/scalable/monolithic-test/isolation-forest.py",
                 "--hyperparameters-json", "/home/slee/working/scalable/monolithic-test/hyperparameters.json",
                 "--trust-all-polymorphic",
@@ -32,6 +32,29 @@ public class ScikitLearnVariantTrainIntegrationTest extends CommandLineProgramTe
                 "--resource:hapmap,known=false,training=true,truth=true,prior=15", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
                 "--resource:omni,known=false,training=true,truth=true,prior=12", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
                 "--resource:1000G,known=false,training=true,truth=false,prior=10", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+//                "--resource:dbsnp,known=true,training=false,truth=false,prior=7", "/mnt/4AB658D7B658C4DB/working/ref/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
+    public void test1kgp50ExomesIndel() {
+        final String[] arguments = {
+                "-L", "chr1",
+                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
+                "-O", "/home/slee/working/vqsr/scalable/monolithic-test/test.indel",
+                "--python-script", "/home/slee/working/vqsr/scalable/monolithic-test/isolation-forest.py",
+                "--hyperparameters-json", "/home/slee/working/scalable/monolithic-test/hyperparameters.json",
+                "--trust-all-polymorphic",
+                "-an", "FS",
+                "-an", "ReadPosRankSum",
+                "-an", "MQRankSum",
+                "-an", "QD",
+                "-an", "SOR",
+                "-an", "MQ",
+                "-mode", "INDEL",
+                "--resource:mills,known=false,training=true,truth=true,prior=12", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
 //                "--resource:dbsnp,known=true,training=false,truth=false,prior=7", "/mnt/4AB658D7B658C4DB/working/ref/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
                 "--verbosity", "DEBUG"
         };
