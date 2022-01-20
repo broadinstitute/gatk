@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramIntegrationTest;
 import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;

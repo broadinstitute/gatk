@@ -1,14 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
-import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
-
-import java.io.File;
 
 /**
  * TODO
@@ -22,21 +17,9 @@ import java.io.File;
 @DocumentedFeature
 public final class ExtractVariantAnnotations extends VariantAnnotationWalker {
 
-    @Argument(
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Output annotations HDF5 file.")
-    private File outputAnnotationsHDF5File;
-
     @Override
     public void beforeOnTraversalStart() {
         isExtractTrainingAndTruthOnly = true;
-
-        // fail early if we cannot create the output file
-        if ((outputAnnotationsHDF5File.exists() && !outputAnnotationsHDF5File.canWrite()) ||
-                (!outputAnnotationsHDF5File.exists() && !outputAnnotationsHDF5File.getAbsoluteFile().getParentFile().canWrite())) {
-            throw new UserException(String.format("Cannot create output file at %s.", outputAnnotationsHDF5File));
-        }
     }
 
     @Override
@@ -49,8 +32,10 @@ public final class ExtractVariantAnnotations extends VariantAnnotationWalker {
         logger.info(String.format("Extracted annotations for %s total variants.", dataManager.getData().size()));
 
         logger.info("Writing annotations...");
-        writeAnnotationsHDF5(outputAnnotationsHDF5File);
-        logger.info(String.format("Annotations written to %s.", outputAnnotationsHDF5File.getAbsolutePath()));
+        writeAnnotationsHDF5();
+
+        logger.info("Writing VCF...");
+        writeVCF(true, false);
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
     }
