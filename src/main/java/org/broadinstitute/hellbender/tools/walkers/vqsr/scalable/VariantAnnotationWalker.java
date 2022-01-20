@@ -208,17 +208,13 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
     private void addVariantDatum(final VariantContext vc,
                                  final FeatureContext context) {
         if (vc != null && (ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
-            if (VariantDataManager.checkVariationClass(vc, mode)) {
-                if (!useASannotations) {
-                    // TODO need to add an allele to enable passing of training sites-only VCF to score tool for marking of training sites
-                    // TODO should probably just store all alleles
-                    dataManager.addDatum(context, vc, vc.getReference(), vc.getAlternateAlleles().get(0), isExtractTrainingAndTruthOnly);
-                } else {
-                    for (final Allele allele : vc.getAlternateAlleles()) {
-                        if (!GATKVCFConstants.isSpanningDeletion(allele) && VariantDataManager.checkVariationClass(vc, allele, mode)) {
-                            //note that this may not be the minimal representation for the ref and alt allele
-                            dataManager.addDatum(context, vc, vc.getReference(), allele, isExtractTrainingAndTruthOnly);
-                        }
+            if (VariantDataManager.checkVariationClass(vc, mode) && !useASannotations) {
+                dataManager.addDatum(context, vc, vc.getReference(), null, isExtractTrainingAndTruthOnly);
+            } else if (useASannotations) {
+                for (final Allele allele : vc.getAlternateAlleles()) {
+                    if (!GATKVCFConstants.isSpanningDeletion(allele) && VariantDataManager.checkVariationClass(vc, allele, mode)) {
+                        //note that this may not be the minimal representation for the ref and alt allele
+                        dataManager.addDatum(context, vc, vc.getReference(), allele, isExtractTrainingAndTruthOnly);
                     }
                 }
             }
@@ -269,9 +265,14 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         // create dummy alleles to be used
         List<Allele> alleles = Arrays.asList(Allele.create("N", true), Allele.create(DUMMY_ALLELE, false));
 
-        for (final VariantDatum datum : data) {
-            if (useASannotations || writeAlleles) {
+        for (int i = 0; i < data.size(); i++) {
+            final VariantDatum datum = data.get(i);
+            if (useASannotations) {
                 alleles = Arrays.asList(datum.referenceAllele, datum.alternateAllele); //use the alleles to distinguish between multiallelics in AS mode
+            } else if (writeAlleles) {
+                final List<Allele> allelesToWrite = dataManager.alternateAlleles.get(i);
+                allelesToWrite.add(0, datum.referenceAllele);
+                alleles = allelesToWrite;
             }
             final VariantContextBuilder builder = new VariantContextBuilder(SCORE_KEY, datum.loc.getContig(), datum.loc.getStart(), datum.loc.getEnd(), alleles);
             builder.attribute(VCFConstants.END_KEY, datum.loc.getEnd());
