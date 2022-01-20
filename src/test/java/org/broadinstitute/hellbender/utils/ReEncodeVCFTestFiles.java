@@ -44,7 +44,21 @@ public class ReEncodeVCFTestFiles extends CommandLineProgramTest {
                 //NOTE: In addition to these files, there is one remote test file (testSelectVariants_SimpleSelection.vcf)
                 // in the gcp staging area that will need to be updated.
                 //
-                // Test files that will get re-encoded as part of the 4.3 upgrade.
+                // Test input files that need to be re-encoded to get outputs to match re-encoded outputs
+                // Some of these files could not be re-encoded (or rather, fully decoded) without modifications, it., to the header
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/CalculateGenotypePosteriors/NA12878.Jan2013.haplotypeCaller.subset.indels.vcf"},
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/CalculateGenotypePosteriors/CEUtrioTest_chr1.vcf"},
+//                {"src/test/resources/large/1000G.phase3.broad.withGenotypes.chr20.10100000.vcf"},
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/CalculateGenotypePosteriors/overlappingVariants.vcf"},
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/LeftAlignAndTrimVariants/test_left_align_hg38.vcf"},
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/gvcfForReblocking.g.vcf"},
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/expected.aggressiveQualFiltering.g.vcf"},
+//                // required addition of MLEAC/MLEAF info header lines in order to fully decode
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/nonRefAD.g.vcf"},
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/testOneSampleAsForGnomAD.expected.g.vcf"},
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/prod.chr20snippet.withRawMQ.g.vcf"},
+
+                // Expected output files that will get re-encoded as part of the 4.3 upgrade.
 //                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/SelectVariants/vcfexample2.vcf"},
 //                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/SelectVariants/complexExample1.vcf"},
 //                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/SelectVariants/haploid-multisample.vcf"},
