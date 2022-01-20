@@ -180,7 +180,8 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     return;
                 }
             } else {
-                if (!isHighQuality(vc) || (isSingleSample && !GATKVariantContextUtils.genotypeHasConcreteAlt(vc.getGenotype(0).getAlleles()))) { //TODO: check * genotypes somehow
+                if ((!isHighQuality(vc) || (isSingleSample && !GATKVariantContextUtils.genotypeHasConcreteAlt(vc.getGenotype(0).getAlleles())))
+                && IGNORE_HOM_REF_ATTRIBUTES) { //TODO: check * genotypes somehow
                     return;
                 }
                 final VariantContext match;
