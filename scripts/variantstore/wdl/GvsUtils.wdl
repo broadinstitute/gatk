@@ -100,7 +100,7 @@ task SplitIntervals {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     mkdir interval-files
-    gatk --java-options "-Xmx2g" ~{gatkTool} \
+    gatk --java-options "-Xmx12g" ~{gatkTool} \
     --dont-mix-contigs \
     -R ~{ref_fasta} \
     ~{"-L " + intervals} \
@@ -126,7 +126,7 @@ task SplitIntervals {
   runtime {
     docker: "us.gcr.io/broad-gatk/gatk:4.2.3.0"
     bootDiskSizeGb: 15
-    memory: "3 GB"
+    memory: "16 GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: 3
     cpu: 1
