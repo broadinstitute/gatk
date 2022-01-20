@@ -121,10 +121,8 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
     VariantDataManager dataManager;
     boolean isExtractTrainingAndTruthOnly;
-    private VariantContextWriter vcfWriter;
     File outputAnnotationsHDF5File;
     private File outputVCFFile;
-    private String vcfSuffix;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     private final List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>(10);
 
@@ -141,7 +139,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
         beforeOnTraversalStart();
 
-        vcfSuffix = getVCFSuffix();
+        final String vcfSuffix = getVCFSuffix();
 
         outputAnnotationsHDF5File = new File(outputPrefix + ANNOTATIONS_HDF5_SUFFIX);
         outputVCFFile = new File(outputPrefix + vcfSuffix);
@@ -259,7 +257,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
     void writeVCF(final boolean writeAlleles,
                   final boolean writeScores) {
-        vcfWriter = createVCFWriter(outputVCFFile);
+        final VariantContextWriter vcfWriter = createVCFWriter(outputVCFFile);
         vcfWriter.writeHeader(constructVCFHeader());
 
         final List<VariantDatum> data = dataManager.getData();
