@@ -28,10 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 
 @CommandLineProgramProperties(
@@ -80,7 +77,7 @@ public class WeightedSplitIntervals extends GATKTool {
     public boolean dontMixContigs = false;
 
     @Argument(doc = "BED file of genomic weights, represented by the score field", fullName = WEIGHTS_BED_FILE_FULL_NAME, optional = false)
-    public File weightsBedFile;
+    public GATKPath weightsBedFile;
 
     @Argument(doc = "Default weight (per base) to use if weight not found in BED file", fullName = DEFAULT_WEIGHT_FULL_NAME, optional = true)
     public long defaultWeightPerBase = 0L;
@@ -122,13 +119,15 @@ public class WeightedSplitIntervals extends GATKTool {
             WeightedInterval wi = (WeightedInterval) iter.next();
 
             // if we're not mixing contigs, but we switched contigs, emit the list
-            if (dontMixContigs && lastContig != null && lastContig != wi.getContig() ) {
+            if (dontMixContigs && lastContig != null && !lastContig.equals(wi.getContig()) ) {
                 // write out the current list (uniqued and sorted) and start a new one
                 currentList.uniqued().sorted().write(new File(outputDir, prefix + String.format(formatString, scatterPiece++) + extension));
                 currentList = new IntervalList(sequenceDictionary);
-                lastContig = wi.getContig();
                 cumulativeWeight = 0;
             }
+
+            // in either case, set the last seen contig
+            lastContig = wi.getContig();
 
             // if the interval fits completely, just add it
             if (cumulativeWeight + wi.getWeight() <= targetWeightPerScatter ) {
@@ -153,7 +152,6 @@ public class WeightedSplitIntervals extends GATKTool {
                 // add uniqued, sorted output list and reset
                 currentList.uniqued().sorted().write(new File(outputDir, prefix + String.format(formatString, scatterPiece++) + extension));
                 currentList = new IntervalList(sequenceDictionary);
-                lastContig = wi.getContig();
                 cumulativeWeight = 0;
             }
         }
