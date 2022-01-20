@@ -17,7 +17,7 @@ workflow GvsExtractCallset {
         # For reblocking v1, the default is "SIXTY" instead of "FORTY"
         String? drop_state = "FORTY"
 
-       // TODO: move this to a public bucket
+       # TODO: move this to a public bucket
        String? interval_weights_bed = "gs://broad-dsp-spec-ops/gvs/weights/gvs_vet_weights_1kb.bed"
 
        # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
