@@ -22,6 +22,7 @@ final class VariantDataManager {
     private static final int INITIAL_SIZE = 1000000;
 
     private final List<VariantDatum> data;
+    final List<List<Allele>> alternateAlleles;
     private final List<String> annotationKeys;
     private final List<VariantSet> variantSets;
     private final boolean useASannotations; //TODO maybe just pass this and the below as an argument collection
@@ -31,6 +32,7 @@ final class VariantDataManager {
                        final boolean useASannotations,
                        final boolean trustAllPolymorphic) {
         this.data = new ArrayList<>(INITIAL_SIZE);
+        this.alternateAlleles = new ArrayList<>(INITIAL_SIZE);
         final List<String> uniqueAnnotations = annotationKeys.stream().distinct().sorted().collect(Collectors.toList()); // sort alphabetically
         if (annotationKeys.size() != uniqueAnnotations.size()) {
             logger.warn(String.format("Ignoring duplicate annotations for recalibration %s.", Utils.getDuplicatedItems(annotationKeys)));
@@ -66,6 +68,11 @@ final class VariantDataManager {
 
         if (!isExtractTrainingAndTruthOnly || (datum.atTrainingSite || datum.atTruthSite)) {
             data.add(datum);
+
+            // TODO clean this up; need to store alleles to enable passing of training sites-only VCF to score tool for marking of training sites
+            if (isExtractTrainingAndTruthOnly) {
+                alternateAlleles.add(vc.getAlternateAlleles());
+            }
         }
     }
 
