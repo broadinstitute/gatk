@@ -104,7 +104,7 @@ task SplitIntervals {
     --dont-mix-contigs \
     -R ~{ref_fasta} \
     ~{"-L " + intervals} \
-    ~{"--weight-bed-file " + interval_weights_bed}
+    ~{"--weight-bed-file " + interval_weights_bed} \
     -scatter ~{scatter_count} \
     -O interval-files \
     --interval-file-num-digits 10 \
