@@ -108,22 +108,20 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
 
         logger.info("Training complete.");
 
+        // TODO some duplication of code here and in scoring tool
         final File outputScoresFile = new File(outputPrefix + ".scores.hdf5");
         try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresFile, HDF5File.OpenMode.READ_ONLY);
              final HDF5File inputAnnotationsHDF5File = new HDF5File(annotationsHDF5File, HDF5File.OpenMode.READ_ONLY)) {
             IOUtils.canReadFile(outputScoresFileHDF5File.getFile());
             final List<Double> scores = Doubles.asList(outputScoresFileHDF5File.readDoubleArray("/scores"));
-            final List<Boolean> isTransition = Arrays.stream(inputAnnotationsHDF5File.readDoubleArray("/data/is_transition"))
-                    .mapToObj(d -> (d == 1))
-                    .collect(Collectors.toList());
-            final List<Boolean> isTruth = Arrays.stream(inputAnnotationsHDF5File.readDoubleArray("/data/is_truth"))
-                    .mapToObj(d -> (d == 1))
-                    .collect(Collectors.toList());
+            final List<Boolean> isBiallelicSNP = readBooleanList(inputAnnotationsHDF5File, "/data/is_biallelic_snp");
+            final List<Boolean> isTransition = readBooleanList(inputAnnotationsHDF5File, "/data/is_transition");
+            final List<Boolean> isTruth = readBooleanList(inputAnnotationsHDF5File, "/data/is_truth");
 
             // Find the score cutoff values which correspond to the various tranches of calls requested by the user
             final int nCallsAtTruth = TruthSensitivityTranche.countCallsAtTruth(scores, isTruth, Double.NEGATIVE_INFINITY);
             final TruthSensitivityTranche.TruthSensitivityMetric metric = new TruthSensitivityTranche.TruthSensitivityMetric(nCallsAtTruth);
-            final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(scores, isTransition, isTruth, truthSensitivityTranches, metric, mode);
+            final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(scores, isBiallelicSNP, isTransition, isTruth, truthSensitivityTranches, metric, mode);
             tranchesStream.print(TruthSensitivityTranche.printHeader());
             tranchesStream.print(TruthSensitivityTranche.tranchesString(tranches));
         } catch (final RuntimeException exception) {
@@ -134,6 +132,13 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
+    }
+
+    private static List<Boolean> readBooleanList(final HDF5File annotationsHDF5File,
+                                                 final String path) {
+        return Arrays.stream(annotationsHDF5File.readDoubleArray(path))
+                .mapToObj(d -> (d == 1))
+                .collect(Collectors.toList());
     }
 
     private static List<String> composePythonArguments(final File rawAnnotationsFile,

@@ -22,7 +22,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /*
- * TODO
+ * TODO this whole class needs heavy refactoring. it's cleaned up significantly from the multiple tranche classes in VQSR,
+ *  but still has a long way to go. we should decide how strongly to couple to VariantDatum/VariantDataManger and refactor
+ *  those classes at the same time
  */
 final class TruthSensitivityTranche {
     private static final int CURRENT_VERSION = 6;
@@ -170,7 +172,9 @@ final class TruthSensitivityTranche {
         }
     }
 
+    // TODO clean all this up once VariantDataManager is refactored
     static List<TruthSensitivityTranche> findTranches(final List<Double> scores,
+                                                      final List<Boolean> isBiallelicSNP,
                                                       final List<Boolean> isTransition,
                                                       final List<Boolean> isTruth,
                                                       final List<Double> trancheThresholds,
@@ -183,13 +187,14 @@ final class TruthSensitivityTranche {
                 .sorted(Comparator.comparingDouble(scores::get))
                 .collect(Collectors.toList());
         final List<Double> sortedScores = indicesSortedByScore.stream().map(scores::get).collect(Collectors.toList());
+        final List<Boolean> sortedIsBiallelicSNP = indicesSortedByScore.stream().map(isBiallelicSNP::get).collect(Collectors.toList());
         final List<Boolean> sortedIsTransition = indicesSortedByScore.stream().map(isTransition::get).collect(Collectors.toList());
         final List<Boolean> sortedIsTruth = indicesSortedByScore.stream().map(isTruth::get).collect(Collectors.toList());
         metric.calculateRunningMetric(sortedIsTruth);
 
         List<TruthSensitivityTranche> tranches = new ArrayList<>(trancheThresholds.size());
         for (double trancheThreshold : trancheThresholds) {
-            TruthSensitivityTranche t = findTranche(sortedScores, sortedIsTransition, sortedIsTruth, metric, trancheThreshold, mode);
+            TruthSensitivityTranche t = findTranche(sortedScores, sortedIsBiallelicSNP, sortedIsTransition, sortedIsTruth, metric, trancheThreshold, mode);
 
             if ( t == null ) {
                 if (tranches.isEmpty()) {
@@ -206,6 +211,7 @@ final class TruthSensitivityTranche {
     }
 
     private static TruthSensitivityTranche findTranche(final List<Double> sortedScores,
+                                                       final List<Boolean> sortedIsBiallelicSNP,
                                                        final List<Boolean> sortedIsTransition,
                                                        final List<Boolean> sortedIsTruth,
                                                        final TruthSensitivityMetric metric,
@@ -219,7 +225,7 @@ final class TruthSensitivityTranche {
         for (int i = 0; i < n; i++) {
             if (metric.getRunningMetric(i) >= metricThreshold) {
                 // we've found the largest group of variants with sensitivity >= our target truth sensitivity
-                TruthSensitivityTranche t = trancheOfVariants(sortedScores, sortedIsTransition, sortedIsTruth, i, trancheThreshold, mode);
+                TruthSensitivityTranche t = trancheOfVariants(sortedScores, sortedIsBiallelicSNP, sortedIsTransition, sortedIsTruth, i, trancheThreshold, mode);
                 logger.debug(String.format("  Found tranche for %.3f: %.3f threshold starting with variant %d; running score is %.3f ",
                         trancheThreshold, metricThreshold, i, metric.getRunningMetric(i)));
                 logger.debug(String.format("  TruthSensitivityTranche is %s", t));
@@ -231,6 +237,7 @@ final class TruthSensitivityTranche {
     }
 
     private static TruthSensitivityTranche trancheOfVariants(final List<Double> sortedScores,
+                                                             final List<Boolean> sortedIsBiallelicSNP,
                                                              final List<Boolean> sortedIsTransition,
                                                              final List<Boolean> sortedIsTruth,
                                                              final int minI,
@@ -244,10 +251,12 @@ final class TruthSensitivityTranche {
         for (int i = 0; i < sortedScores.size(); i++) {
             if (sortedScores.get(i) >= minScore) {
                 numSites++;
-                if (sortedIsTransition.get(i)) {
-                    ti++;
-                } else {
-                    tv++;
+                if (sortedIsBiallelicSNP.get(i)) {
+                    if (sortedIsTransition.get(i)) {
+                        ti++;
+                    } else {
+                        tv++;
+                    }
                 }
             }
         }

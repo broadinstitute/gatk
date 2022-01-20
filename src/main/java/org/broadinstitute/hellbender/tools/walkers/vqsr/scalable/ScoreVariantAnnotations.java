@@ -128,19 +128,18 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
         logger.info("Writing VCF...");
         writeVCF(false,true);
 
+        // TODO we could just get all this stuff from the VariantDataManager, but let's clean that up later
+        // TODO some duplication of code here and in training tool
         try (final HDF5File annotationsHDF5File = new HDF5File(outputAnnotationsHDF5File, HDF5File.OpenMode.READ_ONLY)) {
             IOUtils.canReadFile(annotationsHDF5File.getFile());
-            final List<Boolean> isTransition = Arrays.stream(annotationsHDF5File.readDoubleArray("/data/is_transition"))
-                    .mapToObj(d -> (d == 1))
-                    .collect(Collectors.toList());
-            final List<Boolean> isTruth = Arrays.stream(annotationsHDF5File.readDoubleArray("/data/is_truth"))
-                    .mapToObj(d -> (d == 1))
-                    .collect(Collectors.toList());
+            final List<Boolean> isBiallelicSNP = readBooleanList(annotationsHDF5File, "/data/is_biallelic_snp");
+            final List<Boolean> isTransition = readBooleanList(annotationsHDF5File, "/data/is_transition");
+            final List<Boolean> isTruth = readBooleanList(annotationsHDF5File, "/data/is_truth");
 
             // Find the score cutoff values which correspond to the various tranches of calls requested by the user
             final int nCallsAtTruth = TruthSensitivityTranche.countCallsAtTruth(Doubles.asList(scores), isTruth, Double.NEGATIVE_INFINITY);
             final TruthSensitivityTranche.TruthSensitivityMetric metric = new TruthSensitivityTranche.TruthSensitivityMetric(nCallsAtTruth);
-            final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(Doubles.asList(scores), isTransition, isTruth, truthSensitivityTranches, metric, mode);
+            final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(Doubles.asList(scores), isBiallelicSNP, isTransition, isTruth, truthSensitivityTranches, metric, mode);
             tranchesStream.print(TruthSensitivityTranche.printHeader());
             tranchesStream.print(TruthSensitivityTranche.tranchesString(tranches));
         } catch (final RuntimeException exception) {
@@ -149,6 +148,13 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
         }
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
+    }
+
+    private static List<Boolean> readBooleanList(final HDF5File annotationsHDF5File,
+                                                 final String path) {
+        return Arrays.stream(annotationsHDF5File.readDoubleArray(path))
+                .mapToObj(d -> (d == 1))
+                .collect(Collectors.toList());
     }
 
     private static List<String> composePythonArguments(final File rawAnnotationsFile,

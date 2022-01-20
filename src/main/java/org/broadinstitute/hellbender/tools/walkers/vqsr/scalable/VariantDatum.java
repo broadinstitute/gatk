@@ -9,6 +9,7 @@ final class VariantDatum {
     public boolean[] isNull;
     public boolean atTruthSite;
     public boolean atTrainingSite;
+    public boolean isBiallelicSNP;
     public boolean isTransition;
     public SimpleInterval loc;
     public Allele referenceAllele;

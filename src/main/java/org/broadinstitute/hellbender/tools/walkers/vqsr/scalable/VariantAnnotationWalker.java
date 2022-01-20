@@ -241,6 +241,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
             hdf5File.makeStringArray("/data/annotation_names", dataManager.getAnnotationKeys().toArray(new String[0]));
             hdf5File.makeDoubleMatrix("/data/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new));
+            hdf5File.makeDoubleArray("/data/is_biallelic_snp", dataManager.getData().stream().mapToDouble(vd -> vd.isBiallelicSNP ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_transition", dataManager.getData().stream().mapToDouble(vd -> vd.isTransition ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
