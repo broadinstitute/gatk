@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
  * input variants should be tagged "actual" or "expected"
  *
  * Reference blocks are not checked
+ *
+ * VCFComparator will ignore version-specific NaN versus empty AS_RAW annotation discrepancies
  */
 @BetaFeature
 @CommandLineProgramProperties(
@@ -508,6 +510,8 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                                     }
                                     continue;
                                 }
+                            } else {
+                                logger.warn("GATK version-specific NaN verxsus empty AS_RAW annotation discrepancy");
                             }
                         }
                         if (!isAttributeValueEqual(key, actualList.get(i), expectedList.get(i))) {
