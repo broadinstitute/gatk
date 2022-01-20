@@ -15,12 +15,13 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import picard.util.IntervalList.IntervalListScatterMode;
 
 import java.io.File;
 import java.io.IOException;
@@ -108,14 +109,26 @@ public class WeightedSplitIntervals extends GATKTool {
 
         System.out.println("Total Weight:"+totalWeight + " scatterCount: " + scatterCount + " target:" + targetWeightPerScatter);
 
-        final List<IntervalList> scattered = new ArrayList<>();
+        final int maxNumberOfPlaces = Math.max((int)Math.floor(Math.log10(scatterCount-1))+1, numDigits);
+        final String formatString = "%0" + maxNumberOfPlaces + "d";
 
+        int scatterPiece = 0;
         float cumulativeWeight = 0;
         IntervalList currentList = new IntervalList(sequenceDictionary);
+        String lastContig = null;
 
         PushbackIterator<Interval> iter = new PushbackIterator<>(intervalsWithWeights.iterator());
         while (iter.hasNext()) {
             WeightedInterval wi = (WeightedInterval) iter.next();
+
+            // if we're not mixing contigs, but we switched contigs, emit the list
+            if (dontMixContigs && lastContig != null && lastContig != wi.getContig() ) {
+                // write out the current list (uniqued and sorted) and start a new one
+                currentList.uniqued().sorted().write(new File(outputDir, prefix + String.format(formatString, scatterPiece++) + extension));
+                currentList = new IntervalList(sequenceDictionary);
+                lastContig = wi.getContig();
+                cumulativeWeight = 0;
+            }
 
             // if the interval fits completely, just add it
             if (cumulativeWeight + wi.getWeight() <= targetWeightPerScatter ) {
@@ -138,30 +151,14 @@ public class WeightedSplitIntervals extends GATKTool {
                 iter.pushback(pair[1]);
 
                 // add uniqued, sorted output list and reset
-                scattered.add(currentList.uniqued().sorted());
-                cumulativeWeight = 0;
+                currentList.uniqued().sorted().write(new File(outputDir, prefix + String.format(formatString, scatterPiece++) + extension));
                 currentList = new IntervalList(sequenceDictionary);
+                lastContig = wi.getContig();
+                cumulativeWeight = 0;
             }
         }
-        // add the final list
-        scattered.add(currentList.uniqued().sorted());
-
-        // optionally split interval lists that contain intervals from multiple contigs
-        final List<IntervalList> scatteredFinal = !dontMixContigs ? scattered :
-                scattered.stream().flatMap(il -> il.getIntervals().stream()
-                        .collect(Collectors.groupingBy(Interval::getContig)).entrySet().stream()    // group each interval list into sublists
-                        .sorted(Comparator.comparingInt(entry -> sequenceDictionary.getSequenceIndex(entry.getKey())))  // sort entries by contig
-                        .map(entry -> entry.getValue()) // discard the keys and just keep the lists of intervals
-                        .map(list -> {
-                            final IntervalList singleContigList = new IntervalList(sequenceDictionary);
-                            singleContigList.addall(list);
-                            return singleContigList;
-                        })  // turn the intervals back into an IntervalList
-                ).collect(Collectors.toList());
-
-        final int maxNumberOfPlaces = Math.max((int)Math.floor(Math.log10(scatterCount-1))+1, numDigits);
-        final String formatString = "%0" + maxNumberOfPlaces + "d";
-        IntStream.range(0, scatteredFinal.size()).forEach(n -> scatteredFinal.get(n).write(new File(outputDir, prefix + String.format(formatString, n) + extension)));
+        // write the final list
+        currentList.uniqued().sorted().write(new File(outputDir, prefix + String.format(formatString, scatterPiece++) + extension));
     }
 
     @Override
@@ -171,7 +168,7 @@ public class WeightedSplitIntervals extends GATKTool {
         OverlapDetector<WeightedInterval> od;
         try {
             // read the BED of weights
-            FeatureReader<BEDFeature> bedReader = AbstractFeatureReader.getFeatureReader(weightsBedFile.getAbsolutePath(), new BEDCodec(), false);
+            FeatureReader<BEDFeature> bedReader = AbstractFeatureReader.getFeatureReader(weightsBedFile.toPath().toUri().toString(), new BEDCodec(), false);
             List<WeightedInterval> weights = new ArrayList<>();
             bedReader.iterator().stream().map(f -> new WeightedInterval(f.getContig(), f.getStart(), f.getEnd(), f.getScore())).forEach(weights::add);
 
