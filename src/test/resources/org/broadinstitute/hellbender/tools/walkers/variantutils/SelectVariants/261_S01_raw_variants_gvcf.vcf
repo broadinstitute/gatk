@@ -1,7 +1,7 @@
-##fileformat=VCFv4.1
+##fileformat=VCFv4.2
 ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
 ##FILTER=<ID=LowQual,Description="Low quality">
-##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
@@ -77,6 +77,9 @@
 ##GVCFBlock9-10=minGQ=9(inclusive),maxGQ=10(exclusive)
 ##GVCFBlock90-99=minGQ=90(inclusive),maxGQ=99(exclusive)
 ##GVCFBlock99-2147483647=minGQ=99(inclusive),maxGQ=2147483647(exclusive)
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
 ##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
 ##INFO=<ID=DB,Number=0,Type=Flag,Description="dbSNP Membership">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
@@ -113,6 +116,5 @@
 ##contig=<ID=22,length=51304566>
 ##contig=<ID=X,length=155270560>
 ##contig=<ID=Y,length=59373566>
-##reference=file:///mnt/Daten2/Resources/Genomes/Homo_sapiens.GRCh37.75/Homo_sapiens.GRCh37.75.dna.chromosome.all.fasta
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	261_S01
-1	14804874	rs7555566	A	G,CAGAGAGAGAGAGAGAGAG,<NON_REF>	886.77	.	BaseQRankSum=-1.813;DB;DP=125;MLEAC=1,0,0;MLEAF=0.500,0.00,0.00;MQ=60.00;MQRankSum=-1.059;ReadPosRankSum=-0.136	GT:AD:GQ:PL:SAC:SB	0/1:76,48,0,0:99:915,0,1807,1143,1951,3094,3093,3092,3091,3090:33,43,25,23,0,0,0,0:33,43,25,23
+1	14804874	rs7555566	A	G,CAGAGAGAGAGAGAGAGAG,<NON_REF>	886.77	.	BaseQRankSum=-1.813e+00;DB;DP=125;MLEAC=1,0,0;MLEAF=0.500,0.00,0.00;MQ=60.00;MQRankSum=-1.059e+00;ReadPosRankSum=-1.360e-01	GT:AD:GQ:PL:SAC:SB	0/1:76,48,0,0:99:915,0,1807,1143,1951,3094,3093,3092,3091,3090:33,43,25,23,0,0,0,0:33,43,25,23

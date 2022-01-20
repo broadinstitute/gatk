@@ -22,5 +22,5 @@
 ##reference=human_b36_both.fasta
 ##source=ArbitrarySource
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA00001	NA00002	NA00003
-1	10001292	testid1	G	A	12.22	PASS	AF=0.50;AlleleBalance=0.57;DoC=23;HomopolymerRun=0;MAPQ0=8;NS=1;RMSMAPQ=46.31;SB=-24.92;SpanningDeletions=0	GT:DP:GQ	1/0:23:19	./.	./.
-1	10046982	testid0;testid1	C	T	32.01	PASS	AF=0.40;AlleleBalance=0.37;DoC=21;HomopolymerRun=0;MAPQ0=8;NS=1;RMSMAPQ=12.31;SB=-4.2;SpanningDeletions=0	GT:DP:GQ	1/0:3:49	./.	./.
+1	10001292	testid1	G	A	12.22	PASS	AF=0.500;AlleleBalance=0.570;DoC=23;HomopolymerRun=0;MAPQ0=8;NS=1;RMSMAPQ=46.31;SB=-2.492e+01;SpanningDeletions=0	GT:DP:GQ	1/0:23:19	./.	./.
+1	10046982	testid0;testid1	C	T	32.01	PASS	AF=0.400;AlleleBalance=0.370;DoC=21;HomopolymerRun=0;MAPQ0=8;NS=1;RMSMAPQ=12.31;SB=-4.200e+00;SpanningDeletions=0	GT:DP:GQ	1/0:3:49	./.	./.

@@ -22,14 +22,14 @@
 ##reference=human_b36_both.fasta
 ##source=ArbitrarySource
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA00001	NA00002	NA00003
-1	10002963	.	C	G	22.22	.	AF=0.50;AlleleBalance=0.47;DoC=30;HomopolymerRun=0;MAPQ0=0;NS=1;RMSMAPQ=81.91;SB=-41.73;SpanningDeletions=0	GT:DP:GQ	0/1:30:33	./.	./.
-1	10005008	.	A	T,C	123.78	PASS	AF=0.50,0.30;DoC=30;HomopolymerRun=6;MAPQ0=2;NS=1;RMSMAPQ=61.05;SB=-75.45;SpanningDeletions=1	GT:DP:GQ	1/1:27:4	0/1:26:3	0/0:16:2
-1	10006296	.	C	T	42.23	PASS	AF=0.50;AlleleBalance=0.33;DoC=7;HomopolymerRun=0;MAPQ0=11;NS=1;RMSMAPQ=46.62;SB=-0.04;SpanningDeletions=0	GT:DP:GQ	0/1:7:99	./.	./.
-1	10023478	.	G	C,A,T	84.23	.	AF=0.50,0.20,0.20;DoC=27;HomopolymerRun=1;MAPQ0=10;NS=1;RMSMAPQ=42.16;SB=-48.38;SpanningDeletions=0	GT:DP:GQ	1/1:27:4	2/2:26:3	0/3:16:2
-1	10029362	.	T	C	52.22	.	AF=0.50;AlleleBalance=0.52;DoC=44;HomopolymerRun=0;MAPQ0=0;NS=1;RMSMAPQ=81.28;SB=-42.22;SpanningDeletions=0	GT:DP:GQ	./.	1/0:30:37	./.
-1	10042312	.	G	C	31.81	.	AF=0.50;AlleleBalance=0.70;DoC=24;HomopolymerRun=1;MAPQ0=0;NS=1;RMSMAPQ=85.07;SB=0.00;SpanningDeletions=0	GT:DP:GQ	1/0:.:6	0/0	0/1:4
-1	10044557	.	C	T	62.22	.	AF=0.50;AlleleBalance=0.68;DoC=31;HomopolymerRun=16;MAPQ0=0;NS=1;RMSMAPQ=85.34;SB=-0.00;SpanningDeletions=0	GT:DP:GQ	./.	./.	0/1:31:15
-1	10045603	.	AAAA	A	40.26	PASS	AF=0.50	GT:DP:GQ	0/1:15:8	0/0:15:8	1/1:15:8
-1	10045604	.	A	ACAT	41.26	PASS	AF=0.50	GT:DP:GQ	1/1:14:7	0/0:15:8	1/0:15:8
-1	10048142	.	A	G	126.81	foo	AF=1.00;DoC=36;HomopolymerRun=4;MAPQ0=0;NS=1;RMSMAPQ=82.11;SB=-85.45;SpanningDeletions=0	GT:DP:GQ	0/1:15:8	0/0:15:8	1/1:15:8
-1	10048580	.	T	A	72.22	bar;baz	AF=0.50;AlleleBalance=0.69;DoC=33;HomopolymerRun=6;MAPQ0=0;NS=1;RMSMAPQ=84.45;SB=-27.41;SpanningDeletions=0	GT:DP:GQ	0/1:15:8	0/0:15:8	1/1:15:8
+1	10002963	.	C	G	22.22	.	AF=0.500;AlleleBalance=0.470;DoC=30;HomopolymerRun=0;MAPQ0=0;NS=1;RMSMAPQ=81.91;SB=-4.173e+01;SpanningDeletions=0	GT:DP:GQ	0/1:30:33	./.	./.
+1	10005008	.	A	T,C	123.78	PASS	AF=0.500,0.300;DoC=30;HomopolymerRun=6;MAPQ0=2;NS=1;RMSMAPQ=61.05;SB=-7.545e+01;SpanningDeletions=1	GT:DP:GQ	1/1:27:4	0/1:26:3	0/0:16:2
+1	10006296	.	C	T	42.23	PASS	AF=0.500;AlleleBalance=0.330;DoC=7;HomopolymerRun=0;MAPQ0=11;NS=1;RMSMAPQ=46.62;SB=-4.000e-02;SpanningDeletions=0	GT:DP:GQ	0/1:7:99	./.	./.
+1	10023478	.	G	C,A,T	84.23	.	AF=0.500,0.200,0.200;DoC=27;HomopolymerRun=1;MAPQ0=10;NS=1;RMSMAPQ=42.16;SB=-4.838e+01;SpanningDeletions=0	GT:DP:GQ	1/1:27:4	2/2:26:3	0/3:16:2
+1	10029362	.	T	C	52.22	.	AF=0.500;AlleleBalance=0.520;DoC=44;HomopolymerRun=0;MAPQ0=0;NS=1;RMSMAPQ=81.28;SB=-4.222e+01;SpanningDeletions=0	GT:DP:GQ	./.	1/0:30:37	./.
+1	10042312	.	G	C	31.81	.	AF=0.500;AlleleBalance=0.700;DoC=24;HomopolymerRun=1;MAPQ0=0;NS=1;RMSMAPQ=85.07;SB=0.00;SpanningDeletions=0	GT:DP:GQ	1/0:.:6	0/0	0/1:4
+1	10044557	.	C	T	62.22	.	AF=0.500;AlleleBalance=0.680;DoC=31;HomopolymerRun=16;MAPQ0=0;NS=1;RMSMAPQ=85.34;SB=0.00;SpanningDeletions=0	GT:DP:GQ	./.	./.	0/1:31:15
+1	10045603	.	AAAA	A	40.26	PASS	AF=0.500	GT:DP:GQ	0/1:15:8	0/0:15:8	1/1:15:8
+1	10045604	.	A	ACAT	41.26	PASS	AF=0.500	GT:DP:GQ	1/1:14:7	0/0:15:8	1/0:15:8
+1	10048142	.	A	G	126.81	foo	AF=1.00;DoC=36;HomopolymerRun=4;MAPQ0=0;NS=1;RMSMAPQ=82.11;SB=-8.545e+01;SpanningDeletions=0	GT:DP:GQ	0/1:15:8	0/0:15:8	1/1:15:8
+1	10048580	.	T	A	72.22	bar;baz	AF=0.500;AlleleBalance=0.690;DoC=33;HomopolymerRun=6;MAPQ0=0;NS=1;RMSMAPQ=84.45;SB=-2.741e+01;SpanningDeletions=0	GT:DP:GQ	0/1:15:8	0/0:15:8	1/1:15:8
