@@ -1,7 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -16,12 +23,17 @@ import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.VcfUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -37,6 +49,18 @@ import java.util.TreeSet;
 )
 @DocumentedFeature
 public class VariantAnnotationWalker extends MultiVariantWalker {
+
+    private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
+    private static final String DUMMY_ALLELE = "<VQSR>";
+
+    private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
+    private static final String DEFAULT_VCF_SUFFIX = ".vcf";
+
+    @Argument(
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "Output prefix.")
+    String outputPrefix;
 
     /**
      * Any set of VCF files to use as lists of training or truth sites.
@@ -97,6 +121,10 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
     VariantDataManager dataManager;
     boolean isExtractTrainingAndTruthOnly;
+    private VariantContextWriter vcfWriter;
+    File outputAnnotationsHDF5File;
+    private File outputVCFFile;
+    private String vcfSuffix;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     private final List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>(10);
 
@@ -104,10 +132,26 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         // override
     }
 
+    public String getVCFSuffix() {
+        return DEFAULT_VCF_SUFFIX;
+    }
+
     @Override
     public void onTraversalStart() {
 
         beforeOnTraversalStart();
+
+        vcfSuffix = getVCFSuffix();
+
+        outputAnnotationsHDF5File = new File(outputPrefix + ANNOTATIONS_HDF5_SUFFIX);
+        outputVCFFile = new File(outputPrefix + vcfSuffix);
+
+        for (final File outputFile : Arrays.asList(outputAnnotationsHDF5File, outputVCFFile)) {
+            if ((outputFile.exists() && !outputFile.canWrite()) ||
+                    (!outputFile.exists() && !outputFile.getAbsoluteFile().getParentFile().canWrite())) {
+                throw new UserException(String.format("Cannot create output file at %s.", outputFile));
+            }
+        }
 
         dataManager = new VariantDataManager(new ArrayList<>(useAnnotations), useASannotations, trustAllPolymorphic);
 
@@ -166,13 +210,17 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
     private void addVariantDatum(final VariantContext vc,
                                  final FeatureContext context) {
         if (vc != null && (ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
-            if (VariantDataManager.checkVariationClass(vc, mode) && !useASannotations) {
-                dataManager.addDatum(context, vc, null, null, isExtractTrainingAndTruthOnly);
-            } else if (useASannotations) {
-                for (final Allele allele : vc.getAlternateAlleles()) {
-                    if (!GATKVCFConstants.isSpanningDeletion(allele) && VariantDataManager.checkVariationClass(vc, allele, mode)) {
-                        //note that this may not be the minimal representation for the ref and alt allele
-                        dataManager.addDatum(context, vc, vc.getReference(), allele, isExtractTrainingAndTruthOnly);
+            if (VariantDataManager.checkVariationClass(vc, mode)) {
+                if (!useASannotations) {
+                    // TODO need to add an allele to enable passing of training sites-only VCF to score tool for marking of training sites
+                    // TODO should probably just store all alleles
+                    dataManager.addDatum(context, vc, vc.getReference(), vc.getAlternateAlleles().get(0), isExtractTrainingAndTruthOnly);
+                } else {
+                    for (final Allele allele : vc.getAlternateAlleles()) {
+                        if (!GATKVCFConstants.isSpanningDeletion(allele) && VariantDataManager.checkVariationClass(vc, allele, mode)) {
+                            //note that this may not be the minimal representation for the ref and alt allele
+                            dataManager.addDatum(context, vc, vc.getReference(), allele, isExtractTrainingAndTruthOnly);
+                        }
                     }
                 }
             }
@@ -193,8 +241,8 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         // override
     }
 
-    void writeAnnotationsHDF5(final File file) {
-        try (final HDF5File hdf5File = new HDF5File(file, HDF5File.OpenMode.CREATE)) { // TODO allow appending
+    void writeAnnotationsHDF5() {
+        try (final HDF5File hdf5File = new HDF5File(outputAnnotationsHDF5File, HDF5File.OpenMode.CREATE)) { // TODO allow appending
             IOUtils.canReadFile(hdf5File.getFile());
 
             hdf5File.makeStringArray("/data/annotation_names", dataManager.getAnnotationKeys().toArray(new String[0]));
@@ -204,7 +252,64 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             hdf5File.makeDoubleArray("/data/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
         } catch (final RuntimeException exception) {
             throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
-                    exception, file.getAbsolutePath()));
+                    exception, outputAnnotationsHDF5File.getAbsolutePath()));
         }
+        logger.info(String.format("Annotations written to %s.", outputAnnotationsHDF5File.getAbsolutePath()));
+    }
+
+    void writeVCF(final boolean writeAlleles,
+                  final boolean writeScores) {
+        vcfWriter = createVCFWriter(outputVCFFile);
+        vcfWriter.writeHeader(constructVCFHeader());
+
+        final List<VariantDatum> data = dataManager.getData();
+
+        // we need to sort in coordinate order in order to produce a valid VCF
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        data.sort((vd1, vd2) -> IntervalUtils.compareLocatables(vd1.loc, vd2.loc, sequenceDictionary));
+
+        // create dummy alleles to be used
+        List<Allele> alleles = Arrays.asList(Allele.create("N", true), Allele.create(DUMMY_ALLELE, false));
+
+        for (final VariantDatum datum : data) {
+            if (useASannotations || writeAlleles) {
+                alleles = Arrays.asList(datum.referenceAllele, datum.alternateAllele); //use the alleles to distinguish between multiallelics in AS mode
+            }
+            final VariantContextBuilder builder = new VariantContextBuilder(SCORE_KEY, datum.loc.getContig(), datum.loc.getStart(), datum.loc.getEnd(), alleles);
+            builder.attribute(VCFConstants.END_KEY, datum.loc.getEnd());
+
+            if (writeScores) {
+                builder.attribute(SCORE_KEY, String.format("%.4f", datum.score));
+            }
+
+            if (datum.atTrainingSite) {
+                builder.attribute(GATKVCFConstants.POSITIVE_LABEL_KEY, true);
+            }
+
+            vcfWriter.add(builder.make());
+        }
+        vcfWriter.close();
+        logger.info(String.format("Recalibration VCF written to %s.", outputVCFFile.getAbsolutePath()));
+    }
+
+    private VCFHeader constructVCFHeader() {
+        //TODO: this should be refactored/consolidated as part of
+        // https://github.com/broadinstitute/gatk/issues/2112
+        // https://github.com/broadinstitute/gatk/issues/121,
+        // https://github.com/broadinstitute/gatk/issues/1116 and
+        // Initialize VCF header lines
+        Set<VCFHeaderLine> hInfo = getDefaultToolVCFHeaderLines();
+        hInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
+        hInfo.add(GATKVCFHeaderLines.getInfoLine(SCORE_KEY));
+        hInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.POSITIVE_LABEL_KEY));
+        hInfo.add(GATKVCFHeaderLines.getFilterLine(VCFConstants.PASSES_FILTERS_v4));
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        if (hasReference()) {
+            hInfo = VcfUtils.updateHeaderContigLines(
+                    hInfo, referenceArguments.getReferencePath(), sequenceDictionary, true);
+        } else if (null != sequenceDictionary) {
+            hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
+        }
+        return new VCFHeader(hInfo);
     }
 }

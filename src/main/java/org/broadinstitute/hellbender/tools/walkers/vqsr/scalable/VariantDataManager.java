@@ -144,20 +144,20 @@ final class VariantDataManager {
         return value;
     }
 
-    public void parseTrainingSets(
-            final FeatureContext featureContext,
-            final VariantContext evalVC,
-            final VariantDatum datum,
-            final boolean useASannotations,
-            final boolean trustAllPolymorphic ) {
+    private void parseTrainingSets(final FeatureContext featureContext,
+                                   final VariantContext evalVC,
+                                   final VariantDatum datum,
+                                   final boolean useASannotations,
+                                   final boolean trustAllPolymorphic) {
         datum.atTruthSite = false;
         datum.atTrainingSite = false;
 
-        for(final VariantSet variantSet : variantSets) {
+        for (final VariantSet variantSet : variantSets) {
             final List<VariantContext> vcs = featureContext.getValues(variantSet.variantSource, featureContext.getInterval().getStart());
-            for(final VariantContext trainVC : vcs) {
-                if (useASannotations && !doAllelesMatch(trainVC, datum))
+            for (final VariantContext trainVC : vcs) {
+                if (useASannotations && !doAllelesMatch(trainVC, datum)) {
                     continue;
+                }
                 if (isValidVariant(evalVC, trainVC, trustAllPolymorphic)) {
                     datum.atTruthSite = datum.atTruthSite || variantSet.isTruth;
                     datum.atTrainingSite = datum.atTrainingSite || variantSet.isTraining;
@@ -231,7 +231,7 @@ final class VariantDataManager {
         }
     }
 
-    public void setScores(final List<VariantDatum> data,
+    static void setScores(final List<VariantDatum> data,
                           final double[] scores) {
         IntStream.range(0, data.size()).forEach(i -> data.get(i).score = scores[i]);
     }

@@ -11,7 +11,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         final String[] arguments = {
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.snp.annot.hdf5",
+                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.snp",
                 "-an", "FS",
                 "-an", "ReadPosRankSum",
                 "-an", "MQRankSum",
@@ -33,7 +33,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         final String[] arguments = {
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.indel.annot.hdf5",
+                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.indel",
                 "-an", "FS",
                 "-an", "ReadPosRankSum",
                 "-an", "MQRankSum",
@@ -42,7 +42,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "-an", "MQ",
                 "--trust-all-polymorphic",
                 "-mode", "INDEL",
-                "--resource:mills,known=false,training=true,truth=true,prior=12", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
