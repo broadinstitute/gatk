@@ -70,6 +70,7 @@ task SplitIntervals {
     File? interval_weights_bed
     String? split_intervals_extra_args
     Int? split_intervals_disk_size_override
+    Int? split_intervals_mem_override
     String? output_gcs_dir
     File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_splitter_20220120/gatk-package-4.2.0.0-457-g747867d-SNAPSHOT-local.jar"
     String? service_account_json_path
@@ -77,6 +78,8 @@ task SplitIntervals {
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   Int disk_size = if (defined(split_intervals_disk_size_override)) then split_intervals_disk_size_override else 10
+  Int disk_memory = if (defined(split_intervals_mem_override)) then split_intervals_mem_override else 16
+  Int java_memory = disk_memory - 4
 
   String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
 
@@ -100,7 +103,7 @@ task SplitIntervals {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     mkdir interval-files
-    gatk --java-options "-Xmx12g" ~{gatkTool} \
+    gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
     --dont-mix-contigs \
     -R ~{ref_fasta} \
     ~{"-L " + intervals} \
@@ -126,7 +129,7 @@ task SplitIntervals {
   runtime {
     docker: "us.gcr.io/broad-gatk/gatk:4.2.3.0"
     bootDiskSizeGb: 15
-    memory: "16 GB"
+    memory: "~{disk_memory} GB"
     disks: "local-disk ~{disk_size} HDD"
     preemptible: 3
     cpu: 1

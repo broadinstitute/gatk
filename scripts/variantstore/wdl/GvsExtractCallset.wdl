@@ -42,9 +42,10 @@ workflow GvsExtractCallset {
         Int? extract_preemptible_override
         Int? extract_maxretries_override
         Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
 
         String mode = "RANGES-PREPARED"
-       
+
         String? service_account_json_path
 
         String output_file_base_name
@@ -54,7 +55,7 @@ workflow GvsExtractCallset {
 
         String fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__SAMPLES"
         String fq_cohort_extract_table  = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__DATA"
-        
+
         String fq_ranges_cohort_vet_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__VET_DATA"
         String fq_ranges_cohort_ref_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__REF_DATA"
    }
@@ -71,6 +72,7 @@ workflow GvsExtractCallset {
           scatter_count = scatter_count,
           output_gcs_dir = output_gcs_dir,
           split_intervals_disk_size_override = split_intervals_disk_size_override,
+          split_intervals_mem_override = split_intervals_mem_override,
           service_account_json_path = service_account_json_path
     }
 
