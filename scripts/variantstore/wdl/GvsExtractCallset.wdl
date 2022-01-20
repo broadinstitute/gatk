@@ -17,6 +17,9 @@ workflow GvsExtractCallset {
         # For reblocking v1, the default is "SIXTY" instead of "FORTY"
         String? drop_state = "FORTY"
 
+       // TODO: move this to a public bucket
+       String? interval_weights_bed = "gs://broad-dsp-spec-ops/gvs/weights/gvs_vet_weights_1kb.bed"
+
        # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
        # without a default value, ranges users are forced to specify a value even though it is meaningless
        String extract_table_prefix = ""
@@ -64,6 +67,7 @@ workflow GvsExtractCallset {
           ref_fasta = reference,
           ref_fai = reference_index,
           ref_dict = reference_dict,
+          interval_weights_bed = interval_weights_bed,
           scatter_count = scatter_count,
           output_gcs_dir = output_gcs_dir,
           split_intervals_disk_size_override = split_intervals_disk_size_override,
