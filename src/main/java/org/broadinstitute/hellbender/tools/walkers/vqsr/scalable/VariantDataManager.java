@@ -15,7 +15,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-
+/*
+ * TODO this whole class needs refactoring. it's cleaned up significantly from VQSR version,
+ *  but still has a long way to go. we should decide how strongly to couple to the tranche code and refactor
+ *  that at the same time
+ */
 final class VariantDataManager {
     private static final Logger logger = LogManager.getLogger(VariantDataManager.class);
 
@@ -59,7 +63,8 @@ final class VariantDataManager {
         // non-deterministic because order of calls depends on load of machine TODO SL: not sure what this means?
         datum.loc = new SimpleInterval(vc);
 
-        datum.isTransition = vc.isSNP() && vc.isBiallelic() && GATKVariantContextUtils.isTransition(vc);
+        datum.isBiallelicSNP = vc.isSNP() && vc.isBiallelic();
+        datum.isTransition = datum.isBiallelicSNP && GATKVariantContextUtils.isTransition(vc);
 
         // Loop through the training data sets and if they overlap this locus (and allele, if applicable) then update
         // the training status appropriately. The locus used to find training set variants is retrieved
@@ -80,15 +85,15 @@ final class VariantDataManager {
         return data;
     }
 
-    public void addVariantSet(final VariantSet variantSet) {
+    void addVariantSet(final VariantSet variantSet) {
         variantSets.add(variantSet);
     }
 
-    public List<String> getAnnotationKeys() {
+    List<String> getAnnotationKeys() {
         return annotationKeys;
     }
 
-    public boolean checkHasTrainingSet() {
+    boolean checkHasTrainingSet() {
         for (final VariantSet variantSet : variantSets) {
             if (variantSet.isTraining) {
                 return true;
@@ -97,7 +102,7 @@ final class VariantDataManager {
         return false;
     }
 
-    public boolean checkHasTruthSet() {
+    boolean checkHasTruthSet() {
         for (final VariantSet variantSet : variantSets) {
             if (variantSet.isTruth) {
                 return true;
@@ -106,8 +111,8 @@ final class VariantDataManager {
         return false;
     }
 
-    public void decodeAnnotations(final VariantDatum datum,
-                                  final VariantContext vc) {
+    private void decodeAnnotations(final VariantDatum datum,
+                                   final VariantContext vc) {
         final double[] annotations = new double[annotationKeys.size()];
         final boolean[] isNull = new boolean[annotationKeys.size()];
         int iii = 0;
