@@ -13,13 +13,15 @@ import org.testng.annotations.Test;
  */
 public class ScikitLearnVariantTrainIntegrationTest extends CommandLineProgramTest {
 
+    private static final String PYTHON_SCRIPT = packageMainResourcesDir + "tools/walkers/vqsr/scalable/isolation-forest-monolithic.py";
+
     @Test
     public void test1kgp50ExomesSNP() {
         final String[] arguments = {
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/monolithic-test/test.snp",
-                "--python-script", "/home/slee/working/vqsr/scalable/monolithic-test/isolation-forest.py",
+                "--python-script", PYTHON_SCRIPT,
                 "--hyperparameters-json", "/home/slee/working/scalable/monolithic-test/hyperparameters.json",
                 "--trust-all-polymorphic",
                 "-an", "FS",
@@ -44,7 +46,7 @@ public class ScikitLearnVariantTrainIntegrationTest extends CommandLineProgramTe
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/monolithic-test/test.indel",
-                "--python-script", "/home/slee/working/vqsr/scalable/monolithic-test/isolation-forest.py",
+                "--python-script", PYTHON_SCRIPT,
                 "--hyperparameters-json", "/home/slee/working/scalable/monolithic-test/hyperparameters.json",
                 "--trust-all-polymorphic",
                 "-an", "FS",

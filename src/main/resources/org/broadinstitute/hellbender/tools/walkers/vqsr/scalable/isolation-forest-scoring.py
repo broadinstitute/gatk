@@ -1,14 +1,27 @@
 import argparse
 import h5py
+import numpy as np
 import dill
 
 
 def read_annotations(h5file):
     with h5py.File(h5file, 'r') as f:
-        annotation_names_i = f['/data/annotation_names'][:].astype(str)
-        X_ni = f['/data/annotations'][:]
-        is_training_n = f['/data/is_training'][:].astype(bool)
-        is_truth_n = f['/data/is_truth'][:].astype(bool)
+        annotation_names_i = f['/data/annotation_names'][()].astype(str)
+        is_training_n = f['/data/is_training'][()].astype(bool)
+        is_truth_n = f['/data/is_truth'][()].astype(bool)
+
+        # read chunked annotations
+        num_chunks = int(f['/data/annotations/num_chunks'][()])
+        num_columns = int(f['/data/annotations/num_columns'][()])
+        num_rows = int(f['/data/annotations/num_rows'][()])
+        X_ni = np.zeros((num_rows, num_columns))
+        n = 0
+        for chunk_index in range(num_chunks):
+            chunk_ni = f[f'/data/annotations/chunk_{chunk_index}'][()]
+            num_rows_in_chunk = len(chunk_ni)
+            X_ni[n:n + num_rows_in_chunk, :] = chunk_ni
+            n += num_rows_in_chunk
+        assert n == num_rows
     return annotation_names_i, X_ni, is_training_n, is_truth_n
 
 

@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -55,6 +56,9 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
     private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
     private static final String DEFAULT_VCF_SUFFIX = ".vcf";
+
+    private static final int DEFAULT_CHUNK_DIVISOR = 16;
+    private static final int DEFAULT_MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / DEFAULT_CHUNK_DIVISOR;
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -118,6 +122,20 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             doc = "Trust that unfiltered records in the resources contain only polymorphic sites to decrease runtime.",
             optional = true)
     private boolean trustAllPolymorphic = false;
+
+    @Advanced
+    @Argument(
+            doc = "Maximum HDF5 matrix chunk size.  Large matrices written to HDF5 are chunked into equally sized " +
+                    "subsets of rows (plus a subset containing the remainder, if necessary) to avoid a hard limit in " +
+                    "Java HDF5 on the number of elements in a matrix.  However, since a single row is not allowed to " +
+                    "be split across multiple chunks, the number of columns must be less than the maximum number of " +
+                    "values in each chunk.  Decreasing this number will reduce heap usage when writing chunks.",
+            fullName = "maximum-chunk-size",
+            minValue = 1,
+            maxValue = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX,
+            optional = true
+    )
+    private int maximumChunkSize = DEFAULT_MAXIMUM_CHUNK_SIZE;
 
     VariantDataManager dataManager;
     boolean isExtractTrainingAndTruthOnly;
@@ -240,7 +258,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             IOUtils.canReadFile(hdf5File.getFile());
 
             hdf5File.makeStringArray("/data/annotation_names", dataManager.getAnnotationKeys().toArray(new String[0]));
-            hdf5File.makeDoubleMatrix("/data/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new));
+            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new), maximumChunkSize);
             hdf5File.makeDoubleArray("/data/is_biallelic_snp", dataManager.getData().stream().mapToDouble(vd -> vd.isBiallelicSNP ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_transition", dataManager.getData().stream().mapToDouble(vd -> vd.isTransition ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
