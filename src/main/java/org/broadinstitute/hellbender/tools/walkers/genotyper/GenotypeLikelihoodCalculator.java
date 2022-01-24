@@ -7,9 +7,10 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.PriorityQueue;
 
-public class GenotypeLikelihoodCalculator {
+public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCounts> {
     /**
      * Offset table for this calculator.
      *
@@ -547,5 +548,30 @@ public class GenotypeLikelihoodCalculator {
         }
         final int genotypeIndex = alleleHeapToIndex(); // this cleans the heap for the next use.
         destination[newGenotypeIndex] = genotypeIndex;
+    }
+
+    @Override
+    public Iterator<GenotypeAlleleCounts> iterator() {
+        return new Iterator<GenotypeAlleleCounts>() {
+            private int genotypeIndex = 0;
+            private final GenotypeAlleleCounts increasingAlleleCounts = genotypeCount < GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR ?
+                    null : genotypeAlleleCounts[GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR - 1].copy();
+
+            @Override
+            public boolean hasNext() {
+                return genotypeIndex < genotypeCount;
+            }
+
+            @Override
+            public GenotypeAlleleCounts next() {
+                if (genotypeIndex < GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR) {
+                    return genotypeAlleleCounts[genotypeIndex++];
+                } else {
+                    increasingAlleleCounts.increase();
+                    genotypeIndex++;
+                    return increasingAlleleCounts;
+                }
+            }
+        };
     }
 }
