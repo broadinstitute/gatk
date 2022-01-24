@@ -13,7 +13,7 @@ final class VariantSet {
     final boolean isTraining;
     final boolean isTruth;
 
-    protected final Logger logger = LogManager.getLogger(VariantSet.class);
+    private static final Logger logger = LogManager.getLogger(VariantSet.class);
 
     /**
      * @param variantContextFeatureSource source of variants. May not be null.

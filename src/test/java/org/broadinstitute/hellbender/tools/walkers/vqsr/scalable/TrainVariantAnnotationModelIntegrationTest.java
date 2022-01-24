@@ -47,4 +47,16 @@ public class TrainVariantAnnotationModelIntegrationTest extends CommandLineProgr
         };
         runCommandLine(arguments);
     }
+
+    @Test
+    public void test1kgp50ExomesBGMMSNP() {
+        final String[] arguments = {
+                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.annot.hdf5",
+                "-O", "/home/slee/working/vqsr/scalable/train-test/test.bgmm.snp",
+                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
+                "-mode", "SNP",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(arguments);
+    }
 }
