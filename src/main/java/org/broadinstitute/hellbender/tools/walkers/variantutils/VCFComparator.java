@@ -109,6 +109,9 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     @Argument(fullName = "allow-missing-stars", optional = true, doc = "Allow missing * in actual if actual has no corresponding deletions")
     Boolean ALLOW_MISSING_STARS = false;
 
+    @Argument(fullName = "ignore-star-attributes", optional = true, doc = "Ignore annotation values for spanning deletion (*) alleles")
+    Boolean IGNORE_STAR_ATTRIBUTES = false;
+
     @Argument(fullName = "mute-acceptable-diffs", optional = true, doc = "Suppress warnings or exceptions for differences that are consequences of low quality genotypes or AN discrepancies")
     Boolean MUTE_DIFFS = false;
 
@@ -167,7 +170,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         //if there's no actual for the expected (at the same position), see if the expected has an overlapping deletion
         for (final VariantContext vc : variantContexts) {
             if (vc.getSource().equals("actual")) {  //there may be more expected than actual variants, but only compare once
-                continue;
+                continue;  //TODO: this means we don't report cases where actual has multiple reference blocks spanning expected as unmatched
             }
             //vc is guaranteed to be from expected
 
@@ -193,7 +196,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     match = matches.get(1);
                 }
 
-                if (isSingleSample && !GATKVariantContextUtils.genotypeHasConcreteAlt(match.getGenotype(0).getAlleles())) {
+                if (isSingleSample && !GATKVariantContextUtils.genotypeHasConcreteAlt(match.getGenotype(0).getAlleles()) && !vc.getGenotype(0).isHomRef()) {
                     throwOrWarn(new UserException("Apparent unmatched high quality variant in " + vc.getSource() + " at " + vc.getContig() + ":" + vc.getStart()));
                     return;
                 }
@@ -511,11 +514,16 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                                     continue;
                                 }
                             } else {
-                                logger.warn("GATK version-specific NaN verxsus empty AS_RAW annotation discrepancy");
+                                //logger.warn("GATK version-specific NaN verxsus empty AS_RAW annotation discrepancy");
                             }
                         }
-                        if (!isAttributeValueEqual(key, actualList.get(i), expectedList.get(i))) {
-                            throw makeVariantExceptionFromDifference(key, actualList.get(i).toString(), expectedList.get(i).toString());
+                        //this needs some cleanup -- two exceptions??
+                        if (!IGNORE_STAR_ATTRIBUTES || !actualAlts.get(i).equals(Allele.SPAN_DEL)) {
+                            if (!isAttributeValueEqual(key, actualList.get(i), expectedList.get(i))) {
+                                    throw makeVariantExceptionFromDifference(key, actualList.get(i).toString(), expectedList.get(i).toString());
+                            }
+                        } else if (actualAlts.get(i).equals(Allele.SPAN_DEL) && IGNORE_STAR_ATTRIBUTES) {
+                            continue;
                         }
                     }
                 } else {  //if not list
@@ -737,7 +745,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
 
         final Map<String,Object> subsetAnnotations = ReblockGVCF.subsetAnnotationsIfNecessary(annotatorEngine, false, VCFConstants.GENOTYPE_POSTERIORS_KEY, variant, vcBuilder.make());
 
-        return GATKVariantContextUtils.reverseTrimAlleles(vcBuilder.attributes(subsetAnnotations).make());
+        return variant.getGenotype(0).isHomRef() ? vcBuilder.make() : GATKVariantContextUtils.reverseTrimAlleles(vcBuilder.attributes(subsetAnnotations).make());
     }
 
     private boolean isHighQuality(final VariantContext vc) {
