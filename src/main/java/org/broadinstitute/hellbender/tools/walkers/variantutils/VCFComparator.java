@@ -112,6 +112,9 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
     @Argument(fullName = "ignore-star-attributes", optional = true, doc = "Ignore annotation values for spanning deletion (*) alleles")
     Boolean IGNORE_STAR_ATTRIBUTES = false;
 
+    @Argument(fullName = "allow-nan-mismatch", optional = true, doc = "Allow VCF values of missing (.) and NaN to match")
+    Boolean ALLOW_NAN_MISMATCH = false;
+
     @Argument(fullName = "mute-acceptable-diffs", optional = true, doc = "Suppress warnings or exceptions for differences that are consequences of low quality genotypes or AN discrepancies")
     Boolean MUTE_DIFFS = false;
 
@@ -514,16 +517,12 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                                     continue;
                                 }
                             } else {
-                                //logger.warn("GATK version-specific NaN verxsus empty AS_RAW annotation discrepancy");
+                                //logger.warn("GATK version-specific NaN versus empty AS_RAW annotation discrepancy");
                             }
                         }
                         //this needs some cleanup -- two exceptions??
-                        if (!IGNORE_STAR_ATTRIBUTES || !actualAlts.get(i).equals(Allele.SPAN_DEL)) {
-                            if (!isAttributeValueEqual(key, actualList.get(i), expectedList.get(i))) {
-                                    throw makeVariantExceptionFromDifference(key, actualList.get(i).toString(), expectedList.get(i).toString());
-                            }
-                        } else if (actualAlts.get(i).equals(Allele.SPAN_DEL) && IGNORE_STAR_ATTRIBUTES) {
-                            continue;
+                       if (!isAttributeValueEqual(key, actualList.get(i), expectedList.get(i))) {
+                            throw makeVariantExceptionFromDifference(key, actualList.get(i).toString(), expectedList.get(i).toString());
                         }
                     }
                 } else {  //if not list
@@ -610,6 +609,9 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
      * @return
      */
     private boolean isAttributeValueEqual(final String key, final Object actual, final Object expected) {
+        if (ALLOW_NAN_MISMATCH && (actual.toString()).equals(".") && expected.toString().equals("NaN")) {
+            return true;
+        }
         if (!actual.toString().equals(expected.toString())) {
             throw new UserException("Variant contexts have different attribute values for " + key + ": actual has " + actual.toString()
                     + " and expected has " + expected.toString());
