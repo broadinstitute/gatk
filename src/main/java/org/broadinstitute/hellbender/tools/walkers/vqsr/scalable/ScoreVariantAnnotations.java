@@ -144,7 +144,7 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
         logger.info("Scoring complete.");
 
         logger.info("Writing VCF...");
-        writeVCF(false,true);
+        writeVCF(false, false,true);
 
         // TODO we could just get all this stuff from the VariantDataManager, but let's clean that up later
         // TODO some duplication of code here and in training tool

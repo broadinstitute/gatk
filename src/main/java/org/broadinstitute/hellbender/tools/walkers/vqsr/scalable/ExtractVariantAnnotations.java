@@ -35,7 +35,7 @@ public final class ExtractVariantAnnotations extends VariantAnnotationWalker {
         writeAnnotationsHDF5();
 
         logger.info("Writing VCF...");
-        writeVCF(true, false);
+        writeVCF(true, true, false);
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
     }
