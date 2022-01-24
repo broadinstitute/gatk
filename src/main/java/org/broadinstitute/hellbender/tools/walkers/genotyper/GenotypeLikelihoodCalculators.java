@@ -31,7 +31,11 @@ public final class GenotypeLikelihoodCalculators {
     private int maximumPloidy = 2; // its initial value is the initial capacity of the shared tables.
 
     /**
-     * Maximum possible number of genotypes that this calculator can handle.
+     * Maximum possible number of {@link GenotypeAlleleCounts} a {@link GenotypeLikelihoodCalculator} of fixed ploidy
+     *  and allele count may cache in an array, allowing for fast random access of genotypes.
+     *
+     *  Iterating over all genotypes via the {@code increase} method is always fast, but accessing the allele counts
+     *  for a particular genotype index, eg the one with the greatest likelihood, is slow without a cache.
      */
     public static final int MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR = 1000;
 
