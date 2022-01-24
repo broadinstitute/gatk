@@ -225,7 +225,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
             readLikelihoods.changeEvidence(readRealignments);
             writeBamOutput(assemblyResult, readLikelihoods, new HashSet<>(readLikelihoods.alleles()), regionForGenotyping.getSpan());
 
-            final LocusIteratorByState libs = new LocusIteratorByState(regionForGenotyping.getReads().iterator(), DownsamplingMethod.NONE, false, samplesList.asListOfSamples(), bamHeader, true);
+            final LocusIteratorByState libs = new LocusIteratorByState(regionForGenotyping.getReads().iterator(), DownsamplingMethod.NONE, samplesList.asListOfSamples(), bamHeader, true);
 
             final List<byte[]> unitigs = getUnitigs(libs);
 

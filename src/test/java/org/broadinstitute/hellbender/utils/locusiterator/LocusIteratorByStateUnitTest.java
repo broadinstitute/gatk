@@ -30,7 +30,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         final List<GATKRead> reads = Arrays.asList(mapped1);
 
         final LocusIteratorByState li;
-        li = makeLIBS(reads, DownsamplingMethod.NONE, true, header);
+        li = makeLIBS(reads, DownsamplingMethod.NONE, header);
         for (int i = 0; i < readLength; i++) {
             Assert.assertTrue(li.hasNext());
             Assert.assertNotNull(li.next());
@@ -48,7 +48,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         final List<GATKRead> reads = Arrays.asList(mapped1);
 
         final LocusIteratorByState li;
-        li = makeLIBS(reads, DownsamplingMethod.NONE, true, header);
+        li = makeLIBS(reads, DownsamplingMethod.NONE, header);
         final AlignmentContext alignmentContext2 = li.advanceToLocus(2, true);
         Assert.assertEquals(alignmentContext2.getPosition(), 2);
 
@@ -76,15 +76,12 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
 
         // create the iterator by state with the fake reads and fake records
         final LocusIteratorByState li;
-        li = makeLIBS(reads, DownsamplingMethod.NONE, true, header);
+        li = makeLIBS(reads, DownsamplingMethod.NONE, header);
 
         Assert.assertTrue(li.hasNext());
         AlignmentContext context = li.next();
         ReadPileup pileup = context.getBasePileup();
         Assert.assertEquals(pileup.size(), 2, "Should see only 2 reads in pileup, even with unmapped and all I reads");
-
-        final List<GATKRead> rawReads = li.transferReadsFromAllPreviousPileups();
-        Assert.assertEquals(rawReads, reads, "Input and transferred read lists should be the same, and include the unmapped and all I reads");
     }
 
     @Test
@@ -100,15 +97,12 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
 
         // create the iterator by state with the fake reads and fake records
         final LocusIteratorByState li;
-        li = makeLIBS(reads, DownsamplingMethod.NONE, true, header);
+        li = makeLIBS(reads, DownsamplingMethod.NONE, header);
 
         Assert.assertTrue(li.hasNext());
         final AlignmentContext context = li.next();
         final ReadPileup pileup = context.getBasePileup();
         Assert.assertEquals(pileup.size(), 2, "Should see only 2 reads in pileup, even with all I reads");
-
-        final List<GATKRead> rawReads = li.transferReadsFromAllPreviousPileups();
-        Assert.assertEquals(rawReads, reads, "Input and transferred read lists should be the same, and include and all I reads");
     }
 
     @Test
@@ -220,7 +214,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
 
         // create the iterator by state with the fake reads and fake records
         final LocusIteratorByState li;
-        li = makeLIBS(reads, null, false, header);
+        li = makeLIBS(reads, null, header);
         int currentLocus = firstLocus;
         int numAlignmentContextsFound = 0;
 
@@ -262,7 +256,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
 
         // create the iterator by state with the fake reads and fake records
         LocusIteratorByState li;
-        li = makeLIBS(reads, null, false, header);
+        li = makeLIBS(reads, null, header);
 
         while(li.hasNext()) {
             final AlignmentContext alignmentContext = li.next();
@@ -282,7 +276,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         reads = Arrays.asList(read2);
 
         // create the iterator by state with the fake reads and fake records
-        li = makeLIBS(reads, null, false, header);
+        li = makeLIBS(reads, null, header);
 
         while(li.hasNext()) {
             final AlignmentContext alignmentContext = li.next();
@@ -354,7 +348,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
     public void testIndelLengthAndBasesTest(final GATKRead read, final CigarOperator op, final int eventSize, final String eventBases) {
         // create the iterator by state with the fake reads and fake records
         final LocusIteratorByState li;
-        li = makeLIBS(Arrays.asList(read), null, false, header);
+        li = makeLIBS(Arrays.asList(read), null, header);
 
         Assert.assertTrue(li.hasNext());
 
@@ -399,7 +393,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         // create the iterator by state with the fake reads and fake records
         final GATKRead read = params.makeRead();
         final LocusIteratorByState li;
-        li = makeLIBS(Arrays.asList(read), null, false, header);
+        li = makeLIBS(Arrays.asList(read), null, header);
         final LIBS_position tester = new LIBS_position(read);
 
         int bpVisited = 0;
@@ -459,13 +453,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
             for ( final int nReadsPerLocus : Arrays.asList(1, 10, 60) ) {
                 for ( final int nLoci : Arrays.asList(1, 10, 25) ) {
                     for ( final int nSamples : Arrays.asList(1) ) {
-                        for ( final boolean keepReads : Arrays.asList(true, false) ) {
-                            for ( final boolean grabReadsAfterEachCycle : Arrays.asList(true, false) ) {
-                                tests.add(new Object[]{nReadsPerLocus, nLoci, nSamples,
-                                        keepReads, grabReadsAfterEachCycle,
-                                        downsampleTo});
-                            }
-                        }
+                        tests.add(new Object[]{nReadsPerLocus, nLoci, nSamples, downsampleTo});
                     }
                 }
             }
@@ -478,8 +466,6 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
     public void testLIBS_ComplexPileupTests(final int nReadsPerLocus,
                                             final int nLoci,
                                             final int nSamples,
-                                            final boolean keepReads,
-                                            final boolean grabReadsAfterEachCycle,
                                             final int downsampleTo) {
         final int readLength = 10;
 
@@ -496,14 +482,12 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         li = new LocusIteratorByState(
                 new FakeCloseableIterator<>(reads.iterator()),
                 downsampler,
-                keepReads,
                 bamBuilder.getSamples(),
                 bamBuilder.getHeader(),
                 true
         );
 
         final Set<GATKRead> seenSoFar = new LinkedHashSet<>();
-        final Set<GATKRead> keptReads = new LinkedHashSet<>();
         int bpVisited = 0;
         while ( li.hasNext() ) {
             bpVisited++;
@@ -512,10 +496,8 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
 
             AssertWellOrderedPileup(p);
 
-            if ( downsample ) {
-                // just not a safe test
-                //Assert.assertTrue(p.getNumberOfElements() <= maxDownsampledCoverage * nSamples, "Too many reads at locus after downsampling");
-            } else {
+
+            if ( !downsample )  {
                 final int minPileupSize = nReadsPerLocus * nSamples;
                 Assert.assertTrue(p.size() >= minPileupSize);
             }
@@ -529,74 +511,11 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
             // we can have no more than maxDownsampledCoverage per sample
             final int maxCoveragePerLocus = downsample ? downsampleTo : nReadsPerLocus;
             Assert.assertTrue(nReadsStartingHere <= maxCoveragePerLocus * nSamples);
-
-            seenSoFar.addAll(p.getReads());
-            if ( keepReads && grabReadsAfterEachCycle ) {
-                final List<GATKRead> locusReads = li.transferReadsFromAllPreviousPileups();
-
-
-                if ( downsample ) {
-                    // with downsampling we might have some reads here that were downsampled away
-                    // in the pileup.  We want to ensure that no more than the max coverage per sample is added
-                    Assert.assertTrue(locusReads.size() >= nReadsStartingHere);
-                    Assert.assertTrue(locusReads.size() <= maxCoveragePerLocus * nSamples);
-                } else {
-                    Assert.assertEquals(locusReads.size(), nReadsStartingHere);
-                }
-                keptReads.addAll(locusReads);
-
-                // check that all reads we've seen so far are in our keptReads
-                for ( final GATKRead read : seenSoFar ) {
-                    Assert.assertTrue(keptReads.contains(read), "A read that appeared in a pileup wasn't found in the kept reads: " + read);
-                }
-            }
-
-            if ( ! keepReads )
-                Assert.assertTrue(li.getReadsFromAllPreviousPileups().isEmpty(), "Not keeping reads but the underlying list of reads isn't empty");
         }
-
-        if ( keepReads && ! grabReadsAfterEachCycle )
-            keptReads.addAll(li.transferReadsFromAllPreviousPileups());
 
         if ( ! downsample ) { // downsampling may drop loci
             final int expectedBpToVisit = nLoci + readLength - 1;
             Assert.assertEquals(bpVisited, expectedBpToVisit, "Didn't visit the expected number of bp");
-        }
-
-        if ( keepReads ) {
-            // check we have the right number of reads
-            final int totalReads = nLoci * nReadsPerLocus * nSamples;
-            if ( ! downsample ) { // downsampling may drop reads
-                Assert.assertEquals(keptReads.size(), totalReads, "LIBS didn't keep the right number of reads during the traversal");
-
-                // check that the order of reads is the same as in our read list
-                for ( int i = 0; i < reads.size(); i++ ) {
-                    final GATKRead inputRead = reads.get(i);
-                    final GATKRead keptRead = reads.get(i);
-                    Assert.assertSame(keptRead, inputRead, "Input reads and kept reads differ at position " + i);
-                }
-            } else {
-                Assert.assertTrue(keptReads.size() <= totalReads, "LIBS didn't keep the right number of reads during the traversal");
-            }
-
-            // check uniqueness
-            final Set<String> readNames = new LinkedHashSet<>();
-            for ( final GATKRead read : keptReads ) {
-                Assert.assertFalse(readNames.contains(read.getName()), "Found duplicate reads in the kept reads");
-                readNames.add(read.getName());
-            }
-
-            // check that all reads we've seen are in our keptReads
-            for ( final GATKRead read : seenSoFar ) {
-                Assert.assertTrue(keptReads.contains(read), "A read that appeared in a pileup wasn't found in the kept reads: " + read);
-            }
-
-            if ( ! downsample ) {
-                // check that every read in the list of keep reads occurred at least once in one of the pileups
-                for ( final GATKRead keptRead : keptReads ) {
-                    Assert.assertTrue(seenSoFar.contains(keptRead), "There's a read " + keptRead + " in our keptReads list that never appeared in any pileup");
-                }
-            }
         }
     }
 
@@ -659,7 +578,6 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         li = new LocusIteratorByState(
                 iterator,
                 downsampler,
-                false,
                 samples,
                 header,
                 true
@@ -757,7 +675,6 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         li = new LocusIteratorByState(
                 new FakeCloseableIterator<>(Collections.singletonList(read).iterator()),
                 DownsamplingMethod.NONE,
-                false,
                 sampleListForSAMWithoutReadGroups(),
                 header,
                 true
