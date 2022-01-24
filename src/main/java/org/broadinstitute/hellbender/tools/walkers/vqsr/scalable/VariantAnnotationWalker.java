@@ -272,6 +272,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
     }
 
     void writeVCF(final boolean writeAlleles,
+                  final boolean writeTrainingOnly,
                   final boolean writeScores) {
         final VariantContextWriter vcfWriter = createVCFWriter(outputVCFFile);
         vcfWriter.writeHeader(constructVCFHeader());
@@ -287,6 +288,9 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
         for (int i = 0; i < data.size(); i++) {
             final VariantDatum datum = data.get(i);
+            if (writeTrainingOnly && !datum.atTrainingSite) {
+                continue;
+            }
             if (useASannotations) {
                 alleles = Arrays.asList(datum.referenceAllele, datum.alternateAllele); //use the alleles to distinguish between multiallelics in AS mode
             } else if (writeAlleles) {
