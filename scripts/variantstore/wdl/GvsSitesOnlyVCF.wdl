@@ -34,6 +34,7 @@ workflow GvsSitesOnlyVCF {
     scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
         ## Create a sites-only VCF from the original GVS jointVCF
         ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
+        ## To prevent premature failures from this brittle step, the output will be saved to GCP
         String input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz")
         call ExtractAnAcAfFromVCF {
             input:
@@ -276,6 +277,19 @@ task ExtractAnAcAfFromVCF {
         bcftools view --no-update --drop-genotypes deduplicated.vcf.gz -Oz -o ~{normalized_vcf_compressed}
         ## if we can spare the IO and want to pass a smaller file we can also drop the info field w bcftools annotate -x INFO
         bcftools index --tbi  ~{normalized_vcf_compressed}
+
+
+        ## To prevent premature failures from this brittle step, the output will be saved to GCP
+        ## There are 5 (!!!) files that will need to get saved---so let's make a directory for them
+        # String output_directory_name
+        ## and the five files will be:
+        # custom_annotations_file_name, count.txt, track_dropped.tsv, normalized_vcf_compressed, normalized_vcf_indexed
+        ## and they will be loaded with gsutil commands
+        # gsutil cp ~{custom_annotations_file_name} '~{output_directory_name}/~{custom_annotations_file_name}'
+        # gsutil cp count.txt '~{output_directory_name}/count.txt'
+        # gsutil cp track_dropped.tsv '~{output_directory_name}/track_dropped.tsv}'
+        # gsutil cp ~{normalized_vcf_compressed} '~{output_directory_name}/~{normalized_vcf_compressed}'
+        # gsutil cp ~{normalized_vcf_indexed} '~{output_directory_name}/~{normalized_vcf_indexed}'
 
     >>>
     # ------------------------------------------------
