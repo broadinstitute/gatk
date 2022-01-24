@@ -17,7 +17,7 @@ workflow GvsImportGenomes {
     Int batch_size = 1
 
     Int? preemptible_tries
-    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_extract_perf_20220111/gatk-package-4.2.0.0-455-g40a40bc-SNAPSHOT-local.jar"
+    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_ranges_prepare_20220118/gatk-package-4.2.0.0-462-gc0e684c-SNAPSHOT-local.jar"
     String? docker
   }
 
@@ -396,9 +396,28 @@ task GetSampleIds {
 
       echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+      # create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
+       set +e
+       TEMP_TABLE="~{dataset_name}.sample_names_to_load"
+       bq show --project_id ~{project_id} ${TEMP_TABLE} > /dev/null
+       BQ_SHOW_RC=$?
+       set -e
+
+       # if there is already a table of sample names or something else is wrong, bail
+       if [ $BQ_SHOW_RC -eq 0 ]; then
+         echo "There is already a list of sample names. This may need manual cleanup. Exiting"
+         exit 1
+       fi
+
+      echo "Creating the external sample name list table ${TEMP_TABLE}"
+      TEMP_TABLE="~{dataset_name}.sample_names_to_load"
+      bq --project_id=~{project_id} mk ${TEMP_TABLE} "sample_name:STRING"
+      NAMES_FILE=~{write_lines(external_sample_names)}
+      bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
+
       # get the current maximum id, or 0 if there are none
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > results
+        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM ~{dataset_name}.~{table_name} AS samples JOIN ${TEMP_TABLE} AS temp ON samples.sample_name=temp.sample_name" > results
 
       # prep for being able to return min table id
       min_sample_id=$(tail -1 results | cut -d, -f1)
@@ -414,9 +433,12 @@ task GetSampleIds {
       python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
-        "SELECT sample_id, sample_name FROM ~{dataset_name}.~{table_name} where sample_name in ('~{sep="\',\'" external_sample_names}')" > sample_map
+        "SELECT sample_id, samples.sample_name FROM ~{dataset_name}.~{table_name} AS samples JOIN ${TEMP_TABLE} AS temp ON samples.sample_name=temp.sample_name" > sample_map
 
       cut -d, -f1 sample_map > gvs_ids
+
+      ## delete the table that was only needed for this ingest
+      bq --project_id=~{project_id} rm -f=true ${TEMP_TABLE}
 
   >>>
   runtime {
