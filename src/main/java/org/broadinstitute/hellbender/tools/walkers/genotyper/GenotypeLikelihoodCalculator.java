@@ -191,7 +191,7 @@ public class GenotypeLikelihoodCalculator {
     /**
      * Returns the genotype associated to a particular likelihood index.
      *
-     * <p>If {@code index} is larger than {@link GenotypeLikelihoodCalculators#MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY},
+     * <p>If {@code index} is larger than {@link GenotypeLikelihoodCalculators#MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR},
      *  this method will reconstruct that genotype-allele-count iteratively from the largest strongly referenced count available.
      *  or the last requested index genotype.
      *  </p>
@@ -205,11 +205,11 @@ public class GenotypeLikelihoodCalculator {
     public GenotypeAlleleCounts genotypeAlleleCountsAt(final int index) {
         Utils.validateArg(index >= 0 && index < genotypeCount, () -> "invalid likelihood index: " + index + " >= " + genotypeCount
                     + " (genotype count for nalleles = " + alleleCount + " and ploidy " + ploidy);
-        if (index < GenotypeLikelihoodCalculators.MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY) {
+        if (index < GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR) {
             return genotypeAlleleCounts[index];
         } else if (lastOverheadCounts == null || lastOverheadCounts.index() > index) {
-            final GenotypeAlleleCounts result = genotypeAlleleCounts[GenotypeLikelihoodCalculators.MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY - 1].copy();
-            result.increase(index - GenotypeLikelihoodCalculators.MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY + 1);
+            final GenotypeAlleleCounts result = genotypeAlleleCounts[GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR - 1].copy();
+            result.increase(index - GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR + 1);
             lastOverheadCounts = result;
             return result.copy();
         } else {
@@ -311,7 +311,7 @@ public class GenotypeLikelihoodCalculator {
     private GenotypeAlleleCounts nextGenotypeAlleleCounts(final GenotypeAlleleCounts alleleCounts) {
         final int index = alleleCounts.index();
         final GenotypeAlleleCounts result;
-        final int cmp = index - GenotypeLikelihoodCalculators.MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY + 1;
+        final int cmp = index - GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR + 1;
         if (cmp < 0) {
             result = genotypeAlleleCounts[index + 1];
         } else if (cmp == 0) {

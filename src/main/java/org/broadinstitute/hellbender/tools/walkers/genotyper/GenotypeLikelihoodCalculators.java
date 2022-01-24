@@ -33,7 +33,7 @@ public final class GenotypeLikelihoodCalculators {
     /**
      * Maximum possible number of genotypes that this calculator can handle.
      */
-    public static final int MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY = 1000;
+    public static final int MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR = 1000;
 
     /**
      * Mark to indicate genotype-count overflow due to a large number of allele and ploidy;
@@ -238,7 +238,7 @@ public final class GenotypeLikelihoodCalculators {
         Utils.validateArg(ploidy >= 0, () -> "the requested ploidy cannot be negative: " + ploidy);
         Utils.validateArg(alleleCount >= 0, () -> "the requested maximum allele cannot be negative: " + alleleCount);
         final int length = genotypeOffsetTable[ploidy][alleleCount];
-        final int strongRefLength = length == GENOTYPE_COUNT_OVERFLOW ? MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY : Math.min(length, MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY);
+        final int strongRefLength = length == GENOTYPE_COUNT_OVERFLOW ? MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR : Math.min(length, MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR);
         final GenotypeAlleleCounts[] result = new GenotypeAlleleCounts[strongRefLength];
         result[0] = GenotypeAlleleCounts.first(ploidy);
         for (int genotypeIndex = 1; genotypeIndex < strongRefLength; genotypeIndex++) {
