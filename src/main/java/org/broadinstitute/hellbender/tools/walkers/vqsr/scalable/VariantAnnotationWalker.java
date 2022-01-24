@@ -16,6 +16,7 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -263,7 +264,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             hdf5File.makeDoubleArray("/data/is_transition", dataManager.getData().stream().mapToDouble(vd -> vd.isTransition ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
             hdf5File.makeDoubleArray("/data/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
-        } catch (final RuntimeException exception) {
+        } catch (final HDF5LibException exception) {
             throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
                     exception, outputAnnotationsHDF5File.getAbsolutePath()));
         }

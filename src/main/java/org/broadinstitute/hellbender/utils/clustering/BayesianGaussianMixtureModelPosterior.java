@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -20,7 +21,9 @@ import java.util.stream.IntStream;
  * Represents a variational posterior on Gaussian Mixture Model parameters, as given in Bishop 10.55-10.63.
  * Should be treated as immutable.
  */
-public final class BayesianGaussianMixtureModelPosterior {
+public final class BayesianGaussianMixtureModelPosterior implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private static final Logger logger = LogManager.getLogger(BayesianGaussianMixtureModelPosterior.class);
 

@@ -6,6 +6,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -48,7 +49,7 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
 
     @Argument(
             fullName = "python-script",
-            optional=true)
+            optional = true)
     private File pythonScriptFile;
 
     @Argument(
@@ -131,17 +132,18 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
                         .filter(isTraining::get)
                         .map(i -> allData[i])
                         .toArray(double[][]::new);
-            } catch (final RuntimeException exception) {
+            } catch (final HDF5LibException exception) {
                 throw new GATKException(String.format("Exception encountered during reading of annotations from %s: %s",
                         inputAnnotationsHDF5File.getAbsolutePath(), exception));
             }
 
             // preprocess
-
+            final BayesianGaussianMixtureUtils.Preprocesser preprocesser = new BayesianGaussianMixtureUtils.Preprocesser();
+            final double[][] preprocessedData = preprocesser.fitTransform(data);
 
             // initialize BGMM
             final int nFeatures = data[0].length;
-            final BayesianGaussianMixtureUtils.Hyperparameters hyperparameters = 
+            final BayesianGaussianMixtureUtils.Hyperparameters hyperparameters =
                     BayesianGaussianMixtureUtils.Hyperparameters.readHyperparameters(hyperparametersJSONFile);
             final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
             final BayesianGaussianMixtureModeller bgmm = new BayesianGaussianMixtureModeller.Builder()
@@ -163,12 +165,12 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
                     .warmStart(hyperparameters.warmStart)
                     .verboseInterval(hyperparameters.verboseInterval)
                     .build();
-            bgmm.fit(data);
+            bgmm.fit(preprocessedData);
 
             // serialize preprocesser, BGMM, and scores
             // TODO fix up output paths and validation
-
-            BayesianGaussianMixtureUtils.serializeBGMM(bgmm, new File(outputPrefix + ".bgmm.ser"));
+            BayesianGaussianMixtureUtils.serialize(preprocesser, new File(outputPrefix + ".pre.ser"));
+            BayesianGaussianMixtureUtils.serialize(bgmm, new File(outputPrefix + ".bgmm.ser"));
             final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
             fit.write(new File(outputPrefix + ".bgmm.hdf5"), "/bgmm");
 
@@ -180,11 +182,10 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             System.out.println("degreesOfFreedom: " + fit.getDegreesOfFreedom());
 
             // write scores to HDF5
-            final double[] scores = bgmm.scoreSamples(data);
+            final double[] scores = bgmm.scoreSamples(preprocessedData);
             try (final HDF5File outputScoresHDF5File = new HDF5File(outputScoresFile, HDF5File.OpenMode.CREATE)) {
-                IOUtils.canReadFile(outputScoresHDF5File.getFile());
-                outputScoresHDF5File.makeDoubleArray("/scores", scores);
-            } catch (final RuntimeException exception) {
+                outputScoresHDF5File.makeDoubleArray("/data/scores", scores);
+            } catch (final HDF5LibException exception) {
                 throw new GATKException(String.format("Exception encountered during writing of scores (%s). Output file at %s may be in a bad state.",
                         exception, outputScoresFile.getAbsolutePath()));
             }
@@ -198,7 +199,7 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
              final HDF5File inputAnnotationsHDF5File = new HDF5File(this.inputAnnotationsHDF5File, HDF5File.OpenMode.READ_ONLY)) {
             IOUtils.canReadFile(outputScoresHDF5File.getFile());
             IOUtils.canReadFile(inputAnnotationsHDF5File.getFile());
-            final List<Double> scores = Doubles.asList(outputScoresHDF5File.readDoubleArray("/scores"));
+            final List<Double> scores = Doubles.asList(outputScoresHDF5File.readDoubleArray("/data/scores"));
             final List<Boolean> isBiallelicSNP = readBooleanList(inputAnnotationsHDF5File, "/data/is_biallelic_snp");
             final List<Boolean> isTransition = readBooleanList(inputAnnotationsHDF5File, "/data/is_transition");
             final List<Boolean> isTruth = readBooleanList(inputAnnotationsHDF5File, "/data/is_truth");
@@ -209,7 +210,7 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(scores, isBiallelicSNP, isTransition, isTruth, truthSensitivityTranches, metric, mode);
             tranchesStream.print(TruthSensitivityTranche.printHeader());
             tranchesStream.print(TruthSensitivityTranche.tranchesString(tranches));
-        } catch (final RuntimeException exception) {
+        } catch (final HDF5LibException exception) {
             throw new GATKException(String.format("Exception encountered during reading of scores from %s or annotations from %s: %s",
                     outputScoresFile.getAbsolutePath(), inputAnnotationsHDF5File.getAbsolutePath(), exception));
         }
