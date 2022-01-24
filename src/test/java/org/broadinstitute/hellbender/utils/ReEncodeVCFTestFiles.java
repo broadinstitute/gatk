@@ -12,7 +12,33 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-// Issues that surface when fully decoding without using lenient processing:
+// NOTES:
+//
+// - The original re-encodings were done using SelectVariants (using lenient VCF processing - see below),
+//   because some files have an index that needs to be recreated, and TribbleIndex requires a reference;
+//   using SV eliminates the need to hand-specify a reference for each input since it will find an appropriate
+//   sequence dictionary. (Note that SV automatically inserts some new header lines - see keepOriginalChrCounts,
+//   etc).
+//
+// - Other header differences are due to header bugs in the current htsjdk (i.e., dropping contig attributes
+//   on round trip)
+//
+// - Sample names are re-sorted on re-encoding, which makes diffs of multi-sample vcfs hard to scan
+//
+// - Some files have integer values where the header specifies float values. On round trip these are re-encoded
+//   with floating point values.
+//
+// - In addition to the files that are included in the re-encoding list here, there are some tests in the "bucket"
+//   group that use remote test files (testSelectVariants_SimpleSelection.vcf, GatherVcfsCloudIntegrationTest)
+//   in the gcp staging area. These tests will continue to fail until those files are update, but we can't do
+//   that until this is merged.
+//
+// - The VQSR tests are very sensitive to changes in precision. In order to avoid changing (rewriting/verifying)
+//   them, the version upgrade policy will have to be set to "don't upgrade" when 4.3 upgrade is enabled in order
+//   to keep the tests from failing.
+//
+// Other notes (for future reference) on files that have issues that surface when fully decoding without lenient
+// VCF processing:
 //
 // src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/SelectVariants/tetra-diploid.vcf:
 // htsjdk.tribble.TribbleException$InvalidHeader: Your input file has a malformed header: Discordant field size
@@ -41,9 +67,6 @@ public class ReEncodeVCFTestFiles extends CommandLineProgramTest {
     @DataProvider
     public Object[][] vcfFilesToReEncode() {
         return new Object[][]{
-                //NOTE: In addition to these files, there is one remote test file (testSelectVariants_SimpleSelection.vcf)
-                // in the gcp staging area that will need to be updated.
-                //
                 // Test input files that need to be re-encoded to get outputs to match re-encoded outputs
                 // Some of these files could not be re-encoded (or rather, fully decoded) without modifications, it., to the header
 //                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/CalculateGenotypePosteriors/NA12878.Jan2013.haplotypeCaller.subset.indels.vcf"},
@@ -57,7 +80,7 @@ public class ReEncodeVCFTestFiles extends CommandLineProgramTest {
 //                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/nonRefAD.g.vcf"},
 //                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/testOneSampleAsForGnomAD.expected.g.vcf"},
 //                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/ReblockGVCF/prod.chr20snippet.withRawMQ.g.vcf"},
-
+//                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/filters/VariantFiltration/vcfexample2.vcf"},
                 // Expected output files that will get re-encoded as part of the 4.3 upgrade.
 //                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/SelectVariants/vcfexample2.vcf"},
 //                {"src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/SelectVariants/complexExample1.vcf"},
