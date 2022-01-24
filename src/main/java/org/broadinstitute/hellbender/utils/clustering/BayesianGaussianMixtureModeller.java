@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -25,7 +26,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 
-public final class BayesianGaussianMixtureModeller {
+public final class BayesianGaussianMixtureModeller implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     public enum InitMethod {
         K_MEANS_PLUS_PLUS, RANDOM, TEST

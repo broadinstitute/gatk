@@ -35,7 +35,7 @@ def do_work(raw_annotations_file,
     scores = scorer_lambda(X_ni)
 
     with h5py.File(output_scores_file, 'w') as f:
-        scores_dset = f.create_dataset('scores', (len(scores),), dtype='d')
+        scores_dset = f.create_dataset('data/scores', (len(scores),), dtype='d')
         scores_dset[:] = scores
 
 

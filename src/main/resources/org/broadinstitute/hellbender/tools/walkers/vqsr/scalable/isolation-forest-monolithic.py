@@ -41,7 +41,7 @@ def do_work(raw_annotations_file,
 
     outputScoresFile = f'{output_prefix}.scores.hdf5'
     with h5py.File(outputScoresFile, 'w') as f:
-        scores_dset = f.create_dataset('scores', (len(scores),), dtype='d')
+        scores_dset = f.create_dataset('data/scores', (len(scores),), dtype='d')
         scores_dset[:] = scores
 
 

@@ -5,8 +5,10 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
@@ -38,7 +40,8 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
     private static final String RECALIBRATION_VCF_SUFFIX = ".recal.vcf";
 
     @Argument(
-            fullName = "python-script")
+            fullName = "python-script",
+            optional = true)
     private File pythonScriptFile;
 
     @Argument(
@@ -71,7 +74,20 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
     public void beforeOnTraversalStart() {
         isExtractTrainingAndTruthOnly = false;
 
-        inputScorerPklFile = new File(modelPrefix + SCORER_PKL_SUFFIX);
+        if (pythonScriptFile != null) {
+            logger.info("Python script was provided, running in PYTHON mode...");
+
+            inputScorerPklFile = new File(modelPrefix + SCORER_PKL_SUFFIX);
+
+            IOUtils.canReadFile(pythonScriptFile);
+            IOUtils.canReadFile(inputScorerPklFile);
+
+            PythonScriptExecutor.checkPythonEnvironmentForPackage("sklearn");
+            PythonScriptExecutor.checkPythonEnvironmentForPackage("dill");
+        } else {
+            // TODO validate BGMM model inputs
+        }
+
         outputScoresHDF5File = new File(outputPrefix + SCORES_HDF5_SUFFIX);
 
         for (final File outputFile : Arrays.asList(outputScoresHDF5File)) {
@@ -87,12 +103,6 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
         } catch (final FileNotFoundException e) {
             throw new UserException.CouldNotCreateOutputFile(outputTranchesFile, e);
         }
-
-        IOUtils.canReadFile(pythonScriptFile);
-        IOUtils.canReadFile(inputScorerPklFile);
-
-        PythonScriptExecutor.checkPythonEnvironmentForPackage("sklearn");
-        PythonScriptExecutor.checkPythonEnvironmentForPackage("dill");
     }
 
     @Override
@@ -104,24 +114,32 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
         writeAnnotationsHDF5();
 
         logger.info("Scoring...");
-        final PythonScriptExecutor executor = new PythonScriptExecutor(true);
-        final ProcessOutput pythonProcessOutput = executor.executeScriptAndGetOutput(
-                pythonScriptFile.getAbsolutePath(),
-                null,
-                composePythonArguments(outputAnnotationsHDF5File, inputScorerPklFile, outputScoresHDF5File));
-
-        if (pythonProcessOutput.getExitValue() != 0) {
-            throw executor.getScriptException(executor.getExceptionMessageFromScriptError(pythonProcessOutput));
-        }
-
         final double[] scores;
-        try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresHDF5File, HDF5File.OpenMode.READ_ONLY)) {
-            IOUtils.canReadFile(outputScoresFileHDF5File.getFile());
-            scores = outputScoresFileHDF5File.readDoubleArray("/scores");
-            VariantDataManager.setScores(dataManager.getData(), scores);
-        } catch (final RuntimeException exception) {
-            throw new GATKException(String.format("Exception encountered during reading of scores from %s: %s",
-                    outputScoresHDF5File.getAbsolutePath(), exception));
+        if (pythonScriptFile != null) {
+            final PythonScriptExecutor executor = new PythonScriptExecutor(true);
+            final ProcessOutput pythonProcessOutput = executor.executeScriptAndGetOutput(
+                    pythonScriptFile.getAbsolutePath(),
+                    null,
+                    composePythonArguments(outputAnnotationsHDF5File, inputScorerPklFile, outputScoresHDF5File));
+
+            if (pythonProcessOutput.getExitValue() != 0) {
+                throw executor.getScriptException(executor.getExceptionMessageFromScriptError(pythonProcessOutput));
+            }
+
+            try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresHDF5File, HDF5File.OpenMode.READ_ONLY)) {
+                IOUtils.canReadFile(outputScoresFileHDF5File.getFile());
+                scores = outputScoresFileHDF5File.readDoubleArray("/data/scores");
+                VariantDataManager.setScores(dataManager.getData(), scores);
+            } catch (final HDF5LibException exception) {
+                throw new GATKException(String.format("Exception encountered during reading of scores from %s: %s",
+                        outputScoresHDF5File.getAbsolutePath(), exception));
+            }
+        } else {
+            final BayesianGaussianMixtureUtils.Preprocesser preprocesser = BayesianGaussianMixtureUtils.deserialize(new File(modelPrefix + ".pre.ser"), BayesianGaussianMixtureUtils.Preprocesser.class);
+            final BayesianGaussianMixtureModeller bgmm = BayesianGaussianMixtureUtils.deserialize(new File(modelPrefix + ".bgmm.ser"), BayesianGaussianMixtureModeller.class);
+            final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
+            final double[][] preprocessedData = preprocesser.transform(data);
+            scores = bgmm.scoreSamples(preprocessedData);
         }
         logger.info("Scoring complete.");
 
@@ -142,7 +160,7 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
             final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(Doubles.asList(scores), isBiallelicSNP, isTransition, isTruth, truthSensitivityTranches, metric, mode);
             tranchesStream.print(TruthSensitivityTranche.printHeader());
             tranchesStream.print(TruthSensitivityTranche.tranchesString(tranches));
-        } catch (final RuntimeException exception) {
+        } catch (final HDF5LibException exception) {
             throw new GATKException(String.format("Exception encountered during reading of annotations from %s: %s",
                     outputAnnotationsHDF5File.getAbsolutePath(), exception));
         }

@@ -16,10 +16,45 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.Arrays;
 
 final class BayesianGaussianMixtureUtils {
 
     private static final Logger logger = LogManager.getLogger(BayesianGaussianMixtureUtils.class);
+
+    /**
+     * TODO median impute and standardize
+     */
+    static final class Preprocesser implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        Preprocesser() {}
+
+        double[][] fitTransform(final double[][] data) {
+            final double[][] preprocessedData = Arrays.stream(data).map(double[]::clone).toArray(double[][]::new);
+            for (int i = 0; i < preprocessedData.length; i++) {
+                for (int j = 0; j < preprocessedData[0].length; j++) {
+                    if (Double.isNaN(preprocessedData[i][j])) {
+                        preprocessedData[i][j] = 0.;
+                    }
+                }
+            }
+            return preprocessedData;
+        }
+
+        double[][] transform(final double[][] data) {
+            final double[][] preprocessedData = Arrays.stream(data).map(double[]::clone).toArray(double[][]::new);
+            for (int i = 0; i < preprocessedData.length; i++) {
+                for (int j = 0; j < preprocessedData[0].length; j++) {
+                    if (Double.isNaN(preprocessedData[i][j])) {
+                        preprocessedData[i][j] = 0.;
+                    }
+                }
+            }
+            return preprocessedData;
+        }
+    }
 
     // TODO perhaps just put this in the BGMM classes?
     // there is the complication of specifying mean and covariance priors differently here,
@@ -99,23 +134,24 @@ final class BayesianGaussianMixtureUtils {
         }
     }
 
-    static void serializeBGMM(final BayesianGaussianMixtureModeller bgmm,
+    static <T> void serialize(final T object,
                               final File outputFile) {
         try (final FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
              final ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream)) {
-            objectOutputStream.writeObject(bgmm);
+            objectOutputStream.writeObject(object);
         } catch (final IOException e) {
-            throw new GATKException(String.format("Exception encountered during serialization of BayesianGaussianMixtureModeller to %s: %s",
-                    outputFile.getAbsolutePath(), e));
+            throw new GATKException(String.format("Exception encountered during serialization of %s to %s: %s",
+                    object.getClass(), outputFile.getAbsolutePath(), e));
         }
     }
 
-    static BayesianGaussianMixtureModeller deserializeBGMM(final File inputFile) {
+    static <T> T deserialize(final File inputFile,
+                             final Class<T> clazz) {
         try (final FileInputStream fileInputStream = new FileInputStream(inputFile);
              final ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream)) {
-            return (BayesianGaussianMixtureModeller) objectInputStream.readObject();
+            return clazz.cast(objectInputStream.readObject());
         } catch (final IOException | ClassNotFoundException e) {
-            throw new GATKException(String.format("Exception encountered during deserialization of BayesianGaussianMixtureModeller from %s: %s",
+            throw new GATKException(String.format("Exception encountered during deserialization from %s: %s",
                     inputFile.getAbsolutePath(), e));
         }
     }
