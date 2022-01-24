@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
@@ -78,6 +79,16 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         UNDEFINED
     }
 
+    // TODO Add support for complex (CPX)
+    private static final Set<StructuralVariantType> SUPPORTED_SV_TYPES = Sets.newHashSet(
+            StructuralVariantType.DEL,
+            StructuralVariantType.DUP,
+            StructuralVariantType.CNV,
+            StructuralVariantType.INS,
+            StructuralVariantType.INV,
+            StructuralVariantType.BND
+    );
+
     private final AltAlleleSummaryStrategy altAlleleSummaryStrategy;
     private final BreakpointSummaryStrategy breakpointSummaryStrategy;
     private final InsertionLengthSummaryStrategy insertionLengthSummaryStrategy;
@@ -97,6 +108,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
 
     @Override
     public SVCallRecord collapse(final Collection<SVCallRecord> items) {
+        validateRecords(items);
         final String id = collapseIds(items);
         final List<String> algorithms = collapseAlgorithms(items);
         final StructuralVariantType type = collapseTypes(items);
@@ -124,6 +136,16 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
 
         return new SVCallRecord(id, exampleCall.getContigA(), start, exampleCall.getStrandA(), exampleCall.getContigB(),
                 end, exampleCall.getStrandB(), type, length, algorithms, alleles, harmonizedGenotypes, attributes);
+    }
+
+    /**
+     * Asserts that the given records are valid for collapsing.
+     */
+    protected void validateRecords(final Collection<SVCallRecord> records) {
+        for (final SVCallRecord r : records) {
+        Utils.validateArg(SUPPORTED_SV_TYPES.contains(r.getType()),
+                "Unsupported SV type: " + r.getType());
+        }
     }
 
     protected List<Genotype> harmonizeAltAlleles(final List<Allele> sortedAltAlleles, final List<Genotype> collapsedGenotypes) {
