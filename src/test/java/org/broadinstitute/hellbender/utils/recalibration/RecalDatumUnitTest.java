@@ -153,10 +153,10 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
     public void testlog10QempPrior() {
         for ( int Qemp = 0; Qemp <= QualityUtils.MAX_SAM_QUAL_SCORE; Qemp++ ) {
             for ( int Qrep = 0; Qrep <= QualityUtils.MAX_SAM_QUAL_SCORE; Qrep++ ) {
-                final double log10Prior = RecalDatum.log10QempPrior(Qemp, Qrep);
-                Assert.assertTrue(log10Prior < 0.0);
-                Assert.assertFalse(Double.isInfinite(log10Prior));
-                Assert.assertFalse(Double.isNaN(log10Prior));
+                final double logPrior = RecalDatum.logQempPrior(Qemp, Qrep);
+                Assert.assertTrue(logPrior < 0.0);
+                Assert.assertFalse(Double.isInfinite(logPrior));
+                Assert.assertFalse(Double.isNaN(logPrior));
             }
         }
 
@@ -164,10 +164,10 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
         int maxQemp = -1;
         double maxQempValue = -Double.MAX_VALUE;
         for ( int Qemp = 0; Qemp <= QualityUtils.MAX_SAM_QUAL_SCORE; Qemp++ ) {
-            final double log10prior = RecalDatum.log10QempPrior(Qemp, Qrep);
-            if ( log10prior > maxQempValue ) {
+            final double logprior = RecalDatum.logQempPrior(Qemp, Qrep);
+            if ( logprior > maxQempValue ) {
                 maxQemp = Qemp;
-                maxQempValue = log10prior;
+                maxQempValue = logprior;
             }
         }
         Assert.assertEquals(maxQemp, Qrep);
@@ -209,19 +209,19 @@ public final class RecalDatumUnitTest extends GATKBaseTest {
                     if ( error > observation )
                         continue;
 
-                    final double log10likelihood = RecalDatum.log10QempLikelihood(Qemp, observation, error);
-                    Assert.assertTrue(observation == 0 ? MathUtils.compareDoubles(log10likelihood, 0.0) == 0 : log10likelihood < 0.0 || Qemp == 0.0);
-                    Assert.assertFalse(Double.isInfinite(log10likelihood));
-                    Assert.assertFalse(Double.isNaN(log10likelihood));
+                    final double loglikelihood = RecalDatum.logQempLikelihood(Qemp, observation, error);
+                    Assert.assertTrue(observation == 0 ? MathUtils.compareDoubles(loglikelihood, 0.0) == 0 : loglikelihood < 0.0 || Qemp == 0.0);
+                    Assert.assertFalse(Double.isInfinite(loglikelihood));
+                    Assert.assertFalse(Double.isNaN(loglikelihood));
                 }
             }
         }
 
         long bigNum = Integer.MAX_VALUE;
         bigNum *= 2L;
-        final double log10likelihood = RecalDatum.log10QempLikelihood(30, bigNum, 100000);
-        Assert.assertTrue(log10likelihood < 0.0);
-        Assert.assertFalse(Double.isInfinite(log10likelihood));
-        Assert.assertFalse(Double.isNaN(log10likelihood));
+        final double loglikelihood = RecalDatum.logQempLikelihood(30, bigNum, 100000);
+        Assert.assertTrue(loglikelihood < 0.0);
+        Assert.assertFalse(Double.isInfinite(loglikelihood));
+        Assert.assertFalse(Double.isNaN(loglikelihood));
     }
 }

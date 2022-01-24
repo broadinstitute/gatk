@@ -6,9 +6,12 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -30,10 +33,10 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
-import org.broadinstitute.hellbender.utils.variant.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.broadinstitute.hellbender.utils.variant.writers.ReblockingGVCFBlockCombiner;
 import org.broadinstitute.hellbender.utils.variant.writers.ReblockingGVCFWriter;
@@ -112,8 +115,6 @@ public final class ReblockGVCF extends MultiVariantWalker {
     public static final String KEEP_SITE_FILTERS_LONG_NAME = "keep-site-filters";
     public static final String KEEP_SITE_FILTERS_SHORT_NAME = "keep-filters";
 
-    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
-
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written")
     protected GATKPath outputFile;
@@ -137,7 +138,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
     }
 
     @Advanced
-    @DeprecatedFeature(detail="This argument introduces 'holes', resulting in an invalid GVCF")
+    //@DeprecatedFeature(detail="This argument introduces 'holes', resulting in an invalid GVCF")
     @Argument(fullName=DROP_LOW_QUALS_ARG_NAME, shortName=DROP_LOW_QUALS_ARG_NAME, doc="Exclude variants and homRef blocks that are GQ0 from the reblocked GVCF to save space; drop low quality/uncalled alleles", optional = true)
     protected boolean dropLowQuals = false;
 
@@ -476,8 +477,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
             return true;
         }
         final int minLikelihoodIndex = MathUtils.minElementIndex(pls);
-        final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(genotype.getPloidy(), vc.getAlleles().size());
-        final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(minLikelihoodIndex);
+        final GenotypeAlleleCounts alleleCounts = GenotypesCache.get(genotype.getPloidy(), minLikelihoodIndex);
 
         final List<Allele> finalAlleles = alleleCounts.asAlleleList(vc.getAlleles());
         return (pls != null && pls[0] < rgqThreshold)
@@ -766,8 +766,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
                     + variant.getContig() + ":" + variant.getStart());
         }
         final int minLikelihoodIndex = MathUtils.minElementIndex(pls);
-        final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(origG.getPloidy(), variant.getAlleles().size());
-        final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(minLikelihoodIndex);
+        final GenotypeAlleleCounts alleleCounts = GenotypesCache.get(origG.getPloidy(), minLikelihoodIndex);
 
         final List<Allele> finalAlleles = alleleCounts.asAlleleList(variant.getAlleles());
         hasPLAndPosteriorMismatch = !finalAlleles.containsAll(origG.getAlleles());

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.models;
 
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 
@@ -8,8 +9,6 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.apache.commons.math3.util.FastMath.sqrt;
-import static org.broadinstitute.hellbender.utils.MathUtils.log10Factorial;
-import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
 
 /**
  * Contains likelihood methods for the allele-fraction model.
@@ -87,10 +86,7 @@ final class AlleleFractionLikelihoods {
                 - n * log(majorFraction + minorFraction * lambda0RefMinor);
         final double refMinorLogLikelihood = logNotPi + logcRefMinor + Gamma.logGamma(rhoRefMinor) - rhoRefMinor * log(tauRefMinor);
 
-        // changing the factorial implementation below may introduce non-negligible numerical differences;
-        // note https://github.com/broadinstitute/gatk/pull/7652
-        final double outlierLogLikelihood = logPi + log10ToLog(log10Factorial(a) + log10Factorial(r) - log10Factorial(a + r + 1));
-
+        final double outlierLogLikelihood = logPi - Math.log(a + r + 1) - CombinatoricsUtils.binomialCoefficientLog(a+r,a);
         return NaturalLogUtils.logSumExp(altMinorLogLikelihood, refMinorLogLikelihood, outlierLogLikelihood);
     }
 
@@ -165,6 +161,6 @@ final class AlleleFractionLikelihoods {
     }
 
     private static double log(final double x) {
-        return FastMath.log(Math.max(EPSILON, x));
+        return Math.log(Math.max(EPSILON, x));
     }
 }
