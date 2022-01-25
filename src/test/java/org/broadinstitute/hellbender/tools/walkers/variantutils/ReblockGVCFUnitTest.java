@@ -110,6 +110,12 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         Assert.assertTrue(!modified.filtersWereApplied());
         Assert.assertEquals(modified.getLog10PError(), VariantContext.NO_LOG10_PERROR);
 
+        final Genotype longPls = VariantContextTestUtils.makeG("sample1", Allele.NO_CALL, Allele.NO_CALL, 0,0,0,0,0,0);
+        final VariantContext lotsOfZeroPls = makeNoDepthVC("lowQualVar", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), longPls);
+        final VariantContext properlySubset = reblocker.lowQualVariantToGQ0HomRef(lotsOfZeroPls).make();
+        Assert.assertEquals(properlySubset.getGenotype(0).getPL().length, 3);
+
+
         //No-calls were throwing NPEs.  Now they're not.
         final Genotype g2 = VariantContextTestUtils.makeG("sample1", Allele.NO_CALL,Allele.NO_CALL);
         final VariantContext noData = makeDeletionVC("noData", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), g2);
@@ -423,6 +429,13 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         final int stop = start+refLength-1;
         return new VariantContextBuilder(source, "1", start, stop, alleles)
                 .genotypes(Arrays.asList(genotypes)).unfiltered().log10PError(-3.0).attribute(VCFConstants.DEPTH_KEY, EXAMPLE_DP).make();
+    }
+
+    private VariantContext makeNoDepthVC(final String source, final List<Allele> alleles, final int refLength, final Genotype... genotypes) {
+        final int start = DEFAULT_START;
+        final int stop = start+refLength-1;
+        return new VariantContextBuilder(source, "1", start, stop, alleles)
+                .genotypes(Arrays.asList(genotypes)).unfiltered().log10PError(-3.0).make();
     }
 
     private Genotype addAD(final Genotype g, final int... ads) {

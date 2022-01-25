@@ -507,9 +507,14 @@ public final class ReblockGVCF extends MultiVariantWalker {
             } else {
                 final List<Allele> bestAlleles = AlleleSubsettingUtils.calculateMostLikelyAlleles(lowQualVariant, genotype.getPloidy(), 1);
                 final Allele bestAlt = bestAlleles.stream().filter(a -> !a.isReference()).findFirst().orElse(Allele.NON_REF_ALLELE);  //allow span dels
+                //we care about the best alt even though it's getting removed because NON_REF should get the best likelihoods
+                //it shouldn't matter that we're passing in different alt alleles since the GenotypesContext only knows
+                // the called alleles and this is a reference genotype that will stay hom-ref
                 final GenotypesContext context = AlleleSubsettingUtils.subsetAlleles(lowQualVariant.getGenotypes(),
                         genotype.getPloidy(), lowQualVariant.getAlleles(), Arrays.asList(inputRefAllele, bestAlt),
-                        null, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, lowQualVariant.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);  //BEST_MATCH to avoid no-calling low qual genotypes
+                        null, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, //BEST_MATCH to avoid no-calling low qual genotypes
+                        lowQualVariant.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0),
+                        true);  //emitEmptyPLs = true to make sure we always subset
                 final Genotype subsetG = context.get(0);
                 gb = new GenotypeBuilder(subsetG).noAttributes();  //remove attributes because hom ref blocks shouldn't have posteriors
                 //subsetting may strip GQ and PLs for low qual genotypes
