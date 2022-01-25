@@ -129,7 +129,6 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
             try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresHDF5File, HDF5File.OpenMode.READ_ONLY)) {
                 IOUtils.canReadFile(outputScoresFileHDF5File.getFile());
                 scores = outputScoresFileHDF5File.readDoubleArray("/data/scores");
-                VariantDataManager.setScores(dataManager.getData(), scores);
             } catch (final HDF5LibException exception) {
                 throw new GATKException(String.format("Exception encountered during reading of scores from %s: %s",
                         outputScoresHDF5File.getAbsolutePath(), exception));
@@ -141,6 +140,7 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
             final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
             scores = scorer.preprocessAndScoreSamples(data);
         }
+        VariantDataManager.setScores(dataManager.getData(), scores);
         logger.info("Scoring complete.");
 
         logger.info("Writing VCF...");
