@@ -417,12 +417,12 @@ public class GMMVariantTrain extends MultiVariantWalker {
         final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
         fit.write(outputModelPath.toPath().toFile(), "/bgmm");
 
-        System.out.println("weights: " + fit.getWeights());
-        System.out.println("meanPrecision: " + fit.getMeanPrecision());
-        System.out.println("means: " + fit.getMeans());
-        System.out.println("precisionsCholesky: " + fit.getPrecisionsCholesky());
-        System.out.println("covariances: " + fit.getCovariances());
-        System.out.println("degreesOfFreedom: " + fit.getDegreesOfFreedom());
+        logger.debug("weights: " + fit.getWeights());
+        logger.debug("meanPrecision: " + fit.getMeanPrecision());
+        logger.debug("means: " + fit.getMeans());
+        logger.debug("precisionsCholesky: " + fit.getPrecisionsCholesky());
+        logger.debug("covariances: " + fit.getCovariances());
+        logger.debug("degreesOfFreedom: " + fit.getDegreesOfFreedom());
 
         final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
         final double[] scores = bgmm.scoreSamples(data);
