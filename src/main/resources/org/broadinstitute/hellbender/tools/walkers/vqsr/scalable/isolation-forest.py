@@ -43,7 +43,7 @@ def do_work(raw_annotations_file,
 
     # TODO ingest hyperparameters
 
-    print('Training IsolationForest...')
+    print(f'Training IsolationForest with {training_X_ni.shape[0]} training sites x {training_X_ni.shape[1]} annotations...')
     clf = sklearn.ensemble.IsolationForest(random_state=0, verbose=True)
     clf.fit(training_X_ni)
 
