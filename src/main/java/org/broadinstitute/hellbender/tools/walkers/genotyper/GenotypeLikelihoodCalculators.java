@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Genotype likelihood calculator utility. This class is thread-safe since access to shared mutable state is
@@ -36,11 +36,7 @@ public final class GenotypeLikelihoodCalculators {
      *  for a particular genotype index, eg the one with the greatest likelihood, is slow without a cache.
      */
     public static final int MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR = 1000;
-
-    /**
-     * Mark to indicate genotype-count overflow due to a large number of allele and ploidy;
-     */
-    static final int GENOTYPE_COUNT_OVERFLOW = -1;
+    
 
     /**
      * The current maximum allele index supported by the tables.
@@ -94,6 +90,7 @@ public final class GenotypeLikelihoodCalculators {
      * We could inline this and just call the other function, but having a distinct name is much clearer.
      */
     public static long numberOfGenotpyes(final int ploidy, final int alleleCount) {
+        checkPloidyAndMaximumAllele(ploidy, alleleCount);
         return numberOfGenotypesBeforeAllele(ploidy, alleleCount);
     }
 
@@ -161,7 +158,7 @@ public final class GenotypeLikelihoodCalculators {
         Utils.validateArg(ploidy >= 0, () -> "the requested ploidy cannot be negative: " + ploidy);
         Utils.validateArg(alleleCount >= 0, () -> "the requested maximum allele cannot be negative: " + alleleCount);
         final long length = numberOfGenotpyes(ploidy, alleleCount);
-        final int strongRefLength = length == GENOTYPE_COUNT_OVERFLOW ? MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR : (int) Math.min(length, MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR);
+        final int strongRefLength = length == MathUtils.LONG_OVERFLOW ? MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR : (int) Math.min(length, MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR);
         final GenotypeAlleleCounts[] result = new GenotypeAlleleCounts[strongRefLength];
         result[0] = GenotypeAlleleCounts.first(ploidy);
         for (int genotypeIndex = 1; genotypeIndex < strongRefLength; genotypeIndex++) {
@@ -182,22 +179,8 @@ public final class GenotypeLikelihoodCalculators {
      * @return never {@code null}.
      */
     public synchronized GenotypeLikelihoodCalculator getInstance(final int ploidy, final int alleleCount) {
-        calculateGenotypeCountsUsingTablesAndValidate(ploidy, alleleCount);
-
-        // At this point the tables must have at least the requested capacity, likely to be much more.
+        ensureCapacity(alleleCount, ploidy);
         return new GenotypeLikelihoodCalculator(ploidy, alleleCount, genotypeTableByPloidy);
-    }
-
-    /**
-     * Calculate genotype counts using the tables and validate that there is no overflow
-     */
-    private synchronized void calculateGenotypeCountsUsingTablesAndValidate(final int ploidy, final int alleleCount) {
-        checkPloidyAndMaximumAllele(ploidy, alleleCount);
-
-        if (calculateGenotypeCountUsingTables(ploidy, alleleCount) == GENOTYPE_COUNT_OVERFLOW) {
-            final double largeGenotypeCount = Math.pow(10, MathUtils.log10BinomialCoefficient(ploidy + alleleCount - 1, alleleCount - 1));
-            throw new IllegalArgumentException(String.format("the number of genotypes is too large for ploidy %d and allele %d: approx. %.0f", ploidy, alleleCount, largeGenotypeCount));
-        }
     }
 
     /**
@@ -212,9 +195,7 @@ public final class GenotypeLikelihoodCalculators {
      */
     public synchronized GenotypeLikelihoodCalculatorDRAGEN getInstanceDRAGEN(final int ploidy, final int alleleCount) {
         Utils.validate(ploidy == 2, "DRAGEN genotyping mode currently only supports diploid samples");
-        calculateGenotypeCountsUsingTablesAndValidate(ploidy, alleleCount);
-
-        // At this point the tables must have at least the requested capacity, likely to be much more.
+        ensureCapacity(alleleCount, ploidy);
         return new GenotypeLikelihoodCalculatorDRAGEN(ploidy, alleleCount, genotypeTableByPloidy);
     }
 
@@ -264,13 +245,11 @@ public final class GenotypeLikelihoodCalculators {
      * @return the number of genotypes given ploidy and allele count (0 or greater).
      */
     public int genotypeCount(final int ploidy, final int alleleCount) {
-
-        final int result = calculateGenotypeCountUsingTables(ploidy, alleleCount);
-        if (result == GENOTYPE_COUNT_OVERFLOW) {
-            final double largeGenotypeCount = Math.pow(10, MathUtils.log10BinomialCoefficient(ploidy + alleleCount - 1, alleleCount - 1));
-            throw new IllegalArgumentException(String.format("the number of genotypes is too large for ploidy %d and allele %d: approx. %.0f", ploidy, alleleCount, largeGenotypeCount));
-        }
-        return result;
+        final long result = numberOfGenotpyes(ploidy, alleleCount);
+        Utils.validateArg(result != MathUtils.LONG_OVERFLOW && result < Integer.MAX_VALUE, () ->
+                String.format("the number of genotypes is too large for ploidy %d and %d alleles: approx. %.0f", ploidy, alleleCount,
+                        Math.pow(10, MathUtils.log10BinomialCoefficient(ploidy + alleleCount - 1, alleleCount - 1))));
+        return (int) result;
     }
 
     /**
@@ -281,7 +260,7 @@ public final class GenotypeLikelihoodCalculators {
      * @return                  the maximally acceptable allele count given ploidy and maximum number of genotypes acceptable
      */
     public static int computeMaxAcceptableAlleleCount(final int ploidy, final int maxGenotypeCount){
-
+        Utils.validateArg(ploidy >= 0, () -> "negative ploidy " + ploidy);
         checkPloidyAndMaximumAllele(ploidy, ploidy); // a hack to check ploidy makes sense (could duplicate code but choice must be made)
 
         if (ploidy == 1) {
@@ -309,9 +288,4 @@ public final class GenotypeLikelihoodCalculators {
         throw new GATKException("Code should never reach here.");
     }
 
-    private synchronized int calculateGenotypeCountUsingTables(int ploidy, int alleleCount) {
-        checkPloidyAndMaximumAllele(ploidy, alleleCount);
-        ensureCapacity(alleleCount, ploidy);
-        return (int) numberOfGenotpyes(ploidy, alleleCount);
-    }
 }
