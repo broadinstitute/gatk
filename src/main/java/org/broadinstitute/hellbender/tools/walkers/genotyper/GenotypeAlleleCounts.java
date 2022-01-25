@@ -147,7 +147,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      *
      * <p>
      *     This method must not be invoked on cached genotype-allele-counts that are meant to remain constant,
-     *     such as the ones contained in {@link GenotypeLikelihoodCalculators#genotypeTableByPloidy}.
+     *     such as the ones contained in {@link GenotypeLikelihoodCalculators::genotypeTableByPloidy}.
      * </p>
      *
      * @param times the number of times to increase.
@@ -166,13 +166,13 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      *
      * <p>
      *     This method must not be invoked on cached genotype-allele-counts that are meant to remain constant,
-     *     such as the ones contained in {@link GenotypeLikelihoodCalculators#genotypeTableByPloidy}
+     *     such as the ones contained in {@link GenotypeLikelihoodCalculators::genotypeTableByPloidy}
      * </p>
      */
-    protected void increase() {
+    protected GenotypeAlleleCounts increase() {
         // if the ploidy is zero there is only one possible genotype.
         if (distinctAlleleCount == 0) {
-            return;
+            return this;
         }
 
         // Worth make this case faster.
@@ -239,6 +239,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
         }
         index++;
         log10CombinationCount = -1;
+        return this;
     }
 
     /**

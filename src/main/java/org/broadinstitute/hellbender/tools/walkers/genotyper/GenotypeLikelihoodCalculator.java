@@ -297,18 +297,13 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
 
     private GenotypeAlleleCounts nextGenotypeAlleleCounts(final GenotypeAlleleCounts alleleCounts) {
         final int index = alleleCounts.index();
-        final GenotypeAlleleCounts result;
-        final int cmp = index - GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR + 1;
-        if (cmp < 0) {
-            result = genotypeAlleleCounts[index + 1];
-        } else if (cmp == 0) {
-            result = genotypeAlleleCounts[index].copy();
-            result.increase();
+        if (index < (GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR - 1)) {
+            return genotypeAlleleCounts[index + 1];
+        } else if (index == GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR - 1) {
+            return genotypeAlleleCounts[index].copy().increase();
         } else {
-            alleleCounts.increase();
-            result = alleleCounts;
+            return alleleCounts.increase();
         }
-        return result;
     }
 
     /**
@@ -553,9 +548,8 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
                 if (genotypeIndex < GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR) {
                     return genotypeAlleleCounts[genotypeIndex++];
                 } else {
-                    increasingAlleleCounts.increase();
                     genotypeIndex++;
-                    return increasingAlleleCounts;
+                    return increasingAlleleCounts.increase();
                 }
             }
         };
