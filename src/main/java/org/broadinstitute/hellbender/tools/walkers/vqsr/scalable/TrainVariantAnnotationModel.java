@@ -148,8 +148,7 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             final BayesianGaussianMixtureUtils.Preprocesser preprocesser = new BayesianGaussianMixtureUtils.Preprocesser();
             final double[][] preprocessedData = preprocesser.fitTransform(data);
 
-            // initialize BGMM
-
+            // BGMM
             final BayesianGaussianMixtureUtils.Hyperparameters hyperparameters =
                     BayesianGaussianMixtureUtils.Hyperparameters.readHyperparameters(hyperparametersJSONFile);
             final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
@@ -174,20 +173,13 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
                     .build();
             bgmm.fit(preprocessedData);
 
-            // serialize preprocesser, BGMM, and scores
+            // serialize scorer = preprocesser + BGMM
             // TODO fix up output paths and validation
             BayesianGaussianMixtureUtils.serialize(
                     new BayesianGaussianMixtureUtils.Scorer(preprocesser, bgmm),
                     new File(outputPrefix + SCORER_SER_SUFFIX));
             final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
             fit.write(new File(outputPrefix + BGMM_HDF5_SUFFIX), "/bgmm");
-
-            System.out.println("weights: " + fit.getWeights());
-            System.out.println("meanPrecision: " + fit.getMeanPrecision());
-            System.out.println("means: " + fit.getMeans());
-            System.out.println("precisionsCholesky: " + fit.getPrecisionsCholesky());
-            System.out.println("covariances: " + fit.getCovariances());
-            System.out.println("degreesOfFreedom: " + fit.getDegreesOfFreedom());
 
             // write scores to HDF5
             final double[] scores = bgmm.scoreSamples(preprocessedData);
