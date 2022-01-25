@@ -226,28 +226,14 @@ public final class GenotypeLikelihoodCalculators {
      * @param requestedMaximumPloidy the new requested ploidy maximum.
      */
     private synchronized void ensureCapacity(final int requestedMaximumAllele, final int requestedMaximumPloidy) {
-
-        final boolean needsToExpandAlleleCapacity = requestedMaximumAllele > maximumAllele;
-        final boolean needsToExpandPloidyCapacity = requestedMaximumPloidy > maximumPloidy;
-
-        if (!needsToExpandAlleleCapacity && !needsToExpandPloidyCapacity) {
+        if (requestedMaximumAllele <= maximumAllele && requestedMaximumPloidy <= maximumPloidy) {
             return;
         }
 
-        final int newMaximumPloidy = Math.max(maximumPloidy, requestedMaximumPloidy);
-        final int newMaximumAllele = Math.max(maximumAllele, requestedMaximumAllele);
-
-        logger.debug("Expanding capacity ploidy:" + maximumPloidy + "->" + newMaximumPloidy + " allele:" +  maximumAllele +"->" + newMaximumAllele );
-
-        // Update table first.
-        genotypeTableByPloidy = buildGenotypeAlleleCountsTable(newMaximumPloidy,newMaximumAllele);
-
-        if (needsToExpandAlleleCapacity) {
-            maximumAllele = requestedMaximumAllele;
-        }
-        if (needsToExpandPloidyCapacity) {
-            maximumPloidy = requestedMaximumPloidy;
-        }
+        maximumPloidy = Math.max(maximumPloidy, requestedMaximumPloidy);
+        maximumAllele = Math.max(maximumAllele, requestedMaximumAllele);
+        logger.debug("Expanding capacity ploidy:" + maximumPloidy + "->" + maximumPloidy + " allele:" +  maximumAllele +"->" + maximumAllele );
+        genotypeTableByPloidy = buildGenotypeAlleleCountsTable(maximumPloidy, maximumAllele);
     }
 
     /**
