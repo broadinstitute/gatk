@@ -12,19 +12,6 @@ import java.util.PriorityQueue;
 
 public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCounts> {
     /**
-     * Offset table for this calculator.
-     *
-     * <p>
-     *     This is a shallow copy of {@link GenotypeLikelihoodCalculators#alleleFirstGenotypeOffsetByPloidy} when the calculator was created
-     *     thus it follows the same format as that array. Please refer to its documentation.
-     * </p>
-     *
-     * <p>You can assume that this offset table contain at least (probably more) the numbers corresponding to the allele count and ploidy for this calculator.
-     * However since it might have more than that and so you must use {@link #alleleCount} and {@link #ploidy} when
-     * iterating through this array rather that its length or the length of its components.</p>.
-     */
-    private final int[][] alleleFirstGenotypeOffsetByPloidy;
-    /**
      * Genotype table for this calculator.
      *
      * <p>It is ensure that it contains all the genotypes for this calculator ploidy and allele count, maybe more. For
@@ -122,12 +109,11 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
      */
     private double[] readGenotypeLikelihoodComponents;
 
-    public GenotypeLikelihoodCalculator(final int ploidy, final int alleleCount, final int[][] alleleFirstGenotypeOffsetByPloidy,
+    public GenotypeLikelihoodCalculator(final int ploidy, final int alleleCount,
                                         final GenotypeAlleleCounts[][] genotypeTableByPloidy) {
         maximumDistinctAllelesInGenotype = Math.min(ploidy, alleleCount);
-        this.alleleFirstGenotypeOffsetByPloidy = alleleFirstGenotypeOffsetByPloidy;
         genotypeAlleleCounts = genotypeTableByPloidy[ploidy];
-        genotypeCount = this.alleleFirstGenotypeOffsetByPloidy[ploidy][alleleCount];
+        genotypeCount = (int) GenotypeLikelihoodCalculators.numberOfGenotpyes(ploidy, alleleCount);
         this.alleleCount = alleleCount;
         this.ploidy = ploidy;
         alleleHeap = new PriorityQueue<>(ploidy, Comparator.<Integer>naturalOrder().reversed());
@@ -485,7 +471,7 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
         for (int p = ploidy; p > 0; p--) {
             final int allele = alleleHeap.remove();
             Utils.validateArg(allele >= 0, () -> "invalid allele " + allele + " must be equal or greater than 0 ");
-            result += alleleFirstGenotypeOffsetByPloidy[p][allele];
+            result += GenotypeLikelihoodCalculators.numberOfGenotypesBeforeAllele(p, allele);
         }
         return result;
     }

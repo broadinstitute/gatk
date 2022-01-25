@@ -186,6 +186,17 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testExactBinomialCoefficient() {
+        Assert.assertEquals(MathUtils.exactBinomialCoefficient(4, 2), 6);
+        Assert.assertEquals(MathUtils.exactBinomialCoefficient(10, 3), 120);
+        Assert.assertEquals(MathUtils.exactBinomialCoefficient(20, 3), 1140);
+        Assert.assertEquals(MathUtils.exactBinomialCoefficient(20, 8), 125970);
+        Assert.assertEquals(MathUtils.exactBinomialCoefficient(100, 4), 3921225);
+        Assert.assertEquals(MathUtils.exactBinomialCoefficient(100, 96), 3921225);
+        Assert.assertEquals(MathUtils.exactBinomialCoefficient(100, 50), LONG_OVERFLOW);
+    }
+
+    @Test
     public void testLog10BinomialCoefficient() {
         // note that we can test the binomial coefficient calculation indirectly via Newton's identity
         // (1+z)^m = sum (m choose k)z^k

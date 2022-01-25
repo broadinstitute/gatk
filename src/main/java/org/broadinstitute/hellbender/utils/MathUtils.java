@@ -8,6 +8,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.MathArrays;
 import org.apache.commons.math3.util.Pair;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.OptionalDouble;
 import java.util.function.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * MathUtils is a static class (no instantiation allowed!) with some useful math methods.
@@ -44,6 +46,15 @@ public final class MathUtils {
     private static final Log10Cache LOG_10_CACHE = new Log10Cache();
     private static final Log10FactorialCache LOG_10_FACTORIAL_CACHE = new Log10FactorialCache();
     private static final DigammaCache DIGAMMA_CACHE = new DigammaCache();
+
+    // 15! is small enough to avoid long int overflow
+    private static final int MAX_ARGUMENT_OF_EXACT_FACTORIAL = 15;
+    private static final long[] EXACT_FACTORIALS = IntStream.range(0, MAX_ARGUMENT_OF_EXACT_FACTORIAL + 1)
+            .mapToLong(CombinatoricsUtils::factorial).toArray();
+
+    // represent overflow for computations returning a positive long
+    public static final int LONG_OVERFLOW = -1;
+    private static final double LOG_10_MAX_LONG = Math.log10(Long.MAX_VALUE);
 
     /**
      * Private constructor.  No instantiating this class!
@@ -620,6 +631,38 @@ public final class MathUtils {
      */
     public static double binomialCoefficient(final int n, final int k) {
         return Math.pow(10, log10BinomialCoefficient(n, k));
+    }
+
+    /**
+     * Calculates the binomial coefficient as a whole number. Designed to prevent
+     * overflows even with very large numbers and to be very fast for small numbers.
+     *
+     * @param n total number of trials
+     * @param k number of successes
+     * @return the binomial coefficient
+     */
+    public static long exactBinomialCoefficient(final int n, final int k) {
+        if (n <= MAX_ARGUMENT_OF_EXACT_FACTORIAL) {
+            return EXACT_FACTORIALS[n]/(EXACT_FACTORIALS[k]*EXACT_FACTORIALS[n-k]);
+        } else {
+            final int lower = FastMath.min(k, n - k); // use that nCk = nC(n-k)
+
+            if (lower < 7 && n < 1000) {    // this suffices to avoid long overflow
+                long numerator = 1;
+                long denominator = 1;
+
+                // numerator = n * (n - 1) * . . . (n - lower + 1)
+                // denominator = 1 * 2 * . . . lower
+                for (int m = 0; m < lower; m++) {
+                    numerator *= (n - m);
+                    denominator *= (m + 1);
+                }
+                return numerator / denominator;
+            } else {
+                final double log10Result = log10BinomialCoefficient(n, k);
+                return log10Result < LOG_10_MAX_LONG ? FastMath.round(FastMath.pow(10.0, log10Result)) : LONG_OVERFLOW;
+            }
+        }
     }
 
     /**
