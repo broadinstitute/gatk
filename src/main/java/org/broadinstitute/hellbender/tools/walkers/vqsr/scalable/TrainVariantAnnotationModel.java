@@ -128,9 +128,12 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             // load annotation training data
             logger.info("Reading annotations...");
             final double[][] data;
+            final String[] annotationNames;
+            final List<Boolean> isTraining;
             try (final HDF5File annotationsHDF5File = new HDF5File(inputAnnotationsHDF5File, HDF5File.OpenMode.READ_ONLY)) {
                 IOUtils.canReadFile(annotationsHDF5File.getFile());
-                final List<Boolean> isTraining = readBooleanList(annotationsHDF5File, "/data/is_training");
+                annotationNames = annotationsHDF5File.readStringArray("/data/annotation_names");
+                isTraining = readBooleanList(annotationsHDF5File, "/data/is_training");
                 final double[][] allData = HDF5Utils.readChunkedDoubleMatrix(annotationsHDF5File, "/data/annotations");
                 data = IntStream.range(0, isTraining.size()).boxed()
                         .filter(isTraining::get)
@@ -147,6 +150,21 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             // preprocess
             final BayesianGaussianMixtureUtils.Preprocesser preprocesser = new BayesianGaussianMixtureUtils.Preprocesser();
             final double[][] preprocessedData = preprocesser.fitTransform(data);
+
+            // write preprocessed annotations
+            // TODO clean this up
+            final File outputPreprocessedAnnotationsFile = new File(outputPrefix + ".annot.pre.hdf5");
+            try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) { // TODO allow appending
+                IOUtils.canReadFile(hdf5File.getFile());
+
+                hdf5File.makeStringArray("/data/annotation_names", annotationNames);
+                hdf5File.makeDoubleMatrix("/data/annotations", preprocessedData); // TODO unchunked to allow common plotting with monolithic
+                hdf5File.makeDoubleArray("/data/is_training", isTraining.stream().mapToDouble(x -> x ? 1 : 0).toArray());
+            } catch (final HDF5LibException exception) {
+                throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
+                        exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
+            }
+            logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
 
             // BGMM
             final BayesianGaussianMixtureUtils.Hyperparameters hyperparameters =
