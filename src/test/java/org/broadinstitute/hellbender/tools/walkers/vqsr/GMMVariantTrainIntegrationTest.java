@@ -31,6 +31,7 @@ public class GMMVariantTrainIntegrationTest extends CommandLineProgramTest {
     @Test
     public void test1kgp50Exomes() {
         final String[] arguments = {
+                "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/monolithic-test/test.bgmm.snps.recal",
                 "--tranches-file", "/home/slee/working/vqsr/scalable/monolithic-test/test.bgmm.snps.tranches",
