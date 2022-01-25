@@ -392,7 +392,7 @@ public class ScikitLearnVariantTrain extends MultiVariantWalker {
         final File outputScoresFile = new File(outputPrefix + ".scores.hdf5");
         try (final HDF5File outputScoresFileHDF5File = new HDF5File(outputScoresFile, HDF5File.OpenMode.READ_ONLY)) {
             IOUtils.canReadFile(outputScoresFileHDF5File.getFile());
-            final double[] scores = outputScoresFileHDF5File.readDoubleArray("/scores");
+            final double[] scores = outputScoresFileHDF5File.readDoubleArray("/data/scores");
             dataManager.setScores(dataManager.getData(), scores);
         } catch (final RuntimeException exception) {
             throw new GATKException(String.format("Exception encountered during reading of scores from %s: %s",
