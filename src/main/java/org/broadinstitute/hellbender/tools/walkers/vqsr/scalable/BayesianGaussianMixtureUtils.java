@@ -2,6 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.math3.stat.descriptive.moment.Mean;
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -11,45 +14,92 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.Arrays;
+import java.util.stream.IntStream;
 
 final class BayesianGaussianMixtureUtils {
 
     private static final Logger logger = LogManager.getLogger(BayesianGaussianMixtureUtils.class);
 
+    static final class Scorer implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private final Preprocesser preprocesser;
+        private final BayesianGaussianMixtureModeller bgmm;
+
+        Scorer(final Preprocesser preprocesser,
+               final BayesianGaussianMixtureModeller bgmm) {
+            this.preprocesser = preprocesser;
+            this.bgmm = bgmm;
+        }
+
+        double[] preprocessAndScoreSamples(final double[][] data) {
+            final double[][] preprocessedData = preprocesser.transform(data);
+            return bgmm.scoreSamples(preprocessedData);
+        }
+    }
+
     /**
-     * TODO median impute and standardize
+     * TODO standardize and median impute; maybe add Z-score truncation?
      */
     static final class Preprocesser implements Serializable {
         private static final long serialVersionUID = 1L;
 
+        private double[] meansForStandardization;
+        private double[] standardDeviationsForStandardization;
+        private double[] standardizedMediansForImputation;
+
         Preprocesser() {}
 
         double[][] fitTransform(final double[][] data) {
-            final double[][] preprocessedData = Arrays.stream(data).map(double[]::clone).toArray(double[][]::new);
-            for (int i = 0; i < preprocessedData.length; i++) {
-                for (int j = 0; j < preprocessedData[0].length; j++) {
-                    if (Double.isNaN(preprocessedData[i][j])) {
-                        preprocessedData[i][j] = 0.;
-                    }
-                }
-            }
-            return preprocessedData;
+            // TODO validation
+            final int nSamples = data.length;
+            final int nFeatures = data[0].length;
+            meansForStandardization = IntStream.range(0, nFeatures)
+                    .mapToDouble(j -> new Mean().evaluate(
+                            IntStream.range(0, nSamples).boxed()
+                                    .mapToDouble(i -> data[i][j])
+                                    .filter(Double::isFinite)
+                                    .toArray()))
+                    .toArray();
+            standardDeviationsForStandardization = IntStream.range(0, nFeatures)
+                    .mapToDouble(j -> new Variance().evaluate(
+                            IntStream.range(0, nSamples).boxed()
+                                    .mapToDouble(i -> data[i][j])
+                                    .filter(Double::isFinite)
+                                    .toArray()))
+                    .map(Math::sqrt)
+                    .toArray();
+
+            // TODO validate stdevs
+
+            standardizedMediansForImputation = IntStream.range(0, nFeatures)
+                    .mapToDouble(j -> new Median().evaluate(
+                            IntStream.range(0, nSamples).boxed()
+                                    .mapToDouble(i -> data[i][j])
+                                    .filter(Double::isFinite)
+                                    .map(x -> (x - meansForStandardization[j]) / standardDeviationsForStandardization[j])
+                                    .toArray()))
+                    .toArray();
+
+            return transform(data);
         }
 
         double[][] transform(final double[][] data) {
-            final double[][] preprocessedData = Arrays.stream(data).map(double[]::clone).toArray(double[][]::new);
-            for (int i = 0; i < preprocessedData.length; i++) {
-                for (int j = 0; j < preprocessedData[0].length; j++) {
-                    if (Double.isNaN(preprocessedData[i][j])) {
-                        preprocessedData[i][j] = 0.;
-                    }
+            // TODO validation
+            final int nSamples = data.length;
+            final int nFeatures = data[0].length;
+            double[][] preprocessedData = new double[nSamples][nFeatures];
+            for (int i = 0; i < nSamples; i++) {
+                for (int j = 0; j < nFeatures; j++) {
+                    final double value = data[i][j];
+                    preprocessedData[i][j] = Double.isNaN(value)
+                            ? standardizedMediansForImputation[j]
+                            : (value - meansForStandardization[j]) / standardDeviationsForStandardization[j];
                 }
             }
             return preprocessedData;

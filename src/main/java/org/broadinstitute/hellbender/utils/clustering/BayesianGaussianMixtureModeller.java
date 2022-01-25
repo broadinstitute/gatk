@@ -151,36 +151,39 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
             double lowerBound = doInit ? Double.NEGATIVE_INFINITY : this.lowerBound;
 
             BayesianGaussianMixtureUtils.logHeapUsage(logger, "Starting iteration...");
-            final RealVector weights = weightConcentration.copy().mapDivideToSelf(BayesianGaussianMixtureUtils.sum(weightConcentration));
+
 
             for (int nIter = 1; nIter <= maxIter; nIter++) {
                 final double prevLowerBound = lowerBound;
+                final RealVector prevWeights = weightConcentration.copy().mapDivideToSelf(BayesianGaussianMixtureUtils.sum(weightConcentration));
 
                 final RealMatrix logResp = EStep(X);
                 MStep(X, logResp);
                 lowerBound = computeLowerBound(logResp);
 
-                final RealVector newWeights = weightConcentration.copy().mapDivideToSelf(BayesianGaussianMixtureUtils.sum(weightConcentration));
-                System.out.println("weights difference: " + IntStream.range(0, nComponents).mapToDouble(k -> Math.abs(weights.getEntry(k) - newWeights.getEntry(k))).sum());
-                weights.combineToSelf(0, 1, newWeights);
+                final RealVector weights = weightConcentration.copy().mapDivideToSelf(BayesianGaussianMixtureUtils.sum(weightConcentration));
+                final double totalAbsoluteWeightsChange = IntStream.range(0, nComponents)
+                        .mapToDouble(k -> Math.abs(prevWeights.getEntry(k) - weights.getEntry(k)))
+                        .sum();
+                prevWeights.combineToSelf(0, 1, weights);
 
-                final double change = lowerBound - prevLowerBound;
+                final double lowerBoundChange = lowerBound - prevLowerBound;
 
                 if (nIter % verboseInterval == 0) {
-                    logger.info(String.format("Iteration %d, lower bound = %.5f, lower-bound change = %.5f...",
-                            nIter, lowerBound, change));
+                    logger.info(String.format("Iteration %d, lower bound = %.5f, lower-bound change = %.5f, total absolute weights change = %.5f...",
+                            nIter, lowerBound, lowerBoundChange, totalAbsoluteWeightsChange));
                 }
 
-                if (Math.abs(change) < tol) {
+                if (Math.abs(lowerBoundChange) < tol) {
                     isConverged = true;
-                    logger.info(String.format("Initialization %d converged after %d iterations, final lower bound = %.5f, final lower-bound change = %.5f...",
-                            init, nIter, lowerBound, change));
+                    logger.info(String.format("Initialization %d converged after %d iterations, final lower bound = %.5f, final lower-bound change = %.5f, total absolute weights change = %.5f...",
+                            init, nIter, lowerBound, lowerBoundChange, totalAbsoluteWeightsChange));
                     break;
                 }
 
                 if (nIter == maxIter && !isConverged) {
-                    logger.info(String.format("Initialization %d did not converge after %d iterations, final lower bound = %.5f, final lower-bound change = %.5f...",
-                            init, nIter, lowerBound, change));
+                    logger.info(String.format("Initialization %d did not converge after %d iterations, final lower bound = %.5f, final lower-bound change = %.5f, total absolute weights change = %.5f...",
+                            init, nIter, lowerBound, lowerBoundChange, totalAbsoluteWeightsChange));
                 }
             }
 

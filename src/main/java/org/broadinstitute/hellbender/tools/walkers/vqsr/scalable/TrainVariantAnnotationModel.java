@@ -42,6 +42,9 @@ import java.util.stream.IntStream;
 @DocumentedFeature
 public final class TrainVariantAnnotationModel extends CommandLineProgram {
 
+    private static final String SCORER_SER_SUFFIX = ".scorer.ser";
+    private static final String BGMM_HDF5_SUFFIX = ".bgmm.hdf5";
+
     @Argument(
             fullName = "annotations-hdf5",
             doc = "HDF5 file containing annotations extracted with ExtractAnnotations.")
@@ -123,6 +126,7 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             logger.info("Python script was not provided, running in BGMM mode...");
 
             // load annotation training data
+            logger.info("Reading annotations...");
             final double[][] data;
             try (final HDF5File annotationsHDF5File = new HDF5File(inputAnnotationsHDF5File, HDF5File.OpenMode.READ_ONLY)) {
                 IOUtils.canReadFile(annotationsHDF5File.getFile());
@@ -136,13 +140,16 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
                 throw new GATKException(String.format("Exception encountered during reading of annotations from %s: %s",
                         inputAnnotationsHDF5File.getAbsolutePath(), exception));
             }
+            final int nSamples = data.length;
+            final int nFeatures = data[0].length;
+            logger.info(String.format("Training BayesianGaussianMixtureModeller with %d training sites x %d annotations...", nSamples, nFeatures));
 
             // preprocess
             final BayesianGaussianMixtureUtils.Preprocesser preprocesser = new BayesianGaussianMixtureUtils.Preprocesser();
             final double[][] preprocessedData = preprocesser.fitTransform(data);
 
             // initialize BGMM
-            final int nFeatures = data[0].length;
+
             final BayesianGaussianMixtureUtils.Hyperparameters hyperparameters =
                     BayesianGaussianMixtureUtils.Hyperparameters.readHyperparameters(hyperparametersJSONFile);
             final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
@@ -169,10 +176,11 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
 
             // serialize preprocesser, BGMM, and scores
             // TODO fix up output paths and validation
-            BayesianGaussianMixtureUtils.serialize(preprocesser, new File(outputPrefix + ".pre.ser"));
-            BayesianGaussianMixtureUtils.serialize(bgmm, new File(outputPrefix + ".bgmm.ser"));
+            BayesianGaussianMixtureUtils.serialize(
+                    new BayesianGaussianMixtureUtils.Scorer(preprocesser, bgmm),
+                    new File(outputPrefix + SCORER_SER_SUFFIX));
             final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
-            fit.write(new File(outputPrefix + ".bgmm.hdf5"), "/bgmm");
+            fit.write(new File(outputPrefix + BGMM_HDF5_SUFFIX), "/bgmm");
 
             System.out.println("weights: " + fit.getWeights());
             System.out.println("meanPrecision: " + fit.getMeanPrecision());

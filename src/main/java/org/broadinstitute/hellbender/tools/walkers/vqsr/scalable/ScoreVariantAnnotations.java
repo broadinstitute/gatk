@@ -8,7 +8,6 @@ import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
@@ -36,6 +35,7 @@ import java.util.stream.Collectors;
 public class ScoreVariantAnnotations extends VariantAnnotationWalker {
 
     private static final String SCORER_PKL_SUFFIX = ".scorer.pkl";
+    private static final String SCORER_SER_SUFFIX = ".scorer.ser";
     private static final String SCORES_HDF5_SUFFIX = ".scores.hdf5";
     private static final String RECALIBRATION_VCF_SUFFIX = ".recal.vcf";
 
@@ -135,11 +135,11 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
                         outputScoresHDF5File.getAbsolutePath(), exception));
             }
         } else {
-            final BayesianGaussianMixtureUtils.Preprocesser preprocesser = BayesianGaussianMixtureUtils.deserialize(new File(modelPrefix + ".pre.ser"), BayesianGaussianMixtureUtils.Preprocesser.class);
-            final BayesianGaussianMixtureModeller bgmm = BayesianGaussianMixtureUtils.deserialize(new File(modelPrefix + ".bgmm.ser"), BayesianGaussianMixtureModeller.class);
+            final BayesianGaussianMixtureUtils.Scorer scorer = BayesianGaussianMixtureUtils.deserialize(
+                    new File(modelPrefix + SCORER_SER_SUFFIX), // TODO clean up
+                    BayesianGaussianMixtureUtils.Scorer.class);
             final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
-            final double[][] preprocessedData = preprocesser.transform(data);
-            scores = bgmm.scoreSamples(preprocessedData);
+            scores = scorer.preprocessAndScoreSamples(data);
         }
         logger.info("Scoring complete.");
 
