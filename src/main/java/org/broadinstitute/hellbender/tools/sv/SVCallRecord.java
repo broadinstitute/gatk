@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.COPY_NUMBER_FORMAT;
 
@@ -232,8 +233,20 @@ public class SVCallRecord implements SVLocatable {
         return VariantContextGetters.getAttributeAsInt(genotype, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
     }
 
-    public Set<String> getCarrierSamples() {
-        return genotypes.stream().filter(this::isCarrier).map(Genotype::getSampleName).collect(Collectors.toSet());
+    public Set<String> getCarrierSampleSet() {
+        return getCarrierSampleStream().collect(Collectors.toSet());
+    }
+
+    public List<Genotype> getCarrierGenotypeList() {
+        return getCarrierGenotypeStream().collect(Collectors.toList());
+    }
+
+    private Stream<String> getCarrierSampleStream() {
+        return getCarrierGenotypeStream().map(Genotype::getSampleName);
+    }
+
+    private Stream<Genotype> getCarrierGenotypeStream() {
+        return genotypes.stream().filter(this::isCarrier);
     }
 
     public boolean isDepthOnly() {

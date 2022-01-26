@@ -63,8 +63,8 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
      */
     protected static boolean hasSampleOverlap(final SVCallRecord a, final SVCallRecord b, final double minSampleOverlap) {
         if (minSampleOverlap > 0) {
-            final Set<String> samplesA = a.getCarrierSamples();
-            final Set<String> samplesB = b.getCarrierSamples();
+            final Set<String> samplesA = a.getCarrierSampleSet();
+            final Set<String> samplesB = b.getCarrierSampleSet();
             return hasSampleSetOverlap(samplesA, samplesB, minSampleOverlap);
         } else {
             return true;

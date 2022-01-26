@@ -7,10 +7,11 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVCollapser;
+import org.broadinstitute.hellbender.tools.sv.cluster.PloidyTable;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -64,71 +65,70 @@ public final class SVCallRecordUtils {
             builder.attribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, record.getContigB());
             builder.attribute(GATKSVVCFConstants.END2_ATTRIBUTE, end2);
         }
-        if (!svtype.equals(StructuralVariantType.BND)) {
+        if (svtype.equals(StructuralVariantType.INS)) {
             builder.attribute(GATKSVVCFConstants.SVLEN, record.getLength());
         }
         if (svtype.equals(StructuralVariantType.BND) || svtype.equals(StructuralVariantType.INV)) {
             builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
         }
-
-        // Generate alleles for DEL genotypes, which can be inferred from expected and actual copy numbers
-        final List<Genotype> newGenotypes = new ArrayList<>(record.getGenotypes().size());
-        if (svtype.equals(StructuralVariantType.DEL)) {
-            for (final Genotype g : record.getGenotypes()) {
-                Utils.validate(altAlleles.size() == 1, "Encountered deletion with multiple ALT alleles");
-                Utils.validate(g.hasExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT),
-                        "Deletion genotype missing " + GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT + " field");
-                Utils.validate(g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT),
-                        "Deletion genotype missing " + GATKSVVCFConstants.COPY_NUMBER_FORMAT + " field");
-                final int expectedCopyNumber = VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0);
-                final int copyNumber = VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);
-                final int numAltAlleles = expectedCopyNumber - copyNumber;
-                Utils.validate(numAltAlleles >= 0, "Invalid copy number " + copyNumber +
-                        " for deletion genotype with expected copy number " + expectedCopyNumber);
-                final List<Allele> genotypeAlleles = new ArrayList<>(expectedCopyNumber);
-                for (int i = 0; i < copyNumber; i++) {
-                    genotypeAlleles.add(refAllele);
-                }
-                for (int i = copyNumber; i < numAlleles; i++) {
-                    genotypeAlleles.add(altAlleles.get(0));
-                }
-                newGenotypes.add(new GenotypeBuilder(g).alleles(genotypeAlleles).make());
-            }
-            builder.genotypes(newGenotypes);
-        } else {
-            builder.genotypes(record.getGenotypes());
+        final GenotypesContext genotypes = GenotypesContext.create(record.getGenotypes().size());
+        for (final Genotype g : record.getGenotypes()) {
+            genotypes.add(sanitizeEmptyGenotype(g));
         }
-
+        // htsjdk vcf encoder does not allow genotypes to have empty alleles
+        builder.genotypes(record.getGenotypes().stream().map(SVCallRecordUtils::sanitizeEmptyGenotype).collect(Collectors.toList()));
         return builder;
     }
 
     /**
-     * Creates a new {@link GenotypesContext} object augmented with the given sample set. Samples with existing
-     * genotypes are not touched. Samples without genotypes are assigned the provided sets of alleles and attributes.
-     * @param genotypes base genotypes
+     * Adds NO_CALL allele if empty
+     */
+    private static Genotype sanitizeEmptyGenotype(final Genotype g) {
+        if (g.getAlleles().isEmpty()) {
+            return new GenotypeBuilder(g).alleles(Collections.singletonList(Allele.NO_CALL)).make();
+        } else {
+            return g;
+        }
+    }
+
+    /**
+     * Populates genotypes for samples not present in the given record. Samples with existing genotypes are not
+     * touched. Samples without genotypes are assigned one according to the provided default reference allele
+     * and ploidy, specified by the {@link GATKSVVCFConstants#EXPECTED_COPY_NUMBER_FORMAT} value. If the record
+     * represents a CNV, the {@link GATKSVVCFConstants#COPY_NUMBER_FORMAT} is also set.
+     * @param record record containing the genotypes
      * @param samples samples which the resulting genotypes must contain (existing samples are ignored)
-     * @param alleles alleles to apply to all new genotypes, must be length equal to the ploidy for the sample
-     * @param attributes attributes to apply to all new genotypes
+     * @param refAlleleDefault default allele to use for samples without genotypes
+     * @param ploidyTable ploidy table, which must contain at least all samples with missing genotypes
      * @return genotypes augmented with missing samples
      */
-    public static GenotypesContext populateGenotypesForMissingSamplesWithAlleles(final GenotypesContext genotypes,
+    public static GenotypesContext populateGenotypesForMissingSamplesWithAlleles(final SVCallRecord record,
                                                                                  final Set<String> samples,
-                                                                                 final List<Allele> alleles,
-                                                                                 final Map<String, Object> attributes) {
-        Utils.nonNull(genotypes);
+                                                                                 final boolean refAlleleDefault,
+                                                                                 final PloidyTable ploidyTable) {
+        Utils.nonNull(record);
         Utils.nonNull(samples);
+        final GenotypesContext genotypes = record.getGenotypes();
         final Set<String> missingSamples = Sets.difference(samples, genotypes.getSampleNames());
         if (missingSamples.isEmpty()) {
             return genotypes;
         }
         final ArrayList<Genotype> newGenotypes = new ArrayList<>(genotypes.size() + missingSamples.size());
         newGenotypes.addAll(genotypes);
+        final String contig = record.getContigA();
+        final List<Allele> altAlleles = record.getAltAlleles();
+        final Allele refAllele = record.getRefAllele();
+        final boolean isCNV = record.isSimpleCNV();
         for (final String sample : missingSamples) {
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sample);
-            if (attributes != null) {
-                genotypeBuilder.attributes(attributes);
+            final int ploidy = ploidyTable.get(sample, contig);
+            genotypeBuilder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy);
+            if (isCNV) {
+                genotypeBuilder.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, ploidy);
+                genotypeBuilder.alleles(CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(altAlleles, refAllele, ploidy, ploidy));
+            } else {
+                genotypeBuilder.alleles(Collections.nCopies(ploidy, refAlleleDefault ? refAllele : Allele.NO_CALL));
             }
-            genotypeBuilder.alleles(alleles);
             newGenotypes.add(genotypeBuilder.make());
         }
         return GenotypesContext.create(newGenotypes);
@@ -393,8 +393,16 @@ public final class SVCallRecordUtils {
         return g.getAlleles().stream().anyMatch(SVCallRecordUtils::isAltAllele);
     }
 
+    public static boolean isAltGenotype(final Genotype g) {
+        return g.getAlleles().stream().anyMatch(SVCallRecordUtils::isAltAllele);
+    }
+
     public static boolean isAltAllele(final Allele allele) {
         return allele != null && !allele.isNoCall() && !allele.isReference();
+    }
+
+    public static boolean isNonRefAllele(final Allele allele) {
+        return allele != null && !allele.isReference();
     }
 
     // TODO this is sort of hacky but the Allele compareTo() method doesn't give stable ordering

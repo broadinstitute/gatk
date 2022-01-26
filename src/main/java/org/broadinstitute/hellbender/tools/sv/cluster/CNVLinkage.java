@@ -59,8 +59,8 @@ public class CNVLinkage extends SVClusterLinkage<SVCallRecord> {
 
         // In the single-sample case, match copy number strictly if we're looking at the same sample
         // TODO repeated check for CN attributes in hasSampleOverlap and getCarrierSamples
-        final Set<String> carriersA = a.getCarrierSamples();
-        final Set<String> carriersB = b.getCarrierSamples();
+        final Set<String> carriersA = a.getCarrierSampleSet();
+        final Set<String> carriersB = b.getCarrierSampleSet();
         if (carriersA.size() == 1 && carriersA.equals(carriersB)) {
             final Genotype genotypeA = a.getGenotypes().get(carriersA.iterator().next());
             final Genotype genotypeB = b.getGenotypes().get(carriersB.iterator().next());
@@ -90,6 +90,9 @@ public class CNVLinkage extends SVClusterLinkage<SVCallRecord> {
     @Override
     public int getMaxClusterableStartingPosition(final SVCallRecord call) {
         final int contigLength = dictionary.getSequence(call.getContigA()).getSequenceLength();
+        if (!call.isSimpleCNV()) {
+            return 0;
+        }
         final int maxTheoreticalStart = (int) Math.floor((call.getPositionB() + paddingFraction * (call.getLength() + contigLength)) / (1.0 + paddingFraction));
         return Math.min(maxTheoreticalStart, dictionary.getSequence(call.getContigA()).getSequenceLength());
     }
