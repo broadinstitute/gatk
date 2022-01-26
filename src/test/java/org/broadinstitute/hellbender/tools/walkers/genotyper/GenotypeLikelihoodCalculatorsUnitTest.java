@@ -47,7 +47,7 @@ public final class GenotypeLikelihoodCalculatorsUnitTest extends GATKBaseTest {
     }
     @Test(dataProvider = "genotypeCount")
     public void testGenotypeCountSharedInstance(int ploidy, int alleleCount, int expected) throws Exception {
-        Assert.assertEquals(calcs.genotypeCount(ploidy, alleleCount), expected);
+        Assert.assertEquals(GenotypeLikelihoodCalculators.genotypeCount(ploidy, alleleCount), expected);
     }
 
     @Test(dataProvider = "genotypeCount")
@@ -62,7 +62,7 @@ public final class GenotypeLikelihoodCalculatorsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "genotypeCount")
     public void testGenotypeCountNewInstance(int ploidy, int alleleCount, int expected) throws Exception {
-        Assert.assertEquals(new GenotypeLikelihoodCalculators().genotypeCount(ploidy, alleleCount), expected);
+        Assert.assertEquals(GenotypeLikelihoodCalculators.genotypeCount(ploidy, alleleCount), expected);
     }
 
     @Test(dataProvider = "genotypeCount")
@@ -77,17 +77,17 @@ public final class GenotypeLikelihoodCalculatorsUnitTest extends GATKBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testGenotypeCountOverflow() throws Exception {
-        final int genotypeCount = new GenotypeLikelihoodCalculators().genotypeCount(10_000, 10_000);
+        final int genotypeCount = GenotypeLikelihoodCalculators.genotypeCount(10_000, 10_000);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testGenotypeCountNegativePloidy() throws Exception {
-        new GenotypeLikelihoodCalculators().genotypeCount(-1, 1);
+        GenotypeLikelihoodCalculators.genotypeCount(-1, 1);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testGenotypeCountNegativeAlleleCount() throws Exception {
-        new GenotypeLikelihoodCalculators().genotypeCount(1, -1);
+        GenotypeLikelihoodCalculators.genotypeCount(1, -1);
     }
 
     @Test

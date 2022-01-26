@@ -2,13 +2,13 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 
-import java.util.Comparator;
 import java.util.Iterator;
-import java.util.PriorityQueue;
 
 public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCounts> {
     /**
@@ -30,10 +30,10 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
      * Ploidy for this calculator.
      */
     final int ploidy;
-    /**
-     * Max-heap for integers used for this calculator internally.
-     */
-    private final PriorityQueue<Integer> alleleHeap;
+
+    final GenotypeIndexCalculator genotypeIndexCalculator;
+
+
     /**
      * Buffer used as a temporary container for likelihood components for genotypes stratified by reads.
      *
@@ -47,7 +47,7 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
      * Buffer field use as a temporal container for sorted allele counts when calculating the likelihood of a
      * read in a genotype.
      * <p>
-     *      This array follows the same format as {@link GenotypeAlleleCounts#sortedAlleleCounts}. Each component in the
+     *      This array follows the same format as {@link GenotypeAlleleCounts::sortedAlleleCounts}. Each component in the
      *      genotype takes up two positions in the array where the first indicate the allele index and the second its frequency in the
      *      genotype. Only non-zero frequency alleles are represented, taking up the first positions of the array.
      * </p>
@@ -116,7 +116,7 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
         genotypeCount = (int) GenotypeLikelihoodCalculators.numberOfGenotpyes(ploidy, alleleCount);
         this.alleleCount = alleleCount;
         this.ploidy = ploidy;
-        alleleHeap = new PriorityQueue<>(ploidy, Comparator.<Integer>naturalOrder().reversed());
+        genotypeIndexCalculator = new GenotypeIndexCalculator(ploidy, alleleCount);
         readLikelihoodsByGenotypeIndex = new double[genotypeCount][];
         genotypeAllelesAndCounts = new int[maximumDistinctAllelesInGenotype * 2];
     }
@@ -148,23 +148,14 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
 
     /**
      * Give a list of alleles, returns the likelihood array index.
-     * @param alleleIndices the indices of the alleles in the genotype, there should be as many repetition of an
+     * @param alleles the indices of the alleles in the genotype, there should be as many repetition of an
      *                      index as copies of that allele in the genotype. Allele indices do not need to be sorted in
      *                      any particular way.
      *
      * @return never {@code null}.
      */
-    public int allelesToIndex(final int... alleleIndices) {
-        // Special case ploidy == 0.
-        if (ploidy == 0) {
-            return 0;
-        }
-
-        alleleHeap.clear();
-        for (int i = 0; i < alleleIndices.length; i++) {
-            alleleHeap.add(alleleIndices[i]);
-        }
-        return alleleHeapToIndex();
+    public int allelesToIndex(final int... alleles) {
+        return genotypeIndexCalculator.allelesToIndex(alleles);
     }
 
     /**
@@ -419,116 +410,50 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
     }
 
     /**
-     * Returns the likelihood index given the allele counts.
+     * Returns the likelihood index given the allele counts in format (allele1, count1, allele2, count2. . . )
      *
      * @param alleleCountArray the query allele counts. This must follow the format returned by
-     *  {@link GenotypeAlleleCounts#copyAlleleCounts} with 0 offset.
+     *  {@link GenotypeAlleleCounts#copyAlleleCounts}.
      *
-     * @throws IllegalArgumentException if {@code alleleCountArray} is not a valid {@code allele count array}:
-     *  <ul>
-     *      <li>is {@code null},</li>
-     *      <li>or its length is not even,</li>
-     *      <li>or it contains any negatives,
-     *      <li>or the count sum does not match the calculator ploidy,</li>
-     *      <li>or any of the alleles therein is negative or greater than the maximum allele index.</li>
-     *  </ul>
-     *
-     * @return 0 or greater but less than {@link #genotypeCount}.
+     * @throws IllegalArgumentException if {@code alleleCountArray} is null, has odd length, contains negative counts,
+     * or has a total allele count different from the ploidy.
+
      */
     public int alleleCountsToIndex(final int ... alleleCountArray) {
-        Utils.nonNull(alleleCountArray, "the allele counts cannot be null");
-        Utils.validateArg((alleleCountArray.length & 1) == 0, "the allele counts array cannot have odd length");
-        alleleHeap.clear();
-        for (int i = 0; i < alleleCountArray.length; i += 2) {
-            final int index = alleleCountArray[i];
-            final int count = alleleCountArray[i+1];
-            Utils.validateArg(count >= 0, "no allele count can be less than 0");
-            for (int j = 0; j < count; j++) {
-                alleleHeap.add(index);
-            }
-        }
-        return alleleHeapToIndex();
+        return genotypeIndexCalculator.alleleCountsToIndex(alleleCountArray);
     }
 
     /**
-     * Transforms the content of the heap into an index.
+     * Composes a genotype index map given a allele index recoding such that result[i] is the index of the old
+     * genotype corresponding to the ith new genotype.
      *
-     * <p>
-     *     The heap contents are flushed as a result, so is left ready for another use.
-     * </p>
-     *
-     * @return a valid likelihood index.
-     */
-    private int alleleHeapToIndex() {
-        Utils.validateArg(alleleHeap.size() == ploidy, "the sum of allele counts must be equal to the ploidy of the calculator");
-        Utils.validateArg(alleleHeap.peek() < alleleCount, () -> "invalid allele " + alleleHeap.peek() + " more than the maximum " + (alleleCount - 1));
-        int result = 0;
-        for (int p = ploidy; p > 0; p--) {
-            final int allele = alleleHeap.remove();
-            Utils.validateArg(allele >= 0, () -> "invalid allele " + allele + " must be equal or greater than 0 ");
-            result += GenotypeLikelihoodCalculators.numberOfGenotypesBeforeAllele(p, allele);
-        }
-        return result;
-    }
-
-    /**
-     * Composes a genotype index map given a allele index recoding.
-     *
-     * @param oldToNewAlleleIndexMap allele recoding. The ith entry indicates the index of the allele in original encoding
-     *                               that corresponds to the ith allele index in the final encoding.
+     * @param newToOldAlleleMap allele recoding such that newToOldAlleleMap[i] is the index of the old allele
+     *                               corresponding to the ith new allele
      *
      * @throws IllegalArgumentException if this calculator cannot handle the recoding provided. This is
-     * the case when either {@code oldToNewAlleleIndexMap}'s length or any of its element (+ 1 as they are 0-based) is larger
+     * the case when either {@code newToOldAlleleMap}'s length or any of its element (+ 1 as they are 0-based) is larger
      * this calculator's {@link #alleleCount()}. Also if any {@code oldToNewAllelesIndexMap} element is negative.
      *
      * @return never {@code null}.
      */
-    public int[] genotypeIndexMap(final int[] oldToNewAlleleIndexMap, final GenotypeLikelihoodCalculators calculators) {
-        Utils.nonNull(oldToNewAlleleIndexMap);
-        final int resultAlleleCount = oldToNewAlleleIndexMap.length;
-        Utils.validateArg(resultAlleleCount <= alleleCount, () -> "this calculator does not have enough capacity for handling "
-                    + resultAlleleCount + " alleles ");
-        final int resultLength = resultAlleleCount == alleleCount
-                ? genotypeCount : calculators.genotypeCount(ploidy,resultAlleleCount);
+    public int[] newToOldGenotypeMap(final int[] newToOldAlleleMap) {
+        Utils.nonNull(newToOldAlleleMap);
+        final int newAlleleCount = newToOldAlleleMap.length;
+        Utils.validateArg(newAlleleCount <= alleleCount,
+                () -> String.format("New allele count %d exceeds old allele count %d.", newAlleleCount, alleleCount));
+        final int newGenotypeCount = newAlleleCount == alleleCount ? genotypeCount :
+                GenotypeLikelihoodCalculators.genotypeCount(ploidy, newAlleleCount);
 
-        final int[] result = new int[resultLength];
-        final int[] sortedAlleleCounts = new int[Math.max(ploidy, alleleCount) << 1];
-        alleleHeap.clear();
-        GenotypeAlleleCounts alleleCounts = genotypeAlleleCounts[0];
-        for (int i = 0; i < resultLength; i++) {
-            genotypeIndexMapPerGenotypeIndex(i,alleleCounts, oldToNewAlleleIndexMap, result, sortedAlleleCounts);
-            if (i < resultLength - 1) {
-                alleleCounts = nextGenotypeAlleleCounts(alleleCounts);
+        final int[] result = new int[newGenotypeCount];
+        GenotypeAlleleCounts newGAC = genotypeAlleleCounts[0];
+        for (int i = 0; i < newGenotypeCount; i++) {
+            result[i] = genotypeIndexCalculator.alleleCountsToIndex(newGAC, newToOldAlleleMap);
+
+            if (i < newGenotypeCount - 1) {
+                newGAC = nextGenotypeAlleleCounts(newGAC);
             }
         }
         return result;
-    }
-
-    /**
-     * Performs the genotype mapping per new genotype index.
-     *
-     * @param newGenotypeIndex the target new genotype index.
-     * @param alleleCounts tha correspond to {@code newGenotypeIndex}.
-     * @param oldToNewAlleleIndexMap the allele mapping.
-     * @param destination where to store the new genotype index mapping to old.
-     * @param sortedAlleleCountsBuffer a buffer to re-use to get the genotype-allele-count's sorted allele counts.
-     */
-    private void genotypeIndexMapPerGenotypeIndex(final int newGenotypeIndex, final GenotypeAlleleCounts alleleCounts, final int[] oldToNewAlleleIndexMap, final int[] destination, final int[] sortedAlleleCountsBuffer) {
-        final int distinctAlleleCount = alleleCounts.distinctAlleleCount();
-        alleleCounts.copyAlleleCounts(sortedAlleleCountsBuffer,0);
-        for (int j = 0, jj = 0; j < distinctAlleleCount; j++) {
-            final int oldIndex = sortedAlleleCountsBuffer[jj++];
-            final int repeats = sortedAlleleCountsBuffer[jj++];
-            final int newIndex = oldToNewAlleleIndexMap[oldIndex];
-            if (newIndex < 0 || newIndex >= alleleCount) {
-                throw new IllegalArgumentException("found invalid new allele index (" + newIndex + ") for old index (" + oldIndex + ")");
-            }
-            for (int k = 0; k < repeats; k++) {
-                alleleHeap.add(newIndex);
-            }
-        }
-        final int genotypeIndex = alleleHeapToIndex(); // this cleans the heap for the next use.
-        destination[newGenotypeIndex] = genotypeIndex;
     }
 
     @Override

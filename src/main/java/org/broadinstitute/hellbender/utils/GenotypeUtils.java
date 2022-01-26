@@ -172,7 +172,7 @@ public final class GenotypeUtils {
         //here we supply likelihoods for ref/ref, ref/alt, and alt/alt and then generalize to multiallic PLs if necessary
         final int[] approxLikelihoods = {0, gq, PLOIDY_2_HOM_VAR_SCALE_FACTOR*gq};
         //map likelihoods for any other alts to biallelic ref/alt likelihoods above
-        final int[] genotypeIndexMapByPloidy = GL_CALCS.getInstance(ploidy, nAlleles).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, GL_CALCS); //probably horribly slow
+        final int[] genotypeIndexMapByPloidy = GL_CALCS.getInstance(ploidy, nAlleles).newToOldGenotypeMap(perSampleIndexesOfRelevantAlleles); //probably horribly slow
         final int[] PLs = new int[genotypeIndexMapByPloidy.length];
         for (int i = 0; i < PLs.length; i++) {
             PLs[i] = approxLikelihoods[genotypeIndexMapByPloidy[i]];

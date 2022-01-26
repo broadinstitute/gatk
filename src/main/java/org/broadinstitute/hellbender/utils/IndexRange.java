@@ -188,6 +188,20 @@ public final class IndexRange {
     }
 
     /**
+     * Sums the values of an int -> int function applied to this range
+     *
+     * @param lambda the int -> int function
+     */
+    public int sumInt(final IntUnaryOperator lambda) {
+        Utils.nonNull(lambda, "the lambda function cannot be null");
+        int result = 0;
+        for (int i = from; i < to; i++) {
+            result += lambda.applyAsInt(i);
+        }
+        return result;
+    }
+
+    /**
      * Apply an int -> int function to this range, producing an int[]
      *
      * @param lambda the int -> int function

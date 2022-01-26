@@ -92,7 +92,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         for (int gtAlleleIndex = 0; gtAlleleIndex < sampleLikelihoods.numberOfAlleles(); gtAlleleIndex++) {
             //This is crufty, it just so happens that the index of the homozygous genotype corresponds to the maximum genotype count per field.
             //This should be pulled off as a calculator in some genotyping class.
-            final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
+            final int indexForGT = GenotypeLikelihoodCalculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
             final double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
 
             for (int errorAlleleIndex = 0, offsetForReadLikelihoodGivenAlleleIndex = readCount; errorAlleleIndex < sampleLikelihoods.numberOfAlleles(); errorAlleleIndex++, offsetForReadLikelihoodGivenAlleleIndex += alleleDataSize) {
@@ -277,7 +277,7 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
 
                 //This is crufty, it just so happens that the index of the homozygous genotype corresponds to the maximum genotype count per field.
                 //This should be pulled off as a calculator in some genotyping class.
-                final int indexForGT = calculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
+                final int indexForGT = GenotypeLikelihoodCalculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
                 final double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
 
                 // TODO restore the critical thresholds

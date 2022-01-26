@@ -244,7 +244,7 @@ public final class GenotypeLikelihoodCalculators {
      *
      * @return the number of genotypes given ploidy and allele count (0 or greater).
      */
-    public int genotypeCount(final int ploidy, final int alleleCount) {
+    public static int genotypeCount(final int ploidy, final int alleleCount) {
         final long result = numberOfGenotpyes(ploidy, alleleCount);
         Utils.validateArg(result != MathUtils.LONG_OVERFLOW && result < Integer.MAX_VALUE, () ->
                 String.format("the number of genotypes is too large for ploidy %d and %d alleles: approx. %.0f", ploidy, alleleCount,

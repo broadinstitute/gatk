@@ -93,9 +93,9 @@ public final class GenotypeLikelihoodCalculatorUnitTest {
         final GenotypeLikelihoodCalculators calculators = new GenotypeLikelihoodCalculators();
         final GenotypeLikelihoodCalculator calculator = calculators.getInstance(ploidy, maxAlleleCount);
 
-        final int[] genotypeIndexMap = calculator.genotypeIndexMap(alleleMap, calculators);
+        final int[] genotypeIndexMap = calculator.newToOldGenotypeMap(alleleMap);
         Assert.assertNotNull(genotypeIndexMap);
-        Assert.assertEquals(genotypeIndexMap.length, calculators.genotypeCount(ploidy, newAlleleCount));
+        Assert.assertEquals(genotypeIndexMap.length, GenotypeLikelihoodCalculators.genotypeCount(ploidy, newAlleleCount));
 
         final GenotypeLikelihoodCalculator oldCalculator = calculators.getInstance(ploidy, oldAlleleCount);
         final GenotypeLikelihoodCalculator newCalculator = calculators.getInstance(ploidy, newAlleleCount);

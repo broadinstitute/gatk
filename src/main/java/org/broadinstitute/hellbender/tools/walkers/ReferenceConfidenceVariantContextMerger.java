@@ -542,7 +542,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                     // lazy initialization of the genotype index map by ploidy.
                     int[]  perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(remappedAlleles, targetAlleles, vc.getStart(), g, false);
                     final int[] genotypeIndexMapByPloidy = genotypeIndexMapsByPloidy[ploidy] == null
-                            ? calculators.getInstance(ploidy, maximumAlleleCount).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, calculators) //probably horribly slow
+                            ? calculators.getInstance(ploidy, maximumAlleleCount).newToOldGenotypeMap(perSampleIndexesOfRelevantAlleles) //probably horribly slow
                             : genotypeIndexMapsByPloidy[ploidy];
                     final int[] PLs = generatePL(g, genotypeIndexMapByPloidy);
                     final int[] AD = g.hasAD() ? AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles) : null;
