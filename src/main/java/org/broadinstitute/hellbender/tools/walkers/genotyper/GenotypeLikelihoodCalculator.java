@@ -50,10 +50,6 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
      * goes beyond the maximum genotype-allele-count static capacity. Check on that method documentation for details.
      */
     private GenotypeAlleleCounts lastOverheadCounts;
-    /**
-     * Precomputed values of log_10(frequency) + log_10 Lk(read | allele)
-     */
-    double[] readAlleleLikelihoodByAlleleCount = null;
 
     /**
      * Indicates how many reads the calculator supports.
