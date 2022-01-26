@@ -95,6 +95,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             final int indexForGT = GenotypeLikelihoodCalculators.genotypeCount(ploidy, gtAlleleIndex + 1) - 1;
             final double[] readLikelihoodsForGT = readLikelihoodsByGenotypeIndex[indexForGT];
 
+            // NOTE: in the following, the index offsetForReadLikelihoodGivenAlleleIndex always corresponds to the flattened
+            // 3D indices of allele = errorAlleleIndex, frequency = 1, and read runs over all reads
             for (int errorAlleleIndex = 0, offsetForReadLikelihoodGivenAlleleIndex = readCount; errorAlleleIndex < sampleLikelihoods.numberOfAlleles(); errorAlleleIndex++, offsetForReadLikelihoodGivenAlleleIndex += alleleDataSize) {
                 // We only want to make calls on SNPs for now
                 if (sampleLikelihoods.getAllele(gtAlleleIndex) == sampleLikelihoods.getAllele(errorAlleleIndex) ||
@@ -163,6 +165,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
             final double errorAlleleContribution;
             if (readIndex != -1) {
                 homozygousGenotypeContribution = readLikelihoodsForGT[readIndex] - -MathUtils.LOG10_ONE_HALF;
+                // the following index is just the error allele, frequency = 1, read element of
+                // readAlleleLikelihoodByAlleleCount, which is just log_10(1) + log_10 lk(read | error allele)
                 errorAlleleContribution = readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
             } else {
                 // If read index == -1 then we are evaluating a read that was rejected by the HMM and therefore doesn't have genotype scores
@@ -254,6 +258,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
         final int readCount = sampleLikelihoods.evidenceCount();
         final int alleleDataSize = readCount * (ploidy + 1);
 
+        // NOTE: in the following, the index offsetForReadLikelihoodGivenAlleleIndex always corresponds to the flattened
+        // 3D indices of allele = foreignAlleleIndex, frequency = 1, and read runs over all reads
         for (int fAlleleIndex = 0, offsetForReadLikelihoodGivenAlleleIndex = readCount; fAlleleIndex < sampleLikelihoods.numberOfAlleles(); fAlleleIndex++, offsetForReadLikelihoodGivenAlleleIndex += alleleDataSize) {
             // ignore symbolic alleles
             final boolean isIndel = sampleLikelihoods.getAllele(fAlleleIndex).length() != refAllele.length();
@@ -368,6 +374,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                     // Only include reads with mapping quality adjustment < the critical threshold being used (i.e. exclude reads with MQ > than the threshold)
                     final double LPd_r_F = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
                             Double.NEGATIVE_INFINITY :
+                            // the following index is just the foreign allele, frequency = 1, read element of
+                            // readAlleleLikelihoodByAlleleCount, which is just log_10(1) + log_10 lk(read | error allele)
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
                     final double lp_r_GT = readLikelihoodsForGT[readIndex] - -MathUtils.LOG10_ONE_HALF;
 
@@ -396,6 +404,8 @@ public final class GenotypeLikelihoodCalculatorDRAGEN extends GenotypeLikelihood
                 if (predicate.test(container)) {
                     final double log10LikelihoodOfForeignAlleleGivenLPFCutoff = container.getPhredPFValue() + 0.0000001 <= logProbFAllele ?
                             Double.NEGATIVE_INFINITY :
+                            // the following index is just the foreign allele, frequency = 1, read element of
+                            // readAlleleLikelihoodByAlleleCount, which is just log_10(1) + log_10 lk(read | error allele)
                             readAlleleLikelihoodByAlleleCount[offsetForReadLikelihoodGivenAlleleIndex + readIndex];
 
                     cumulativeLog10LikelihoodOfForeignReadHypothesis += MathUtils.approximateLog10SumLog10(log10ForeignAlleleLikelihood + log10LikelihoodOfForeignAlleleGivenLPFCutoff, log10NotForeignAlleleLikelihood + log10LikelihoodReadForGenotype);
