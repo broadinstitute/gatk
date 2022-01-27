@@ -32,16 +32,7 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
     final int ploidy;
 
     final GenotypeIndexCalculator genotypeIndexCalculator;
-
-    /**
-     * Precomputed values such that value[genotype g][read] is the log likelihood log_10 lk(g | r)
-     *  = log_10_sum_log_10(log_10(f1) + log_10 Lk ( read | a1 ), . . .)
-     *  = log_10(f1*lk(r|a1) + f2*lk(r|a2). . .)
-     *  where the genotype g has alleles a1, a2. . . with frequencies f1, f2. . .
-     */
-    final double[][] readLikelihoodsByGenotypeIndex;
-
-
+    
     /**
      * Cache of the last genotype-allele-count requested using {@link #genotypeAlleleCountsAt(int)}, when it
      * goes beyond the maximum genotype-allele-count static capacity. Check on that method documentation for details.

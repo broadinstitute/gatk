@@ -146,7 +146,7 @@ public class DRAGENGenotypesModel implements GenotypingModel {
 
             // this is the data array for the read likelihoods without any trouble
             final LikelihoodMatrix<GATKRead, A> sampleLikelihoods = alleleLikelihoodMatrixMapper.mapAlleles(data.readLikelihoods().sampleMatrix(sampleIndex));
-            final double[] ploidyModelGenotypeLikelihoods = likelihoodsCalculator.rawGenotypeLikelihoods(sampleLikelihoods);
+            final double[] ploidyModelGenotypeLikelihoods = likelihoodsCalculator.getReadRawReadLikelihoodsByGenotypeIndex(sampleLikelihoods);
 
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("\n Standard Genotyping Likelihoods Results:");
@@ -156,13 +156,13 @@ public class DRAGENGenotypesModel implements GenotypingModel {
             if (computeBQD) {
                 applyLikelihoodsAdjusmentToBaseline(ploidyModelGenotypeLikelihoods, "BQD",
                 likelihoodsCalculator.calculateBQDLikelihoods(sampleLikelihoods, strandForward, strandReverse,
-                        paddedReference, offsetForRefIntoEvent, calculators));
+                        paddedReference, offsetForRefIntoEvent));
             }
             if (computeFRD) {
                 applyLikelihoodsAdjusmentToBaseline(ploidyModelGenotypeLikelihoods, "FRD",
                         likelihoodsCalculator.calculateFRDLikelihoods(sampleLikelihoods, ploidyModelGenotypeLikelihoods,
                                 Stream.of(strandForward, strandReverse).flatMap(Collection::stream).collect(Collectors.toList()), // We filter out the HMM filtered reads as they do not apply to FRD
-                                FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment, calculators));
+                                FLAT_SNP_HET_PRIOR, api, maxEffectiveDepthAdjustment));
             }
 
             // this is what the work actually is, after we have computed a few things
