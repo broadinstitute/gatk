@@ -280,29 +280,34 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     public Object[][] dataValidDataModesMultipleSamples() {
         return new Object[][]{
                 {
-                        Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
-                        Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
-                        NORMAL_ALLELIC_COUNTS_FILE
+                    "multiple-sample-cr-ac-nac", // cr-ac-nac = copy ratios + allelic counts + normal allelic counts
+                    Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
+                    Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
+                    NORMAL_ALLELIC_COUNTS_FILE
                 },
                 {
-                        Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
-                        Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
-                        null
+                    "multiple-sample-cr-ac",
+                    Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
+                    Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
+                    null
                 },
                 {
-                        null,
-                        Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
-                        NORMAL_ALLELIC_COUNTS_FILE
+                    "multiple-sample-ac-nac",
+                    null,
+                    Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
+                    NORMAL_ALLELIC_COUNTS_FILE
                 },
                 {
-                        Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
-                        null,
-                        null
+                    "multiple-sample-cr",
+                    Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
+                    null,
+                    null
                 },
                 {
-                        null,
-                        Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
-                        null
+                    "multiple-sample-ac",
+                    null,
+                    Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
+                    null
                 }
         };
     }
@@ -400,16 +405,31 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "dataValidDataModesMultipleSamples")
-    public void testValidDataModesMultipleSamples(final List<File> denoisedCopyRatiosFiles,
+    public void testValidDataModesMultipleSamples(final String outputPrefix,
+                                                  final List<File> denoisedCopyRatiosFiles,
                                                   final List<File> allelicCountsFiles,
                                                   final File normalAllelicCountsFile) {
         final File outputDir = createTempDir("testDir");
+
+        // test joint segmentation
         final ArgumentsBuilder argsBuilder = buildArgsBuilderMultipleSamples(
-                outputDir, denoisedCopyRatiosFiles, allelicCountsFiles, normalAllelicCountsFile);
+                outputDir, outputPrefix, denoisedCopyRatiosFiles, allelicCountsFiles, normalAllelicCountsFile);
         runCommandLine(argsBuilder);
         final boolean isAllelicCountsPresent = allelicCountsFiles != null;
         final boolean isNormalAllelicCountsPresent = normalAllelicCountsFile != null;
-        assertOutputFilesMultipleSamples(outputDir, isAllelicCountsPresent, isNormalAllelicCountsPresent);
+        assertOutputFilesMultipleSamples(outputDir, outputPrefix, isAllelicCountsPresent, isNormalAllelicCountsPresent);
+
+        // test using joint segmentation as input to scatter of first case sample
+        final ArgumentsBuilder argsBuilderSingleSample = buildArgsBuilderSingleSample(
+                outputDir, outputPrefix + "-tumor-1",
+                denoisedCopyRatiosFiles == null ? null : denoisedCopyRatiosFiles.get(0),
+                allelicCountsFiles == null ? null : allelicCountsFiles.get(0),
+                normalAllelicCountsFile);
+        argsBuilderSingleSample.add(    // add the joint segmentation as input
+                CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME,
+                new File(outputDir, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX));
+        runCommandLine(argsBuilderSingleSample);
+        assertOutputFilesSingleSample(outputDir, outputPrefix + "-tumor-1", isAllelicCountsPresent, isNormalAllelicCountsPresent);
     }
 
     @Test(dataProvider = "dataInvalidDataModesMultipleSamples", expectedExceptions = IllegalArgumentException.class)
@@ -417,18 +437,21 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                                     final List<File> allelicCountsFiles,
                                                     final File normalAllelicCountsFile) {
         final File outputDir = createTempDir("testDir");
+
+        // test joint segmentation
         final ArgumentsBuilder argsBuilder = buildArgsBuilderMultipleSamples(
-                outputDir, denoisedCopyRatiosFiles, allelicCountsFiles, normalAllelicCountsFile);
+                outputDir, DEFAULT_OUTPUT_PREFIX, denoisedCopyRatiosFiles, allelicCountsFiles, normalAllelicCountsFile);
         runCommandLine(argsBuilder);
     }
 
     private static ArgumentsBuilder buildArgsBuilderMultipleSamples(final File outputDir,
+                                                                    final String outputPrefix,
                                                                     final List<File> denoisedCopyRatiosFiles,
                                                                     final List<File> allelicCountsFiles,
                                                                     final File normalAllelicCountsFile) {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addOutput(outputDir)
-                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, DEFAULT_OUTPUT_PREFIX);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         if (denoisedCopyRatiosFiles != null) {
             denoisedCopyRatiosFiles.forEach(f -> argsBuilder.add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, f));
         }
@@ -442,20 +465,26 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     }
 
     private static void assertOutputFilesMultipleSamples(final File outputDir,
+                                                         final String outputPrefix,
                                                          final boolean isAllelicCountsPresent,
                                                          final boolean isNormalAllelicCountsPresent) {
         Assert.assertFalse(!isAllelicCountsPresent && isNormalAllelicCountsPresent);
         for (final String fileTag : Arrays.asList(ModelSegments.BEGIN_FIT_FILE_TAG, ModelSegments.FINAL_FIT_FILE_TAG)) {
-            Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + fileTag + ModelSegments.SEGMENTS_FILE_SUFFIX).exists());
-            Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + fileTag + ModelSegments.COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX).exists());
-            Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + fileTag + ModelSegments.ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX).exists());
+            for (final String suffix : Arrays.asList(
+                    ModelSegments.SEGMENTS_FILE_SUFFIX,
+                    ModelSegments.COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX,
+                    ModelSegments.ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX)) {
+                Assert.assertFalse(new File(outputDir, outputPrefix + fileTag + suffix).exists());
+            }
         }
-        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX).exists());
-        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
-        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
-        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
-        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, outputPrefix + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, outputPrefix + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, outputPrefix + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, outputPrefix + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, outputPrefix + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
 
-        Assert.assertTrue(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX).exists());
+        IOUtil.assertFilesEqual(
+                new File(outputDir, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX),
+                new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX));
     }
 }
