@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import htsjdk.samtools.SAMException;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -20,9 +21,12 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Integration tests for {@link ModelSegments}.  We test for input validation across various run modes of the tool
@@ -34,7 +38,7 @@ import java.util.List;
 public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
     private static final File LARGE_TEST_RESOURCES_SUB_DIR = new File(largeFileTestDir, "org/broadinstitute/hellbender/tools/copynumber");
-    private static final File EXACT_MATCH_EXPECTED_SUB_DIR = new File(TEST_SUB_DIR, "model-segments-exact-match-expected");
+    private static final File EXACT_MATCH_EXPECTED_SUB_DIR = new File(TEST_SUB_DIR, "model-segments-expected");
     private static final File TUMOR_1_DENOISED_COPY_RATIOS_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
             "model-segments-wes-tumor-1-denoised-copy-ratios-SM-74P4M-v1-chr20.denoisedCR.tsv");
     private static final File TUMOR_1_DENOISED_COPY_RATIOS_WITH_MISSING_INTERVALS_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
@@ -57,6 +61,13 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final SampleLocatableMetadata TUMOR_1_EXPECTED_METADATA = new CopyRatioCollection(TUMOR_1_DENOISED_COPY_RATIOS_FILE).getMetadata();
     private static final SampleLocatableMetadata TUMOR_2_EXPECTED_METADATA = new CopyRatioCollection(TUMOR_2_DENOISED_COPY_RATIOS_FILE).getMetadata();
     private static final SampleLocatableMetadata NORMAL_EXPECTED_METADATA = new AllelicCountCollection(NORMAL_ALLELIC_COUNTS_FILE).getMetadata();
+
+    /**
+     * Note that {@link org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils#DOUBLE_FORMAT}
+     * is set so that doubles in somatic CNV outputs will have 6 decimal places. We thus set the allowed delta
+     * to detect differences at that level.
+     */
+    private static final double ALLOWED_DELTA_FOR_DOUBLE_VALUES = 1E-6;
 
     @Test
     public void testMetadata() {
@@ -219,7 +230,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                     ModelSegments.SEGMENTS_FILE_SUFFIX,
                     ModelSegments.COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX,
                     ModelSegments.ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX)) {
-                IOUtil.assertFilesEqual(
+                assertFilesEqualUpToAllowedDeltaForDoubleValues(
                         new File(outputDir, outputPrefix + fileTag + suffix),
                         new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix + fileTag + suffix));
             }
@@ -238,23 +249,23 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(TUMOR_1_EXPECTED_METADATA.getSampleName(), alleleFractionParameters.getMetadata().getSampleName());
         }
 
-        IOUtil.assertFilesEqual(
+        assertFilesEqualUpToAllowedDeltaForDoubleValues(
                 new File(outputDir, outputPrefix  + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX),
                 new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX));
         final CopyRatioSegmentCollection copyRatioSegments = new CopyRatioSegmentCollection(
                 new File(outputDir, outputPrefix + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX));
         Assert.assertEquals(TUMOR_1_EXPECTED_METADATA, copyRatioSegments.getMetadata());
 
-        IOUtil.assertFilesEqual(
+        assertFilesEqualUpToAllowedDeltaForDoubleValues(
                 new File(outputDir, outputPrefix  + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX),
                 new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX));
-        IOUtil.assertFilesEqual(
+        assertFilesEqualUpToAllowedDeltaForDoubleValues(
                 new File(outputDir, outputPrefix  + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX),
                 new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX));
 
         AllelicCountCollection hetAllelicCounts = null;
         if (isAllelicCountsPresent) {
-            IOUtil.assertFilesEqual(
+            assertFilesEqualUpToAllowedDeltaForDoubleValues(
                     new File(outputDir, outputPrefix  + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX),
                     new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX));
             hetAllelicCounts = new AllelicCountCollection(
@@ -262,7 +273,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(TUMOR_1_EXPECTED_METADATA, hetAllelicCounts.getMetadata());
         }
         if (isNormalAllelicCountsPresent) { //if this is true, case sample allelic counts will be present
-            IOUtil.assertFilesEqual(
+            assertFilesEqualUpToAllowedDeltaForDoubleValues(
                     new File(outputDir, outputPrefix  + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX),
                     new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX));
             final AllelicCountCollection hetNormalAllelicCounts = new AllelicCountCollection(
@@ -483,8 +494,60 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(new File(outputDir, outputPrefix + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
         Assert.assertFalse(new File(outputDir, outputPrefix + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
 
-        IOUtil.assertFilesEqual(
+        assertFilesEqualUpToAllowedDeltaForDoubleValues(
                 new File(outputDir, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX),
                 new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX));
+    }
+
+    /**
+     * See https://github.com/broadinstitute/gatk/pull/7652#issuecomment-1023649096.
+     */
+    public static void assertFilesEqualUpToAllowedDeltaForDoubleValues(final File f1,
+                                                                       final File f2) {
+        try {
+            IOUtil.assertFilesEqual(f1, f2);
+        } catch (final SAMException e) {
+            logger.warn(String.format("Files %s and %s failed exact-match test, attempting comparison of doubles at the %6.3e level...%n",
+                    f1, f2, ALLOWED_DELTA_FOR_DOUBLE_VALUES));
+            try {
+                final List<String> lines1 = Files.lines(f1.toPath()).collect(Collectors.toList());
+                final List<String> lines2 = Files.lines(f2.toPath()).collect(Collectors.toList());
+                Assert.assertEquals(lines1.size(), lines2.size(),
+                        String.format("Files %s and %s do not have the same number of lines.", f1, f2));
+
+                for (int i = 0; i < lines1.size(); i++) {
+                    final String line1 = lines1.get(i);
+                    final String line2 = lines2.get(i);
+                    if (line1.equals(line2)) {
+                        continue;
+                    }
+
+                    final List<String> splitLine1 = Arrays.asList(line1.split("\t"));
+                    final List<String> splitLine2 = Arrays.asList(line2.split("\t"));
+                    Assert.assertEquals(splitLine1.size(), splitLine2.size(),
+                            String.format("Line %d does not have the same number of fields in files %s and %s.", i, f1, f2));
+
+                    for (int j = 0; j < splitLine1.size(); j++) {
+                        final String field1 = splitLine1.get(j);
+                        final String field2 = splitLine2.get(j);
+                        if (field1.equals(field2)) {
+                            continue;
+                        }
+                        try {
+                            final double double1 = Double.parseDouble(field1);
+                            final double double2 = Double.parseDouble(field2);
+                            Assert.assertEquals(double1, double2, ALLOWED_DELTA_FOR_DOUBLE_VALUES,
+                                    String.format("Field %d in line %d in files %s and %s is not equivalent at the %6.3e level: %f != %f.",
+                                            j, i, f1, f2, ALLOWED_DELTA_FOR_DOUBLE_VALUES, double1, double2));
+                        } catch (final NumberFormatException nfe) {
+                            Assert.fail(String.format("Non-double field %d in line %d in files %s and %s is not identical: %s != %s.",
+                                    j, i, f1, f2, field1, field2));
+                        }
+                    }
+                }
+            } catch (final IOException ioe) {
+                Assert.fail(String.format("Encountered IOException when trying to compare %s and %s: %s", f1, f2, ioe));
+            }
+        }
     }
 }
