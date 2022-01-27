@@ -70,8 +70,6 @@ workflow GvsExtractCohortFromSampleNames {
       reference_index = reference_index,
       reference_dict = reference_dict,
 
-      fq_cohort_extract_table_prefix = GvsPrepareCallset.fq_cohort_extract_table_prefix,
-
       do_not_filter_override = do_not_filter_override,
       filter_set_name = filter_set_name,
       snps_truth_sensitivity_filter_level_override = snps_truth_sensitivity_filter_level_override,

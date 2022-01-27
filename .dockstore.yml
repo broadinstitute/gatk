@@ -167,6 +167,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsExtractCohortFromSampleNames
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsExtractCohortFromSampleNames.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - rsa_wire_cohort_wdl
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
