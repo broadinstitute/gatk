@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
+import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
@@ -32,24 +33,26 @@ import java.util.List;
  */
 public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
-    private static final File TUMOR_1_DENOISED_COPY_RATIOS_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-tumor-1-denoised-copy-ratios-SM-74P4M-v1-chr20-downsampled.deduplicated.denoisedCR.tsv");
-    private static final File TUMOR_1_DENOISED_COPY_RATIOS_WITH_MISSING_INTERVALS_FILE = new File(TEST_SUB_DIR,
+    private static final File LARGE_TEST_RESOURCES_SUB_DIR = new File(largeFileTestDir, "org/broadinstitute/hellbender/tools/copynumber");
+    private static final File EXACT_MATCH_EXPECTED_SUB_DIR = new File(TEST_SUB_DIR, "model-segments-exact-match-expected");
+    private static final File TUMOR_1_DENOISED_COPY_RATIOS_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
+            "model-segments-wes-tumor-1-denoised-copy-ratios-SM-74P4M-v1-chr20.denoisedCR.tsv");
+    private static final File TUMOR_1_DENOISED_COPY_RATIOS_WITH_MISSING_INTERVALS_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
             "model-segments-wes-tumor-1-denoised-copy-ratios-with-missing-intervals.denoisedCR.tsv");
-    private static final File TUMOR_1_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-tumor-1-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
-    private static final File TUMOR_1_ALLELIC_COUNTS_WITH_MISSING_SITES_FILE = new File(TEST_SUB_DIR,
+    private static final File TUMOR_1_ALLELIC_COUNTS_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
+            "model-segments-wes-tumor-1-allelic-counts-SM-74P4M-v1-chr20.allelicCounts.tsv");
+    private static final File TUMOR_1_ALLELIC_COUNTS_WITH_MISSING_SITES_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
             "model-segments-wes-tumor-1-allelic-counts-with-missing-sites.allelicCounts.tsv");
-    private static final File TUMOR_2_DENOISED_COPY_RATIOS_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-tumor-2-denoised-copy-ratios-SM-74P4M-v1-chr20-downsampled.deduplicated.denoisedCR.tsv");
-    private static final File TUMOR_2_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-tumor-2-allelic-counts-SM-74P4M-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
-    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR,
-            "model-segments-wes-normal-allelic-counts-SM-74NEG-v1-chr20-downsampled.deduplicated.allelicCounts.tsv");
-    private static final File NORMAL_ALLELIC_COUNTS_WITH_MISSING_SITES_FILE = new File(TEST_SUB_DIR,
+    private static final File TUMOR_2_DENOISED_COPY_RATIOS_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
+            "model-segments-wes-tumor-2-denoised-copy-ratios-SM-74P4M-v1-chr20.denoisedCR.tsv");
+    private static final File TUMOR_2_ALLELIC_COUNTS_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
+            "model-segments-wes-tumor-2-allelic-counts-SM-74P4M-v1-chr20.allelicCounts.tsv");
+    private static final File NORMAL_ALLELIC_COUNTS_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
+            "model-segments-wes-normal-allelic-counts-SM-74NEG-v1-chr20.allelicCounts.tsv");
+    private static final File NORMAL_ALLELIC_COUNTS_WITH_MISSING_SITES_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
             "model-segments-wes-normal-allelic-counts-with-missing-sites.allelicCounts.tsv");
     
-    private static final String OUTPUT_PREFIX = "test";
+    private static final String DEFAULT_OUTPUT_PREFIX = "test";
     
     private static final SampleLocatableMetadata TUMOR_1_EXPECTED_METADATA = new CopyRatioCollection(TUMOR_1_DENOISED_COPY_RATIOS_FILE).getMetadata();
     private static final SampleLocatableMetadata TUMOR_2_EXPECTED_METADATA = new CopyRatioCollection(TUMOR_2_DENOISED_COPY_RATIOS_FILE).getMetadata();
@@ -80,29 +83,34 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     public Object[][] dataValidDataModesSingleSample() {
         return new Object[][]{
                 {
-                        TUMOR_1_DENOISED_COPY_RATIOS_FILE,
-                        TUMOR_1_ALLELIC_COUNTS_FILE,
-                        NORMAL_ALLELIC_COUNTS_FILE
+                    "single-sample-cr-ac-nac", // cr-ac-nac = copy ratios + allelic counts + normal allelic counts
+                    TUMOR_1_DENOISED_COPY_RATIOS_FILE,
+                    TUMOR_1_ALLELIC_COUNTS_FILE,
+                    NORMAL_ALLELIC_COUNTS_FILE
                 },
                 {
-                        TUMOR_1_DENOISED_COPY_RATIOS_FILE,
-                        TUMOR_1_ALLELIC_COUNTS_FILE,
-                        null
+                    "single-sample-cr-ac",
+                    TUMOR_1_DENOISED_COPY_RATIOS_FILE,
+                    TUMOR_1_ALLELIC_COUNTS_FILE,
+                    null
                 },
                 {
-                        null,
-                        TUMOR_1_ALLELIC_COUNTS_FILE,
-                        NORMAL_ALLELIC_COUNTS_FILE
+                    "single-sample-ac-nac",
+                    null,
+                    TUMOR_1_ALLELIC_COUNTS_FILE,
+                    NORMAL_ALLELIC_COUNTS_FILE
                 },
                 {
-                        TUMOR_1_DENOISED_COPY_RATIOS_FILE,
-                        null,
-                        null
+                    "single-sample-cr",
+                    TUMOR_1_DENOISED_COPY_RATIOS_FILE,
+                    null,
+                    null
                 },
                 {
-                        null,
-                        TUMOR_1_ALLELIC_COUNTS_FILE,
-                        null
+                    "single-sample-ac",
+                    null,
+                    TUMOR_1_ALLELIC_COUNTS_FILE,
+                    null
                 }
         };
     }
@@ -151,16 +159,17 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "dataValidDataModesSingleSample")
-    public void testValidDataModesSingleSample(final File denoisedCopyRatiosFile,
+    public void testValidDataModesSingleSample(final String outputPrefix,
+                                               final File denoisedCopyRatiosFile,
                                                final File allelicCountsFile,
                                                final File normalAllelicCountsFile) {
         final File outputDir = createTempDir("testDir");
         final ArgumentsBuilder argsBuilder = buildArgsBuilderSingleSample(
-                outputDir, denoisedCopyRatiosFile, allelicCountsFile, normalAllelicCountsFile);
+                outputDir, outputPrefix, denoisedCopyRatiosFile, allelicCountsFile, normalAllelicCountsFile);
         runCommandLine(argsBuilder);
         final boolean isAllelicCountsPresent = allelicCountsFile != null;
         final boolean isNormalAllelicCountsPresent = normalAllelicCountsFile != null;
-        assertOutputFilesSingleSample(outputDir, isAllelicCountsPresent, isNormalAllelicCountsPresent);
+        assertOutputFilesSingleSample(outputDir, outputPrefix, isAllelicCountsPresent, isNormalAllelicCountsPresent);
     }
 
     @Test(dataProvider = "dataInvalidDataModesSingleSample", expectedExceptions = IllegalArgumentException.class)
@@ -169,17 +178,18 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                                  final File normalAllelicCountsFile) {
         final File outputDir = createTempDir("testDir");
         final ArgumentsBuilder argsBuilder = buildArgsBuilderSingleSample(
-                outputDir, denoisedCopyRatiosFile, allelicCountsFile, normalAllelicCountsFile);
+                outputDir, DEFAULT_OUTPUT_PREFIX, denoisedCopyRatiosFile, allelicCountsFile, normalAllelicCountsFile);
         runCommandLine(argsBuilder);
     }
 
     private static ArgumentsBuilder buildArgsBuilderSingleSample(final File outputDir,
+                                                                 final String outputPrefix,
                                                                  final File denoisedCopyRatiosFile,
                                                                  final File allelicCountsFile,
                                                                  final File normalAllelicCountsFile) {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addOutput(outputDir)
-                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
         if (denoisedCopyRatiosFile != null) {
             argsBuilder.add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, denoisedCopyRatiosFile);
         }
@@ -192,47 +202,78 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         return argsBuilder;
     }
 
+    /**
+     * Note that exact-match tests do not completely cover reading/parsing of output files;
+     * we assume that it is unlikely that reading/parsing code will change/break and that rough coverage in e.g.
+     * {@link org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractSampleLocatableCollectionUnitTest}
+     * will suffice.
+     */
     private static void assertOutputFilesSingleSample(final File outputDir,
+                                                      final String outputPrefix,
                                                       final boolean isAllelicCountsPresent,
                                                       final boolean isNormalAllelicCountsPresent) {
         Assert.assertFalse(!isAllelicCountsPresent && isNormalAllelicCountsPresent);
         for (final String fileTag : Arrays.asList(ModelSegments.BEGIN_FIT_FILE_TAG, ModelSegments.FINAL_FIT_FILE_TAG)) {
+            // test exact match with expected outputs
+            for (final String suffix : Arrays.asList(
+                    ModelSegments.SEGMENTS_FILE_SUFFIX,
+                    ModelSegments.COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX,
+                    ModelSegments.ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX)) {
+                IOUtil.assertFilesEqual(
+                        new File(outputDir, outputPrefix + fileTag + suffix),
+                        new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix + fileTag + suffix));
+            }
+
+            // test sample-name reading
             final ModeledSegmentCollection modeledSegments = new ModeledSegmentCollection(
-                    new File(outputDir, OUTPUT_PREFIX + fileTag + ModelSegments.SEGMENTS_FILE_SUFFIX));
+                    new File(outputDir, outputPrefix + fileTag + ModelSegments.SEGMENTS_FILE_SUFFIX));
             Assert.assertEquals(TUMOR_1_EXPECTED_METADATA, modeledSegments.getMetadata());
 
             final ParameterDecileCollection<CopyRatioParameter> copyRatioParameters = new ParameterDecileCollection<>(
-                    new File(outputDir, OUTPUT_PREFIX + fileTag + ModelSegments.COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX), CopyRatioParameter.class);
+                    new File(outputDir, outputPrefix + fileTag + ModelSegments.COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX), CopyRatioParameter.class);
             Assert.assertEquals(TUMOR_1_EXPECTED_METADATA.getSampleName(), copyRatioParameters.getMetadata().getSampleName());
 
             final ParameterDecileCollection<AlleleFractionParameter> alleleFractionParameters = new ParameterDecileCollection<>(
-                    new File(outputDir, OUTPUT_PREFIX + fileTag + ModelSegments.ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX), AlleleFractionParameter.class);
+                    new File(outputDir, outputPrefix + fileTag + ModelSegments.ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX), AlleleFractionParameter.class);
             Assert.assertEquals(TUMOR_1_EXPECTED_METADATA.getSampleName(), alleleFractionParameters.getMetadata().getSampleName());
         }
 
+        IOUtil.assertFilesEqual(
+                new File(outputDir, outputPrefix  + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX),
+                new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX));
         final CopyRatioSegmentCollection copyRatioSegments = new CopyRatioSegmentCollection(
-                new File(outputDir, OUTPUT_PREFIX + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX));
+                new File(outputDir, outputPrefix + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX));
         Assert.assertEquals(TUMOR_1_EXPECTED_METADATA, copyRatioSegments.getMetadata());
 
-        Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
-        Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
+        IOUtil.assertFilesEqual(
+                new File(outputDir, outputPrefix  + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX),
+                new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX));
+        IOUtil.assertFilesEqual(
+                new File(outputDir, outputPrefix  + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX),
+                new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX));
 
         AllelicCountCollection hetAllelicCounts = null;
         if (isAllelicCountsPresent) {
+            IOUtil.assertFilesEqual(
+                    new File(outputDir, outputPrefix  + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX),
+                    new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX));
             hetAllelicCounts = new AllelicCountCollection(
-                    new File(outputDir, OUTPUT_PREFIX + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX));
+                    new File(outputDir, outputPrefix + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX));
             Assert.assertEquals(TUMOR_1_EXPECTED_METADATA, hetAllelicCounts.getMetadata());
         }
         if (isNormalAllelicCountsPresent) { //if this is true, case sample allelic counts will be present
+            IOUtil.assertFilesEqual(
+                    new File(outputDir, outputPrefix  + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX),
+                    new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX));
             final AllelicCountCollection hetNormalAllelicCounts = new AllelicCountCollection(
-                    new File(outputDir, OUTPUT_PREFIX + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX));
+                    new File(outputDir, outputPrefix + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX));
             Assert.assertEquals(NORMAL_EXPECTED_METADATA, hetNormalAllelicCounts.getMetadata());
             Assert.assertTrue(CopyNumberArgumentValidationUtils.isSameDictionary(               //sequence dictionary should be the same
                     TUMOR_1_EXPECTED_METADATA.getSequenceDictionary(), hetNormalAllelicCounts.getMetadata().getSequenceDictionary()));
             Assert.assertEquals(hetAllelicCounts.getIntervals(), hetNormalAllelicCounts.getIntervals());
         }
 
-        Assert.assertFalse(new File(outputDir, OUTPUT_PREFIX + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX).exists());
     }
 
     @DataProvider(name = "dataValidDataModesMultipleSamples")
@@ -387,7 +428,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                                                     final File normalAllelicCountsFile) {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder()
                 .addOutput(outputDir)
-                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX);
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, DEFAULT_OUTPUT_PREFIX);
         if (denoisedCopyRatiosFiles != null) {
             denoisedCopyRatiosFiles.forEach(f -> argsBuilder.add(CopyNumberStandardArgument.DENOISED_COPY_RATIOS_FILE_LONG_NAME, f));
         }
@@ -405,16 +446,16 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                                          final boolean isNormalAllelicCountsPresent) {
         Assert.assertFalse(!isAllelicCountsPresent && isNormalAllelicCountsPresent);
         for (final String fileTag : Arrays.asList(ModelSegments.BEGIN_FIT_FILE_TAG, ModelSegments.FINAL_FIT_FILE_TAG)) {
-            Assert.assertFalse(new File(outputDir, OUTPUT_PREFIX + fileTag + ModelSegments.SEGMENTS_FILE_SUFFIX).exists());
-            Assert.assertFalse(new File(outputDir, OUTPUT_PREFIX + fileTag + ModelSegments.COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX).exists());
-            Assert.assertFalse(new File(outputDir, OUTPUT_PREFIX + fileTag + ModelSegments.ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX).exists());
+            Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + fileTag + ModelSegments.SEGMENTS_FILE_SUFFIX).exists());
+            Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + fileTag + ModelSegments.COPY_RATIO_MODEL_PARAMETER_FILE_SUFFIX).exists());
+            Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + fileTag + ModelSegments.ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX).exists());
         }
-        Assert.assertFalse(new File(outputDir, OUTPUT_PREFIX + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX).exists());
-        Assert.assertFalse(new File(outputDir, OUTPUT_PREFIX + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
-        Assert.assertFalse(new File(outputDir, OUTPUT_PREFIX + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
-        Assert.assertFalse(new File(outputDir, OUTPUT_PREFIX + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
-        Assert.assertFalse(new File(outputDir, OUTPUT_PREFIX + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
+        Assert.assertFalse(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX).exists());
 
-        Assert.assertTrue(new File(outputDir, OUTPUT_PREFIX + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX).exists());
+        Assert.assertTrue(new File(outputDir, DEFAULT_OUTPUT_PREFIX + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX).exists());
     }
 }
