@@ -2,12 +2,15 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeLikelihoods;
+import org.apache.commons.lang3.mutable.MutableDouble;
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 
+import java.util.Arrays;
 import java.util.Iterator;
 
 public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCounts> {
@@ -18,17 +21,11 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
      * that reason you must use {@link #genotypeCount} when iterating through this array and not relay on its length.</p>
      */
     private final GenotypeAlleleCounts[] genotypeAlleleCounts;
-    /**
-     * Number of genotypes given this calculator {@link #ploidy} and {@link #alleleCount}.
-     */
+
     final int genotypeCount;
-    /**
-     * Number of genotyping alleles for this calculator.
-     */
+
     final int alleleCount;
-    /**
-     * Ploidy for this calculator.
-     */
+
     final int ploidy;
 
     final GenotypeIndexCalculator genotypeIndexCalculator;
@@ -38,6 +35,27 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
      * goes beyond the maximum genotype-allele-count static capacity. Check on that method documentation for details.
      */
     private GenotypeAlleleCounts lastOverheadCounts;
+
+    private static final int INITIAL_READ_CAPACITY = 10;
+
+    /**
+     * How many reads the calculator supports.
+     *
+     * This figure is increased dynamically by {@code ensureReadCapacity}.
+     */
+    private int readCapacity = INITIAL_READ_CAPACITY;
+
+    /**
+     * Buffer field used as a temporary container when one value per read is stored.
+     *
+     * In the multiallelic calculation we accumulate the likelihood contribution of each read one allele at a time.  That is,
+     * for genotype containing alleles A, B, C, we first fill the buffer with the likelihood contributions from allele A, then
+     * we make a second pass and add the contributions from allele B, then allele C.  Traversing all the reads in each
+     * allele row of the likelihoods array in this manner is cache-friendly and makes an enormous difference in runtime.
+     */
+    private double[] perReadBuffer = new double[INITIAL_READ_CAPACITY];
+
+
 
     public GenotypeLikelihoodCalculator(final int ploidy, final int alleleCount,
                                         final GenotypeAlleleCounts[][] genotypeTableByPloidy) {
@@ -117,33 +135,85 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
     /**
      * A helper method that actually does the matrix operations but returns the raw values.
      *
+     * @param likelihoods   log 10 likelihood matrix indexed by allele, then read
      * @return the raw array (in log10 likelihoods space) of the GL for each genotype
      */
     <EVIDENCE, A extends Allele> double[] getReadRawReadLikelihoodsByGenotypeIndex(final LikelihoodMatrix<EVIDENCE, A> likelihoods) {
         Utils.nonNull(likelihoods);
         Utils.validateArg(likelihoods.numberOfAlleles() == alleleCount, "mismatch between allele list and alleleCount");
         final int readCount = likelihoods.evidenceCount();
+        ensureReadCapacity(readCount);
 
+        final double[][] likelihoodsByAlleleAndRead = likelihoods.asRealMatrix().getData();
 
-        // the result satisfies result[g] = sum_reads ( log_10_sum_log_10(log_10(f1) + log_10 Lk ( read | a1 ). . .) - num_reads*log_10 ploidy
-        // where the genotype g has alleles a1, a2. . . with frequencies f1, f2. . .
-        // please note that the above expression is the entirety of this class, obscured by a whole lot of optimization
-        // tht the observant reader may notice is premature
-        return genotypeLikelihoods(_____, readCount);
+        final boolean triallelicGenotypesPossible = alleleCount > 2 && ploidy > 2;
+
+        // non-log space likelihoods for multiallelic computation
+        // TODO: ditto
+        final double[][] nonLogLikelihoodsByAlleleAndRead = triallelicGenotypesPossible ? likelihoods.asRealMatrix().getData() : null;
+        final MutableDouble multiallelicNormalization = new MutableDouble(0);
+        if (triallelicGenotypesPossible) {
+            makeNormalizedNonLogLikelihoods(readCount, nonLogLikelihoodsByAlleleAndRead, multiallelicNormalization);
+        }
+
+        final double[] result = new double[genotypeCount];
+        
+        Utils.stream(iterator()).forEach(alleleCounts -> {
+            final int componentCount = alleleCounts.distinctAlleleCount();
+            final int genotypeIndex = alleleCounts.index();
+            if (componentCount == 1) {
+                // homozygous case: log P(reads|AAAAA. . .) = sum_{reads} log P(read|A)
+                final int allele = alleleCounts.alleleIndexAt(0);
+                result[genotypeIndex] = MathUtils.sum(likelihoodsByAlleleAndRead[allele]);
+            } else if (componentCount == 2) {
+                // biallelic het case: log P(reads | nA copies of A, nB copies of B) = sum_{reads} log[(nA * P(read | A) + nB * P(read | B))] -log(ploidy)
+                final double[] logLks1 = likelihoodsByAlleleAndRead[alleleCounts.alleleIndexAt(0)];
+                final int freq1 = alleleCounts.alleleCountAt(0);
+                final double log10Freq1 = MathUtils.log10(freq1);
+                final double[] logLks2  = likelihoodsByAlleleAndRead[alleleCounts.alleleIndexAt(1)];
+                final double log10Freq2 = MathUtils.log10(ploidy - freq1);
+
+                result[genotypeIndex] = new IndexRange(0, readCount).sum(r -> MathUtils.approximateLog10SumLog10(logLks1[r] + log10Freq1, logLks2[r] + log10Freq2))
+                        - readCount * MathUtils.log10(ploidy);
+            } else {
+                // the multiallelic case is conceptually the same as the biallelic case but done in non-log space
+                // We implement in a cache-friendly way by adding nA * P(read|A) to the per-read buffer for all reads (inner loop), and all alleles (outer loop)
+                Arrays.fill(perReadBuffer,0, readCount, 0);
+                alleleCounts.forEachAlleleIndexAndCount((a, f) -> new IndexRange(0, readCount).forEach(r -> perReadBuffer[r] += f * nonLogLikelihoodsByAlleleAndRead[a][r]));
+                result[genotypeIndex] = new IndexRange(0, readCount).sum(r -> FastMath.log10(perReadBuffer[r])) - readCount * MathUtils.log10(ploidy) + multiallelicNormalization.doubleValue();
+            }
+        });
+        return result;
     }
 
-    /**
-     * Calculates the final genotype likelihood array out of the likelihoods for each genotype per read.
-     *
-     * @param readLikelihoodsByGenotypeIndex likelihoods log_10 lk(g | r) for genotypes g and reads r
-     *                                       The values therein are entry[g][r] = log_10_sum_log_10(log_10(f1) + log_10 Lk ( read | a1 ), . . .)
-     *                                       = log_10(f1*lk(r|a1) + f2*lk(r|a2). . .)
-     *                                       where the genotype g has alleles a1, a2. . . with frequencies f1, f2. . .
-     * @param readCount number of reads in the input likelihood arrays in {@code genotypeLikelihoodByRead}.
-     * @return array result such that result[g] = sum_reads(log_10 lk(read | g)) - num_reads*log_10 ploidy
-     */
-    double[] genotypeLikelihoods(final double[][] readLikelihoodsByGenotypeIndex, final int readCount) {
 
+    private void makeNormalizedNonLogLikelihoods(int readCount, double[][] likelihoodsByAlleleAndRead, final MutableDouble multiallelicNormalization) {
+        // fill the per-read buffer with the maximum log-likelihood per read
+        Arrays.fill(perReadBuffer, 0, readCount, Double.NEGATIVE_INFINITY);
+        for (int a = 0; a < alleleCount; a++) {
+            for (int r = 0; r < readCount; r++) {
+                perReadBuffer[r] = FastMath.max(perReadBuffer[r], likelihoodsByAlleleAndRead[a][r]);
+            }
+        }
+
+        // subtract these maxima
+        for (int a = 0; a < alleleCount; a++) {
+            for (int r = 0; r < readCount; r++) {
+                likelihoodsByAlleleAndRead[a][r] -= perReadBuffer[r];
+            }
+        }
+        // switch to non-log now that we have moved to numerically safe zero-max space
+        new IndexRange(0, alleleCount).forEach(a -> MathUtils.applyToArrayInPlace(likelihoodsByAlleleAndRead[a], x -> Math.pow(10.0, x)));
+
+        // the normalization is the sum of all the subtracted-off maximum log likelihoods
+        multiallelicNormalization.setValue(MathUtils.sum(perReadBuffer, 0, readCount));
+    }
+
+    private void ensureReadCapacity(final int requestedCapacity) {
+        if (readCapacity < requestedCapacity) {
+            readCapacity = 2 * requestedCapacity;
+            perReadBuffer = new double[readCapacity];
+        }
     }
 
 
@@ -178,12 +248,7 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
     /**
      * Returns the likelihood index given the allele counts in format (allele1, count1, allele2, count2. . . )
      *
-     * @param alleleCountArray the query allele counts. This must follow the format returned by
-     *  {@link GenotypeAlleleCounts#copyAlleleCounts}.
-     *
-     * @throws IllegalArgumentException if {@code alleleCountArray} is null, has odd length, contains negative counts,
-     * or has a total allele count different from the ploidy.
-
+     * @param alleleCountArray allele counts in the format returned by {@link GenotypeAlleleCounts#copyAlleleCounts}.
      */
     public int alleleCountsToIndex(final int ... alleleCountArray) {
         return genotypeIndexCalculator.alleleCountsToIndex(alleleCountArray);
