@@ -46,7 +46,7 @@ public final class GenotypeLikelihoodCalculatorUnitTest {
             Assert.assertEquals(calculator.alleleCountsToIndex(alleleCountArray), i);
         }
     }
-
+    
     @Test(dataProvider = "ploidyAndMaximumAlleleAndReadCountsData", dependsOnMethods = "testPloidyAndMaximumAllele")
     public void testLikelihoodCalculation(final int ploidy, final int alleleCount, final int[] readCount) {
         final AlleleLikelihoods<GATKRead, Allele> readLikelihoods = ReadLikelihoodsUnitTester.readLikelihoods(alleleCount, readCount);

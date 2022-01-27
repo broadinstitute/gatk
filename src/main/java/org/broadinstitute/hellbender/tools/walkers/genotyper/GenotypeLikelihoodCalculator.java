@@ -157,7 +157,7 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
         }
 
         final double[] result = new double[genotypeCount];
-        
+
         Utils.stream(iterator()).forEach(alleleCounts -> {
             final int componentCount = alleleCounts.distinctAlleleCount();
             final int genotypeIndex = alleleCounts.index();
@@ -217,6 +217,7 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
     }
 
 
+    // note that if the input has a high index that is not cached, it will be mutated in order to form the output
     private GenotypeAlleleCounts nextGenotypeAlleleCounts(final GenotypeAlleleCounts alleleCounts) {
         final int index = alleleCounts.index();
         if (index < (GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR - 1)) {
@@ -290,23 +291,18 @@ public class GenotypeLikelihoodCalculator implements Iterable<GenotypeAlleleCoun
     @Override
     public Iterator<GenotypeAlleleCounts> iterator() {
         return new Iterator<GenotypeAlleleCounts>() {
-            private int genotypeIndex = 0;
-            private final GenotypeAlleleCounts increasingAlleleCounts = genotypeCount < GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR ?
-                    null : genotypeAlleleCounts[GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR - 1].copy();
+            private int index = 0;
+            private GenotypeAlleleCounts alleleCounts = genotypeAlleleCounts[0];
 
             @Override
             public boolean hasNext() {
-                return genotypeIndex < genotypeCount;
+                return index < genotypeCount;
             }
 
             @Override
             public GenotypeAlleleCounts next() {
-                if (genotypeIndex < GenotypeLikelihoodCalculators.MAXIMUM_CACHED_GENOTYPES_PER_CALCULATOR) {
-                    return genotypeAlleleCounts[genotypeIndex++];
-                } else {
-                    genotypeIndex++;
-                    return increasingAlleleCounts.increase();
-                }
+                alleleCounts = index++ == 0 ? genotypeAlleleCounts[0] : nextGenotypeAlleleCounts(alleleCounts);
+                return alleleCounts;
             }
         };
     }
