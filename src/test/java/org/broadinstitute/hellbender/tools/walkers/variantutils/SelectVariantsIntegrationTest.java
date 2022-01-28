@@ -847,7 +847,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "haploid-multisample.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn HG00610 -select 'DP > 7' --remove-unused-alternates ", testFile),
+                baseTestString(" -sn HG00610 -select 'DP > 7' --remove-unused-alternates", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_Haploid.vcf")
         );
 

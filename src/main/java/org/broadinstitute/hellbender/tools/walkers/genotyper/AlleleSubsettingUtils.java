@@ -82,8 +82,12 @@ public final class AlleleSubsettingUtils {
                         MathUtils.scaleLogSpaceArrayForNumericalStability(Arrays.stream(subsettedLikelihoodIndices)
                                 .mapToDouble(idx -> originalLikelihoods[idx]).toArray()) : null;
                 if (newLikelihoods != null) {
-                    final int PLindex = MathUtils.maxElementIndex(newLikelihoods);
-                    newLog10GQ = GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods);
+                    if (newLikelihoods.length > 1) {
+                        final int PLindex = MathUtils.maxElementIndex(newLikelihoods);  //pick out the call (log10L = 0)
+                        newLog10GQ = GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods);
+                    } else {  //if we subset to just ref allele, keep the GQ
+                        newLog10GQ = g.getGQ()/-10.0;  //-10 to go from Phred to log space
+                    }
                 }
 
             } else if (g.hasGQ()) {
@@ -99,8 +103,8 @@ public final class AlleleSubsettingUtils {
             //TODO: remove other G-length attributes, although that may require header parsing
             attributes.remove(VCFConstants.GENOTYPE_POSTERIORS_KEY);
             attributes.remove(GATKVCFConstants.GENOTYPE_PRIOR_KEY);
-            gb.noAttributes().attributes(attributes);
-            if (newLog10GQ != Double.NEGATIVE_INFINITY) {
+            gb.noPL().noGQ().noAttributes().attributes(attributes);  //if alleles are subset, old PLs and GQ are invalid
+            if (newLog10GQ != Double.NEGATIVE_INFINITY && g.hasGQ()) {  //only put GQ if originally present
                 gb.log10PError(newLog10GQ);
             }
             if (useNewLikelihoods) {

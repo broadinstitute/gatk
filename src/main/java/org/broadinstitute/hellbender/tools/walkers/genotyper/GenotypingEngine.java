@@ -112,7 +112,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     /**
-     * Main entry function to calculate genotypes of a given VC with corresponding GL's that is shared across genotypers (namely UG and HC).
+     * Main entry function to calculate genotypes of a given VC with corresponding GLs that is shared across genotypers (namely GGVCFs and HC).
      *
      * Completes a variant context with genotype calls and associated annotations given the genotype likelihoods and
      * the model that need to be applied.
@@ -122,7 +122,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      */
     public VariantContext calculateGenotypes(final VariantContext vc, final GenotypePriorCalculator gpc, final List<VariantContext> givenAlleles) {
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
-        if (hasTooManyAlternativeAlleles(vc) || vc.getNSamples() == 0) {
+        if (cannotBeGenotyped(vc) || vc.getNSamples() == 0) {
             return null;
         }
 
@@ -390,14 +390,21 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @return {@code true} iff there is too many alternative alleles based on
      * {@link GenotypeLikelihoods#MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED}.
      */
-    protected final boolean hasTooManyAlternativeAlleles(final VariantContext vc) {
+    protected final boolean cannotBeGenotyped(final VariantContext vc) {
         // protect against too many alternate alleles that we can't even run AF on:
-        if (vc.getNAlleles() <= GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED) {
+        if (vc.getNAlleles() <= GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED
+                && vc.getGenotypes().stream().anyMatch(GenotypeUtils::genotypeIsUsableForAFCalculation)) {
             return false;
         }
-        logger.warn("Attempting to genotype more than " + GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED +
-                " alleles. Site will be skipped at location "+vc.getContig()+":"+vc.getStart());
-        return true;
+        if (vc.getNAlleles() > GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED) {
+            logger.warn("Attempting to genotype more than " + GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED +
+                    " alleles. Site will be skipped at location " + vc.getContig() + ":" + vc.getStart());
+            return true;
+        }else {
+            logger.warn("No genotype contained sufficient data to recalculate genotypes. Site will be skipped at location "
+                    + vc.getContig() + ":" + vc.getStart());
+            return true;
+        }
     }
 
     /**

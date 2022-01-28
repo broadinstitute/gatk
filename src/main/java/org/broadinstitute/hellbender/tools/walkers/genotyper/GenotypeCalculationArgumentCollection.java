@@ -131,10 +131,14 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     /**
      * If there are more than this number of alternate alleles presented to the genotyper (either through discovery or GENOTYPE_GIVEN ALLELES),
      * then only this many alleles will be used.  Note that genotyping sites with many alternate alleles is both CPU and memory intensive and it
-     * scales exponentially based on the number of alternate alleles.  Unless there is a good reason to change the default value, we highly recommend
+     * scales exponentially based on the number of alternate alleles.
+     *
+     * Unless there is a good reason to change the default value, we highly recommend
      * that you not play around with this parameter.
      *
-     * See also {@link #maxGenotypeCount}.
+     * See also {@link #maxGenotypeCount} and {@link org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection#MAX_ALTS_LONG_NAME}.
+     * This value can be no greater than one less than the corresponding GenomicsDB argument.  Sites that exceed the
+     * GenomicsDB alt allele max will not be output with likelihoods and will be dropped by GenotypeGVCFs.
      */
     @Advanced
     @Argument(fullName = MAX_ALTERNATE_ALLELES_LONG_NAME, doc = "Maximum number of alternate alleles to genotype", optional = true)
@@ -142,7 +146,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
 
     /**
      * If there are more than this number of genotypes at a locus presented to the genotyper, then only this many genotypes will be used.
-     * The possible genotypes are simply different ways of partitioning alleles given a specific ploidy asumption.
+     * The possible genotypes are simply different ways of partitioning alleles given a specific ploidy assumption.
      * Therefore, we remove genotypes from consideration by removing alternate alleles that are the least well supported.
      * The estimate of allele support is based on the ranking of the candidate haplotypes coming out of the graph building step.
      * Note that the reference allele is always kept.
@@ -154,7 +158,8 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * 1. the largest number of alt alleles, given ploidy, that yields a genotype count no higher than {@link #maxGenotypeCount}
      * 2. the value of {@link #maxAlternateAlleles}
      *
-     * See also {@link #maxAlternateAlleles}.
+     * See also {@link #maxAlternateAlleles} and
+     * {@link org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection#maxDiploidAltAllelesThatCanBeGenotyped}
      */
     @Advanced
     @Argument(fullName = MAX_GENOTYPE_COUNT_LONG_NAME, doc = "Maximum number of genotypes to consider at any site", optional = true)

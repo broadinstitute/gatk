@@ -12,10 +12,8 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -45,6 +43,8 @@ import java.nio.file.StandardCopyOption;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -79,6 +79,12 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
             +  expected.stream().map(Object::toString).collect(Collectors.joining("\n","expected:\n","\n")));
         for (int i = 0; i < actual.size(); i++) {
             assertion.accept(actual.get(i), expected.get(i));
+        }
+    }
+
+    private static <T> void assertCountForEachElementInList(final List<T> actual, Integer count, BiConsumer<T, Integer> assertion) {
+        for (int i = 0; i < actual.size(); i++) {
+            assertion.accept(actual.get(i), count);
         }
     }
 
@@ -262,22 +268,64 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
         final List<String> args = new ArrayList<String>();
         args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
-        args.add("2"); // Too small max_alternate_alleles arg to GenomicsDB, should fail
-        try {
-            File output = runGenotypeGVCFS(genomicsDBUri, expected, args, reference);
-            Assert.fail("Expected exception not thrown");
-        } catch (IllegalStateException e) {
-           // Pass
-        }
+        args.add("2");
+        runGenotypeGVCFSAndAssertCount(genomicsDBUri, args, 2, VariantContextTestUtils::assertVariantContextMaxAltAlleleCount, reference);
 
         args.clear();
         args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
         args.add("8");
-        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, args, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
+        runGenotypeGVCFSAndAssertComparison(genomicsDBUri, expected, args, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
 
         // The default option with GenomicsDB input uses VCFCodec for decoding, test BCFCodec explicitly
         args.add("--"+GenomicsDBArgumentCollection.USE_BCF_CODEC_LONG_NAME);
-        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, args, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
+        runGenotypeGVCFSAndAssertComparison(genomicsDBUri, expected, args, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
+    }
+
+    @Test
+    public void testMaxAltsToCombineInGenomicsDB() {
+        final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(CEUTRIO_20_21_GATK3_4_G_VCF, new SimpleInterval("20", 1, 11_000_000));
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
+        final List<String> args = new ArrayList<String>();
+        args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
+        args.add("3");
+        args.add("--" + GenomicsDBArgumentCollection.MAX_ALTS_LONG_NAME);
+        args.add("4");
+        runGenotypeGVCFSAndAssertCount(genomicsDBUri, args, 3, VariantContextTestUtils::assertVariantContextMaxAltAlleleCount, b37_reference_20_21);
+
+        args.clear();
+        args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
+        args.add("2");
+        args.add("--" + GenomicsDBArgumentCollection.MAX_ALTS_LONG_NAME);
+        args.add("20");
+        runGenotypeGVCFSAndAssertCount(genomicsDBUri, args, 2, VariantContextTestUtils::assertVariantContextMaxAltAlleleCount, b37_reference_20_21);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testGDBMaxAltsLessThanGGVCFsMaxAlts() {
+        final File input = CEUTRIO_20_21_GATK3_4_G_VCF;
+        final SimpleInterval interval =  new SimpleInterval("20", 1, 11_000_000);
+        final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, interval);
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
+        final List<String> args = new ArrayList<String>();
+        args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
+        args.add("20");
+        args.add("--"+GenomicsDBArgumentCollection.MAX_ALTS_LONG_NAME);
+        args.add("2"); // Too small max_alternate_alleles arg to GenomicsDB, should throw
+        File output = runGenotypeGVCFS(genomicsDBUri, null, args, b37_reference_20_21);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testGDBMaxAltsEqualsGGVCFsMaxAlts() {
+        final File input = CEUTRIO_20_21_GATK3_4_G_VCF;
+        final SimpleInterval interval =  new SimpleInterval("20", 1, 11_000_000);
+        final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(input, interval);
+        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
+        final List<String> args = new ArrayList<String>();
+        args.add("--"+GenomicsDBArgumentCollection.MAX_ALTS_LONG_NAME);
+        args.add("5");
+        args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
+        args.add("5"); // GenomicsDB value needs to be at least one more than this, should throw
+        File output = runGenotypeGVCFS(genomicsDBUri, null, args, b37_reference_20_21);
     }
 
     private void runAndCheckGenomicsDBOutput(final ArgumentsBuilder args, final File expected, final File output) {
@@ -321,12 +369,12 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
         final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(IOUtils.getPath(expected.getAbsolutePath())));
         final List<String> attributesToFilter = Stream.concat(ATTRIBUTES_WITH_JITTER.stream(), ATTRIBUTES_TO_IGNORE.stream()).collect(Collectors.toList());
-        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, NO_EXTRA_ARGS, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
+        runGenotypeGVCFSAndAssertComparison(genomicsDBUri, expected, NO_EXTRA_ARGS, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
 
         // The default option with GenomicsDB input uses VCFCodec for decoding, test BCFCodec explicitly
         final List<String> args = new ArrayList<String>();
         args.add("--"+GenomicsDBArgumentCollection.USE_BCF_CODEC_LONG_NAME);
-        runGenotypeGVCFSAndAssertSomething(genomicsDBUri, expected, args, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
+        runGenotypeGVCFSAndAssertComparison(genomicsDBUri, expected, args, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
     }
 
     @Test(dataProvider = "gvcfsToGenotype")
@@ -337,14 +385,14 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     private void assertVariantContextsMatch(File input, File expected, List<String> extraArgs, String reference) throws IOException {
         try {
             final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(IOUtils.getPath(expected.getAbsolutePath())));
-            runGenotypeGVCFSAndAssertSomething(input, expected, extraArgs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
+            runGenotypeGVCFSAndAssertComparison(input, expected, extraArgs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
         } catch (java.io.IOException e) {
             throw new AssertionError("There was a problem reading your expected input file");
         }
     }
 
     private void assertGenotypesMatch(File input, File expected, List<String> additionalArguments, String reference) throws IOException {
-        runGenotypeGVCFSAndAssertSomething(input, expected, additionalArguments, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes,
+        runGenotypeGVCFSAndAssertComparison(input, expected, additionalArguments, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes,
                 reference);
     }
 
@@ -366,11 +414,11 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider = "GVCFsWithNewMQFormat")
     public void assertNewMQWorks(File input, File expected, Locatable interval, String reference) throws IOException {
         final VCFHeader header = VCFHeaderReader.readHeaderFrom(new SeekablePathStream(IOUtils.getPath(expected.getAbsolutePath())));
-        runGenotypeGVCFSAndAssertSomething(input, expected, NO_EXTRA_ARGS, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
+        runGenotypeGVCFSAndAssertComparison(input, expected, NO_EXTRA_ARGS, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqualAlleleOrderIndependent(a, e, ATTRIBUTES_TO_IGNORE, ATTRIBUTES_WITH_JITTER, header), reference);
     }
 
-    private void runGenotypeGVCFSAndAssertSomething(File input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
-        runGenotypeGVCFSAndAssertSomething(input.getAbsolutePath(), expected, additionalArguments, assertion, reference
+    private void runGenotypeGVCFSAndAssertComparison(File input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
+        runGenotypeGVCFSAndAssertComparison(input.getAbsolutePath(), expected, additionalArguments, assertion, reference
         );
     }
 
@@ -391,7 +439,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         return output;
     }
 
-    private void runGenotypeGVCFSAndAssertSomething(String input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
+    private void runGenotypeGVCFSAndAssertComparison(String input, File expected, List<String> additionalArguments, BiConsumer<VariantContext, VariantContext> assertion, String reference) throws IOException {
         final File output = runGenotypeGVCFS(input, expected, additionalArguments, reference);
         Assert.assertTrue(output.exists());
 
@@ -404,6 +452,16 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 throw error;
             }
         }
+    }
+
+    private void runGenotypeGVCFSAndAssertCount(final String input, final List<String> additionalArguments, final Integer count,
+                                                final BiConsumer<VariantContext, Integer> conditionOnCount, final String reference) {
+        final File output = runGenotypeGVCFS(input, null, additionalArguments, reference);
+        Assert.assertTrue(output.exists());
+
+        final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
+        Assert.assertTrue(actualVC.size() > 0);
+        assertCountForEachElementInList(actualVC, count, conditionOnCount);
     }
 
     @Test
