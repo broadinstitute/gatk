@@ -114,7 +114,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         final VariantContext lotsOfZeroPls = makeNoDepthVC("lowQualVar", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), longPls);
         final VariantContext properlySubset = reblocker.lowQualVariantToGQ0HomRef(lotsOfZeroPls).make();
         Assert.assertEquals(properlySubset.getGenotype(0).getPL().length, 3);
-
+        Assert.assertEquals(properlySubset.getGenotype(0).getPL(), new int[]{0,0,0});
 
         //No-calls were throwing NPEs.  Now they're not.
         final Genotype g2 = VariantContextTestUtils.makeG("sample1", Allele.NO_CALL,Allele.NO_CALL);

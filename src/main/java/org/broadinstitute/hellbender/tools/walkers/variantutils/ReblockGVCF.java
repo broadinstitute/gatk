@@ -514,7 +514,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
                         genotype.getPloidy(), lowQualVariant.getAlleles(), Arrays.asList(inputRefAllele, bestAlt),
                         null, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, //BEST_MATCH to avoid no-calling low qual genotypes
                         lowQualVariant.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0),
-                        true);  //emitEmptyPLs = true to make sure we always subset
+                        false);  //emitEmptyPLs = true to make sure we always subset
                 final Genotype subsetG = context.get(0);
                 gb = new GenotypeBuilder(subsetG).noAttributes();  //remove attributes because hom ref blocks shouldn't have posteriors
                 //subsetting may strip GQ and PLs for low qual genotypes
@@ -569,7 +569,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
             newAlleleSetUntrimmed.removeAll(allelesToDrop);
             final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(variant.getGenotypes(), genotype.getPloidy(), variant.getAlleles(),
                     newAlleleSetUntrimmed, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
-                    variant.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);
+                    variant.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), true);
             if (gc.get(0).isHomRef() || !gc.get(0).hasGQ() || gc.get(0).getAlleles().contains(Allele.NO_CALL)) {  //could be low quality or no-call after subsetting
                 if (dropLowQuals) {
                     return null;
@@ -780,7 +780,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 //TODO: this isn't going to work for DRAGEN's genotype posteriors
                 final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(updatedAllelesVC.getGenotypes(),
                         updatedAllelesGenotype.getPloidy(), updatedAllelesVC.getAlleles(), Arrays.asList(updatedAllelesVC.getReference(), alt), null,
-                        GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, 0, false);
+                        GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, 0, true);
                 //assignment method doens't really matter as long as we don't zero out PLs; don't need depth to get PLs for quals
 
                 final Genotype subsettedGenotype = gc.get(0);
