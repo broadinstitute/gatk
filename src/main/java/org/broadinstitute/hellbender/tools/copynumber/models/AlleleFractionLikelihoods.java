@@ -87,6 +87,8 @@ final class AlleleFractionLikelihoods {
                 - n * log(majorFraction + minorFraction * lambda0RefMinor);
         final double refMinorLogLikelihood = logNotPi + logcRefMinor + Gamma.logGamma(rhoRefMinor) - rhoRefMinor * log(tauRefMinor);
 
+        // changing the factorial implementation below may introduce non-negligible numerical differences;
+        // note https://github.com/broadinstitute/gatk/pull/7652
         final double outlierLogLikelihood = logPi + log10ToLog(log10Factorial(a) + log10Factorial(r) - log10Factorial(a + r + 1));
 
         return NaturalLogUtils.logSumExp(altMinorLogLikelihood, refMinorLogLikelihood, outlierLogLikelihood);
