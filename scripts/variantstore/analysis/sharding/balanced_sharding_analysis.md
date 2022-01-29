@@ -12,7 +12,7 @@ There were a few important runs we analyzed:
 
 | **Prefix**| **Description** | **Workflow ID** | 
 | --- | --- | ----------- |
-| 41k.original | 41k Ref Ranges Scaling Run | d6c6bb84-fdbb-40bb-8935-cf77d899bb73 |
+| 40k.original | 40k Ref Ranges Scaling Run | d6c6bb84-fdbb-40bb-8935-cf77d899bb73 |
 | 10k.original | 10k Original Run | 259f1102-1c5e-4eda-95ac-f446c65d2d30 |
 | 10k.balanced | 10k Balanced Run | 6f7f2e7f-a0bd-4119-ad41-8f8f918654a3 |
 
