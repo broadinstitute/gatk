@@ -466,6 +466,8 @@ task PopulateFilterSetInfo {
 
         echo "Loading combined TSV into ~{fq_info_destination_table}"
         bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
+        --range_partitioning=location,0,26000000000000,6500000000 \
+        --clustering_fields=location \
         --schema "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" \
         ${bq_table} \
         ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
@@ -526,6 +528,8 @@ task PopulateFilterSetSites {
 
         echo "Loading filter set sites TSV into ~{fq_filter_sites_destination_table}"
         bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
+        --range_partitioning=location,0,26000000000000,6500000000 \
+        --clustering_fields=location \
         --schema "filter_set_name:string,location:integer,filters:string" \
         ${bq_table} \
         ~{filter_set_name}.filter_sites_load.tsv > status_load_filter_set_sites
