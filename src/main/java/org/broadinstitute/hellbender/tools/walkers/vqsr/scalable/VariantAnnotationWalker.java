@@ -100,7 +100,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             shortName = "AS",
             doc = "If specified, attempt to use the allele-specific versions of the specified annotations.",
             optional = true)
-    public boolean useASannotations = false;
+    public boolean useASAnnotations = false;
 
     /**
      * See the input VCF file's INFO field for a list of all available annotations.
@@ -147,7 +147,6 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
     VariantDataCollection data;
     boolean isExtractAll;
-    final Set<String> allResourceLabels = new TreeSet<>();
     File outputAnnotationsHDF5File;
     private File outputVCFFile;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
@@ -178,35 +177,34 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             }
         }
 
-        data = new VariantDataCollection(new ArrayList<>(useAnnotations), useASannotations, trustAllPolymorphic);
-
         if (ignoreInputFilters != null) {
             ignoreInputFilterSet.addAll(ignoreInputFilters);
         }
 
+        final Set<String> resourceLabels = new TreeSet<>();
         for (final FeatureInput<VariantContext> resource : resources) {
-            // Parse the tags to decide which tracks have which properties
-            final TreeSet<String> resourceLabels = resource.getTagAttributes().entrySet().stream()
+            final TreeSet<String> trackResourceLabels = resource.getTagAttributes().entrySet().stream()
                     .filter(e -> e.getValue().equals("true"))
                     .map(Map.Entry::getKey)
                     .sorted()
                     .collect(Collectors.toCollection(TreeSet::new));
-            allResourceLabels.addAll(resourceLabels);
-            logger.info( String.format("Found %s track: labels = %s", resource.getName(), resourceLabels));
+            resourceLabels.addAll(trackResourceLabels);
+            logger.info( String.format("Found %s track: labels = %s", resource.getName(), trackResourceLabels));
         }
 
-        // check training and truth are in keys
-        if (!allResourceLabels.contains(TRAINING_RESOURCE_LABEL)) {
+        if (!resourceLabels.contains(TRAINING_RESOURCE_LABEL)) {
             throw new CommandLineException(
                     "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
         }
 
-        if (!allResourceLabels.contains(TRUTH_RESOURCE_LABEL)) {
+        if (!resourceLabels.contains(TRUTH_RESOURCE_LABEL)) {
             throw new CommandLineException(
                     "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
         }
+
+        data = new VariantDataCollection(useAnnotations, resourceLabels, useASAnnotations);
     }
 
     @Override
@@ -248,7 +246,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         if (!(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
             return;
         }
-        if (checkVariationClass(vc, mode) && !useASannotations) {
+        if (checkVariationClass(vc, mode) && !useASAnnotations) {
             final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
             if (isExtractAll || !overlappingResourceLabels.isEmpty()) {
                 data.addDatum(vc, vc.getReference(), null, overlappingResourceLabels);
@@ -256,7 +254,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
                     data.addAlternateAlleles(vc.getAlternateAlleles());
                 }
             }
-        } else if (useASannotations) {
+        } else if (useASAnnotations) {
             for (final Allele altAllele : vc.getAlternateAlleles()) {
                 if (!GATKVCFConstants.isSpanningDeletion(altAllele) && checkVariationClass(vc, altAllele, mode)) {
                     final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, vc.getReference(), altAllele, featureContext);
@@ -294,7 +292,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         for (final FeatureInput<VariantContext> resource : resources) {
             final List<VariantContext> resourceVCs = featureContext.getValues(resource, featureContext.getInterval().getStart());
             for (final VariantContext resourceVC : resourceVCs) {
-                if (useASannotations && !doAllelesMatch(refAllele, altAllele, resourceVC)) {
+                if (useASAnnotations && !doAllelesMatch(refAllele, altAllele, resourceVC)) {
                     continue;
                 }
                 if (isValidVariant(vc, resourceVC, trustAllPolymorphic)) {
@@ -377,15 +375,11 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         try (final HDF5File hdf5File = new HDF5File(outputAnnotationsHDF5File, HDF5File.OpenMode.CREATE)) { // TODO allow appending
             IOUtils.canReadFile(hdf5File.getFile());
 
-            hdf5File.makeStringArray("/data/annotation_names", data.getAnnotationKeys().toArray(new String[0]));
+            hdf5File.makeStringArray("/data/annotation_names", data.getSortedAnnotationKeys().toArray(new String[0]));
             HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", data.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new), maximumChunkSize);
-            for (final String resourceLabel : allResourceLabels) {
-                hdf5File.makeDoubleArray(String.format("/data/is_%s", resourceLabel),
-                        data.getData().stream().mapToDouble(vd -> vd.labels.contains(resourceLabel) ? 1 : 0).toArray());
-            }
-            for (final String computedLabel : VariantDataCollection.COMPUTED_LABELS) {
-                hdf5File.makeDoubleArray(String.format("/data/is_%s", computedLabel),
-                        data.getData().stream().mapToDouble(vd -> vd.labels.contains(computedLabel) ? 1 : 0).toArray());
+            for (final String label : data.sortedLabels) {
+                hdf5File.makeDoubleArray(String.format("/data/is_%s", label),
+                        data.getData().stream().mapToDouble(vd -> vd.labels.contains(label) ? 1 : 0).toArray());
             }
         } catch (final HDF5LibException exception) {
             throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
@@ -414,7 +408,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             if (writeTrainingOnly && !datum.labels.contains(TRAINING_RESOURCE_LABEL)) {
                 continue;
             }
-            if (useASannotations) {
+            if (useASAnnotations) {
                 alleles = Arrays.asList(datum.referenceAllele, datum.alternateAllele); //use the alleles to distinguish between multiallelics in AS mode
             } else if (writeAlleles) {
                 final List<Allele> allelesToWrite = this.data.alternateAlleles.get(i);
