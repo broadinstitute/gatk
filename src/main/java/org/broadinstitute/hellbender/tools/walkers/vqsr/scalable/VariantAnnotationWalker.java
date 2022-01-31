@@ -191,6 +191,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             resourceLabels.addAll(trackResourceLabels);
             logger.info( String.format("Found %s track: labels = %s", resource.getName(), trackResourceLabels));
         }
+        resourceLabels.forEach(String::intern);
 
         if (!resourceLabels.contains(TRAINING_RESOURCE_LABEL)) {
             throw new CommandLineException(
