@@ -72,7 +72,7 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
 
     @Override
     public void beforeOnTraversalStart() {
-        isExtractTrainingAndTruthOnly = false;
+        isExtractAll = true;
 
         if (pythonScriptFile != null) {
             logger.info("Python script was provided, running in PYTHON mode...");
@@ -108,7 +108,7 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
     @Override
     public void afterTraversalSuccess() {
 
-        logger.info(String.format("Extracted annotations for %s total variants.", dataManager.getData().size()));
+        logger.info(String.format("Extracted annotations for %s total variants.", data.getData().size()));
 
         logger.info("Writing annotations...");
         writeAnnotationsHDF5();
@@ -137,10 +137,10 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
             final BayesianGaussianMixtureUtils.Scorer scorer = BayesianGaussianMixtureUtils.deserialize(
                     new File(modelPrefix + SCORER_SER_SUFFIX), // TODO clean up
                     BayesianGaussianMixtureUtils.Scorer.class);
-            final double[][] data = dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
+            final double[][] data = this.data.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
             scores = scorer.preprocessAndScoreSamples(data);
         }
-        VariantDataManager.setScores(dataManager.getData(), scores);
+        VariantDataCollection.setScores(data.getData(), scores);
         logger.info("Scoring complete.");
 
         logger.info("Writing VCF...");
