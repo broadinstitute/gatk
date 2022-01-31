@@ -22,8 +22,6 @@ workflow GvsSitesOnlyVCF {
     }
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
-    Int disk_size = if (defined(extract_disk_override)) then extract_disk_override else 500
-
 
     call MakeSubpopulationFiles {
         input:
@@ -40,6 +38,7 @@ workflow GvsSitesOnlyVCF {
         String input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz")
         call ExtractAnAcAfFromVCF {
             input:
+              extract_disk_override = extract_disk_override,
               input_vcf = MakeSubpopulationFiles.input_vcfs[i],
               input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
               service_account_json_path = service_account_json_path,
@@ -172,6 +171,7 @@ task MakeSubpopulationFiles {
 
 task ExtractAnAcAfFromVCF {
     input {
+        Int? extract_disk_override
         File input_vcf
         File input_vcf_index
         String? service_account_json_path
@@ -187,6 +187,7 @@ task ExtractAnAcAfFromVCF {
           localization_optional: true
         }
     }
+    Int disk_size = if (defined(extract_disk_override)) then extract_disk_override else 500
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String custom_annotations_file_name = "ac_an_af.tsv"
