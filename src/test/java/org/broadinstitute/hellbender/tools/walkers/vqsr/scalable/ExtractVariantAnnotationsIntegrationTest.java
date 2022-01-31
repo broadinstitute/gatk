@@ -11,6 +11,33 @@ import java.io.File;
 import java.util.Arrays;
 
 public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
+
+    @Test
+    public void test1kgp50ExomesSNPASExactMatch() {
+        final File outputDir = createTempDir("extract-test");
+        final String[] arguments = {
+                "-L", "chr1",
+                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.sites_only.vcf.gz",
+                "-O", new File(outputDir, "test.snp.as").getAbsolutePath(),
+                "--maximum-chunk-size", "100000",
+                "--use-allele-specific-annotations",
+                "-an", "AS_FS",
+                "-an", "AS_ReadPosRankSum",
+                "-an", "AS_MQRankSum",
+                "-an", "AS_QD",
+                "-an", "AS_SOR",
+                "-an", "AS_MQ",
+                "--trust-all-polymorphic",
+                "-mode", "SNP",
+                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(arguments);
+        assertAnnotationFilesEqual(new File(outputDir, "test.snp.as.annot.hdf5"), new File("/home/slee/extract-test", "test.snp.as.annot.hdf5"));
+    }
+
     @Test
     public void test1kgp50ExomesSNPExactMatch() {
         final File outputDir = createTempDir("extract-test");
