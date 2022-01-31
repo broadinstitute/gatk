@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.testng.annotations.Test;
 
 /**
@@ -14,6 +15,32 @@ import org.testng.annotations.Test;
 public class ScikitLearnVariantTrainIntegrationTest extends CommandLineProgramTest {
 
     private static final String PYTHON_SCRIPT = packageMainResourcesDir + "tools/walkers/vqsr/scalable/isolation-forest-monolithic.py";
+
+    @Test
+    public void test1kgp50ExomesSNPAS() {
+        final String[] arguments = {
+                "-L", "chr1",
+                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.sites_only.vcf.gz",
+                "-O", "/home/slee/extract-test/test.snp.as",
+                "--python-script", PYTHON_SCRIPT,
+                "--hyperparameters-json", "/home/slee/working/scalable/monolithic-test/hyperparameters.json",
+                "--trust-all-polymorphic",
+                "--use-allele-specific-annotations",
+                "-an", "AS_FS",
+                "-an", "AS_ReadPosRankSum",
+                "-an", "AS_MQRankSum",
+                "-an", "AS_QD",
+                "-an", "AS_SOR",
+                "-an", "AS_MQ",
+                "-mode", "SNP",
+                "--resource:hapmap,known=false,training=true,truth=true,prior=15", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,known=false,training=true,truth=true,prior=12", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,known=false,training=true,truth=false,prior=10", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+//                "--resource:dbsnp,known=true,training=false,truth=false,prior=7", "/mnt/4AB658D7B658C4DB/working/ref/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(arguments);
+    }
 
     @Test
     public void test1kgp50ExomesSNP() {
