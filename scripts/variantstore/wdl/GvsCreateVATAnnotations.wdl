@@ -1,29 +1,30 @@
 version 1.0
 workflow GvsCreateVATAnnotations {
    input {
-        input_vcf
-        input_vcf_index
-        ancestry_mapping_list
+        File input_vcf
+        File input_vcf_index
+        String input_vcf_name
+        File ancestry_mapping_list
         File nirvana_data_directory
         String output_path
 
         String? service_account_json_path
-        File AnAcAf_annotations_template
-        File reference
+        File custom_annotations_template
+        File ref
     }
 
       ## Create a sites-only VCF from the original GVS jointVCF
       ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
       ## To prevent premature failures from this brittle step, the output will be saved to GCP
-      String input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz")
         call ExtractAnAcAfFromVCF {
           input:
             input_vcf = input_vcf,
             input_vcf_index = input_vcf_index,
             service_account_json_path = service_account_json_path,
             subpopulation_sample_list = ancestry_mapping_list,
-            custom_annotations_template = AnAcAf_annotations_template,
-            ref = reference
+            custom_annotations_template = custom_annotations_template,
+            ref = ref,
+            output_path = output_path
         }
 
 
@@ -45,6 +46,14 @@ workflow GvsCreateVATAnnotations {
             service_account_json_path = service_account_json_path
         }
 
+            # ------------------------------------------------
+            # Outputs:
+            output {
+                Int count_variants = ExtractAnAcAfFromVCF.count_variants
+                File track_dropped = ExtractAnAcAfFromVCF.track_dropped
+                Boolean done = true
+            }
+}
 
 ################################################################################
 

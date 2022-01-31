@@ -4,9 +4,6 @@ import "GvsCreateVATAnnotations.wdl" as Annotations
 
 workflow GvsCreateVAT {
    input {
-        #String data_project
-        #String default_dataset
-
         File inputFileofFileNames
         File inputFileofIndexFileNames
         String project_id
@@ -41,11 +38,11 @@ workflow GvsCreateVAT {
         ## Create a sites-only VCF from the original GVS jointVCF
         ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
         ## To prevent premature failures from this brittle step, the output will be saved to GCP
-        String input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz")
         call Annotations.GvsCreateVATAnnotations {
             input:
               input_vcf = MakeSubpopulationFiles.input_vcfs[i],
               input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
+              input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz"),
               ancestry_mapping_list = MakeSubpopulationFiles.ancestry_mapping_list,
               nirvana_data_directory = nirvana_data_directory,
               output_path = output_path,
@@ -71,15 +68,15 @@ workflow GvsCreateVAT {
          output_path = output_path,
          table_suffix = table_suffix,
          service_account_json_path = service_account_json_path,
-         prep_jsons_done = PrepAnnotationJson.done
+         # prep_jsons_done = GvsCreateVATAnnotations.done
   }
 
     call BigQuerySmokeTest {
        input:
          project_id = project_id,
          dataset_name = dataset_name,
-         counts_variants = ExtractAnAcAfFromVCF.count_variants,
-         track_dropped_variants = ExtractAnAcAfFromVCF.track_dropped,
+         counts_variants = GvsCreateVATAnnotations.count_variants,
+         track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
          table_suffix = table_suffix,
          service_account_json_path = service_account_json_path,
          load_jsons_done = BigQueryLoadJson.done
@@ -182,7 +179,7 @@ task BigQueryLoadJson {
         String output_path
         String table_suffix
         String? service_account_json_path
-        Array[String] prep_jsons_done
+        # Array[String] prep_jsons_done
     }
 
     # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
