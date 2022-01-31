@@ -29,7 +29,7 @@ public final class ExtractVariantAnnotations extends VariantAnnotationWalker {
             throw new GATKException("None of the specified input variants were present in the resource VCFs.");
         }
 
-        for (final String resourceLabel : allResourceLabels) {
+        for (final String resourceLabel : data.sortedLabels) {
             logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
                     (int) data.getData().stream().mapToDouble(vd -> vd.labels.contains(resourceLabel) ? 1 : 0).sum(),
                     resourceLabel));
