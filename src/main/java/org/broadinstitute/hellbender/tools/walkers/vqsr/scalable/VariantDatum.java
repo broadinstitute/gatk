@@ -6,10 +6,9 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Set;
 
-// TODO refactor so VariantDatums can essentially be final; they should also extend some Locatable
 final class VariantDatum implements Locatable {
-    public double[] annotations; // TODO consider HashMap with keys
-    public Set<String> labels;     // TODO consider HashMap with keys
+    public double[] annotations;
+    public Set<String> labels;
     public SimpleInterval loc;
     public Allele referenceAllele;
     public Allele alternateAllele;
