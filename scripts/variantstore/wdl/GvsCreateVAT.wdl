@@ -1,6 +1,5 @@
 version 1.0
 
-import "GvsCreateVATSubpopulationCalculations.wdl" as SubpopulationCalculations
 import "GvsCreateVATAnnotations.wdl" as Annotations
 
 workflow GvsCreateVAT {
@@ -43,12 +42,14 @@ workflow GvsCreateVAT {
         ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
         ## To prevent premature failures from this brittle step, the output will be saved to GCP
         String input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz")
-        call SubpopulationCalculations.ExtractAnAcAfFromVCF {
+        call Annotations.GvsCreateVATAnnotations {
             input:
               input_vcf = MakeSubpopulationFiles.input_vcfs[i],
               input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
+              ancestry_mapping_list = MakeSubpopulationFiles.ancestry_mapping_list,
+              nirvana_data_directory = nirvana_data_directory,
+              output_path = output_path,
               service_account_json_path = service_account_json_path,
-              subpopulation_sample_list = MakeSubpopulationFiles.ancestry_mapping_list,
               custom_annotations_template = AnAcAf_annotations_template,
               ref = reference
         }
@@ -59,41 +60,6 @@ workflow GvsCreateVAT {
 
 ## presumably I want all of these above to finish running? And to be stored in a GCP bucket? Then how do I get all of the files from there?
 ## technically there are (approx) the same number as the loop before except for the failures -- how am I going to want to deal with the failures?
-
-
-
-    ## Scatter across the shards from the GVS jointVCF
-    scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
-
-    ## this is still the number of files I want to scatter over
-    ## I just might get them differently than before (what do i want to do with the failures?)
-
-      ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
-        call AnnotateVCF {
-          input:
-            input_vcf = ExtractAnAcAfFromVCF.output_vcf,
-            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
-            output_annotated_file_name = "${input_vcf_name}_annotated",
-            nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
-        }
-
-        call PrepAnnotationJson {
-          input:
-            annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${input_vcf_name}.json.gz",
-            output_path = output_path,
-            service_account_json_path = service_account_json_path
-        }
-    }
-
-
-
-
-
-
-
-
 
     call BigQueryLoadJson {
        input:

@@ -35,69 +35,6 @@ workflow GvsCreateVATSubpopulationCalculations {
 
 ################################################################################
 
-task MakeSubpopulationFiles {
-    input {
-        File input_ancestry_file
-        String? service_account_json_path
-        File inputFileofFileNames
-        File inputFileofIndexFileNames
-    }
-    parameter_meta {
-        input_ancestry_file: {
-          localization_optional: true
-        }
-        inputFileofFileNames: {
-          localization_optional: true
-        }
-        inputFileofIndexFileNames: {
-          localization_optional: true
-        }
-    }
-    String output_ancestry_filename =  "ancestry_mapping.tsv"
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String updated_input_ancestry_file = if (defined(service_account_json_path)) then basename(input_ancestry_file) else input_ancestry_file
-    String updated_input_vcfs_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
-    String updated_input_indices_file = if (defined(service_account_json_path)) then basename(inputFileofIndexFileNames) else inputFileofIndexFileNames
-
-    command <<<
-        set -e
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json_path} local.service_account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-          gcloud auth activate-service-account --key-file=local.service_account.json
-
-          gsutil cp ~{input_ancestry_file} .
-          gsutil cp ~{inputFileofFileNames} .
-          gsutil cp ~{inputFileofIndexFileNames} .
-       fi
-
-        ## the ancestry file is processed down to a simple mapping from sample to subpopulation
-        python3 /app/extract_subpop.py \
-          --input_path ~{updated_input_ancestry_file} \
-          --output_path ~{output_ancestry_filename}
-
-    >>>
-
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211101"
-        memory: "1 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        File ancestry_mapping_list = "~{output_ancestry_filename}"
-        Array[File] input_vcfs = read_lines(updated_input_vcfs_file)
-        Array[File] input_vcf_indices = read_lines(updated_input_indices_file)
-    }
-}
-
-
 
 task ExtractAnAcAfFromVCF {
     input {
