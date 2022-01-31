@@ -19,17 +19,19 @@ public final class ExtractVariantAnnotations extends VariantAnnotationWalker {
 
     @Override
     public void beforeOnTraversalStart() {
-        isExtractTrainingAndTruthOnly = true;
+        isExtractAll = false;
     }
 
     @Override
     public void afterTraversalSuccess() {
 
-        if (dataManager.getData().isEmpty()) {
+        if (data.getData().isEmpty()) {
             throw new GATKException("None of the specified input variants were present in the resource VCFs.");
         }
-        logger.info(String.format("Extracted annotations for %s truth variants.", dataManager.getData().stream().filter(v -> v.atTruthSite).count()));
-        logger.info(String.format("Extracted annotations for %s total variants.", dataManager.getData().size()));
+
+        // TODO iterate through labels and report totals
+//        logger.info(String.format("Extracted annotations for %s truth variants.", dataManager.getData().stream().filter(v -> v.atTruthSite).count()));
+        logger.info(String.format("Extracted annotations for %s total variants.", data.getData().size()));
 
         logger.info("Writing annotations...");
         writeAnnotationsHDF5();

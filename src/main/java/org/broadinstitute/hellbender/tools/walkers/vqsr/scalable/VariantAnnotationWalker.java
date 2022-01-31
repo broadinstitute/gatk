@@ -30,15 +30,19 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VcfUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 /**
  * TODO
@@ -52,14 +56,17 @@ import java.util.TreeSet;
 @DocumentedFeature
 public class VariantAnnotationWalker extends MultiVariantWalker {
 
-    private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
-    private static final String DUMMY_ALLELE = "<VQSR>";
+    private static final String TRAINING_RESOURCE_LABEL = "training";
+    private static final String TRUTH_RESOURCE_LABEL = "truth";
 
     private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
     private static final String DEFAULT_VCF_SUFFIX = ".vcf";
 
     private static final int DEFAULT_CHUNK_DIVISOR = 16;
     private static final int DEFAULT_MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / DEFAULT_CHUNK_DIVISOR;
+
+    private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
+    private static final String DUMMY_ALLELE = "<VQSR>";
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -75,7 +82,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
     @Argument(
             fullName = StandardArgumentDefinitions.RESOURCE_LONG_NAME,
             doc = "") // TODO
-    private List<FeatureInput<VariantContext>> resource = new ArrayList<>();
+    private List<FeatureInput<VariantContext>> resources = new ArrayList<>(10);
 
     @Argument(
             fullName = "mode",
@@ -138,8 +145,9 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
     )
     private int maximumChunkSize = DEFAULT_MAXIMUM_CHUNK_SIZE;
 
-    VariantDataManager dataManager;
-    boolean isExtractTrainingAndTruthOnly;
+    VariantDataCollection data;
+    boolean isExtractAll;
+    final Set<String> allResourceLabels = new TreeSet<>();
     File outputAnnotationsHDF5File;
     private File outputVCFFile;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
@@ -170,23 +178,31 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             }
         }
 
-        dataManager = new VariantDataManager(new ArrayList<>(useAnnotations), useASannotations, trustAllPolymorphic);
+        data = new VariantDataCollection(new ArrayList<>(useAnnotations), useASannotations, trustAllPolymorphic);
 
         if (ignoreInputFilters != null) {
             ignoreInputFilterSet.addAll(ignoreInputFilters);
         }
 
-        for (final FeatureInput<VariantContext> variantFeature : resource) {
-            dataManager.addVariantSet(new VariantSet(variantFeature));
+        for (final FeatureInput<VariantContext> resource : resources) {
+            // Parse the tags to decide which tracks have which properties
+            final TreeSet<String> resourceLabels = resource.getTagAttributes().entrySet().stream()
+                    .filter(e -> e.getValue().equals("true"))
+                    .map(Map.Entry::getKey)
+                    .sorted()
+                    .collect(Collectors.toCollection(TreeSet::new));
+            allResourceLabels.addAll(resourceLabels);
+            logger.info( String.format("Found %s track: labels = %s", resource.getName(), resourceLabels));
         }
 
-        if (!dataManager.checkHasTrainingSet()) {
+        // check training and truth are in keys
+        if (!allResourceLabels.contains(TRAINING_RESOURCE_LABEL)) {
             throw new CommandLineException(
                     "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
         }
 
-        if (!dataManager.checkHasTruthSet()) {
+        if (!allResourceLabels.contains(TRUTH_RESOURCE_LABEL)) {
             throw new CommandLineException(
                     "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
@@ -225,15 +241,31 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
     // TODO check presence in training/truth sets outside of addDatum method
     private void addVariantDatum(final VariantContext vc,
-                                 final FeatureContext context) {
-        if (vc != null && (ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
-            if (VariantDataManager.checkVariationClass(vc, mode) && !useASannotations) {
-                dataManager.addDatum(context, vc, vc.getReference(), null, isExtractTrainingAndTruthOnly);
-            } else if (useASannotations) {
-                for (final Allele allele : vc.getAlternateAlleles()) {
-                    if (!GATKVCFConstants.isSpanningDeletion(allele) && VariantDataManager.checkVariationClass(vc, allele, mode)) {
-                        //note that this may not be the minimal representation for the ref and alt allele
-                        dataManager.addDatum(context, vc, vc.getReference(), allele, isExtractTrainingAndTruthOnly);
+                                 final FeatureContext featureContext) {
+        if (vc == null) {
+            return;
+        }
+        if (!(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
+            return;
+        }
+        if (checkVariationClass(vc, mode) && !useASannotations) {
+            final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
+            if (isExtractAll || !overlappingResourceLabels.isEmpty()) {
+                data.addDatum(vc, vc.getReference(), null, overlappingResourceLabels);
+                if (!isExtractAll) {
+                    data.addAlternateAlleles(vc.getAlternateAlleles());
+                }
+            }
+        } else if (useASannotations) {
+            for (final Allele altAllele : vc.getAlternateAlleles()) {
+                if (!GATKVCFConstants.isSpanningDeletion(altAllele) && checkVariationClass(vc, altAllele, mode)) {
+                    final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, vc.getReference(), altAllele, featureContext);
+                    //note that this may not be the minimal representation for the ref and alt allele
+                    if (isExtractAll || !overlappingResourceLabels.isEmpty()) {
+                        data.addDatum(vc, vc.getReference(), altAllele, overlappingResourceLabels);
+                        if (!isExtractAll) {
+                            data.addAlternateAlleles(Collections.singletonList(altAllele));
+                        }
                     }
                 }
             }
@@ -254,16 +286,107 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         // override
     }
 
+    private Set<String> findOverlappingResourceLabels(final VariantContext vc,
+                                                      final Allele refAllele,
+                                                      final Allele altAllele,
+                                                      final FeatureContext featureContext) {
+        final Set<String> overlappingResourceLabels = new TreeSet<>();
+        for (final FeatureInput<VariantContext> resource : resources) {
+            final List<VariantContext> resourceVCs = featureContext.getValues(resource, featureContext.getInterval().getStart());
+            for (final VariantContext resourceVC : resourceVCs) {
+                if (useASannotations && !doAllelesMatch(refAllele, altAllele, resourceVC)) {
+                    continue;
+                }
+                if (isValidVariant(vc, resourceVC, trustAllPolymorphic)) {
+                    overlappingResourceLabels.addAll(resource.getTagAttributes().entrySet().stream()
+                            .filter(e -> e.getValue().equals("true"))
+                            .map(Map.Entry::getKey)
+                            .collect(Collectors.toSet()));
+                }
+            }
+        }
+        return overlappingResourceLabels;
+    }
+
+    private static boolean isValidVariant(final VariantContext vc,
+                                          final VariantContext resourceVC,
+                                          final boolean trustAllPolymorphic) {
+        return resourceVC != null && resourceVC.isNotFiltered() && resourceVC.isVariant() && checkVariationClass(vc, resourceVC) &&
+                (trustAllPolymorphic || !resourceVC.hasGenotypes() || resourceVC.isPolymorphicInSamples());
+    }
+
+    private static boolean doAllelesMatch(final Allele refAllele,
+                                          final Allele altAllele,
+                                          final VariantContext resourceVC) {
+        if (altAllele == null) {
+            return true;
+        }
+        try {
+            return GATKVariantContextUtils.isAlleleInList(refAllele, altAllele, resourceVC.getReference(), resourceVC.getAlternateAlleles());
+        } catch (final IllegalStateException e) {
+            throw new IllegalStateException("Reference allele mismatch at position " + resourceVC.getContig() + ':' + resourceVC.getStart() + " : ", e);
+        }
+    }
+
+    private static boolean checkVariationClass(final VariantContext vc,
+                                               final VariantContext resourceVC) {
+        switch (resourceVC.getType()) {
+            case SNP:
+            case MNP:
+                return checkVariationClass(vc, VariantTypeMode.SNP);
+            case INDEL:
+            case MIXED:
+            case SYMBOLIC:
+                return checkVariationClass(vc, VariantTypeMode.INDEL);
+            default:
+                return false;
+        }
+    }
+
+    static boolean checkVariationClass(final VariantContext vc,
+                                       final VariantTypeMode mode) {
+        switch (mode) {
+            case SNP:
+                return vc.isSNP() || vc.isMNP();
+            case INDEL:
+                return vc.isStructuralIndel() || vc.isIndel() || vc.isMixed() || vc.isSymbolic();
+            case BOTH:
+                return true;
+            default:
+                throw new IllegalStateException("Encountered unknown mode: " + mode);
+        }
+    }
+
+    static boolean checkVariationClass(final VariantContext vc,
+                                       final Allele allele,
+                                       final VariantTypeMode mode) {
+        switch (mode) {
+            case SNP:
+                //note that spanning deletions are considered SNPs by this logic
+                return vc.getReference().length() == allele.length();
+            case INDEL:
+                return (vc.getReference().length() != allele.length()) || allele.isSymbolic();
+            case BOTH:
+                return true;
+            default:
+                throw new IllegalStateException("Encountered unknown mode: " + mode);
+        }
+    }
+
     void writeAnnotationsHDF5() {
         try (final HDF5File hdf5File = new HDF5File(outputAnnotationsHDF5File, HDF5File.OpenMode.CREATE)) { // TODO allow appending
             IOUtils.canReadFile(hdf5File.getFile());
 
-            hdf5File.makeStringArray("/data/annotation_names", dataManager.getAnnotationKeys().toArray(new String[0]));
-            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", dataManager.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new), maximumChunkSize);
-            hdf5File.makeDoubleArray("/data/is_biallelic_snp", dataManager.getData().stream().mapToDouble(vd -> vd.isBiallelicSNP ? 1 : 0).toArray());
-            hdf5File.makeDoubleArray("/data/is_transition", dataManager.getData().stream().mapToDouble(vd -> vd.isTransition ? 1 : 0).toArray());
-            hdf5File.makeDoubleArray("/data/is_training", dataManager.getData().stream().mapToDouble(vd -> vd.atTrainingSite ? 1 : 0).toArray());
-            hdf5File.makeDoubleArray("/data/is_truth", dataManager.getData().stream().mapToDouble(vd -> vd.atTruthSite ? 1 : 0).toArray());
+            hdf5File.makeStringArray("/data/annotation_names", data.getAnnotationKeys().toArray(new String[0]));
+            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", data.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new), maximumChunkSize);
+            for (final String resourceLabel : allResourceLabels) {
+                hdf5File.makeDoubleArray(String.format("/data/is_%s", resourceLabel),
+                        data.getData().stream().mapToDouble(vd -> vd.labels.contains(resourceLabel) ? 1 : 0).toArray());
+            }
+            for (final String computedLabel : VariantDataCollection.COMPUTED_LABELS) {
+                hdf5File.makeDoubleArray(String.format("/data/is_%s", computedLabel),
+                        data.getData().stream().mapToDouble(vd -> vd.labels.contains(computedLabel) ? 1 : 0).toArray());
+            }
         } catch (final HDF5LibException exception) {
             throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
                     exception, outputAnnotationsHDF5File.getAbsolutePath()));
@@ -277,7 +400,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         final VariantContextWriter vcfWriter = createVCFWriter(outputVCFFile);
         vcfWriter.writeHeader(constructVCFHeader());
 
-        final List<VariantDatum> data = dataManager.getData();
+        final List<VariantDatum> data = this.data.getData();
 
         // we need to sort in coordinate order in order to produce a valid VCF
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -288,13 +411,13 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
         for (int i = 0; i < data.size(); i++) {
             final VariantDatum datum = data.get(i);
-            if (writeTrainingOnly && !datum.atTrainingSite) {
+            if (writeTrainingOnly && !datum.labels.contains(TRAINING_RESOURCE_LABEL)) {
                 continue;
             }
             if (useASannotations) {
                 alleles = Arrays.asList(datum.referenceAllele, datum.alternateAllele); //use the alleles to distinguish between multiallelics in AS mode
             } else if (writeAlleles) {
-                final List<Allele> allelesToWrite = dataManager.alternateAlleles.get(i);
+                final List<Allele> allelesToWrite = this.data.alternateAlleles.get(i);
                 allelesToWrite.add(0, datum.referenceAllele);
                 alleles = allelesToWrite;
             }
@@ -305,7 +428,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
                 builder.attribute(SCORE_KEY, String.format("%.4f", datum.score));
             }
 
-            if (datum.atTrainingSite) {
+            if (datum.labels.contains(TRAINING_RESOURCE_LABEL)) {
                 builder.attribute(GATKVCFConstants.POSITIVE_LABEL_KEY, true);
             }
 
