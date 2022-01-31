@@ -158,7 +158,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-remove-sites-only-step
+         - rc-test-vat-sizes
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
