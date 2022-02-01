@@ -297,6 +297,12 @@ task PrepAnnotationJson {
     command <<<
         set -e
 
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+        fi
+
         # for debugging purposes only
         gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
 
@@ -305,12 +311,6 @@ task PrepAnnotationJson {
           --annotated_json ~{annotation_json} \
           --output_vt_json ~{output_vt_json} \
           --output_genes_json ~{output_genes_json}
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-        fi
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
