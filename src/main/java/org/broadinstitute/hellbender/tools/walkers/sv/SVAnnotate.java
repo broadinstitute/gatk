@@ -107,12 +107,11 @@ public final class SVAnnotate extends VariantWalker {
     }
 
     private static Integer getContigIDFromName(final String contigName, final Map<String, Integer> contigNameToID) {
-        try {
-            final Integer contigID = contigNameToID.get(contigName);
-            return contigID;
-        } catch (NullPointerException e) {
+        final Integer contigID = contigNameToID.get(contigName);
+        if (isNull(contigID)) {
             throw new IllegalArgumentException("Contig " + contigName + " not in provided contig ID to name map");
         }
+        return contigID;
     }
 
     // mini class for SV intervals (type and segment) within CPX events
@@ -159,7 +158,7 @@ public final class SVAnnotate extends VariantWalker {
 
         if (!isNull(nonCodingBedFile)) {
             final FeatureDataSource<FullBEDFeature> nonCodingSource = new FeatureDataSource<>(nonCodingBedFile);
-            nonCodingIntervalTree = buildIntervalTreeFromBED(nonCodingSource);
+            nonCodingIntervalTree = buildIntervalTreeFromBED(nonCodingSource, contigNameToID);
         }
 
         vcfWriter = createVCFWriter(outputFile);
@@ -216,7 +215,8 @@ public final class SVAnnotate extends VariantWalker {
         return new GTFIntervalTreesContainer(gtfIntervalTree, promoterIntervalTree, transcriptionStartSiteTree);
     }
 
-    private SVIntervalTree<String> buildIntervalTreeFromBED(final FeatureDataSource<FullBEDFeature> BEDSource) {
+    protected static SVIntervalTree<String> buildIntervalTreeFromBED(final FeatureDataSource<FullBEDFeature> BEDSource,
+                                                            final Map<String,Integer> contigNameToID) {
         final SVIntervalTree<String> BEDIntervalTree = new SVIntervalTree<>();
         for (final FullBEDFeature feature : BEDSource) {
             // BED feature already does start+1 conversion to closed interval
@@ -508,8 +508,6 @@ public final class SVAnnotate extends VariantWalker {
                 return StructuralVariantAnnotationType.CPX;
             }
             return StructuralVariantAnnotationType.BND;
-        } else if (alt.isSingleBreakend()) {
-            throw new IllegalArgumentException("what even is single breakend??: " + alt);
         } else if (alt.isSymbolic()) {
             if (alt.toString().contains("INS")) {
                 // account for <INS:ME>, etc. types

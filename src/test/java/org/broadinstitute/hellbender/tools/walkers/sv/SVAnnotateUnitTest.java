@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import htsjdk.tribble.bed.FullBEDFeature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -100,7 +101,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     }
 
     private FeatureDataSource<GencodeGtfGeneFeature> loadToyGTFSource() {
-        final File toyGTFFile = new File(getToolTestDataDir() + "EMMA1.gtf");
+        final File toyGTFFile = new File(getToolTestDataDir() + "unittest.gtf");
         return new FeatureDataSource<>(toyGTFFile);
     }
 
@@ -248,8 +249,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     ) {
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
-        final Map<String,Integer> contigNameToID = new HashMap<>();
-        contigNameToID.put("chr1", 0);
+        final Map<String,Integer> contigNameToID = createContigNameToIDMap(Arrays.asList("chr1"), Arrays.asList(0));
         final int promoterWindow = 1000;
 
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees = SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, promoterWindow);
@@ -267,7 +267,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
 
 
     @Test
-    public void testFormatVariantConsequenceDict() {
+    public void testSortVariantConsequenceDict() {
         Map<String, Set<String>> before = new HashMap<>();
         SVAnnotate.updateVariantConsequenceDict(before, GATKSVVCFConstants.LOF, "NOC2L");
         SVAnnotate.updateVariantConsequenceDict(before, GATKSVVCFConstants.LOF, "KLHL17");
@@ -555,46 +555,76 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         };
     }
 
-    private SVIntervalTree<String> createNoncodingIntervalTree() {
-        final SVIntervalTree<String> BEDIntervalTree = new SVIntervalTree<>();
-        final List<ClosedSVInterval> intervals = Arrays.asList(
-                new ClosedSVInterval(0, 400, 500),
-                new ClosedSVInterval(0, 1200, 1600)
-        );
-        final List<String> names = Arrays.asList("DNase", "Enhancer");
-        for (int i = 0; i < names.size(); i++) {
-            BEDIntervalTree.put(intervals.get(i), names.get(i));
-        }
-        return BEDIntervalTree;
+    private FeatureDataSource<FullBEDFeature> loadTinyNoncodingBEDSource() {
+        return new FeatureDataSource<>(getToolTestDataDir() + "noncoding.unittest.bed");
     }
 
-    // tests full integrated annotateStructuralVariant process, with a focus on noncoding & promoter annotation
-    // and logic controlling when to annotate TSS and intergenic, since protein-coding and TSS annotation
-    // is tested elsewhere
+    /**
+     * Tests full integrated annotateStructuralVariant process, with a focus on noncoding & promoter annotation
+     * and logic controlling when to annotate TSS and intergenic, since protein-coding and TSS annotation
+     * is tested elsewhere
+     * @param variant
+     * @param expectedAttributes
+     */
     @Test(dataProvider = "toyIntegratedVariants")
     public void testAnnotateStructuralVariant(
             final VariantContext variant,
             final Map<String, Object> expectedAttributes
     ) {
-        final Map<String,Integer> contigNameToID = new HashMap<>();
-        contigNameToID.put("chr1", 0);
+        final Map<String,Integer> contigNameToID = createContigNameToIDMap(Arrays.asList("chr1"), Arrays.asList(0));
         final String[] contigIDToName = new String[]{"chr1"};
         final int promoterWindow = 200;
         final int maxBreakendLen = -1;
         final int maxContigLength = 5000;
 
-        FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
+        final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees = SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, promoterWindow);
         final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
         final SVIntervalTree<String> promoterIntervalTree = gtfTrees.promoterIntervalTree;
         final SVIntervalTree<String> transcriptionStartSiteTree = gtfTrees.transcriptionStartSiteTree;
-        final SVIntervalTree<String> nonCodingIntervalTree = createNoncodingIntervalTree();
+        final FeatureDataSource<FullBEDFeature> tinyNoncodingBedSource = loadTinyNoncodingBEDSource();
+        final SVIntervalTree<String> nonCodingIntervalTree =
+                SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, contigNameToID);
 
         final Map<String, Object> actualAttributes = SVAnnotate.annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
                 transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications, contigNameToID,
                 contigIDToName, maxBreakendLen, maxContigLength);
 
         Assert.assertEquals(expectedAttributes, actualAttributes);
+    }
+
+    private Map<String, Integer> createContigNameToIDMap(List<String> names, List<Integer> IDs) {
+        final Map<String,Integer> contigNameToID = new HashMap<>();
+        for (int i = 0 ; i < names.size() ; i++) {
+            contigNameToID.put(names.get(i), IDs.get(i));
+        }
+        return contigNameToID;
+    }
+
+    @DataProvider(name = "buildIntervalTrees")
+    public Object[][] getBuildIntervalTreesTestData() {
+        return new Object[][] {
+                { createContigNameToIDMap(Arrays.asList("chr1"), Arrays.asList(0)), 2, 2 },
+                { createContigNameToIDMap(Arrays.asList("chr1", "chr2"), Arrays.asList(0, 1)), 3, 3 }
+        };
+    }
+
+    @Test(dataProvider = "buildIntervalTrees")
+    public void testIgnoreUnknownContigsWhenBuildingIntervalTrees(
+            final Map<String, Integer> contigNameToID,
+            final int expectedBEDTreeSize,
+            final int expectedTranscriptTreeSize
+    ) {
+        final FeatureDataSource<FullBEDFeature> tinyNoncodingBedSource = loadTinyNoncodingBEDSource();
+        final SVIntervalTree<String> nonCodingIntervalTree =
+                SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, contigNameToID);
+        final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
+        final SVAnnotate.GTFIntervalTreesContainer gtfTrees = SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, 100);
+        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
+        // check size to ensure contigs not included in the map are excluded from the interval tree successfully
+        Assert.assertEquals(nonCodingIntervalTree.size(), expectedBEDTreeSize);
+        Assert.assertEquals(gtfIntervalTree.size(), expectedTranscriptTreeSize);
+
     }
 
     // interval trees? getContigIDFromName?
