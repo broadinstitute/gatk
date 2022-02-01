@@ -232,8 +232,14 @@ task ExtractAnAcAfFromVCF {
         # "sas"
         #]
 
+        startTime=`date +%s.%N`
+        echo "StartTime: $startTime"
+
         ## track the dropped variants with +50 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
         bcftools view -i 'N_ALT>50 || REF~"N"' ~{local_input_vcf} | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+
+        dropTime=`date +%s.%N`
+        echo "Track dropped variants w 50+ alt alleles or Ns: $dropTime"
 
         wc -l track_dropped.tsv
 
@@ -241,9 +247,17 @@ task ExtractAnAcAfFromVCF {
         bcftools view -e 'N_ALT>50 || REF~"N"' --no-update ~{local_input_vcf} -Ou | \
         ## filter out the non-passing sites
         bcftools view  -f 'PASS,.' --no-update -Oz -o filtered.vcf.gz
+
+        filterTime=`date +%s.%N`
+        echo "Filter variants: $filterTime"
+
         ## normalize, left align and split multi allelic sites to new lines, remove duplicate lines
         bcftools norm -m- --check-ref w -f Homo_sapiens_assembly38.fasta filtered.vcf.gz -Oz -o normalized.vcf.gz
         rm ~{local_input_vcf}
+
+        normTime=`date +%s.%N`
+        echo "Normalize variants: $normTime"
+
         ## filter out spanning deletions and variants with an AC of 0
         bcftools view -e 'ALT[0]="*" || AC=0' --no-update normalized.vcf.gz -Ou | \
         ## ensure that we respect the FT tag
@@ -252,7 +266,10 @@ task ExtractAnAcAfFromVCF {
         ## clean up unneeded file
         rm normalized.vcf.gz
 
-        ## During normalization, sometimes duplicate variamts appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
+        filterTagTime=`date +%s.%N`
+        echo "Apply FT to variants: $filterTagTime"
+
+        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
         ## The way in which this is done is a bit hamfisted and should be optimized in the future.
         ## to locate the duplicates, we first make a file of just the first 5 columns
         bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
@@ -263,15 +280,24 @@ task ExtractAnAcAfFromVCF {
         zgrep -v -wFf duplicates.tsv ~{normalized_vcf} > deduplicated.vcf.gz
         rm ~{normalized_vcf} ## clean up
 
+        deleteDupesTime=`date +%s.%N`
+        echo "Delete duplicate variants (bcftools bug): $deleteDupesTime"
+
         ## add duplicates to the file that's tracking dropped variants
         cat duplicates.tsv >> track_dropped.tsv
         rm duplicates.tsv ## clean up unneeded file
+
+        cleanTime=`date +%s.%N`
+        echo "Cleanup: $cleanTime"
 
         ## calculate annotations for all subpopulations
         ## AC_het,AC_hom and AC_Hemi are used to calculate the participant count
         bcftools plugin fill-tags  -- deduplicated.vcf.gz -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom,AC_Hemi | bcftools query -f \
         '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_Hemi\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_Hemi_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_Hemi_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_Hemi_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_Hemi_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_Hemi_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_Hemi_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\t%AC_Hemi_sas\n' \
         >> ~{custom_annotations_file_name}
+
+        subpopTime=`date +%s.%N`
+        echo "Calculate subpopulation values: $subpopTime"
 
         ## for validation of the pipeline
         wc -l ~{custom_annotations_file_name} | awk '{print $1 -7}'  > count.txt
@@ -280,6 +306,9 @@ task ExtractAnAcAfFromVCF {
         bcftools view --no-update --drop-genotypes deduplicated.vcf.gz -Oz -o ~{normalized_vcf_compressed}
         ## if we can spare the IO and want to pass a smaller file we can also drop the info field w bcftools annotate -x INFO
         bcftools index --tbi  ~{normalized_vcf_compressed}
+
+        endTime=`date +%s.%N`
+        echo "EndTime: $endTime"
 
     >>>
     # ------------------------------------------------
