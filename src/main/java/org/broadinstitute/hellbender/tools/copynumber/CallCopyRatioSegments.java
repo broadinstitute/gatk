@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -15,9 +16,11 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.collections.Called
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledLegacySegment;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.CopyRatioSegment;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -147,6 +150,18 @@ public final class CallCopyRatioSegments extends CommandLineProgram {
         validateArguments();
 
         final CopyRatioSegmentCollection copyRatioSegments = new CopyRatioSegmentCollection(inputCopyRatioSegmentsFile);
+
+        // BEGIN sato
+        final double[] logCopyRatios = copyRatioSegments.getRecords().stream()
+                .mapToDouble(r -> r.getMeanLog2CopyRatio()).toArray();
+
+        // Not the overall medians, by the median of segment means.
+        double medianCopyRatio = Math.pow(2, new Median().evaluate(logCopyRatios));
+        double delta = 0.1;
+        neutralSegmentCopyRatioLowerBound = medianCopyRatio - delta;
+        neutralSegmentCopyRatioUpperBound = medianCopyRatio + delta;
+        // END sato
+
         final CalledCopyRatioSegmentCollection calledCopyRatioSegments =
                 new SimpleCopyRatioCaller(copyRatioSegments,
                         neutralSegmentCopyRatioLowerBound, neutralSegmentCopyRatioUpperBound,

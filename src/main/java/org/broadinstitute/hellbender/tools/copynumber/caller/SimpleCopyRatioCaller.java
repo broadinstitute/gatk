@@ -85,13 +85,32 @@ public final class SimpleCopyRatioCaller {
         return new CalledCopyRatioSegmentCollection(copyRatioSegments.getMetadata(), calledSegments);
     }
 
+    // The default way using
+    private List<CopyRatioSegment> getCopyNeutralSegments() {
+        return copyRatioSegments.getRecords().stream().filter(s -> {
+            final double copyRatioMean = Math.pow(2., s.getMeanLog2CopyRatio());
+            return neutralSegmentCopyRatioLowerBound <= copyRatioMean && copyRatioMean <= neutralSegmentCopyRatioUpperBound;
+        }).collect(Collectors.toList());
+    }
+
+    // Median based version, written by tsato
+    // Eventually, find the "mode." We will probably need kernel smoothing etc.
+//    private List<CopyRatioSegment> getCopyNeutralSegments2() {
+//        final double delta = 0.1;
+//        final List<Double> copyRatioMeans = copyRatioSegments.getRecords().stream()
+//                .map(rec -> Math.pow(2, rec.getMeanLog2CopyRatio()))
+//                .collect(Collectors.toList());
+//        double medianCopyRatio = MathUtils.median(copyRatioMeans);
+//        return copyRatioSegments.getRecords().stream().filter(s -> {
+//            final double copyRatioMean = Math.pow(2., s.getMeanLog2CopyRatio());
+//            return medianCopyRatio - delta <= copyRatioMean && copyRatioMean <= medianCopyRatio + delta;
+//        }).collect(Collectors.toList());
+//    }
+
     private Statistics calculateCallingStatistics() {
         //get the segments that fall within the copy-neutral region
-        final List<CopyRatioSegment> copyNeutralSegments = copyRatioSegments.getRecords().stream()
-                .filter(s -> {
-                    final double copyRatioMean = Math.pow(2., s.getMeanLog2CopyRatio());
-                    return neutralSegmentCopyRatioLowerBound <= copyRatioMean && copyRatioMean <= neutralSegmentCopyRatioUpperBound;})
-                .collect(Collectors.toList());
+        final List<CopyRatioSegment> copyNeutralSegments = getCopyNeutralSegments();
+
         logger.info(String.format("%d segments in copy-neutral region [%s, %s]...", copyNeutralSegments.size(),
                 CopyNumberFormatsUtils.formatDouble(neutralSegmentCopyRatioLowerBound),
                 CopyNumberFormatsUtils.formatDouble(neutralSegmentCopyRatioUpperBound)));

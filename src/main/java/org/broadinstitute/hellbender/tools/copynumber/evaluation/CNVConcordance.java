@@ -4,9 +4,11 @@ import htsjdk.samtools.util.CoordMath;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CalledCopyRatioSegmentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
@@ -34,7 +36,7 @@ import java.util.stream.Collectors;
         oneLineSummary = "CNV Concordance",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
-public class CNVConcordance extends GATKTool {
+public class CNVConcordance extends GATK {
 
     @Argument(doc = "Eval", fullName = "eval")
     private File evalFile;
@@ -54,7 +56,6 @@ public class CNVConcordance extends GATKTool {
     @Argument(doc = "output3", fullName = "output3")
     private File output3;
 
-    // Eval calls annotated with truth calls
     @Argument(doc = "minimum event size", fullName = "min-event-size", optional = true)
     private int minEventSize = 50;
 
@@ -68,7 +69,7 @@ public class CNVConcordance extends GATKTool {
         final CalledCopyRatioSegmentCollection truthSegments = new CalledCopyRatioSegmentCollection(truthFile);
 
         final CalledCopyRatioSegmentCollection filteredTruthSegments = applySegmentFilters(truthSegments, minEventSize);
-
+        // TODO: inside createOverlapMap, change to a TreeMap, which entails implementing Comparable within CalledCopyRatioSegment
         // This is to be implemented. But the per-eval segment map should be useful.
         final Map<CalledCopyRatioSegment, List<CalledCopyRatioSegment>> mapEvalAsKey =
                 IntervalUtils.createOverlapMap(evalSegments.getRecords(), truthSegments.getRecords(),
@@ -104,7 +105,7 @@ public class CNVConcordance extends GATKTool {
                     continue;
                 }
 
-                // Must check that the call is the same between t and e
+                // Must check that the call is the same between tr and ev
                 final int overlappingBases = CoordMath.getOverlap(truthSegment.getStart(), truthSegment.getEnd(),
                         overlappingEvalSegment.getStart(), overlappingEvalSegment.getEnd());
                 numOverlappingBases += overlappingBases;

@@ -10,10 +10,12 @@ import static org.testng.Assert.*;
 public class CNVConcordanceTest extends CommandLineProgramTest {
     @Test
     public void test(){
-        final String hg19 = "/Volumes/seq_references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta";
+        final String hg19 = "/Users/tsato/workspace/cfCNV/resources/Homo_sapiens_assembly19.fasta";
         final String home = "/Users/tsato/workspace/cfCNV/evaluation/tool/";
-        final String eval = home + "1227495080.called.seg";
-        final String truth = home + "SM-74P4M.called.seg";
+        // final String eval = home + "1227495080.called.seg";
+        final String eval = home +  "MP65_5753_in_KP_61683_3pct_duplicate_marked.called.seg";
+        // final String truth = home + "SM-74P4M.called.seg";
+        final String truth = home + "MP65_truth_373505753_duplicate_marked.called.seg";
 
         final String output1 = home + "output1.seg";
         final String output2 = home + "output2.seg";

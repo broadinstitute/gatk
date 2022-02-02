@@ -2,7 +2,15 @@ package org.broadinstitute.hellbender.tools.copynumber.formats.records;
 
 import org.broadinstitute.hellbender.utils.Utils;
 
-public class CalledCopyRatioSegment extends CopyRatioSegment {
+public class CalledCopyRatioSegment extends CopyRatioSegment{
+// sato: can we make this a comparable?
+    //  implements Comparable<CalledCopyRatioSegment>
+    //    @Override
+//    public int compareTo(CalledCopyRatioSegment calledCopyRatioSegment) {
+//        Simpl
+//        return 0;
+//    } // Maybe able to choose a more abstract type here
+
     public enum Call {
         AMPLIFICATION("+"),
         DELETION("-"),
