@@ -146,6 +146,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
                 //get idx of current haplotype in the list and use this idx to get the right likelihoodValue
                 final int idxInsideHaplotypeList = haplotypeToHaplotypeListIdxMap.get(haplotype);
                 logLikelihoods.set(hapIdx, r, mLogLikelihoodArray[readIdx + idxInsideHaplotypeList]);
+                writeToResultsFileIfApplicable(readDataArray[r].readBases, readDataArray[r].readQuals, readDataArray[r].insertionGOP, readDataArray[r].deletionGOP, readDataArray[r].overallGCP, haplotype.getBases(), mLogLikelihoodArray[readIdx + idxInsideHaplotypeList]);
                 ++hapIdx;
             }
             readIdx += numHaplotypes;

@@ -31,6 +31,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -1605,5 +1606,44 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         return vc.hasAttribute(VCFConstants.END_KEY) &&
                vc.getAlternateAlleles().size() == 1 &&
                vc.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE);
+    }
+
+
+    @DataProvider(name="PairHMMResultsModes")
+    public Object[][] PairHMMResultsModes() {
+        return new Object[][] {
+                {PairHMM.Implementation.AVX_LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.AVX.hmmresults.txt")},
+                {PairHMM.Implementation.LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.Java.hmmresults.txt")},
+                {PairHMM.Implementation.ORIGINAL, new File(TEST_FILES_DIR, "expected.Original.hmmresults.txt")},
+                {PairHMM.Implementation.EXACT, new File(TEST_FILES_DIR, "expected.Exact.hmmresults.txt")},
+
+        };
+    }
+
+    @Test(dataProvider = "PairHMMResultsModes")
+    public void testPairHMMResultsFile(final PairHMM.Implementation implementation, final File expected) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File vcfOutput = createTempFile("hmmResultFileTest", ".vcf");
+        final File hmmOutput = createTempFile("hmmResult", ".txt");
+
+        final String hmmOutputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : hmmOutput.getAbsolutePath();
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10000117",
+                "-ip", "100",
+                "-O", vcfOutput.getAbsolutePath(),
+                "--pair-hmm-results-file", hmmOutputPath,
+                "-pairHMM", implementation.name()
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(hmmOutput, expected);
+        }
     }
 }

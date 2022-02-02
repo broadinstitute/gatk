@@ -5,6 +5,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.io.OutputStreamWriter;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
 
@@ -104,7 +106,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, dragstrParams, arguments, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, true, false, true);
+        this( constantGCP, dragstrParams, arguments, hmmType, null, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, true, false, true);
     }
 
     /**
@@ -128,6 +130,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final DragstrParams dragstrParams,
                                               final PairHMMNativeArguments arguments,
                                               final PairHMM.Implementation hmmType,
+                                              final GATKPath resultsFile,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel,
                                               final byte baseQualityScoreThreshold,
@@ -150,6 +153,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         this.log10globalReadMismappingRate = log10globalReadMismappingRate;
         this.pcrErrorModel = this.dragstrParams == null ? pcrErrorModel : PCRErrorModel.NONE;
         this.pairHMM = hmmType.makeNewHMM(arguments);
+        if (resultsFile != null) {
+            pairHMM.setAndInitializeDebugOutputStream(new OutputStreamWriter(resultsFile.getOutputStream()));
+        }
         this.dynamicDisqualification = dynamicReadDisqualificaiton;
         this.readDisqualificationScale = readDisqualificationScale;
         this.symmetricallyNormalizeAllelesToReference = symmetricallyNormalizeAllelesToReference;

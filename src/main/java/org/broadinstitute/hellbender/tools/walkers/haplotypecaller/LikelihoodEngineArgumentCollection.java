@@ -104,6 +104,14 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     @Argument(fullName="dynamic-read-disqualification-threshold", doc="Constant used to scale the dynamic read disqualificaiton")
     public double readDisqualificationThresholdConstant = PairHMMLikelihoodCalculationEngine.DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR;
 
+    /**
+     * Argument for generating a file of all of the inputs and ouptus for the pair hmm
+     */
+    @Advanced
+    @Hidden
+    @Argument(fullName="pair-hmm-results-file", doc="Constant used to scale the dynamic read disqualificaiton", optional = true)
+    public GATKPath pairHmmResultsFile = null;
+
     @ArgumentCollection
     public PairHMMNativeArgumentCollection pairHMMNativeArgs = new PairHMMNativeArgumentCollection();
 }
