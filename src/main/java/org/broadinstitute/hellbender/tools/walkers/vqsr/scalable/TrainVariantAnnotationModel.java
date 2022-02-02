@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.linear.MatrixUtils;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -86,6 +87,20 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             optional = true)
     private List<Double> truthSensitivityTranches = new ArrayList<>(Arrays.asList(100.0, 99.9, 99.0, 90.0));
 
+    @Advanced
+    @Argument(
+            doc = "Maximum HDF5 matrix chunk size.  Large matrices written to HDF5 are chunked into equally sized " +
+                    "subsets of rows (plus a subset containing the remainder, if necessary) to avoid a hard limit in " +
+                    "Java HDF5 on the number of elements in a matrix.  However, since a single row is not allowed to " +
+                    "be split across multiple chunks, the number of columns must be less than the maximum number of " +
+                    "values in each chunk.  Decreasing this number will reduce heap usage when writing chunks.",
+            fullName = "maximum-chunk-size",
+            minValue = 1,
+            maxValue = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX,
+            optional = true
+    )
+    private int maximumChunkSize = VariantAnnotationWalker.DEFAULT_MAXIMUM_CHUNK_SIZE;
+
     @Override
     protected Object doWork() {
 
@@ -158,7 +173,7 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
                 IOUtils.canReadFile(hdf5File.getFile());
 
                 hdf5File.makeStringArray("/data/annotation_names", annotationNames);
-                hdf5File.makeDoubleMatrix("/data/annotations", preprocessedData); // TODO unchunked to allow common plotting with monolithic
+                HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedData, maximumChunkSize);
                 hdf5File.makeDoubleArray("/data/is_training", isTraining.stream().mapToDouble(x -> x ? 1 : 0).toArray());
             } catch (final HDF5LibException exception) {
                 throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
