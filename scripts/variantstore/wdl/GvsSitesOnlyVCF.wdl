@@ -2,6 +2,7 @@ version 1.0
 workflow GvsSitesOnlyVCF {
    input {
         Int? extract_disk_override
+        Int? extract_mem_override
 
         File inputFileofFileNames
         File inputFileofIndexFileNames
@@ -172,6 +173,7 @@ task MakeSubpopulationFiles {
 task ExtractAnAcAfFromVCF {
     input {
         Int? extract_disk_override
+        Int? extract_mem_override
         File input_vcf
         File input_vcf_index
         String? service_account_json_path
@@ -188,6 +190,7 @@ task ExtractAnAcAfFromVCF {
         }
     }
     Int disk_size = if (defined(extract_disk_override)) then extract_disk_override else 500
+    Int memory = if (defined(extract_mem_override)) then extract_mem_override else 32
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String custom_annotations_file_name = "ac_an_af.tsv"
@@ -316,7 +319,7 @@ task ExtractAnAcAfFromVCF {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211101"
         maxRetries: 3
-        memory: "32 GB"
+        memory: "~{memory} GB"
         preemptible: 3
         cpu: "4"
         disks: "local-disk ~{disk_size} HDD"
