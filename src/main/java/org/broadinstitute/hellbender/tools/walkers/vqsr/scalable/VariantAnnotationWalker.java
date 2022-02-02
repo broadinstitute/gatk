@@ -63,7 +63,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
     private static final String DEFAULT_VCF_SUFFIX = ".vcf";
 
     private static final int DEFAULT_CHUNK_DIVISOR = 16;
-    private static final int DEFAULT_MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / DEFAULT_CHUNK_DIVISOR;
+    static final int DEFAULT_MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / DEFAULT_CHUNK_DIVISOR;
 
     private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
     private static final String DUMMY_ALLELE = "<VQSR>";

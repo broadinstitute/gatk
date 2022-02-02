@@ -73,9 +73,8 @@ final class BayesianGaussianMixtureUtils {
                                     .filter(Double::isFinite)
                                     .toArray()))
                     .map(Math::sqrt)
+                    .map(x -> x < Double.MIN_VALUE ? 1. : x) // if standard deviation is zero, no standardization is needed, but we should guard against divide-by-zero
                     .toArray();
-
-            // TODO validate stdevs
 
             standardizedMediansForImputation = IntStream.range(0, nFeatures)
                     .mapToDouble(j -> new Median().evaluate(
@@ -97,9 +96,13 @@ final class BayesianGaussianMixtureUtils {
             for (int i = 0; i < nSamples; i++) {
                 for (int j = 0; j < nFeatures; j++) {
                     final double value = data[i][j];
-                    preprocessedData[i][j] = Double.isNaN(value)
+                    final double preprocessedValue = Double.isNaN(value)
                             ? standardizedMediansForImputation[j]
                             : (value - meansForStandardization[j]) / standardDeviationsForStandardization[j];
+                    if (!Double.isFinite(preprocessedValue)) {
+                        throw new GATKException("Encountered non-finite value during preprocessing of annotations.");
+                    }
+                    preprocessedData[i][j] = preprocessedValue;
                 }
             }
             return preprocessedData;
