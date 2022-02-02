@@ -109,7 +109,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
      */
     @Advanced
     @Hidden
-    @Argument(fullName="pair-hmm-results-file", doc="Constant used to scale the dynamic read disqualificaiton", optional = true)
+    @Argument(fullName="pair-hmm-results-file", doc="File to write exact pairHMM inputs/outputs to for debugging purposes", optional = true)
     public GATKPath pairHmmResultsFile = null;
 
     @ArgumentCollection
