@@ -68,7 +68,7 @@ workflow GvsCreateVAT {
          output_path = output_path,
          table_suffix = table_suffix,
          service_account_json_path = service_account_json_path,
-         # prep_jsons_done = GvsCreateVATAnnotations.done
+         prep_jsons_done = GvsCreateVATAnnotations.done
   }
 
     call BigQuerySmokeTest {
@@ -160,11 +160,6 @@ task MakeSubpopulationFiles {
     }
 }
 
-
-
-
-
-
 task BigQueryLoadJson {
     meta { # since the WDL will not see the updated data (its getting put in a gcp bucket)
         volatile: true
@@ -179,7 +174,7 @@ task BigQueryLoadJson {
         String output_path
         String table_suffix
         String? service_account_json_path
-        # Array[String] prep_jsons_done
+        Array[String] prep_jsons_done
     }
 
     # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table

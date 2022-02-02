@@ -46,13 +46,13 @@ workflow GvsCreateVATAnnotations {
             service_account_json_path = service_account_json_path
         }
 
-            # ------------------------------------------------
-            # Outputs:
-            output {
-                Int count_variants = ExtractAnAcAfFromVCF.count_variants
-                File track_dropped = ExtractAnAcAfFromVCF.track_dropped
-                Boolean done = true
-            }
+        # ------------------------------------------------
+        # Outputs:
+        output {
+            Int count_variants = ExtractAnAcAfFromVCF.count_variants
+            File track_dropped = ExtractAnAcAfFromVCF.track_dropped
+            Boolean done = true
+        }
 }
 
 ################################################################################
