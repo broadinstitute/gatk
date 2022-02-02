@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Interval;
@@ -14,7 +13,7 @@ import java.util.List;
 import java.util.TreeSet;
 
 
-public class WeightedSplitIntervalsTest {
+public class WeightedSplitIntervalsUnitTest {
     private SAMSequenceDictionary header =
             new SAMSequenceDictionary(Collections.singletonList(
                     new SAMSequenceRecord("chr1", 200000000)));
@@ -63,6 +62,43 @@ public class WeightedSplitIntervalsTest {
         assertWeight(out.pollFirst(), "chr1", 1500, 1599, 0);
         assertWeight(out.pollFirst(), "chr1", 1600, 1699, 500);
         assertWeight(out.pollFirst(), "chr1", 1700, 1999, 0);
+    }
+
+    @Test
+    public void testBasicSplit() {
+        WeightedInterval w = new WeightedInterval("chr1", 1, 1000, 4000);
+        WeightedInterval[] output = w.split(500);
+
+        assertWeight(output[0], "chr1", 1, 500, 2000);
+        assertWeight(output[1], "chr1", 501, 1000, 2000);
+    }
+
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testSplitNegative() {
+        WeightedInterval w = new WeightedInterval("chr1", 1, 1000, 4000);
+        WeightedInterval[] output1 = w.split(-1);
+    }
+
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testSplitZero() {
+        WeightedInterval w = new WeightedInterval("chr1", 1, 1000, 4000);
+        WeightedInterval[] output1 = w.split(0);
+    }
+
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testSplitLength() {
+        WeightedInterval w = new WeightedInterval("chr1", 1, 1000, 4000);
+        WeightedInterval[] output1 = w.split(w.length());
+    }
+
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testLengthGtZero() {
+        WeightedInterval w = new WeightedInterval("chr1", 2, 1, 4000);
+    }
+
+    @Test(expectedExceptions = { IllegalArgumentException.class })
+    public void testWeightGtZero() {
+        WeightedInterval w = new WeightedInterval("chr1", 1, 1000, -1);
     }
 
     private void assertWeight(WeightedInterval w, String contig, int start, int end, long weight) {
