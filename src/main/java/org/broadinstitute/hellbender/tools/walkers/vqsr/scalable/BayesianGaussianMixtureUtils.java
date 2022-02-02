@@ -55,6 +55,13 @@ final class BayesianGaussianMixtureUtils {
 
         Preprocesser() {}
 
+        private static double standardize(final double value,
+                                          final double mean,
+                                          final double standardDeviation) {
+            // if standard deviation is zero, no standardization is needed, but we must guard against divide-by-zero
+            return (value - mean) / (standardDeviation < Double.MIN_VALUE ? 1. : standardDeviation);
+        }
+
         double[][] fitTransform(final double[][] data) {
             // TODO validation
             final int nSamples = data.length;
@@ -73,7 +80,6 @@ final class BayesianGaussianMixtureUtils {
                                     .filter(Double::isFinite)
                                     .toArray()))
                     .map(Math::sqrt)
-                    .map(x -> x < Double.MIN_VALUE ? 1. : x) // if standard deviation is zero, no standardization is needed, but we should guard against divide-by-zero
                     .toArray();
 
             standardizedMediansForImputation = IntStream.range(0, nFeatures)
@@ -81,7 +87,7 @@ final class BayesianGaussianMixtureUtils {
                             IntStream.range(0, nSamples).boxed()
                                     .mapToDouble(i -> data[i][j])
                                     .filter(Double::isFinite)
-                                    .map(x -> (x - meansForStandardization[j]) / standardDeviationsForStandardization[j])
+                                    .map(x -> standardize(x, meansForStandardization[j], standardDeviationsForStandardization[j]))
                                     .toArray()))
                     .toArray();
 
@@ -98,7 +104,7 @@ final class BayesianGaussianMixtureUtils {
                     final double value = data[i][j];
                     final double preprocessedValue = Double.isNaN(value)
                             ? standardizedMediansForImputation[j]
-                            : (value - meansForStandardization[j]) / standardDeviationsForStandardization[j];
+                            : standardize(value, meansForStandardization[j], standardDeviationsForStandardization[j]);
                     if (!Double.isFinite(preprocessedValue)) {
                         throw new GATKException("Encountered non-finite value during preprocessing of annotations.");
                     }
