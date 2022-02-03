@@ -105,7 +105,7 @@ public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFiel
         final List<String> lowConfDeNovoChildren = new ArrayList<>();
         for (final Trio trio : trioSet) {
             if (vc.isBiallelic() &&
-                PossibleDeNovo.contextHasTrioLikelihoods(vc, trio) &&
+                PossibleDeNovo.contextHasTrioGQs(vc, trio) &&
                 mendelianViolation.isViolation(trio.getMother(), trio.getFather(), trio.getChild(), vc) &&
                 mendelianViolation.getParentsRefRefChildHet() > 0) {
 
@@ -135,14 +135,14 @@ public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFiel
         return attributeMap;
     }
 
-    private static boolean contextHasTrioLikelihoods(final VariantContext vc, final Trio trio) {
+    static boolean contextHasTrioGQs(final VariantContext vc, final Trio trio) {
         final String mom = trio.getMaternalID();
         final String dad = trio.getPaternalID();
         final String kid = trio.getChildID();
 
-        return   (!mom.isEmpty() && vc.hasGenotype(mom) && vc.getGenotype(mom).hasLikelihoods())
-              && (!dad.isEmpty() && vc.hasGenotype(dad) && vc.getGenotype(dad).hasLikelihoods())
-              && (!kid.isEmpty() && vc.hasGenotype(kid) && vc.getGenotype(kid).hasLikelihoods());
+        return   (!mom.isEmpty() && vc.hasGenotype(mom) && vc.getGenotype(mom).hasGQ())
+              && (!dad.isEmpty() && vc.hasGenotype(dad) && vc.getGenotype(dad).hasGQ())
+              && (!kid.isEmpty() && vc.hasGenotype(kid) && vc.getGenotype(kid).hasGQ());
     }
 
 }
