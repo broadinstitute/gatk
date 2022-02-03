@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -37,9 +38,10 @@ final class BayesianGaussianMixtureUtils {
             this.bgmm = bgmm;
         }
 
-        double[] preprocessAndScoreSamples(final double[][] data) {
+        Pair<double[][], double[]> preprocessAndScoreSamples(final double[][] data) {
             final double[][] preprocessedData = preprocesser.transform(data);
-            return bgmm.scoreSamples(preprocessedData);
+            final double[] scores = bgmm.scoreSamples(preprocessedData);
+            return Pair.of(preprocessedData, scores);
         }
     }
 

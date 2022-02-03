@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.primitives.Doubles;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -8,6 +9,7 @@ import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
@@ -138,7 +140,26 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
                     new File(modelPrefix + SCORER_SER_SUFFIX), // TODO clean up
                     BayesianGaussianMixtureUtils.Scorer.class);
             final double[][] data = this.data.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
-            scores = scorer.preprocessAndScoreSamples(data);
+            final Pair<double[][], double[]> preprocessedDataAndScores = scorer.preprocessAndScoreSamples(data);
+            final double[][] preprocessedData = preprocessedDataAndScores.getLeft();
+            scores = preprocessedDataAndScores.getRight();
+
+            // write preprocessed annotations
+            // TODO clean this up
+            final List<String> annotationNames = this.data.getSortedAnnotationKeys();
+
+            final File outputPreprocessedAnnotationsFile = new File(outputPrefix + ".annot.pre.hdf5");
+            try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) { // TODO allow appending
+                IOUtils.canReadFile(hdf5File.getFile());
+
+                hdf5File.makeStringArray("/data/annotation_names", annotationNames.toArray(new String[0]));
+                HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedData, maximumChunkSize);
+                hdf5File.makeDoubleArray("/data/is_training", this.data.getData().stream().mapToDouble(x -> x.labels.contains("training") ? 1 : 0).toArray());
+            } catch (final HDF5LibException exception) {
+                throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
+                        exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
+            }
+            logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
         }
         VariantDataCollection.setScores(data.getData(), scores);
         logger.info("Scoring complete.");

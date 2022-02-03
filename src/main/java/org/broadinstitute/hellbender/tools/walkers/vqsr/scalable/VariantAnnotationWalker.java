@@ -143,7 +143,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
             maxValue = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX,
             optional = true
     )
-    private int maximumChunkSize = DEFAULT_MAXIMUM_CHUNK_SIZE;
+    int maximumChunkSize = DEFAULT_MAXIMUM_CHUNK_SIZE;
 
     VariantDataCollection data;
     boolean isExtractAll;
