@@ -135,7 +135,7 @@ public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFiel
         return attributeMap;
     }
 
-    static boolean contextHasTrioGQs(final VariantContext vc, final Trio trio) {
+    private static boolean contextHasTrioGQs(final VariantContext vc, final Trio trio) {
         final String mom = trio.getMaternalID();
         final String dad = trio.getPaternalID();
         final String kid = trio.getChildID();
