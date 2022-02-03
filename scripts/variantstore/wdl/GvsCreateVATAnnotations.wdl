@@ -191,7 +191,7 @@ task ExtractAnAcAfFromVCF {
         memory: "32 GB"
         preemptible: 3
         cpu: "4"
-        disks: "local-disk 500 SSD"
+        disks: "local-disk 250 HDD"
     }
     # ------------------------------------------------
     # Outputs:
@@ -266,7 +266,7 @@ task AnnotateVCF {
         memory: "32 GB"
         cpu: "2"
         preemptible: 5
-        disks: "local-disk 500 SSD"
+        disks: "local-disk 250 HDD"
     }
     # ------------------------------------------------
     # Outputs:
