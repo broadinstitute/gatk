@@ -111,4 +111,14 @@ public abstract class PedigreeAnnotation implements VariantAnnotation {
     public @Nullable GATKPath getPedigreeFile() {
         return pedigreeFile;
     }
+
+    protected boolean contextHasTrioGQs(final VariantContext vc, final Trio trio) {
+        final String mom = trio.getMaternalID();
+        final String dad = trio.getPaternalID();
+        final String kid = trio.getChildID();
+
+        return   (!mom.isEmpty() && vc.hasGenotype(mom) && vc.getGenotype(mom).hasGQ())
+                && (!dad.isEmpty() && vc.hasGenotype(dad) && vc.getGenotype(dad).hasGQ())
+                && (!kid.isEmpty() && vc.hasGenotype(kid) && vc.getGenotype(kid).hasGQ());
+    }
 }

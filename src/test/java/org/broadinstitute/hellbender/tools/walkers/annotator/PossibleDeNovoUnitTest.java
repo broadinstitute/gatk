@@ -16,6 +16,7 @@ import java.util.*;
 public final class PossibleDeNovoUnitTest extends GATKBaseTest {
 
     private static final int GQ30 = 30;
+    private static final int GQ45 = 45;
 
     @DataProvider(name = "deNovo")
     public Object[][] deNovo() {
@@ -30,105 +31,114 @@ public final class PossibleDeNovoUnitTest extends GATKBaseTest {
         final List<Allele> het = Arrays.asList(refAllele, altAllele);
         final List<Allele> notCall = Arrays.asList(noCallAllele, noCallAllele);
 
-        final Genotype g00 = new GenotypeBuilder("2", homRef).DP(10).PL(new int[]{0,100,100}).AD(new int[]{10, 0}).GQ(GQ30).make();
-        final Genotype g01 = new GenotypeBuilder("1", het).DP(10).PL(new int[]{100, 0, 100}).AD(new int[]{5, 5}).GQ(GQ30).make();
-        final Genotype g11 = new GenotypeBuilder("3", homVar).DP(10).PL(new int[]{100, 100, 0}).AD(new int[]{0, 10}).GQ(GQ30).make();
+        final Genotype g00gq30 = new GenotypeBuilder("2", homRef).DP(10).PL(new int[]{0,100,100}).AD(new int[]{10, 0}).GQ(GQ30).make();
+        final Genotype g01gq30 = new GenotypeBuilder("1", het).DP(10).PL(new int[]{100, 0, 100}).AD(new int[]{5, 5}).GQ(GQ30).make();
+        final Genotype g11gq30 = new GenotypeBuilder("3", homVar).DP(10).PL(new int[]{100, 100, 0}).AD(new int[]{0, 10}).GQ(GQ30).make();
         final Genotype gNo = new GenotypeBuilder("4", notCall).make();
 
-        tests.add(new Object[]{g00, g00, g00, false});
-        tests.add(new Object[]{g00, g00, g01, true});
-        tests.add(new Object[]{g00, g00, g11, false});
-        tests.add(new Object[]{g00, g00, gNo, false});
+        tests.add(new Object[]{g00gq30, g00gq30, g00gq30, false, false});
+        tests.add(new Object[]{g00gq30, g00gq30, g01gq30, true, false});
+        tests.add(new Object[]{g00gq30, g00gq30, g11gq30, false, false});
+        tests.add(new Object[]{g00gq30, g00gq30, gNo, false, false});
 
-        tests.add(new Object[]{g00, g01, g00, false});
-        tests.add(new Object[]{g00, g01, g01, false});
-        tests.add(new Object[]{g00, g01, g11, false});
-        tests.add(new Object[]{g00, g01, gNo, false});
+        tests.add(new Object[]{g00gq30, g01gq30, g00gq30, false, false});
+        tests.add(new Object[]{g00gq30, g01gq30, g01gq30, false, false});
+        tests.add(new Object[]{g00gq30, g01gq30, g11gq30, false, false});
+        tests.add(new Object[]{g00gq30, g01gq30, gNo, false, false});
 
-        tests.add(new Object[]{g00, g11, g00, false});
-        tests.add(new Object[]{g00, g11, g01, false});
-        tests.add(new Object[]{g00, g11, g11, false});
-        tests.add(new Object[]{g00, g11, gNo, false});
+        tests.add(new Object[]{g00gq30, g11gq30, g00gq30, false, false});
+        tests.add(new Object[]{g00gq30, g11gq30, g01gq30, false, false});
+        tests.add(new Object[]{g00gq30, g11gq30, g11gq30, false, false});
+        tests.add(new Object[]{g00gq30, g11gq30, gNo, false, false});
 
-        tests.add(new Object[]{g00, gNo, g00, false});
-        tests.add(new Object[]{g00, gNo, g01, false});
-        tests.add(new Object[]{g00, gNo, g11, false});
-        tests.add(new Object[]{g00, gNo, gNo, false});
+        tests.add(new Object[]{g00gq30, gNo, g00gq30, false, false});
+        tests.add(new Object[]{g00gq30, gNo, g01gq30, false, false});
+        tests.add(new Object[]{g00gq30, gNo, g11gq30, false, false});
+        tests.add(new Object[]{g00gq30, gNo, gNo, false, false});
 
-        tests.add(new Object[]{g01, g00, g00, false});
-        tests.add(new Object[]{g01, g00, g01, false});
-        tests.add(new Object[]{g01, g00, g11, false});
-        tests.add(new Object[]{g01, g00, gNo, false});
+        tests.add(new Object[]{g01gq30, g00gq30, g00gq30, false, false});
+        tests.add(new Object[]{g01gq30, g00gq30, g01gq30, false, false});
+        tests.add(new Object[]{g01gq30, g00gq30, g11gq30, false, false});
+        tests.add(new Object[]{g01gq30, g00gq30, gNo, false, false});
 
-        tests.add(new Object[]{g01, g01, g00, false});
-        tests.add(new Object[]{g01, g01, g01, false});
-        tests.add(new Object[]{g01, g01, g11, false});
-        tests.add(new Object[]{g01, g01, gNo, false});
+        tests.add(new Object[]{g01gq30, g01gq30, g00gq30, false, false});
+        tests.add(new Object[]{g01gq30, g01gq30, g01gq30, false, false});
+        tests.add(new Object[]{g01gq30, g01gq30, g11gq30, false, false});
+        tests.add(new Object[]{g01gq30, g01gq30, gNo, false, false});
 
-        tests.add(new Object[]{g01, g11, g00, false});
-        tests.add(new Object[]{g01, g11, g01, false});
-        tests.add(new Object[]{g01, g11, g11, false});
-        tests.add(new Object[]{g01, g11, gNo, false});
+        tests.add(new Object[]{g01gq30, g11gq30, g00gq30, false, false});
+        tests.add(new Object[]{g01gq30, g11gq30, g01gq30, false, false});
+        tests.add(new Object[]{g01gq30, g11gq30, g11gq30, false, false});
+        tests.add(new Object[]{g01gq30, g11gq30, gNo, false, false});
 
-        tests.add(new Object[]{g01, gNo, g00, false});
-        tests.add(new Object[]{g01, gNo, g01, false});
-        tests.add(new Object[]{g01, gNo, g11, false});
-        tests.add(new Object[]{g01, gNo, gNo, false});
-
-
-        tests.add(new Object[]{g11, g00, g00, false});
-        tests.add(new Object[]{g11, g00, g01, false});
-        tests.add(new Object[]{g11, g00, g11, false});
-        tests.add(new Object[]{g11, g00, gNo, false});
-
-        tests.add(new Object[]{g11, g01, g00, false});
-        tests.add(new Object[]{g11, g01, g01, false});
-        tests.add(new Object[]{g11, g01, g11, false});
-        tests.add(new Object[]{g11, g01, gNo, false});
-
-        tests.add(new Object[]{g11, g11, g00, false});
-        tests.add(new Object[]{g11, g11, g01, false});
-        tests.add(new Object[]{g11, g11, g11, false});
-        tests.add(new Object[]{g11, g11, gNo, false});
-
-        tests.add(new Object[]{g11, gNo, g00, false});
-        tests.add(new Object[]{g11, gNo, g01, false});
-        tests.add(new Object[]{g11, gNo, g11, false});
-        tests.add(new Object[]{g11, gNo, gNo, false});
+        tests.add(new Object[]{g01gq30, gNo, g00gq30, false, false});
+        tests.add(new Object[]{g01gq30, gNo, g01gq30, false, false});
+        tests.add(new Object[]{g01gq30, gNo, g11gq30, false, false});
+        tests.add(new Object[]{g01gq30, gNo, gNo, false, false});
 
 
-        tests.add(new Object[]{gNo, g00, g00, false});
-        tests.add(new Object[]{gNo, g00, g01, false});
-        tests.add(new Object[]{gNo, g00, g11, false});
-        tests.add(new Object[]{gNo, g00, gNo, false});
+        tests.add(new Object[]{g11gq30, g00gq30, g00gq30, false, false});
+        tests.add(new Object[]{g11gq30, g00gq30, g01gq30, false, false});
+        tests.add(new Object[]{g11gq30, g00gq30, g11gq30, false, false});
+        tests.add(new Object[]{g11gq30, g00gq30, gNo, false, false});
 
-        tests.add(new Object[]{gNo, g01, g00, false});
-        tests.add(new Object[]{gNo, g01, g01, false});
-        tests.add(new Object[]{gNo, g01, g11, false});
-        tests.add(new Object[]{gNo, g01, gNo, false});
+        tests.add(new Object[]{g11gq30, g01gq30, g00gq30, false, false});
+        tests.add(new Object[]{g11gq30, g01gq30, g01gq30, false, false});
+        tests.add(new Object[]{g11gq30, g01gq30, g11gq30, false, false});
+        tests.add(new Object[]{g11gq30, g01gq30, gNo, false, false});
 
-        tests.add(new Object[]{gNo, g11, g00, false});
-        tests.add(new Object[]{gNo, g11, g01, false});
-        tests.add(new Object[]{gNo, g11, g11, false});
-        tests.add(new Object[]{gNo, g11, gNo, false});
+        tests.add(new Object[]{g11gq30, g11gq30, g00gq30, false, false});
+        tests.add(new Object[]{g11gq30, g11gq30, g01gq30, false, false});
+        tests.add(new Object[]{g11gq30, g11gq30, g11gq30, false, false});
+        tests.add(new Object[]{g11gq30, g11gq30, gNo, false, false});
 
-        tests.add(new Object[]{gNo, gNo, g00, false});
-        tests.add(new Object[]{gNo, gNo, g01, false});
-        tests.add(new Object[]{gNo, gNo, g11, false});
-        tests.add(new Object[]{gNo, gNo, gNo, false});
+        tests.add(new Object[]{g11gq30, gNo, g00gq30, false, false});
+        tests.add(new Object[]{g11gq30, gNo, g01gq30, false, false});
+        tests.add(new Object[]{g11gq30, gNo, g11gq30, false, false});
+        tests.add(new Object[]{g11gq30, gNo, gNo, false, false});
+
+
+        tests.add(new Object[]{gNo, g00gq30, g00gq30, false, false});
+        tests.add(new Object[]{gNo, g00gq30, g01gq30, false, false});
+        tests.add(new Object[]{gNo, g00gq30, g11gq30, false, false});
+        tests.add(new Object[]{gNo, g00gq30, gNo, false, false});
+
+        tests.add(new Object[]{gNo, g01gq30, g00gq30, false, false});
+        tests.add(new Object[]{gNo, g01gq30, g01gq30, false, false});
+        tests.add(new Object[]{gNo, g01gq30, g11gq30, false, false});
+        tests.add(new Object[]{gNo, g01gq30, gNo, false, false});
+
+        tests.add(new Object[]{gNo, g11gq30, g00gq30, false, false});
+        tests.add(new Object[]{gNo, g11gq30, g01gq30, false, false});
+        tests.add(new Object[]{gNo, g11gq30, g11gq30, false, false});
+        tests.add(new Object[]{gNo, g11gq30, gNo, false, false});
+
+        tests.add(new Object[]{gNo, gNo, g00gq30, false, false});
+        tests.add(new Object[]{gNo, gNo, g01gq30, false, false});
+        tests.add(new Object[]{gNo, gNo, g11gq30, false, false});
+        tests.add(new Object[]{gNo, gNo, gNo, false, false});
 
         final Genotype g00NoPl = new GenotypeBuilder("2", homRef).DP(10).GQ(GQ30).make();
         final Genotype g01NoPl = new GenotypeBuilder("1", het).DP(10).GQ(GQ30).make();
         final Genotype g11NoPl = new GenotypeBuilder("3", homVar).DP(10).GQ(GQ30).make();
 
-        tests.add(new Object[]{g00NoPl, g01NoPl, g11NoPl, false});
-        tests.add(new Object[]{g00NoPl, g00NoPl, g01NoPl, true});
+        tests.add(new Object[]{g00NoPl, g01NoPl, g11NoPl, false, false});
+        tests.add(new Object[]{g00NoPl, g00NoPl, g01NoPl, true, false});
+
+        final Genotype g00gq45 = new GenotypeBuilder("2", homRef).DP(50).PL(new int[]{0,100,100}).AD(new int[]{10, 0}).GQ(GQ45).make();
+        final Genotype g01gq45 = new GenotypeBuilder("1", het).DP(50).PL(new int[]{100, 0, 100}).AD(new int[]{5, 5}).GQ(GQ45).make();
+        final Genotype g11gq45 = new GenotypeBuilder("3", homVar).DP(50).PL(new int[]{100, 100, 0}).AD(new int[]{0, 10}).GQ(GQ45).make();
+
+        tests.add(new Object[]{g00gq45, g00gq45, g00gq45, false, false});
+        tests.add(new Object[]{g00gq45, g00gq45, g01gq45, false, true});
+        tests.add(new Object[]{g00gq45, g00gq45, g11gq45, false, false});
+        tests.add(new Object[]{g00gq45, g00gq45, gNo, false, false});
 
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "deNovo")
-    public void testUsingVC(final Genotype gMom, final Genotype gDad, final Genotype gChild, final boolean expectedDeNovo) {
+    public void testUsingVC(final Genotype gMom, final Genotype gDad, final Genotype gChild, final boolean expectedDeNovo, final boolean expectedDeNovoWithExtraThresholds) {
 
         final Sample sMom = new Sample("mom", "fam", null, null, Sex.FEMALE);
         final Sample sDad = new Sample("dad",     sMom.getFamilyID(), null, null, Sex.MALE);
@@ -157,10 +167,14 @@ public final class PossibleDeNovoUnitTest extends GATKBaseTest {
 
         final Trio trio = new Trio(sMom, sDad, sChild);
         final InfoFieldAnnotation ann = new PossibleDeNovo(Collections.singleton(trio), 0);
+        final InfoFieldAnnotation hiQualAnn = new PossibleDeNovo(Collections.singleton(trio), 0, 40, 20);
         final Map<String, Object> result = ann.annotate(null, vc, null);
+        final Map<String, Object> hiQualResult = hiQualAnn.annotate(null, vc, null);
         if (expectedDeNovo) {
-            Assert.assertEquals(result.get(GATKVCFConstants.HI_CONF_DENOVO_KEY), Arrays.asList(sChild.getID()));
+            Assert.assertEquals(result.get(GATKVCFConstants.HI_CONF_DENOVO_KEY), Collections.singletonList(sChild.getID()));
             Assert.assertFalse(result.containsKey(GATKVCFConstants.LO_CONF_DENOVO_KEY));
+        } else if (expectedDeNovoWithExtraThresholds) {
+            Assert.assertEquals(hiQualResult.get(GATKVCFConstants.HI_CONF_DENOVO_KEY), Collections.singletonList(sChild.getID()));
         } else {
             Assert.assertTrue(result.isEmpty());
         }

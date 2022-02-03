@@ -53,6 +53,8 @@ public final class GATKVCFConstants {
     public static final String GQ_STDEV_KEY =                       "GQ_STDDEV";
     public static final String HAPLOTYPE_SCORE_KEY =                "HaplotypeScore";
     public static final String HI_CONF_DENOVO_KEY =                 "hiConfDeNovo";
+    public static final String TRANSMITTED_SINGLETON =              "transmittedSingleton";
+    public static final String NON_TRANSMITTED_SINGLETON =          "nonTransmittedSingleton";
     public static final String INTERVAL_GC_CONTENT_KEY =            "IGC";
     public static final String INBREEDING_COEFFICIENT_KEY =         "InbreedingCoeff";
     public static final String AS_INBREEDING_COEFFICIENT_KEY =      "AS_InbreedingCoeff";
