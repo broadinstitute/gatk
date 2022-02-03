@@ -1648,7 +1648,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
      * Test that in VCF mode we're consistent with past GATK4 results
      */
     @Test(dataProvider="HaplotypeCallerTestInputs")
-    public void testPileupCallingDRAGENModeConsistentWithPastREsultsResults(final String inputFileName, final String referenceFileName) throws Exception {
+    public void testPileupCallingDRAGENModeConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");

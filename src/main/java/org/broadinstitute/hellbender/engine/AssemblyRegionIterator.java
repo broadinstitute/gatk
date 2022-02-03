@@ -87,7 +87,6 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
         this.activityProfile = new BandPassActivityProfile(assemblyRegionArgs.maxProbPropagationDistance, assemblyRegionArgs.activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
-// TODO: AH & BG handle changing contig
         this.pendingAlignmentData = new ArrayDeque<>();
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
@@ -118,7 +117,6 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
     private AssemblyRegion loadNextAssemblyRegion() {
         AssemblyRegion nextRegion = null;
-        List<AlignmentAndReferenceContext> alignmentData = new ArrayList<>();
 
         while ( locusIterator.hasNext() && nextRegion == null ) {
             final AlignmentContext pileup = locusIterator.next();

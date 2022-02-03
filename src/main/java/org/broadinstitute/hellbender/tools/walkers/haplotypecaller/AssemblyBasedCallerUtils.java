@@ -321,7 +321,7 @@ public final class AssemblyBasedCallerUtils {
             }
 
             if (!forcedPileupAlleles.isEmpty()) {
-                processPileupAlleles(region, forcedPileupAlleles, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
+                processPileupAlleles(region, forcedPileupAlleles, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.getHaplotypeToReferenceSWParameters());
             }
 
 
@@ -343,18 +343,11 @@ public final class AssemblyBasedCallerUtils {
 
     /**
      * Handle pileup detected alternate alleles.
-     * @param region
-     * @param givenAlleles
-     * @param maxMnpDistance
-     * @param snpAdjacentToIndelLimit
-     * @param aligner
-     * @param refHaplotype
-     * @param assemblyResultSet
      */
     @VisibleForTesting
     static void processPileupAlleles(final AssemblyRegion region, final List<VariantContext> givenAlleles, final int maxMnpDistance,
                                      final int snpAdjacentToIndelLimit, final SmithWatermanAligner aligner, final Haplotype refHaplotype,
-                                     final AssemblyResultSet assemblyResultSet) {
+                                     final AssemblyResultSet assemblyResultSet, final SWParameters haplotypeToReferenceSWParameters) {
         final int assemblyRegionStart = region.getPaddedSpan().getStart();
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
         final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
@@ -363,7 +356,6 @@ public final class AssemblyBasedCallerUtils {
                 .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext))).values();
 
         Set<Haplotype> baseHaplotypes = new TreeSet<>();
-        //BG Testing assembledAndNewHaplotypes.addAll(assemblyResultSet.getHaplotypeList());
         //Todo BG testing to see if limiting the initial list of haplotypes resolves the issue of variants not getting called in clustered regions
         baseHaplotypes.addAll(assemblyResultSet.getHaplotypeList().stream()
                 .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
@@ -405,7 +397,7 @@ public final class AssemblyBasedCallerUtils {
                         // BG & AH this is the right way to insert a new haplotype
                         final Haplotype insertedHaplotype = baseHaplotype.insertAllele(longerRef, givenAllele, activeRegionStart + givenVC.getStart() - assemblyRegionStart, givenVC.getStart());
                         if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
-                            final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, SWOverhangStrategy.INDEL);
+                            final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.INDEL);
                             insertedHaplotype.setCigar(cigar);
                             insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
                             insertedHaplotype.setAlignmentStartHapwrtRef(activeRegionStart);
@@ -485,7 +477,15 @@ public final class AssemblyBasedCallerUtils {
     }
 
 
-
+    /**
+     * Returns a map of kmer -> count of total unique occurrences across all of the provided reads. This is a necessary step
+     * in the {@link AssemblyBasedCallerUtils#processPileupAlleles(AssemblyRegion, List, int, int, SmithWatermanAligner, Haplotype, AssemblyResultSet)} pileup
+     * hpalotype filtering.
+     *
+     * @param hardClippedPileupReads  Reads to scan to genreate kmer counts from
+     * @param kmerSize                kmer size to use in kmerizing the reads
+     * @return a map of kmer to the number of occurences in the data.
+     */
     static Map<Kmer, Integer>  getKmerReadCounts(final List<GATKRead> hardClippedPileupReads, int kmerSize) {
         Map<Kmer, Integer> kmerReadCounts = new HashMap<>();
         hardClippedPileupReads.forEach(read -> kmerizeAndCountOccurences(read.getBases(), kmerSize, kmerReadCounts));
