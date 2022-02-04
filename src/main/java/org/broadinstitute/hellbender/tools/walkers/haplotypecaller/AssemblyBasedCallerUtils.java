@@ -129,23 +129,24 @@ public final class AssemblyBasedCallerUtils {
         final List<GATKRead> readsToUse = new ArrayList<>();
         final List<GATKRead> hardClippedReadsToUse = new ArrayList<>();
 
-        if (trackHardclippedReads) {
-            for (final GATKRead originalRead : region.getReads()) {
-                // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
-                // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-                final GATKRead readTemp = (dontUseSoftClippedBases || !ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
-                        ReadClipper.hardClipSoftClippedBases(originalRead) : ReadClipper.revertSoftClippedBases(originalRead));
+        for (final GATKRead originalRead : region.getReads()) {
+            // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
+            // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
+            final GATKRead readTemp = (dontUseSoftClippedBases || !ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
+                    ReadClipper.hardClipSoftClippedBases(originalRead) : ReadClipper.revertSoftClippedBases(originalRead));
 
-                final GATKRead read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(readTemp, minTailQualityToUse) :
-                        ReadClipper.hardClipLowQualEnds(readTemp, minTailQualityToUse));
-                HardClipAndPossiblyAddToCollection(region, readsToUse, originalRead, read);
+            final GATKRead read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(readTemp, minTailQualityToUse) :
+                    ReadClipper.hardClipLowQualEnds(readTemp, minTailQualityToUse));
+            HardClipAndPossiblyAddToCollection(region, readsToUse, originalRead, read);
 
+            if (trackHardclippedReads) {
                 final GATKRead hardClippedRead = ReadClipper.hardClipLowQualEnds(ReadClipper.hardClipSoftClippedBases(originalRead), minTailQualityToUse);
 
                 HardClipAndPossiblyAddToCollection(region, hardClippedReadsToUse, originalRead, hardClippedRead);
-
             }
+
         }
+
         readsToUse.sort(new ReadCoordinateComparator(readsHeader));
         hardClippedReadsToUse.sort(new ReadCoordinateComparator(readsHeader));
 
