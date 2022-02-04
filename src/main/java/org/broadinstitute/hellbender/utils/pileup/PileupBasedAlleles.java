@@ -189,9 +189,3 @@ public final class PileupBasedAlleles {
                 altCounts.getOrDefault(base,0) + 1);
     }
 }
-
-/* Questions: how to get cigar info for each base?
-How are insertions and deletions represented in Alignment context pileup.getbases
-Args to test - error-correction-log-odds; this is not turned on by default; may help with precision
-TODO: include Indels
-* */

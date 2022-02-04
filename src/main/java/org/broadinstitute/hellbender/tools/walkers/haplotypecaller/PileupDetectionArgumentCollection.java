@@ -48,6 +48,18 @@ public final class PileupDetectionArgumentCollection {
     @Argument(fullName= PILEUP_DETECTION_ENABLE_INDELS, doc = "Pileup Detection: If enabled, pileup detection code will attempt to detect indels missing from assembly. (Requires `--pileup-detection` argument)", optional = true)
     public boolean detectIndels = false;
 
+    @Advanced
+    @Hidden
+    @Argument(fullName= "num-artificial-haplotypes-to-add-per-allele", doc = "Pileup Detection: This argument limits the maximum number of novel haplotypes to be added to the assembly haplotypes per pileup allele added", optional = true)
+    public int numHaplotypesToIterate = 5;
+    @Advanced
+    @Hidden
+    @Argument(fullName= "artifical-haplotype-filtering-kmer-size", doc = "Pileup Detection: Controls what size to kmerize reads to in order to select best supported artificial haplotypes", optional = true)
+    public int filteringKmerSize = 10;
+
+
+
+
 
     /**
      * Percentage of reads required to support the alt for a variant to be considered
