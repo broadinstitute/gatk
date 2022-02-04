@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 
 import java.nio.file.Path;
@@ -35,12 +36,16 @@ public final class GenomicsDBOptions {
         this.useBCFCodec = genomicsdbArgs.useBCFCodec;
         this.sharedPosixFSOptimizations = genomicsdbArgs.sharedPosixFSOptimizations;
         this.useGcsHdfsConnector = genomicsdbArgs.useGcsHdfsConnector;
+        if (genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped - 1 < genotypeCalcArgs.maxAlternateAlleles) {  //-1 for <NON_REF>
+            throw new UserException.BadInput("GenomicsDB max alternate alleles (" + GenomicsDBArgumentCollection.MAX_ALTS_LONG_NAME
+                + ") must be at least one greater than genotype calculation max alternate alleles ("
+                + GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME + "), accounting for the non-ref allele");
+        }
+        this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
         if (genotypeCalcArgs != null) {
-            this.maxDiploidAltAllelesThatCanBeGenotyped = genotypeCalcArgs.maxAlternateAlleles;
             this.maxGenotypeCount = genotypeCalcArgs.maxGenotypeCount;
         } else {
             // Some defaults
-            this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
             this.maxGenotypeCount = GenotypeCalculationArgumentCollection.DEFAULT_MAX_GENOTYPE_COUNT;
         }
     }

@@ -66,7 +66,9 @@ public final class AlleleFrequencyCalculator {
 
     /**
      *
-     * @param g must have likelihoods or (if approximateHomRefsFromGQ is true) GQ
+     * @param g must have likelihoods or (if approximateHomRefsFromGQ is true) be hom-ref with GQ
+     *          (see {@link org.broadinstitute.hellbender.utils.GenotypeUtils#genotypeIsUsableForAFCalculation(Genotype)
+     *          genotypeIsUsableForAFCalculation} )
      * @param glCalc
      * @param log10AlleleFrequencies
      * @return
@@ -75,7 +77,7 @@ public final class AlleleFrequencyCalculator {
         final double[] log10Likelihoods;
         if (g.hasLikelihoods()) {
             log10Likelihoods = g.getLikelihoods().getAsVector();
-        } else if ( g.isHomRef() || g.isNoCall()) {
+        } else if (g.isHomRef()) {
             if (g.getPloidy() != 2) {
                 throw new IllegalStateException("Likelihoods are required to calculate posteriors for hom-refs with ploidy != 2, " +
                         "but were not found for genotype " + g + " with ploidy " + g.getPloidy());

@@ -136,8 +136,14 @@ public final class GenotypeUtils {
         return new GenotypeCounts(genotypeWithTwoRefsCount, genotypesWithOneRefCount, genotypesWithNoRefsCount);
     }
 
+    /**
+     * Do we have (or can we infer) likelihoods necessary for allele frequency calculation?
+     * Some reblocked and/or DRAGEN GVCFs omit likelihoods for ref blocks, but we can estimate them
+     * @param g a genotype of unknown call and ploidy
+     * @return  true if we have enough info for AF calculation
+     */
     public static boolean genotypeIsUsableForAFCalculation(Genotype g) {
-        return g.hasLikelihoods() || g.hasGQ() || g.getAlleles().stream().anyMatch(a -> a.isCalled() && a.isNonReference() && !a.isSymbolic());
+        return g.hasLikelihoods() || (g.isHomRef() && g.hasGQ() && 2 == g.getPloidy());
     }
 
     /**

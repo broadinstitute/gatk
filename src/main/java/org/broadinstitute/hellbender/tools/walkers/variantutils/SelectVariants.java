@@ -212,7 +212,8 @@ public final class SelectVariants extends VariantWalker {
      * When this flag is enabled, all alternate alleles that are not present in the (output) samples will be removed.
      * Note that this even extends to biallelic SNPs - if the alternate allele is not present in any sample, it will be
      * removed and the record will contain a '.' in the ALT column. Note also that sites-only VCFs, by definition, do
-     * not include the alternate allele in any genotype calls.
+     * not include the alternate allele in any genotype calls.  Further note that PLs will be trimmed appropriately,
+     * removing likelihood information (even for homozygous reference calls).
      */
     @Argument(fullName="remove-unused-alternates",
                     doc="Remove alternate alleles not present in any genotypes", optional=true)
@@ -1030,7 +1031,9 @@ public final class SelectVariants extends VariantWalker {
             // fix the PL and AD values if sub has fewer alleles than original vc
             final GenotypesContext subGenotypesWithOldAlleles = sub.getGenotypes();  //we need sub for the right samples, but PLs still go with old alleles
             newGC = sub.getNAlleles() == vc.getNAlleles() ? subGenotypesWithOldAlleles :
-                    AlleleSubsettingUtils.subsetAlleles(subGenotypesWithOldAlleles, 0, vc.getAlleles(), sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), true);
+                    AlleleSubsettingUtils.subsetAlleles(subGenotypesWithOldAlleles, 0, vc.getAlleles(),
+                            sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES,
+                            vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), false);
         } else {
             newGC = sub.getGenotypes();
         }
