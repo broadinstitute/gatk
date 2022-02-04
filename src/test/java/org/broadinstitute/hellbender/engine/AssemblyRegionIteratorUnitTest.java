@@ -75,7 +75,7 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
             final CountingReadFilter combinedReadFilter = CountingReadFilter.fromList(readFilters, readsSource.getHeader());
             readShard.setReadFilter(combinedReadFilter);
 
-            final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource, null, evaluator, assemblyRegionArgs);
+            final AssemblyRegionIterator iter = new AssemblyRegionIterator(readShard, readsSource.getHeader(), refSource, null, evaluator, assemblyRegionArgs, false);
 
             AssemblyRegion previousRegion = null;
             while ( iter.hasNext() ) {

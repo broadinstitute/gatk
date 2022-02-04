@@ -66,7 +66,8 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
                                   final ReferenceDataSource reference,
                                   final FeatureManager features,
                                   final AssemblyRegionEvaluator evaluator,
-                                  final AssemblyRegionArgumentCollection assemblyRegionArgs) {
+                                  final AssemblyRegionArgumentCollection assemblyRegionArgs,
+                                  final boolean trackPileups ) {
 
         Utils.nonNull(readShard);
         Utils.nonNull(readHeader);
@@ -87,7 +88,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
         this.activityProfile = new BandPassActivityProfile(assemblyRegionArgs.maxProbPropagationDistance, assemblyRegionArgs.activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
-        this.pendingAlignmentData = new ArrayDeque<>();
+        this.pendingAlignmentData = trackPileups? new ArrayDeque<>(): null;
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
         // for uncovered locations. This is critical for reproducing GATK 3.x behavior!
@@ -134,7 +135,9 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             final SimpleInterval pileupInterval = new SimpleInterval(pileup);
             final ReferenceContext pileupRefContext = new ReferenceContext(reference, pileupInterval);
             final FeatureContext pileupFeatureContext = new FeatureContext(features, pileupInterval);
-            pendingAlignmentData.add(new AlignmentAndReferenceContext(pileup, pileupRefContext));
+            if (pendingAlignmentData!=null) {
+                pendingAlignmentData.add(new AlignmentAndReferenceContext(pileup, pileupRefContext));
+            }
 
             final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, pileupFeatureContext);
             activityProfile.add(profile);
@@ -215,6 +218,9 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
     }
 
     private void fillNextAssemblyRegionWithPileupData(final AssemblyRegion region){
+        if (pendingAlignmentData==null){
+            return;
+        }
         final List<AlignmentAndReferenceContext> overlappingAlignmentData = new ArrayList<>();
         final Queue<AlignmentAndReferenceContext> previousAlignmentData = new ArrayDeque<>();
 
