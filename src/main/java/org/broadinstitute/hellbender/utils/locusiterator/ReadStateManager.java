@@ -11,7 +11,7 @@ import java.util.*;
  * Manages and updates mapping from sample -> Iterable<AlignmentStateMachine>
  */
 final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleReadStateManager>> {
-    private final List<String> samples;
+    private final Collection<String> samples;
     private final PeekableIterator<GATKRead> iterator;
     private final SamplePartitioner samplePartitioner;
 
@@ -26,7 +26,7 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
     private int totalReadStates = 0;
 
     public ReadStateManager(final Iterator<GATKRead> source,
-                            final List<String> samples,
+                            final Collection<String> samples,
                             final LIBSDownsamplingInfo info,
                             final SAMFileHeader header) {
         Utils.nonNull(source, "source");

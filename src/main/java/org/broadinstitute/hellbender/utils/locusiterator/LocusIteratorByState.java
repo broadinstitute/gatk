@@ -54,12 +54,6 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
-     * A complete list of all samples that may come out of the reads.  Must be
-     * comprehensive.
-     */
-    private final List<String> samples;
-
-    /**
      * The system that maps incoming reads from the iterator to their pileup states
      */
     private final ReadStateManager readStates;
@@ -116,13 +110,13 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
 
     /**
      * Create a new LocusIteratorByState
-     *  @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
+     * @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
      *                                       according to standard coordinate-sorted BAM conventions
      * @param downsamplingMethod             information about how to downsample the reads
      * @param samples                        a complete list of samples present in the read groups for the reads coming from samIterator.
- *                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
- *                                       list of samples may contain a null element, and all reads without read groups will
- *                                       be mapped to this null sample
+     *                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
+     *                                       list of samples may contain a null element, and all reads without read groups will
+     *                                       be mapped to this null sample
      * @param header                         header from the reads
      * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
      * @param includeReadsWithNsAtLoci       Include reads with Ns at loci (usually it is not needed)
@@ -171,13 +165,13 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
 
     /**
      * Create a new LocusIteratorByState
-     *  @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
+     * @param samIterator                    the iterator of reads to process into pileups.  Reads must be ordered
      *                                       according to standard coordinate-sorted BAM conventions
      * @param downsamplingInfo               meta-information about how to downsample the reads
      * @param samples                        a complete list of samples present in the read groups for the reads coming from samIterator.
- *                                       This is generally just the set of read group sample fields in the SAMFileHeader.  This
- *                                       list of samples may contain a null element, and all reads without read groups will
- *                                       be mapped to this null sample
+ *                                           This is generally just the set of read group sample fields in the SAMFileHeader.  This
+ *                                           list of samples may contain a null element, and all reads without read groups will
+ *                                           be mapped to this null sample
      * @param header                         header from the reads
      * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
      * @param includeReadsWithNsAtLoci       Include reads with Ns at loci (usually it is not needed)
@@ -201,8 +195,7 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
 
         this.includeReadsWithDeletionAtLoci = includeReadsWithDeletionAtLoci;
         this.includeReadsWithNsAtLoci = includeReadsWithNsAtLoci;
-        this.samples = new ArrayList<>(samples);
-        this.readStates = new ReadStateManager(samIterator, this.samples, downsamplingInfo, header);
+        this.readStates = new ReadStateManager(samIterator, samples, downsamplingInfo, header);
     }
 
     /**
@@ -341,7 +334,7 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
      * @param pos the genomic position of the current alignment
      * @return true if the read should be excluded from the pileup, false otherwise
      */
-    private boolean dontIncludeReadInPileup(final GATKRead rec, final long pos) {
+    private static boolean dontIncludeReadInPileup(final GATKRead rec, final long pos) {
         return ReadUtils.isBaseInsideAdaptor(rec, pos);
     }
 
