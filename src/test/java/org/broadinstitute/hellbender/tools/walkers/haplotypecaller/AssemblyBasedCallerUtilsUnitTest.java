@@ -1391,7 +1391,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final Haplotype hapD = new Haplotype("ACCTGAA".getBytes());
         final Haplotype hapF = new Haplotype("GAAGAAG".getBytes()); // testing repeated kmers
 
-        Map<Kmer, Integer> flatSupportAllKmers = new HashMap<Kmer, Integer>() {{
+        Map<Kmer, Integer> flatSupportAllKmers = new HashMap<Kmer, Integer>() { private static final long serialVersionUID = 0L; {
             put(new Kmer("ACC"), 1);
             put(new Kmer("CCT"), 1);
             put(new Kmer("CTG"), 1);
@@ -1405,7 +1405,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             put(new Kmer("AAG"), 1);
         }};
 
-        Map<Kmer, Integer> hapDKmersHighSupport = new HashMap<Kmer, Integer>() {{
+        Map<Kmer, Integer> hapDKmersHighSupport = new HashMap<Kmer, Integer>() { private static final long serialVersionUID = 0L;{
             put(new Kmer("ACC"), 10);
             put(new Kmer("CCT"), 10);
             put(new Kmer("CTG"), 10);
@@ -1419,7 +1419,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             put(new Kmer("AAG"), 1);
         }};
 
-        Map<Kmer, Integer> hapDKmers = new HashMap<Kmer, Integer>() {{
+        Map<Kmer, Integer> hapDKmers = new HashMap<Kmer, Integer>() { private static final long serialVersionUID = 0L; {
             put(new Kmer("ACC"), 10);
             put(new Kmer("CCT"), 10);
             put(new Kmer("CTG"), 10);
@@ -1427,7 +1427,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             put(new Kmer("GAA"), 10);
         }};
 
-        Map<Kmer, Integer> hapFRepeatedKmers = new HashMap<Kmer, Integer>() {{
+        Map<Kmer, Integer> hapFRepeatedKmers = new HashMap<Kmer, Integer>() { private static final long serialVersionUID = 0L; {
             put(new Kmer("GAA"), 1);
         }};
 
