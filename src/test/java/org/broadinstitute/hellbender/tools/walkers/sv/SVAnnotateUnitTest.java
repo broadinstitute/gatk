@@ -46,7 +46,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final boolean actualVariantSpansFeature = SVAnnotate.variantSpansFeature(variantInterval, featureInterval);
         Assert.assertEquals(expectedVariantSpansFeature, actualVariantSpansFeature);
 
-        final int actualNumBreakpointsInsideFeature = SVAnnotate.countBreakendsInsideFeature(variantInterval, featureInterval);
+        final int actualNumBreakpointsInsideFeature =
+                SVAnnotate.countBreakendsInsideFeature(variantInterval, featureInterval);
         Assert.assertEquals(expectedNumBreakpointsInsideFeature, actualNumBreakpointsInsideFeature);
     }
 
@@ -191,7 +192,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final String actualDeletionConsequence = SVAnnotate.annotateDeletion(toyVariant, toyTranscript);
         Assert.assertEquals(expectedDeletionConsequence, actualDeletionConsequence);
 
-        final String actualCopyNumberVariantConsequence = SVAnnotate.annotateCopyNumberVariant(toyVariant, toyTranscript, MSVExonOverlapClassifications);
+        final String actualCopyNumberVariantConsequence =
+                SVAnnotate.annotateCopyNumberVariant(toyVariant, toyTranscript, MSVExonOverlapClassifications);
         Assert.assertEquals(expectedCopyNumberVariantConsequence, actualCopyNumberVariantConsequence);
 
         final String actualInversionConsequence = SVAnnotate.annotateInversion(toyVariant, toyTranscript);
@@ -201,11 +203,21 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     @DataProvider(name = "toyPointVariants")
     public Object[][] getToyPointVariantTestData() {
         return new Object[][] {
-                { new SimpleInterval("chr1", 150, 151), new SimpleInterval("chr1", 150, 150), GATKSVVCFConstants.UTR, GATKSVVCFConstants.UTR, GATKSVVCFConstants.LOF },
-                { new SimpleInterval("chr1", 250, 251), new SimpleInterval("chr1", 250, 250), GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.LOF },
-                { new SimpleInterval("chr1", 350, 351), new SimpleInterval("chr1", 350, 350), GATKSVVCFConstants.LOF, GATKSVVCFConstants.BREAKEND_EXON, GATKSVVCFConstants.LOF },
-                { new SimpleInterval("chr1", 600, 601), new SimpleInterval("chr1", 600, 600), GATKSVVCFConstants.LOF, GATKSVVCFConstants.BREAKEND_EXON, GATKSVVCFConstants.LOF },
-                { new SimpleInterval("chr1", 100, 101), new SimpleInterval("chr1", 100, 100), GATKSVVCFConstants.UTR, GATKSVVCFConstants.UTR, GATKSVVCFConstants.LOF }
+                { new SimpleInterval("chr1", 150, 151),
+                        new SimpleInterval("chr1", 150, 150),
+                        GATKSVVCFConstants.UTR, GATKSVVCFConstants.UTR, GATKSVVCFConstants.LOF },
+                { new SimpleInterval("chr1", 250, 251),
+                        new SimpleInterval("chr1", 250, 250),
+                        GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.LOF },
+                { new SimpleInterval("chr1", 350, 351),
+                        new SimpleInterval("chr1", 350, 350),
+                        GATKSVVCFConstants.LOF, GATKSVVCFConstants.BREAKEND_EXON, GATKSVVCFConstants.LOF },
+                { new SimpleInterval("chr1", 600, 601),
+                        new SimpleInterval("chr1", 600, 600),
+                        GATKSVVCFConstants.LOF, GATKSVVCFConstants.BREAKEND_EXON, GATKSVVCFConstants.LOF },
+                { new SimpleInterval("chr1", 100, 101),
+                        new SimpleInterval("chr1", 100, 100),
+                        GATKSVVCFConstants.UTR, GATKSVVCFConstants.UTR, GATKSVVCFConstants.LOF }
         };
     }
 
@@ -226,10 +238,12 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final String actualBreakendConsequence = SVAnnotate.annotateBreakend(toyPointVariant, toyTranscript);
         Assert.assertEquals(expectedBreakendConsequence, actualBreakendConsequence);
 
-        final String actualPointTranslocationConsequence = SVAnnotate.annotateTranslocation(toyPointVariant, toyTranscript);
+        final String actualPointTranslocationConsequence =
+                SVAnnotate.annotateTranslocation(toyPointVariant, toyTranscript);
         Assert.assertEquals(expectedTranslocationVariantConsequence, actualPointTranslocationConsequence);
 
-        final String actualTwoBaseTranslocationConsequence = SVAnnotate.annotateTranslocation(toyTwoBaseVariant, toyTranscript);
+        final String actualTwoBaseTranslocationConsequence =
+                SVAnnotate.annotateTranslocation(toyTwoBaseVariant, toyTranscript);
         Assert.assertEquals(expectedTranslocationVariantConsequence, actualTwoBaseTranslocationConsequence);
     }
 
@@ -237,8 +251,10 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     public Object[][] getToyComplexVariantTestData() {
         return new Object[][] {
                 { "DUP_chr1:280-420", Sets.newHashSet(GATKSVVCFConstants.INT_EXON_DUP) },
-                { "INV_chr1:90-1010,DUP_chr1:890-1010", Sets.newHashSet(GATKSVVCFConstants.INV_SPAN, GATKSVVCFConstants.DUP_PARTIAL) },
-                { "DEL_chr1:250-450,INV_chr1:450-650,DUP_chr1:610-650", Sets.newHashSet(GATKSVVCFConstants.LOF, GATKSVVCFConstants.INTRONIC) }
+                { "INV_chr1:90-1010,DUP_chr1:890-1010",
+                        Sets.newHashSet(GATKSVVCFConstants.INV_SPAN, GATKSVVCFConstants.DUP_PARTIAL) },
+                { "DEL_chr1:250-450,INV_chr1:450-650,DUP_chr1:610-650",
+                        Sets.newHashSet(GATKSVVCFConstants.LOF, GATKSVVCFConstants.INTRONIC) }
         };
     }
 
@@ -252,7 +268,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final Map<String,Integer> contigNameToID = createContigNameToIDMap(Arrays.asList("chr1"), Arrays.asList(0));
         final int promoterWindow = 1000;
 
-        final SVAnnotate.GTFIntervalTreesContainer gtfTrees = SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, promoterWindow);
+        final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
+                SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, promoterWindow);
         final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
 
         final String[] cpxIntervalStrings = cpxIntervalsString.split(",");
@@ -286,7 +303,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     }
 
     // create list of SV segments with SAME SVTYPE - convenience function for testing getSVSegments
-    private List<SVAnnotate.SVSegment> createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType svType, SimpleInterval[] intervals) {
+    private List<SVAnnotate.SVSegment> createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType svType,
+                                                              SimpleInterval[] intervals) {
         List<SVAnnotate.SVSegment> segments = new ArrayList<>();
         for (SimpleInterval interval : intervals) {
             segments.add(new SVAnnotate.SVSegment(svType, interval));
@@ -436,7 +454,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
                         createListOfSVSegments(SVAnnotate.StructuralVariantAnnotationType.DEL,
                                 new SimpleInterval[]{ new SimpleInterval("chr22", 17636024, 17646733)}) },
                 { createVariantContext("chr22", 18971159, 18971435, "chr22", null, "N",
-                        "<CPX>", 386, null, "dDUP", Arrays.asList("INV_chr22:20267228-20267614","DUP_chr22:20267228-20267614")),
+                        "<CPX>", 386, null, "dDUP",
+                        Arrays.asList("INV_chr22:20267228-20267614","DUP_chr22:20267228-20267614")),
                         SVAnnotate.StructuralVariantAnnotationType.CPX,
                         Arrays.asList(
                                 new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.INV,
@@ -473,7 +492,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
                                 new SimpleInterval[]{ new SimpleInterval("chr22", 22904986, 22904986) }),
                         null },
                 { createVariantContext("chr22", 36533058, 36538234, "chr22", null, "N",
-                        "<CPX>", 5176, null, "dupINV", Arrays.asList("DUP_chr22:36533058-36533299","INV_chr22:36533058-36538234")),
+                        "<CPX>", 5176, null, "dupINV",
+                        Arrays.asList("DUP_chr22:36533058-36533299","INV_chr22:36533058-36538234")),
                         SVAnnotate.StructuralVariantAnnotationType.CPX,
                         Arrays.asList(
                                 new SVAnnotate.SVSegment(SVAnnotate.StructuralVariantAnnotationType.DUP,
@@ -503,7 +523,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
                 expectedSVSegmentsWithBNDOverlap != null ? expectedSVSegmentsWithBNDOverlap : expectedSVSegments);
     }
 
-    private Map<String, Object> createAttributesMap(List<String> keys, List<Object> values) {
+    protected static Map<String, Object> createAttributesMap(List<String> keys, List<Object> values) {
         Map<String, Object> attributes = new HashMap<>();
         int len = keys.size();
         if (len != values.size()) {
@@ -563,8 +583,6 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
      * Tests full integrated annotateStructuralVariant process, with a focus on noncoding & promoter annotation
      * and logic controlling when to annotate TSS and intergenic, since protein-coding and TSS annotation
      * is tested elsewhere
-     * @param variant
-     * @param expectedAttributes
      */
     @Test(dataProvider = "toyIntegratedVariants")
     public void testAnnotateStructuralVariant(
@@ -578,7 +596,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final int maxContigLength = 5000;
 
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
-        final SVAnnotate.GTFIntervalTreesContainer gtfTrees = SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, promoterWindow);
+        final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
+                SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, promoterWindow);
         final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
         final SVIntervalTree<String> promoterIntervalTree = gtfTrees.promoterIntervalTree;
         final SVIntervalTree<String> transcriptionStartSiteTree = gtfTrees.transcriptionStartSiteTree;
@@ -586,7 +605,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final SVIntervalTree<String> nonCodingIntervalTree =
                 SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, contigNameToID);
 
-        final Map<String, Object> actualAttributes = SVAnnotate.annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
+        final Map<String, Object> actualAttributes =
+                SVAnnotate.annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
                 transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications, contigNameToID,
                 contigIDToName, maxBreakendLen, maxContigLength);
 
@@ -619,14 +639,12 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final SVIntervalTree<String> nonCodingIntervalTree =
                 SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, contigNameToID);
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
-        final SVAnnotate.GTFIntervalTreesContainer gtfTrees = SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, 100);
+        final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
+                SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, 100);
         final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
         // check size to ensure contigs not included in the map are excluded from the interval tree successfully
         Assert.assertEquals(nonCodingIntervalTree.size(), expectedBEDTreeSize);
         Assert.assertEquals(gtfIntervalTree.size(), expectedTranscriptTreeSize);
 
     }
-
-    // interval trees? getContigIDFromName?
-    // variantOverlapsTranscriptionStartSite
 }

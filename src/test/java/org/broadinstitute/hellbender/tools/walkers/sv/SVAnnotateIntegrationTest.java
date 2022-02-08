@@ -1,32 +1,155 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.*;
 
-import static org.testng.Assert.*;
 
 public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
-    final File inputVCF = new File(getToolTestDataDir() + "integration.vcf.gz");
+    final String inputVCFPath = getToolTestDataDir() + "integration.vcf.gz";
+    final File inputVCF = new File(inputVCFPath);
     private final String largeFileDirectory = GATKBaseTest.largeFileTestDir + "SVAnnotate/";
     final File gtf = new File(largeFileDirectory + "MANE.selected.GRCh38.v0.95.select_ensembl_genomic.gtf");
     final File noncodingElements = new File(largeFileDirectory + "noncoding.selected.hg38.bed.gz");
 
-    @Test
-    public void testBasicOptions() {
+    final List<String> allAnnotationInfoKeys = Arrays.asList(GATKSVVCFConstants.LOF, GATKSVVCFConstants.PROMOTER,
+            GATKSVVCFConstants.DUP_PARTIAL, GATKSVVCFConstants.NONCODING_BREAKPOINT, GATKSVVCFConstants.NONCODING_SPAN,
+            GATKSVVCFConstants.INV_SPAN, GATKSVVCFConstants.PROMOTER, GATKSVVCFConstants.COPY_GAIN,
+            GATKSVVCFConstants.INTERGENIC, GATKSVVCFConstants.NEAREST_TSS, GATKSVVCFConstants.INT_EXON_DUP,
+            GATKSVVCFConstants.PARTIAL_EXON_DUP, GATKSVVCFConstants.MSV_EXON_OVERLAP, GATKSVVCFConstants.UTR,
+            GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.TSS_DUP, GATKSVVCFConstants.BREAKEND_EXON);
+
+    private void assertVariantAnnotatedAsExpected(final List<VariantContext> vcf, final String variantID,
+                                                  Map<String, Object> expectedAnnotations) {
+        for (VariantContext variant : vcf) {
+            if (variant.getID().equals(variantID)) {
+                // check for presence of expected annotations
+                for (String key : expectedAnnotations.keySet()) {
+                    if (!variant.hasAttribute(key)) {
+                        throw new AssertionError("Variant " + variantID + " is missing annotation " + key);
+                    } else if (!variant.getAttributeAsStringList(key, null).equals(expectedAnnotations.get(key))) {
+                        throw new AssertionError("Variant " + variantID + " has incorrect value for " +
+                                key + "annotation. Expected: " + expectedAnnotations.get(key) + ". Actual: " +
+                                variant.getAttribute(key));
+                    }
+                }
+                // check for absence of unexpected annotations
+                for (String key : allAnnotationInfoKeys) {
+                    if (variant.hasAttribute(key) && !expectedAnnotations.containsKey(key)) {
+                        throw new AssertionError("Variant " + variantID + " has unexpected annotation " + key);
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    private void assertEqualVariantsWithIgnoredAttributes(final List<VariantContext> v1, final List<VariantContext> v2,
+                                                          final List<String> attributesToIgnore) {
+        Utils.nonNull(v1, "v1");
+        Utils.nonNull(v2, "v2");
+        if (v1.size() != v2.size()){
+            throw new AssertionError("different sizes " + v1.size()+ " vs " + v2.size());
+        }
+
+        boolean equalityCheckPassed = true;
+        int numFailed = 0;
+
+        for (int i = 0; i < v1.size(); i++) {
+            try {
+                VariantContextTestUtils.assertVariantContextsAreEqual(v1.get(i), v2.get(i), attributesToIgnore,
+                        Collections.emptyList());
+            } catch (AssertionError e) {
+                logger.error("Variant contexts differ: " + i + ":\n" + v1.get(i) + "\n" + v2.get(i));
+                equalityCheckPassed = false;
+                ++numFailed;
+            }
+        }
+        if (!equalityCheckPassed) {
+            throw new AssertionError("Variant comparison failed!  Num non-matching variant pairs: " + numFailed);
+        }
+    }
+
+    @DataProvider(name = "argumentSets")
+    public Object[][] getArgumentSets() {
+        return new Object[][]{
+                {new ArgumentsBuilder()
+                        .addVCF(inputVCF)
+                        .add("proteinCodingGTF", gtf)
+                        .add("nonCodingBed", noncodingElements),
+                        "ref_panel_1kg_v1_INV_chr21_1",
+                        SVAnnotateUnitTest.createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.NONCODING_BREAKPOINT),
+                                Arrays.asList("APP", "Tommerup_TADanno"))},
+                {new ArgumentsBuilder()
+                        .addVCF(inputVCF)
+                        .add("nonCodingBed", noncodingElements),
+                        "ref_panel_1kg_v1_INV_chr21_1",
+                        SVAnnotateUnitTest.createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.NONCODING_BREAKPOINT),
+                                Arrays.asList("Tommerup_TADanno"))},
+                {new ArgumentsBuilder()
+                        .addVCF(inputVCF)
+                        .add("proteinCodingGTF", gtf),
+                        "ref_panel_1kg_v1_BND_chr22_7",
+                        SVAnnotateUnitTest.createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.INTRONIC), Arrays.asList("BCL2L13"))},
+                {new ArgumentsBuilder()
+                        .addVCF(inputVCF)
+                        .add("proteinCodingGTF", gtf)
+                        .add("promoterWindowLength", 8000),
+                        "ref_panel_1kg_v1_BND_chr22_7",
+                        SVAnnotateUnitTest.createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.PROMOTER),
+                                Arrays.asList("BCL2L13", "ATP6V1E1"))},
+                {new ArgumentsBuilder()
+                        .addVCF(inputVCF)
+                        .add("proteinCodingGTF", gtf)
+                        .add("maxBreakendLenForOverlapAnnotation", 12000),
+                        "ref_panel_1kg_v1_BND_chr22_7",
+                        SVAnnotateUnitTest.createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.LOF), Arrays.asList("BCL2L13"))},
+                {new ArgumentsBuilder()
+                        .addVCF(inputVCF),
+                        "ref_panel_1kg_v1_BND_chr22_7",
+                        SVAnnotateUnitTest.createAttributesMap( Collections.emptyList(), Collections.emptyList())}
+        };
+    }
+
+    @Test(dataProvider = "argumentSets")
+    public void testSVAnnotate(
+            ArgumentsBuilder commandLineArgs,
+            String variantID,
+            Map<String, Object> expectedAnnotations
+    ) {
         final File output = createTempFile("annotated",".vcf");
 
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addOutput(output)
-                .addVCF(inputVCF)
-                .add("proteinCodingGTF", gtf)
-                .add("nonCodingBed", noncodingElements);
+        final ArgumentsBuilder args = commandLineArgs.addOutput(output);
 
         runCommandLine(args, SVAnnotate.class.getSimpleName());
+
+        Pair<VCFHeader, List<VariantContext>> inputVCFHeaderAndVariants =
+                VariantContextTestUtils.readEntireVCFIntoMemory(inputVCFPath);
+        Pair<VCFHeader, List<VariantContext>> outputVCFHeaderAndVariants =
+                VariantContextTestUtils.readEntireVCFIntoMemory(output.getPath());
+
+        List<VariantContext> inputVariants = inputVCFHeaderAndVariants.getRight();
+        List<VariantContext> outputVariants = outputVCFHeaderAndVariants.getRight();
+
+        assertEqualVariantsWithIgnoredAttributes(inputVariants, outputVariants, allAnnotationInfoKeys);
+
+        assertVariantAnnotatedAsExpected(outputVariants, variantID, expectedAnnotations);
 
     }
 }
