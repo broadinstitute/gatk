@@ -114,7 +114,7 @@ public final class SVAnnotate extends VariantWalker {
         return contigID;
     }
 
-    // mini class for SV intervals (type and segment) within CPX events
+    // Mini class to package SV type and interval into one object
     protected static final class SVSegment {
         protected final StructuralVariantAnnotationType intervalSVType;
         protected final SimpleInterval interval;
@@ -127,6 +127,7 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
+    // Container class for all SVIntervalTree trees created from the GTF
     protected static final class GTFIntervalTreesContainer {
         protected final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree;
         protected final SVIntervalTree<String> promoterIntervalTree;
@@ -143,11 +144,13 @@ public final class SVAnnotate extends VariantWalker {
     @Override
     public void onTraversalStart() {
         final VCFHeader header = getHeaderForVariants();
+        // get contigs from VCF
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         maxContigLength = sequenceDictionary.getSequences().stream().mapToInt(SAMSequenceRecord::getSequenceLength).max().getAsInt() + 1;
         contigNameToID = buildContigNameToIDMap(sequenceDictionary);
         contigIDToName = buildContigIDToNameArray(contigNameToID);
         // TODO: more elegant way to make reference inputs optional than checking 10x?
+        // Load protein-coding GTF data into memory as interval tree of transcripts if GTF provided
         if (!isNull(proteinCodingGTFFile)) {
             final FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource = new FeatureDataSource<>(proteinCodingGTFFile);
             GTFIntervalTreesContainer gtfTrees = buildIntervalTreesFromGTF(proteinCodingGTFSource, contigNameToID, promoterWindow);
@@ -156,6 +159,7 @@ public final class SVAnnotate extends VariantWalker {
             transcriptionStartSiteTree = gtfTrees.transcriptionStartSiteTree;
         }
 
+        // Load noncoding BED file into memory as interval tree of noncoding elements if BED provided
         if (!isNull(nonCodingBedFile)) {
             final FeatureDataSource<FullBEDFeature> nonCodingSource = new FeatureDataSource<>(nonCodingBedFile);
             nonCodingIntervalTree = buildIntervalTreeFromBED(nonCodingSource, contigNameToID);
@@ -189,9 +193,9 @@ public final class SVAnnotate extends VariantWalker {
         return variantInterval.overlaps(new SimpleInterval(gtfTranscript.getContig(), tss, tss));
     }
 
+    // builds transcript, TSS, and promoter interval trees from protein-coding GTF
     protected static GTFIntervalTreesContainer buildIntervalTreesFromGTF(final FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource,
                                                                 final Map<String,Integer> contigNameToID, final int promoterWindow) {
-        // builds GTF, TSS, and promoter interval trees
         final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = new SVIntervalTree<>();
         final SVIntervalTree<String> promoterIntervalTree = new SVIntervalTree<>();
         final SVIntervalTree<String> transcriptionStartSiteTree = new SVIntervalTree<>();
@@ -219,7 +223,7 @@ public final class SVAnnotate extends VariantWalker {
                                                             final Map<String,Integer> contigNameToID) {
         final SVIntervalTree<String> BEDIntervalTree = new SVIntervalTree<>();
         for (final FullBEDFeature feature : BEDSource) {
-            // BED feature already does start+1 conversion to closed interval
+            // BED feature class already does start+1 conversion to closed interval
             try {
                 BEDIntervalTree.put(locatableToClosedSVInterval(feature, contigNameToID), feature.getName());
             } catch (IllegalArgumentException e) {

@@ -33,6 +33,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
     private void assertVariantAnnotatedAsExpected(final List<VariantContext> vcf, final String variantID,
                                                   Map<String, Object> expectedAnnotations) {
         for (VariantContext variant : vcf) {
+            // Iterate until specified variant ID
             if (variant.getID().equals(variantID)) {
                 // check for presence of expected annotations
                 for (String key : expectedAnnotations.keySet()) {
@@ -57,8 +58,10 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
 
     private void assertEqualVariantsWithIgnoredAttributes(final List<VariantContext> v1, final List<VariantContext> v2,
                                                           final List<String> attributesToIgnore) {
+        // Check existence of both VCFs
         Utils.nonNull(v1, "v1");
         Utils.nonNull(v2, "v2");
+        // Check input and output VCFs have same number of variants
         if (v1.size() != v2.size()){
             throw new AssertionError("different sizes " + v1.size()+ " vs " + v2.size());
         }
@@ -66,6 +69,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
         boolean equalityCheckPassed = true;
         int numFailed = 0;
 
+        // Check input and output variants are identical except for any annotation INFO keys
         for (int i = 0; i < v1.size(); i++) {
             try {
                 VariantContextTestUtils.assertVariantContextsAreEqual(v1.get(i), v2.get(i), attributesToIgnore,
@@ -84,6 +88,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "argumentSets")
     public Object[][] getArgumentSets() {
         return new Object[][]{
+                // Run with GTF and noncoding BED file. Check a variant that has both
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
                         .add("proteinCodingGTF", gtf)
@@ -92,6 +97,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.NONCODING_BREAKPOINT),
                                 Arrays.asList("APP", "Tommerup_TADanno"))},
+                // Noncoding only. Check same variant for just the noncoding annotation
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
                         .add("nonCodingBed", noncodingElements),
@@ -99,12 +105,14 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.NONCODING_BREAKPOINT),
                                 Arrays.asList("Tommerup_TADanno"))},
+                // Protein-coding GTF only
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
                         .add("proteinCodingGTF", gtf),
                         "ref_panel_1kg_v1_BND_chr22_7",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.INTRONIC), Arrays.asList("BCL2L13"))},
+                // Toggle promoter window and check for addition of promoter annotation to previous variant
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
                         .add("proteinCodingGTF", gtf)
@@ -113,6 +121,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.PROMOTER),
                                 Arrays.asList("BCL2L13", "ATP6V1E1"))},
+                // Toggle BND annotation and check for change from default
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
                         .add("proteinCodingGTF", gtf)
@@ -120,6 +129,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                         "ref_panel_1kg_v1_BND_chr22_7",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.LOF), Arrays.asList("BCL2L13"))},
+                // No reference arguments, no annotations
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF),
                         "ref_panel_1kg_v1_BND_chr22_7",
@@ -133,23 +143,23 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
             String variantID,
             Map<String, Object> expectedAnnotations
     ) {
+        // Run each set of command line arguments to create a tmp annotated VCF
         final File output = createTempFile("annotated",".vcf");
-
         final ArgumentsBuilder args = commandLineArgs.addOutput(output);
-
         runCommandLine(args, SVAnnotate.class.getSimpleName());
 
+        // Load input and output VCFs into memory for comparisons
         Pair<VCFHeader, List<VariantContext>> inputVCFHeaderAndVariants =
                 VariantContextTestUtils.readEntireVCFIntoMemory(inputVCFPath);
         Pair<VCFHeader, List<VariantContext>> outputVCFHeaderAndVariants =
                 VariantContextTestUtils.readEntireVCFIntoMemory(output.getPath());
-
         List<VariantContext> inputVariants = inputVCFHeaderAndVariants.getRight();
         List<VariantContext> outputVariants = outputVCFHeaderAndVariants.getRight();
 
+        // Check input and output VCFs have same variants (ignore differences in annotation INFO keys)
         assertEqualVariantsWithIgnoredAttributes(inputVariants, outputVariants, allAnnotationInfoKeys);
 
+        // Check one variant for expected annotations
         assertVariantAnnotatedAsExpected(outputVariants, variantID, expectedAnnotations);
-
     }
 }

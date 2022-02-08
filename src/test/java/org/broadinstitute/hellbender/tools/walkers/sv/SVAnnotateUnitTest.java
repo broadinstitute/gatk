@@ -23,6 +23,10 @@ import java.util.*;
 import static java.util.Objects.isNull;
 
 public class SVAnnotateUnitTest extends GATKBaseTest {
+
+    // Pairs of intervals with different relationships to check if first (variant) interval spans second (feature)
+    // interval (boolean) and count how many of the variant breakpoints (start and end of first interval) are within
+    // the feature (second) interval (integer)
     @DataProvider(name="variantFeatureComparisons")
     public Object[][] getVariantFeatureComparisonsData() {
         return new Object[][] {
@@ -36,6 +40,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         };
     }
 
+    // Check variant / feature interval comparison functions for span and number of breakpoints
     @Test(dataProvider = "variantFeatureComparisons")
     public void testVariantFeatureComparisons(
             final SimpleInterval variantInterval,
@@ -51,7 +56,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         Assert.assertEquals(expectedNumBreakpointsInsideFeature, actualNumBreakpointsInsideFeature);
     }
 
-    // transcription start sites and initTree() method for testing annotateNearestTranscriptionStartSite()
+    // Toy transcription start sites and initTree() method for testing annotateNearestTranscriptionStartSite()
     private static final ClosedSVInterval[] transcriptionStartSites = {
             new ClosedSVInterval(0, 100, 101),
             new ClosedSVInterval(1, 150, 151),
@@ -70,19 +75,21 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         return tree;
     }
 
+    // Toy variants and expected nearest TSS for testing annotateNearestTranscriptionStartSite()
     @DataProvider(name="nearestTSS")
     public Object[][] getNearestTSSData() {
         return new Object[][] {
                 { new ClosedSVInterval(0, 1, 50), "A" },
-                { new ClosedSVInterval(1, 105, 110), "B" },
-                { new ClosedSVInterval(1, 155, 160), "B" },
-                { new ClosedSVInterval(1, 160, 195), "C" },
-                { new ClosedSVInterval(1, 3000, 4000), "D" },
+                { new ClosedSVInterval(1, 105, 110), "B" },  // Before first gene on contig
+                { new ClosedSVInterval(1, 155, 160), "B" },  // Closer left
+                { new ClosedSVInterval(1, 160, 195), "C" },  // Closer right
+                { new ClosedSVInterval(1, 3000, 4000), "D" },  // After last gene on contig
                 { new ClosedSVInterval(2, 33, 33), "E" },
-                { new ClosedSVInterval(3, 900, 4000), null },
+                { new ClosedSVInterval(3, 900, 4000), null },  // On different contig from TSS data
         };
     }
 
+    // Test annotateNearestTranscriptionStartSite() with toy data
     @Test(dataProvider = "nearestTSS")
     public void testAnnotateNearestTranscriptionStartSite(
             final ClosedSVInterval variantInterval,
@@ -101,11 +108,13 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         }
     }
 
+    // Toy GTF contains toy genes
     private FeatureDataSource<GencodeGtfGeneFeature> loadToyGTFSource() {
         final File toyGTFFile = new File(getToolTestDataDir() + "unittest.gtf");
         return new FeatureDataSource<>(toyGTFFile);
     }
 
+    // Load toy GTF and check for expected promoter and TSS intervals
     @Test
     public void testGetTranscriptionStartSiteAndPromoterInterval() {
         Map<String, Integer> tssByGene = new HashMap<>();
@@ -141,6 +150,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
             GATKSVVCFConstants.COPY_GAIN,
             GATKSVVCFConstants.TSS_DUP);
 
+    // Load only the first transcript from the first gene in the toy GTF
     private GencodeGtfTranscriptFeature loadToyGtfTranscript() {
         FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         // get only first gene, EMMA1, which has only one transcript
@@ -148,6 +158,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         return toyGene.getTranscripts().get(0);
     }
 
+    // Toy variants and protein-coding annotations if the interval is a DUP, DEL, CNV, or INV
     @DataProvider(name = "toyIntervalVariants")
     public Object[][] getToyIntervalVariantTestData() {
         return new Object[][] {
@@ -176,6 +187,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         };
     }
 
+    // Test annotation of interval variants (DUP, DEL, CNV, INV)
     @Test(dataProvider = "toyIntervalVariants")
     public void testAnnotateIntervalSVTypes(
             final SimpleInterval toyVariant,
@@ -200,6 +212,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         Assert.assertEquals(expectedInversionConsequence, actualInversionConsequence);
     }
 
+    // Toy "point" variants with 2-bp interval (INS, sometimes CTX) and 1-bp interval (BND, sometimes CTX)
+    // and expected consequences when annotated as INS, BND, or CTX
     @DataProvider(name = "toyPointVariants")
     public Object[][] getToyPointVariantTestData() {
         return new Object[][] {
@@ -221,6 +235,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         };
     }
 
+    // Test annotation of "point" variants (INS, BND, CTX)
     @Test(dataProvider = "toyPointVariants")
     public void testAnnotatePointSVTypes(
             final SimpleInterval toyTwoBaseVariant,
@@ -247,6 +262,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         Assert.assertEquals(expectedTranslocationVariantConsequence, actualTwoBaseTranslocationConsequence);
     }
 
+    // CPX_INTERVALS INFO field string specifying complex variant intervals, and expected annotation(s)
     @DataProvider(name = "toyComplexVariants")
     public Object[][] getToyComplexVariantTestData() {
         return new Object[][] {
@@ -258,6 +274,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         };
     }
 
+    // Test annotation of CPX events from CPX_INTERVALS string
     @Test(dataProvider = "toyComplexVariants")
     public void testAnnotateComplexEvents(
             final String cpxIntervalsString,
@@ -283,6 +300,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     }
 
 
+    // Test sortVariantConsequenceDict() sorts variant consequence map before writing to VCF
     @Test
     public void testSortVariantConsequenceDict() {
         Map<String, Set<String>> before = new HashMap<>();
@@ -312,6 +330,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         return segments;
     }
 
+    // Assert two lists of SVAnnotate.SVSegment objects are equal in contents
     private void assertSegmentListEqual(List<SVAnnotate.SVSegment> segmentsA, List<SVAnnotate.SVSegment> segmentsB) {
         int lengthA = segmentsA.size();
         if (lengthA != segmentsB.size()) {
@@ -326,6 +345,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         }
     }
 
+    // Utility function to create a VariantContext object with relevant attributes for testing
     private VariantContext createVariantContext(String chrom, int pos, int end, String chr2, Integer end2, String ref,
                                                 String alt, Integer svLen, String strands, String cpxType,
                                                 List<String> cpxIntervals) {
@@ -360,6 +380,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
                 .make();
     }
 
+    // VariantContext objects with all types and representations to test getSVSegments and getSVType
     @DataProvider(name = "typesAndSegments")
     public Object[][] getSVTypesAndSegmentsTestData() {
         return new Object[][] {
@@ -504,6 +525,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         };
     }
 
+    // Test getSVType() and getSVSegments() on representative list of VariantContext objects
     @Test(dataProvider = "typesAndSegments")
     public void testGetSVTypeAndSegments(
             final VariantContext variant,
@@ -523,6 +545,9 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
                 expectedSVSegmentsWithBNDOverlap != null ? expectedSVSegmentsWithBNDOverlap : expectedSVSegments);
     }
 
+    // Utility function to create key -> value Map for each key,value in lists
+    // For testing INFO field annotations
+    // Visible for use in integration tests as well
     protected static Map<String, Object> createAttributesMap(List<String> keys, List<Object> values) {
         Map<String, Object> attributes = new HashMap<>();
         int len = keys.size();
@@ -536,6 +561,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         return attributes;
     }
 
+    // VariantContext objects with expected annotations to test full process
+    // with focus on noncoding, promoter, and TSS annotation not otherwise covered
     @DataProvider(name = "toyIntegratedVariants")
     public Object[][] getAnnotateStructuralVariantTestData() {
         return new Object[][]{
@@ -575,6 +602,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         };
     }
 
+    // Tiny noncoding BED file has a few noncoding elements to test noncoding annotation
     private FeatureDataSource<FullBEDFeature> loadTinyNoncodingBEDSource() {
         return new FeatureDataSource<>(getToolTestDataDir() + "noncoding.unittest.bed");
     }
@@ -613,6 +641,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         Assert.assertEquals(expectedAttributes, actualAttributes);
     }
 
+    // Utility function to create contigNameToID map from list of contigs and list of IDs
     private Map<String, Integer> createContigNameToIDMap(List<String> names, List<Integer> IDs) {
         final Map<String,Integer> contigNameToID = new HashMap<>();
         for (int i = 0 ; i < names.size() ; i++) {
@@ -621,6 +650,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         return contigNameToID;
     }
 
+    // Test building interval trees (GTF and BED) with different contigNameToID maps
+    // and expected number of elements in BED interval tree & transcript interval tree
     @DataProvider(name = "buildIntervalTrees")
     public Object[][] getBuildIntervalTreesTestData() {
         return new Object[][] {
@@ -629,6 +660,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         };
     }
 
+    // Test building BED and GTF interval trees from toy files with different contigNameToID maps
     @Test(dataProvider = "buildIntervalTrees")
     public void testIgnoreUnknownContigsWhenBuildingIntervalTrees(
             final Map<String, Integer> contigNameToID,
