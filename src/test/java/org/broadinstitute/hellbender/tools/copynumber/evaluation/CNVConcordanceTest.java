@@ -11,23 +11,22 @@ public class CNVConcordanceTest extends CommandLineProgramTest {
     @Test
     public void test(){
         final String hg19 = "/Users/tsato/workspace/cfCNV/resources/Homo_sapiens_assembly19.fasta";
-        final String home = "/Users/tsato/workspace/cfCNV/evaluation/tool/";
-        // final String eval = home + "1227495080.called.seg";
-        final String eval = home +  "MP65_5753_in_KP_61683_3pct_duplicate_marked.called.seg";
-        // final String truth = home + "SM-74P4M.called.seg";
-        final String truth = home + "MP65_truth_373505753_duplicate_marked.called.seg";
+        final String dir = "/Users/tsato/workspace/cfCNV/analysis/ms_call_segments/";
+        final String evalSeg = dir + "MP65_5753_in_KP_61683_3pct_duplicate_marked_called_by_me.seg";
+        final String truthSeg = dir + "373505753_duplicate_marked_called_by_me.seg";
 
-        final String output1 = home + "output1.seg";
-        final String output2 = home + "output2.seg";
-        final String output3 = home + "output3.tsv";
+        final String te = dir + "truth_annotated_with_eval.seg";
+
+        // To be implemented
+        final String et = dir + "eval_annotated_with_truth.seg";
+        final String summary = dir + "summary.txt";
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("R", hg19)
-                .add("eval", eval)
-                .add("truth", truth)
-                .add("output1", output1)
-                .add("output2", output2)
-                .add("output3", output3);
+                .add("eval", evalSeg)
+                .add("truth", truthSeg)
+                .add(CNVConcordance.TRUTH_ANNOTATED_WITH_EVAL_SHORT_NAME, te)
+                .add(CNVConcordance.SUMMARY_ARG_NAME, summary);
         runCommandLine(args, CNVConcordance.class.getSimpleName());
     }
 
