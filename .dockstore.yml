@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_quoting_bug
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
