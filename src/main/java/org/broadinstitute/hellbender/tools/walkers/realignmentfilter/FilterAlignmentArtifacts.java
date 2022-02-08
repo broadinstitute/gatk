@@ -175,6 +175,11 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
     }
 
     @Override
+    public boolean useReadCaching() {
+        return true;
+    }
+
+    @Override
     public void onTraversalStart() {
         smithWatermanAligner = SmithWatermanAligner.getAligner(smithWatermanImplementation);
         realignmentEngine = new RealignmentEngine(realignmentArgumentCollection);
