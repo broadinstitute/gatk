@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.samtools.ValidationStringency;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -35,6 +36,11 @@ public abstract class ReadInputArgumentCollection implements Serializable {
             common = true,
             optional = true)
     protected List<GATKPath> readIndices;
+
+    @Advanced
+    @Argument(fullName = "reads-look-ahead-window-size", shortName="reads-look-ahead-window-size",
+                doc = "Window size for reads look-ahead query caching")
+    protected int readsLookaheadWindowSize = 100 * 1024;
 
     /**
      * Get the list of BAM/SAM/CRAM inputs specified at the command line.
@@ -71,4 +77,9 @@ public abstract class ReadInputArgumentCollection implements Serializable {
      * at the command line.
      */
     public ValidationStringency getReadValidationStringency() { return readValidationStringency; };
+
+    /**
+     * Get the look ahead buffer size to be used for read queries
+     */
+    public int getReadsLookaheadWindowSize() { return readsLookaheadWindowSize; };
 }

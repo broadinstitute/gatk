@@ -10,6 +10,8 @@ import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.cache.DrivingFeatureInputCacheStrategy;
+import org.broadinstitute.hellbender.engine.cache.LocatableCache;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
@@ -95,16 +97,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * improve performance of the common access pattern involving multiple queries across nearby intervals
      * with gradually increasing start positions.
      */
-    private final FeatureCache<T> queryCache;
-
-    /**
-     * When we experience a cache miss (ie., a query interval not fully contained within our cache) and need
-     * to re-populate the Feature cache from disk to satisfy a query, this controls the number of extra bases
-     * AFTER the end of our interval to fetch. Should be sufficiently large so that typically a significant number
-     * of subsequent queries will be cache hits (ie., query intervals fully contained within our cache) before
-     * we have another cache miss and need to go to disk again.
-     */
-    private final int queryLookaheadBases;
+    private final LocatableCache<T> queryCache;
 
     /**
      * Holds information about the path this datasource reads from.
@@ -341,12 +334,11 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
         this.currentIterator = null;
         this.intervalsForTraversal = null;
-        this.queryCache = new FeatureCache<>();
-        this.queryLookaheadBases = queryLookaheadBases;
+        this.queryCache = new LocatableCache<>(featureInput.getName(), new DrivingFeatureInputCacheStrategy<>(queryLookaheadBases, this::refillQueryCache));
     }
 
     final void printCacheStats() {
-        queryCache.printCacheStatistics( getName() );
+        logger.debug( queryCache.getCacheStatistics() );
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -580,49 +572,29 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                     "If it's a file, please index it using the bundled tool " + IndexFeatureFile.class.getSimpleName());
         }
 
-        // If the query can be satisfied using existing cache contents, prepare for retrieval
-        // by discarding all Features at the beginning of the cache that end before the start
-        // of our query interval.
-        if (queryCache.cacheHit(interval)) {
-            queryCache.trimToNewStartPosition(interval.getStart());
-        }
-        // Otherwise, we have a cache miss, so go to disk to refill our cache.
-        else {
-            refillQueryCache(interval);
-        }
-
-        // Return the subset of our cache that overlaps our query interval
-        return queryCache.getCachedFeaturesUpToStopPosition(interval.getEnd());
+        return queryCache.queryAndPrefetch(interval);
     }
 
     /**
-     * Refill our cache from disk after a cache miss. Will prefetch Features overlapping an additional
-     * queryLookaheadBases bases after the end of the provided interval, in addition to those overlapping
+     * Called by the cache strategy to refill our cache from disk after a cache miss. Will prefetch Features overlapping
+     * an additional queryLookaheadBases bases after the end of the provided interval, in addition to those overlapping
      * the interval itself.
      * <p>
-     * Calling this has the side effect of invalidating (closing) any currently-open iteration over
+     * Calling this method has the side effect of invalidating (closing) any currently-open iteration over
      * this data source.
      *
-     * @param interval the query interval that produced a cache miss
+     * @param cacheInterval the query interval to be cached
      */
-    private void refillQueryCache(final Locatable interval) {
+    private Iterator<T> refillQueryCache(final Locatable cacheInterval) {
         // Tribble documentation states that having multiple iterators open simultaneously over the same FeatureReader
         // results in undefined behavior
         closeOpenIterationIfNecessary();
 
-        // Expand the end of our query by the configured number of bases, in anticipation of probable future
-        // queries with slightly larger start/stop positions.
-        //
-        // Note that it doesn't matter if we go off the end of the contig in the process, since
-        // our reader's query operation is not aware of (and does not care about) contig boundaries.
-        // Note: we use addExact to blow up on overflow rather than propagate negative results downstream
-        final SimpleInterval queryInterval = new SimpleInterval(interval.getContig(), interval.getStart(), Math.addExact(interval.getEnd(), queryLookaheadBases));
-
-        // Query iterator over our reader will be immediately closed after re-populating our cache
-        try (final CloseableTribbleIterator<T> queryIter = featureReader.query(queryInterval.getContig(), queryInterval.getStart(), queryInterval.getEnd())) {
-            queryCache.fill(queryIter, queryInterval);
-        } catch (final IOException e) {
-            throw new GATKException("Error querying file " + featureInput + " over interval " + interval, e);
+        try {
+            return featureReader.query(cacheInterval.getContig(), cacheInterval.getStart(), cacheInterval.getEnd());
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Error querying file " + featureInput + " over interval " + cacheInterval, e);
         }
     }
 
@@ -652,8 +624,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     public void close() {
         closeOpenIterationIfNecessary();
 
-        logger.debug(String.format("Cache statistics for FeatureInput %s:", featureInput));
-        queryCache.printCacheStatistics();
+        logger.debug(String.format("Cache statistics for FeatureInput %s: %s", featureInput, queryCache.getCacheStatistics()));
 
         try {
             if (featureReader != null) {

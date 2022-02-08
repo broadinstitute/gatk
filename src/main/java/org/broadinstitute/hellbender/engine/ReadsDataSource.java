@@ -67,6 +67,12 @@ public interface ReadsDataSource extends GATKDataSource<GATKRead>, AutoCloseable
     boolean isQueryableByInterval();
 
     /**
+     * Enable look-ahead caching for reads based on {@code lookAheadBases}.
+     * @param lookAheadBases number of additional bases to cache
+     */
+    void enableReadCaching(int lookAheadBases);
+
+    /**
      * @return An iterator over just the unmapped reads with no assigned position. This operation is not affected
      *         by prior calls to {@link #setTraversalBounds}. The underlying file must be indexed.
      */
