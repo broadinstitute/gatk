@@ -418,7 +418,7 @@ task GetSampleIds {
 
       # get the current maximum id, or 0 if there are none
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name" > results
+        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name" > results
 
       # prep for being able to return min table id
       min_sample_id=$(tail -1 results | cut -d, -f1)
