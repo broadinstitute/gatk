@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.codecs.FeaturesHeader;
+import org.broadinstitute.hellbender.tools.sv.SVFeaturesHeader;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Reader;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -473,8 +473,8 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     public SAMSequenceDictionary getSequenceDictionary() {
         SAMSequenceDictionary dict = null;
         final Object header = getHeader();
-        if ( header instanceof FeaturesHeader ) {
-            dict = ((FeaturesHeader)header).getDictionary();
+        if ( header instanceof SVFeaturesHeader ) {
+            dict = ((SVFeaturesHeader)header).getDictionary();
         } else if (header instanceof VCFHeader) {
             dict = ((VCFHeader) header).getSequenceDictionary();
         }

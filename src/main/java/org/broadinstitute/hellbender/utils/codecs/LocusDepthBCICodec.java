@@ -4,15 +4,19 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.sv.LocusDepth;
+import org.broadinstitute.hellbender.tools.sv.LocusDepthSortMerger;
+import org.broadinstitute.hellbender.tools.sv.SVFeaturesHeader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Reader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Writer;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+/** Codec to handle LocusDepths in BlockCompressedInterval files */
 public class LocusDepthBCICodec extends AbstractBCICodec<LocusDepth> {
     private boolean versionChecked = false;
-    private SAMSequenceDictionary dict;
     private static final String LD_BCI_FILE_EXTENSION = ".ld.bci";
 
     @Override
@@ -24,7 +28,12 @@ public class LocusDepthBCICodec extends AbstractBCICodec<LocusDepth> {
             }
             versionChecked = true;
         }
-        return new LocusDepth(reader.getStream(), reader.getDictionary());
+        final DataInputStream dis = reader.getStream();
+        return new LocusDepth(reader.getDictionary().getSequence(dis.readInt()).getSequenceName(),
+                                dis.readInt(),
+                                reader.getSampleNames().get(dis.readInt()),
+                                dis.readByte(),
+                                dis.readInt(), dis.readInt(), dis.readInt(), dis.readInt());
     }
 
     @Override
@@ -40,10 +49,14 @@ public class LocusDepthBCICodec extends AbstractBCICodec<LocusDepth> {
                                         final SAMSequenceDictionary dict,
                                         final List<String> sampleNames,
                                         final int compressionLevel ) {
-        this.dict = dict;
+        if ( sampleNames.size() != 1 ) {
+            throw new UserException("LocusDepth records do not encode their sample, and must all " +
+                                    "refer to a single sample, but the list of sample names is of " +
+                                    "size=" + sampleNames.size());
+        }
         final String className = LocusDepth.class.getSimpleName();
         return new Writer<>(path,
-                            new FeaturesHeader(className, LocusDepth.BCI_VERSION, dict, sampleNames),
+                            new SVFeaturesHeader(className, LocusDepth.BCI_VERSION, dict, sampleNames),
                             this::encode,
                             compressionLevel);
     }
@@ -51,6 +64,22 @@ public class LocusDepthBCICodec extends AbstractBCICodec<LocusDepth> {
     @Override
     public void encode( final LocusDepth locusDepth, final Writer<LocusDepth> writer )
             throws IOException {
-        locusDepth.write(writer.getStream(), dict);
+        final DataOutputStream dos = writer.getStream();
+        dos.writeInt(writer.getContigIndex(locusDepth.getContig()));
+        dos.writeInt(locusDepth.getStart());
+        dos.writeInt(writer.getSampleIndex(locusDepth.getSample()));
+        dos.writeByte(locusDepth.getRefCall());
+        dos.writeInt(locusDepth.getADepth());
+        dos.writeInt(locusDepth.getCDepth());
+        dos.writeInt(locusDepth.getGDepth());
+        dos.writeInt(locusDepth.getTDepth());
+    }
+
+    @Override
+    public FeatureSink<LocusDepth> makeSortMerger( final GATKPath path,
+                                                   final SAMSequenceDictionary dict,
+                                                   final List<String> sampleNames,
+                                                   final int compressionLevel ) {
+        return new LocusDepthSortMerger(dict, makeSink(path, dict, sampleNames, compressionLevel));
     }
 }

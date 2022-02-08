@@ -8,11 +8,13 @@ import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.sv.BafEvidence;
+import org.broadinstitute.hellbender.tools.sv.BafEvidenceSortMerger;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 
 import java.util.Arrays;
 import java.util.List;
 
+/** Codec to handle BafEvidence in tab-delimited text files */
 public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence>
         implements FeatureOutputCodec<BafEvidence, FeatureOutputStream<BafEvidence>> {
 
@@ -66,6 +68,14 @@ public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence>
     @Override
     public void encode( final BafEvidence ev, final FeatureOutputStream<BafEvidence> os ) {
         os.write(ev);
+    }
+
+    @Override
+    public FeatureSink<BafEvidence> makeSortMerger( final GATKPath path,
+                                                    final SAMSequenceDictionary dict,
+                                                    final List<String> sampleNames,
+                                                    final int compressionLevel ) {
+        return new BafEvidenceSortMerger(dict, makeSink(path, dict, sampleNames, compressionLevel));
     }
 
     public static String encode( final BafEvidence ev ) {

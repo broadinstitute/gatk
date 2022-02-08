@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
@@ -43,7 +42,7 @@ import java.util.stream.Collectors;
  * by the user on the command line, determines the type of the file and the codec required to decode it,
  * creates a FeatureDataSource for that file, and adds it to a query-able resource pool.
  *
- * Clients can then call {@link #getFeatures(FeatureInput, SimpleInterval)} to query the data source for
+ * Clients can then call {@link #getFeatures(FeatureInput, Locatable)} to query the data source for
  * a particular FeatureInput over a specific interval.
  */
 public final class FeatureManager implements AutoCloseable {
@@ -64,7 +63,7 @@ public final class FeatureManager implements AutoCloseable {
      */
     private static final Class<FeatureInput> FEATURE_ARGUMENT_CLASS = FeatureInput.class;
 
-    /**
+    /*
      * At startup, walk through the packages in codec packages, and save any (concrete) FeatureCodecs discovered
      * in DISCOVERED_CODECS
      */
@@ -331,6 +330,13 @@ public final class FeatureManager implements AutoCloseable {
         return featureSources.values().stream().map(fs -> fs.getSequenceDictionary())
                 .filter(dict -> dict != null)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all the sources managed by this FeatureManager.
+     */
+    public Set<FeatureInput<? extends Feature>> getAllInputs() {
+        return featureSources.keySet();
     }
 
     /**

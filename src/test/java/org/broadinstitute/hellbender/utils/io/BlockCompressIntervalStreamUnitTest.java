@@ -6,7 +6,7 @@ import htsjdk.samtools.seekablestream.ByteArraySeekableStream;
 import htsjdk.samtools.util.LocationAware;
 import htsjdk.tribble.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.codecs.FeaturesHeader;
+import org.broadinstitute.hellbender.tools.sv.SVFeaturesHeader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Reader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Writer;
 import org.testng.Assert;
@@ -87,8 +87,8 @@ public class BlockCompressIntervalStreamUnitTest extends GATKBaseTest {
     @Test
     public void testRoundTrip() {
         final ByteArrayOutputStream os = new ByteArrayOutputStream(200000);
-        final FeaturesHeader header =
-                new FeaturesHeader(SimpleFeature.class.getSimpleName(), "1", dict, Collections.emptyList());
+        final SVFeaturesHeader header =
+                new SVFeaturesHeader(SimpleFeature.class.getSimpleName(), "1", dict, Collections.singletonList("sample"));
         final Writer<SimpleFeature> writer =
                 new Writer<>("in-memory stream", os, header, BlockCompressIntervalStreamUnitTest::write);
         for ( final SAMSequenceRecord rec : dict.getSequences() ) {
@@ -119,8 +119,8 @@ public class BlockCompressIntervalStreamUnitTest extends GATKBaseTest {
     @Test
     public void testQuery() throws IOException {
         final ByteArrayOutputStream os = new ByteArrayOutputStream(200000);
-        final FeaturesHeader header =
-                new FeaturesHeader(SimpleFeature.class.getSimpleName(), "1", dict, Collections.emptyList());
+        final SVFeaturesHeader header =
+                new SVFeaturesHeader(SimpleFeature.class.getSimpleName(), "1", dict, Collections.singletonList("sample"));
         final Writer<SimpleFeature> writer =
                 new Writer<>("in-memory stream", os, header, BlockCompressIntervalStreamUnitTest::write);
 

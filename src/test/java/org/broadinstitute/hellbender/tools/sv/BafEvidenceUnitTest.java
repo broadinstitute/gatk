@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.seekablestream.ByteArraySeekableStream;
 import org.broadinstitute.hellbender.utils.codecs.BafEvidenceBCICodec;
 import org.broadinstitute.hellbender.utils.codecs.BafEvidenceCodec;
-import org.broadinstitute.hellbender.utils.codecs.FeaturesHeader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Reader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Writer;
 import org.testng.Assert;
@@ -57,8 +56,8 @@ public class BafEvidenceUnitTest {
     public void testBinaryRoundTrip() {
         final BafEvidenceBCICodec codec = new BafEvidenceBCICodec();
         final ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
-        final FeaturesHeader header =
-                new FeaturesHeader(BafEvidence.class.getSimpleName(), BafEvidence.BCI_VERSION, dict, samples);
+        final SVFeaturesHeader header =
+                new SVFeaturesHeader(BafEvidence.class.getSimpleName(), BafEvidence.BCI_VERSION, dict, samples);
         final Writer<BafEvidence> writer =
                 new Writer<>("in-memory stream", os, header, codec::encode);
         for ( final BafEvidence be : bafs ) {

@@ -1,91 +1,105 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.util.IOUtil;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
-import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.codecs.*;
 
-import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.zip.GZIPOutputStream;
-
+import java.util.*;
 /**
- * Prints SV evidence records. Can be used with -L to retrieve records on a set of intervals.
- * Supports streaming input from GCS buckets.
+ * <p>Merges locus-sorted files of evidence for structural variation into a single output file.</p>
+ * <p>The tool can also subset the inputs to specified genomic intervals, or to a specified list of samples.</p>
+ * <p>The evidence types and their files extensions are:</p>
+ * <dl>
+ *     <dt>BafEvidence</dt>
+ *     <dd>The biallelic frequency of a SNP in some sample at some locus.
+ *          File extensions are *.baf.txt, *.baf.txt.gz, or *.baf.bci.</dd>
+ *     <dt>DepthEvidence</dt>
+ *     <dd>The read counts of any number of samples on some interval.
+ *          File extensions are *.rd.txt, *.rd.txt.gz, or *.rd.bci.</dd>
+ *     <dt>DiscordantPairEvidence</dt>
+ *     <dd>Evidence of a read pair that spans a genomic distance that's too large or too small.
+ *          File extensions are *.pe.txt, *.pe.txt.gz, or *.pe.bci.</dd>
+ *     <dt>LocusDepth</dt>
+ *     <dd>The read counts of each base call for some sample at some locus.
+ *          File extensions are *.ld.txt, *.ld.txt.gz, or *.ld.bci.</dd>
+ *     <dt>SplitReadEvidence</dt>
+ *     <dd>The number of chimeric reads in some sample at some locus.
+ *          File extensions are *.sr.txt, *.sr.txt.gz, or *.sr.bci.</dd>
+ * </dl>
  *
  * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
- *         Coordinate-sorted and indexed evidence file URI
+ *         One or more evidence files.
+ *         These must be locus-sorted, and must all contain the same type of evidence.
+ *         <br />Or a file containing a list of evidence files, one per line.
  *     </li>
- *     <li>
- *         Sequence dictionary (or reference) if the input file is tab-delimited text
- *     </li>
- *     <li>
- *         Sample name(s) if the input file is tab-delimited text other than read depth
- *     </li>
+ *     <li>Optional:  A list of sample names to extract.</li>
  * </ul>
  *
  * <h3>Output</h3>
  *
  * <ul>
  *     <li>
- *         Coordinate-sorted evidence file with a name that matches the input file evidence type,
- *         automatically indexed if ending with ".gz" or ".bci"
+ *         An output file containing merged evidence from the inputs.
  *     </li>
  * </ul>
  *
  * <h3>Usage example</h3>
  *
  * <pre>
- *     gatk PrintSVEvidence \
- *       --evidence-file gs://my-bucket/batch_name.SR.txt.gz \
- *       -L intervals.bed \
- *       --sequence-dictionary ref.dict \
- *       -O local.SR.txt.gz
+ *     gatk SVCluster \
+ *       -F file1.baf.txt.gz [-F file2.baf.txt.gz ...] \
+ *       -O merged.baf.bci \
+ *       --sample-names sample1 [--sample-names sample2 ...]
  * </pre>
  *
- * @author Mark Walker &lt;markw@broadinstitute.org&gt;
+ * @author Ted Sharpe &lt;tsharpe@broadinstitute.org&gt;
  */
-
 @CommandLineProgramProperties(
-        summary = "Prints SV evidence records to a file",
-        oneLineSummary = "Prints SV evidence records",
+        summary = "Merges multiple sources of SV evidence records of some particular feature type" +
+        " into a single output file.  Inputs must be locus-sorted." +
+        "  Can also subset by regions or samples.",
+        oneLineSummary = "Merges SV evidence records.",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @ExperimentalFeature
-@DocumentedFeature
-public final class PrintSVEvidence <F extends Feature> extends FeatureWalker<F> {
-
+public class PrintSVEvidence extends MultiFeatureWalker<SVFeature> {
     public static final String EVIDENCE_FILE_NAME = "evidence-file";
+    public static final String SAMPLE_NAMES_NAME = "sample-names";
     public static final String COMPRESSION_LEVEL_NAME = "compression-level";
 
     @Argument(
-            doc = "Input file URI with extension '"
+            doc = "Input feature file URI(s) with extension '"
                     + SplitReadEvidenceCodec.FORMAT_SUFFIX + "', '"
                     + DiscordantPairEvidenceCodec.FORMAT_SUFFIX + "', '"
                     + LocusDepthCodec.FORMAT_SUFFIX + "', '"
                     + BafEvidenceCodec.FORMAT_SUFFIX + "', or '"
                     + DepthEvidenceCodec.FORMAT_SUFFIX + "' (may be gzipped). "
                     + "Can also handle bci rather than txt files.",
-            fullName = EVIDENCE_FILE_NAME
+            fullName = EVIDENCE_FILE_NAME,
+            shortName = StandardArgumentDefinitions.FEATURE_SHORT_NAME
     )
-    private GATKPath inputFilePath;
+    private List<FeatureInput<SVFeature>> inputPaths;
+
+    @Argument(doc = "List of sample names to extract from the sources (either as a .list file or " +
+            " as repeated arguments).  If not specified, all samples will be merged.",
+              fullName = SAMPLE_NAMES_NAME, optional = true)
+    @VisibleForTesting
+    Set<String> sampleNames = new LinkedHashSet<>();
 
     @Argument(
-            doc = "Output file with an evidence extension matching the input. Will be indexed if it has a " +
-                    "block-compressed extension (e.g. '.gz' or '.bci').",
+            doc = "Output file for features of a type matching the input. Will be indexed if it " +
+                    "has a block-compressed extension (e.g. '.gz' or '.bci').",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
@@ -98,141 +112,64 @@ public final class PrintSVEvidence <F extends Feature> extends FeatureWalker<F> 
     )
     private int compressionLevel = 4;
 
-    @Argument(doc = "List of sample names", fullName = "sample-names", optional = true)
-    private List<String> sampleNames = new ArrayList<>();
-
-    @Argument(doc = "Output file for sample names", fullName = "sample-list-dump", optional = true)
-    private GATKPath sampleListOutputFile;
-
-    @Argument(doc = "Output file for contig dictionary", fullName = "sequence-dict-dump", optional = true)
-    private GATKPath dictionaryOutputFile;
-
-    private FeatureSink<F> outputSink;
-    private Class<F> evidenceClass;
-
-    private static final List<FeatureOutputCodec<? extends Feature, ? extends FeatureSink<?>>> outputCodecs =
-            new ArrayList<>(10);
-    static {
-        outputCodecs.add(new BafEvidenceCodec());
-        outputCodecs.add(new DepthEvidenceCodec());
-        outputCodecs.add(new DiscordantPairEvidenceCodec());
-        outputCodecs.add(new LocusDepthCodec());
-        outputCodecs.add(new SplitReadEvidenceCodec());
-        outputCodecs.add(new BafEvidenceBCICodec());
-        outputCodecs.add(new DepthEvidenceBCICodec());
-        outputCodecs.add(new DiscordantPairEvidenceBCICodec());
-        outputCodecs.add(new LocusDepthBCICodec());
-        outputCodecs.add(new SplitReadEvidenceBCICodec());
-    }
+    private boolean noSampleFiltering = false;
+    private FeatureSink<SVFeature> outputSink;
 
     @Override
     @SuppressWarnings("unchecked")
-    protected boolean isAcceptableFeatureType( final Class<? extends Feature> featureType ) {
-        for ( final FeatureOutputCodec<?, ?> codec : outputCodecs ) {
-            if ( featureType.equals(codec.getFeatureType()) ) {
-                evidenceClass = (Class<F>)featureType;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public GATKPath getDrivingFeaturePath() {
-        return inputFilePath;
-    }
-
-    @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-        final FeaturesHeader header = getHeader();
-        if ( sampleListOutputFile != null ) {
-            dumpSamples(sampleListOutputFile, header.getSampleNames());
-        }
-        if ( dictionaryOutputFile != null ) {
-            dumpDictionary(dictionaryOutputFile, header.getDictionary());
-        }
-        initializeOutput(header);
-    }
 
-    private FeaturesHeader getHeader() {
-        final SAMSequenceDictionary dict;
-        final List<String> samples;
-        final Object headerObj = getDrivingFeaturesHeader();
-        if ( headerObj instanceof FeaturesHeader ) {
-            final FeaturesHeader header = (FeaturesHeader)headerObj;
-            dict = header.getDictionary() == null ?
-                    getBestAvailableSequenceDictionary() :
-                    header.getDictionary();
-            samples = header.getSampleNames() == null ? sampleNames : header.getSampleNames();
-        } else {
-            dict = getBestAvailableSequenceDictionary();
-            samples = sampleNames;
+        final FeatureOutputCodec<? extends Feature, ? extends FeatureSink<? extends Feature>> codec =
+                FeatureOutputCodecFinder.find(outputFilePath);
+        final Class<? extends Feature> outputClass = codec.getFeatureType();
+        if ( !SVFeature.class.isAssignableFrom(outputClass) ) {
+            throw new UserException("Output file " + outputFilePath + " implies Feature subtype " +
+                    outputClass.getSimpleName() + " but this tool requires an SVFeature subtype.");
         }
-        return new FeaturesHeader(evidenceClass.getSimpleName(), "?", dict, samples);
-    }
 
-    private static void dumpSamples( final GATKPath outputPath, final List<String> sampleNames ) {
-        try ( final BufferedWriter writer = writerForPath(outputPath) ) {
-            for ( final String sampleName : sampleNames ) {
-                writer.write(sampleName);
-                writer.newLine();
-            }
-        } catch ( final IOException ioe ) {
-            throw new UserException("can't open sample-list-dump file: " + outputPath, ioe);
-        }
-    }
-
-    private static void dumpDictionary( final GATKPath outputPath, final SAMSequenceDictionary dict ) {
-        try ( final BufferedWriter writer = writerForPath(outputPath) ) {
-            for ( final SAMSequenceRecord record : dict.getSequences() ) {
-                writer.write(record.getSAMString());
-                writer.newLine();
-            }
-        } catch ( final IOException ioe ) {
-            throw new UserException("can't open sequence-dict-dump file: " + outputPath, ioe);
-        }
-    }
-
-    private static BufferedWriter writerForPath( final GATKPath outputPath ) throws IOException {
-        OutputStream stream = outputPath.getOutputStream();
-        if ( IOUtil.hasBlockCompressedExtension(outputPath.toPath()) ) {
-            stream = new GZIPOutputStream(stream);
-        }
-        return new BufferedWriter(new OutputStreamWriter(stream));
-    }
-
-    @SuppressWarnings("unchecked")
-    private void initializeOutput( final FeaturesHeader header ) {
-        final FeatureOutputCodec<?, ?> outputCodec = findOutputCodec(outputFilePath);
-        final Class<?> outputClass = outputCodec.getFeatureType();
-        if ( !evidenceClass.equals(outputClass) ) {
-            throw new UserException("The input file contains " + evidenceClass.getSimpleName() +
-                    " features, but the output file would be expected to contain " +
-                    outputClass.getSimpleName() + " features.  Please choose an output file name " +
-                    "appropriate for the evidence type.");
-        }
-        outputSink = (FeatureSink<F>)outputCodec.makeSink(outputFilePath,
-                                                            header.getDictionary(),
-                                                            header.getSampleNames(),
-                                                            compressionLevel);
-    }
-
-    private static FeatureOutputCodec<?, ?> findOutputCodec( final GATKPath outputFilePath ) {
-        final String outputFileName = outputFilePath.toString();
-        for ( final FeatureOutputCodec<?, ?> codec : outputCodecs ) {
-            if ( codec.canDecode(outputFileName) ) {
-                return codec;
+        for ( FeatureInput<SVFeature> input : inputPaths ) {
+            try {
+                final Class<? extends Feature> inputClass =
+                        input.getFeatureCodecClass().getDeclaredConstructor().newInstance().getFeatureType();
+                if ( !outputClass.isAssignableFrom(inputClass) ) {
+                    throw new UserException("Incompatible feature input " + input.getFeaturePath() +
+                            " produces features of type " + inputClass.getSimpleName() +
+                            " rather than features of type " + outputClass.getSimpleName() +
+                            " as dictated by the output path " + outputFilePath);
+                }
+            } catch ( final ReflectiveOperationException roe ) {
+                throw new GATKException("Failed to instantiate codec " +
+                                            input.getFeatureCodecClass().getSimpleName());
             }
         }
-        throw new UserException("no codec found for path " + outputFileName);
+        if ( sampleNames.isEmpty() ) {
+            // use the complete set of sample names we found in the headers of the feature files
+            sampleNames.addAll(getSampleNames());
+            if ( sampleNames.isEmpty() ) {
+                noSampleFiltering = true;
+            }
+        }
+
+        // the validity of this cast was checked at the beginning of this method
+        outputSink = (FeatureSink<SVFeature>)codec.makeSortMerger(outputFilePath,
+                                    getDictionary(), new ArrayList<>(sampleNames), compressionLevel);
     }
 
     @Override
-    public void apply(final F feature,
-                      final ReadsContext readsContext,
-                      final ReferenceContext referenceContext,
-                      final FeatureContext featureContext) {
+    public void apply( final SVFeature featureArg,
+                       final Object header,
+                       final ReadsContext readsContext,
+                       final ReferenceContext referenceContext ) {
+        final SVFeature feature;
+        if ( noSampleFiltering ) {
+            feature = featureArg;
+        } else {
+            feature = featureArg.extractSamples(sampleNames, header);
+            if ( feature == null ) {
+                return;
+            }
+        }
         outputSink.write(feature);
     }
 
