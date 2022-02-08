@@ -181,15 +181,6 @@ public abstract class AssemblyBasedCallerArgumentCollection {
             optional = true)
     public int informativeReadOverlapMargin = 2;
 
-    /**
-     * Enables pileup-based haplotype creation and variant detection
-     * <p>
-     * NOTE: --pileup-detection is a beta feature. Use this mode at your own risk.
-     */
-    @Argument(fullName = PILEUP_DETECTION_LONG_NAME, doc = "If enabled, the variant caller will create pileup-based haplotypes in addition to the assembly-based haplotype generation.", optional = true)
-    public boolean usePileupDetection = false;
-
-
     // -----------------------------------------------------------------------------------------------
     // Smith-Waterman parameters for dangling-end recovery
     // -----------------------------------------------------------------------------------------------
