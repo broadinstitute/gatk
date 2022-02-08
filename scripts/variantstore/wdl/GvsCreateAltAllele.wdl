@@ -68,7 +68,7 @@ task GetVetTableNames {
 
     echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{query_project_id} --format=csv --use_legacy_sql=false \
-    "SELECT table_name FROM ~{dataset_project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES WHERE table_name LIKE 'vet_%' ORDER BY table_name" > vet_tables.csv
+    '''SELECT table_name FROM ~{dataset_project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES WHERE table_name LIKE 'vet_%' ORDER BY table_name''' > vet_tables.csv
 
     # remove the header row from the CSV file
     sed -i 1d vet_tables.csv
@@ -113,7 +113,7 @@ task CreateAltAlleleTable {
 
     echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{query_project_id} --format=csv --use_legacy_sql=false \
-    "CREATE OR REPLACE TABLE ~{dataset_project_id}.~{dataset_name}.alt_allele (
+    'CREATE OR REPLACE TABLE `~{dataset_project_id}.~{dataset_name}.alt_allele` (
       location INT64,
       sample_id INT64,
       ref STRING,
@@ -139,7 +139,7 @@ task CreateAltAlleleTable {
       ref_ad INT64,
       ad INT64
     ) PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000000, 1000000000000))
-    CLUSTER BY location, sample_id;"
+    CLUSTER BY location, sample_id;'
 
   >>>
 
