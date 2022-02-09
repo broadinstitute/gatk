@@ -46,7 +46,7 @@ public final class AlleleSubsettingUtils {
      * @param allelesToKeep            the subset of alleles to use with the new Genotypes
      * @param assignmentMethod         assignment strategy for the (subsetted) PLs
      * @param depth                    the original variant DP or 0 if there was no DP
-     * @param suppressUninformativePLs             force the output of a PL array even if there is no data
+     * @param forceEmitUninformativePLs             force the output of a PL array even if there is no data
      * @return                         a new non-null GenotypesContext
      */
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
@@ -55,7 +55,7 @@ public final class AlleleSubsettingUtils {
                                                  final GenotypePriorCalculator gpc,
                                                  final GenotypeAssignmentMethod assignmentMethod,
                                                  final int depth,
-                                                 final boolean suppressUninformativePLs) {
+                                                 final boolean forceEmitUninformativePLs) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
         Utils.nonNull(allelesToKeep, "allelesToKeep is null");
         Utils.nonEmpty(allelesToKeep, "must keep at least one allele");
@@ -94,7 +94,7 @@ public final class AlleleSubsettingUtils {
                 newLog10GQ = -0.1*g.getGQ();
             }
 
-            final boolean useNewLikelihoods = !suppressUninformativePLs ||
+            final boolean useNewLikelihoods = forceEmitUninformativePLs ||
                     (newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods)));
 
             final GenotypeBuilder gb = new GenotypeBuilder(g);

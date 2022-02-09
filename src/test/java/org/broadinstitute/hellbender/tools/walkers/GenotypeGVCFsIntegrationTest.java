@@ -156,7 +156,12 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
                         getTestFile( "expected/includeLowQualSites.vcf"),
                         Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,012,730-10,012,740"),
-                        b37_reference_20_21}
+                        b37_reference_20_21},
+
+                //23 highly multi-allelic sites across 54 1000G exomes to test allele subsetting and QUAL calculation
+                {getTestFile("multiallelicQualRegression.vcf "),
+                        getTestFile("multiallelicQualRegression.expected.vcf"),
+                        NO_EXTRA_ARGS, hg38Reference}
         };
     }
 

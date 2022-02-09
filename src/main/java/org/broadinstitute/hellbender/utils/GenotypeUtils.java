@@ -143,7 +143,7 @@ public final class GenotypeUtils {
      * @return  true if we have enough info for AF calculation
      */
     public static boolean genotypeIsUsableForAFCalculation(Genotype g) {
-        return g.hasLikelihoods() || (g.isHomRef() && g.hasGQ() && 2 == g.getPloidy());
+        return g.hasLikelihoods() || g.hasGQ() || g.getAlleles().stream().anyMatch(a -> a.isCalled() && a.isNonReference() && !a.isSymbolic());
     }
 
     /**

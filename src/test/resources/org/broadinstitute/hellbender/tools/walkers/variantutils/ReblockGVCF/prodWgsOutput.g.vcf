@@ -1,0 +1,272 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=LowQual,Description="Low quality">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+##GATKCommandLine.HaplotypeCaller=<ID=HaplotypeCaller,Version=3.5-0-g36282e4,Date="Wed Oct 20 15:41:05 GMT 2021",Epoch=1634744465260,CommandLineOptions="analysis_type=HaplotypeCaller input_file=[local.sharded.bam] showFullBamList=false read_buffer_size=null phone_home=AWS gatk_key=null tag=NA read_filter=[OverclippedRead] disable_read_filter=[] intervals=[/cromwell_root/broad-gotc-staging-cromwell-execution/WholeGenomeGermlineSingleSample/28955d4f-6224-4105-a6f8-3a9761b6e075/call-BamToGvcf/VariantCalling/521523f2-fd09-4600-8d69-e01a4822204d/call-ScatterIntervalList/cacheCopy/glob-cb4648beeaff920acb03de7603c06f98/31scattered.interval_list] excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=/cromwell_root/gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=500 baq=OFF baqGapOpenPenalty=40.0 refactor_NDN_cigar_string=false fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 static_quantized_quals=null round_down_quantized=false disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=null disable_auto_index_creation_and_locking_when_reading_rods=false no_cmdline_in_header=false sites_only=false never_trim_vcf_format_field=false bcf=false bam_compression=null simplifyBAM=false disable_bam_indexing=false generate_md5=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false variant_index_type=LINEAR variant_index_parameter=128000 reference_window_stop=0 logging_level=INFO log_to_file=null help=false version=false likelihoodCalculationEngine=PairHMM heterogeneousKmerSizeResolution=COMBO_MIN dbsnp=(RodBinding name= source=UNBOUND) dontTrimActiveRegions=false maxDiscARExtension=25 maxGGAARExtension=300 paddingAroundIndels=150 paddingAroundSNPs=20 comp=[] annotation=[StrandBiasBySample] excludeAnnotation=[ChromosomeCounts, FisherStrand, StrandOddsRatio, QualByDepth] group=[Standard, StandardHCAnnotation] debug=false useFilteredReadsForAnnotations=false emitRefConfidence=GVCF bamOutput=null bamWriterType=CALLED_HAPLOTYPES disableOptimizations=false annotateNDA=false heterozygosity=0.001 indel_heterozygosity=1.25E-4 standard_min_confidence_threshold_for_calling=-0.0 standard_min_confidence_threshold_for_emitting=-0.0 max_alternate_alleles=3 input_prior=[] sample_ploidy=2 genotyping_mode=DISCOVERY alleles=(RodBinding name= source=UNBOUND) contamination_fraction_to_filter=0.01094916 contamination_fraction_per_sample_file=null p_nonref_model=null exactcallslog=null output_mode=EMIT_VARIANTS_ONLY allSitePLs=true gcpHMM=10 pair_hmm_implementation=VECTOR_LOGLESS_CACHING pair_hmm_sub_implementation=ENABLE_ALL always_load_vector_logless_PairHMM_lib=false phredScaledGlobalReadMismappingRate=45 noFpga=false sample_name=null kmerSize=[10, 25] dontIncreaseKmerSizesForCycles=false allowNonUniqueKmersInRef=false numPruningSamples=1 recoverDanglingHeads=false doNotRecoverDanglingBranches=false minDanglingBranchLength=4 consensus=false maxNumHaplotypesInPopulation=128 errorCorrectKmers=false minPruning=2 debugGraphTransformations=false allowCyclesInKmerGraphToGeneratePaths=false graphOutput=null kmerLengthForReadErrorCorrection=25 minObservationsForKmerToBeSolid=20 GVCFGQBands=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 70, 80, 90, 99] indelSizeToEliminateInRefModel=10 min_base_quality_score=10 includeUmappedReads=false useAllelesTrigger=false doNotRunPhysicalPhasing=false keepRG=null justDetermineActiveRegions=false dontGenotype=false dontUseSoftClippedBases=false captureAssemblyFailureBAM=false errorCorrectReads=false pcr_indel_model=CONSERVATIVE maxReadsInRegionPerSample=10000 minReadsPerAlignmentStart=10 mergeVariantsViaLD=false activityProfileOut=null activeRegionOut=null activeRegionIn=null activeRegionExtension=null forceActive=false activeRegionMaxSize=null bandPassSigma=null maxProbPropagationDistance=50 activeProbabilityThreshold=0.002 filter_is_too_short_value=30 do_not_require_softclips_both_ends=false min_mapping_quality_score=20 filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+##GATKCommandLine=<ID=SelectVariants,CommandLine="SelectVariants --output unitTestInput.vcf --variant gs://broad-gotc-test-storage/reblock_gvcf/wgs/scientific/input/G96830.NA12878/NA12878.g.vcf.gz --intervals chr1:123659453 --interval-padding 1000 --reference /Users/gauthier/workspaces/gatk/src/test/resources/large/Homo_sapiens_assembly38.fasta.gz --invertSelect false --exclude-non-variants false --exclude-filtered false --preserve-alleles false --remove-unused-alternates false --restrict-alleles-to ALL --keep-original-ac false --keep-original-dp false --mendelian-violation false --invert-mendelian-violation false --mendelian-violation-qual-threshold 0.0 --select-random-fraction 0.0 --remove-fraction-genotypes 0.0 --fully-decode false --max-indel-size 2147483647 --min-indel-size 0 --max-filtered-genotypes 2147483647 --min-filtered-genotypes 0 --max-fraction-filtered-genotypes 1.0 --min-fraction-filtered-genotypes 0.0 --max-nocall-number 2147483647 --max-nocall-fraction 1.0 --set-filtered-gt-to-nocall false --allow-nonoverlapping-command-line-samples false --suppress-reference-path false --call-genotypes false --genomicsdb-use-bcf-codec false --genomicsdb-shared-posixfs-optimizations false --genomicsdb-use-gcs-hdfs-connector false --interval-set-rule UNION --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --max-variants-per-shard 0 --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version="4.2.2.0-16-gd0b05a4-SNAPSHOT",Date="February 9, 2022 2:35:02 PM EST">
+##GVCFBlock0-20=minGQ=0(inclusive),maxGQ=20(exclusive)
+##GVCFBlock20-30=minGQ=20(inclusive),maxGQ=30(exclusive)
+##GVCFBlock30-40=minGQ=30(inclusive),maxGQ=40(exclusive)
+##GVCFBlock40-100=minGQ=40(inclusive),maxGQ=100(exclusive)
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=AS_BaseQRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt Vs. Ref base qualities">
+##INFO=<ID=AS_FS,Number=A,Type=Float,Description="allele specific phred-scaled p-value using Fisher's exact test to detect strand bias of each alt allele">
+##INFO=<ID=AS_InbreedingCoeff,Number=A,Type=Float,Description="Allele-specific inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=AS_MQ,Number=A,Type=Float,Description="Allele-specific RMS Mapping Quality">
+##INFO=<ID=AS_MQRankSum,Number=A,Type=Float,Description="Allele-specific Mapping Quality Rank Sum">
+##INFO=<ID=AS_QD,Number=A,Type=Float,Description="Allele-specific Variant Confidence/Quality by Depth">
+##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
+##INFO=<ID=AS_ReadPosRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt vs. Ref read position bias">
+##INFO=<ID=AS_SOR,Number=A,Type=Float,Description="Allele specific strand Odds Ratio of 2x|Alts| contingency table to detect allele specific strand bias">
+##INFO=<ID=AS_VarDP,Number=1,Type=String,Description="Allele-specific (informative) depth over variant genotypes -- including ref, RAW format">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=ClippingRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=MQ_DP,Number=1,Type=Integer,Description="Depth over variant samples for better MQ calculation (deprecated -- use RAW_MQandDP instead.)">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=QUALapprox,Number=1,Type=Integer,Description="Sum of PL[0] values; used to approximate the QUAL score">
+##INFO=<ID=RAW_GT_COUNT,Number=3,Type=Integer,Description="Counts of genotypes w.r.t. the reference allele: 0/0, 0/*, */*, i.e. all alts lumped together; for use in calculating excess heterozygosity">
+##INFO=<ID=RAW_MQ,Number=1,Type=Float,Description="Raw data for RMS Mapping Quality (deprecated -- use RAW_MQandDP instead.)">
+##INFO=<ID=RAW_MQandDP,Number=2,Type=Integer,Description="Raw data (sum of squared MQ and total depth) for improved RMS Mapping Quality calculation. Incompatible with deprecated RAW_MQ formulation.">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
+##INFO=<ID=VarDP,Number=1,Type=Integer,Description="(informative) depth over variant genotypes">
+##contig=<ID=chr1,length=248956422,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr2,length=242193529,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr3,length=198295559,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr4,length=190214555,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr5,length=181538259,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr6,length=170805979,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr7,length=159345973,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr8,length=145138636,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr9,length=138394717,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr10,length=133797422,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr11,length=135086622,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr12,length=133275309,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr13,length=114364328,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr14,length=107043718,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr15,length=101991189,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr16,length=90338345,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr17,length=83257441,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr18,length=80373285,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr19,length=58617616,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr20,length=64444167,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr21,length=46709983,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chr22,length=50818468,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chrX,length=156040895,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chrY,length=57227415,assembly=Homo_sapiens_assembly38.fasta.gz>
+##contig=<ID=chrM,length=16569,assembly=Homo_sapiens_assembly38.fasta.gz>
+##reference=file:///Users/gauthier/workspaces/gatk/src/test/resources/large/Homo_sapiens_assembly38.fasta.gz
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878
+chr1	123658453	.	G	<NON_REF>	.	.	END=123658481	GT:DP:GQ	0/0:27:40
+chr1	123658482	.	G	<NON_REF>	.	.	END=123658482	GT:DP:GQ	0/0:21:20
+chr1	123658483	.	T	<NON_REF>	.	.	END=123658484	GT:DP:GQ	0/0:24:30
+chr1	123658485	.	G	<NON_REF>	.	.	END=123658495	GT:DP:GQ	0/0:25:40
+chr1	123658496	.	A	<NON_REF>	.	.	END=123658496	GT:DP:GQ	0/0:21:30
+chr1	123658497	.	C	<NON_REF>	.	.	END=123658497	GT:DP:GQ	0/0:21:20
+chr1	123658498	.	T	<NON_REF>	.	.	END=123658499	GT:DP:GQ	0/0:21:40
+chr1	123658500	.	A	<NON_REF>	.	.	END=123658500	GT:DP:GQ	0/0:21:30
+chr1	123658501	.	C	<NON_REF>	.	.	END=123658503	GT:DP:GQ	0/0:21:40
+chr1	123658504	.	A	<NON_REF>	.	.	END=123658504	GT:DP:GQ	0/0:20:30
+chr1	123658505	.	G	<NON_REF>	.	.	END=123658509	GT:DP:GQ	0/0:20:40
+chr1	123658510	.	A	<NON_REF>	.	.	END=123658510	GT:DP:GQ	0/0:18:20
+chr1	123658511	.	C	<NON_REF>	.	.	END=123658511	GT:DP:GQ	0/0:17:40
+chr1	123658512	.	T	<NON_REF>	.	.	END=123658512	GT:DP:GQ	0/0:17:0
+chr1	123658513	.	T	<NON_REF>	.	.	END=123658514	GT:DP:GQ	0/0:16:30
+chr1	123658515	.	C	<NON_REF>	.	.	END=123658516	GT:DP:GQ	0/0:16:0
+chr1	123658517	.	T	<NON_REF>	.	.	END=123658541	GT:DP:GQ	0/0:14:30
+chr1	123658542	.	A	T,<NON_REF>	23.79	.	AS_QUALapprox=|52|0;AS_VarDP=8|3|0;BaseQRankSum=0.382;DP=11;MQRankSum=-0.715;MQ_DP=11;QUALapprox=52;RAW_GT_COUNT=0,1,0;RAW_MQ=9889.00;RAW_MQandDP=9889,11;ReadPosRankSum=-1.531;VarDP=11	GT:AD:DP:GQ:PL:SB	0/1:8,3,0:11:52:52,0,197,76,206,282:5,3,0,3
+chr1	123658543	.	G	<NON_REF>	.	.	END=123658543	GT:DP:GQ	0/0:12:20
+chr1	123658544	.	T	<NON_REF>	.	.	END=123658544	GT:DP:GQ	0/0:12:30
+chr1	123658545	.	T	<NON_REF>	.	.	END=123658545	GT:DP:GQ	0/0:12:0
+chr1	123658546	.	T	<NON_REF>	.	.	END=123658561	GT:DP:GQ	0/0:10:20
+chr1	123658562	.	G	<NON_REF>	.	.	END=123658562	GT:DP:GQ	0/0:10:0
+chr1	123658563	.	T	<NON_REF>	.	.	END=123658570	GT:DP:GQ	0/0:10:20
+chr1	123658571	.	T	<NON_REF>	.	.	END=123658575	GT:DP:GQ	0/0:10:30
+chr1	123658576	.	C	<NON_REF>	.	.	END=123658576	GT:DP:GQ	0/0:8:20
+chr1	123658577	.	G	<NON_REF>	.	.	END=123658596	GT:DP:GQ	0/0:12:30
+chr1	123658597	.	A	<NON_REF>	.	.	END=123658607	GT:DP:GQ	0/0:17:40
+chr1	123658608	.	A	C,<NON_REF>	447.77	.	AS_QUALapprox=|476|0;AS_VarDP=0|17|0;DP=17;MQ_DP=17;QUALapprox=476;RAW_GT_COUNT=0,0,1;RAW_MQ=24294.00;RAW_MQandDP=24294,17;VarDP=17	GT:AD:DP:GQ:PL:SB	1/1:0,17,0:17:51:476,51,0,476,51,476:0,0,11,6
+chr1	123658609	.	T	<NON_REF>	.	.	END=123658610	GT:DP:GQ	0/0:18:40
+chr1	123658611	.	C	<NON_REF>	.	.	END=123658611	GT:DP:GQ	0/0:19:20
+chr1	123658612	.	G	<NON_REF>	.	.	END=123658716	GT:DP:GQ	0/0:31:40
+chr1	123658717	.	T	C,<NON_REF>	736.77	.	AS_QUALapprox=|765|0;AS_VarDP=2|27|0;BaseQRankSum=1.764;DP=31;MQRankSum=0.559;MQ_DP=31;QUALapprox=765;RAW_GT_COUNT=0,0,1;RAW_MQ=39111.00;RAW_MQandDP=39111,31;ReadPosRankSum=1.764;VarDP=29	GT:AD:DP:GQ:PL:SB	1/1:2,27,0:29:38:765,38,0,771,81,814:1,1,18,9
+chr1	123658718	.	T	<NON_REF>	.	.	END=123658729	GT:DP:GQ	0/0:34:40
+chr1	123658730	.	C	<NON_REF>	.	.	END=123658730	GT:DP:GQ	0/0:31:20
+chr1	123658731	.	A	<NON_REF>	.	.	END=123658747	GT:DP:GQ	0/0:33:40
+chr1	123658748	.	A	<NON_REF>	.	.	END=123658748	GT:DP:GQ	0/0:28:30
+chr1	123658749	.	C	<NON_REF>	.	.	END=123658785	GT:DP:GQ	0/0:26:40
+chr1	123658786	.	A	<NON_REF>	.	.	END=123658786	GT:DP:GQ	0/0:25:0
+chr1	123658787	.	A	<NON_REF>	.	.	END=123658787	GT:DP:GQ	0/0:26:40
+chr1	123658788	.	G	<NON_REF>	.	.	END=123658788	GT:DP:GQ	0/0:23:30
+chr1	123658789	.	G	<NON_REF>	.	.	END=123658805	GT:DP:GQ	0/0:25:40
+chr1	123658806	.	C	<NON_REF>	.	.	END=123658806	GT:DP:GQ	0/0:21:0
+chr1	123658807	.	C	<NON_REF>	.	.	END=123658834	GT:DP:GQ	0/0:24:40
+chr1	123658835	.	C	A,<NON_REF>	539.77	.	AS_QUALapprox=|568|0;AS_VarDP=6|16|0;BaseQRankSum=1.143;DP=22;MQRankSum=1.438;MQ_DP=22;QUALapprox=568;RAW_GT_COUNT=0,1,0;RAW_MQ=17318.00;RAW_MQandDP=17318,22;ReadPosRankSum=0.995;VarDP=22	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:6,16,0:22:40:0|1:123658835_C_A:568,0,40,584,88,672:2,4,2,14
+chr1	123658836	.	A	<NON_REF>	.	.	END=123658845	GT:DP:GQ	0/0:26:40
+chr1	123658846	.	T	A,<NON_REF>	195.77	.	AS_QUALapprox=|224|0;AS_VarDP=14|10|0;BaseQRankSum=0.029;DP=24;MQRankSum=1.259;MQ_DP=24;QUALapprox=224;RAW_GT_COUNT=0,1,0;RAW_MQ=14783.00;RAW_MQandDP=14783,24;ReadPosRankSum=0.439;VarDP=24	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:14,10,0:24:99:0|1:123658835_C_A:224,0,422,266,452,718:2,12,2,8
+chr1	123658847	.	T	<NON_REF>	.	.	END=123658851	GT:DP:GQ	0/0:27:40
+chr1	123658852	.	G	<NON_REF>	.	.	END=123658852	GT:DP:GQ	0/0:25:0
+chr1	123658853	.	T	<NON_REF>	.	.	END=123658879	GT:DP:GQ	0/0:27:40
+chr1	123658880	.	A	<NON_REF>	.	.	END=123658880	GT:DP:GQ	0/0:24:30
+chr1	123658881	.	C	<NON_REF>	.	.	END=123658973	GT:DP:GQ	0/0:35:40
+chr1	123658974	.	T	<NON_REF>	.	.	END=123658974	GT:DP:GQ	0/0:34:30
+chr1	123658975	.	T	<NON_REF>	.	.	END=123658998	GT:DP:GQ	0/0:33:40
+chr1	123658999	.	T	<NON_REF>	.	.	END=123658999	GT:DP:GQ	0/0:28:0
+chr1	123659000	.	T	<NON_REF>	.	.	END=123659021	GT:DP:GQ	0/0:28:40
+chr1	123659022	.	C	<NON_REF>	.	.	END=123659022	GT:DP:GQ	0/0:25:0
+chr1	123659023	.	C	<NON_REF>	.	.	END=123659034	GT:DP:GQ	0/0:26:40
+chr1	123659035	.	A	<NON_REF>	.	.	END=123659035	GT:DP:GQ	0/0:23:30
+chr1	123659036	.	G	<NON_REF>	.	.	END=123659042	GT:DP:GQ	0/0:22:40
+chr1	123659043	.	T	<NON_REF>	.	.	END=123659043	GT:DP:GQ	0/0:17:0
+chr1	123659044	.	A	<NON_REF>	.	.	END=123659045	GT:DP:GQ	0/0:16:40
+chr1	123659046	.	G	<NON_REF>	.	.	END=123659054	GT:DP:GQ	0/0:15:30
+chr1	123659055	.	T	<NON_REF>	.	.	END=123659055	GT:DP:GQ	0/0:15:0
+chr1	123659056	.	G	<NON_REF>	.	.	END=123659058	GT:DP:GQ	0/0:14:20
+chr1	123659059	.	T	<NON_REF>	.	.	END=123659176	GT:DP:GQ	0/0:3:0
+chr1	123659177	.	C	<NON_REF>	.	.	END=123659178	GT:DP:GQ	0/0:10:20
+chr1	123659179	.	C	<NON_REF>	.	.	END=123659179	GT:DP:GQ	0/0:12:0
+chr1	123659180	.	A	<NON_REF>	.	.	END=123659181	GT:DP:GQ	0/0:13:30
+chr1	123659182	.	A	<NON_REF>	.	.	END=123659202	GT:DP:GQ	0/0:22:40
+chr1	123659203	.	C	<NON_REF>	.	.	END=123659203	GT:DP:GQ	0/0:29:0
+chr1	123659204	.	A	<NON_REF>	.	.	END=123659204	GT:DP:GQ	0/0:30:40
+chr1	123659205	.	G	<NON_REF>	.	.	END=123659205	GT:DP:GQ	0/0:30:20
+chr1	123659206	.	A	<NON_REF>	.	.	END=123659208	GT:DP:GQ	0/0:30:40
+chr1	123659209	.	A	<NON_REF>	.	.	END=123659209	GT:DP:GQ	0/0:32:20
+chr1	123659210	.	G	<NON_REF>	.	.	END=123659233	GT:DP:GQ	0/0:36:40
+chr1	123659234	.	A	G,<NON_REF>	3.98	.	AS_QUALapprox=|30|0;AS_VarDP=31|3|0;BaseQRankSum=0.243;DP=34;MQRankSum=0.486;MQ_DP=34;QUALapprox=30;RAW_GT_COUNT=0,1,0;RAW_MQ=27558.00;RAW_MQandDP=27558,34;ReadPosRankSum=0.000;VarDP=34	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:31,3,0:34:30:0|1:123659234_A_G:30,0,1436,126,1445,1571:16,15,2,1
+chr1	123659235	.	T	<NON_REF>	.	.	END=123659241	GT:DP:GQ	0/0:42:40
+chr1	123659242	.	G	T,<NON_REF>	0.39	.	AS_QUALapprox=|18|0;AS_VarDP=35|3|0;BaseQRankSum=0.271;DP=38;MQRankSum=0.325;MQ_DP=38;QUALapprox=18;RAW_GT_COUNT=0,1,0;RAW_MQ=31543.00;RAW_MQandDP=31543,38;ReadPosRankSum=0.108;VarDP=38	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:35,3,0:38:18:0|1:123659234_A_G:18,0,1563,126,1572,1698:19,16,2,1
+chr1	123659243	.	T	<NON_REF>	.	.	END=123659252	GT:DP:GQ	0/0:46:40
+chr1	123659253	.	A	T,<NON_REF>	43.77	.	AS_QUALapprox=|72|0;AS_VarDP=34|5|0;BaseQRankSum=0.021;DP=40;MQRankSum=-0.609;MQ_DP=40;QUALapprox=72;RAW_GT_COUNT=0,1,0;RAW_MQ=34743.00;RAW_MQandDP=34743,40;ReadPosRankSum=-0.525;VarDP=39	GT:AD:DP:GQ:PL:SB	0/1:34,5,0:39:72:72,0,929,174,944,1118:19,15,4,1
+chr1	123659254	.	G	<NON_REF>	.	.	END=123659299	GT:DP:GQ	0/0:46:40
+chr1	123659300	.	A	G,<NON_REF>	5.29	.	AS_QUALapprox=|32|0;AS_VarDP=56|7|0;BaseQRankSum=2.329;DP=63;MQRankSum=0.733;MQ_DP=63;QUALapprox=32;RAW_GT_COUNT=0,1,0;RAW_MQ=58466.00;RAW_MQandDP=58466,63;ReadPosRankSum=-1.083;VarDP=63	GT:AD:DP:GQ:PL:SB	0/1:56,7,0:63:32:32,0,1666,200,1687,1887:28,28,7,0
+chr1	123659301	.	C	A,<NON_REF>	12.05	.	AS_QUALapprox=|40|0;AS_VarDP=54|9|0;BaseQRankSum=-2.151;DP=64;MQRankSum=-0.874;MQ_DP=64;QUALapprox=40;RAW_GT_COUNT=0,1,0;RAW_MQ=59490.00;RAW_MQandDP=59490,64;ReadPosRankSum=-0.285;VarDP=63	GT:AD:DP:GQ:PL:SB	0/1:54,9,0:63:40:40,0,1587,202,1613,1815:32,22,3,6
+chr1	123659302	.	T	<NON_REF>	.	.	END=123659327	GT:DP:GQ	0/0:71:40
+chr1	123659328	.	T	A,<NON_REF>	60.77	.	AS_QUALapprox=|89|0;AS_VarDP=53|6|0;BaseQRankSum=2.270;DP=59;MQRankSum=1.818;MQ_DP=59;QUALapprox=89;RAW_GT_COUNT=0,1,0;RAW_MQ=54209.00;RAW_MQandDP=54209,59;ReadPosRankSum=1.643;VarDP=59	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:53,6,0:59:89:0|1:123659328_T_A:89,0,2209,251,2228,2479:29,24,6,0
+chr1	123659329	.	T	<NON_REF>	.	.	END=123659331	GT:DP:GQ	0/0:60:40
+chr1	123659332	.	T	C,<NON_REF>	75.77	.	AS_QUALapprox=|104|0;AS_VarDP=46|6|0;BaseQRankSum=0.530;DP=52;MQRankSum=1.676;MQ_DP=52;QUALapprox=104;RAW_GT_COUNT=0,1,0;RAW_MQ=49835.00;RAW_MQandDP=49835,52;ReadPosRankSum=1.217;VarDP=52	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:46,6,0:52:99:0|1:123659328_T_A:104,0,2080,251,2098,2349:27,19,6,0
+chr1	123659333	.	G	<NON_REF>	.	.	END=123659339	GT:DP:GQ	0/0:56:40
+chr1	123659340	.	A	G,<NON_REF>	698.77	.	AS_QUALapprox=|727|0;AS_VarDP=23|25|0;BaseQRankSum=4.643;DP=49;MQRankSum=3.612;MQ_DP=49;QUALapprox=727;RAW_GT_COUNT=0,1,0;RAW_MQ=48422.00;RAW_MQandDP=48422,49;ReadPosRankSum=2.827;VarDP=48	GT:AD:DP:GQ:PL:SB	0/1:23,25,0:48:99:727,0,413,795,488,1283:9,14,23,2
+chr1	123659341	.	C	<NON_REF>	.	.	END=123659395	GT:DP:GQ	0/0:40:40
+chr1	123659396	.	G	A,<NON_REF>	74.77	.	AS_QUALapprox=|103|0;AS_VarDP=20|6|0;BaseQRankSum=0.213;DP=26;MQRankSum=-1.734;MQ_DP=26;QUALapprox=103;RAW_GT_COUNT=0,1,0;RAW_MQ=26609.00;RAW_MQandDP=26609,26;ReadPosRankSum=0.822;VarDP=26	GT:AD:DP:GQ:PL:SB	0/1:20,6,0:26:99:103,0,574,163,592,756:15,5,0,6
+chr1	123659397	.	T	<NON_REF>	.	.	END=123659399	GT:DP:GQ	0/0:32:40
+chr1	123659400	.	G	<NON_REF>	.	.	END=123659400	GT:DP:GQ	0/0:32:20
+chr1	123659401	.	T	<NON_REF>	.	.	END=123659411	GT:DP:GQ	0/0:30:40
+chr1	123659412	.	A	<NON_REF>	.	.	END=123659412	GT:DP:GQ	0/0:30:0
+chr1	123659413	.	G	<NON_REF>	.	.	END=123659421	GT:DP:GQ	0/0:28:40
+chr1	123659422	.	C	A,<NON_REF>	107.77	.	AS_QUALapprox=|136|0;AS_VarDP=17|6|0;BaseQRankSum=1.365;DP=23;MQRankSum=-1.855;MQ_DP=23;QUALapprox=136;RAW_GT_COUNT=0,1,0;RAW_MQ=23009.00;RAW_MQandDP=23009,23;ReadPosRankSum=0.315;VarDP=23	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:17,6,0:23:99:0|1:123659422_C_A:136,0,490,186,508,694:13,4,0,6
+chr1	123659423	.	A	<NON_REF>	.	.	END=123659425	GT:DP:GQ	0/0:28:40
+chr1	123659426	.	C	<NON_REF>	.	.	END=123659426	GT:DP:GQ	0/0:26:30
+chr1	123659427	.	C	<NON_REF>	.	.	END=123659427	GT:DP:GQ	0/0:26:0
+chr1	123659428	.	T	<NON_REF>	.	.	END=123659429	GT:DP:GQ	0/0:24:30
+chr1	123659430	.	T	<NON_REF>	.	.	END=123659430	GT:DP:GQ	0/0:24:0
+chr1	123659431	.	T	<NON_REF>	.	.	END=123659431	GT:DP:GQ	0/0:22:30
+chr1	123659432	.	T	<NON_REF>	.	.	END=123659434	GT:DP:GQ	0/0:18:20
+chr1	123659435	.	G	<NON_REF>	.	.	END=123659436	GT:DP:GQ	0/0:15:0
+chr1	123659437	.	C	T,<NON_REF>	53.77	.	AS_QUALapprox=|82|0;AS_VarDP=7|2|0;BaseQRankSum=0.067;DP=9;MQRankSum=-0.762;MQ_DP=9;QUALapprox=82;RAW_GT_COUNT=0,1,0;RAW_MQ=9993.00;RAW_MQandDP=9993,9;ReadPosRankSum=0.762;VarDP=9	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:7,2,0:9:82:0|1:123659422_C_A:82,0,311,106,320,426:6,1,0,2
+chr1	123659438	.	C	<NON_REF>	.	.	END=123659452	GT:DP:GQ	0/0:12:0
+chr1	123659453	.	GT	G,<NON_REF>	0	.	AS_QUALapprox=|1|0;AS_VarDP=0|0|0;DP=1;MQ_DP=1;QUALapprox=1;RAW_GT_COUNT=0,1,0;RAW_MQ=400.00;RAW_MQandDP=400,1;VarDP=1	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:0,0,0:0:0:0|1:123659453_GT_G:1,0,0,1,0,1:0,0,0,0
+chr1	123659455	.	T	<NON_REF>	.	.	END=123659463	GT:DP:GQ	0/0:4:0
+chr1	123659464	.	A	G,<NON_REF>	3.52	.	AS_QUALapprox=|26|0;AS_VarDP=0|0|0;DP=2;MQ_DP=2;QUALapprox=26;RAW_GT_COUNT=0,0,1;RAW_MQ=800.00;RAW_MQandDP=800,2;VarDP=1	GT:AD:DP:GQ:PGT:PID:PL:SB	1/1:0,1,0:1:3:0|1:123659453_GT_G:26,3,0,26,3,26:0,0,0,1
+chr1	123659465	.	T	<NON_REF>	.	.	END=123659468	GT:DP:GQ	0/0:7:0
+chr1	123659469	.	G	<NON_REF>	.	.	END=123659469	GT:DP:GQ	0/0:9:20
+chr1	123659470	.	C	<NON_REF>	.	.	END=123659470	GT:DP:GQ	0/0:9:0
+chr1	123659471	.	T	<NON_REF>	.	.	END=123659471	GT:DP:GQ	0/0:9:20
+chr1	123659472	.	A	<NON_REF>	.	.	END=123659472	GT:DP:GQ	0/0:10:30
+chr1	123659473	.	G	<NON_REF>	.	.	END=123659473	GT:DP:GQ	0/0:4:0
+chr1	123659474	.	A	<NON_REF>	.	.	END=123659474	GT:DP:GQ	0/0:10:30
+chr1	123659475	.	C	<NON_REF>	.	.	END=123659475	GT:DP:GQ	0/0:10:0
+chr1	123659476	.	A	<NON_REF>	.	.	END=123659480	GT:DP:GQ	0/0:11:30
+chr1	123659481	.	A	<NON_REF>	.	.	END=123659481	GT:DP:GQ	0/0:14:40
+chr1	123659482	.	A	<NON_REF>	.	.	END=123659482	GT:DP:GQ	0/0:15:30
+chr1	123659483	.	T	<NON_REF>	.	.	END=123659496	GT:DP:GQ	0/0:20:40
+chr1	123659497	.	C	<NON_REF>	.	.	END=123659497	GT:DP:GQ	0/0:23:30
+chr1	123659498	.	T	<NON_REF>	.	.	END=123659672	GT:DP:GQ	0/0:41:40
+chr1	123659673	.	A	G,<NON_REF>	851.77	.	AS_QUALapprox=|880|0;AS_VarDP=0|20|0;DP=20;MQ_DP=20;QUALapprox=880;RAW_GT_COUNT=0,0,1;RAW_MQ=18597.00;RAW_MQandDP=18597,20;VarDP=20	GT:AD:DP:GQ:PGT:PID:PL:SB	1/1:0,20,0:20:60:0|1:123659673_A_G:880,60,0,880,60,880:0,0,1,19
+chr1	123659674	.	A	<NON_REF>	.	.	END=123659677	GT:DP:GQ	0/0:21:40
+chr1	123659678	.	G	A,<NON_REF>	851.77	.	AS_QUALapprox=|880|0;AS_VarDP=0|19|0;DP=19;MQ_DP=19;QUALapprox=880;RAW_GT_COUNT=0,0,1;RAW_MQ=18068.00;RAW_MQandDP=18068,19;VarDP=19	GT:AD:DP:GQ:PGT:PID:PL:SB	1/1:0,19,0:19:60:0|1:123659673_A_G:880,60,0,880,60,880:0,0,0,19
+chr1	123659679	.	T	<NON_REF>	.	.	END=123659682	GT:DP:GQ	0/0:20:40
+chr1	123659683	.	T	<NON_REF>	.	.	END=123659683	GT:DP:GQ	0/0:20:20
+chr1	123659684	.	T	<NON_REF>	.	.	END=123659685	GT:DP:GQ	0/0:18:30
+chr1	123659686	.	A	C,<NON_REF>	736.77	.	AS_QUALapprox=|765|0;AS_VarDP=0|16|0;DP=16;MQ_DP=16;QUALapprox=765;RAW_GT_COUNT=0,0,1;RAW_MQ=16314.00;RAW_MQandDP=16314,16;VarDP=16	GT:AD:DP:GQ:PGT:PID:PL:SB	1/1:0,16,0:16:51:0|1:123659673_A_G:765,51,0,765,51,765:0,0,0,16
+chr1	123659687	.	A	<NON_REF>	.	.	END=123659689	GT:DP:GQ	0/0:16:30
+chr1	123659690	.	C	A,<NON_REF>	323.77	.	AS_QUALapprox=|352|0;AS_VarDP=3|13|0;BaseQRankSum=0.269;DP=16;MQRankSum=0.538;MQ_DP=16;QUALapprox=352;RAW_GT_COUNT=0,1,0;RAW_MQ=16314.00;RAW_MQandDP=16314,16;ReadPosRankSum=-0.404;VarDP=16	GT:AD:DP:GQ:PL:SB	0/1:3,13,0:16:47:352,0,47,361,85,447:0,3,0,13
+chr1	123659691	.	T	<NON_REF>	.	.	END=123659691	GT:DP:GQ	0/0:14:30
+chr1	123659692	.	C	<NON_REF>	.	.	END=123659710	GT:DP:GQ	0/0:11:20
+chr1	123659711	.	T	<NON_REF>	.	.	END=123659739	GT:DP:GQ	0/0:7:0
+chr1	123659740	.	C	G,<NON_REF>	63.56	.	AS_QUALapprox=|90|0;AS_VarDP=0|2|0;DP=2;MQ_DP=2;QUALapprox=90;RAW_GT_COUNT=0,0,1;RAW_MQ=1568.00;RAW_MQandDP=1568,2;VarDP=2	GT:AD:DP:GQ:PGT:PID:PL:SB	1/1:0,2,0:2:6:0|1:123659740_C_G:90,6,0,90,6,90:0,0,0,2
+chr1	123659741	.	T	G,<NON_REF>	63.56	.	AS_QUALapprox=|90|0;AS_VarDP=0|2|0;DP=2;MQ_DP=2;QUALapprox=90;RAW_GT_COUNT=0,0,1;RAW_MQ=1568.00;RAW_MQandDP=1568,2;VarDP=2	GT:AD:DP:GQ:PGT:PID:PL:SB	1/1:0,2,0:2:6:0|1:123659740_C_G:90,6,0,90,6,90:0,0,0,2
+chr1	123659742	.	A	<NON_REF>	.	.	END=123659918	GT:DP:GQ	0/0:1:0
+chr1	123659919	.	C	<NON_REF>	.	.	END=123659924	GT:DP:GQ	0/0:7:20
+chr1	123659925	.	T	<NON_REF>	.	.	END=123659925	GT:DP:GQ	0/0:7:0
+chr1	123659926	.	A	<NON_REF>	.	.	END=123659926	GT:DP:GQ	0/0:7:20
+chr1	123659927	.	G	<NON_REF>	.	.	END=123659927	GT:DP:GQ	0/0:6:0
+chr1	123659928	.	A	<NON_REF>	.	.	END=123659947	GT:DP:GQ	0/0:7:20
+chr1	123659948	.	A	<NON_REF>	.	.	END=123659948	GT:DP:GQ	0/0:5:0
+chr1	123659949	.	A	<NON_REF>	.	.	END=123659954	GT:DP:GQ	0/0:7:20
+chr1	123659955	.	G	<NON_REF>	.	.	END=123659955	GT:DP:GQ	0/0:7:0
+chr1	123659956	.	A	<NON_REF>	.	.	END=123659968	GT:DP:GQ	0/0:7:20
+chr1	123659969	.	G	<NON_REF>	.	.	END=123659969	GT:DP:GQ	0/0:6:0
+chr1	123659970	.	T	<NON_REF>	.	.	END=123659970	GT:DP:GQ	0/0:7:20
+chr1	123659971	.	C	<NON_REF>	.	.	END=123659971	GT:DP:GQ	0/0:6:0
+chr1	123659972	.	G	<NON_REF>	.	.	END=123659983	GT:DP:GQ	0/0:7:20
+chr1	123659984	.	G	<NON_REF>	.	.	END=123659984	GT:DP:GQ	0/0:6:0
+chr1	123659985	.	A	<NON_REF>	.	.	END=123659988	GT:DP:GQ	0/0:7:20
+chr1	123659989	.	A	<NON_REF>	.	.	END=123660005	GT:DP:GQ	0/0:7:0
+chr1	123660006	.	G	<NON_REF>	.	.	END=123660034	GT:DP:GQ	0/0:7:20
+chr1	123660035	.	A	<NON_REF>	.	.	END=123660073	GT:DP:GQ	0/0:7:0
+chr1	123660074	.	T	C,<NON_REF>	43.56	.	AS_QUALapprox=|70|0;AS_VarDP=0|2|0;DP=2;MQ_DP=2;QUALapprox=70;RAW_GT_COUNT=0,0,1;RAW_MQ=3200.00;RAW_MQandDP=3200,2;VarDP=2	GT:AD:DP:GQ:PL:SB	1/1:0,2,0:2:6:70,6,0,70,6,70:0,0,0,2
+chr1	123660075	.	T	<NON_REF>	.	.	END=123660126	GT:DP:GQ	0/0:4:0
+chr1	123660127	.	A	<NON_REF>	.	.	END=123660127	GT:DP:GQ	0/0:7:20
+chr1	123660128	.	A	<NON_REF>	.	.	END=123660128	GT:DP:GQ	0/0:7:0
+chr1	123660129	.	C	<NON_REF>	.	.	END=123660139	GT:DP:GQ	0/0:8:20
+chr1	123660140	.	C	<NON_REF>	.	.	END=123660145	GT:DP:GQ	0/0:11:30
+chr1	123660146	.	C	<NON_REF>	.	.	END=123660146	GT:DP:GQ	0/0:9:20
+chr1	123660147	.	T	<NON_REF>	.	.	END=123660153	GT:DP:GQ	0/0:12:30
+chr1	123660154	.	C	G,<NON_REF>	75.77	.	AS_QUALapprox=|104|0;AS_VarDP=6|4|0;BaseQRankSum=0.259;DP=12;MQRankSum=-2.047;MQ_DP=12;QUALapprox=104;RAW_GT_COUNT=0,1,0;RAW_MQ=16217.00;RAW_MQandDP=16217,12;ReadPosRankSum=-1.073;VarDP=10	GT:AD:DP:GQ:PL:SB	0/1:6,4,0:12:99:104,0,138,122,150,272:2,4,5,1
+chr1	123660155	.	A	<NON_REF>	.	.	END=123660159	GT:DP:GQ	0/0:13:30
+chr1	123660160	.	A	<NON_REF>	.	.	END=123660227	GT:DP:GQ	0/0:17:40
+chr1	123660228	.	A	<NON_REF>	.	.	END=123660228	GT:DP:GQ	0/0:18:0
+chr1	123660229	.	G	<NON_REF>	.	.	END=123660231	GT:DP:GQ	0/0:19:40
+chr1	123660232	.	A	T,<NON_REF>	8.44	.	AS_QUALapprox=|36|0;AS_VarDP=16|2|0;BaseQRankSum=1.897;DP=18;MQRankSum=-1.756;MQ_DP=18;QUALapprox=36;RAW_GT_COUNT=0,1,0;RAW_MQ=22664.00;RAW_MQandDP=22664,18;ReadPosRankSum=-0.351;VarDP=18	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:16,2,0:18:36:0|1:123660232_A_T:36,0,666,84,672,756:9,7,2,0
+chr1	123660233	.	T	<NON_REF>	.	.	END=123660239	GT:DP:GQ	0/0:20:40
+chr1	123660240	.	C	<NON_REF>	.	.	END=123660240	GT:DP:GQ	0/0:20:20
+chr1	123660241	.	T	<NON_REF>	.	.	END=123660250	GT:DP:GQ	0/0:21:40
+chr1	123660251	.	G	T,<NON_REF>	6.02	.	AS_QUALapprox=|33|0;AS_VarDP=17|2|0;BaseQRankSum=2.059;DP=19;MQRankSum=-1.793;MQ_DP=19;QUALapprox=33;RAW_GT_COUNT=0,1,0;RAW_MQ=23820.00;RAW_MQandDP=23820,19;ReadPosRankSum=0.066;VarDP=19	GT:AD:DP:GQ:PGT:PID:PL:SB	0/1:17,2,0:19:33:0|1:123660232_A_T:33,0,688,84,694,778:9,8,2,0
+chr1	123660252	.	A	<NON_REF>	.	.	END=123660257	GT:DP:GQ	0/0:21:40
+chr1	123660258	.	C	<NON_REF>	.	.	END=123660258	GT:DP:GQ	0/0:21:20
+chr1	123660259	.	A	<NON_REF>	.	.	END=123660260	GT:DP:GQ	0/0:21:40
+chr1	123660261	.	G	<NON_REF>	.	.	END=123660261	GT:DP:GQ	0/0:19:0
+chr1	123660262	.	T	<NON_REF>	.	.	END=123660262	GT:DP:GQ	0/0:21:20
+chr1	123660263	.	G	<NON_REF>	.	.	END=123660290	GT:DP:GQ	0/0:18:40
+chr1	123660291	.	G	<NON_REF>	.	.	END=123660292	GT:DP:GQ	0/0:14:30
+chr1	123660293	.	A	<NON_REF>	.	.	END=123660293	GT:DP:GQ	0/0:15:0
+chr1	123660294	.	G	<NON_REF>	.	.	END=123660310	GT:DP:GQ	0/0:15:30
+chr1	123660311	.	G	<NON_REF>	.	.	END=123660311	GT:DP:GQ	0/0:13:0
+chr1	123660312	.	T	<NON_REF>	.	.	END=123660319	GT:DP:GQ	0/0:13:30
+chr1	123660320	.	C	<NON_REF>	.	.	END=123660320	GT:DP:GQ	0/0:13:0
+chr1	123660321	.	T	<NON_REF>	.	.	END=123660324	GT:DP:GQ	0/0:13:30
+chr1	123660325	.	C	<NON_REF>	.	.	END=123660326	GT:DP:GQ	0/0:13:0
+chr1	123660327	.	G	<NON_REF>	.	.	END=123660334	GT:DP:GQ	0/0:12:20
+chr1	123660335	.	C	<NON_REF>	.	.	END=123660336	GT:DP:GQ	0/0:13:0
+chr1	123660337	.	C	G,<NON_REF>	113.77	.	AS_QUALapprox=|142|0;AS_VarDP=4|5|0;BaseQRankSum=1.652;DP=9;MQRankSum=2.219;MQ_DP=9;QUALapprox=142;RAW_GT_COUNT=0,1,0;RAW_MQ=9387.00;RAW_MQandDP=9387,9;ReadPosRankSum=0.729;VarDP=9	GT:AD:DP:GQ:PL:SB	0/1:4,5,0:9:78:142,0,78,154,93,247:1,3,0,5
+chr1	123660338	.	A	<NON_REF>	.	.	END=123660346	GT:DP:GQ	0/0:9:20
+chr1	123660347	.	T	<NON_REF>	.	.	END=123660472	GT:DP:GQ	0/0:4:0

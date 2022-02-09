@@ -29,14 +29,34 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     private static final String hg38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
     private static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
 
-    @Test  //covers inputs with "MQ" annotation
-    public void testJustOneSample() throws Exception {
+    @Test
+    public void testWithExactComparison() throws Exception {
+        //covers inputs with old format "MQ" annotation
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 "-L chr20:69771 -O %s -R " + hg38_reference_20_21 +
                         " -V " + getToolTestDataDir() + "gvcfForReblocking.g.vcf -rgq-threshold 19" +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
                 Arrays.asList(getToolTestDataDir() + "testJustOneSample.expected.g.vcf"));
-        spec.executeTest("testJustOneSample", this);
+        spec.executeTest("testWithExactComparison", this);
+
+
+        //Broad production arguments on WGS data
+        final IntegrationTestSpec spec2 = new IntegrationTestSpec(
+                "-O %s -R " + hg38Reference +
+                        " -V " + getToolTestDataDir() + "prodWgsInput.g.vcf " +
+                        " -do-qual-approx --floor-blocks -GQB 20 -GQB 30 -GQB 40 " +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
+                Arrays.asList(getToolTestDataDir() + "prodWgsOutput.g.vcf"));
+        spec2.executeTest("testWithExactComparison", this);
+
+        //Exome data with AS annotations and zero DP regression test
+        final IntegrationTestSpec spec3 = new IntegrationTestSpec(
+                "-O %s -R " + hg38Reference +
+                        " -V " + getToolTestDataDir() + "prodWesInput.g.vcf " +
+                        " -do-qual-approx --floor-blocks -GQB 20 -GQB 30 -GQB 40 " +
+                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
+                Arrays.asList(getToolTestDataDir() + "prodWesOutput.g.vcf"));
+        spec3.executeTest("testWithExactComparison", this);
     }
 
     @Test
