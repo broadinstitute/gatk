@@ -35,7 +35,7 @@ function updateSpredsheet() {
 function recordGitHubReleaseDownloadCount() {
 
   // Header for GATK Bot to pull down the info on the releases so we don't get rate-limited: 
-	// This is OPTIONAL, but HIGHLY RECOMMENDED!
+  // This is OPTIONAL, but HIGHLY RECOMMENDED!
   var GATK_BOT_AUTH_TOKEN = "";
   var REQUEST_HEADERS = {
     "headers" : {
@@ -112,7 +112,10 @@ function recordGitHubReleaseDownloadCount() {
   var totalDownloads = 0;
   releaseInfo.forEach( function (release) {
     var tagName = release['tag_name'];
-    var downloadCount = release['assets'][0]['download_count'];
+    var downloadCount = 0;
+    if (release['assets'].length != 0) {
+      var downloadCount = release['assets'][0]['download_count'];
+    }
 
     // Add our new download count to our row:
     row.push(downloadCount);
@@ -122,13 +125,21 @@ function recordGitHubReleaseDownloadCount() {
     // removed from the repo, so we can use simple counts to track
     // when new releases are added:
     var oldDownloadCount = 0;
-    if ((releaseIndex + 1) > releaseVersions.length) {
+
+    // Need to divide the release versions by 2 
+    // because they comprise all the headers (including the new downloads)
+    if ((releaseIndex + 1) > (releaseVersions.length/2)) {
+
       // New release!
+      console.log("New release detected: %s", tagName)
+
       // We need to add this new release to our headers!
+      console.log("Setting header cell: %d, %d) to track %s total downloads", 1, COUNT_START_COLUMN + (releaseIndex * NUM_FIELDS_PER_RELEASE), tagName)
       var newReleaseDownloadCountHeaderCell = spreadsheet.getRange(1, COUNT_START_COLUMN + (releaseIndex * NUM_FIELDS_PER_RELEASE), 1, 1);
       newReleaseDownloadCountHeaderCell.setValue(tagName);
       newReleaseDownloadCountHeaderCell.setFontWeight('bold');
 
+      console.log("Setting header cell: %d, %d) to track %s new downloads", 1, COUNT_START_COLUMN + (releaseIndex * NUM_FIELDS_PER_RELEASE) + 1, tagName)
       var newReleaseDownloadDiffCountHeaderCell = spreadsheet.getRange(1, COUNT_START_COLUMN + (releaseIndex * NUM_FIELDS_PER_RELEASE) + 1, 1, 1);
       newReleaseDownloadDiffCountHeaderCell.setValue(tagName + " New Downloads");
       newReleaseDownloadDiffCountHeaderCell.setFontWeight('bold');
@@ -171,18 +182,47 @@ function recordDockerImagePullCount() {
   // This is the last row with data in it:
   var lastRow = spreadsheet.getLastRow();
 
+  // Get the headers of our docker spreadsheet so we can update as necessary:
+  var lastCol = spreadsheet.getLastColumn();
+  var imageVersions = [];
+  if (lastCol != 1) { 
+    imageVersions = spreadsheet.getRange(1,2,1, lastCol-1).getValues()[0];
+  }
+
   var totalPullCountList = [];
   var imageNum = 0;
   images.forEach(function (image) {
+
     // Get the new count:
     var pull_count = get_image_pull_count(image);
     row.push(pull_count);
 
-    // Get the old count as well:
-    var oldPullCount = spreadsheet.getRange(lastRow, COUNT_START_COLUMN + (imageNum * NUM_FIELDS_PER_IMAGE)).getValue();
-    
+    var new_pulls = 0;
+
+    // Check if we need to add a new header:
+    if ((imageNum + 1) > (imageVersions.length/2)) {
+      // New Docker Image to Track!
+      console.log("New docker image detected: %s", image)
+
+      // We need to add this new release to our headers!
+      console.log("Setting header cell: %d, %d) to track %s total pulls", 1, COUNT_START_COLUMN + (imageNum * NUM_FIELDS_PER_IMAGE), image)
+      var newReleaseDownloadCountHeaderCell = spreadsheet.getRange(1, COUNT_START_COLUMN + (imageNum * NUM_FIELDS_PER_IMAGE), 1, 1);
+      newReleaseDownloadCountHeaderCell.setValue("Pulls (" + image + ")");
+      newReleaseDownloadCountHeaderCell.setFontWeight('bold');
+
+      console.log("Setting header cell: %d, %d) to track %s new pulls", 1, COUNT_START_COLUMN + (imageNum * NUM_FIELDS_PER_IMAGE) + 1, image)
+      var newReleaseDownloadDiffCountHeaderCell = spreadsheet.getRange(1, COUNT_START_COLUMN + (imageNum * NUM_FIELDS_PER_IMAGE) + 1, 1, 1);
+      newReleaseDownloadDiffCountHeaderCell.setValue("New Pulls (" + image + ")");
+      newReleaseDownloadDiffCountHeaderCell.setFontWeight('bold');
+    }
+    else {
+      // Get the old count as well:
+      var oldPullCount = spreadsheet.getRange(lastRow, COUNT_START_COLUMN + (imageNum * NUM_FIELDS_PER_IMAGE)).getValue();
+      new_pulls = pull_count - oldPullCount;
+    }
+
     // Add the count diff to our row:
-    row.push(pull_count - oldPullCount);
+    row.push(new_pulls);
     imageNum++;
 
     totalPullCountList.push(pull_count);
