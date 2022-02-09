@@ -844,8 +844,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
                             final List<String> subsetList;
                             if (alleleSpecificValues.size() > 0) {
                                 subsetList = AlleleSubsettingUtils.remapRLengthList(alleleSpecificValues, relevantIndices, "");
-                                //zero out non-ref value, just in case
-                                subsetList.set(subsetList.size()-1,((AlleleSpecificAnnotation)annotation).getEmptyRawValue());
+                                if (sourceVC.getAlleles().get(relevantIndices[relevantIndices.length - 1]).equals(Allele.NON_REF_ALLELE)) {
+                                    //zero out non-ref value, just in case
+                                    subsetList.set(subsetList.size() - 1, ((AlleleSpecificAnnotation) annotation).getEmptyRawValue());
+                                }
                             } else {
                                 subsetList = Collections.nCopies(relevantIndices.length, "");
                             }
