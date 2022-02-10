@@ -5,13 +5,20 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5LibException;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -30,8 +37,12 @@ final class VariantDataCollection {
 
     private static final int INITIAL_SIZE = 1000000;
 
-    private static final String BIALLELIC_SNP_LABEL = "biallelic_snp";
-    private static final String TRANSITION_LABEL = "transition";
+    // TODO make labels enum?
+    static final String TRAINING_LABEL = "training";
+    static final String TRUTH_LABEL = "truth";
+
+    static final String BIALLELIC_SNP_LABEL = "biallelic_snp";
+    static final String TRANSITION_LABEL = "transition";
     static final List<String> COMPUTED_LABELS = ImmutableList.of(BIALLELIC_SNP_LABEL, TRANSITION_LABEL);
 
     private final List<String> sortedAnnotationKeys;
@@ -143,5 +154,62 @@ final class VariantDataCollection {
     static void setScores(final List<VariantDatum> data,
                           final double[] scores) {
         IntStream.range(0, data.size()).forEach(i -> data.get(i).score = scores[i]);
+    }
+
+    void writeAnnotationsHDF5(final File outputFile,
+                              final int maximumChunkSize) {
+        // TODO validate
+        try (final HDF5File outputHDF5File = new HDF5File(outputFile, HDF5File.OpenMode.CREATE)) {
+            IOUtils.canReadFile(outputHDF5File.getFile());
+
+            outputHDF5File.makeStringArray("/data/annotation_names", sortedAnnotationKeys.toArray(new String[0]));
+            HDF5Utils.writeChunkedDoubleMatrix(outputHDF5File, "/data/annotations", data.stream().map(vd -> vd.annotations).toArray(double[][]::new), maximumChunkSize);
+            for (final String label : sortedLabels) {
+                outputHDF5File.makeDoubleArray(String.format("/data/is_%s", label),
+                        data.stream().mapToDouble(vd -> vd.labels.contains(label) ? 1 : 0).toArray());
+            }
+        } catch (final HDF5LibException exception) {
+            throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
+                    exception, outputFile.getAbsolutePath()));
+        }
+        logger.info(String.format("Annotations written to %s.", outputFile.getAbsolutePath()));
+    }
+
+    static double[][] readData(final File annotationsFile) {
+        try (final HDF5File annotationsHDF5File = new HDF5File(annotationsFile, HDF5File.OpenMode.READ_ONLY)) {
+            IOUtils.canReadFile(annotationsHDF5File.getFile());
+            return HDF5Utils.readChunkedDoubleMatrix(annotationsHDF5File, "/data/annotations");
+        } catch (final HDF5LibException exception) {
+            throw new GATKException(String.format("Exception encountered during reading of annotations from %s: %s",
+                    annotationsFile.getAbsolutePath(), exception));
+        }
+    }
+
+    static List<Boolean> readLabel(final File annotationsFile,
+                               final String label) {
+        try (final HDF5File annotationsHDF5File = new HDF5File(annotationsFile, HDF5File.OpenMode.READ_ONLY)) {
+            IOUtils.canReadFile(annotationsHDF5File.getFile());
+            return readBooleanList(annotationsHDF5File, String.format("/data/is_%s", label));
+        } catch (final HDF5LibException exception) {
+            throw new GATKException(String.format("Exception encountered during reading of label %s from %s: %s",
+                    label, annotationsFile.getAbsolutePath(), exception));
+        }
+    }
+
+    static String[] readAnnotationNames(final File annotationsFile) {
+        try (final HDF5File annotationsHDF5File = new HDF5File(annotationsFile, HDF5File.OpenMode.READ_ONLY)) {
+            IOUtils.canReadFile(annotationsHDF5File.getFile());
+            return annotationsHDF5File.readStringArray("/data/annotation_names");
+        } catch (final HDF5LibException exception) {
+            throw new GATKException(String.format("Exception encountered during reading of annotation names from %s: %s",
+                    annotationsFile.getAbsolutePath(), exception));
+        }
+    }
+
+    private static List<Boolean> readBooleanList(final HDF5File hdf5File,
+                                                 final String path) {
+        return Arrays.stream(hdf5File.readDoubleArray(path))
+                .mapToObj(d -> (d == 1))
+                .collect(Collectors.toList());
     }
 }
