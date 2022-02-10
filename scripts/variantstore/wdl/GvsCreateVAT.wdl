@@ -37,7 +37,6 @@ workflow GvsCreateVAT {
     scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
         ## Create a sites-only VCF from the original GVS jointVCF
         ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
-        ## To prevent premature failures from this brittle step, the output will be saved to GCP
         call Annotations.GvsCreateVATAnnotations {
             input:
               input_vcf = MakeSubpopulationFiles.input_vcfs[i],
@@ -51,12 +50,6 @@ workflow GvsCreateVAT {
               ref = reference
         }
     }
-
-
-    ## TODO move everything to a "done" folder so that stuff doesn't get loaded in twice
-
-## presumably I want all of these above to finish running? And to be stored in a GCP bucket? Then how do I get all of the files from there?
-## technically there are (approx) the same number as the loop before except for the failures -- how am I going to want to deal with the failures?
 
     call BigQueryLoadJson {
        input:

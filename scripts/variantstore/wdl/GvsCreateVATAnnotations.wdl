@@ -15,7 +15,6 @@ workflow GvsCreateVATAnnotations {
 
       ## Create a sites-only VCF from the original GVS jointVCF
       ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
-      ## To prevent premature failures from this brittle step, the output will be saved to GCP
         call ExtractAnAcAfFromVCF {
           input:
             input_vcf = input_vcf,
@@ -31,8 +30,8 @@ workflow GvsCreateVATAnnotations {
       ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
         call AnnotateVCF {
           input:
-            input_vcf = ExtractAnAcAfFromVCF.output_vcf, ## TODO these need to be grabbed from the bucket
-            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index, ## TODO these need to be grabbed from the bucket
+            input_vcf = ExtractAnAcAfFromVCF.output_vcf,
+            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
@@ -83,9 +82,6 @@ task ExtractAnAcAfFromVCF {
     String normalized_vcf = "normalized.vcf"
     String normalized_vcf_compressed = "normalized.vcf.gz"
     String normalized_vcf_indexed = "normalized.vcf.gz.tbi"
-
-    String output_directory_name = output_path + 'med/' + local_input_vcf
-
 
     # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
     # while extracting and calculating the an/ac/af & sc by subpopulation into a tsv
@@ -170,17 +166,6 @@ task ExtractAnAcAfFromVCF {
         bcftools view --no-update --drop-genotypes deduplicated.vcf.gz -Oz -o ~{normalized_vcf_compressed}
         ## if we can spare the IO and want to pass a smaller file we can also drop the info field w bcftools annotate -x INFO
         bcftools index --tbi  ~{normalized_vcf_compressed}
-
-
-        ## To prevent premature failures from this brittle step, the output will be saved to GCP
-        ## in case of fire, there are 3 files that I really need:
-        # custom_annotations_file_name, normalized_vcf_compressed, normalized_vcf_indexed
-        ## and they will be loaded with gsutil commands
-        gsutil cp ~{custom_annotations_file_name} '~{output_directory_name}/~{custom_annotations_file_name}'
-        # gsutil cp count.txt '~{output_directory_name}/count.txt' ## maybe I'm okay with losing track of this
-        # gsutil cp track_dropped.tsv '~{output_directory_name}/track_dropped.tsv}' ## maybe I'm okay with losing track of this
-        gsutil cp ~{normalized_vcf_compressed} '~{output_directory_name}/~{normalized_vcf_compressed}'
-        gsutil cp ~{normalized_vcf_indexed} '~{output_directory_name}/~{normalized_vcf_indexed}'
 
     >>>
     # ------------------------------------------------
