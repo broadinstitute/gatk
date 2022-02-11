@@ -16,7 +16,7 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
     public final Allele refAllele;
     public final Allele altAllele;
     public final ImmutableSet<String> labels;
-    public final ImmutableList<Double> annotations;
+    public final double[] annotations;
     public double score;    // TODO decouple
 
     public LabeledVariantAnnotationsDatum(final VariantContext vc,
@@ -30,8 +30,8 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
         this.altAllele = altAllele;
         this.labels = ImmutableSet.copyOf(labels);
         this.annotations = sortedAnnotationKeys.stream()
-                .map(k -> decodeAnnotation(k, vc, altAllele, useASAnnotations))
-                .collect(ImmutableList.toImmutableList());
+                .mapToDouble(k -> decodeAnnotation(k, vc, altAllele, useASAnnotations))
+                .toArray();
     }
 
     @Override
