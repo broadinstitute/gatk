@@ -3,13 +3,11 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -23,7 +21,6 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -34,6 +31,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,13 +48,10 @@ import java.util.stream.Collectors;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
+public class VariantLabeledAnnotationsWalker extends MultiVariantWalker {
 
     private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
     private static final String DEFAULT_VCF_SUFFIX = ".vcf";
-
-    private static final int DEFAULT_CHUNK_DIVISOR = 16;
-    static final int DEFAULT_MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / DEFAULT_CHUNK_DIVISOR;
 
     private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
     private static final String DUMMY_ALLELE = "<VQSR>";
@@ -80,8 +75,8 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
     @Argument(
             fullName = "mode",
             shortName = "mode",
-            doc = "Variant type to extract")
-    public VariantTypeMode mode = VariantTypeMode.SNP;
+            doc = "Variant types to extract")
+    public List<VariantType> variantTypesToExtractList = new ArrayList<>(Arrays.asList(VariantType.SNP, VariantType.INDEL));
 
     /**
      * Extract per-allele annotations.
@@ -124,27 +119,28 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
             optional = true)
     private boolean trustAllPolymorphic = false;
 
+    // TODO document and validate batchSize * number of annotations <= HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX
     @Advanced
     @Argument(
-            doc = "Maximum HDF5 matrix chunk size.  Large matrices written to HDF5 are chunked into equally sized " +
-                    "subsets of rows (plus a subset containing the remainder, if necessary) to avoid a hard limit in " +
-                    "Java HDF5 on the number of elements in a matrix.  However, since a single row is not allowed to " +
-                    "be split across multiple chunks, the number of columns must be less than the maximum number of " +
-                    "values in each chunk.  Decreasing this number will reduce heap usage when writing chunks.",
-            fullName = "maximum-chunk-size",
+            fullName = "batch-size",
             minValue = 1,
-            maxValue = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX,
             optional = true
     )
-    int maximumChunkSize = DEFAULT_MAXIMUM_CHUNK_SIZE;
+    int batchSize = 100000;
 
-    LabeledVariantAnnotationsData data;
+    private Set<VariantType> variantTypesToExtract;
     File outputAnnotationsFile;
     private File outputVCFFile;
+    private VariantContextWriter vcfWriter;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
 
+    VariantLabeledAnnotationsData dataBatch;
+
+    private int batchIndex = 0;
+
+
     // TODO document
-    public boolean isExtractAll() {
+    public boolean isExtractVariantsNotOverlappingResources() {
         return true;
     }
 
@@ -161,6 +157,8 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
 
         beforeOnTraversalStart();
 
+        variantTypesToExtract = EnumSet.copyOf(variantTypesToExtractList);
+
         final String vcfSuffix = getVCFSuffix();
 
         outputAnnotationsFile = new File(outputPrefix + ANNOTATIONS_HDF5_SUFFIX);
@@ -172,6 +170,9 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
                 throw new UserException(String.format("Cannot create output file at %s.", outputFile));
             }
         }
+
+        vcfWriter = createVCFWriter(outputVCFFile);
+        vcfWriter.writeHeader(constructVCFHeader());
 
         if (ignoreInputFilters != null) {
             ignoreInputFilterSet.addAll(ignoreInputFilters);
@@ -189,19 +190,19 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
         }
         resourceLabels.forEach(String::intern);
 
-        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
+        if (!resourceLabels.contains(VariantLabeledAnnotationsData.TRAINING_LABEL)) {
             throw new CommandLineException(
                     "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
         }
 
-        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRUTH_LABEL)) {
+        if (!resourceLabels.contains(VariantLabeledAnnotationsData.TRUTH_LABEL)) {
             throw new CommandLineException(
                     "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
         }
 
-        data = new LabeledVariantAnnotationsData(useAnnotations, resourceLabels, useASAnnotations);
+        dataBatch = new VariantLabeledAnnotationsData(useAnnotations, resourceLabels);
     }
 
     @Override
@@ -209,44 +210,59 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
                       final ReadsContext readsContext,
                       final ReferenceContext ref,
                       final FeatureContext featureContext) {
-        addVariantDatum(vc, featureContext);
+        addVariantIfNotFiltered(vc, featureContext);
+
+        if (dataBatch.size() == batchSize) {
+            // write HDF5
+            dataBatch.writeLabeledAnnotationsBatchToHDF5(outputAnnotationsFile, batchIndex);
+
+            // write VCF
+
+            dataBatch.clear();
+            batchIndex++;
+        }
     }
 
-    private void addVariantDatum(final VariantContext vc,
-                                 final FeatureContext featureContext) {
+    @Override
+    public Object onTraversalSuccess() {
+        // finalize HDF5
+
+        return null;
+    }
+
+    private void addVariantIfNotFiltered(final VariantContext vc,
+                                         final FeatureContext featureContext) {
         if (vc == null) {
             return;
         }
         if (!(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
             return;
         }
-        if (VariantTypeMode.checkVariationClass(vc, mode) && !useASAnnotations) {
-            final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
-            if (isExtractAll() || !overlappingResourceLabels.isEmpty()) {
-                data.addDatum(vc, vc.getReference(), null, overlappingResourceLabels);
-                if (!isExtractAll()) {
-                    data.addAlternateAlleles(vc.getAlternateAlleles());
+        if (!useASAnnotations) {
+            final VariantType variantType = VariantType.getVariantType(vc);
+            if (variantTypesToExtract.contains(variantType)) {
+                final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
+                if (isExtractVariantsNotOverlappingResources() || !overlappingResourceLabels.isEmpty()) {
+                    dataBatch.add(vc, null, Collections.singletonList(variantType), Collections.singletonList(overlappingResourceLabels));
                 }
             }
-        } else if (useASAnnotations) {
+
+        } else {
             for (final Allele altAllele : vc.getAlternateAlleles()) {
-                if (!GATKVCFConstants.isSpanningDeletion(altAllele) && VariantTypeMode.checkVariationClass(vc, altAllele, mode)) {
+                if (GATKVCFConstants.isSpanningDeletion(altAllele)) {
+                    continue;
+                }
+                final VariantType variantType = VariantType.getVariantType(vc, altAllele);
+                if (variantTypesToExtract.contains(variantType)) {
                     final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, vc.getReference(), altAllele, featureContext);
                     //note that this may not be the minimal representation for the ref and alt allele
-                    if (isExtractAll() || !overlappingResourceLabels.isEmpty()) {
-                        data.addDatum(vc, vc.getReference(), altAllele, overlappingResourceLabels);
-                        if (!isExtractAll()) {
-                            data.addAlternateAlleles(Collections.singletonList(altAllele));
-                        }
+                    if (isExtractVariantsNotOverlappingResources() || !overlappingResourceLabels.isEmpty()) {
+                        // TODO
+//                        dataBatch.add(vc, variantType, overlappingResourceLabels, altAllele);
                     }
                 }
             }
         }
-    }
-
-    @Override
-    public Object onTraversalSuccess() {
-        return null;
     }
 
     private Set<String> findOverlappingResourceLabels(final VariantContext vc,
@@ -274,7 +290,7 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
     private static boolean isValidVariant(final VariantContext vc,
                                           final VariantContext resourceVC,
                                           final boolean trustAllPolymorphic) {
-        return resourceVC != null && resourceVC.isNotFiltered() && resourceVC.isVariant() && VariantTypeMode.checkVariationClass(vc, resourceVC) &&
+        return resourceVC != null && resourceVC.isNotFiltered() && resourceVC.isVariant() && VariantType.checkVariantType(vc, resourceVC) &&
                 (trustAllPolymorphic || !resourceVC.hasGenotypes() || resourceVC.isPolymorphicInSamples());
     }
 
@@ -289,54 +305,6 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
         } catch (final IllegalStateException e) {
             throw new IllegalStateException("Reference allele mismatch at position " + resourceVC.getContig() + ':' + resourceVC.getStart() + " : ", e);
         }
-    }
-
-    void writeAnnotationsHDF5() {
-        data.writeAnnotationsHDF5(outputAnnotationsFile, maximumChunkSize);
-    }
-
-    void writeVCF(final boolean writeAlleles,
-                  final boolean writeTrainingOnly,
-                  final boolean writeScores) {
-        final VariantContextWriter vcfWriter = createVCFWriter(outputVCFFile);
-        vcfWriter.writeHeader(constructVCFHeader());
-
-        final List<LabeledVariantAnnotationsDatum> data = this.data.getData();
-
-        // we need to sort in coordinate order in order to produce a valid VCF
-        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        data.sort((vd1, vd2) -> IntervalUtils.compareLocatables(vd1.loc, vd2.loc, sequenceDictionary));
-
-        // create dummy alleles to be used
-        List<Allele> alleles = Arrays.asList(Allele.create("N", true), Allele.create(DUMMY_ALLELE, false));
-
-        for (int i = 0; i < data.size(); i++) {
-            final LabeledVariantAnnotationsDatum datum = data.get(i);
-            if (writeTrainingOnly && !datum.labels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
-                continue;
-            }
-            if (useASAnnotations) {
-                alleles = Arrays.asList(datum.refAllele, datum.altAllele); //use the alleles to distinguish between multiallelics in AS mode
-            } else if (writeAlleles) {
-                final List<Allele> allelesToWrite = this.data.alternateAlleles.get(i);
-                allelesToWrite.add(0, datum.refAllele);
-                alleles = allelesToWrite;
-            }
-            final VariantContextBuilder builder = new VariantContextBuilder(SCORE_KEY, datum.loc.getContig(), datum.loc.getStart(), datum.loc.getEnd(), alleles);
-            builder.attribute(VCFConstants.END_KEY, datum.loc.getEnd());
-
-            if (writeScores) {
-                builder.attribute(SCORE_KEY, String.format("%.4f", datum.score));
-            }
-
-            if (datum.labels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
-                builder.attribute(GATKVCFConstants.POSITIVE_LABEL_KEY, true);
-            }
-
-            vcfWriter.add(builder.make());
-        }
-        vcfWriter.close();
-        logger.info(String.format("Recalibration VCF written to %s.", outputVCFFile.getAbsolutePath()));
     }
 
     private VCFHeader constructVCFHeader() {

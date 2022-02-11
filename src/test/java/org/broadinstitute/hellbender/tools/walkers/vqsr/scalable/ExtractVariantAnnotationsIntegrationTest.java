@@ -18,7 +18,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/extract-test/test.snp",
-                "--maximum-chunk-size", "100000",
+                "--batch-size", "1000000",
                 "-an", "FS",
                 "-an", "ReadPosRankSum",
                 "-an", "MQRankSum",
@@ -30,7 +30,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
                 "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
                 "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--verbosity", "DEBUG"
+//                "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
     }

@@ -102,7 +102,7 @@ public class ApplyVariantAnnotationScores extends MultiVariantWalker {
     private boolean EXCLUDE_FILTERED = false;
 
     @Argument(fullName = "mode", shortName = "mode", doc = "Recalibration mode to employ: 1.) SNP for recalibrating only SNPs (emitting indels untouched in the output VCF); 2.) INDEL for indels; and 3.) BOTH for recalibrating both SNPs and indels simultaneously.", optional=true)
-    private VariantTypeMode MODE = VariantTypeMode.SNP;
+    private VariantType MODE = VariantType.SNP;
 
     /////////////////////////////
     // Private Member Variables
@@ -252,7 +252,7 @@ public class ApplyVariantAnnotationScores extends MultiVariantWalker {
     public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext ref, final FeatureContext featureContext) {
 
         final List<VariantContext> recals =  featureContext.getValues(recal, vc.getStart());
-        final boolean evaluateThisVariant = useASannotations || VariantTypeMode.checkVariationClass( vc, MODE );
+        final boolean evaluateThisVariant = useASannotations || VariantType.checkVariantType( vc, MODE );
 
         //vc.isNotFiltered is true for PASS; vc.filtersHaveBeenApplied covers PASS and filters
         final boolean variantIsNotFiltered = IGNORE_ALL_FILTERS || vc.isNotFiltered() ||
@@ -301,8 +301,8 @@ public class ApplyVariantAnnotationScores extends MultiVariantWalker {
     protected String generateFilterStringFromAlleles(final VariantContext vc, final double bestLod) {
         String filterString = ".";
 
-        final boolean bothModesWereRun = (MODE == VariantTypeMode.SNP && foundINDELTranches) || (MODE == VariantTypeMode.INDEL && foundSNPTranches);
-        final boolean onlyOneModeNeeded = !vc.isMixed() && VariantTypeMode.checkVariationClass( vc, MODE );
+        final boolean bothModesWereRun = (MODE == VariantType.SNP && foundINDELTranches) || (MODE == VariantType.INDEL && foundSNPTranches);
+        final boolean onlyOneModeNeeded = !vc.isMixed() && VariantType.checkVariantType( vc, MODE );
 
         //if both SNP and INDEL modes have not yet been run (and need to be), leave this variant as unfiltered and add the filters for the alleles in this mode to the INFO field
         if (!bothModesWereRun && !onlyOneModeNeeded) {
@@ -448,7 +448,7 @@ public class ApplyVariantAnnotationScores extends MultiVariantWalker {
             final Allele allele = vc.getAlternateAllele(altIndex);
 
             //if the current allele is not part of this recalibration mode, add its annotations to the list and go to the next allele
-            if (!VariantTypeMode.checkVariationClass(vc, allele, MODE)) {
+            if (!VariantType.checkVariantType(vc, allele, MODE)) {
                 updateAnnotationsWithoutRecalibrating(altIndex, prevLodList, prevASfiltersList, lodStrings, AS_filterStrings);
                 continue;
             }
