@@ -17,7 +17,7 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
     public final Allele altAllele;
     public final ImmutableSet<String> labels;
     public final ImmutableList<Double> annotations;
-    public double score;
+    public double score;    // TODO decouple
 
     public LabeledVariantAnnotationsDatum(final VariantContext vc,
                                           final Allele refAllele,

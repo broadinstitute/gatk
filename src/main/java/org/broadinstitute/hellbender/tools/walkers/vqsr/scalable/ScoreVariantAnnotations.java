@@ -18,6 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -46,22 +47,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             fullName = "model-prefix")
     private String modelPrefix;
 
-    /**
-     * Add truth sensitivity slices through the call set at the given values. The default values are 100.0, 99.9, 99.0, and 90.0
-     * which will result in 4 estimated tranches in the final call set: the full set of calls (100% sensitivity at the accessible
-     * sites in the truth set), a 99.9% truth sensitivity tranche, along with progressively smaller tranches at 99% and 90%.
-     * Note: You must pass in each tranche as a separate value (e.g. -tranche 100.0 -tranche 99.9).
-     */
-    @Argument(
-            fullName = "truth-sensitivity-tranche",
-            shortName = "tranche",
-            doc = "The levels of truth sensitivity at which to slice the data. (in percent, that is 1.0 for 1 percent)",
-            optional = true)
-    private List<Double> truthSensitivityTranches = new ArrayList<>(Arrays.asList(100.0, 99.9, 99.0, 90.0));
-
     private File inputScorerPklFile;
     private File outputScoresFile;
-    private File outputTranchesFile;
 
     @Override
     public String getVCFSuffix() {
@@ -87,9 +74,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         }
 
         outputScoresFile = new File(outputPrefix + SCORES_HDF5_SUFFIX);
-        outputTranchesFile = new File(outputPrefix + ".tranches.csv");
 
-        for (final File outputFile : Arrays.asList(outputScoresFile, outputTranchesFile)) {
+        for (final File outputFile : Collections.singletonList(outputScoresFile)) {
             if ((outputFile.exists() && !outputFile.canWrite()) ||
                     (!outputFile.exists() && !outputFile.getAbsoluteFile().getParentFile().canWrite())) {
                 throw new UserException(String.format("Cannot create output file at %s.", outputFile));
@@ -152,9 +138,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
         logger.info("Writing VCF...");
         writeVCF(false, false,true);
-
-        VariantAnnotationUtils.writeTruthSensitivityTranches(
-                outputTranchesFile, outputScoresFile, outputAnnotationsFile, truthSensitivityTranches, mode);
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
     }

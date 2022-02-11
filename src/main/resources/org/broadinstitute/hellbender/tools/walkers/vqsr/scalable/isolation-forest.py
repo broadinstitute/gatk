@@ -50,14 +50,19 @@ def do_work(raw_annotations_file,
     scorer_lambda = lambda test_X_ni: clf.score_samples(imputer.transform(test_X_ni))
 
     print('Scoring...')
-    scores = clf.score_samples(imputed_X_ni)
+    scores_n = clf.score_samples(imputed_X_ni)
 
     print(f'Writing scores...')
-    output_scores_file = f'{output_prefix}.scores.hdf5'
-    with h5py.File(output_scores_file, 'w') as f:
-        scores_dset = f.create_dataset('data/scores', (len(scores),), dtype='d')
-        scores_dset[:] = scores
-    print(f'Scores written to {output_scores_file}.')
+    output_training_scores_file = f'{output_prefix}.trainingScores.hdf5'
+    with h5py.File(output_training_scores_file, 'w') as f:
+        scores_dset = f.create_dataset('data/scores', (len(scores_n[is_training_n]),), dtype='d')
+        scores_dset[:] = scores_n[is_training_n]
+    print(f'Training scores written to {output_training_scores_file}.')
+    output_truth_scores_file = f'{output_prefix}.truthScores.hdf5'
+    with h5py.File(output_truth_scores_file, 'w') as f:
+        scores_dset = f.create_dataset('data/scores', (len(scores_n[is_truth_n]),), dtype='d')
+        scores_dset[:] = scores_n[is_truth_n]
+    print(f'Truth scores written to {output_truth_scores_file}.')
 
     print(f'Pickling scorer...')
     output_scorer_pkl_file = f'{output_prefix}.scorer.pkl'

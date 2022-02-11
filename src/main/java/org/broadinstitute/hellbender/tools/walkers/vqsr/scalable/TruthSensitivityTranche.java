@@ -36,7 +36,7 @@ final class TruthSensitivityTranche {
     private static final String DEFAULT_TRANCHE_NAME = "anonymous";
     private static final String COMMENT_STRING = "#";
     private static final String VALUE_SEPARATOR = ",";
-    private static final int EXPECTED_COLUMN_COUNT = 9;
+    private static final int EXPECTED_COLUMN_COUNT = 8;
 
     private final String name;
     private final int numSites;

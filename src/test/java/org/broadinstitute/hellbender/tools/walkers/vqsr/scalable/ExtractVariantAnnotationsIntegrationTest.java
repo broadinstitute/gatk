@@ -35,7 +35,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
-        assertAnnotationFilesEqual(new File(outputDir, "test.snp.as.annot.hdf5"), new File("/home/slee/extract-test", "test.snp.as.annot.hdf5"));
+        assertAnnotationFilesEqual(new File(outputDir, "test.snp.as.annot.hdf5"), new File("/home/slee/working/vqsr/scalable/extract-exact-match", "test.snp.as.annot.hdf5"));
     }
 
     @Test
@@ -60,7 +60,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
-        assertAnnotationFilesEqual(new File(outputDir, "test.snp.annot.hdf5"), new File("/home/slee/extract-test", "test.snp.annot.hdf5"));
+        assertAnnotationFilesEqual(new File(outputDir, "test.snp.annot.hdf5"), new File("/home/slee/working/vqsr/scalable/extract-exact-match", "test.snp.annot.hdf5"));
     }
 
     private static void assertAnnotationFilesEqual(final File file1,

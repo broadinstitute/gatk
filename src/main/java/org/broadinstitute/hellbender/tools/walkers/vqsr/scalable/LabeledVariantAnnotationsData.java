@@ -116,7 +116,7 @@ final class LabeledVariantAnnotationsData {
     }
 
     static List<Boolean> readLabel(final File annotationsFile,
-                               final String label) {
+                                   final String label) {
         try (final HDF5File annotationsHDF5File = new HDF5File(annotationsFile, HDF5File.OpenMode.READ_ONLY)) {
             IOUtils.canReadFile(annotationsHDF5File.getFile());
             return readBooleanList(annotationsHDF5File, String.format("/data/is_%s", label));
