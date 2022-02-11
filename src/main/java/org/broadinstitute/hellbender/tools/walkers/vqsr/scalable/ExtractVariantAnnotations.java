@@ -18,12 +18,12 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     @Override
-    public void beforeOnTraversalStart() {
-        isExtractAll = false;
+    public boolean isExtractAll() {
+        return false;
     }
 
     @Override
-    public void afterTraversalSuccess() {
+    public Object onTraversalSuccess() {
 
         if (data.getData().isEmpty()) {
             throw new GATKException("None of the specified input variants were present in the resource VCFs.");
@@ -43,5 +43,7 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
         writeVCF(true, true, false);
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
+
+        return null;
     }
 }

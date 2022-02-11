@@ -51,13 +51,17 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     private File outputScoresFile;
 
     @Override
+    public boolean isExtractAll() {
+        return true;
+    }
+
+    @Override
     public String getVCFSuffix() {
         return RECALIBRATION_VCF_SUFFIX;
     }
 
     @Override
     public void beforeOnTraversalStart() {
-        isExtractAll = true;
 
         if (pythonScriptFile != null) {
             logger.info("Python script was provided, running in PYTHON mode...");
@@ -84,7 +88,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     }
 
     @Override
-    public void afterTraversalSuccess() {
+    public Object onTraversalSuccess() {
 
         logger.info(String.format("Extracted annotations for %s total variants.", data.getData().size()));
 
@@ -140,6 +144,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         writeVCF(false, false,true);
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
+
+        return null;
     }
 
     private static List<String> composePythonArguments(final File rawAnnotationsFile,
