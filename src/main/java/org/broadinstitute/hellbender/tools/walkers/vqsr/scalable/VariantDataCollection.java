@@ -8,24 +8,18 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /*
  * TODO this whole class needs refactoring. it's cleaned up significantly from VQSR version,
@@ -49,7 +43,7 @@ final class VariantDataCollection {
     final List<List<Allele>> alternateAlleles;
 
     VariantDataCollection(final Collection<String> annotationKeys,
-                          final Collection<String> resourceLabels,
+                          final Collection<String> labels,
                           final boolean useASAnnotations) {
         this.data = new ArrayList<>(INITIAL_SIZE);
         this.alternateAlleles = new ArrayList<>(INITIAL_SIZE);
@@ -57,9 +51,9 @@ final class VariantDataCollection {
         if (sortedAnnotationKeys.size() != annotationKeys.size()) {
             logger.warn(String.format("Ignoring duplicate annotations: %s.", Utils.getDuplicatedItems(annotationKeys)));
         }
-        this.sortedLabels = ImmutableList.copyOf(resourceLabels.stream().distinct().sorted().collect(Collectors.toList()));
-        if (sortedLabels.size() != resourceLabels.size()) {
-            logger.warn(String.format("Ignoring duplicate resource labels: %s.", Utils.getDuplicatedItems(resourceLabels)));
+        this.sortedLabels = ImmutableList.copyOf(labels.stream().distinct().sorted().collect(Collectors.toList()));
+        if (sortedLabels.size() != labels.size()) {
+            logger.warn(String.format("Ignoring duplicate labels: %s.", Utils.getDuplicatedItems(labels)));
         }
         this.useASAnnotations = useASAnnotations;
     }
@@ -68,19 +62,7 @@ final class VariantDataCollection {
                   final Allele refAllele, 
                   final Allele altAllele,
                   final Set<String> labels) {
-        final VariantDatum datum = new VariantDatum();
-
-        // Populate the datum with lots of fields from the VariantContext, unfortunately the VC is too big so we just
-        // pull in only the things we absolutely need.
-        datum.referenceAllele = refAllele;
-        datum.alternateAllele = altAllele;
-        decodeAnnotations(datum, vc);
-
-        // non-deterministic because order of calls depends on load of machine TODO SL: not sure what this means?
-        datum.loc = new SimpleInterval(vc);
-
-        datum.labels = labels;
-
+        final VariantDatum datum = new VariantDatum(vc, refAllele, altAllele, labels, sortedAnnotationKeys, useASAnnotations);
         data.add(datum);
     }
 
@@ -97,47 +79,6 @@ final class VariantDataCollection {
         return sortedAnnotationKeys;
     }
 
-    private void decodeAnnotations(final VariantDatum datum,
-                                   final VariantContext vc) {
-        final double[] annotations = new double[sortedAnnotationKeys.size()];
-        int iii = 0;
-        for(final String key : sortedAnnotationKeys) {
-            annotations[iii] = decodeAnnotation(key, vc, useASAnnotations, datum);
-            iii++;
-        }
-        datum.annotations = annotations;
-    }
-
-    private static double decodeAnnotation(final String annotationKey,
-                                           final VariantContext vc,
-                                           final boolean useASannotations,
-                                           final VariantDatum datum ) {
-        double value;
-
-        try {
-            //if we're in allele-specific mode and an allele-specific annotation has been requested, parse the appropriate value from the list
-            if (useASannotations && annotationKey.startsWith(GATKVCFConstants.ALLELE_SPECIFIC_PREFIX)) {
-                final List<Object> valueList = vc.getAttributeAsList(annotationKey);
-                //FIXME: we need to look at the ref allele here too
-                if (vc.hasAllele(datum.alternateAllele)) {
-                    final int altIndex = vc.getAlleleIndex(datum.alternateAllele) - 1; //- 1 is to convert the index from all alleles (including reference) to just alternate alleles
-                    value = Double.parseDouble((String) valueList.get(altIndex));
-                } else {
-                    //if somehow our alleles got mixed up
-                    throw new IllegalStateException("ExtractAnnotationsVariantDatum allele " + datum.alternateAllele + " is not contained in the input VariantContext.");
-                }
-            } else {
-                value = vc.getAttributeAsDouble(annotationKey, Double.NaN);
-            }
-            if (Double.isInfinite(value)) {
-                value = Double.NaN;
-            }
-        } catch (final NumberFormatException e) {
-            value = Double.NaN;
-        }
-        return value;
-    }
-
     static void setScores(final List<VariantDatum> data,
                           final double[] scores) {
         IntStream.range(0, data.size()).forEach(i -> data.get(i).score = scores[i]);
@@ -150,7 +91,9 @@ final class VariantDataCollection {
             IOUtils.canReadFile(outputHDF5File.getFile());
 
             outputHDF5File.makeStringArray("/data/annotation_names", sortedAnnotationKeys.toArray(new String[0]));
-            HDF5Utils.writeChunkedDoubleMatrix(outputHDF5File, "/data/annotations", data.stream().map(vd -> vd.annotations).toArray(double[][]::new), maximumChunkSize);
+            HDF5Utils.writeChunkedDoubleMatrix(outputHDF5File, "/data/annotations",
+                    data.stream().map(vd -> vd.annotations.stream().mapToDouble(x -> x).toArray()).toArray(double[][]::new),
+                    maximumChunkSize);
             for (final String label : sortedLabels) {
                 outputHDF5File.makeDoubleArray(String.format("/data/is_%s", label),
                         data.stream().mapToDouble(vd -> vd.labels.contains(label) ? 1 : 0).toArray());
