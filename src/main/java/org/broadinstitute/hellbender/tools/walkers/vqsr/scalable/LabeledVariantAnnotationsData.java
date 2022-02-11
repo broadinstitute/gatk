@@ -92,7 +92,7 @@ final class LabeledVariantAnnotationsData {
 
             outputHDF5File.makeStringArray("/data/annotation_names", sortedAnnotationKeys.toArray(new String[0]));
             HDF5Utils.writeChunkedDoubleMatrix(outputHDF5File, "/data/annotations",
-                    data.stream().map(vd -> vd.annotations.stream().mapToDouble(x -> x).toArray()).toArray(double[][]::new),
+                    data.stream().map(vd -> vd.annotations).toArray(double[][]::new),
                     maximumChunkSize);
             for (final String label : sortedLabels) {
                 outputHDF5File.makeDoubleArray(String.format("/data/is_%s", label),
