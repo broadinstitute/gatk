@@ -110,8 +110,9 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
         }
 
         // TODO fail early for outputs
+        final File outputTrainingScoresFile = new File(outputPrefix + ".trainingScores.hdf5");
+        final File outputTruthScoresFile = new File(outputPrefix + ".truthScores.hdf5");
         final File outputTranchesFile = new File(outputPrefix + ".tranches.csv");
-        final File outputScoresFile = new File(outputPrefix + ".scores.hdf5");
 
         logger.info("Starting training...");
 
@@ -135,17 +136,24 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             final double[][] allData = LabeledVariantAnnotationsData.readData(inputAnnotationsFile);
             final String[] annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputAnnotationsFile);
             final List<Boolean> isTraining = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRAINING_LABEL);
-            final double[][] data = IntStream.range(0, isTraining.size()).boxed()
+            final List<Boolean> isTruth = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRUTH_LABEL); // TODO make truth optional
+            final double[][] trainingData = IntStream.range(0, isTraining.size()).boxed()
                     .filter(isTraining::get)
                     .map(i -> allData[i])
                     .toArray(double[][]::new);
-            final int nSamples = data.length;
-            final int nFeatures = data[0].length;
+            final double[][] truthData = IntStream.range(0, isTruth.size()).boxed()
+                    .filter(isTruth::get)
+                    .map(i -> allData[i])
+                    .toArray(double[][]::new);
+
+            final int nSamples = trainingData.length;
+            final int nFeatures = trainingData[0].length;
             logger.info(String.format("Training BayesianGaussianMixtureModeller with %d training sites x %d annotations...", nSamples, nFeatures));
 
             // preprocess
             final VariantAnnotationUtils.Preprocesser preprocesser = new VariantAnnotationUtils.Preprocesser();
-            final double[][] preprocessedData = preprocesser.fitTransform(data);
+            final double[][] preprocessedTrainingData = preprocesser.fitTransform(trainingData);
+            final double[][] preprocessedTruthData = preprocesser.transform(truthData);
 
             // write preprocessed annotations
             // TODO clean this up
@@ -154,7 +162,7 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
                 IOUtils.canReadFile(hdf5File.getFile());
 
                 hdf5File.makeStringArray("/data/annotation_names", annotationNames);
-                HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedData, maximumChunkSize);
+                HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedTrainingData, maximumChunkSize);
                 hdf5File.makeDoubleArray("/data/is_training", isTraining.stream().mapToDouble(x -> x ? 1 : 0).toArray());
             } catch (final HDF5LibException exception) {
                 throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
@@ -185,7 +193,7 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
                     .warmStart(hyperparameters.warmStart)
                     .verboseInterval(hyperparameters.verboseInterval)
                     .build();
-            bgmm.fit(preprocessedData);
+            bgmm.fit(preprocessedTrainingData);
 
             // serialize scorer = preprocesser + BGMM
             // TODO fix up output paths and validation
@@ -196,14 +204,15 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             fit.write(new File(outputPrefix + BGMM_HDF5_SUFFIX), "/bgmm");
 
             // generate scores and write to HDF5
-            final double[] scores = bgmm.scoreSamples(preprocessedData);
-            VariantAnnotationUtils.writeScores(outputScoresFile, scores);
+            final double[] trainingScores = bgmm.scoreSamples(preprocessedTrainingData);
+            VariantAnnotationUtils.writeScores(outputTrainingScoresFile, trainingScores);
+
+            final double[] truthScores = bgmm.scoreSamples(preprocessedTruthData);
+            VariantAnnotationUtils.writeScores(outputTruthScoresFile, truthScores);
         }
 
-        logger.info("Training complete.");
-
         VariantAnnotationUtils.writeTruthSensitivityTranches(
-                outputTranchesFile, outputScoresFile, inputAnnotationsFile, truthSensitivityTranches, mode);
+                outputTranchesFile, outputTruthScoresFile, inputAnnotationsFile, truthSensitivityTranches, mode);
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 

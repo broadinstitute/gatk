@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.*;
-
 public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 
     private static final String PYTHON_SCRIPT = packageMainResourcesDir + "tools/walkers/vqsr/scalable/isolation-forest-scoring.py";
