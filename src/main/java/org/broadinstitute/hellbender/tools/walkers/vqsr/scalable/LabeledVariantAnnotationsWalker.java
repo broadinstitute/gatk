@@ -139,17 +139,21 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
     int maximumChunkSize = DEFAULT_MAXIMUM_CHUNK_SIZE;
 
     LabeledVariantAnnotationsData data;
-    boolean isExtractAll;
     File outputAnnotationsFile;
     private File outputVCFFile;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
 
-    public void beforeOnTraversalStart() {
-        // override
+    // TODO document
+    public boolean isExtractAll() {
+        return true;
     }
 
     public String getVCFSuffix() {
         return DEFAULT_VCF_SUFFIX;
+    }
+
+    public void beforeOnTraversalStart() {
+        // override
     }
 
     @Override
@@ -218,9 +222,9 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
         }
         if (VariantTypeMode.checkVariationClass(vc, mode) && !useASAnnotations) {
             final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
-            if (isExtractAll || !overlappingResourceLabels.isEmpty()) {
+            if (isExtractAll() || !overlappingResourceLabels.isEmpty()) {
                 data.addDatum(vc, vc.getReference(), null, overlappingResourceLabels);
-                if (!isExtractAll) {
+                if (!isExtractAll()) {
                     data.addAlternateAlleles(vc.getAlternateAlleles());
                 }
             }
@@ -229,9 +233,9 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
                 if (!GATKVCFConstants.isSpanningDeletion(altAllele) && VariantTypeMode.checkVariationClass(vc, altAllele, mode)) {
                     final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, vc.getReference(), altAllele, featureContext);
                     //note that this may not be the minimal representation for the ref and alt allele
-                    if (isExtractAll || !overlappingResourceLabels.isEmpty()) {
+                    if (isExtractAll() || !overlappingResourceLabels.isEmpty()) {
                         data.addDatum(vc, vc.getReference(), altAllele, overlappingResourceLabels);
-                        if (!isExtractAll) {
+                        if (!isExtractAll()) {
                             data.addAlternateAlleles(Collections.singletonList(altAllele));
                         }
                     }
@@ -242,14 +246,7 @@ public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-
-        afterTraversalSuccess();
-
-        return true;
-    }
-
-    public void afterTraversalSuccess() {
-        // override
+        return null;
     }
 
     private Set<String> findOverlappingResourceLabels(final VariantContext vc,
