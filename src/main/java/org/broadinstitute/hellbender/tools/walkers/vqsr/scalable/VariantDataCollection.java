@@ -41,10 +41,6 @@ final class VariantDataCollection {
     static final String TRAINING_LABEL = "training";
     static final String TRUTH_LABEL = "truth";
 
-    static final String BIALLELIC_SNP_LABEL = "biallelic_snp";
-    static final String TRANSITION_LABEL = "transition";
-    static final List<String> COMPUTED_LABELS = ImmutableList.of(BIALLELIC_SNP_LABEL, TRANSITION_LABEL);
-
     private final List<String> sortedAnnotationKeys;
     final List<String> sortedLabels;
     final boolean useASAnnotations;
@@ -61,11 +57,8 @@ final class VariantDataCollection {
         if (sortedAnnotationKeys.size() != annotationKeys.size()) {
             logger.warn(String.format("Ignoring duplicate annotations: %s.", Utils.getDuplicatedItems(annotationKeys)));
         }
-        if (!Collections.disjoint(resourceLabels, COMPUTED_LABELS)) {
-            throw new UserException(String.format("Resource labels derived from provided tracks cannot contain the computed labels: %s", COMPUTED_LABELS));
-        }
-        this.sortedLabels = ImmutableList.copyOf(Stream.concat(resourceLabels.stream(), COMPUTED_LABELS.stream()).distinct().sorted().collect(Collectors.toList()));
-        if (sortedLabels.size() != resourceLabels.size() + COMPUTED_LABELS.size()) {
+        this.sortedLabels = ImmutableList.copyOf(resourceLabels.stream().distinct().sorted().collect(Collectors.toList()));
+        if (sortedLabels.size() != resourceLabels.size()) {
             logger.warn(String.format("Ignoring duplicate resource labels: %s.", Utils.getDuplicatedItems(resourceLabels)));
         }
         this.useASAnnotations = useASAnnotations;
@@ -87,12 +80,6 @@ final class VariantDataCollection {
         datum.loc = new SimpleInterval(vc);
 
         datum.labels = labels;
-        if (vc.isSNP() && vc.isBiallelic()) {
-            datum.labels.add(BIALLELIC_SNP_LABEL);
-            if (GATKVariantContextUtils.isTransition(vc)) {
-                datum.labels.add(TRANSITION_LABEL);
-            }
-        }
 
         data.add(datum);
     }
