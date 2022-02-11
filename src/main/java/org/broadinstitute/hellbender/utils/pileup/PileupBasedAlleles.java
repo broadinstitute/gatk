@@ -145,6 +145,9 @@ public final class PileupBasedAlleles {
      */
     @VisibleForTesting
     static boolean evaluateBadRead(final GATKRead read, final ReferenceContext referenceContext, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForRead) {
+        if (args.badReadThreshold <= 0) {
+            return false;
+        }
         if (args.badReadProperPair && !read.isProperlyPaired()) {
             return true;
         }
