@@ -159,7 +159,7 @@ public final class PileupBasedAlleles {
         // Assert that the edit distance for the read is in line
         if (args.badReadEditDistance > 0.0) {
             if (! read.hasAttribute("NM")) {
-                SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)));
+                SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart());
             }
             int mismatches = read.getAttributeAsInteger("NM");
             if (mismatches > (read.getLength() * args.badReadEditDistance)) {
