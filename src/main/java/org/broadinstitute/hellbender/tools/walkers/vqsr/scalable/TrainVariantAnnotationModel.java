@@ -95,7 +95,7 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
             maxValue = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX,
             optional = true
     )
-    private int maximumChunkSize = VariantAnnotationWalker.DEFAULT_MAXIMUM_CHUNK_SIZE;
+    private int maximumChunkSize = LabeledVariantAnnotationsWalker.DEFAULT_MAXIMUM_CHUNK_SIZE;
 
     @Override
     protected Object doWork() {
@@ -132,9 +132,9 @@ public final class TrainVariantAnnotationModel extends CommandLineProgram {
 
             // load annotation training data
             logger.info("Reading annotations...");
-            final double[][] allData = VariantDataCollection.readData(inputAnnotationsFile);
-            final String[] annotationNames = VariantDataCollection.readAnnotationNames(inputAnnotationsFile);
-            final List<Boolean> isTraining = VariantDataCollection.readLabel(inputAnnotationsFile, VariantDataCollection.TRAINING_LABEL);
+            final double[][] allData = LabeledVariantAnnotationsData.readData(inputAnnotationsFile);
+            final String[] annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputAnnotationsFile);
+            final List<Boolean> isTraining = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRAINING_LABEL);
             final double[][] data = IntStream.range(0, isTraining.size()).boxed()
                     .filter(isTraining::get)
                     .map(i -> allData[i])

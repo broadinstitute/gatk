@@ -252,7 +252,7 @@ final class VariantAnnotationUtils {
                                               final VariantTypeMode mode) {
         // TODO validate
         final List<Double> scores = Doubles.asList(readScores(scoresFile));
-        final List<Boolean> isTruth = VariantDataCollection.readLabel(annotationsFile, VariantDataCollection.TRUTH_LABEL);
+        final List<Boolean> isTruth = LabeledVariantAnnotationsData.readLabel(annotationsFile, LabeledVariantAnnotationsData.TRUTH_LABEL);
         try {
             final PrintStream tranchesStream = new PrintStream(outputFile);
 

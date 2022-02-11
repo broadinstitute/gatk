@@ -30,7 +30,7 @@ import java.util.List;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public class ScoreVariantAnnotations extends VariantAnnotationWalker {
+public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     private static final String SCORER_PKL_SUFFIX = ".scorer.pkl";
     private static final String SCORER_SER_SUFFIX = ".scorer.ser";
@@ -144,7 +144,7 @@ public class ScoreVariantAnnotations extends VariantAnnotationWalker {
             }
             logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
         }
-        VariantDataCollection.setScores(data.getData(), scores);
+        LabeledVariantAnnotationsData.setScores(data.getData(), scores);
         logger.info("Scoring complete.");
 
         logger.info("Writing VCF...");

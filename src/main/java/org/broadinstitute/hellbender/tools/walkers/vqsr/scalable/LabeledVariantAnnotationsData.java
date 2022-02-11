@@ -26,8 +26,8 @@ import java.util.stream.IntStream;
  *  but still has a long way to go. we should decide how strongly to couple to the tranche code and refactor
  *  that at the same time
  */
-final class VariantDataCollection {
-    private static final Logger logger = LogManager.getLogger(VariantDataCollection.class);
+final class LabeledVariantAnnotationsData {
+    private static final Logger logger = LogManager.getLogger(LabeledVariantAnnotationsData.class);
 
     private static final int INITIAL_SIZE = 1000000;
 
@@ -39,12 +39,12 @@ final class VariantDataCollection {
     final List<String> sortedLabels;
     final boolean useASAnnotations;
 
-    private final List<VariantDatum> data;
+    private final List<LabeledVariantAnnotationsDatum> data;
     final List<List<Allele>> alternateAlleles;
 
-    VariantDataCollection(final Collection<String> annotationKeys,
-                          final Collection<String> labels,
-                          final boolean useASAnnotations) {
+    LabeledVariantAnnotationsData(final Collection<String> annotationKeys,
+                                  final Collection<String> labels,
+                                  final boolean useASAnnotations) {
         this.data = new ArrayList<>(INITIAL_SIZE);
         this.alternateAlleles = new ArrayList<>(INITIAL_SIZE);
         this.sortedAnnotationKeys = ImmutableList.copyOf(annotationKeys.stream().distinct().sorted().collect(Collectors.toList()));
@@ -62,7 +62,7 @@ final class VariantDataCollection {
                   final Allele refAllele, 
                   final Allele altAllele,
                   final Set<String> labels) {
-        final VariantDatum datum = new VariantDatum(vc, refAllele, altAllele, labels, sortedAnnotationKeys, useASAnnotations);
+        final LabeledVariantAnnotationsDatum datum = new LabeledVariantAnnotationsDatum(vc, refAllele, altAllele, labels, sortedAnnotationKeys, useASAnnotations);
         data.add(datum);
     }
 
@@ -71,7 +71,7 @@ final class VariantDataCollection {
         this.alternateAlleles.add(alternateAlleles);
     }
 
-    public List<VariantDatum> getData() {
+    public List<LabeledVariantAnnotationsDatum> getData() {
         return data;
     }
 
@@ -79,7 +79,7 @@ final class VariantDataCollection {
         return sortedAnnotationKeys;
     }
 
-    static void setScores(final List<VariantDatum> data,
+    static void setScores(final List<LabeledVariantAnnotationsDatum> data,
                           final double[] scores) {
         IntStream.range(0, data.size()).forEach(i -> data.get(i).score = scores[i]);
     }
