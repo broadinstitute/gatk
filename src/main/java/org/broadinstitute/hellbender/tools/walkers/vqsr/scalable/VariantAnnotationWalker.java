@@ -344,10 +344,10 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
                 continue;
             }
             if (useASAnnotations) {
-                alleles = Arrays.asList(datum.referenceAllele, datum.alternateAllele); //use the alleles to distinguish between multiallelics in AS mode
+                alleles = Arrays.asList(datum.refAllele, datum.altAllele); //use the alleles to distinguish between multiallelics in AS mode
             } else if (writeAlleles) {
                 final List<Allele> allelesToWrite = this.data.alternateAlleles.get(i);
-                allelesToWrite.add(0, datum.referenceAllele);
+                allelesToWrite.add(0, datum.refAllele);
                 alleles = allelesToWrite;
             }
             final VariantContextBuilder builder = new VariantContextBuilder(SCORE_KEY, datum.loc.getContig(), datum.loc.getStart(), datum.loc.getEnd(), alleles);
