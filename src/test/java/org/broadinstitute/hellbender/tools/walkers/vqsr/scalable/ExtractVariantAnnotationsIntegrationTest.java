@@ -70,7 +70,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
             Assert.assertEquals(
                     annotationsHDF5File1.readStringArray("/data/annotation_names"),
                     annotationsHDF5File2.readStringArray("/data/annotation_names"));
-            for (final String label : Arrays.asList("is_training", "is_truth", "is_transition", "is_biallelic_snp")) {
+            for (final String label : Arrays.asList("is_training", "is_truth")) {
                 Assert.assertEquals(
                         annotationsHDF5File1.readDoubleArray(String.format("/data/%s", label)),
                         annotationsHDF5File2.readDoubleArray(String.format("/data/%s", label)));

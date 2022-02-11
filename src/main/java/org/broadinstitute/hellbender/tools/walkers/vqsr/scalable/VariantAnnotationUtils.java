@@ -254,8 +254,6 @@ final class VariantAnnotationUtils {
                                               final VariantTypeMode mode) {
         // TODO validate
         final List<Double> scores = Doubles.asList(readScores(scoresFile));
-        final List<Boolean> isBiallelicSNP = VariantDataCollection.readLabel(annotationsFile, VariantDataCollection.BIALLELIC_SNP_LABEL);
-        final List<Boolean> isTransition = VariantDataCollection.readLabel(annotationsFile, VariantDataCollection.TRANSITION_LABEL);
         final List<Boolean> isTruth = VariantDataCollection.readLabel(annotationsFile, VariantDataCollection.TRUTH_LABEL);
         try {
             final PrintStream tranchesStream = new PrintStream(outputFile);
@@ -263,7 +261,7 @@ final class VariantAnnotationUtils {
             // Find the score cutoff values which correspond to the various tranches of calls requested by the user
             final int nCallsAtTruth = TruthSensitivityTranche.countCallsAtTruth(scores, isTruth, Double.NEGATIVE_INFINITY);
             final TruthSensitivityTranche.TruthSensitivityMetric metric = new TruthSensitivityTranche.TruthSensitivityMetric(nCallsAtTruth);
-            final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(scores, isBiallelicSNP, isTransition, isTruth, truthSensitivityTranches, metric, mode);
+            final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(scores, isTruth, truthSensitivityTranches, metric, mode);
             tranchesStream.print(TruthSensitivityTranche.printHeader());
             tranchesStream.print(TruthSensitivityTranche.tranchesString(tranches));
         } catch (final FileNotFoundException e) {

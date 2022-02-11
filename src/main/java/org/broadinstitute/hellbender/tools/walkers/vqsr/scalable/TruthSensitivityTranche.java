@@ -42,14 +42,12 @@ final class TruthSensitivityTranche {
     private final int numSites;
     private final double minScore;
     private final VariantTypeMode mode;
-    private final double tiTv;
     private final int accessibleTruthSites;
     private final int callsAtTruthSites;
     private final double targetTruthSensitivity;
 
     private TruthSensitivityTranche(final double targetTruthSensitivity,
                                     final int numSites,
-                                    final double tiTv,
                                     final double minScore,
                                     final String name,
                                     final VariantTypeMode mode,
@@ -62,7 +60,6 @@ final class TruthSensitivityTranche {
 
         this.targetTruthSensitivity = targetTruthSensitivity;
         this.numSites = numSites;
-        this.tiTv = tiTv;
         this.minScore = minScore;
         this.name = name;
         this.mode = mode;
@@ -76,7 +73,7 @@ final class TruthSensitivityTranche {
 
             stream.println("# Variant quality score tranches file");
             stream.println("# Version number " + CURRENT_VERSION);
-            stream.println("targetTruthSensitivity,numSites,tiTv,minScore,filterName,mode,accessibleTruthSites,callsAtTruthSites,truthSensitivity");
+            stream.println("targetTruthSensitivity,numSites,minScore,filterName,mode,accessibleTruthSites,callsAtTruthSites,truthSensitivity");
 
             return bytes.toString();
         }
@@ -87,8 +84,8 @@ final class TruthSensitivityTranche {
 
     @Override
     public String toString() {
-        return String.format("TruthSensitivityTranche targetTruthSensitivity=%.2f minScore=%.4f numSites=(%d @ %.4f) truthSites(%d accessible, %d called), name=%s]",
-                targetTruthSensitivity, minScore, numSites, tiTv, accessibleTruthSites, callsAtTruthSites, name);
+        return String.format("TruthSensitivityTranche targetTruthSensitivity=%.2f minScore=%.4f numSites=%d truthSites(%d accessible, %d called), name=%s]",
+                targetTruthSensitivity, minScore, numSites, accessibleTruthSites, callsAtTruthSites, name);
     }
 
     /**
@@ -123,7 +120,6 @@ final class TruthSensitivityTranche {
                     tranches.add(new TruthSensitivityTranche(
                             getRequiredDouble(bindings, "targetTruthSensitivity"),
                             getRequiredInteger(bindings, "numSites"),
-                            getRequiredDouble(bindings, "tiTv"),
                             getRequiredDouble(bindings, "minScore"),
                             bindings.get("filterName"),
                             VariantTypeMode.valueOf(bindings.get("mode")),
@@ -174,8 +170,6 @@ final class TruthSensitivityTranche {
 
     // TODO clean all this up once VariantDataManager is refactored
     static List<TruthSensitivityTranche> findTranches(final List<Double> scores,
-                                                      final List<Boolean> isBiallelicSNP,
-                                                      final List<Boolean> isTransition,
                                                       final List<Boolean> isTruth,
                                                       final List<Double> trancheThresholds,
                                                       final TruthSensitivityMetric metric,
@@ -187,14 +181,12 @@ final class TruthSensitivityTranche {
                 .sorted(Comparator.comparingDouble(scores::get))
                 .collect(Collectors.toList());
         final List<Double> sortedScores = indicesSortedByScore.stream().map(scores::get).collect(Collectors.toList());
-        final List<Boolean> sortedIsBiallelicSNP = indicesSortedByScore.stream().map(isBiallelicSNP::get).collect(Collectors.toList());
-        final List<Boolean> sortedIsTransition = indicesSortedByScore.stream().map(isTransition::get).collect(Collectors.toList());
         final List<Boolean> sortedIsTruth = indicesSortedByScore.stream().map(isTruth::get).collect(Collectors.toList());
         metric.calculateRunningMetric(sortedIsTruth);
 
         List<TruthSensitivityTranche> tranches = new ArrayList<>(trancheThresholds.size());
         for (double trancheThreshold : trancheThresholds) {
-            TruthSensitivityTranche t = findTranche(sortedScores, sortedIsBiallelicSNP, sortedIsTransition, sortedIsTruth, metric, trancheThreshold, mode);
+            TruthSensitivityTranche t = findTranche(sortedScores, sortedIsTruth, metric, trancheThreshold, mode);
 
             if ( t == null ) {
                 if (tranches.isEmpty()) {
@@ -211,8 +203,6 @@ final class TruthSensitivityTranche {
     }
 
     private static TruthSensitivityTranche findTranche(final List<Double> sortedScores,
-                                                       final List<Boolean> sortedIsBiallelicSNP,
-                                                       final List<Boolean> sortedIsTransition,
                                                        final List<Boolean> sortedIsTruth,
                                                        final TruthSensitivityMetric metric,
                                                        final double trancheThreshold,
@@ -225,7 +215,7 @@ final class TruthSensitivityTranche {
         for (int i = 0; i < n; i++) {
             if (metric.getRunningMetric(i) >= metricThreshold) {
                 // we've found the largest group of variants with sensitivity >= our target truth sensitivity
-                TruthSensitivityTranche t = trancheOfVariants(sortedScores, sortedIsBiallelicSNP, sortedIsTransition, sortedIsTruth, i, trancheThreshold, mode);
+                TruthSensitivityTranche t = trancheOfVariants(sortedScores, sortedIsTruth, i, trancheThreshold, mode);
                 logger.debug(String.format("  Found tranche for %.3f: %.3f threshold starting with variant %d; running score is %.3f ",
                         trancheThreshold, metricThreshold, i, metric.getRunningMetric(i)));
                 logger.debug(String.format("  TruthSensitivityTranche is %s", t));
@@ -237,36 +227,23 @@ final class TruthSensitivityTranche {
     }
 
     private static TruthSensitivityTranche trancheOfVariants(final List<Double> sortedScores,
-                                                             final List<Boolean> sortedIsBiallelicSNP,
-                                                             final List<Boolean> sortedIsTransition,
                                                              final List<Boolean> sortedIsTruth,
                                                              final int minI,
                                                              final double targetTruthSensitivity,
                                                              final VariantTypeMode mode) {
         int numSites = 0;
-        int ti = 0;
-        int tv = 0;
 
         final double minScore = sortedScores.get(minI);
         for (int i = 0; i < sortedScores.size(); i++) {
             if (sortedScores.get(i) >= minScore) {
                 numSites++;
-                if (sortedIsBiallelicSNP.get(i)) {
-                    if (sortedIsTransition.get(i)) {
-                        ti++;
-                    } else {
-                        tv++;
-                    }
-                }
             }
         }
-
-        final double tiTv = ti / Math.max(tv, 1.);
 
         final int accessibleTruthSites = countCallsAtTruth(sortedScores, sortedIsTruth, Double.NEGATIVE_INFINITY);
         final int callsAtTruthSites = countCallsAtTruth(sortedScores, sortedIsTruth, minScore);
 
-        return new TruthSensitivityTranche(targetTruthSensitivity, numSites, tiTv, minScore, DEFAULT_TRANCHE_NAME, mode, accessibleTruthSites, callsAtTruthSites);
+        return new TruthSensitivityTranche(targetTruthSensitivity, numSites, minScore, DEFAULT_TRANCHE_NAME, mode, accessibleTruthSites, callsAtTruthSites);
     }
 
     public static class TrancheComparator implements Comparator<TruthSensitivityTranche> {
@@ -301,8 +278,8 @@ final class TruthSensitivityTranche {
     }
 
     private String getTrancheString(final TruthSensitivityTranche prev) {
-        return String.format("%.2f,%d,%.4f,%.4f,VQSRTranche%s%.2fto%.2f,%s,%d,%d,%.4f%n",
-                targetTruthSensitivity, numSites, tiTv, minScore, mode.toString(),
+        return String.format("%.2f,%d,%.4f,VQSRTranche%s%.2fto%.2f,%s,%d,%d,%.4f%n",
+                targetTruthSensitivity, numSites, minScore, mode.toString(),
                 (prev == null ? 0.0 : prev.targetTruthSensitivity), targetTruthSensitivity, mode.toString(), accessibleTruthSites, callsAtTruthSites, getTruthSensitivity());
 
     }
@@ -366,10 +343,6 @@ final class TruthSensitivityTranche {
 
     public VariantTypeMode getMode() {
         return mode;
-    }
-
-    public double getTiTv() {
-        return tiTv;
     }
 
     public int getAccessibleTruthSites() {
