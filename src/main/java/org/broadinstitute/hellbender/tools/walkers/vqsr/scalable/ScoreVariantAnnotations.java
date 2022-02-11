@@ -122,10 +122,11 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             final VariantAnnotationUtils.Scorer scorer = VariantAnnotationUtils.deserialize(
                     new File(modelPrefix + SCORER_SER_SUFFIX), // TODO clean up
                     VariantAnnotationUtils.Scorer.class);
-            final double[][] data = this.data.getData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
+            final double[][] data = this.data.getData().stream().map(vd -> vd.annotations.stream().mapToDouble(x -> x).toArray()).toArray(double[][]::new);
             final Pair<double[][], double[]> preprocessedDataAndScores = scorer.preprocessAndScoreSamples(data);
             final double[][] preprocessedData = preprocessedDataAndScores.getLeft();
             scores = preprocessedDataAndScores.getRight();
+            VariantAnnotationUtils.writeScores(outputScoresFile, scores);
 
             // write preprocessed annotations
             // TODO clean this up
@@ -144,6 +145,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             }
             logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
         }
+
+        // TODO decouple setting of scores and VCF writing
         LabeledVariantAnnotationsData.setScores(data.getData(), scores);
         logger.info("Scoring complete.");
 
