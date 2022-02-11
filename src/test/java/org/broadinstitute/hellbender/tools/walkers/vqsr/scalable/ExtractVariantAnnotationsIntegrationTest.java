@@ -130,7 +130,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     public void testJbxSNP() {
         final String[] arguments = {
                 "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.profile",
+                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract",
                 "-an", "FS",
                 "-an", "ReadPosRankSum",
                 "-an", "MQRankSum",
