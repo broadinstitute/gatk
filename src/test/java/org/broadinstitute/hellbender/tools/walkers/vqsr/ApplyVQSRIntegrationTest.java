@@ -39,6 +39,31 @@ public class ApplyVQSRIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testAS() {
+        final String[] argumentsIndel = {
+                "-L", "chr1",
+                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
+                "-O", "/home/slee/working/vqsr/scalable/vqsr-test/test.indel.as.filtered.vcf",
+                "--recal-file", "/home/slee/working/vqsr/scalable/vqsr-test/test.indel.as.recal.vcf",
+                "--tranches-file", "/home/slee/working/vqsr/scalable/vqsr-test/test.indel.as.tranches.csv",
+                "-mode", "INDEL",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(argumentsIndel);
+
+        final String[] argumentsSNP = {
+                "-L", "chr1",
+                "-V", "/home/slee/working/vqsr/scalable/vqsr-test/test.indel.as.filtered.vcf",
+                "-O", "/home/slee/working/vqsr/scalable/vqsr-test/test.both.as.filtered.vcf",
+                "--recal-file", "/home/slee/working/vqsr/scalable/vqsr-test/test.snp.as.recal.vcf",
+                "--tranches-file", "/home/slee/working/vqsr/scalable/vqsr-test/test.snp.as.tranches.csv",
+                "-mode", "SNP",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(argumentsSNP);
+    }
+
+    @Test
     public void testApplySNPRecalibration() throws IOException {
         final String inputFile = getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf";
 

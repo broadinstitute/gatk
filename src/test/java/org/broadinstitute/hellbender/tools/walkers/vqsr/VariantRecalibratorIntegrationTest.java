@@ -41,6 +41,46 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
     private final String modelReportTranches = getLargeVQSRTestDataDir() + "expected/snpSampledTranches.txt";
 
     @Test
+    public void testAS() {
+        final String[] argumentsSNP = {
+                "-L", "chr1",
+                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
+                "-O", "/home/slee/working/vqsr/scalable/vqsr-test/test.snp.as.recal.vcf",
+                "--tranches-file", "/home/slee/working/vqsr/scalable/vqsr-test/test.snp.as.tranches.csv",
+                "--use-allele-specific-annotations",
+                "-an", "AS_FS",
+                "-an", "AS_ReadPosRankSum",
+                "-an", "AS_QD",
+                "-an", "AS_SOR",
+                "--trust-all-polymorphic",
+                "-mode", "SNP",
+                "--resource:doctored,training=true,truth=true", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(argumentsSNP);
+
+        final String[] argumentsIndel = {
+                "-L", "chr1",
+                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
+                "-O", "/home/slee/working/vqsr/scalable/vqsr-test/test.indel.as.recal.vcf",
+                "--tranches-file", "/home/slee/working/vqsr/scalable/vqsr-test/test.indel.as.tranches.csv",
+                "--use-allele-specific-annotations",
+                "-an", "AS_FS",
+                "-an", "AS_ReadPosRankSum",
+                "-an", "AS_QD",
+                "-an", "AS_SOR",
+                "--max-gaussians", "1",
+                "--max-negative-gaussians", "1",
+                "--bad-lod-score-cutoff", "0",
+                "--trust-all-polymorphic",
+                "-mode", "INDEL",
+                "--resource:doctored,training=true,truth=true", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(argumentsIndel);
+    }
+
+    @Test
     public void testJbxSNP() {
         final String[] arguments = {
                 "-V", "/home/slee/working/vqsr/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
