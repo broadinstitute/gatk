@@ -41,7 +41,7 @@ final class TruthSensitivityTranche {
     private final String name;
     private final int numSites;
     private final double minScore;
-    private final VariantTypeMode mode;
+    private final VariantType mode;
     private final int accessibleTruthSites;
     private final int callsAtTruthSites;
     private final double targetTruthSensitivity;
@@ -50,7 +50,7 @@ final class TruthSensitivityTranche {
                                     final int numSites,
                                     final double minScore,
                                     final String name,
-                                    final VariantTypeMode mode,
+                                    final VariantType mode,
                                     final int accessibleTruthSites,
                                     final int callsAtTruthSites) {
         // TODO more validation
@@ -122,7 +122,7 @@ final class TruthSensitivityTranche {
                             getRequiredInteger(bindings, "numSites"),
                             getRequiredDouble(bindings, "minScore"),
                             bindings.get("filterName"),
-                            VariantTypeMode.valueOf(bindings.get("mode")),
+                            VariantType.valueOf(bindings.get("mode")),
                             getOptionalInteger(bindings, "accessibleTruthSites", -1),
                             getOptionalInteger(bindings, "callsAtTruthSites", -1)
                     ));
@@ -173,7 +173,7 @@ final class TruthSensitivityTranche {
                                                       final List<Boolean> isTruth,
                                                       final List<Double> trancheThresholds,
                                                       final TruthSensitivityMetric metric,
-                                                      final VariantTypeMode mode) {
+                                                      final VariantType mode) {
         // TODO validate lengths
         logger.info(String.format("Finding %d tranches for %d variants", trancheThresholds.size(), scores.size()));
 
@@ -206,7 +206,7 @@ final class TruthSensitivityTranche {
                                                        final List<Boolean> sortedIsTruth,
                                                        final TruthSensitivityMetric metric,
                                                        final double trancheThreshold,
-                                                       final VariantTypeMode mode) {
+                                                       final VariantType mode) {
         // TODO validate lengths
         logger.debug(String.format("  TruthSensitivityTranche threshold %.2f => selection metric threshold %.3f", trancheThreshold, TruthSensitivityMetric.getThreshold(trancheThreshold)));
 
@@ -230,7 +230,7 @@ final class TruthSensitivityTranche {
                                                              final List<Boolean> sortedIsTruth,
                                                              final int minI,
                                                              final double targetTruthSensitivity,
-                                                             final VariantTypeMode mode) {
+                                                             final VariantType mode) {
         int numSites = 0;
 
         final double minScore = sortedScores.get(minI);
@@ -341,7 +341,7 @@ final class TruthSensitivityTranche {
         return minScore;
     }
 
-    public VariantTypeMode getMode() {
+    public VariantType getMode() {
         return mode;
     }
 

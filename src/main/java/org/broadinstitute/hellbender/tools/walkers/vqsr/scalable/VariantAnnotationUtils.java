@@ -244,27 +244,27 @@ final class VariantAnnotationUtils {
         logger.info(String.format("Scores written to %s.", outputFile.getAbsolutePath()));
     }
 
-    // TODO we could just get all this stuff from the VariantDataManager, but let's clean that up later
-    static void writeTruthSensitivityTranches(final File outputFile,
-                                              final File scoresFile,
-                                              final File annotationsFile,
-                                              final List<Double> truthSensitivityTranches,
-                                              final VariantTypeMode mode) {
-        // TODO validate
-        final List<Double> scores = Doubles.asList(readScores(scoresFile));
-        final List<Boolean> isTruth = LabeledVariantAnnotationsData.readLabel(annotationsFile, LabeledVariantAnnotationsData.TRUTH_LABEL);
-        try {
-            final PrintStream tranchesStream = new PrintStream(outputFile);
-
-            // Find the score cutoff values which correspond to the various tranches of calls requested by the user
-            final int nCallsAtTruth = TruthSensitivityTranche.countCallsAtTruth(scores, isTruth, Double.NEGATIVE_INFINITY);
-            final TruthSensitivityTranche.TruthSensitivityMetric metric = new TruthSensitivityTranche.TruthSensitivityMetric(nCallsAtTruth);
-            final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(scores, isTruth, truthSensitivityTranches, metric, mode);
-            tranchesStream.print(TruthSensitivityTranche.printHeader());
-            tranchesStream.print(TruthSensitivityTranche.tranchesString(tranches));
-        } catch (final FileNotFoundException e) {
-            throw new UserException.CouldNotCreateOutputFile(outputFile, e);
-        }
-        logger.info(String.format("Truth-sensitivity tranches written to %s.", outputFile.getAbsolutePath()));
-    }
+//    // TODO we could just get all this stuff from the VariantDataManager, but let's clean that up later
+//    static void writeTruthSensitivityTranches(final File outputFile,
+//                                              final File scoresFile,
+//                                              final File annotationsFile,
+//                                              final List<Double> truthSensitivityTranches,
+//                                              final VariantType mode) {
+//        // TODO validate
+//        final List<Double> scores = Doubles.asList(readScores(scoresFile));
+//        final List<Boolean> isTruth = VariantLabeledAnnotationsData.readLabel(annotationsFile, VariantLabeledAnnotationsData.TRUTH_LABEL);
+//        try {
+//            final PrintStream tranchesStream = new PrintStream(outputFile);
+//
+//            // Find the score cutoff values which correspond to the various tranches of calls requested by the user
+//            final int nCallsAtTruth = TruthSensitivityTranche.countCallsAtTruth(scores, isTruth, Double.NEGATIVE_INFINITY);
+//            final TruthSensitivityTranche.TruthSensitivityMetric metric = new TruthSensitivityTranche.TruthSensitivityMetric(nCallsAtTruth);
+//            final List<TruthSensitivityTranche> tranches = TruthSensitivityTranche.findTranches(scores, isTruth, truthSensitivityTranches, metric, mode);
+//            tranchesStream.print(TruthSensitivityTranche.printHeader());
+//            tranchesStream.print(TruthSensitivityTranche.tranchesString(tranches));
+//        } catch (final FileNotFoundException e) {
+//            throw new UserException.CouldNotCreateOutputFile(outputFile, e);
+//        }
+//        logger.info(String.format("Truth-sensitivity tranches written to %s.", outputFile.getAbsolutePath()));
+//    }
 }

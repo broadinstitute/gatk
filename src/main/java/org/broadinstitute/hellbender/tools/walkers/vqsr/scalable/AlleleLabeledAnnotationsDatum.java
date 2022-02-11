@@ -10,26 +10,22 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.List;
 import java.util.Set;
 
-final class LabeledVariantAnnotationsDatum implements Locatable {
+final class AlleleLabeledAnnotationsDatum implements Locatable {
     public final SimpleInterval loc;
-    public final Allele refAllele;
-    public final Allele altAllele;
+    public final VariantType variantType;
     public final ImmutableSet<String> labels;
     public final double[] annotations;
-    public double score;    // TODO decouple
 
-    public LabeledVariantAnnotationsDatum(final VariantContext vc,
-                                          final Allele refAllele,
-                                          final Allele altAllele,
-                                          final Set<String> labels,
-                                          final List<String> sortedAnnotationKeys,
-                                          final boolean useASAnnotations ) {
+    public AlleleLabeledAnnotationsDatum(final VariantContext vc,
+                                         final Allele altAllele,
+                                         final VariantType variantType,
+                                         final Set<String> labels,
+                                         final List<String> sortedAnnotationKeys) {
         this.loc = new SimpleInterval(vc);
-        this.refAllele = refAllele;
-        this.altAllele = altAllele;
+        this.variantType = variantType;
         this.labels = ImmutableSet.copyOf(labels);
         this.annotations = sortedAnnotationKeys.stream()
-                .mapToDouble(k -> decodeAnnotation(k, vc, altAllele, useASAnnotations))
+                .mapToDouble(k -> decodeAnnotation(k, vc, altAllele))
                 .toArray();
     }
 
@@ -50,9 +46,9 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
 
     private static double decodeAnnotation(final String annotationKey,
                                            final VariantContext vc,
-                                           final Allele altAllele,
-                                           final boolean useASannotations) {
+                                           final Allele altAllele) {
         double value;
+        final boolean useASannotations = altAllele == null;
 
         try {
             //if we're in allele-specific mode and an allele-specific annotation has been requested, parse the appropriate value from the list
