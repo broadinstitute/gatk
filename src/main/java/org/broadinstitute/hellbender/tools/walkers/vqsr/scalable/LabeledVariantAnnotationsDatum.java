@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
