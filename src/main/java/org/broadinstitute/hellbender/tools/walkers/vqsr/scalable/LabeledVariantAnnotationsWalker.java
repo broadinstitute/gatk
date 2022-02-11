@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public class VariantAnnotationWalker extends MultiVariantWalker {
+public class LabeledVariantAnnotationsWalker extends MultiVariantWalker {
 
     private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
     private static final String DEFAULT_VCF_SUFFIX = ".vcf";
@@ -138,12 +138,11 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
     )
     int maximumChunkSize = DEFAULT_MAXIMUM_CHUNK_SIZE;
 
-    VariantDataCollection data;
+    LabeledVariantAnnotationsData data;
     boolean isExtractAll;
     File outputAnnotationsFile;
     private File outputVCFFile;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
-    private final List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>(10);
 
     public void beforeOnTraversalStart() {
         // override
@@ -186,19 +185,19 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         }
         resourceLabels.forEach(String::intern);
 
-        if (!resourceLabels.contains(VariantDataCollection.TRAINING_LABEL)) {
+        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
             throw new CommandLineException(
                     "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
         }
 
-        if (!resourceLabels.contains(VariantDataCollection.TRUTH_LABEL)) {
+        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRUTH_LABEL)) {
             throw new CommandLineException(
                     "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
         }
 
-        data = new VariantDataCollection(useAnnotations, resourceLabels, useASAnnotations);
+        data = new LabeledVariantAnnotationsData(useAnnotations, resourceLabels, useASAnnotations);
     }
 
     @Override
@@ -206,29 +205,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
                       final ReadsContext readsContext,
                       final ReferenceContext ref,
                       final FeatureContext featureContext) {
-        // Queue up all variant/featureContext pairs that share a start locus, and defer
-        // processing until the start-position or contig changes. In practice this will
-        // rarely queue up more than a single variant at a time.
-        if (variantLocusChanged(vc)) {
-            consumeQueuedVariants();
-        }
-        variantsAtLocus.add(new ImmutablePair<>(vc, featureContext));
-    }
-
-    // Check to see if the start locus for this variant is different from the
-    // ones in the queue.
-    private boolean variantLocusChanged(final VariantContext nextVC) {
-        if (variantsAtLocus.isEmpty()) {
-            return false;
-        } else {
-            final ImmutablePair<VariantContext, FeatureContext> previous = variantsAtLocus.get(0);
-            return (nextVC.getStart() != previous.left.getStart() || !nextVC.getContig().equals(previous.left.getContig()));
-        }
-    }
-
-    private void consumeQueuedVariants() {
-        variantsAtLocus.forEach(v -> addVariantDatum(v.left, v.right));
-        variantsAtLocus.clear();
+        addVariantDatum(vc, featureContext);
     }
 
     private void addVariantDatum(final VariantContext vc,
@@ -265,8 +242,6 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-
-        consumeQueuedVariants(); // finish processing any queued variants
 
         afterTraversalSuccess();
 
@@ -329,7 +304,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         final VariantContextWriter vcfWriter = createVCFWriter(outputVCFFile);
         vcfWriter.writeHeader(constructVCFHeader());
 
-        final List<VariantDatum> data = this.data.getData();
+        final List<LabeledVariantAnnotationsDatum> data = this.data.getData();
 
         // we need to sort in coordinate order in order to produce a valid VCF
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -339,8 +314,8 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
         List<Allele> alleles = Arrays.asList(Allele.create("N", true), Allele.create(DUMMY_ALLELE, false));
 
         for (int i = 0; i < data.size(); i++) {
-            final VariantDatum datum = data.get(i);
-            if (writeTrainingOnly && !datum.labels.contains(VariantDataCollection.TRAINING_LABEL)) {
+            final LabeledVariantAnnotationsDatum datum = data.get(i);
+            if (writeTrainingOnly && !datum.labels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
                 continue;
             }
             if (useASAnnotations) {
@@ -357,7 +332,7 @@ public class VariantAnnotationWalker extends MultiVariantWalker {
                 builder.attribute(SCORE_KEY, String.format("%.4f", datum.score));
             }
 
-            if (datum.labels.contains(VariantDataCollection.TRAINING_LABEL)) {
+            if (datum.labels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
                 builder.attribute(GATKVCFConstants.POSITIVE_LABEL_KEY, true);
             }
 

@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.List;
 import java.util.Set;
 
-final class VariantDatum implements Locatable {
+final class LabeledVariantAnnotationsDatum implements Locatable {
     public final SimpleInterval loc;
     public final Allele refAllele;
     public final Allele altAllele;
@@ -19,12 +19,12 @@ final class VariantDatum implements Locatable {
     public final ImmutableList<Double> annotations;
     public double score;
 
-    public VariantDatum(final VariantContext vc,
-                        final Allele refAllele,
-                        final Allele altAllele,
-                        final Set<String> labels,
-                        final List<String> sortedAnnotationKeys,
-                        final boolean useASAnnotations ) {
+    public LabeledVariantAnnotationsDatum(final VariantContext vc,
+                                          final Allele refAllele,
+                                          final Allele altAllele,
+                                          final Set<String> labels,
+                                          final List<String> sortedAnnotationKeys,
+                                          final boolean useASAnnotations ) {
         this.loc = new SimpleInterval(vc);
         this.refAllele = refAllele;
         this.altAllele = altAllele;

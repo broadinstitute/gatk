@@ -15,7 +15,7 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public final class ExtractVariantAnnotations extends VariantAnnotationWalker {
+public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     @Override
     public void beforeOnTraversalStart() {
