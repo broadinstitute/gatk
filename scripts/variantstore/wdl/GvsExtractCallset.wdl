@@ -17,6 +17,9 @@ workflow GvsExtractCallset {
         # For reblocking v1, the default is "SIXTY" instead of "FORTY"
         String? drop_state = "FORTY"
 
+       # TODO: move this to a public bucket
+       File? interval_weights_bed = "gs://broad-dsp-spec-ops/gvs/weights/gvs_vet_weights_1kb.bed"
+
        # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
        # without a default value, ranges users are forced to specify a value even though it is meaningless
        String extract_table_prefix = ""
@@ -39,9 +42,10 @@ workflow GvsExtractCallset {
         Int? extract_preemptible_override
         Int? extract_maxretries_override
         Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
 
         String mode = "RANGES-PREPARED"
-       
+
         String? service_account_json_path
 
         String output_file_base_name
@@ -51,7 +55,7 @@ workflow GvsExtractCallset {
 
         String fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__SAMPLES"
         String fq_cohort_extract_table  = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__DATA"
-        
+
         String fq_ranges_cohort_vet_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__VET_DATA"
         String fq_ranges_cohort_ref_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__REF_DATA"
    }
@@ -64,9 +68,11 @@ workflow GvsExtractCallset {
           ref_fasta = reference,
           ref_fai = reference_index,
           ref_dict = reference_dict,
+          interval_weights_bed = interval_weights_bed,
           scatter_count = scatter_count,
           output_gcs_dir = output_gcs_dir,
           split_intervals_disk_size_override = split_intervals_disk_size_override,
+          split_intervals_mem_override = split_intervals_mem_override,
           service_account_json_path = service_account_json_path
     }
 
