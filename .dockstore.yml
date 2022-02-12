@@ -91,6 +91,7 @@ workflows:
          - ah_var_store
          - rsa_split_intervals_part_2
          - kc_cluster_vqsr
+         - kc_quoting_bug         
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
