@@ -25,21 +25,19 @@ public final class ExtractVariantAnnotations extends VariantLabeledAnnotationsWa
     }
 
     @Override
-    public Object onTraversalSuccess() {
+    public void afterOnTraversalSuccess() {
 
-        if (dataBatch.size() == 0) {
-            throw new GATKException("None of the specified input variants were present in the resource VCFs.");
-        }
+//        if (dataBatch.size() == 0) {
+//            throw new GATKException("None of the specified input variants were present in the resource VCFs.");
+//        }
 
-        for (final String resourceLabel : dataBatch.sortedLabels) {
-            logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
-                    (int) dataBatch.getData().stream().flatMap(List::stream).mapToDouble(vd -> vd.labels.contains(resourceLabel) ? 1 : 0).sum(),
-                    resourceLabel));
-        }
-        logger.info(String.format("Extracted annotations for %s total variants.", dataBatch.size()));
+//        for (final String resourceLabel : dataBatch.sortedLabels) {
+//            logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
+//                    (int) dataBatch.getData().stream().flatMap(List::stream).mapToDouble(datum -> datum.labels.contains(resourceLabel) ? 1 : 0).sum(),
+//                    resourceLabel));
+//        }
+//        logger.info(String.format("Extracted annotations for %s total variants.", dataBatch.size()));
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
-
-        return null;
     }
 }

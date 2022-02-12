@@ -5,27 +5,36 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-final class AlleleLabeledAnnotationsDatum implements Locatable {
-    public final SimpleInterval loc;
-    public final VariantType variantType;
-    public final ImmutableSet<String> labels;
-    public final double[] annotations;
+final class LabeledAnnotationsDatum implements Locatable {
+    final SimpleInterval loc;
+    final Allele refAllele;
+    final List<Allele> altAlleles;
+    final VariantType variantType;
+    final ImmutableSet<String> labels;
+    final double[] annotations;
 
-    public AlleleLabeledAnnotationsDatum(final VariantContext vc,
-                                         final Allele altAllele,
-                                         final VariantType variantType,
-                                         final Set<String> labels,
-                                         final List<String> sortedAnnotationKeys) {
+    public LabeledAnnotationsDatum(final VariantContext vc,
+                                   final List<Allele> altAlleles,
+                                   final VariantType variantType,
+                                   final Set<String> labels,
+                                   final List<String> sortedAnnotationKeys,
+                                   final boolean useASAnnotations) {
+        Utils.validate(!useASAnnotations || altAlleles.size() == 1,
+                "Datum should only be associated with one alt allele in allele-specific mode.");
         this.loc = new SimpleInterval(vc);
+        this.refAllele = vc.getReference();
+        this.altAlleles = Collections.unmodifiableList(altAlleles);
         this.variantType = variantType;
         this.labels = ImmutableSet.copyOf(labels);
         this.annotations = sortedAnnotationKeys.stream()
-                .mapToDouble(k -> decodeAnnotation(k, vc, altAllele))
+                .mapToDouble(k -> decodeAnnotation(vc, altAlleles, k, useASAnnotations))
                 .toArray();
     }
 
@@ -44,16 +53,16 @@ final class AlleleLabeledAnnotationsDatum implements Locatable {
         return loc.getEnd();
     }
 
-    private static double decodeAnnotation(final String annotationKey,
-                                           final VariantContext vc,
-                                           final Allele altAllele) {
+    private static double decodeAnnotation(final VariantContext vc,
+                                           final List<Allele> altAlleles,
+                                           final String annotationKey,
+                                           final boolean useASAnnotations) {
         double value;
-        final boolean useASannotations = altAllele == null;
-
         try {
             //if we're in allele-specific mode and an allele-specific annotation has been requested, parse the appropriate value from the list
-            if (useASannotations && annotationKey.startsWith(GATKVCFConstants.ALLELE_SPECIFIC_PREFIX)) {
+            if (useASAnnotations && annotationKey.startsWith(GATKVCFConstants.ALLELE_SPECIFIC_PREFIX)) {
                 final List<Object> valueList = vc.getAttributeAsList(annotationKey);
+                final Allele altAllele = altAlleles.get(0);
                 //FIXME: we need to look at the ref allele here too
                 if (vc.hasAllele(altAllele)) {
                     final int altIndex = vc.getAlleleIndex(altAllele) - 1; //- 1 is to convert the index from all alleles (including reference) to just alternate alleles
