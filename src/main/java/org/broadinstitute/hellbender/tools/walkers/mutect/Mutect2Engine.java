@@ -246,16 +246,23 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
                 .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
 
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, givenAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false);
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, MTAC.maxMnpDistance, assembledEventMapVcfOutputWriter);
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
+        for (final VariantContext given : givenAlleles) {
+            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)))) {
+                allVariationEvents.add(given);
+            }
+        }
+
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion, allVariationEvents, referenceContext);
         if (!trimmingResult.isVariationPresent()) {
             return emitReferenceConfidence() ? referenceModelForNoVariation(originalAssemblyRegion) : NO_CALLS;
         }
 
         final AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
+        AssemblyBasedCallerUtils.addGivenAlleles(givenAlleles, MTAC.maxMnpDistance, aligner, MTAC.getHaplotypeToReferenceSWParameters(), assemblyResult);
 
         // we might find out after assembly that the "active" region actually has no variants
         if( ! assemblyResult.isVariationPresent() ) {

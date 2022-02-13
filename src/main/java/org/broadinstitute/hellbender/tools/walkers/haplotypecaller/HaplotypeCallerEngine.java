@@ -583,7 +583,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
-        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
+        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities);
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, hcArgs.maxMnpDistance, assembledEventMapVcfOutputWriter);
 
         if (assemblyDebugOutStream != null) {
@@ -599,6 +599,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
+        for (final VariantContext given : givenAlleles) {
+            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)))) {
+                allVariationEvents.add(given);
+            }
+        }
 
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents, referenceContext);
 
@@ -607,6 +612,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         final AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
+        AssemblyBasedCallerUtils.addGivenAlleles(givenAlleles, hcArgs.maxMnpDistance, aligner, hcArgs.getHaplotypeToReferenceSWParameters(), assemblyResult);
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
