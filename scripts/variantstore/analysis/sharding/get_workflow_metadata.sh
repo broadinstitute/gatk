@@ -10,3 +10,6 @@ curl -sL -X 'GET' \
   "https://api.firecloud.org/api/workflows/v1/${WF_ID}/metadata?${PARAMS}" \
   -H 'accept: application/json' \
   -H "Authorization: Bearer ${TOKEN}"
+
+# NOTE: it may also be possible to run the following against the internal cromwell instance without the need for elevated privs
+# https://cromwell1-int-lb.dsde-prod.broadinstitute.org/api/workflows/v1/${WF_ID}/metadata?${PARAMS} \
