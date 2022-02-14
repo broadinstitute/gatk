@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_quoting_bug
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
@@ -90,6 +91,7 @@ workflows:
          - ah_var_store
          - rsa_split_intervals_part_2
          - kc_cluster_vqsr
+         - kc_quoting_bug         
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -99,6 +101,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_quoting_bug         
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -129,6 +132,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_quoting_bug
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
