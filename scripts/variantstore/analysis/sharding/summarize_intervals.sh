@@ -1,5 +1,6 @@
 #
 # This is not efficient at all... but gets the job done
+# NOTE: runs under BASH, if using another shell ensure the -e flag doesn't just get prepended to the echo output
 #
 echo -e "index\tcontig\tmin\tmax\ttotal_bases"
 for f in ${1}/*.interval_list; do    
