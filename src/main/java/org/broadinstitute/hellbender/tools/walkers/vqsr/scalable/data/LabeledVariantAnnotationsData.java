@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Streams;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -8,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -18,9 +20,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /*
  * TODO this whole class needs refactoring. it's cleaned up significantly from VQSR version,
@@ -101,9 +105,16 @@ public final class LabeledVariantAnnotationsData {
         }
     }
 
-    public void writeLabeledAnnotationsBatchToHDF5(final File outputFile,
-                                                   final int batchIndex,
-                                                   final boolean omitAllelesInHDF5) {
+    public void writeBatchToHDF5(final File outputFile,
+                                 final int batchIndex,
+                                 final boolean omitAllelesInHDF5) {
+        writeBatchSubsetToHDF5(outputFile, batchIndex, null, omitAllelesInHDF5);
+    }
+
+    public void writeBatchSubsetToHDF5(final File outputFile,
+                                       final int batchIndex,
+                                       final List<Boolean> perDatumFilter,
+                                       final boolean omitAllelesInHDF5) {
         // TODO validate
         try (final HDF5File outputHDF5File = new HDF5File(outputFile, batchIndex == 0 ? HDF5File.OpenMode.CREATE : HDF5File.OpenMode.READ_WRITE)) {
             IOUtils.canReadFile(outputHDF5File.getFile());
@@ -136,11 +147,11 @@ public final class LabeledVariantAnnotationsData {
             outputHDF5File.makeDouble("/annotations" + HDF5Utils.NUMBER_OF_CHUNKS_SUB_PATH, batchIndex + 1);
 
             final double[] isSNP = data.stream().flatMap(List::stream).mapToDouble(datum -> datum.variantType == VariantType.SNP ? 1 : 0).toArray();
-            outputHDF5File.makeDoubleArray(String.format("/snp/chunk_%d", batchIndex), isSNP);
-            outputHDF5File.makeDouble("/snp" + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH,
-                    batchIndex == 0 ? isSNP.length : (int) outputHDF5File.readDouble("/snp" + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH) + isSNP.length);
-            outputHDF5File.makeDouble("/snp" + HDF5Utils.NUMBER_OF_COLUMNS_SUB_PATH, 1);
-            outputHDF5File.makeDouble("/snp" + HDF5Utils.NUMBER_OF_CHUNKS_SUB_PATH, batchIndex + 1);
+            outputHDF5File.makeDoubleArray(String.format("/labels/snp/chunk_%d", batchIndex), isSNP);
+            outputHDF5File.makeDouble("/labels/snp" + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH,
+                    batchIndex == 0 ? isSNP.length : (int) outputHDF5File.readDouble("/labels/snp" + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH) + isSNP.length);
+            outputHDF5File.makeDouble("/labels/snp" + HDF5Utils.NUMBER_OF_COLUMNS_SUB_PATH, 1);
+            outputHDF5File.makeDouble("/labels/snp" + HDF5Utils.NUMBER_OF_CHUNKS_SUB_PATH, batchIndex + 1);
 
             for (final String label : sortedLabels) {
                 final double[] isLabel = data.stream().flatMap(List::stream).mapToDouble(datum -> datum.labels.contains(label) ? 1 : 0).toArray();
@@ -177,34 +188,50 @@ public final class LabeledVariantAnnotationsData {
         }
     }
 
-    public static double[][] readAnnotationsBatch(final File annotationsFile,
-                                                  final int batchIndex) {
+    public static List<Boolean> readLabel(final File annotationsFile,
+                                          final String label) {
         try (final HDF5File annotationsHDF5File = new HDF5File(annotationsFile, HDF5File.OpenMode.READ_ONLY)) {
             IOUtils.canReadFile(annotationsHDF5File.getFile());
-            return HDF5Utils.readChunkedDoubleMatrix(annotationsHDF5File, String.format("/data/annotations/chunk_%d", batchIndex));
+            return Arrays.stream(readChunkedDoubleArray(annotationsHDF5File, String.format("/labels/%s", label))).boxed().map(d -> d == 1).collect(Collectors.toList());
         } catch (final HDF5LibException exception) {
-            throw new GATKException(String.format("Exception encountered during reading of annotations (chunk_%d) from %s: %s",
-                    batchIndex, annotationsFile.getAbsolutePath(), exception));
+            throw new GATKException(String.format("Exception encountered during reading of label %s from %s: %s",
+                    label, annotationsFile.getAbsolutePath(), exception));
         }
     }
 
-    public static List<Boolean> readLabelBatch(final File annotationsFile,
-                                               final String label,
-                                               final int batchIndex) {
-        try (final HDF5File annotationsHDF5File = new HDF5File(annotationsFile, HDF5File.OpenMode.READ_ONLY)) {
-            IOUtils.canReadFile(annotationsHDF5File.getFile());
-            return readBooleanList(annotationsHDF5File, String.format("/data/is_%s/chunk_%d", label, batchIndex));
-        } catch (final HDF5LibException exception) {
-            throw new GATKException(String.format("Exception encountered during reading of label %s (chunk_%d) from %s: %s",
-                    label, batchIndex, annotationsFile.getAbsolutePath(), exception));
-        }
-    }
+    private static double[] readChunkedDoubleArray(final HDF5File file,
+                                                   final String path) {
+        Utils.nonNull(file);
+        IOUtils.canReadFile(file.getFile());
+        Utils.nonNull(path);
 
-    private static List<Boolean> readBooleanList(final HDF5File hdf5File,
-                                                 final String path) {
-        return Arrays.stream(hdf5File.readDoubleArray(path))
-                .mapToObj(d -> (d == 1))
-                .collect(Collectors.toList());
+        final String numRowsPath = path + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH;
+        final String numColumnsPath = path + HDF5Utils.NUMBER_OF_COLUMNS_SUB_PATH;
+        final String numChunksPath = path + HDF5Utils.NUMBER_OF_CHUNKS_SUB_PATH;
+        Utils.validateArg(file.isPresent(numRowsPath) && file.isPresent(numColumnsPath) && file.isPresent(numChunksPath),
+                String.format("HDF5 file %s does not contain a chunked array in path %s.", file.getFile().getAbsolutePath(), path));
+
+        final int numRows = (int) file.readDouble(numRowsPath);
+        final int numColumns = (int) file.readDouble(numColumnsPath);
+        final int numChunks = (int) file.readDouble(numChunksPath);
+
+        Utils.validateArg(numColumns == 1,
+                String.format("HDF5 file %s does not contain a chunked array with a single column in path %s.", file.getFile().getAbsolutePath(), path));
+
+        final double[] fullArray = new double[numRows];
+        int numRowsRead = 0;
+        for (int chunkIndex = 0; chunkIndex < numChunks; chunkIndex++) {
+            final double[] arrayChunk = file.readDoubleArray(path + HDF5Utils.CHUNK_INDEX_PATH_SUFFIX + chunkIndex);
+            if (numRowsRead + arrayChunk.length > numRows) {
+                throw new UserException.BadInput("Array chunk contains too many rows.");
+            }
+            System.arraycopy(arrayChunk, 0, fullArray, numRowsRead, arrayChunk.length);
+            numRowsRead += arrayChunk.length;
+        }
+        if (numRowsRead != numRows) {
+            throw new UserException.BadInput("Array chunks do not contain expected total number of rows.");
+        }
+        return fullArray;
     }
 
 //    void writeBatchToVCF(final VariantContextWriter vcfWriter,
