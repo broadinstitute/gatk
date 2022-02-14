@@ -26,7 +26,7 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
     private static final Logger logger = LogManager.getLogger(BGMMVariantAnnotationsModel.class);
 
     public static final String BGMM_FIT_HDF5_SUFFIX = ".bgmmFit.hdf5";
-    public static final String BGMM_TRANSFORMED_ANNOTATIONS_HDF5_SUFFIX = ".bgmmAnnot.hdf5";
+    public static final String BGMM_TRANSFORMED_ANNOTATIONS_HDF5_SUFFIX = ".bgmmTransAnnot.hdf5";
     public static final String BGMM_SCORER_SER_SUFFIX = ".bgmmScorer.ser";
 
     private final Hyperparameters hyperparameters;
