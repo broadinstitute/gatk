@@ -1,0 +1,16 @@
+{
+  "GvsValidateVatTable.inputFileofFileNames": "FILE",
+  "GvsValidateVatTable.inputFileofIndexFileNames": "FILE",
+  "GvsValidateVatTable.project_id": "PROJECT_ID",
+  "GvsValidateVatTable.dataset_name": "DATASET",
+  "GvsValidateVatTable.nirvana_data_directory": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz",
+  "GvsValidateVatTable.vat_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json",
+  "GvsValidateVatTable.variant_transcript_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json",
+  "GvsValidateVatTable.genes_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json",
+  "GvsValidateVatTable.output_path": "PATH",
+  "GvsValidateVatTable.table_suffix": "v1",
+  "GvsValidateVatTable.service_account_json_path": "SERVICE_ACCOUNT",
+  "GvsValidateVatTable.AnAcAf_annotations_template": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/vat/custom_annotations_template.tsv",
+  "GvsValidateVatTable.ancestry_file": "ANCESTRY_FILE",
+  "GvsValidateVatTable.reference": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+}
