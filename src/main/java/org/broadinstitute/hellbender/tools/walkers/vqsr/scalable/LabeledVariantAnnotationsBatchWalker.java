@@ -217,7 +217,7 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
 
     void writeBatch() {
         // write HDF5
-        dataBatch.writeLabeledAnnotationsBatchToHDF5(outputAnnotationsFile, batchIndex, omitAllelesInHDF5);
+        dataBatch.writeBatchToHDF5(outputAnnotationsFile, batchIndex, omitAllelesInHDF5);
 
         // write VCF
 

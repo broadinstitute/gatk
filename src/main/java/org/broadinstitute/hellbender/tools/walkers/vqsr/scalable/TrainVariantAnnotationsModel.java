@@ -1,12 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
+import com.google.common.collect.Streams;
+import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
@@ -20,6 +27,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * TODO
@@ -32,8 +41,11 @@ import java.util.List;
 )
 @DocumentedFeature
 public final class TrainVariantAnnotationsModel extends CommandLineProgram {
+    
+    private static final int DEFAULT_CHUNK_DIVISOR = 16;
+    private static final int DEFAULT_MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / DEFAULT_CHUNK_DIVISOR;
 
-    static enum ModelMode {
+    enum ModelMode {
         PYTHON, BGMM
     }
 
@@ -118,31 +130,87 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         // handle SNP and INDEL here
         logger.info("Starting training...");
 
+        // TODO could do subsetting out of memory by iterating over batches
+        final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputAnnotationsFile);
+        final double[][] allData = LabeledVariantAnnotationsData.readAnnotations(inputAnnotationsFile);
+        final List<Boolean> isTraining = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRAINING_LABEL);
+        final int numAllData = isTraining.size();
+        final int numTraining = isTraining.stream().mapToInt(x -> x ? 1 : 0).sum();
+        
+        if (numTraining == 0) {
+            throw new UserException.BadInput("No training sites were found in the provided annotations.");
+        }
+        
+        // TODO clean up
         if (ignoreVariantType) {
+            logger.info(String.format("Training type-agnostic model with %d training sites...", numTraining));
+            final double[][] trainingData = IntStream.range(0, numAllData).boxed().filter(isTraining::get).map(i -> allData[i]).toArray(double[][]::new);
+            final File trainingAnnotationsFile = IOUtils.createTempFile("training.annot", ".hdf5");
+
+            try (final HDF5File trainingSNPAnnotationsHDF5File = new HDF5File(trainingAnnotationsFile, HDF5File.OpenMode.CREATE)) {
+                trainingSNPAnnotationsHDF5File.makeStringArray("/annotations/names", annotationNames.toArray(new String[0]));
+                HDF5Utils.writeChunkedDoubleMatrix(trainingSNPAnnotationsHDF5File, "/annotations", trainingData, DEFAULT_MAXIMUM_CHUNK_SIZE);
+            } catch (final HDF5LibException exception) {
+                throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
+                        exception, trainingAnnotationsFile.getAbsolutePath()));
+            }
+            
             model.trainAndSerialize(inputAnnotationsFile, outputPrefix);
         } else {
-            // subset SNP training annotations and write to temporary file
+            // SNP
+            final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, "snp");
+            final List<Boolean> isTrainingSNP = Streams.zip(isTraining.stream(), isSNP.stream(), (a, b) -> a && b).collect(Collectors.toList());
+            final int numTrainingSNPs = isTrainingSNP.stream().mapToInt(x -> x ? 1 : 0).sum();
 
-            // train and serialize SNP model
-            model.trainAndSerialize(inputAnnotationsFile, outputPrefix);
+            if (numTrainingSNPs > 0) {
+                logger.info(String.format("Training SNP model with %d training SNPs...", numTrainingSNPs));
+                final double[][] trainingSNPData = IntStream.range(0, numAllData).boxed().filter(isTrainingSNP::get).map(i -> allData[i]).toArray(double[][]::new);
+                final File trainingSNPAnnotationsFile = IOUtils.createTempFile("training.snp.annot", ".hdf5");
+                
+                try (final HDF5File trainingSNPAnnotationsHDF5File = new HDF5File(trainingSNPAnnotationsFile, HDF5File.OpenMode.CREATE)) {
+                    trainingSNPAnnotationsHDF5File.makeStringArray("/annotations/names", annotationNames.toArray(new String[0]));
+                    HDF5Utils.writeChunkedDoubleMatrix(trainingSNPAnnotationsHDF5File, "/annotations", trainingSNPData, DEFAULT_MAXIMUM_CHUNK_SIZE);
+                } catch (final HDF5LibException exception) {
+                    throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
+                            exception, trainingSNPAnnotationsFile.getAbsolutePath()));
+                }
 
-            // subset INDEL training annotations and write to temporary file
+                model.trainAndSerialize(trainingSNPAnnotationsFile, outputPrefix + ".snp");
+            }
 
-            // train and serialize INDEL model
+            // INDEL
+            final List<Boolean> isTrainingIndel = Streams.zip(isTraining.stream(), isSNP.stream(), (a, b) -> a && !b).collect(Collectors.toList());
+            final int numTrainingIndels = isTrainingIndel.stream().mapToInt(x -> x ? 1 : 0).sum();
+            
+            if (numTrainingIndels > 0) {
+                logger.info(String.format("Training Indel model with %d training indels...", numTrainingIndels));
+                final double[][] trainingIndelData = IntStream.range(0, numAllData).boxed().filter(isTrainingIndel::get).map(i -> allData[i]).toArray(double[][]::new);
+                final File trainingIndelAnnotationsFile = IOUtils.createTempFile("training.indel.annot", ".hdf5");
+
+                try (final HDF5File trainingIndelAnnotationsHDF5File = new HDF5File(trainingIndelAnnotationsFile, HDF5File.OpenMode.CREATE)) {
+                    trainingIndelAnnotationsHDF5File.makeStringArray("/annotations/names", annotationNames.toArray(new String[0]));
+                    HDF5Utils.writeChunkedDoubleMatrix(trainingIndelAnnotationsHDF5File, "/annotations", trainingIndelData, DEFAULT_MAXIMUM_CHUNK_SIZE);
+                } catch (final HDF5LibException exception) {
+                    throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
+                            exception, trainingIndelAnnotationsFile.getAbsolutePath()));
+                }
+
+                model.trainAndSerialize(trainingIndelAnnotationsFile, outputPrefix + ".indel");
+            }
         }
 
-        final VariantAnnotationsScorer scorer;
-        switch (modelMode) {
-            case PYTHON:
-//                scorer = new BGMMVariantAnnotationsScorer(hyperparametersJSONFile);
-                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix);
-                break;
-            case BGMM:
-                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix);
-                break;
-            default:
-                throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
-        }
+//        final VariantAnnotationsScorer scorer;
+//        switch (modelMode) {
+//            case PYTHON:
+////                scorer = new BGMMVariantAnnotationsScorer(hyperparametersJSONFile);
+//                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix);
+//                break;
+//            case BGMM:
+//                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix);
+//                break;
+//            default:
+//                throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
+//        }
 
 //        // generate scores and write to HDF5
 //        final double[] trainingScores = scorer.scoreSamples(preprocessedTrainingData);

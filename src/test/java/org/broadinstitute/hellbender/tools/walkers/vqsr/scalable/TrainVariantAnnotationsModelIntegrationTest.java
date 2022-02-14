@@ -55,6 +55,17 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
     }
 
     @Test
+    public void test1kgp50ExomesBGMMBoth() {
+        final String[] arguments = {
+                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.both.annot.hdf5",
+                "-O", "/home/slee/working/vqsr/scalable/train-test/test.bgmm.both",
+                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
     public void testJbxSNP() {
         final String[] arguments = {
                 "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.annot.hdf5",
