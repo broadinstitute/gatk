@@ -14,6 +14,8 @@ import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
@@ -39,7 +41,7 @@ import java.util.stream.Collectors;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public class VariantLabeledAnnotationsWalker extends MultiVariantWalker {
+public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
 
     private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
 
@@ -107,7 +109,6 @@ public class VariantLabeledAnnotationsWalker extends MultiVariantWalker {
     private boolean trustAllPolymorphic = false;
 
     // TODO document and validate batchSize * number of annotations <= HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX
-    @Advanced
     @Argument(
             fullName = "batch-size",
             minValue = 1,
@@ -115,16 +116,23 @@ public class VariantLabeledAnnotationsWalker extends MultiVariantWalker {
     )
     int batchSize = 100000;
 
+    // TODO document and validate batchSize * number of annotations <= HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX
+    @Advanced
+    @Argument(
+            fullName = "omit-alleles-in-hdf5"
+    )
+    boolean omitAllelesInHDF5 = false;
+
     private Set<VariantType> variantTypesToExtract;
     File outputAnnotationsFile;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
 
-    VariantLabeledAnnotationsData dataBatch;
+    LabeledVariantAnnotationsData dataBatch;
 
     private int batchIndex = 0;
 
 
-    // TODO document
+    // TODO document, make enum (extract labeled vs. extract all)
     public boolean isExtractVariantsNotOverlappingResources() {
         return true;
     }
@@ -167,19 +175,19 @@ public class VariantLabeledAnnotationsWalker extends MultiVariantWalker {
         }
         resourceLabels.forEach(String::intern);
 
-        if (!resourceLabels.contains(VariantLabeledAnnotationsData.TRAINING_LABEL)) {
+        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
             throw new CommandLineException(
                     "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
         }
 
-        if (!resourceLabels.contains(VariantLabeledAnnotationsData.TRUTH_LABEL)) {
+        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRUTH_LABEL)) {
             throw new CommandLineException(
                     "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
                             "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
         }
 
-        dataBatch = new VariantLabeledAnnotationsData(useAnnotations, resourceLabels, batchSize, useASAnnotations);
+        dataBatch = new LabeledVariantAnnotationsData(useAnnotations, resourceLabels, batchSize, useASAnnotations);
     }
 
     @Override
@@ -209,7 +217,7 @@ public class VariantLabeledAnnotationsWalker extends MultiVariantWalker {
 
     void writeBatch() {
         // write HDF5
-        dataBatch.writeLabeledAnnotationsBatchToHDF5(outputAnnotationsFile, batchIndex);
+        dataBatch.writeLabeledAnnotationsBatchToHDF5(outputAnnotationsFile, batchIndex, omitAllelesInHDF5);
 
         // write VCF
 
@@ -234,6 +242,7 @@ public class VariantLabeledAnnotationsWalker extends MultiVariantWalker {
         // override
     }
 
+    // code here and below for filtering and determining variant type was essentially retained from VQSR
     private void addVariantToBatchIfItPassesExtractionChecks(final VariantContext vc,
                                                              final FeatureContext featureContext) {
         // TODO dump unneeded VariantContext info if in Extract

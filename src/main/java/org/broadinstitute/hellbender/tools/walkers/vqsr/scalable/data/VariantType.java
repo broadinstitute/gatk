@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
+package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;

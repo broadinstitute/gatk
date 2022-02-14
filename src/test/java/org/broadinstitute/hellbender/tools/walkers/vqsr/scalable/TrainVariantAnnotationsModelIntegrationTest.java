@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.testng.annotations.Test;
 
-public class TrainVariantAnnotationModelIntegrationTest extends CommandLineProgramTest {
+public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProgramTest {
 
     private static final String PYTHON_SCRIPT = packageMainResourcesDir + "tools/walkers/vqsr/scalable/isolation-forest.py";
 

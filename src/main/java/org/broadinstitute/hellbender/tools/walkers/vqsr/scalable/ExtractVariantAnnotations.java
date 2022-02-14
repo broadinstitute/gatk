@@ -2,10 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
-
-import java.util.List;
 
 /**
  * TODO
@@ -17,7 +14,7 @@ import java.util.List;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public final class ExtractVariantAnnotations extends VariantLabeledAnnotationsWalker {
+public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsBatchWalker {
 
     @Override
     public boolean isExtractVariantsNotOverlappingResources() {
@@ -37,6 +34,8 @@ public final class ExtractVariantAnnotations extends VariantLabeledAnnotationsWa
 //                    resourceLabel));
 //        }
 //        logger.info(String.format("Extracted annotations for %s total variants.", dataBatch.size()));
+        // TODO FAIL if annotations that are all NaN
+        // TODO WARN if annotations that have zero variance
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
     }

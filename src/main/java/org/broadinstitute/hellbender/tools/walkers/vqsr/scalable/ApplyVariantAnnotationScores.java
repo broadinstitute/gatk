@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
