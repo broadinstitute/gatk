@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
+package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data;
 
 import com.google.common.collect.ImmutableSet;
 import htsjdk.samtools.util.Locatable;
@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-final class LabeledAnnotationsDatum implements Locatable {
+final class LabeledVariantAnnotationsDatum implements Locatable {
     final SimpleInterval loc;
     final Allele refAllele;
     final List<Allele> altAlleles;
@@ -20,12 +20,12 @@ final class LabeledAnnotationsDatum implements Locatable {
     final ImmutableSet<String> labels;
     final double[] annotations;
 
-    public LabeledAnnotationsDatum(final VariantContext vc,
-                                   final List<Allele> altAlleles,
-                                   final VariantType variantType,
-                                   final Set<String> labels,
-                                   final List<String> sortedAnnotationKeys,
-                                   final boolean useASAnnotations) {
+    public LabeledVariantAnnotationsDatum(final VariantContext vc,
+                                          final List<Allele> altAlleles,
+                                          final VariantType variantType,
+                                          final Set<String> labels,
+                                          final List<String> sortedAnnotationKeys,
+                                          final boolean useASAnnotations) {
         Utils.validate(!useASAnnotations || altAlleles.size() == 1,
                 "Datum should only be associated with one alt allele in allele-specific mode.");
         this.loc = new SimpleInterval(vc);
@@ -53,6 +53,7 @@ final class LabeledAnnotationsDatum implements Locatable {
         return loc.getEnd();
     }
 
+    // code retained from VQSR
     private static double decodeAnnotation(final VariantContext vc,
                                            final List<Allele> altAlleles,
                                            final String annotationKey,
