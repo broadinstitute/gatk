@@ -14,7 +14,6 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
                 "-O", "/home/slee/working/vqsr/scalable/train-test/test.snp",
                 "--python-script", PYTHON_SCRIPT,
                 "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-                "--mode", "SNP",
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
@@ -27,7 +26,6 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
                 "-O", "/home/slee/working/vqsr/scalable/train-test/test.snp.as",
                 "--python-script", PYTHON_SCRIPT,
                 "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-                "--mode", "SNP",
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
@@ -40,7 +38,6 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
                 "-O", "/home/slee/working/vqsr/scalable/train-test/test.indel",
                 "--python-script", PYTHON_SCRIPT,
                 "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-                "--mode", "INDEL",
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
@@ -52,7 +49,6 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
                 "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.annot.hdf5",
                 "-O", "/home/slee/working/vqsr/scalable/train-test/test.bgmm.snp",
                 "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
-                "--mode", "SNP",
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);

@@ -3,12 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 
-enum VariantType {
+public enum VariantType {
     SNP,
     INDEL;
 
-    static boolean checkVariantType(final VariantContext vc,
-                                    final VariantContext resourceVC) {
+    public static boolean checkVariantType(final VariantContext vc,
+                                           final VariantContext resourceVC) {
         switch (resourceVC.getType()) {
             case SNP:
             case MNP:
@@ -48,7 +48,7 @@ enum VariantType {
         }
     }
 
-    static VariantType getVariantType(final VariantContext vc) {
+    public static VariantType getVariantType(final VariantContext vc) {
         if (vc.isSNP() || vc.isMNP()) {
             return SNP;
         } else if (vc.isStructuralIndel() || vc.isIndel() || vc.isMixed() || vc.isSymbolic()) {
@@ -58,8 +58,8 @@ enum VariantType {
         }
     }
 
-    static VariantType getVariantType(final VariantContext vc,
-                                      final Allele allele) {
+    public static VariantType getVariantType(final VariantContext vc,
+                                             final Allele allele) {
         if (vc.getReference().length() == allele.length()) {
             //note that spanning deletions are considered SNPs by this logic
             return SNP;
