@@ -29,6 +29,7 @@ import org.genomicsdb.reader.GenomicsDBFeatureReader;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -334,7 +335,10 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
         this.currentIterator = null;
         this.intervalsForTraversal = null;
-        this.queryCache = new LocatableCache<>(featureInput.getName(), new DrivingFeatureInputCacheStrategy<>(queryLookaheadBases, this::refillQueryCache));
+        this.queryCache = new LocatableCache<>(
+                featureInput.getName(),
+                new DrivingFeatureInputCacheStrategy<>(queryLookaheadBases,
+                        (Function<Locatable, Iterator<T>> & Serializable) this::refillQueryCache));
     }
 
     final void printCacheStats() {
