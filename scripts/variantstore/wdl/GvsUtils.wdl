@@ -80,6 +80,7 @@ task SplitIntervals {
   Int disk_size = if (defined(split_intervals_disk_size_override)) then split_intervals_disk_size_override else 10
   Int disk_memory = if (defined(split_intervals_mem_override)) then split_intervals_mem_override else 16
   Int java_memory = disk_memory - 4
+
   String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
 
   parameter_meta {
