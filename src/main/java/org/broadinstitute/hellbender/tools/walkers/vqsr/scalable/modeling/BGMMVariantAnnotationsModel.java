@@ -1,43 +1,55 @@
-package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.model;
+package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
 import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.stat.descriptive.moment.Mean;
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.VariantAnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModelPosterior;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
 
-final class BGMMVariantAnnotationsModeller implements VariantAnnotationsModeller {
+public final class BGMMVariantAnnotationsModel implements VariantAnnotationsModel {
 
-    private static final Logger logger = LogManager.getLogger(BGMMVariantAnnotationsModeller.class);
+    private static final Logger logger = LogManager.getLogger(BGMMVariantAnnotationsModel.class);
 
-    private static final String SCORER_SER_SUFFIX = ".scorer.ser";
-    private static final String BGMM_HDF5_SUFFIX = ".bgmm.hdf5";
+    public static final String BGMM_FIT_HDF5_SUFFIX = ".bgmmFit.hdf5";
+    public static final String BGMM_TRANSFORMED_ANNOTATIONS_HDF5_SUFFIX = ".bgmmAnnot.hdf5";
+    public static final String BGMM_SCORER_SER_SUFFIX = ".bgmmScorer.ser";
 
-    private final List<String> annotationNames;
-    private final BayesianGaussianMixtureModeller bgmm;
+    private final Hyperparameters hyperparameters;
 
-    public BGMMVariantAnnotationsModeller(final File hyperparametersJSONFile,
-                                          final File inputAnnotationsFile) {
-        final Hyperparameters hyperparameters = Hyperparameters.readHyperparameters(hyperparametersJSONFile);
+    public BGMMVariantAnnotationsModel(final File hyperparametersJSONFile) {
+        hyperparameters = Hyperparameters.readHyperparameters(hyperparametersJSONFile);
+    }
 
-        annotationNames = ImmutableList.copyOf(LabeledVariantAnnotationsData.readAnnotationNames(inputAnnotationsFile));
+    @Override
+    public void trainAndSerialize(final File trainingAnnotationsFile,
+                                  final String outputPrefix) {
+        // load annotation training data
+        logger.info("Reading annotations...");
+        final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(trainingAnnotationsFile);
+        final double[][] trainingData = LabeledVariantAnnotationsData.readAnnotations(trainingAnnotationsFile);
 
-        final int nFeatures = annotationNames.size();
+        // TODO validate annotation names and trainingData size
+
+        final int nSamples = trainingData.length;
+        final int nFeatures = trainingData[0].length;
 
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
-        bgmm = new BayesianGaussianMixtureModeller.Builder()
+        final BayesianGaussianMixtureModeller bgmm = new BayesianGaussianMixtureModeller.Builder()
                 .nComponents(hyperparameters.nComponents)
                 .tol(hyperparameters.tol)
                 .regCovar(hyperparameters.regCovar)
@@ -56,39 +68,11 @@ final class BGMMVariantAnnotationsModeller implements VariantAnnotationsModeller
                 .warmStart(hyperparameters.warmStart)
                 .verboseInterval(hyperparameters.verboseInterval)
                 .build();
-        logger.info(String.format("Constructed BayesianGaussianMixtureModeller for %d annotations...", nFeatures));
-    }
-
-    @Override
-    public List<String> getAnnotationNames() {
-        return annotationNames;
-    }
-
-    @Override
-    public void fitAndWriteTrainingAndTruthScoresAndSerialize(final File inputAnnotationsFile,
-                                                              final String outputPrefix) {
-        // load annotation training data
-        logger.info("Reading annotations...");
-        // TODO validate annotation names
-        final double[][] allData = LabeledVariantAnnotationsData.readAnnotations(inputAnnotationsFile);
-        final List<Boolean> isTraining = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRAINING_LABEL);
-        final List<Boolean> isTruth = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRUTH_LABEL); // TODO make truth optional
-        final double[][] trainingData = IntStream.range(0, isTraining.size()).boxed()
-                .filter(isTraining::get)
-                .map(i -> allData[i])
-                .toArray(double[][]::new);
-        final double[][] truthData = IntStream.range(0, isTruth.size()).boxed()
-                .filter(isTruth::get)
-                .map(i -> allData[i])
-                .toArray(double[][]::new);
-
         logger.info(String.format("Training BayesianGaussianMixtureModeller with %d training sites x %d annotations...", nSamples, nFeatures));
 
         // preprocess
-        final VariantAnnotationUtils.Preprocesser preprocesser = new VariantAnnotationUtils.Preprocesser();
+        final Preprocesser preprocesser = new Preprocesser();
         final double[][] preprocessedTrainingData = preprocesser.fitTransform(trainingData);
-        final double[][] preprocessedTruthData = preprocesser.transform(truthData);
-
         bgmm.fit(preprocessedTrainingData);
 
         // TODO clean this up, method for inputAnnotationsFile -> outputPreprocessedAnnotationsFile
@@ -107,28 +91,26 @@ final class BGMMVariantAnnotationsModeller implements VariantAnnotationsModeller
 //        }
 //        logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
 
+
         // serialize scorer = preprocesser + BGMM
         // TODO fix up output paths and validation
-        VariantAnnotationUtils.serialize(
-                new File(outputPrefix + SCORER_SER_SUFFIX), new VariantAnnotationUtils.Scorer(preprocesser, bgmm)
-        );
+        SerializationUtils.serialize(
+                new File(outputPrefix + BGMM_SCORER_SER_SUFFIX),
+                new BGMMVariantAnnotationsScorer(annotationNames, preprocesser, bgmm));
+
+        // write model fit to HDF5
+        // TODO fix up output paths and validation
         final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
-        fit.write(new File(outputPrefix + BGMM_HDF5_SUFFIX), "/bgmm");
+        fit.write(new File(outputPrefix + BGMM_FIT_HDF5_SUFFIX), "/bgmm");
 
-        // generate scores and write to HDF5
-        final double[] trainingScores = bgmm.scoreSamples(preprocessedTrainingData);
-        VariantAnnotationUtils.writeScores(outputTrainingScoresFile, trainingScores);
-
-        final double[] truthScores = bgmm.scoreSamples(preprocessedTruthData);
-        VariantAnnotationUtils.writeScores(outputTruthScoresFile, truthScores);
+//        // generate scores and write to HDF5
+//        final double[] trainingScores = bgmm.scoreSamples(preprocessedTrainingData);
+//        SerializationUtils.writeScores(outputTrainingScoresFile, trainingScores);
+//
+//        final double[] truthScores = bgmm.scoreSamples(preprocessedTruthData);
+//        SerializationUtils.writeScores(outputTruthScoresFile, truthScores);
     }
 
-    @Override
-    public void scoreSamplesAndWriteScores(final String inputModelPrefix, final File outputScoresFile) {
-
-    }
-
-    // TODO perhaps just put this in the BGMM classes?
     // there is the complication of specifying mean and covariance priors differently here,
     // as well as the possible desire to have different defaults;
     // would also require slightly more code to invoke a BGMM if we use a builder for these instead
@@ -204,6 +186,76 @@ final class BGMMVariantAnnotationsModeller implements VariantAnnotationsModeller
                     ", warmStart=" + warmStart +
                     ", verboseInterval=" + verboseInterval +
                     '}';
+        }
+    }
+
+    public static final class Preprocesser implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private double[] meansForStandardization;
+        private double[] standardDeviationsForStandardization;
+        private double[] standardizedMediansForImputation;
+
+        Preprocesser() {
+        }
+
+        private static double standardize(final double value,
+                                          final double mean,
+                                          final double standardDeviation) {
+            // if standard deviation is zero, no standardization is needed, but we must guard against divide-by-zero
+            return (value - mean) / (standardDeviation < Double.MIN_VALUE ? 1. : standardDeviation);
+        }
+
+        double[][] fitTransform(final double[][] data) {
+            // TODO validation
+            final int nSamples = data.length;
+            final int nFeatures = data[0].length;
+            meansForStandardization = IntStream.range(0, nFeatures)
+                    .mapToDouble(j -> new Mean().evaluate(
+                            IntStream.range(0, nSamples).boxed()
+                                    .mapToDouble(i -> data[i][j])
+                                    .filter(Double::isFinite)
+                                    .toArray()))
+                    .toArray();
+            standardDeviationsForStandardization = IntStream.range(0, nFeatures)
+                    .mapToDouble(j -> new Variance().evaluate(
+                            IntStream.range(0, nSamples).boxed()
+                                    .mapToDouble(i -> data[i][j])
+                                    .filter(Double::isFinite)
+                                    .toArray()))
+                    .map(Math::sqrt)
+                    .toArray();
+
+            standardizedMediansForImputation = IntStream.range(0, nFeatures)
+                    .mapToDouble(j -> new Median().evaluate(
+                            IntStream.range(0, nSamples).boxed()
+                                    .mapToDouble(i -> data[i][j])
+                                    .filter(Double::isFinite)
+                                    .map(x -> standardize(x, meansForStandardization[j], standardDeviationsForStandardization[j]))
+                                    .toArray()))
+                    .toArray();
+
+            return transform(data);
+        }
+
+        double[][] transform(final double[][] data) {
+            // TODO validation
+            final int nSamples = data.length;
+            final int nFeatures = data[0].length;
+            double[][] preprocessedData = new double[nSamples][nFeatures];
+            for (int i = 0; i < nSamples; i++) {
+                for (int j = 0; j < nFeatures; j++) {
+                    final double value = data[i][j];
+                    final double preprocessedValue = Double.isNaN(value)
+                            ? standardizedMediansForImputation[j]
+                            : standardize(value, meansForStandardization[j], standardDeviationsForStandardization[j]);
+                    if (!Double.isFinite(preprocessedValue)) {
+                        throw new GATKException("Encountered non-finite value during preprocessing of annotations.");
+                    }
+                    preprocessedData[i][j] = preprocessedValue;
+                }
+            }
+            return preprocessedData;
         }
     }
 }

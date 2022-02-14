@@ -1,15 +1,8 @@
-package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.model;
+package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
 import java.io.File;
-import java.util.List;
 
-interface VariantAnnotationsModeller {
-    /**
-     *
-     * @return
-     */
-    List<String> getAnnotationNames();
-
+public interface VariantAnnotationsModel {
     /**
      * @param inputAnnotationsFile Training data in HDF5 format. (TODO document paths)
      *                             A single model will be trained, so either
@@ -20,8 +13,4 @@ interface VariantAnnotationsModeller {
      */
     void trainAndSerialize(final File inputAnnotationsFile,
                            final String outputPrefix);
-
-    void scoreSamplesAndWriteScores(final String inputPrefix,
-                                    final File inputAnnotationsFile,
-                                    final File outputScoresFile);
 }
