@@ -17,13 +17,13 @@ workflow GvsExtractCallset {
         # For reblocking v1, the default is "SIXTY" instead of "FORTY"
         String? drop_state = "FORTY"
 
-       File? interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+        File? interval_weights_bed = "gs://broad-dsp-spec-ops/gvs/weights/gvs_vet_weights_1kb.bed"
 
-       # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
-       # without a default value, ranges users are forced to specify a value even though it is meaningless
-       String extract_table_prefix = ""
-       String query_project = data_project
-       String fq_ranges_dataset = "~{data_project}.~{default_dataset}"
+        # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
+        # without a default value, ranges users are forced to specify a value even though it is meaningless
+        String extract_table_prefix = ""
+        String query_project = data_project
+        String fq_ranges_dataset = "~{data_project}.~{default_dataset}"
 
         Boolean do_not_filter_override = false
         String? filter_set_name
