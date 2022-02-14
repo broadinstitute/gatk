@@ -205,7 +205,7 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
 
     void consumeBatch() {
         doBatchWork();
-        writeBatch();
+        writeBatchToHDF5();
         dataBatch.clear();
         batchIndex++;
     }
@@ -215,12 +215,8 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
 
     }
 
-    void writeBatch() {
-        // write HDF5
+    void writeBatchToHDF5() {
         dataBatch.writeBatchToHDF5(outputAnnotationsFile, batchIndex, omitAllelesInHDF5);
-
-        // write VCF
-
     }
 
     @Override
@@ -230,8 +226,6 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
         if (dataBatch.size() > 0) {
             consumeBatch();
         }
-
-        // finalize HDF5
 
         afterOnTraversalSuccess();
 
