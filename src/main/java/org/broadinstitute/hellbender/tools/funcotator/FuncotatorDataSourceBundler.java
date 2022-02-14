@@ -294,9 +294,9 @@ public class FuncotatorDataSourceBundler extends CommandLineProgram {
             return;
         }
 
-        final boolean success = baseFolder.toAbsolutePath().toFile().mkdir();
+        final boolean success = baseFolder.toAbsolutePath().toFile().mkdirs();
         if (!success) {
-            throw new UserException("Unable to make file.");
+            throw new UserException("Unable to make folder for data sources: " + baseFolder);
         }
     }
 
