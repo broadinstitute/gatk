@@ -8,6 +8,18 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
     private static final String PYTHON_SCRIPT = packageMainResourcesDir + "tools/walkers/vqsr/scalable/isolation-forest.py";
 
     @Test
+    public void test1kgp50ExomesAll() {
+        final String[] arguments = {
+                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all.annot.hdf5",
+                "-O", "/home/slee/working/vqsr/scalable/train-test/test.all",
+                "--python-script", PYTHON_SCRIPT,
+                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
     public void test1kgp50ExomesSNP() {
         final String[] arguments = {
                 "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.annot.hdf5",
@@ -55,10 +67,10 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
     }
 
     @Test
-    public void test1kgp50ExomesBGMMBoth() {
+    public void test1kgp50ExomesBGMMAll() {
         final String[] arguments = {
-                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.both.annot.hdf5",
-                "-O", "/home/slee/working/vqsr/scalable/train-test/test.bgmm.both",
+                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all.annot.hdf5",
+                "-O", "/home/slee/working/vqsr/scalable/train-test/test.bgmm.all",
                 "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
                 "--verbosity", "DEBUG"
         };

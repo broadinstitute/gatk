@@ -18,11 +18,11 @@ import java.util.stream.Collectors;
 public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 
     @Test
-    public void test1kgp50ExomesBoth() {
+    public void test1kgp50ExomesAll() {
         final String[] arguments = {
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.both",
+                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.all",
                 "--batch-size", "100000",
                 "-an", "FS",
                 "-an", "ReadPosRankSum",
