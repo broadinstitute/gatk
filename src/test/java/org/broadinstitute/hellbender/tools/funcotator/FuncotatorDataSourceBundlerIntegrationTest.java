@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -95,6 +96,42 @@ public class FuncotatorDataSourceBundlerIntegrationTest extends CommandLineProgr
         arguments.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, basePath.toUri().toString());
 
         runCommandLine(arguments);
+    }
+
+    @Test(groups = {"cloud"}, enabled = false)
+    public void regenerateExpectedOutputsForTestDownloadDatasourcesWithValidation() {
+        final FuncotatorDataSourceBundler.OrganismKingdom kingdom      = FuncotatorDataSourceBundler.OrganismKingdom.BACTERIA;
+        final String                                      dsSpeciesArg = "absiella_dolichum_dsm_3991_gca_000154285";
+
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+        arguments.add(FuncotatorDataSourceBundler.ORGANISM_KINGDOM_ARG_LONG_NAME, kingdom);
+        arguments.add(FuncotatorDataSourceBundler.SPECIES_ARG_LONG_NAME, dsSpeciesArg);
+
+        final Path download_path = getSafeNonExistentPath(dsSpeciesArg);
+        arguments.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, download_path.toUri().toString());
+
+        // Download the new datasources:
+        runCommandLine(arguments);
+
+        // Move the new datasources to the old location:
+        final Path final_path = IOUtils.getPath(largeFileTestDir + "funcotator/absiella_dolichum_dsm_3991_gca_000154285_test_datasources");
+        try{
+            FileUtils.deleteDirectory(final_path.toFile());
+            Files.move(download_path, final_path);
+        }
+        catch(final IOException ex) {
+            throw new GATKException("Could not regenerate expected outputs for testDownloadDatasourcesWithValidation", ex);
+        }
+        // ############################################################
+        // #       __        ___    ____  _   _ ___ _   _  ____       #
+        // #       \ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|      #
+        // #        \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _       #
+        // #         \ V  V / ___ \|  _ <| |\  || || |\  | |_| |      #
+        // #          \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|      #
+        // #                                                          #
+        // ############################################################
+        //
+        // YOU STILL HAVE TO MAKE SURE THAT THE NEW FILES ARE ADDED TO GIT!
     }
 
     @Test(groups = { "cloud" })

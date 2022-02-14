@@ -40,7 +40,7 @@ public class FuncotatorDataSourceBundlerUtils {
     //==================================================================================================================
     // Public Static Members:
 
-    public static final String ENSEMBL_VERSION                          = "51";
+    public static final String ENSEMBL_VERSION                          = "52";
     public static final String SEPARATOR_CHARACTER                      = ".";
     public static final String SEQUENCE_TYPE_AND_STATUS                 = "cdna.all";
 
@@ -141,6 +141,12 @@ public class FuncotatorDataSourceBundlerUtils {
             try (final Scanner inputStream = new Scanner(uniprotURL.openStream())){
                 while (inputStream.hasNextLine()) {
                     String data = inputStream.nextLine();
+
+                    // We don't care about the headers:
+                    if (data.startsWith("#")) {
+                        continue;
+                    }
+
                     String[] columnValues = data.split("\t");
 
                     // Make sure we have the right number of columns:
