@@ -131,14 +131,15 @@ task CheckForDuplicateData {
 
     # check the INFORMATION_SCHEMA.PARTITIONS table to see if any of input sample names/ids have data loaded into their partitions
     # this returns the list of sample names that do already have data loaded
-    bq --location=US --project_id=~{project_id} query --format=csv -n ~{num_samples} --use_legacy_sql=false \
-      "WITH items as (SELECT s.sample_id, s.sample_name, s.is_loaded FROM ${TEMP_TABLE} t left outer join ${SAMPLE_INFO_TABLE} s on (s.sample_name = t.sample_name)) " \
-      "SELECT i.sample_name FROM ${INFO_SCHEMA_TABLE} p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%' OR table_name like 'pet_%')" \
-      "UNION DISTINCT " \
-      "SELECT i.sample_name FROM items i WHERE i.is_loaded = True " \
-      "UNION DISTINCT " \
-      "SELECT i.sample_name FROM items i WHERE i.sample_id IN (SELECT sample_id FROM ~{dataset_name}.sample_load_status) " \
-      | sed -e '/sample_name/d' > duplicates
+    echo "WITH items as (SELECT s.sample_id, s.sample_name, s.is_loaded FROM \`${TEMP_TABLE}\` t left outer join \`${SAMPLE_INFO_TABLE}\` s on (s.sample_name = t.sample_name)) " >> query.sql
+    echo "SELECT i.sample_name FROM \`${INFO_SCHEMA_TABLE}\` p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%' OR table_name like 'pet_%')" >> query.sql
+    echo "UNION DISTINCT "  >> query.sql
+    echo "SELECT i.sample_name FROM items i WHERE i.is_loaded = True "  >> query.sql
+    echo "UNION DISTINCT "  >> query.sql
+    echo "SELECT i.sample_name FROM items i WHERE i.sample_id IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\`) "  >> query.sql
+
+
+    cat query.sql | bq --location=US --project_id=~{project_id} query --format=csv -n ~{num_samples} --use_legacy_sql=false | sed -e '/sample_name/d' > duplicates
 
       # remove the temp table
       bq --project_id=~{project_id} rm -f -t ${TEMP_TABLE}
@@ -351,7 +352,7 @@ task SetIsLoadedColumn {
 
     # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
     bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    "UPDATE ~{dataset_name}.sample_info SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from ~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE partition_id NOT LIKE \"__%\" AND total_logical_bytes > 0 AND table_name LIKE \"vet_%\") OR sample_id IN (SELECT sample_id FROM ~{dataset_name}.sample_load_status GROUP BY 1 HAVING COUNT(1) = 2)"
+    'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` GROUP BY 1 HAVING COUNT(1) = 2)'
 
   >>>
 
@@ -417,7 +418,7 @@ task GetSampleIds {
 
       # get the current maximum id, or 0 if there are none
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM ~{dataset_name}.~{table_name} AS samples JOIN ${TEMP_TABLE} AS temp ON samples.sample_name=temp.sample_name" > results
+        "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name" > results
 
       # prep for being able to return min table id
       min_sample_id=$(tail -1 results | cut -d, -f1)
@@ -433,7 +434,7 @@ task GetSampleIds {
       python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
       bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
-        "SELECT sample_id, samples.sample_name FROM ~{dataset_name}.~{table_name} AS samples JOIN ${TEMP_TABLE} AS temp ON samples.sample_name=temp.sample_name" > sample_map
+        "SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name" > sample_map
 
       cut -d, -f1 sample_map > gvs_ids
 
