@@ -16,7 +16,7 @@ workflow GvsCreateVAT {
         String table_suffix
 
         String? service_account_json_path
-        File? gatk_override
+        File? gatk_override ## TODO do you think we can drop this altogether? when would we need this?
         File AnAcAf_annotations_template
         File ancestry_file
         File reference
