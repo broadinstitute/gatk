@@ -12,9 +12,11 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonSklearnVariantAnnotationsModel;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonSklearnVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsScorer;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -74,8 +76,12 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     private String outputPrefix;
 
     @Argument(
-            fullName = "ignore-variant-type")
-    private boolean ignoreVariantType = false;
+            fullName = "mode",
+            doc = "Variant types for which to train models. " +
+                    "If not specified, a single combined SNP/INDEL model will be trained. " +
+                    "Duplicate values will be ignored.",
+            optional = true)
+    public List<VariantType> variantTypes = new ArrayList<>(VariantType.values().length);
 
     private ModelMode modelMode;
     private boolean isAnyModelTrained;
@@ -113,14 +119,19 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         final List<Boolean> isTruth = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRUTH_LABEL);
 
         // TODO extract tags
-        if (ignoreVariantType) {
+        final boolean doTrainCombinedModel = variantTypes.isEmpty();
+        if (doTrainCombinedModel) {
             final List<Boolean> isSNPOrIndel = Collections.nCopies(isTraining.size(), true);
             doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isSNPOrIndel, "combined SNP/INDEL", ".combined");
         } else {
             final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, "snp");
-            doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isSNP, "SNP", ".snp");
-            final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
-            doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isIndel, "INDEL", ".indel");
+            if (variantTypes.contains(VariantType.SNP)) {
+                doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isSNP, "SNP", ".snp");
+            }
+            if (variantTypes.contains(VariantType.INDEL)) {
+                final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
+                doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isIndel, "INDEL", ".indel");
+            }
         }
 
         if (!isAnyModelTrained) {
@@ -189,8 +200,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         final VariantAnnotationsScorer scorer;
         switch (modelMode) {
             case PYTHON:
-//                scorer = new BGMMVariantAnnotationsScorer(hyperparametersJSONFile);
-                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix + outputPrefixTag);
+                scorer = new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, new File(outputPrefix + outputPrefixTag + ".scorer.pkl"));
                 break;
             case BGMM:
                 scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix + outputPrefixTag);

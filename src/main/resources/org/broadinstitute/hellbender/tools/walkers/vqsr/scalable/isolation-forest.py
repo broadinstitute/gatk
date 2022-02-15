@@ -4,6 +4,7 @@ import sklearn.ensemble
 import sklearn.impute
 import numpy as np
 import dill
+import json
 
 
 def read_annotations(h5file):
@@ -25,23 +26,34 @@ def read_annotations(h5file):
     return annotation_names_i, X_ni
 
 
-def do_work(annotations_file,
-            hyperparameters_json_file,
-            output_prefix):
-    print('Reading...')
+def train(annotations_file,
+          hyperparameters_json_file,
+          output_prefix):
+    print('Reading annotations...')
     annotation_names_i, X_ni = read_annotations(annotations_file)
+    print(f'Annotations: {annotation_names_i}.')
 
-    print('Imputing...')
+    print('Reading hyperparameters...')
+    with open(hyperparameters_json_file) as json_file:
+        hyperparameters_kwargs = json.load(json_file)
+    print('Hyperparameters:', hyperparameters_kwargs)
+
+    print('Imputing annotations...')
     imputer = sklearn.impute.SimpleImputer(strategy='median')
     imputed_X_ni = imputer.fit_transform(X_ni)
 
-    # TODO ingest hyperparameters
-
     print(f'Training IsolationForest with {imputed_X_ni.shape[0]} training sites x {imputed_X_ni.shape[1]} annotations...')
-    clf = sklearn.ensemble.IsolationForest(random_state=0, verbose=True)
+    clf = sklearn.ensemble.IsolationForest(**hyperparameters_kwargs)
     clf.fit(imputed_X_ni)
+    print('Training complete.')
 
-    scorer_lambda = lambda test_X_ni: clf.score_samples(imputer.transform(test_X_ni))
+    def score_samples(test_annotation_names_i,
+                      test_X_ni):
+        assert np.all(test_annotation_names_i == annotation_names_i), \
+            f'Input annotation names ({test_annotation_names_i}) must be identical to those used to train the scorer ({annotation_names_i}).'
+        return clf.score_samples(imputer.transform(test_X_ni))
+
+    scorer_lambda = lambda test_annotation_names_i, test_X_ni: score_samples(test_annotation_names_i, test_X_ni)
 
     print(f'Pickling scorer...')
     output_scorer_pkl_file = f'{output_prefix}.scorer.pkl'
@@ -49,32 +61,19 @@ def do_work(annotations_file,
         dill.dump(scorer_lambda, f)
     print(f'Scorer pickled to {output_scorer_pkl_file}.')
 
-    print(f'Pickling imputer...')
-    output_imputer_pkl_file = f'{output_prefix}.imputer.pkl'
-    with open(output_imputer_pkl_file, 'wb') as f:
-        dill.dump(imputer, f)
-    print(f'Imputer pickled to {output_imputer_pkl_file}.')
 
-    print(f'Pickling model...')
-    output_model_pkl_file = f'{output_prefix}.model.pkl'
-    with open(output_model_pkl_file, 'wb') as f:
-        dill.dump(clf, f)
-    print(f'Model pickled to {output_model_pkl_file}.')
+def score(annotations_file,
+          scorer_pkl_file,
+          output_scores_file):
+    annotation_names_i, X_ni = read_annotations(annotations_file)
 
-    # print('Scoring...')
-    # scores_n = clf.score_samples(imputed_X_ni)
-    #
-    # print(f'Writing scores...')
-    # output_training_scores_file = f'{output_prefix}.trainingScores.hdf5'
-    # with h5py.File(output_training_scores_file, 'w') as f:
-    #     scores_dset = f.create_dataset('data/scores', (len(scores_n[is_training_n]),), dtype='d')
-    #     scores_dset[:] = scores_n[is_training_n]
-    # print(f'Training scores written to {output_training_scores_file}.')
-    # output_truth_scores_file = f'{output_prefix}.truthScores.hdf5'
-    # with h5py.File(output_truth_scores_file, 'w') as f:
-    #     scores_dset = f.create_dataset('data/scores', (len(scores_n[is_truth_n]),), dtype='d')
-    #     scores_dset[:] = scores_n[is_truth_n]
-    # print(f'Truth scores written to {output_truth_scores_file}.')
+    with open(scorer_pkl_file, 'rb') as f:
+        scorer_lambda = dill.load(f)
+    scores = scorer_lambda(annotation_names_i, X_ni)
+
+    with h5py.File(output_scores_file, 'w') as f:
+        scores_dset = f.create_dataset('data/scores', (len(scores),), dtype='d')
+        scores_dset[:] = scores
 
 
 def main():
@@ -87,23 +86,44 @@ def main():
 
     parser.add_argument('--hyperparameters_json_file',
                         type=str,
-                        required=True,
+                        required=False,
                         help='')
 
     parser.add_argument('--output_prefix',
                         type=str,
-                        required=True,
+                        required=False,
+                        help='')
+
+    parser.add_argument('--scorer_pkl_file',
+                        type=str,
+                        required=False,
+                        help='')
+
+    parser.add_argument('--output_scores_file',
+                        type=str,
+                        required=False,
                         help='')
 
     args = parser.parse_args()
 
     annotations_file = args.annotations_file
-    hyperparameters_json_file = args.hyperparameters_json_file
-    output_prefix = args.output_prefix
 
-    do_work(annotations_file,
-            hyperparameters_json_file,
-            output_prefix)
+    if args.hyperparameters_json_file is not None and args.output_prefix is not None and \
+        args.scorer_pkl_file is None and args.output_scores_file is None:
+        hyperparameters_json_file = args.hyperparameters_json_file
+        output_prefix = args.output_prefix
+        train(annotations_file,
+              hyperparameters_json_file,
+              output_prefix)
+    elif args.hyperparameters_json_file is None and args.output_prefix is None and \
+            args.scorer_pkl_file is not None and args.output_scores_file is not None:
+        scorer_pkl_file = args.scorer_pkl_file
+        output_scores_file = args.output_scores_file
+        score(annotations_file,
+              scorer_pkl_file,
+              output_scores_file)
+    else:
+        raise
 
 
 if __name__ == '__main__':

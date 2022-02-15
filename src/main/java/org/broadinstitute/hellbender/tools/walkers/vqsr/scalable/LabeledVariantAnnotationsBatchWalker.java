@@ -63,18 +63,16 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
 
     @Argument(
             fullName = "mode",
-            shortName = "mode",
             doc = "Variant types to extract")
     public List<VariantType> variantTypesToExtractList = new ArrayList<>(Arrays.asList(VariantType.SNP, VariantType.INDEL));
 
     /**
      * Extract per-allele annotations.
      * Annotations should be specified using their full names with AS_ prefix.
-     * Non-allele-specific (scalar) annotations will be applied to all alleles.
+     * Non-allele-specific annotations will be applied to all alleles.
      */
     @Argument(
             fullName = "use-allele-specific-annotations",
-            shortName = "AS",
             doc = "If specified, attempt to use the allele-specific versions of the specified annotations.",
             optional = true)
     public boolean useASAnnotations = false;
@@ -83,8 +81,8 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
      * See the input VCF file's INFO field for a list of all available annotations.
      */
     @Argument(
-            fullName = "use-annotation",
-            shortName = "an",
+            fullName = StandardArgumentDefinitions.ANNOTATION_LONG_NAME,
+            shortName = "A",
             doc = "The names of the annotations to extract.",
             minElements = 1)
     private List<String> useAnnotations = new ArrayList<>();

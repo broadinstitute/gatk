@@ -189,8 +189,8 @@ public final class LabeledVariantAnnotationsData {
         }
     }
 
-    private static double[] readChunkedDoubleArray(final HDF5File file,
-                                                   final String path) {
+    public static double[] readChunkedDoubleArray(final HDF5File file,
+                                                  final String path) {
         Utils.nonNull(file);
         IOUtils.canReadFile(file.getFile());
         Utils.nonNull(path);
