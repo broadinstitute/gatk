@@ -26,7 +26,6 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -78,13 +77,12 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     @Argument(
             fullName = "mode",
             doc = "Variant types for which to train models. " +
-                    "If not specified, a single combined SNP/INDEL model will be trained. " +
                     "Duplicate values will be ignored.",
+            minElements = 1,
             optional = true)
-    public List<VariantType> variantTypes = new ArrayList<>(VariantType.values().length);
+    public List<VariantType> variantTypes = new ArrayList<>(Arrays.asList(VariantType.SNP, VariantType.INDEL));
 
     private ModelMode modelMode;
-    private boolean isAnyModelTrained;
 
     @Override
     protected Object doWork() {
@@ -119,23 +117,13 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         final List<Boolean> isTruth = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRUTH_LABEL);
 
         // TODO extract tags
-        final boolean doTrainCombinedModel = variantTypes.isEmpty();
-        if (doTrainCombinedModel) {
-            final List<Boolean> isSNPOrIndel = Collections.nCopies(isTraining.size(), true);
-            doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isSNPOrIndel, "combined SNP/INDEL", ".combined");
-        } else {
-            final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, "snp");
-            if (variantTypes.contains(VariantType.SNP)) {
-                doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isSNP, "SNP", ".snp");
-            }
-            if (variantTypes.contains(VariantType.INDEL)) {
-                final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
-                doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isIndel, "INDEL", ".indel");
-            }
+        final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, "snp");
+        if (variantTypes.contains(VariantType.SNP)) {
+            doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isSNP, "SNP", ".snp");
         }
-
-        if (!isAnyModelTrained) {
-            throw new UserException.BadInput("No training sites were found in the provided annotations.");
+        if (variantTypes.contains(VariantType.INDEL)) {
+            final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
+            doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isIndel, "INDEL", ".indel");
         }
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
@@ -170,6 +158,9 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 final File truthScoresFile = score(truthAnnotationsFile, outputPrefixTag, TRUTH_SCORES_HDF5_SUFFIX);
                 logger.info(String.format("Truth scores written to %s.", truthScoresFile.getAbsolutePath()));
             }
+        } else {
+            throw new UserException.BadInput(String.format("Attempted to train %s model, " +
+                    "but no suitable training sites were found in the provided annotations.", logMessageTag));
         }
     }
 
@@ -191,7 +182,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
         }
         model.trainAndSerialize(trainingAnnotationsFile, outputPrefix + outputPrefixTag);
-        isAnyModelTrained = true;
     }
 
     private File score(final File annotationsFile,
@@ -203,7 +193,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 scorer = new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, new File(outputPrefix + outputPrefixTag + ".scorer.pkl"));
                 break;
             case BGMM:
-                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix + outputPrefixTag);
+                scorer = BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX));
                 break;
             default:
                 throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");

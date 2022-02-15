@@ -1,11 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
-import com.google.common.collect.ImmutableList;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 
