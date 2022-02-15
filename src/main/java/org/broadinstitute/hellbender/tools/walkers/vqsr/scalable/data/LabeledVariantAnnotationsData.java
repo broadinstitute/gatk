@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Streams;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -20,11 +19,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /*
  * TODO this whole class needs refactoring. it's cleaned up significantly from VQSR version,
@@ -108,13 +105,6 @@ public final class LabeledVariantAnnotationsData {
     public void writeBatchToHDF5(final File outputFile,
                                  final int batchIndex,
                                  final boolean omitAllelesInHDF5) {
-        writeBatchSubsetToHDF5(outputFile, batchIndex, null, omitAllelesInHDF5);
-    }
-
-    public void writeBatchSubsetToHDF5(final File outputFile,
-                                       final int batchIndex,
-                                       final List<Boolean> perDatumFilter,
-                                       final boolean omitAllelesInHDF5) {
         // TODO validate
         try (final HDF5File outputHDF5File = new HDF5File(outputFile, batchIndex == 0 ? HDF5File.OpenMode.CREATE : HDF5File.OpenMode.READ_WRITE)) {
             IOUtils.canReadFile(outputHDF5File.getFile());

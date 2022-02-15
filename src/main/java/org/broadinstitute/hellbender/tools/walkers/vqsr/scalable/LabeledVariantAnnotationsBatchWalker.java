@@ -131,7 +131,6 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
 
     private int batchIndex = 0;
 
-
     // TODO document, make enum (extract labeled vs. extract all)
     public boolean isExtractVariantsNotOverlappingResources() {
         return true;
@@ -199,24 +198,18 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
 
         if (dataBatch.size() == batchSize) {
             consumeBatch();
-
         }
     }
 
     void consumeBatch() {
+        dataBatch.writeBatchToHDF5(outputAnnotationsFile, batchIndex, omitAllelesInHDF5);
         doBatchWork();
-        writeBatchToHDF5();
         dataBatch.clear();
         batchIndex++;
     }
 
     void doBatchWork() {
         // override
-
-    }
-
-    void writeBatchToHDF5() {
-        dataBatch.writeBatchToHDF5(outputAnnotationsFile, batchIndex, omitAllelesInHDF5);
     }
 
     @Override

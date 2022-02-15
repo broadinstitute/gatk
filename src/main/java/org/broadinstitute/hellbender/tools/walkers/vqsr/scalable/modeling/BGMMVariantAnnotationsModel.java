@@ -16,6 +16,9 @@ import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureMod
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
@@ -45,7 +48,6 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
 
         // TODO validate annotation names and trainingData size
 
-        final int nSamples = trainingData.length;
         final int nFeatures = trainingData[0].length;
 
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
@@ -68,7 +70,6 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
                 .warmStart(hyperparameters.warmStart)
                 .verboseInterval(hyperparameters.verboseInterval)
                 .build();
-        logger.info(String.format("Training BayesianGaussianMixtureModeller with %d training sites x %d annotations...", nSamples, nFeatures));
 
         // preprocess
         final Preprocesser preprocesser = new Preprocesser();
@@ -93,27 +94,29 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
 
 
         // serialize scorer = preprocesser + BGMM
-        // TODO fix up output paths and validation
-        SerializationUtils.serialize(
+        // TODO fix up output paths and validation, logging
+        serialize(
                 new File(outputPrefix + BGMM_SCORER_SER_SUFFIX),
                 new BGMMVariantAnnotationsScorer(annotationNames, preprocesser, bgmm));
 
         // write model fit to HDF5
-        // TODO fix up output paths and validation
+        // TODO fix up output paths and validation, logging
         final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
         fit.write(new File(outputPrefix + BGMM_FIT_HDF5_SUFFIX), "/bgmm");
-
-//        // generate scores and write to HDF5
-//        final double[] trainingScores = bgmm.scoreSamples(preprocessedTrainingData);
-//        SerializationUtils.writeScores(outputTrainingScoresFile, trainingScores);
-//
-//        final double[] truthScores = bgmm.scoreSamples(preprocessedTruthData);
-//        SerializationUtils.writeScores(outputTruthScoresFile, truthScores);
     }
 
-    // there is the complication of specifying mean and covariance priors differently here,
-    // as well as the possible desire to have different defaults;
-    // would also require slightly more code to invoke a BGMM if we use a builder for these instead
+    private static <T> void serialize(final File outputFile,
+                                      final T object) {
+        try (final FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
+             final ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream)) {
+            objectOutputStream.writeObject(object);
+        } catch (final IOException e) {
+            throw new GATKException(String.format("Exception encountered during serialization of %s to %s: %s",
+                    object.getClass(), outputFile.getAbsolutePath(), e));
+        }
+    }
+
+    // mean and covariance priors are each specified by a single number here
     static final class Hyperparameters {
         @JsonProperty("n_components")
         int nComponents = 6;

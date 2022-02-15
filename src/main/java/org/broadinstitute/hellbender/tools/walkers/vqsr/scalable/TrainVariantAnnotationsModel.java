@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.collect.Streams;
-import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -13,20 +12,19 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsModel;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonSklearnVariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModel;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsScorer;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -42,7 +40,8 @@ import java.util.stream.IntStream;
 )
 @DocumentedFeature
 public final class TrainVariantAnnotationsModel extends CommandLineProgram {
-    
+
+    // chunk size in temporary annotation files that are passed as input to models
     private static final int DEFAULT_CHUNK_DIVISOR = 16;
     private static final int DEFAULT_MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / DEFAULT_CHUNK_DIVISOR;
 
@@ -78,20 +77,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             fullName = "ignore-variant-type")
     private boolean ignoreVariantType = false;
 
-    /**
-     * Add truth sensitivity slices through the call set at the given values. The default values are 100.0, 99.9, 99.0, and 90.0
-     * which will result in 4 estimated tranches in the final call set: the full set of calls (100% sensitivity at the accessible
-     * sites in the truth set), a 99.9% truth sensitivity tranche, along with progressively smaller tranches at 99% and 90%.
-     * Note: You must pass in each tranche as a separate value (e.g. -tranche 100.0 -tranche 99.9).
-     */
-    @Argument(
-            fullName = "truth-sensitivity-tranche",
-            shortName = "tranche",
-            doc = "The levels of truth sensitivity at which to slice the data. (in percent, that is 1.0 for 1 percent)",
-            optional = true)
-    private List<Double> truthSensitivityTranches = new ArrayList<>(Arrays.asList(100.0, 99.9, 99.0, 90.0));
-
     private ModelMode modelMode;
+    private boolean isAnyModelTrained;
 
     @Override
     protected Object doWork() {
@@ -99,9 +86,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         IOUtils.canReadFile(inputAnnotationsFile);
         IOUtils.canReadFile(hyperparametersJSONFile);
 
-        // TODO fail early for outputs, extract constants
-        final File outputTrainingScoresFile = new File(outputPrefix + ".trainingScores.hdf5");
-        final File outputTruthScoresFile = new File(outputPrefix + ".truthScores.hdf5");
+        // TODO test output and fail early
 
         if (pythonScriptFile != null) {
             logger.info("Python script was provided, running in PYTHON mode...");
@@ -120,60 +105,69 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
         logger.info("Starting training...");
 
-        // TODO could do subsetting out of memory by iterating over batches
+        // TODO could subset without allocating memory for allData by iterating over batches in inputAnnotationsFile
         final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputAnnotationsFile);
         final double[][] allData = LabeledVariantAnnotationsData.readAnnotations(inputAnnotationsFile);
+        
         final List<Boolean> isTraining = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRAINING_LABEL);
-        final int numTraining = isTraining.stream().mapToInt(x -> x ? 1 : 0).sum();
-        if (numTraining == 0) {
+        final List<Boolean> isTruth = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRUTH_LABEL);
+
+        // TODO extract tags
+        if (ignoreVariantType) {
+            final List<Boolean> isSNPOrIndel = Collections.nCopies(isTraining.size(), true);
+            doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isSNPOrIndel, "combined SNP/INDEL", ".combined");
+        } else {
+            final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, "snp");
+            doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isSNP, "SNP", ".snp");
+            final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
+            doModelingAndScoringWork(annotationNames, allData, isTraining, isTruth, isIndel, "INDEL", ".indel");
+        }
+
+        if (!isAnyModelTrained) {
             throw new UserException.BadInput("No training sites were found in the provided annotations.");
         }
-        
-        // TODO clean up
-        if (ignoreVariantType) {
-            logger.info(String.format("Training type-agnostic model with %d training sites...", numTraining));
-            subsetDataAndTrainAndSerializeModel(annotationNames, allData, isTraining, "");
-        } else {
-            // SNP
-            final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, "snp");
-            final List<Boolean> isTrainingSNP = Streams.zip(isTraining.stream(), isSNP.stream(), (a, b) -> a && b).collect(Collectors.toList());
-            final int numTrainingSNPs = isTrainingSNP.stream().mapToInt(x -> x ? 1 : 0).sum();
-            if (numTrainingSNPs > 0) {
-                logger.info(String.format("Training SNP model with %d training sites...", numTrainingSNPs));
-                subsetDataAndTrainAndSerializeModel(annotationNames, allData, isTrainingSNP, ".snp");
-            }
-            // INDEL
-            final List<Boolean> isTrainingIndel = Streams.zip(isTraining.stream(), isSNP.stream(), (a, b) -> a && !b).collect(Collectors.toList());
-            final int numTrainingIndels = isTrainingIndel.stream().mapToInt(x -> x ? 1 : 0).sum();
-            if (numTrainingIndels > 0) {
-                subsetDataAndTrainAndSerializeModel(annotationNames, allData, isTrainingIndel, ".indel");
-            }
-        }
-
-//        final VariantAnnotationsScorer scorer;
-//        switch (modelMode) {
-//            case PYTHON:
-////                scorer = new BGMMVariantAnnotationsScorer(hyperparametersJSONFile);
-//                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix);
-//                break;
-//            case BGMM:
-//                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix);
-//                break;
-//            default:
-//                throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
-//        }
-
-        // TODO write training and truth scores
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
     }
 
-    private void subsetDataAndTrainAndSerializeModel(final List<String> annotationNames,
-                                                     final double[][] allData,
-                                                     final List<Boolean> isSubset,
-                                                     final String outputPrefixTag) {
+    private void doModelingAndScoringWork(final List<String> annotationNames,
+                                          final double[][] allData,
+                                          final List<Boolean> isTraining,
+                                          final List<Boolean> isTruth,
+                                          final List<Boolean> isVariantType,
+                                          final String logMessageTag,
+                                          final String outputPrefixTag) {
+        final List<Boolean> isTrainingAndVariantType = Streams.zip(isTraining.stream(), isVariantType.stream(), (a, b) -> a && b).collect(Collectors.toList());
+        final int numTrainingAndVariantType = numPassingFilter(isTrainingAndVariantType);
+
+        if (numTrainingAndVariantType > 0) {
+            logger.info(String.format("Training %s model with %d training sites x %d annotations %s...",
+                    logMessageTag, numTrainingAndVariantType, annotationNames.size(), annotationNames));
+            final File trainingAnnotationsFile = subsetAnnotationsToTemporaryFile(annotationNames, allData, isTrainingAndVariantType);
+            trainAndSerializeModel(trainingAnnotationsFile, outputPrefixTag);
+            logger.info(String.format("Model trained and serialized with output prefix \"%s\".", outputPrefix + outputPrefixTag));
+
+            final File trainingScoresFile = score(trainingAnnotationsFile, outputPrefixTag, TRAINING_SCORES_HDF5_SUFFIX);
+            logger.info(String.format("Training scores written to %s.", trainingScoresFile.getAbsolutePath()));
+
+            final List<Boolean> isTruthAndVariantType = Streams.zip(isTruth.stream(), isVariantType.stream(), (a, b) -> a && b).collect(Collectors.toList());
+            final int numTruthAndVariantType = numPassingFilter(isTruthAndVariantType);
+            if (numTruthAndVariantType > 0) {
+                final File truthAnnotationsFile = subsetAnnotationsToTemporaryFile(annotationNames, allData, isTruthAndVariantType);
+                final File truthScoresFile = score(truthAnnotationsFile, outputPrefixTag, TRUTH_SCORES_HDF5_SUFFIX);
+                logger.info(String.format("Truth scores written to %s.", truthScoresFile.getAbsolutePath()));
+            }
+        }
+    }
+
+    private static int numPassingFilter(List<Boolean> isPassing) {
+        return isPassing.stream().mapToInt(x -> x ? 1 : 0).sum();
+    }
+
+    private void trainAndSerializeModel(final File trainingAnnotationsFile,
+                                        final String outputPrefixTag) {
         final VariantAnnotationsModel model;
         switch (modelMode) {
             case PYTHON:
@@ -185,18 +179,42 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             default:
                 throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
         }
+        model.trainAndSerialize(trainingAnnotationsFile, outputPrefix + outputPrefixTag);
+        isAnyModelTrained = true;
+    }
 
-        // subset training data and write to temporary HDF5
-        final double[][] trainingData = IntStream.range(0, isSubset.size()).boxed().filter(isSubset::get).map(i -> allData[i]).toArray(double[][]::new);
-        final File trainingAnnotationsFile = IOUtils.createTempFile("training.annot", ".hdf5");
-        try (final HDF5File trainingAnnotationsHDF5File = new HDF5File(trainingAnnotationsFile, HDF5File.OpenMode.CREATE)) {
-            trainingAnnotationsHDF5File.makeStringArray("/annotations/names", annotationNames.toArray(new String[0]));
-            HDF5Utils.writeChunkedDoubleMatrix(trainingAnnotationsHDF5File, "/annotations", trainingData, DEFAULT_MAXIMUM_CHUNK_SIZE);
+    private File score(final File annotationsFile,
+                       final String outputPrefixTag,
+                       final String outputSuffix) {
+        final VariantAnnotationsScorer scorer;
+        switch (modelMode) {
+            case PYTHON:
+//                scorer = new BGMMVariantAnnotationsScorer(hyperparametersJSONFile);
+                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix + outputPrefixTag);
+                break;
+            case BGMM:
+                scorer = BGMMVariantAnnotationsScorer.deserialize(outputPrefix + outputPrefixTag);
+                break;
+            default:
+                throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
+        }
+        final File outputScoresFile = new File(outputPrefix + outputPrefixTag + outputSuffix);
+        scorer.scoreSamples(annotationsFile, outputScoresFile);
+        return outputScoresFile;
+    }
+
+    private static File subsetAnnotationsToTemporaryFile(final List<String> annotationNames,
+                                                         final double[][] allData,
+                                                         final List<Boolean> isSubset) {
+        final double[][] subsetData = IntStream.range(0, isSubset.size()).boxed().filter(isSubset::get).map(i -> allData[i]).toArray(double[][]::new);
+        final File subsetAnnotationsFile = IOUtils.createTempFile("subset.annot", ".hdf5");
+        try (final HDF5File subsetAnnotationsHDF5File = new HDF5File(subsetAnnotationsFile, HDF5File.OpenMode.CREATE)) {
+            subsetAnnotationsHDF5File.makeStringArray("/annotations/names", annotationNames.toArray(new String[0]));
+            HDF5Utils.writeChunkedDoubleMatrix(subsetAnnotationsHDF5File, "/annotations", subsetData, DEFAULT_MAXIMUM_CHUNK_SIZE);
         } catch (final HDF5LibException exception) {
             throw new GATKException(String.format("Exception encountered during writing of annotations (%s). Output file at %s may be in a bad state.",
-                    exception, trainingAnnotationsFile.getAbsolutePath()));
+                    exception, subsetAnnotationsFile.getAbsolutePath()));
         }
-
-        model.trainAndSerialize(trainingAnnotationsFile, outputPrefix + outputPrefixTag);
+        return subsetAnnotationsFile;
     }
 }
