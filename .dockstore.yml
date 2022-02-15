@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_quoting_bug
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
@@ -90,6 +91,7 @@ workflows:
          - ah_var_store
          - rsa_split_intervals_part_2
          - kc_cluster_vqsr
+         - kc_quoting_bug         
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -99,6 +101,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_quoting_bug         
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -119,7 +122,7 @@ workflows:
          - ah_var_store
          - rsa_rescattering_wf
          - rc_add_dropstate_extract_wdl
-         - kc_ranges_prepare
+         - kc_splitter
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -129,6 +132,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_quoting_bug
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
@@ -148,7 +152,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_ranges_prepare
    - name: GvsSitesOnlyVCF
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsSitesOnlyVCF.wdl
@@ -168,6 +171,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsExtractCohortFromSampleNames
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - rsa_wire_cohort_wdl
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

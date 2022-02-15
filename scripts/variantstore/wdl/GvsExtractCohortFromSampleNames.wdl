@@ -1,6 +1,6 @@
 version 1.0
 
-import "GvsPrepareCallset.wdl" as GvsPrepareCallset
+import "GvsPrepareRangesCallset.wdl" as GvsPrepareCallset
 import "GvsExtractCallset.wdl" as GvsExtractCallset
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
@@ -62,6 +62,7 @@ workflow GvsExtractCohortFromSampleNames {
       data_project = gvs_project,
       query_project = query_project,
       default_dataset = gvs_dataset,
+      extract_table_prefix = extraction_uuid,
 
       wgs_intervals = wgs_intervals,
       scatter_count = scatter_count,
@@ -69,8 +70,6 @@ workflow GvsExtractCohortFromSampleNames {
       reference = reference,
       reference_index = reference_index,
       reference_dict = reference_dict,
-
-      fq_cohort_extract_table_prefix = GvsPrepareCallset.fq_cohort_extract_table_prefix,
 
       do_not_filter_override = do_not_filter_override,
       filter_set_name = filter_set_name,
