@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -2354,6 +2355,10 @@ public final class FuncotatorUtils {
     public static void setVariantClassificationCustomSeverity(final GATKPath customSeverityFile) {
         try {
             logger.info("Setting custom variant classification severities from: " + customSeverityFile);
+
+            if ( !Files.exists(customSeverityFile.toPath()) ) {
+                throw new UserException("Custom severity file does not exist: " + customSeverityFile);
+            }
             final BufferedReader reader = new BufferedReader(new InputStreamReader(customSeverityFile.getInputStream()));
 
             int lineNum = 1;

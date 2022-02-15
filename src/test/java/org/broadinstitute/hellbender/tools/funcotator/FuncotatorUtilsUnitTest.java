@@ -14,6 +14,7 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.collections.MapUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
@@ -21,6 +22,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.FuncotatorReferenceTestUtils;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.VcfFuncotationMetadata;
@@ -2469,6 +2471,93 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
             expectedExceptions = IllegalArgumentException.class)
     public void testCreateLinkedHashMapFromListsWithIllegalArgs(final List<String> keys, final List<String> values) {
         FuncotatorUtils.createLinkedHashMapFromLists(keys, values);
+    }
+
+    @DataProvider
+    public Object[][] provideForTestSetVariantClassificationCustomSeverity() {
+        return new Object[][] {
+                {new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/" + "test1.tsv"), new HashMap<GencodeFuncotation.VariantClassification, Integer>() {{
+                    put(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, 0);
+                    put(GencodeFuncotation.VariantClassification.INTRON, 1);
+                    put(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, 2);
+                    put(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 4);
+                    put(GencodeFuncotation.VariantClassification.IGR, 8);
+                    put(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, 16);
+                    put(GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, 32);
+                    put(GencodeFuncotation.VariantClassification.MISSENSE, 64);
+                    put(GencodeFuncotation.VariantClassification.NONSENSE, 128);
+                    put(GencodeFuncotation.VariantClassification.NONSTOP, 256);
+                    put(GencodeFuncotation.VariantClassification.SILENT, 512);
+                    put(GencodeFuncotation.VariantClassification.SPLICE_SITE, 1024);
+                    put(GencodeFuncotation.VariantClassification.IN_FRAME_DEL, 2048);
+                    put(GencodeFuncotation.VariantClassification.IN_FRAME_INS, 4096);
+                    put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS, 8192);
+                    put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL, 16384);
+                    put(GencodeFuncotation.VariantClassification.START_CODON_SNP, 32768);
+                    put(GencodeFuncotation.VariantClassification.START_CODON_INS, 65536);
+                    put(GencodeFuncotation.VariantClassification.START_CODON_DEL, 131072);
+                    put(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME, 262144);
+                    put(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME, 524288);
+                    put(GencodeFuncotation.VariantClassification.RNA, 1048576);
+                    put(GencodeFuncotation.VariantClassification.LINCRNA, 2097152);
+                }}},
+
+                {new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/" + "test2.tsv"), new HashMap<GencodeFuncotation.VariantClassification, Integer>() {{
+                    put(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, 0);
+                    put(GencodeFuncotation.VariantClassification.INTRON, 1);
+                    put(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, 2);
+                    put(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 4);
+                    put(GencodeFuncotation.VariantClassification.IGR, 8);
+                    put(GencodeFuncotation.VariantClassification.SPLICE_SITE, 1024);
+                    put(GencodeFuncotation.VariantClassification.IN_FRAME_DEL, 2048);
+                    put(GencodeFuncotation.VariantClassification.IN_FRAME_INS, 4096);
+                    put(GencodeFuncotation.VariantClassification.RNA, 1048576);
+                    put(GencodeFuncotation.VariantClassification.LINCRNA, 2097152);
+                }}},
+
+                {new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/" + "test3.tsv"), new HashMap<GencodeFuncotation.VariantClassification, Integer>() {{
+                    put(GencodeFuncotation.VariantClassification.LINCRNA, 2097152);
+                }}},
+        };
+    }
+
+    @Test(dataProvider = "provideForTestSetVariantClassificationCustomSeverity")
+    public void testSetVariantClassificationCustomSeverity(final GATKPath customVcFile,
+                                                           final Map<GencodeFuncotation.VariantClassification, Integer> expectedVCSevMap) {
+        // Set new severity:
+        FuncotatorUtils.setVariantClassificationCustomSeverity(customVcFile);
+
+        // Check we've set it properly:
+        for ( final GencodeFuncotation.VariantClassification vc : expectedVCSevMap.keySet()) {
+            Assert.assertEquals(vc.getSeverity(), expectedVCSevMap.get(vc).intValue());
+        }
+
+        // Reset severity:
+        GencodeFuncotation.VariantClassification.resetSeveritiesToDefault();
+
+        // Check that the reset works:
+        for ( final GencodeFuncotation.VariantClassification vc : GencodeFuncotation.VariantClassification.values()) {
+            Assert.assertEquals(vc.getSeverity(), vc.getDefaultSeverity());
+        }
+    }
+
+    @Test(expectedExceptions = {UserException.class})
+    public void testSetVariantClassificationCustomSeverityNonIntSev() {
+        final GATKPath customVcFile = new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/non_int_sev.tsv");
+        FuncotatorUtils.setVariantClassificationCustomSeverity(customVcFile);
+    }
+
+    @Test(expectedExceptions = {UserException.class})
+    public void testSetVariantClassificationCustomSeverityWrongColumnsTsv() {
+        final GATKPath customVcFile = new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/wrong_num_columns.tsv");
+        FuncotatorUtils.setVariantClassificationCustomSeverity(customVcFile);
+    }
+
+    @Test(expectedExceptions = {UserException.class})
+    public void testSetVariantClassificationCustomSeverityNonexistentFile() {
+        final Path p = getSafeNonExistentPath("TEST");
+        final GATKPath customVcFile = new GATKPath(p.toUri().toString());
+        FuncotatorUtils.setVariantClassificationCustomSeverity(customVcFile);
     }
 
 }
