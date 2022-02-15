@@ -105,7 +105,7 @@ public class SVInterval implements Comparable<SVInterval> {
     public int getEnd() { return end; }
 
     /**
-     * Assumes half-open interval.
+     * Assumes half-open, 0-based interval.
      */
     public SimpleInterval toSimpleInterval(String[] contigIDToName) {
         Integer contigID = this.getContig();  // non-negative

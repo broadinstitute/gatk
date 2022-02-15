@@ -300,7 +300,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     }
 
 
-    // Test sortVariantConsequenceDict() sorts variant consequence map before writing to VCF
+    // Test sortVariantConsequenceDict() sorts lists of genes in variant consequence map
     @Test
     public void testSortVariantConsequenceDict() {
         Map<String, Set<String>> before = new HashMap<>();

@@ -66,4 +66,27 @@ public class SVIntervalUnitTest extends GATKBaseTest {
     public void test(final int contig, final int start, final int end, final SVInterval.SVIntervalConstructorArgsValidator argsValidator) {
         new SVInterval(contig, start, end, argsValidator);
     }
+
+    @DataProvider(name="toSimpleInterval")
+    public Object[][] getToSimpleIntervalData() {
+        return new Object[][] {
+                { new SVInterval(0, 0, 100), new SimpleInterval("chr1", 1, 100)},
+                { new SVInterval(1, 200, 201), new SimpleInterval("chr2", 201, 201)},
+                { new SVInterval(2, 2, 3), null}
+        };
+    }
+
+
+    @Test(dataProvider = "toSimpleInterval")
+    public void testToSimpleInterval(
+            final SVInterval interval,
+            final SimpleInterval expectedSimpleInterval)
+    {
+        final String[] contigIDToName = new String[]{"chr1", "chr2"};
+        try {
+            Assert.assertEquals(interval.toSimpleInterval(contigIDToName), expectedSimpleInterval);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            Assert.assertNull(expectedSimpleInterval);
+        }
+    }
 }

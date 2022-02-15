@@ -91,8 +91,8 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                 // Run with GTF and noncoding BED file. Check a variant that has both
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add("proteinCodingGTF", gtf)
-                        .add("nonCodingBed", noncodingElements),
+                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, gtf)
+                        .add(SVAnnotate.NON_CODING_BED_NAME, noncodingElements),
                         "ref_panel_1kg_v1_INV_chr21_1",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.NONCODING_BREAKPOINT),
@@ -100,7 +100,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                 // Noncoding only. Check same variant for just the noncoding annotation
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add("nonCodingBed", noncodingElements),
+                        .add(SVAnnotate.NON_CODING_BED_NAME, noncodingElements),
                         "ref_panel_1kg_v1_INV_chr21_1",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.NONCODING_BREAKPOINT),
@@ -108,15 +108,15 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                 // Protein-coding GTF only
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add("proteinCodingGTF", gtf),
+                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, gtf),
                         "ref_panel_1kg_v1_BND_chr22_7",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.INTRONIC), Arrays.asList("BCL2L13"))},
                 // Toggle promoter window and check for addition of promoter annotation to previous variant
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add("proteinCodingGTF", gtf)
-                        .add("promoterWindowLength", 8000),
+                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, gtf)
+                        .add(SVAnnotate.PROMOTER_WINDOW_NAME, 8000),
                         "ref_panel_1kg_v1_BND_chr22_7",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.PROMOTER),
@@ -124,8 +124,8 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                 // Toggle BND annotation and check for change from default
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add("proteinCodingGTF", gtf)
-                        .add("maxBreakendLenForOverlapAnnotation", 12000),
+                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, gtf)
+                        .add(SVAnnotate.MAX_BND_LEN_NAME, 12000),
                         "ref_panel_1kg_v1_BND_chr22_7",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.LOF), Arrays.asList("BCL2L13"))},

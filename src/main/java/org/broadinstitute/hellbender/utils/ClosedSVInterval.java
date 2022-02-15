@@ -33,7 +33,7 @@ public final class ClosedSVInterval extends SVInterval {
     }
 
     /**
-     * Assumes {@link #isUpstreamOf(SVInterval)}.
+     * Assumes {@link #isUpstreamOf(ClosedSVInterval)}.
      */
     public int gapLen( final ClosedSVInterval that ) {
         if ( this.contig != that.contig ) return Integer.MAX_VALUE;
@@ -41,7 +41,7 @@ public final class ClosedSVInterval extends SVInterval {
     }
 
     public int overlapLen( final ClosedSVInterval that ) {
-        if ( this.contig != that.contig ) return 0;
+        if ( this.isDisjointFrom(that)) return 0;
         return Math.max(0, Math.min(this.end, that.end) - Math.max(this.start, that.start)) + 1;
     }
 
