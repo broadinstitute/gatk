@@ -12,8 +12,8 @@ The pipeline takes in a jointVCF and outputs a table in BigQuery.
 
 ### Run GvsCreateVAT:
 
-Most of the inputs are constants---like the reference, or a table schema--and dont require any additional work (and paths can be found in the [example inputs json](scripts/variantstore/wdl/GvsCreateVAT.example.inputs.json)). However for the specific data being put in the VAT, three inputs need to be created.
-The first two of these inputs are two files—one of the file/vcf/shards you want to use for the VAT, and one of their indices. These are labelled as `inputFileofFileNames` and `inputFileofIndexFileNames`.
+Most of the inputs are constants — like the reference, or a table schema — and dont require any additional work (and paths can be found in the [example inputs json](scripts/variantstore/wdl/GvsCreateVAT.example.inputs.json)). However for the specific data being put in the VAT, three inputs need to be created.
+The first two of these inputs are two files — one of the file/vcf/shards you want to use for the VAT, and their corresponding index files. These are labelled as `inputFileofFileNames` and `inputFileofIndexFileNames`.
 
 You will need to know where all of the GVS extract output files live.
 Example of creating the files of file names and indices:

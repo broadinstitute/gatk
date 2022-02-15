@@ -101,13 +101,6 @@ task ExtractAnAcAfFromVCF {
         gsutil cp ~{input_vcf_index} ~{local_input_vcf_index}
         gsutil cp ~{ref} Homo_sapiens_assembly38.fasta
 
-        ## compare the ancestry sample list with the vcf sample list
-        # TODO throw an error (but dont fail the job) if there are samples that are in one, but not the other. Throw two different errors.
-        # Currently commented out to save on io with the AoU beta VAT creation
-        # awk '{print $1}' ~{subpopulation_sample_list} | tail -n +2 | sort -u > collected_subpopulation_samples.txt
-        # bcftools query --list-samples ~{local_input_vcf} | sort -u > collected_samples.txt
-        # diff collected_subpopulation_samples.txt collected_samples.txt
-
         # expected_subpopulations = [
         # "afr",
         # "amr",
@@ -138,8 +131,7 @@ task ExtractAnAcAfFromVCF {
         ## clean up unneeded file
         rm normalized.vcf.gz
 
-        ## During normalization, sometimes duplicate variamts appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
-        ## The way in which this is done is a bit hamfisted and should be optimized in the future.
+        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
         ## to locate the duplicates, we first make a file of just the first 5 columns
         bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
         ## check it for duplicates and put them in a new file
@@ -211,7 +203,6 @@ task AnnotateVCF {
         # =======================================
         # Handle our data sources:
 
-        # Extract the tar.gz:
         echo "Extracting annotation data sources tar/gzip file..."
         mkdir datasources_dir
         tar zxvf ~{nirvana_data_tar} -C datasources_dir  --strip-components 2
@@ -219,13 +210,12 @@ task AnnotateVCF {
 
 
         # =======================================
-        # Create custom annotations:
         echo "Creating custom annotations"
         mkdir customannotations_dir
         CUSTOM_ANNOTATIONS_FOLDER="$PWD/customannotations_dir"
 
         # Add AC/AN/AF as custom annotations
-        ## use --skip-ref once you are on a later version of nirvana
+        ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
         dotnet ~{custom_creation_location} customvar \
              -r $DATA_SOURCES_FOLDER~{path_reference} \
              -i ~{custom_annotations_file} \
@@ -277,7 +267,7 @@ task PrepAnnotationJson {
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
-    ## TODO these temp files do not currently get cleaned up. Some of them may be helpful for recovery.
+    ## note: these temp files do not currently get cleaned up as some of them may be helpful for recovery.
 
     command <<<
         set -e
