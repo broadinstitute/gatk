@@ -64,7 +64,7 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
     @Argument(
             fullName = "mode",
             doc = "Variant types to extract")
-    public List<VariantType> variantTypesToExtractList = new ArrayList<>(Arrays.asList(VariantType.SNP, VariantType.INDEL));
+    private List<VariantType> variantTypesToExtractList = new ArrayList<>(Arrays.asList(VariantType.SNP, VariantType.INDEL));
 
     /**
      * Extract per-allele annotations.
@@ -75,7 +75,7 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
             fullName = "use-allele-specific-annotations",
             doc = "If specified, attempt to use the allele-specific versions of the specified annotations.",
             optional = true)
-    public boolean useASAnnotations = false;
+    private boolean useASAnnotations = false;
 
     /**
      * See the input VCF file's INFO field for a list of all available annotations.
@@ -112,16 +112,16 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
             minValue = 1,
             optional = true
     )
-    int batchSize = 100000;
+    private int batchSize = 100000;
 
     // TODO document and validate batchSize * number of annotations <= HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX
     @Advanced
     @Argument(
             fullName = "omit-alleles-in-hdf5"
     )
-    boolean omitAllelesInHDF5 = false;
+    private boolean omitAllelesInHDF5 = false;
 
-    private Set<VariantType> variantTypesToExtract;
+    Set<VariantType> variantTypesToExtract;
     File outputAnnotationsFile;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
 

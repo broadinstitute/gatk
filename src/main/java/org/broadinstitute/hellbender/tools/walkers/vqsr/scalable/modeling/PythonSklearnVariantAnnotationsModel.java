@@ -1,30 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.math3.linear.MatrixUtils;
-import org.apache.commons.math3.stat.descriptive.moment.Mean;
-import org.apache.commons.math3.stat.descriptive.moment.Variance;
-import org.apache.commons.math3.stat.descriptive.rank.Median;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
-import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModelPosterior;
-import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.IntStream;
 
 public final class PythonSklearnVariantAnnotationsModel implements VariantAnnotationsModel {
 

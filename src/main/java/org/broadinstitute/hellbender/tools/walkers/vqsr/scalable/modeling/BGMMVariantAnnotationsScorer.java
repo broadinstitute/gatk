@@ -39,10 +39,8 @@ public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsSco
         VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
     }
 
-    public static BGMMVariantAnnotationsScorer deserialize(final String pathPrefix) {
-        return deserialize(
-                new File(pathPrefix + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX),
-                BGMMVariantAnnotationsScorer.class);
+    public static BGMMVariantAnnotationsScorer deserialize(final File scorerFile) {
+        return deserialize(scorerFile, BGMMVariantAnnotationsScorer.class);
     }
 
     private Pair<double[][], double[]> preprocessAndScoreSamples(final double[][] data) {

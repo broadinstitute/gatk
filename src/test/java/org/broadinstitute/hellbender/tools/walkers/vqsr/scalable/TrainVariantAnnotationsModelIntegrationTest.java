@@ -22,18 +22,6 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
     }
 
     @Test
-    public void test1kgp50ExomesCombined() {
-        final String[] arguments = {
-                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all.annot.hdf5",
-                "-O", "/home/slee/working/vqsr/scalable/train-test/test",
-                "--python-script", PYTHON_SCRIPT,
-                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
-
-    @Test
     public void test1kgp50ExomesSNP() {
         final String[] arguments = {
                 "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.annot.hdf5",
@@ -50,7 +38,7 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
     public void test1kgp50ExomesIndel() {
         final String[] arguments = {
                 "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.indel.annot.hdf5",
-                "-O", "/home/slee/working/vqsr/scalable/train-test/test.indel",
+                "-O", "/home/slee/working/vqsr/scalable/train-test/test",
                 "--python-script", PYTHON_SCRIPT,
                 "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
                 "--mode", "INDEL",
@@ -59,18 +47,18 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
         runCommandLine(arguments);
     }
 
-    @Test
-    public void testSNPAS() {
-        final String[] arguments = {
-                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.as.annot.hdf5",
-                "-O", "/home/slee/working/vqsr/scalable/train-test/test.snp.as",
-                "--python-script", PYTHON_SCRIPT,
-                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-                "--mode", "SNP",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
+//    @Test
+//    public void testSNPAS() {
+//        final String[] arguments = {
+//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.as.annot.hdf5",
+//                "-O", "/home/slee/working/vqsr/scalable/train-test/test.snp.as",
+//                "--python-script", PYTHON_SCRIPT,
+//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
+//                "--mode", "SNP",
+//                "--verbosity", "INFO"
+//        };
+//        runCommandLine(arguments);
+//    }
 
     @Test
     public void test1kgp50ExomesBGMMAll() {
@@ -80,17 +68,6 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
                 "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
                 "--mode", "SNP",
                 "--mode", "INDEL",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
-
-    @Test
-    public void test1kgp50ExomesBGMMCombined() {
-        final String[] arguments = {
-                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all.annot.hdf5",
-                "-O", "/home/slee/working/vqsr/scalable/train-test/test.bgmm.all",
-                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
