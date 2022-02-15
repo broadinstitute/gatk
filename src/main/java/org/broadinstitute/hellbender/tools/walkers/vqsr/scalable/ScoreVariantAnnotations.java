@@ -50,7 +50,6 @@
 //    private static final String SCORER_PKL_SUFFIX = ".scorer.pkl";
 //    private static final String SCORER_SER_SUFFIX = ".scorer.ser";
 //    private static final String SCORES_HDF5_SUFFIX = ".scores.hdf5";
-//    private static final String RECALIBRATION_VCF_SUFFIX = ".recal.vcf";
 //
 //    @Argument(
 //            fullName = "python-script",
@@ -101,26 +100,25 @@
 //        vcfWriter = createVCFWriter(outputVCFFile);
 //        vcfWriter.writeHeader(constructVCFHeader());
 //
-//        // TODO just get annotations from model
+//        // TODO just get annotations from model?
+//
+//        //
+//    }
+//
+//    @Override
+//    void doBatchWork() {
+//        // extract annotations
 //    }
 //
 //    @Override
 //    public void afterOnTraversalSuccess() {
 //
-//        logger.info(String.format("Extracted annotations for %s total variants.", dataBatch.getFlattenedData().size()));
+////        logger.info(String.format("Extracted annotations for %s total variants.", dataBatch.getFlattenedData().size()));
 //
 //        logger.info("Scoring...");
 //        final double[] scores;
 //        if (pythonScriptFile != null) {
-//            final PythonScriptExecutor executor = new PythonScriptExecutor(true);
-//            final ProcessOutput pythonProcessOutput = executor.executeScriptAndGetOutput(
-//                    pythonScriptFile.getAbsolutePath(),
-//                    null,
-//                    composePythonArguments(outputAnnotationsFile, inputScorerPklFile, outputScoresFile));
 //
-//            if (pythonProcessOutput.getExitValue() != 0) {
-//                throw executor.getScriptException(executor.getExceptionMessageFromScriptError(pythonProcessOutput));
-//            }
 //            scores = VariantAnnotationUtils.readScores(outputScoresFile);
 //        } else {
 //            final VariantAnnotationUtils.Scorer scorer = VariantAnnotationUtils.deserialize(
@@ -160,19 +158,6 @@
 //        vcfWriter.close();
 //
 //        logger.info(String.format("%s complete.", getClass().getSimpleName()));
-//    }
-//
-//    private static List<String> composePythonArguments(final File rawAnnotationsFile,
-//                                                       final File scorerPklFile,
-//                                                       final File outputScoresFile) {
-//        try {
-//            return new ArrayList<>(Arrays.asList(
-//                    "--raw_annotations_file=" + rawAnnotationsFile.getCanonicalPath(),
-//                    "--scorer_pkl_file=" + scorerPklFile.getCanonicalPath(),
-//                    "--output_scores_file=" + outputScoresFile.getCanonicalPath()));
-//        } catch (final IOException e) {
-//            throw new UserException.BadInput(String.format("Encountered exception resolving canonical file paths: %s", e));
-//        }
 //    }
 //
 //    private VCFHeader constructVCFHeader() {

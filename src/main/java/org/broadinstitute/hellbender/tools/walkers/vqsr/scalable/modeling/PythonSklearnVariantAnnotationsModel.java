@@ -28,8 +28,6 @@ import java.util.stream.IntStream;
 
 public final class PythonSklearnVariantAnnotationsModel implements VariantAnnotationsModel {
 
-    private static final Logger logger = LogManager.getLogger(PythonSklearnVariantAnnotationsModel.class);
-
     private final File pythonScriptFile;
     private final File hyperparametersJSONFile;
 
