@@ -155,6 +155,8 @@ workflows:
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateVAT.example.inputs.json
      filters:
        branches:
          - master
