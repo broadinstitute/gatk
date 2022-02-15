@@ -2,6 +2,12 @@ package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * Arguments to be be used by the {@link Funcotator} {@link org.broadinstitute.hellbender.engine.GATKTool},
@@ -47,6 +53,4 @@ public class FuncotatorVariantArgumentCollection extends BaseFuncotatorArgumentC
             doc = "When input VCF has already been annotated, still annotate again."
     )
     public boolean reannotateVCF = false;
-
-
 }

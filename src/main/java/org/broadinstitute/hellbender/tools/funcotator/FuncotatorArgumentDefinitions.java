@@ -67,6 +67,8 @@ public class FuncotatorArgumentDefinitions {
     public static final String FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION = "force-b37-to-hg19-reference-contig-conversion";
     public static final String MIN_NUM_BASES_FOR_SEGMENT_FUNCOTATION = "min-num-bases-for-segment-funcotation";
 
+    public static final String CUSTOM_VARIANT_CLASS_ORDER_FILE = "custom-variant-classifiation-order";
+
     // ------------------------------------------------------------
     // Helper Types:
 

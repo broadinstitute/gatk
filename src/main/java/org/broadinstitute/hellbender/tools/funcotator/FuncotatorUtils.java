@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -34,8 +35,10 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
@@ -2343,5 +2346,48 @@ public final class FuncotatorUtils {
                     throw new IllegalArgumentException("Should not be able to have duplicate field names.");
                 }, LinkedHashMap::new));
     }
+
+    /**
+     * Set the severity for {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}s as specified in a given input file.
+     * @param customSeverityFile {@link GATKPath} to TSV file containing VARIANT_CLASSIFICATION SEV information.
+     */
+    public static void setVariantClassificationCustomSeverity(final GATKPath customSeverityFile) {
+        try {
+            logger.info("Setting custom variant classification severities from: " + customSeverityFile);
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(customSeverityFile.getInputStream()));
+
+            int lineNum = 1;
+            while ( reader.ready() ) {
+                final String line = reader.readLine();
+
+                // Ignore empty lines:
+                if (line.length() == 0) {
+                    continue;
+                }
+
+                final String[] lineFields = line.split("\t");
+                if (lineFields.length != 2) {
+                    throw new UserException("Line " + lineNum + " has " + lineFields.length + " fields!  Each TSV line must have 2 fields!");
+                }
+
+                try {
+                    final String vcName = lineFields[ 0 ];
+                    final int    sev    = Integer.parseInt(lineFields[ 1 ]);
+
+                    logger.info("    Setting new Variant Classification severity: " + vcName + " = " + sev);
+                    GencodeFuncotation.VariantClassification.valueOf(vcName).setSeverity(sev);
+                }
+                catch (final NumberFormatException ex) {
+                    throw new UserException("Severity on line " + lineNum + " is not an integer  ("+ lineFields[1] +")!  Custom severities must be integer values!", ex);
+                }
+
+                lineNum += 1;
+            }
+        }
+        catch (final IOException ex) {
+            throw new UserException("Could not read from custom Variant Classification file: " + customSeverityFile, ex);
+        }
+    }
+
 
 }

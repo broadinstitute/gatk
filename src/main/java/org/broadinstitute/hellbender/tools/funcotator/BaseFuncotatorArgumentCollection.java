@@ -5,13 +5,14 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public abstract class BaseFuncotatorArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -115,4 +116,11 @@ public abstract class BaseFuncotatorArgumentCollection implements Serializable {
             doc = "The minimum number of bases for a variant to be annotated as a segment.  Recommended to be changed only for use with FuncotateSegments.  Defaults to " + FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT
     )
     public int minNumBasesForValidSegment = FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT;
+
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.CUSTOM_VARIANT_CLASS_ORDER_FILE,
+            optional = true,
+            doc = "TSV File containing custom Variant Classification severity map of the form: VARIANT_CLASSIFICATION\tSEV.  VARIANT_CLASSIFICAITON must match one of the VariantClassification names (" + Arrays.stream(GencodeFuncotation.VariantClassification.values()).map(vc -> vc.toString()).collect(Collectors.joining(",")) + ").  SEV is an unsigned integer, where lower is sorted first."
+    )
+    public GATKPath customVariantClassificationOrderFile = null;
 }

@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * A class to represent a Functional Annotation.  Each instance represents the annotations on a single transcript.
@@ -829,20 +828,45 @@ public class GencodeFuncotation implements Funcotation {
          * Lower numbers are considered more severe.
          * Higher numbers are considered less severe.
          */
-        final private int relativeSeverity;
+        private int relativeSeverity;
+
+        /**
+         * The default value for the {@link VariantClassification#relativeSeverity} of this {@link VariantClassification}.
+         */
+        final private int defaultRelativeSeverity;
 
         /** The serialized version of this {@link VariantClassification} */
         final private String serialized;
 
         VariantClassification(final String serialized, final int sev) {
             this.serialized = serialized;
+            defaultRelativeSeverity = sev;
             relativeSeverity = sev;
+        }
+
+        /**
+         * Reset the severities of all {@link VariantClassification}s to their default values.
+         */
+        public static void resetSeveritiesToDefault() {
+            for (VariantClassification vc : VariantClassification.values()) {
+                vc.setSeverity(vc.getDefaultSeverity());
+            }
         }
 
         /**
          * @return The {@link VariantClassification#relativeSeverity} of {@code this} {@link VariantClassification}.
          */
         public int getSeverity() { return relativeSeverity; }
+
+        /**
+         * @return The {@link VariantClassification#defaultRelativeSeverity} of {@code this} {@link VariantClassification}.
+         */
+        public int getDefaultSeverity() { return defaultRelativeSeverity; }
+
+        /**
+         * Set the {@link VariantClassification#relativeSeverity} of {@code this} {@link VariantClassification}.
+         */
+        public void setSeverity(final int sev) { this.relativeSeverity = sev; }
 
         @Override
         public String toString() {
