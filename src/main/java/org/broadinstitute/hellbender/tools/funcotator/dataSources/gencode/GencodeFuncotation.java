@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A class to represent a Functional Annotation.  Each instance represents the annotations on a single transcript.
@@ -822,6 +823,13 @@ public class GencodeFuncotation implements Funcotation {
         RNA("RNA", 4),
         /** Variant lies on one of the lincRNAs. */
         LINCRNA("LINCRNA", 4);
+
+        /**
+         * Variable to store the list of all valid {@link VariantClassification} types.
+         * This is used for command-line argument documentation and MUST be maintained if / when any of the
+         * VariantClassification values / names are updated.
+         */
+        public static final String ALL_VC_NAMES = "COULD_NOT_DETERMINE, INTRON, FIVE_PRIME_UTR, THREE_PRIME_UTR, IGR, FIVE_PRIME_FLANK, THREE_PRIME_FLANK, MISSENSE, NONSENSE, NONSTOP, SILENT, SPLICE_SITE, IN_FRAME_DEL, IN_FRAME_INS, FRAME_SHIFT_INS, FRAME_SHIFT_DEL, START_CODON_SNP, START_CODON_INS, START_CODON_DEL, DE_NOVO_START_IN_FRAME, DE_NOVO_START_OUT_FRAME, RNA, LINCRNA";
 
         /**
          * The relative severity of each {@link VariantClassification}.
