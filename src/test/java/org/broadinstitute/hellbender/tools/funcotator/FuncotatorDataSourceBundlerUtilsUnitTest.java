@@ -26,7 +26,7 @@ public class FuncotatorDataSourceBundlerUtilsUnitTest extends GATKBaseTest {
     @DataProvider
     Object[][] provideForTestGetDatasourceBaseName() {
         return new Object[][] {
-                { FuncotatorDataSourceBundler.OrganismKingdom.PLANTS, "actinidia_chinensis", "Actinidia_chinensis.Red5_PS1_1.69.0.51" }
+                { FuncotatorDataSourceBundler.OrganismKingdom.PLANTS, "actinidia_chinensis", "Actinidia_chinensis.Red5_PS1_1.69.0.52" }
         };
     }
 
