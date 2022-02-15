@@ -2475,49 +2475,51 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
 
     @DataProvider
     public Object[][] provideForTestSetVariantClassificationCustomSeverity() {
+
+        final Map<GencodeFuncotation.VariantClassification, Integer> expected1 = new HashMap<>();
+        expected1.put(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, 0);
+        expected1.put(GencodeFuncotation.VariantClassification.INTRON, 1);
+        expected1.put(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, 2);
+        expected1.put(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 4);
+        expected1.put(GencodeFuncotation.VariantClassification.IGR, 8);
+        expected1.put(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, 16);
+        expected1.put(GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, 32);
+        expected1.put(GencodeFuncotation.VariantClassification.MISSENSE, 64);
+        expected1.put(GencodeFuncotation.VariantClassification.NONSENSE, 128);
+        expected1.put(GencodeFuncotation.VariantClassification.NONSTOP, 256);
+        expected1.put(GencodeFuncotation.VariantClassification.SILENT, 512);
+        expected1.put(GencodeFuncotation.VariantClassification.SPLICE_SITE, 1024);
+        expected1.put(GencodeFuncotation.VariantClassification.IN_FRAME_DEL, 2048);
+        expected1.put(GencodeFuncotation.VariantClassification.IN_FRAME_INS, 4096);
+        expected1.put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS, 8192);
+        expected1.put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL, 16384);
+        expected1.put(GencodeFuncotation.VariantClassification.START_CODON_SNP, 32768);
+        expected1.put(GencodeFuncotation.VariantClassification.START_CODON_INS, 65536);
+        expected1.put(GencodeFuncotation.VariantClassification.START_CODON_DEL, 131072);
+        expected1.put(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME, 262144);
+        expected1.put(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME, 524288);
+        expected1.put(GencodeFuncotation.VariantClassification.RNA, 1048576);
+        expected1.put(GencodeFuncotation.VariantClassification.LINCRNA, 2097152);
+
+        final Map<GencodeFuncotation.VariantClassification, Integer> expected2 = new HashMap<>();
+        expected2.put(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, 0);
+        expected2.put(GencodeFuncotation.VariantClassification.INTRON, 1);
+        expected2.put(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, 2);
+        expected2.put(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 4);
+        expected2.put(GencodeFuncotation.VariantClassification.IGR, 8);
+        expected2.put(GencodeFuncotation.VariantClassification.SPLICE_SITE, 1024);
+        expected2.put(GencodeFuncotation.VariantClassification.IN_FRAME_DEL, 2048);
+        expected2.put(GencodeFuncotation.VariantClassification.IN_FRAME_INS, 4096);
+        expected2.put(GencodeFuncotation.VariantClassification.RNA, 1048576);
+        expected2.put(GencodeFuncotation.VariantClassification.LINCRNA, 2097152);
+
+        final Map<GencodeFuncotation.VariantClassification, Integer> expected3 = new HashMap<>();
+        expected3.put(GencodeFuncotation.VariantClassification.LINCRNA, 2097152);
+
         return new Object[][] {
-                {new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/" + "test1.tsv"), new HashMap<GencodeFuncotation.VariantClassification, Integer>() {{
-                    put(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, 0);
-                    put(GencodeFuncotation.VariantClassification.INTRON, 1);
-                    put(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, 2);
-                    put(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 4);
-                    put(GencodeFuncotation.VariantClassification.IGR, 8);
-                    put(GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK, 16);
-                    put(GencodeFuncotation.VariantClassification.THREE_PRIME_FLANK, 32);
-                    put(GencodeFuncotation.VariantClassification.MISSENSE, 64);
-                    put(GencodeFuncotation.VariantClassification.NONSENSE, 128);
-                    put(GencodeFuncotation.VariantClassification.NONSTOP, 256);
-                    put(GencodeFuncotation.VariantClassification.SILENT, 512);
-                    put(GencodeFuncotation.VariantClassification.SPLICE_SITE, 1024);
-                    put(GencodeFuncotation.VariantClassification.IN_FRAME_DEL, 2048);
-                    put(GencodeFuncotation.VariantClassification.IN_FRAME_INS, 4096);
-                    put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_INS, 8192);
-                    put(GencodeFuncotation.VariantClassification.FRAME_SHIFT_DEL, 16384);
-                    put(GencodeFuncotation.VariantClassification.START_CODON_SNP, 32768);
-                    put(GencodeFuncotation.VariantClassification.START_CODON_INS, 65536);
-                    put(GencodeFuncotation.VariantClassification.START_CODON_DEL, 131072);
-                    put(GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME, 262144);
-                    put(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME, 524288);
-                    put(GencodeFuncotation.VariantClassification.RNA, 1048576);
-                    put(GencodeFuncotation.VariantClassification.LINCRNA, 2097152);
-                }}},
-
-                {new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/" + "test2.tsv"), new HashMap<GencodeFuncotation.VariantClassification, Integer>() {{
-                    put(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE, 0);
-                    put(GencodeFuncotation.VariantClassification.INTRON, 1);
-                    put(GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR, 2);
-                    put(GencodeFuncotation.VariantClassification.THREE_PRIME_UTR, 4);
-                    put(GencodeFuncotation.VariantClassification.IGR, 8);
-                    put(GencodeFuncotation.VariantClassification.SPLICE_SITE, 1024);
-                    put(GencodeFuncotation.VariantClassification.IN_FRAME_DEL, 2048);
-                    put(GencodeFuncotation.VariantClassification.IN_FRAME_INS, 4096);
-                    put(GencodeFuncotation.VariantClassification.RNA, 1048576);
-                    put(GencodeFuncotation.VariantClassification.LINCRNA, 2097152);
-                }}},
-
-                {new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/" + "test3.tsv"), new HashMap<GencodeFuncotation.VariantClassification, Integer>() {{
-                    put(GencodeFuncotation.VariantClassification.LINCRNA, 2097152);
-                }}},
+                {new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/" + "test1.tsv"), expected1},
+                {new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/" + "test2.tsv"), expected2},
+                {new GATKPath(largeFileTestDir + "funcotator/custom_vc_order_files/" + "test3.tsv"), expected3},
         };
     }
 
