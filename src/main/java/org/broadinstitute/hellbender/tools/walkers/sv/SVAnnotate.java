@@ -15,8 +15,9 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.utils.ClosedSVInterval;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gtf.*;
@@ -27,7 +28,6 @@ import java.util.*;
 import static java.util.Objects.isNull;
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata.buildContigIDToNameArray;
 import static org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata.buildContigNameToIDMap;
-import static org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils.locatableToClosedSVInterval;
 
 /**
  * Adds gene overlap, predicted functional consequence, and noncoding element overlap annotations to
@@ -311,13 +311,13 @@ public final class SVAnnotate extends VariantWalker {
         return negativeStrand ? transcript.getEnd() : transcript.getStart();  // GTF codec reassigns start to be earlier in contig;
     }
 
-    protected static ClosedSVInterval getPromoterInterval(final GencodeGtfTranscriptFeature transcript,
-                                                          final int promoterWindow, final int contigID) {
+    protected static SimpleInterval getPromoterInterval(final GencodeGtfTranscriptFeature transcript,
+                                                        final int promoterWindow) {
         final int tss = getTranscriptionStartSite(transcript);
         final boolean negativeStrand = isNegativeStrand(transcript);
         final int promoterLeft = negativeStrand ? tss + 1 : Math.max(tss - promoterWindow, 1);
         final int promoterRight = negativeStrand ? tss + promoterWindow : tss - 1;
-        return new ClosedSVInterval(contigID, promoterLeft, promoterRight);
+        return new SimpleInterval(transcript.getContig(), promoterLeft, promoterRight);
     }
 
     private static boolean variantOverlapsTranscriptionStartSite(final SimpleInterval variantInterval,
@@ -341,12 +341,12 @@ public final class SVAnnotate extends VariantWalker {
                 } catch (IllegalArgumentException e) {
                     continue; // if GTF input contains chromosome not in VCF sequence dictionary, just ignore it
                 }
-                gtfIntervalTree.put(locatableToClosedSVInterval(transcript, contigNameToID), transcript);
+                gtfIntervalTree.put(SVUtils.locatableToSVInterval(transcript, contigNameToID), transcript);
                 final String geneName = transcript.getGeneName();
                 final int tss = getTranscriptionStartSite(transcript);
-                transcriptionStartSiteTree.put(new ClosedSVInterval(contigID, tss, tss), geneName);
-                ClosedSVInterval promoterInterval = getPromoterInterval(transcript, promoterWindow, contigID);
-                promoterIntervalTree.put(promoterInterval, geneName);
+                transcriptionStartSiteTree.put(new SVInterval(contigID, tss, tss + 1), geneName);
+                SimpleInterval promoterInterval = getPromoterInterval(transcript, promoterWindow);
+                promoterIntervalTree.put(SVUtils.locatableToSVInterval(promoterInterval, contigNameToID), geneName);
             }
         }
         return new GTFIntervalTreesContainer(gtfIntervalTree, promoterIntervalTree, transcriptionStartSiteTree);
@@ -356,9 +356,9 @@ public final class SVAnnotate extends VariantWalker {
                                                             final Map<String,Integer> contigNameToID) {
         final SVIntervalTree<String> BEDIntervalTree = new SVIntervalTree<>();
         for (final FullBEDFeature feature : BEDSource) {
-            // BED feature class already does start+1 conversion to closed interval
+            // BED feature class already does start+1 conversion to 1-based closed interval
             try {
-                BEDIntervalTree.put(locatableToClosedSVInterval(feature, contigNameToID), feature.getName());
+                BEDIntervalTree.put(SVUtils.locatableToSVInterval(feature, contigNameToID), feature.getName());
             } catch (IllegalArgumentException e) {
                 continue;  // if BED input contains chromosome not in VCF sequence dictionary, just ignore it
             }
@@ -583,7 +583,7 @@ public final class SVAnnotate extends VariantWalker {
         final Set<String> codingAnnotationGenes = new HashSet<>();
         variantConsequenceDict.values().forEach(codingAnnotationGenes::addAll);
         final Iterator<SVIntervalTree.Entry<String>> promotersForVariant =
-                promoterIntervalTree.overlappers(locatableToClosedSVInterval(variantInterval, contigNameToID));
+                promoterIntervalTree.overlappers(SVUtils.locatableToSVInterval(variantInterval, contigNameToID));
         for (Iterator<SVIntervalTree.Entry<String>> it = promotersForVariant; it.hasNext(); ) {
             SVIntervalTree.Entry<String> promoterEntry = it.next();
             String promoterName = promoterEntry.getValue();
@@ -601,7 +601,7 @@ public final class SVAnnotate extends VariantWalker {
                                                   final Map<String, Integer> contigNameToID,
                                                   final String[] contigIDToName) {
         final Iterator<SVIntervalTree.Entry<String>> nonCodingFeaturesForVariant =
-                nonCodingIntervalTree.overlappers(locatableToClosedSVInterval(variantInterval, contigNameToID));
+                nonCodingIntervalTree.overlappers(SVUtils.locatableToSVInterval(variantInterval, contigNameToID));
         for (Iterator<SVIntervalTree.Entry<String>> it = nonCodingFeaturesForVariant; it.hasNext(); ) {
             SVIntervalTree.Entry<String> featureEntry = it.next();
             String consequence = GATKSVVCFConstants.NONCODING_BREAKPOINT;
@@ -617,9 +617,10 @@ public final class SVAnnotate extends VariantWalker {
                                                                 final Map<String, Set<String>> variantConsequenceDict,
                                                                 final SVIntervalTree<String> transcriptionStartSiteTree,
                                                                 final int maxContigLength,
-                                                                final int variantContigID) {
+                                                                final Map<String, Integer> contigNameToID) {
         // TODO: keep all nearest TSS for dispersed CPX / CTX or choose closest?
-        final ClosedSVInterval svInterval = new ClosedSVInterval(variantContigID, variantInterval.getStart(), variantInterval.getEnd());
+        final int variantContigID = getContigIDFromName(variantInterval.getContig(), contigNameToID);
+        final SVInterval svInterval = SVUtils.locatableToSVInterval(variantInterval, contigNameToID);
         final SVIntervalTree.Entry<String> nearestBefore = transcriptionStartSiteTree.max(svInterval);
         final SVIntervalTree.Entry<String> nearestAfter = transcriptionStartSiteTree.min(svInterval);
         // nearest TSS only "valid" for annotation if non-null and on the same contig as the variant
@@ -628,8 +629,8 @@ public final class SVAnnotate extends VariantWalker {
         // if at least one result is valid, keep one with shorter distance
         if (!(beforeInvalid && afterInvalid)) {
             // if result is invalid, set distance to longest contig length so that other TSS will be kept
-            final int distanceBefore = beforeInvalid ? maxContigLength : variantInterval.getStart() - nearestBefore.getInterval().getEnd();
-            final int distanceAfter = afterInvalid ? maxContigLength : nearestAfter.getInterval().getStart() - variantInterval.getEnd();
+            final int distanceBefore = beforeInvalid ? maxContigLength : nearestBefore.getInterval().gapLen(svInterval);
+            final int distanceAfter = afterInvalid ? maxContigLength : svInterval.gapLen(nearestAfter.getInterval());
             final String nearestTSSGeneName = (distanceBefore < distanceAfter) ? nearestBefore.getValue() : nearestAfter.getValue();
             updateVariantConsequenceDict(variantConsequenceDict, GATKSVVCFConstants.NEAREST_TSS, nearestTSSGeneName);
         }
@@ -665,7 +666,7 @@ public final class SVAnnotate extends VariantWalker {
                                                final Map<String,Integer> contigNameToID,
                                                final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree) {
         final Iterator<SVIntervalTree.Entry<GencodeGtfTranscriptFeature>> gtfTranscriptsForVariant =
-                gtfIntervalTree.overlappers(locatableToClosedSVInterval(variantInterval, contigNameToID));
+                gtfIntervalTree.overlappers(SVUtils.locatableToSVInterval(variantInterval, contigNameToID));
         for (Iterator<SVIntervalTree.Entry<GencodeGtfTranscriptFeature>> it = gtfTranscriptsForVariant; it.hasNext(); ) {
             SVIntervalTree.Entry<GencodeGtfTranscriptFeature> transcriptEntry = it.next();
             annotateTranscript(variantInterval, svType, transcriptEntry.getValue(), variantConsequenceDict, MSVExonOverlapClassifications);
@@ -809,8 +810,7 @@ public final class SVAnnotate extends VariantWalker {
         if (!isNull(transcriptionStartSiteTree) && !anyPromoterOverlaps && noCodingAnnotations) {
             for (SVSegment svSegment : svSegments) {
                 annotateNearestTranscriptionStartSite(svSegment.interval, variantConsequenceDict,
-                        transcriptionStartSiteTree, maxContigLength,
-                        getContigIDFromName(svSegment.interval.getContig(), contigNameToID));
+                        transcriptionStartSiteTree, maxContigLength, contigNameToID);
             }
         }
 

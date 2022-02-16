@@ -70,8 +70,8 @@ public class SVIntervalUnitTest extends GATKBaseTest {
     @DataProvider(name="toSimpleInterval")
     public Object[][] getToSimpleIntervalData() {
         return new Object[][] {
-                { new SVInterval(0, 0, 100), new SimpleInterval("chr1", 1, 100)},
-                { new SVInterval(1, 200, 201), new SimpleInterval("chr2", 201, 201)},
+                { new SVInterval(0, 1, 101), new SimpleInterval("chr1", 1, 100)},
+                { new SVInterval(1, 201, 202), new SimpleInterval("chr2", 201, 201)},
                 { new SVInterval(2, 2, 3), null}
         };
     }

@@ -6,8 +6,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.compress.utils.Sets;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.utils.ClosedSVInterval;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -57,12 +57,12 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     }
 
     // Toy transcription start sites and initTree() method for testing annotateNearestTranscriptionStartSite()
-    private static final ClosedSVInterval[] transcriptionStartSites = {
-            new ClosedSVInterval(0, 100, 101),
-            new ClosedSVInterval(1, 150, 151),
-            new ClosedSVInterval(1, 200, 201),
-            new ClosedSVInterval(1, 250, 251),
-            new ClosedSVInterval(2, 1, 2)
+    private static final SVInterval[] transcriptionStartSites = {
+            new SVInterval(0, 100, 101),
+            new SVInterval(1, 150, 151),
+            new SVInterval(1, 200, 201),
+            new SVInterval(1, 250, 251),
+            new SVInterval(2, 1, 2)
     };
 
     private static SVIntervalTree<String> initTree() {
@@ -79,27 +79,28 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     @DataProvider(name="nearestTSS")
     public Object[][] getNearestTSSData() {
         return new Object[][] {
-                { new ClosedSVInterval(0, 1, 50), "A" },
-                { new ClosedSVInterval(1, 105, 110), "B" },  // Before first gene on contig
-                { new ClosedSVInterval(1, 155, 160), "B" },  // Closer left
-                { new ClosedSVInterval(1, 160, 195), "C" },  // Closer right
-                { new ClosedSVInterval(1, 3000, 4000), "D" },  // After last gene on contig
-                { new ClosedSVInterval(2, 33, 33), "E" },
-                { new ClosedSVInterval(3, 900, 4000), null },  // On different contig from TSS data
+                { new SimpleInterval("chr1", 1, 50), "A" },
+                { new SimpleInterval("chr2", 105, 110), "B" },  // Before first gene on contig
+                { new SimpleInterval("chr2", 155, 160), "B" },  // Closer left
+                { new SimpleInterval("chr2", 160, 195), "C" },  // Closer right
+                { new SimpleInterval("chr2", 3000, 4000), "D" },  // After last gene on contig
+                { new SimpleInterval("chr3", 33, 33), "E" },
+                { new SimpleInterval("chr4", 900, 4000), null },  // On different contig from TSS data
         };
     }
 
     // Test annotateNearestTranscriptionStartSite() with toy data
     @Test(dataProvider = "nearestTSS")
     public void testAnnotateNearestTranscriptionStartSite(
-            final ClosedSVInterval variantInterval,
+            final SimpleInterval variantInterval,
             final String expectedNearestTSSGene)
     {
-        final String[] contigNames = {"chr1", "chr2", "chr3", "chr4"};
+        final Map<String, Integer> contigNameToID =
+                createContigNameToIDMap(Arrays.asList("chr1", "chr2", "chr3", "chr4"), Arrays.asList(0, 1, 2, 3));
         final SVIntervalTree<String> transcriptionStartSiteTree = initTree();
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
-        SVAnnotate.annotateNearestTranscriptionStartSite(variantInterval.toSimpleInterval(contigNames),
-                variantConsequenceDict, transcriptionStartSiteTree, 5000, variantInterval.getContig());
+        SVAnnotate.annotateNearestTranscriptionStartSite(variantInterval,
+                variantConsequenceDict, transcriptionStartSiteTree, 5000, contigNameToID);
         if (isNull(expectedNearestTSSGene)) {
             Assert.assertNull(variantConsequenceDict.get(GATKSVVCFConstants.NEAREST_TSS));
         } else {
@@ -121,23 +122,22 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         tssByGene.put("EMMA1", 100);
         tssByGene.put("EMMA2", 3000);
 
-        Map<String, ClosedSVInterval> promoterByGene = new HashMap<>();
-        promoterByGene.put("EMMA1", new ClosedSVInterval(0, 1,99));
-        promoterByGene.put("EMMA2", new ClosedSVInterval(0, 3001, 4000));
+        Map<String, SimpleInterval> promoterByGene = new HashMap<>();
+        promoterByGene.put("EMMA1", new SimpleInterval("chr1", 1,99));
+        promoterByGene.put("EMMA2", new SimpleInterval("chr1", 3001, 4000));
 
         int promoterWindow = 1000;
-        int contigID = 0;
 
         FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         for (final GencodeGtfGeneFeature gene : toyGTFSource) {
-            GencodeGtfTranscriptFeature transcript = gene.getTranscripts().get(0); // each gene only has one transcript
+            GencodeGtfTranscriptFeature transcript = gene.getTranscripts().get(0); // each toy gene only has one transcript
             String geneName = transcript.getGeneName();
             if (tssByGene.containsKey(geneName)) {
                 int expectedTSS = tssByGene.get(geneName);
                 Assert.assertEquals(expectedTSS, SVAnnotate.getTranscriptionStartSite(transcript));
 
                 Assert.assertEquals(promoterByGene.get(geneName),
-                        SVAnnotate.getPromoterInterval(transcript, promoterWindow, contigID));
+                        SVAnnotate.getPromoterInterval(transcript, promoterWindow));
             }
         }
     }
@@ -642,7 +642,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     }
 
     // Utility function to create contigNameToID map from list of contigs and list of IDs
-    private Map<String, Integer> createContigNameToIDMap(List<String> names, List<Integer> IDs) {
+    public static Map<String, Integer> createContigNameToIDMap(List<String> names, List<Integer> IDs) {
         final Map<String,Integer> contigNameToID = new HashMap<>();
         for (int i = 0 ; i < names.size() ; i++) {
             contigNameToID.put(names.get(i), IDs.get(i));
