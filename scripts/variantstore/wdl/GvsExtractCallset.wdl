@@ -52,6 +52,9 @@ workflow GvsExtractCallset {
         File? gatk_override
         Int local_disk_for_extract = 150
 
+        String extract_project
+        String extract_dataset
+
         String fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__SAMPLES"
         String fq_cohort_extract_table  = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__DATA"
 
@@ -79,8 +82,8 @@ workflow GvsExtractCallset {
     call Utils.GetBQTablesMaxLastModifiedTimestamp {
         input:
             query_project = query_project,
-            data_project = data_project,
-            data_dataset = default_dataset,
+            data_project = extract_project,
+            data_dataset = extract_dataset,
             table_patterns = tables_patterns_for_datetime_check,
             service_account_json_path = service_account_json_path
     }
