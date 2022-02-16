@@ -133,7 +133,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
             final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles);
             final GenotypesContext reducedGenotypes = allelesToKeep.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), true);
+                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL);
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
@@ -181,7 +181,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // create the genotypes
         //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), true);
+                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod);
 
         if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
             final double log10NoVariantPosterior = phredNoVariantPosteriorProbability(outputAlleles, genotypes) * -.1;
@@ -391,11 +391,12 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * {@link GenotypeLikelihoods#MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED}.
      */
     protected final boolean cannotBeGenotyped(final VariantContext vc) {
-        // protect against too many alternate alleles that we can't even run AF on:
+        //
         if (vc.getNAlleles() <= GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED
                 && vc.getGenotypes().stream().anyMatch(GenotypeUtils::genotypeIsUsableForAFCalculation)) {
             return false;
         }
+        // protect against too many alternate alleles that we can't even run AF on:
         if (vc.getNAlleles() > GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED) {
             logger.warn("Attempting to genotype more than " + GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED +
                     " alleles. Site will be skipped at location " + vc.getContig() + ":" + vc.getStart());

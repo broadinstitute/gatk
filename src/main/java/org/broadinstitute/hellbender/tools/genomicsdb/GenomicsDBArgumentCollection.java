@@ -24,7 +24,7 @@ public class GenomicsDBArgumentCollection implements Serializable {
    * Must be at least one greater than the maximum number of alternate alleles for genotyping.
    * A typical value is 3 more than the --max-alternate-alleles value that's used by GenotypeGVCFs and larger differences
    * result in more robustness to PCR-related indel errors.
-   * Note that GenotypeGVCFs will drop highly multi-allelic sites that are missing likelihoods.
+   * NOTE: GenotypeGVCFs will drop multi-allelic sites with more than this many alternate alleles since they are missing likelihoods.
    *
    * See also {@link org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection#MAX_ALTERNATE_ALLELES_LONG_NAME}
    */

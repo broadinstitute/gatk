@@ -91,7 +91,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "gvcfsToGenotype")
     public Object[][] gvcfsToGenotype() {
         return new Object[][]{
-                /*
                 //combine not supported yet, see https://github.com/broadinstitute/gatk/issues/2429 and https://github.com/broadinstitute/gatk/issues/2584
                 //{"combine.single.sample.pipeline.1.vcf", null, Arrays.asList("-V", getTestFile("combine.single.sample.pipeline.2.vcf").toString() , "-V", getTestFile("combine.single.sample.pipeline.3.vcf").toString()), b37_reference_20_21},
                 {getTestFile("leadingDeletion.g.vcf"), getTestFile("leadingDeletionRestrictToStartExpected.vcf"), Arrays.asList("-L", "20:69512-69513", "--"+GenotypeGVCFs.ONLY_OUTPUT_CALLS_STARTING_IN_INTERVALS_FULL_NAME), b37_reference_20_21},
@@ -157,7 +156,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 {getTestFile( "combined.single.sample.pipeline.gatk3.vcf"),
                         getTestFile( "expected/includeLowQualSites.vcf"),
                         Arrays.asList( " --" + GenotypeGVCFs.ALL_SITES_LONG_NAME + " -L 20:10,012,730-10,012,740"),
-                        b37_reference_20_21},*/
+                        b37_reference_20_21},
 
                 //23 highly multi-allelic sites across 54 1000G exomes to test allele subsetting and QUAL calculation
                 {getTestFile("multiallelicQualRegression.vcf "),
