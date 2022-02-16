@@ -63,7 +63,7 @@ workflow GvsExtractCohortFromSampleNames {
       data_project = gvs_project,
       query_project = query_project,
       default_dataset = gvs_dataset,
-      extract_table_prefix = extraction_uuid,
+      extract_table_prefix = GvsPrepareCallset.fq_cohort_extract_table_prefix,
 
       interval_weights_bed = interval_weights_bed,
       wgs_intervals = wgs_intervals,
