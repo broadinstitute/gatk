@@ -8,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -45,8 +44,7 @@ public final class LabeledVariantAnnotationsData {
     private final List<String> sortedAnnotationNames;
     final List<String> sortedLabels;
 
-//    private final LinkedListMultimap<VariantContext, LabeledVariantAnnotationsDatum> variantContextsToDataMultimap;
-    private final List<List<LabeledVariantAnnotationsDatum>> data;
+    private final List<LabeledVariantAnnotationsDatum> data;
     private final boolean useASAnnotations;
 
     public LabeledVariantAnnotationsData(final Collection<String> annotationNames,
@@ -64,6 +62,10 @@ public final class LabeledVariantAnnotationsData {
         this.useASAnnotations = useASAnnotations;
     }
 
+    public List<String> getSortedLabels() {
+        return sortedLabels;
+    }
+
     public int size() {
         return data.size();
     }
@@ -73,33 +75,14 @@ public final class LabeledVariantAnnotationsData {
     }
 
     public void add(final VariantContext vc,
-                    final List<Allele> altAllelesPerDatum,
-                    final List<VariantType> variantTypePerDatum,
-                    final List<Set<String>> labelsPerDatum) {
-        if (!useASAnnotations) {
-            // if altAllele is null we are not in AS mode
-            data.add(Collections.singletonList(
-                    new LabeledVariantAnnotationsDatum(vc,
-                            altAllelesPerDatum,
-                            variantTypePerDatum.get(0),
-                            labelsPerDatum.get(0),
-                            sortedAnnotationNames,
-                            useASAnnotations)));
-        } else {
-            // AS mode
-            data.add(IntStream.range(0, altAllelesPerDatum.size()).boxed()
-                            .map(i -> new LabeledVariantAnnotationsDatum(vc,
-                                    Collections.singletonList(altAllelesPerDatum.get(i)),
-                                    variantTypePerDatum.get(i),
-                                    labelsPerDatum.get(i),
-                                    sortedAnnotationNames,
-                                    useASAnnotations))
-                            .collect(Collectors.toList()));
-        }
+                    final List<Allele> altAlleles,
+                    final VariantType variantType,
+                    final Set<String> labels) {
+        data.add(new LabeledVariantAnnotationsDatum(vc, altAlleles, variantType, labels, sortedAnnotationNames, useASAnnotations));
     }
 
     private Stream<LabeledVariantAnnotationsDatum> streamFlattenedData() {
-        return data.stream().flatMap(List::stream);
+        return data.stream();
     }
 
     public void writeHDF5(final File outputFile,
@@ -183,46 +166,4 @@ public final class LabeledVariantAnnotationsData {
         }
         return subsetAnnotationsFile;
     }
-
-//    void writeBatchToVCF(final VariantContextWriter vcfWriter,
-//                         final boolean writeAlleles,
-//                         final boolean writeTrainingOnly,
-//                         final boolean writeScores) {
-//        // TODO validate
-//
-////        TODO shouldn't this already be sorted?
-//        // we need to sort in coordinate order in order to produce a valid VCF
-////        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-////        dataBatch.sort((vd1, vd2) -> IntervalUtils.compareLocatables(vd1.loc, vd2.loc, sequenceDictionary));
-//
-//        List<Allele> alleles;
-//
-//        for (int i = 0; i < size(); i++) {
-//            final AlleleLabeledAnnotationsDatum datum = dataBatch.get(i);
-//            if (writeTrainingOnly && !datum.labels.contains(VariantLabeledAnnotationsData.TRAINING_LABEL)) {
-//                continue;
-//            }
-//            if (useASAnnotations) {
-//                alleles = Arrays.asList(datum.refAllele, datum.altAllele); //use the alleles to distinguish between multiallelics in AS mode
-//            } else if (writeAlleles) {
-//                final List<Allele> allelesToWrite = this.dataBatch.alternateAlleles.get(i);
-//                allelesToWrite.add(0, datum.refAllele);
-//                alleles = allelesToWrite;
-//            }
-//            final VariantContextBuilder builder = new VariantContextBuilder(SCORE_KEY, datum.loc.getContig(), datum.loc.getStart(), datum.loc.getEnd(), alleles);
-//            builder.attribute(VCFConstants.END_KEY, datum.loc.getEnd());
-//
-//            if (writeScores) {
-//                builder.attribute(SCORE_KEY, String.format("%.4f", datum.score));
-//            }
-//
-//            if (datum.labels.contains(VariantLabeledAnnotationsData.TRAINING_LABEL)) {
-//                builder.attribute(GATKVCFConstants.POSITIVE_LABEL_KEY, true);
-//            }
-//
-//            vcfWriter.add(builder.make());
-//        }
-//        vcfWriter.close();
-//        logger.info(String.format("Recalibration VCF written to %s.", outputVCFFile.getAbsolutePath()));
-//    }
 }

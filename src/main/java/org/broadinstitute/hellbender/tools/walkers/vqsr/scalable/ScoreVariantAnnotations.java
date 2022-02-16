@@ -2,21 +2,16 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.primitives.Doubles;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.MultiplePassVariantWalker;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -30,7 +25,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VcfUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
@@ -38,12 +32,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -78,8 +69,19 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     private VariantAnnotationsScorer indelScorer;
 
     // TODO document, make enum (extract labeled vs. extract all)
-    public boolean isExtractVariantsNotOverlappingResources() {
-        return true;
+    @Override
+    public boolean isExtractOnlyLabeledVariants() {
+        return false;
+    }
+
+    @Override
+    public boolean isOutputSitesOnlyVCF() {
+        return outputSitesOnlyVCFs;
+    }
+
+    @Override
+    protected int numberOfPasses() {
+        return 2;
     }
 
     @Override
@@ -129,6 +131,25 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     }
 
     @Override
+    protected void nthPassApply(final VariantContext variant,
+                                final ReadsContext readsContext,
+                                final ReferenceContext referenceContext,
+                                final FeatureContext featureContext,
+                                final int n) {
+        if (n == 0) {
+            addVariantToDataIfItPassesTypeChecks(variant, featureContext);
+        } else if (n == 1) {
+            writeVariantToVCFIfItPassesTypeChecks(variant, featureContext);
+        }
+    }
+
+    @Override
+    protected void afterNthPass(final int n) {
+        if (n == 0) {
+            writeAnnotationsToHDF5();
+        }
+    }
+
     protected void doExtraWorkAfterNthPass(final int n) {
         if (n == 0) {
             final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(outputAnnotationsFile);
@@ -209,24 +230,21 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         return null;
     }
 
-    private VCFHeader constructVCFHeader() {
-        //TODO: this should be refactored/consolidated as part of
-        // https://github.com/broadinstitute/gatk/issues/2112
-        // https://github.com/broadinstitute/gatk/issues/121,
-        // https://github.com/broadinstitute/gatk/issues/1116 and
-        // Initialize VCF header lines
-        Set<VCFHeaderLine> hInfo = getDefaultToolVCFHeaderLines();
-        hInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
-        hInfo.add(GATKVCFHeaderLines.getInfoLine(SCORE_KEY));
-        hInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.POSITIVE_LABEL_KEY));
-        hInfo.add(GATKVCFHeaderLines.getFilterLine(VCFConstants.PASSES_FILTERS_v4));
-        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        if (hasReference()) {
-            hInfo = VcfUtils.updateHeaderContigLines(
-                    hInfo, referenceArguments.getReferencePath(), sequenceDictionary, true);
-        } else if (null != sequenceDictionary) {
-            hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
-        }
-        return new VCFHeader(hInfo);
-    }
+//    @Override
+//    void writeVariantToVCF(final VariantContext vc,
+//                           final Triple<List<Allele>, VariantType, Set<String>> metadata) {
+//        // TODO validate
+//
+//        final VariantContextBuilder builder = new VariantContextBuilder(SCORE_KEY, datum.loc.getContig(), datum.loc.getStart(), datum.loc.getEnd(), alleles);
+//        builder.attribute(VCFConstants.END_KEY, datum.loc.getEnd());
+//
+//        if (writeScores) {
+//            builder.attribute(SCORE_KEY, String.format("%.4f", datum.score));
+//        }
+//
+//        if (datum.labels.contains(VariantLabeledAnnotationsData.TRAINING_LABEL)) {
+//            builder.attribute(GATKVCFConstants.POSITIVE_LABEL_KEY, true);
+//        }
+//        vcfWriter.add(builder.make());
+//    }
 }

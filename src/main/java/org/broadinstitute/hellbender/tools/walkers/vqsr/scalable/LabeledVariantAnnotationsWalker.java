@@ -1,7 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.Options;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -10,15 +22,17 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.MultiplePassVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VcfUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
@@ -30,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /**
@@ -45,6 +60,7 @@ import java.util.stream.Collectors;
 public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
     private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
+    private static final String VCF_SUFFIX = ".vcf";
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -113,14 +129,19 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     )
     private boolean omitAllelesInHDF5 = false;
 
-    Set<VariantType> variantTypesToExtract;
-    File outputAnnotationsFile;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
+    Set<VariantType> variantTypesToExtract;
+
+    File outputAnnotationsFile;
+    VariantContextWriter vcfWriter;
 
     LabeledVariantAnnotationsData data;
 
-    // TODO document, make enum (extract labeled vs. extract all)
-    public boolean isExtractVariantsNotOverlappingResources() {
+    public boolean isExtractOnlyLabeledVariants() {
+        return true;
+    }
+
+    public boolean isOutputSitesOnlyVCF() {
         return true;
     }
 
@@ -135,6 +156,9 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
         // TODO validate annotation names and AS mode
 
+        if (ignoreInputFilters != null) {
+            ignoreInputFilterSet.addAll(ignoreInputFilters);
+        }
         variantTypesToExtract = EnumSet.copyOf(variantTypesToExtractList);
 
         outputAnnotationsFile = new File(outputPrefix + ANNOTATIONS_HDF5_SUFFIX);
@@ -146,9 +170,8 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
             }
         }
 
-        if (ignoreInputFilters != null) {
-            ignoreInputFilterSet.addAll(ignoreInputFilters);
-        }
+        final GATKPath outputVCF = new GATKPath(outputPrefix + VCF_SUFFIX);
+        vcfWriter = createVCFWriter(outputVCF);
 
         final Set<String> resourceLabels = new TreeSet<>();
         for (final FeatureInput<VariantContext> resource : resources) {
@@ -162,6 +185,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         }
         resourceLabels.forEach(String::intern);
 
+        // TODO let child tools specify required labels
         if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
             throw new CommandLineException(
                     "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
@@ -175,11 +199,13 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         }
 
         data = new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations);
+
+        vcfWriter.writeHeader(constructVCFHeader(data.getSortedLabels()));
     }
 
     @Override
     protected int numberOfPasses() {
-        return 2;
+        return 1;
     }
 
     @Override
@@ -189,63 +215,94 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                                 final FeatureContext featureContext,
                                 final int n) {
         if (n == 0) {
-            addVariantIfItPassesExtractionChecks(variant, featureContext);
-        } else if (n == 1) {
-
-        } else {
-            throw new GATKException.ShouldNeverReachHereException(
-                    "Tools currently inheriting from LabeledVariantAnnotationsWalker should make no more than two passes.");
+            addVariantToDataIfItPassesTypeChecks(variant, featureContext);
+            writeVariantToVCFIfItPassesTypeChecks(variant, featureContext);
         }
     }
 
     @Override
     protected void afterNthPass(final int n) {
         if (n == 0) {
-            data.writeHDF5(outputAnnotationsFile, omitAllelesInHDF5);
-            doExtraWorkAfterNthPass(0);
-        } else if (n == 1) {
-
-        } else {
-            throw new GATKException.ShouldNeverReachHereException(
-                    "Tools currently inheriting from LabeledVariantAnnotationsWalker should make no more than two passes.");
+            writeAnnotationsToHDF5();
         }
-    }
-
-    protected void doExtraWorkAfterNthPass(final int n) {
-        // override
     }
 
     @Override
     public Object onTraversalSuccess() {
+        vcfWriter.close();
+
         return null;
     }
 
-    // code here and below for filtering and determining variant type was essentially retained from VQSR
-    private void addVariantIfItPassesExtractionChecks(final VariantContext vc,
-                                                      final FeatureContext featureContext) {
-        // TODO dump unneeded VariantContext info if in Extract
-        if (vc == null) {
-            return;
+    void addVariantToDataIfItPassesTypeChecks(final VariantContext vc,
+                                              final FeatureContext featureContext) {
+        consumeVariantIfItPassesTypeChecks(vc, featureContext,
+                (v, m) -> data.add(vc, m.getLeft(), m.getMiddle(), m.getRight()));
+    }
+
+    void writeVariantToVCFIfItPassesTypeChecks(final VariantContext vc,
+                                               final FeatureContext featureContext) {
+        consumeVariantIfItPassesTypeChecks(vc, featureContext, (v, m) -> writeVariantToVCF(vc, m));
+    }
+
+    void writeAnnotationsToHDF5() {
+        data.writeHDF5(outputAnnotationsFile, omitAllelesInHDF5);
+    }
+
+    // modified from VQSR code
+    VCFHeader constructVCFHeader(final List<String> sortedLabels) {
+        //TODO: this should be refactored/consolidated as part of
+        // https://github.com/broadinstitute/gatk/issues/2112
+        // https://github.com/broadinstitute/gatk/issues/121,
+        // https://github.com/broadinstitute/gatk/issues/1116 and
+        // Initialize VCF header lines
+        Set<VCFHeaderLine> hInfo = getDefaultToolVCFHeaderLines();
+        hInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
+        hInfo.addAll(sortedLabels.stream()
+                .map(l -> new VCFInfoHeaderLine(l, 1, VCFHeaderLineType.Flag, String.format("This site was labeled as %s according to resources", l)))
+                .collect(Collectors.toList()));
+        hInfo.add(GATKVCFHeaderLines.getFilterLine(VCFConstants.PASSES_FILTERS_v4));
+        final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        if (hasReference()) {
+            hInfo = VcfUtils.updateHeaderContigLines(
+                    hInfo, referenceArguments.getReferencePath(), sequenceDictionary, true);
+        } else if (null != sequenceDictionary) {
+            hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
         }
-        if (!(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
+        return new VCFHeader(hInfo);
+    }
+
+    void writeVariantToVCF(final VariantContext vc,
+                           final Triple<List<Allele>, VariantType, Set<String>> metadata) {
+        final List<Allele> altAlleles = metadata.getLeft();
+        final List<Allele> alleles = ListUtils.union(Collections.singletonList(vc.getReference()), altAlleles);
+        final VariantContextBuilder builder = new VariantContextBuilder(
+                vc.getSource(), vc.getContig(), vc.getStart(), vc.getEnd(), alleles);
+        builder.attribute(VCFConstants.END_KEY, vc.getEnd());
+        final List<String> sortedLabels = metadata.getRight().stream().sorted().collect(Collectors.toList());
+        sortedLabels.forEach(l -> builder.attribute(l, true));
+        vcfWriter.add(builder.make());
+    }
+
+    // logic here and below for filtering and determining variant type was retained from VQSR, but has been refactored
+    private void consumeVariantIfItPassesTypeChecks(final VariantContext vc,
+                                                    final FeatureContext featureContext,
+                                                    final BiConsumer<VariantContext, Triple<List<Allele>, VariantType, Set<String>>> variantsAndMetadataConsumer) {
+        // if variant is filtered, do nothing
+        if (vc == null || !(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
             return;
         }
         if (!useASAnnotations) {
             final VariantType variantType = VariantType.getVariantType(vc);
             if (variantTypesToExtract.contains(variantType)) {
                 final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
-                if (isExtractVariantsNotOverlappingResources() || !overlappingResourceLabels.isEmpty()) {
-                    data.add(vc,
-                            vc.getAlternateAlleles(),
-                            Collections.singletonList(variantType),
-                            Collections.singletonList(overlappingResourceLabels));
+                if (!isExtractOnlyLabeledVariants() || !overlappingResourceLabels.isEmpty()) {
+                    final Triple<List<Allele>, VariantType, Set<String>> metadata =
+                            Triple.of(vc.getAlternateAlleles(), variantType, overlappingResourceLabels);
+                    variantsAndMetadataConsumer.accept(vc, metadata);
                 }
             }
         } else {
-            final int numAltAlleles = vc.getAlternateAlleles().size();
-            final List<Allele> extractedAltAllelePerDatum = new ArrayList<>(numAltAlleles);
-            final List<VariantType> extractedVariantTypePerDatum = new ArrayList<>(numAltAlleles);
-            final List<Set<String>> extractedLabelsPerDatum = new ArrayList<>(numAltAlleles);
             for (final Allele altAllele : vc.getAlternateAlleles()) {
                 if (GATKVCFConstants.isSpanningDeletion(altAllele)) {
                     continue;
@@ -253,17 +310,13 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                 final VariantType variantType = VariantType.getVariantType(vc, altAllele);
                 if (variantTypesToExtract.contains(variantType)) {
                     final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, vc.getReference(), altAllele, featureContext);
-                    if (isExtractVariantsNotOverlappingResources() || !overlappingResourceLabels.isEmpty()) {
-                        extractedAltAllelePerDatum.add(altAllele);
-                        extractedVariantTypePerDatum.add(variantType);
-                        extractedLabelsPerDatum.add(overlappingResourceLabels);
+                    if (!isExtractOnlyLabeledVariants() || !overlappingResourceLabels.isEmpty()) {
+                        final Triple<List<Allele>, VariantType, Set<String>> metadata =
+                                Triple.of(Collections.singletonList(altAllele), variantType, overlappingResourceLabels);
+                        variantsAndMetadataConsumer.accept(vc, metadata);
                     }
                 }
             }
-            data.add(vc,
-                    extractedAltAllelePerDatum,
-                    extractedVariantTypePerDatum,
-                    extractedLabelsPerDatum);
         }
     }
 
