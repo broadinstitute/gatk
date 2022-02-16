@@ -26,6 +26,7 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.MultiplePassVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
@@ -223,6 +224,17 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     protected void afterNthPass(final int n) {
         if (n == 0) {
             writeAnnotationsToHDF5();
+            if (data.size() == 0) {
+                throw new GATKException("None of the specified input variants were present in the resource VCFs.");
+            }
+
+//        for (final String resourceLabel : data.sortedLabels) {
+//            logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
+//                    (int) data.getData().stream().flatMap(List::stream).mapToDouble(datum -> datum.labels.contains(resourceLabel) ? 1 : 0).sum(),
+//                    resourceLabel));
+//        }
+            logger.info(String.format("Extracted annotations for %s total variants.", data.size()));
+            data.clear();
         }
         if (n == numberOfPasses()) {
             if (vcfWriter != null) {
