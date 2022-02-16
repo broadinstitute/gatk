@@ -52,7 +52,7 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
                 "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
                 "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
                 "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--verbosity", "DEBUG"
+                "--verbosity", "INFO"
         };
         runCommandLine(arguments);
     }
@@ -74,7 +74,7 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
                 "--trust-all-polymorphic",
                 "--mode", "INDEL",
                 "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-                "--verbosity", "DEBUG"
+                "--verbosity", "INFO"
         };
         runCommandLine(arguments);
     }
@@ -98,7 +98,7 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
                 "--resource:extracted-training,training=true,truth=false", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.vcf",
                 "--resource:hapmap,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
                 "--resource:omni,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--verbosity", "DEBUG"
+                "--verbosity", "INFO"
         };
         runCommandLine(arguments);
     }
@@ -121,7 +121,7 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
                 "--resource:extracted-training,training=true,truth=false", "/home/slee/working/vqsr/scalable/extract-test/test.snp.vcf",
                 "--resource:hapmap,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
                 "--resource:omni,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--verbosity", "DEBUG"
+                "--verbosity", "INFO"
         };
         runCommandLine(arguments);
     }

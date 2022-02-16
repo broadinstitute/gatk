@@ -92,7 +92,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
             fullName = "use-allele-specific-annotations",
             doc = "If specified, attempt to use the allele-specific versions of the specified annotations.",
             optional = true)
-    private boolean useASAnnotations = false;
+    boolean useASAnnotations = false;
 
     /**
      * See the input VCF file's INFO field for a list of all available annotations.
@@ -162,16 +162,14 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         variantTypesToExtract = EnumSet.copyOf(variantTypesToExtractList);
 
         outputAnnotationsFile = new File(outputPrefix + ANNOTATIONS_HDF5_SUFFIX);
+        final File outputVCFFile = new File(outputPrefix + VCF_SUFFIX);
 
-        for (final File outputFile : Collections.singletonList(outputAnnotationsFile)) {
+        for (final File outputFile : Arrays.asList(outputAnnotationsFile, outputVCFFile)) {
             if ((outputFile.exists() && !outputFile.canWrite()) ||
                     (!outputFile.exists() && !outputFile.getAbsoluteFile().getParentFile().canWrite())) {
                 throw new UserException(String.format("Cannot create output file at %s.", outputFile));
             }
         }
-
-        final GATKPath outputVCF = new GATKPath(outputPrefix + VCF_SUFFIX);
-        vcfWriter = createVCFWriter(outputVCF);
 
         final Set<String> resourceLabels = new TreeSet<>();
         for (final FeatureInput<VariantContext> resource : resources) {
@@ -200,6 +198,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
         data = new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations);
 
+        vcfWriter = createVCFWriter(outputVCFFile);
         vcfWriter.writeHeader(constructVCFHeader(data.getSortedLabels()));
     }
 
@@ -225,28 +224,43 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         if (n == 0) {
             writeAnnotationsToHDF5();
         }
+        if (n == numberOfPasses()) {
+            if (vcfWriter != null) {
+                vcfWriter.close();
+            }
+        }
     }
 
     @Override
     public Object onTraversalSuccess() {
-        vcfWriter.close();
-
         return null;
     }
 
-    void addVariantToDataIfItPassesTypeChecks(final VariantContext vc,
-                                              final FeatureContext featureContext) {
-        consumeVariantIfItPassesTypeChecks(vc, featureContext,
+    boolean addVariantToDataIfItPassesTypeChecks(final VariantContext vc,
+                                                 final FeatureContext featureContext) {
+        return consumeVariantIfItPassesTypeChecks(vc, featureContext,
                 (v, m) -> data.add(vc, m.getLeft(), m.getMiddle(), m.getRight()));
     }
 
-    void writeVariantToVCFIfItPassesTypeChecks(final VariantContext vc,
-                                               final FeatureContext featureContext) {
-        consumeVariantIfItPassesTypeChecks(vc, featureContext, (v, m) -> writeVariantToVCF(vc, m));
+    boolean writeVariantToVCFIfItPassesTypeChecks(final VariantContext vc,
+                                                  final FeatureContext featureContext) {
+        return consumeVariantIfItPassesTypeChecks(vc, featureContext, (v, m) -> writeVariantToVCFIfItPassesTypeChecks(vc, m));
     }
 
     void writeAnnotationsToHDF5() {
         data.writeHDF5(outputAnnotationsFile, omitAllelesInHDF5);
+    }
+
+    void writeVariantToVCFIfItPassesTypeChecks(final VariantContext vc,
+                                               final Triple<List<Allele>, VariantType, Set<String>> metadata) {
+        final List<Allele> altAlleles = metadata.getLeft();
+        final List<Allele> alleles = ListUtils.union(Collections.singletonList(vc.getReference()), altAlleles);
+        final VariantContextBuilder builder = new VariantContextBuilder(
+                vc.getSource(), vc.getContig(), vc.getStart(), vc.getEnd(), alleles);
+        builder.attribute(VCFConstants.END_KEY, vc.getEnd());
+        final List<String> sortedLabels = metadata.getRight().stream().sorted().collect(Collectors.toList());
+        sortedLabels.forEach(l -> builder.attribute(l, true));
+        vcfWriter.add(builder.make());
     }
 
     // modified from VQSR code
@@ -272,26 +286,15 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         return new VCFHeader(hInfo);
     }
 
-    void writeVariantToVCF(final VariantContext vc,
-                           final Triple<List<Allele>, VariantType, Set<String>> metadata) {
-        final List<Allele> altAlleles = metadata.getLeft();
-        final List<Allele> alleles = ListUtils.union(Collections.singletonList(vc.getReference()), altAlleles);
-        final VariantContextBuilder builder = new VariantContextBuilder(
-                vc.getSource(), vc.getContig(), vc.getStart(), vc.getEnd(), alleles);
-        builder.attribute(VCFConstants.END_KEY, vc.getEnd());
-        final List<String> sortedLabels = metadata.getRight().stream().sorted().collect(Collectors.toList());
-        sortedLabels.forEach(l -> builder.attribute(l, true));
-        vcfWriter.add(builder.make());
-    }
-
     // logic here and below for filtering and determining variant type was retained from VQSR, but has been refactored
-    private void consumeVariantIfItPassesTypeChecks(final VariantContext vc,
-                                                    final FeatureContext featureContext,
-                                                    final BiConsumer<VariantContext, Triple<List<Allele>, VariantType, Set<String>>> variantsAndMetadataConsumer) {
-        // if variant is filtered, do nothing
+    private boolean consumeVariantIfItPassesTypeChecks(final VariantContext vc,
+                                                       final FeatureContext featureContext,
+                                                       final BiConsumer<VariantContext, Triple<List<Allele>, VariantType, Set<String>>> variantAndMetadataConsumer) {
+        // if variant is filtered, do not consume here
         if (vc == null || !(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
-            return;
+            return false;
         }
+        boolean isVariantConsumed = false;
         if (!useASAnnotations) {
             final VariantType variantType = VariantType.getVariantType(vc);
             if (variantTypesToExtract.contains(variantType)) {
@@ -299,7 +302,8 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                 if (!isExtractOnlyLabeledVariants() || !overlappingResourceLabels.isEmpty()) {
                     final Triple<List<Allele>, VariantType, Set<String>> metadata =
                             Triple.of(vc.getAlternateAlleles(), variantType, overlappingResourceLabels);
-                    variantsAndMetadataConsumer.accept(vc, metadata);
+                    variantAndMetadataConsumer.accept(vc, metadata);
+                    isVariantConsumed = true;
                 }
             }
         } else {
@@ -313,11 +317,13 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                     if (!isExtractOnlyLabeledVariants() || !overlappingResourceLabels.isEmpty()) {
                         final Triple<List<Allele>, VariantType, Set<String>> metadata =
                                 Triple.of(Collections.singletonList(altAllele), variantType, overlappingResourceLabels);
-                        variantsAndMetadataConsumer.accept(vc, metadata);
+                        variantAndMetadataConsumer.accept(vc, metadata);
+                        isVariantConsumed = true;
                     }
                 }
             }
         }
+        return isVariantConsumed;
     }
 
     private Set<String> findOverlappingResourceLabels(final VariantContext vc,

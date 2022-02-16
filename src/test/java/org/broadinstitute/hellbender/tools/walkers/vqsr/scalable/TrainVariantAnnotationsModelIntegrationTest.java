@@ -105,7 +105,7 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
 //                "--python-script", PYTHON_SCRIPT,
 //                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/jbx/hyperparameters.json",
 //                "--mode", "SNP",
-//                "--verbosity", "DEBUG"
+//                "--verbosity", "INFO"
 //        };
 //        runCommandLine(arguments);
 //    }
