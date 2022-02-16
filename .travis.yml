@@ -6,20 +6,20 @@ git:
   depth: 9999999
   lfs_skip_smudge: true
 jdk:
-  - openjdk8
+  - openjdk11
 env:
   matrix:
-  - SCALA_VERSION=2.11 TEST_TYPE=cloud UPLOAD=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - SCALA_VERSION=2.11 TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - SCALA_VERSION=2.11 TEST_TYPE=variantcalling TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - SCALA_VERSION=2.11 TEST_TYPE=conda TEST_DOCKER=true TEST_VERBOSITY=minimal
-  - SCALA_VERSION=2.11 RUN_CNV_GERMLINE_COHORT_WDL=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 RUN_CNV_GERMLINE_CASE_WDL=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 RUN_CNV_SOMATIC_WDL=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 RUN_M2_WDL=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 RUN_CNN_WDL=true TESTS_REQUIRE_GCLOUD=true
-  - SCALA_VERSION=2.11 TEST_TYPE=wdlGen
+  - TEST_TYPE=cloud UPLOAD=true TESTS_REQUIRE_GCLOUD=true
+  - TEST_TYPE=integration TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - TEST_TYPE=unit TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - TEST_TYPE=variantcalling TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - TEST_TYPE=conda TEST_DOCKER=true TEST_VERBOSITY=minimal
+  - RUN_CNV_GERMLINE_COHORT_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - RUN_CNV_GERMLINE_CASE_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - RUN_CNV_SOMATIC_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - RUN_M2_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - RUN_CNN_WDL=true TESTS_REQUIRE_GCLOUD=true
+  - TEST_TYPE=wdlGen
   global:
   #gradle needs this
   - TERM=dumb
@@ -44,16 +44,6 @@ env:
   - export WOMTOOL_JAR=$HOME/womtool-51.jar
 matrix:
   fast_finish: true
-  include:
-     - jdk: openjdk11
-       language: java
-       env: SCALA_VERSION=2.12 TEST_TYPE=integration TEST_VERBOSITY=minimal
-     - jdk: openjdk11
-       language: java
-       env: SCALA_VERSION=2.12 TEST_TYPE=unit TEST_VERBOSITY=minimal
-     - jdk: openjdk11
-       language: java
-       env: SCALA_VERSION=2.12 TEST_TYPE=cloud TESTS_REQUIRE_GCLOUD=true TEST_VERBOSITY=minimal
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
   - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
@@ -169,14 +159,14 @@ script:
     mkdir -p build/reports/;
     chmod -R a+w build/reports/;
     cp scripts/docker/dockertest.gradle .;
-    sudo docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "scala.version=${SCALA_VERSION}" -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
+    sudo docker run -v $(pwd):/gatkCloneMountPoint:cached -v $(pwd)/testJars:/jars:cached --rm -e "TEST_VERBOSITY=minimal" -e "TEST_TYPE=${TEST_TYPE}" -t broadinstitute/gatk:${DOCKER_TAG} bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
     TEST_EXIT_VALUE=$?;
     sudo mkdir build/reports/tests/test && sudo cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test && sudo rm -r build/reports/tests/testOnPackagedReleaseJar;
     $( exit ${TEST_EXIT_VALUE} );
   else
     ./gatk PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     export GATK_LAUNCH_SCRIPT="$(pwd)/gatk";
-    travis_wait 50 ./gradlew -Dscala.version=${SCALA_VERSION} jacocoTestReport;
+    travis_wait 50 ./gradlew jacocoTestReport;
   fi;
 # This creates and uploads the gatk zip file to the nightly build bucket, only keeping the 10 newest entries
 # This also constructs the Docker image and uploads it to https://cloud.docker.com/u/broadinstitute/repository/docker/broadinstitute/gatk-nightly/

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import com.google.common.collect.Lists;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeader;
@@ -17,7 +18,6 @@ import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
-import org.spark_project.guava.collect.Lists;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

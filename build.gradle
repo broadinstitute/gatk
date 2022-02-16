@@ -63,10 +63,10 @@ repositories {
 final htsjdkVersion = System.getProperty('htsjdk.version','2.24.1')
 final picardVersion = System.getProperty('picard.version','2.25.4')
 final barclayVersion = System.getProperty('barclay.version','4.0.2')
-final sparkVersion = System.getProperty('spark.version', '2.4.5')
-final scalaVersion = System.getProperty('scala.version', '2.11')
+final sparkVersion = System.getProperty('spark.version', '3.0.3')
+final scalaVersion = System.getProperty('scala.version', '2.12')
 final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
-final disqVersion = System.getProperty('disq.version','0.3.6')
+final disqVersion = System.getProperty('disq.version','0.3.8')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.3')
 final bigQueryVersion = System.getProperty('bigQuery.version', '1.117.1')
 final guavaVersion = System.getProperty('guava.version', '27.1-jre')
@@ -398,7 +398,7 @@ processTestResources {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(8)
+        languageVersion = JavaLanguageVersion.of(11)
     }
 }
 
