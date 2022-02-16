@@ -85,7 +85,7 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
             shortName = "A",
             doc = "The names of the annotations to extract.",
             minElements = 1)
-    private List<String> useAnnotations = new ArrayList<>();
+    private List<String> annotationNames = new ArrayList<>();
 
     @Argument(
             fullName = "ignore-filter",
@@ -127,7 +127,7 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
 
     LabeledVariantAnnotationsData dataBatch;
 
-    private int batchIndex = 0;
+    int batchIndex = 0;
 
     // TODO document, make enum (extract labeled vs. extract all)
     public boolean isExtractVariantsNotOverlappingResources() {
@@ -172,19 +172,19 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
         }
         resourceLabels.forEach(String::intern);
 
-        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
-            throw new CommandLineException(
-                    "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
-                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
-        }
+//        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
+//            throw new CommandLineException(
+//                    "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
+//                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
+//        }
+//
+//        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRUTH_LABEL)) {
+//            throw new CommandLineException(
+//                    "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
+//                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
+//        }
 
-        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRUTH_LABEL)) {
-            throw new CommandLineException(
-                    "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
-                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
-        }
-
-        dataBatch = new LabeledVariantAnnotationsData(useAnnotations, resourceLabels, batchSize, useASAnnotations);
+        dataBatch = new LabeledVariantAnnotationsData(annotationNames, resourceLabels, batchSize, useASAnnotations);
     }
 
     @Override
