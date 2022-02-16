@@ -19,7 +19,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/extract-test/test.all",
-                "--batch-size", "100000",
                 "-A", "FS",
                 "-A", "ReadPosRankSum",
                 "-A", "MQRankSum",
@@ -33,7 +32,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
                 "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
                 "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-                "--verbosity", "DEBUG"
+                "--verbosity", "INFO"
         };
         runCommandLine(arguments);
     }
@@ -44,7 +43,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/extract-test/test.snp",
-                "--batch-size", "100000",
                 "-A", "FS",
                 "-A", "ReadPosRankSum",
                 "-A", "MQRankSum",
@@ -67,7 +65,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "-L", "chr1",
                 "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
                 "-O", "/home/slee/working/vqsr/scalable/extract-test/test.snp.as",
-                "--batch-size", "100000",
                 "--use-allele-specific-annotations",
                 "-A", "AS_FS",
                 "-A", "AS_ReadPosRankSum",
@@ -89,7 +86,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "-L", "chr1",
                 "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
                 "-O", "/home/slee/working/vqsr/scalable/extract-test/test.snp.non-as",
-                "--batch-size", "100000",
                 "-A", "FS",
                 "-A", "ReadPosRankSum",
                 "-A", "MQRankSum",
@@ -131,7 +127,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", new File(outputDir, "test.snp").getAbsolutePath(),
-                "--batch-size", "100000",
                 "-A", "FS",
                 "-A", "ReadPosRankSum",
                 "-A", "MQRankSum",
@@ -156,7 +151,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "-L", "chr1",
                 "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.sites_only.vcf.gz",
                 "-O", new File(outputDir, "test.snp.as").getAbsolutePath(),
-                "--batch-size", "100000",
                 "--use-allele-specific-annotations",
                 "-A", "AS_FS",
                 "-A", "AS_ReadPosRankSum",
@@ -200,7 +194,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         final String[] arguments = {
                 "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract",
-                "--batch-size", "50000",
                 "-A", "FS",
                 "-A", "ReadPosRankSum",
                 "-A", "MQRankSum",
@@ -223,7 +216,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         final String[] arguments = {
                 "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.extract",
-                "--batch-size", "50000",
                 "-A", "FS",
                 "-A", "ReadPosRankSum",
                 "-A", "MQRankSum",
