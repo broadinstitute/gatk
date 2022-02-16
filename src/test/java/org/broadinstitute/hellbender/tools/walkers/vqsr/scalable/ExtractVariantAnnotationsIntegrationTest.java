@@ -120,74 +120,74 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         runCommandLine(arguments);
     }
 
-    @Test
-    public void test1kgp50ExomesSNPExactMatch() {
-        final File outputDir = createTempDir("extract-test");
-        final String[] arguments = {
-                "-L", "chr1",
-                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", new File(outputDir, "test.snp").getAbsolutePath(),
-                "-A", "FS",
-                "-A", "ReadPosRankSum",
-                "-A", "MQRankSum",
-                "-A", "QD",
-                "-A", "SOR",
-                "-A", "MQ",
-                "--trust-all-polymorphic",
-                "-mode", "SNP",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--verbosity", "DEBUG"
-        };
-        runCommandLine(arguments);
-        assertAnnotationFilesEqual(new File(outputDir, "test.snp.annot.hdf5"), new File("/home/slee/working/vqsr/scalable/extract-exact-match", "test.snp.annot.hdf5"));
-    }
-
-    @Test
-    public void testSNPASExactMatch() {
-        final File outputDir = createTempDir("extract-test");
-        final String[] arguments = {
-                "-L", "chr1",
-                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.sites_only.vcf.gz",
-                "-O", new File(outputDir, "test.snp.as").getAbsolutePath(),
-                "--use-allele-specific-annotations",
-                "-A", "AS_FS",
-                "-A", "AS_ReadPosRankSum",
-                "-A", "AS_MQRankSum",
-                "-A", "AS_QD",
-                "-A", "AS_SOR",
-                "-A", "AS_MQ",
-                "--trust-all-polymorphic",
-                "--mode", "SNP",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--verbosity", "DEBUG"
-        };
-        runCommandLine(arguments);
-        assertAnnotationFilesEqual(new File(outputDir, "test.snp.as.annot.hdf5"), new File("/home/slee/working/vqsr/scalable/extract-exact-match", "test.snp.as.annot.hdf5"));
-    }
-
-    private static void assertAnnotationFilesEqual(final File annotationsFile1,
-                                                   final File annotationsFile2) {
-        try (final HDF5File annotationsHDF5File1 = new HDF5File(annotationsFile1, HDF5File.OpenMode.READ_ONLY);
-             final HDF5File annotationsHDF5File2 = new HDF5File(annotationsFile2, HDF5File.OpenMode.READ_ONLY)) {
-            Assert.assertEquals(
-                    annotationsHDF5File1.readStringArray("/annotations/names"),
-                    annotationsHDF5File2.readStringArray("/annotations/names"));
-            for (final String label : Arrays.asList("training", "truth")) {
-                Assert.assertEquals(
-                        LabeledVariantAnnotationsData.readChunkedDoubleArray(annotationsHDF5File1, String.format("/labels/%s", label)),
-                        LabeledVariantAnnotationsData.readChunkedDoubleArray(annotationsHDF5File2, String.format("/labels/%s", label)));
-            }
-            Assert.assertEquals(
-                    HDF5Utils.readChunkedDoubleMatrix(annotationsHDF5File1, "/annotations"),
-                    HDF5Utils.readChunkedDoubleMatrix(annotationsHDF5File2, "/annotations"));
-        } catch (final HDF5LibException exception) {
-            Assert.fail("Exception encountered during reading of annotations:", exception);
-        }
-    }
+//    @Test
+//    public void test1kgp50ExomesSNPExactMatch() {
+//        final File outputDir = createTempDir("extract-test");
+//        final String[] arguments = {
+//                "-L", "chr1",
+//                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
+//                "-O", new File(outputDir, "test.snp").getAbsolutePath(),
+//                "-A", "FS",
+//                "-A", "ReadPosRankSum",
+//                "-A", "MQRankSum",
+//                "-A", "QD",
+//                "-A", "SOR",
+//                "-A", "MQ",
+//                "--trust-all-polymorphic",
+//                "-mode", "SNP",
+//                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+//                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+//                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+//                "--verbosity", "DEBUG"
+//        };
+//        runCommandLine(arguments);
+//        assertAnnotationFilesEqual(new File(outputDir, "test.snp.annot.hdf5"), new File("/home/slee/working/vqsr/scalable/extract-exact-match", "test.snp.annot.hdf5"));
+//    }
+//
+//    @Test
+//    public void testSNPASExactMatch() {
+//        final File outputDir = createTempDir("extract-test");
+//        final String[] arguments = {
+//                "-L", "chr1",
+//                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.sites_only.vcf.gz",
+//                "-O", new File(outputDir, "test.snp.as").getAbsolutePath(),
+//                "--use-allele-specific-annotations",
+//                "-A", "AS_FS",
+//                "-A", "AS_ReadPosRankSum",
+//                "-A", "AS_MQRankSum",
+//                "-A", "AS_QD",
+//                "-A", "AS_SOR",
+//                "-A", "AS_MQ",
+//                "--trust-all-polymorphic",
+//                "--mode", "SNP",
+//                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+//                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+//                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+//                "--verbosity", "DEBUG"
+//        };
+//        runCommandLine(arguments);
+//        assertAnnotationFilesEqual(new File(outputDir, "test.snp.as.annot.hdf5"), new File("/home/slee/working/vqsr/scalable/extract-exact-match", "test.snp.as.annot.hdf5"));
+//    }
+//
+//    private static void assertAnnotationFilesEqual(final File annotationsFile1,
+//                                                   final File annotationsFile2) {
+//        try (final HDF5File annotationsHDF5File1 = new HDF5File(annotationsFile1, HDF5File.OpenMode.READ_ONLY);
+//             final HDF5File annotationsHDF5File2 = new HDF5File(annotationsFile2, HDF5File.OpenMode.READ_ONLY)) {
+//            Assert.assertEquals(
+//                    annotationsHDF5File1.readStringArray("/annotations/names"),
+//                    annotationsHDF5File2.readStringArray("/annotations/names"));
+//            for (final String label : Arrays.asList("training", "truth")) {
+//                Assert.assertEquals(
+//                        LabeledVariantAnnotationsData.readChunkedDoubleArray(annotationsHDF5File1, String.format("/labels/%s", label)),
+//                        LabeledVariantAnnotationsData.readChunkedDoubleArray(annotationsHDF5File2, String.format("/labels/%s", label)));
+//            }
+//            Assert.assertEquals(
+//                    HDF5Utils.readChunkedDoubleMatrix(annotationsHDF5File1, "/annotations"),
+//                    HDF5Utils.readChunkedDoubleMatrix(annotationsHDF5File2, "/annotations"));
+//        } catch (final HDF5LibException exception) {
+//            Assert.fail("Exception encountered during reading of annotations:", exception);
+//        }
+//    }
 
     @Test
     public void testJbxSNP() {
