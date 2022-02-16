@@ -14,19 +14,20 @@ import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVar
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModelPosterior;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public final class BGMMVariantAnnotationsModel implements VariantAnnotationsModel {
 
     private static final Logger logger = LogManager.getLogger(BGMMVariantAnnotationsModel.class);
+    private static final int RANDOM_SEED_FOR_WARM_START_SUBSAMPLING = 0;
 
     public static final String BGMM_FIT_HDF5_SUFFIX = ".bgmmFit.hdf5";
     public static final String BGMM_TRANSFORMED_ANNOTATIONS_HDF5_SUFFIX = ".bgmmTransAnnot.hdf5";
@@ -42,12 +43,11 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
     public void trainAndSerialize(final File trainingAnnotationsFile,
                                   final String outputPrefix) {
         // load annotation training data
-        logger.info("Reading annotations...");
+        // TODO validate annotation names and trainingData size
         final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(trainingAnnotationsFile);
         final double[][] trainingData = LabeledVariantAnnotationsData.readAnnotations(trainingAnnotationsFile);
 
-        // TODO validate annotation names and trainingData size
-
+        final int nSamples = trainingData.length;
         final int nFeatures = trainingData[0].length;
 
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
@@ -74,7 +74,23 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
         // preprocess
         final Preprocesser preprocesser = new Preprocesser();
         final double[][] preprocessedTrainingData = preprocesser.fitTransform(trainingData);
-        bgmm.fit(preprocessedTrainingData);
+
+        if (!hyperparameters.warmStart || hyperparameters.warmStartSubsample == 0. || hyperparameters.warmStartSubsample == 1.) {
+            bgmm.fit(preprocessedTrainingData);
+        } else {
+            final int nSubsamples = (int) (hyperparameters.warmStartSubsample * nSamples);
+            logger.info(String.format("Performing warm start with a subsample fraction (%d / %d) of the data...",
+                    nSubsamples, nSamples));
+            final List<Integer> shuffledIndices = IntStream.range(0, nSamples).boxed().collect(Collectors.toList());
+            Collections.shuffle(shuffledIndices, new Random(RANDOM_SEED_FOR_WARM_START_SUBSAMPLING));
+            final double[][] preprocessedTrainingDataSubsample =
+                    shuffledIndices.subList(0, nSubsamples).stream()
+                            .map(i -> preprocessedTrainingData[i])
+                            .toArray(double[][]::new);
+            bgmm.fit(preprocessedTrainingDataSubsample);
+            bgmm.fit(preprocessedTrainingData);
+        }
+
 
         // TODO clean this up, method for inputAnnotationsFile -> outputPreprocessedAnnotationsFile
 //        // write preprocessed annotations
@@ -92,28 +108,15 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
 //        }
 //        logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
 
-
         // serialize scorer = preprocesser + BGMM
         // TODO fix up output paths and validation, logging
-        serialize(
-                new File(outputPrefix + BGMM_SCORER_SER_SUFFIX),
-                new BGMMVariantAnnotationsScorer(annotationNames, preprocesser, bgmm));
+        final BGMMVariantAnnotationsScorer scorer = new BGMMVariantAnnotationsScorer(annotationNames, preprocesser, bgmm);
+        scorer.serialize(new File(outputPrefix + BGMM_SCORER_SER_SUFFIX));
 
         // write model fit to HDF5
         // TODO fix up output paths and validation, logging
         final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
         fit.write(new File(outputPrefix + BGMM_FIT_HDF5_SUFFIX), "/bgmm");
-    }
-
-    private static <T> void serialize(final File outputFile,
-                                      final T object) {
-        try (final FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
-             final ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream)) {
-            objectOutputStream.writeObject(object);
-        } catch (final IOException e) {
-            throw new GATKException(String.format("Exception encountered during serialization of %s to %s: %s",
-                    object.getClass(), outputFile.getAbsolutePath(), e));
-        }
     }
 
     // mean and covariance priors are each specified by a single number here
@@ -146,6 +149,8 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
         boolean warmStart = false;
         @JsonProperty("verbose_interval")
         int verboseInterval = 5;
+        @JsonProperty("warm_start_subsample")
+        double warmStartSubsample = 1.;
 
         Hyperparameters() {
         }
@@ -154,7 +159,10 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
             IOUtils.canReadFile(hyperparametersJSONFile);
             try {
                 final ObjectMapper mapper = new ObjectMapper();
-                return mapper.readValue(hyperparametersJSONFile, Hyperparameters.class);
+                final Hyperparameters hyperparameters = mapper.readValue(hyperparametersJSONFile, Hyperparameters.class);
+                ParamUtils.inRange(hyperparameters.warmStartSubsample, 0., 1.,
+                        "The hyperparameter warm_start_subsample must be in [0, 1].");
+                return hyperparameters;
             } catch (final Exception e) {
                 throw new UserException.BadInput("Could not read hyperparameters JSON.", e);
             }

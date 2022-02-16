@@ -9,8 +9,10 @@ import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureMod
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.List;
 
@@ -39,6 +41,10 @@ public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsSco
         VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
     }
 
+    public void serialize(final File scorerFile) {
+        serialize(scorerFile, this);
+    }
+
     public static BGMMVariantAnnotationsScorer deserialize(final File scorerFile) {
         return deserialize(scorerFile, BGMMVariantAnnotationsScorer.class);
     }
@@ -47,6 +53,17 @@ public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsSco
         final double[][] preprocessedData = preprocesser.transform(data);
         final double[] scores = bgmm.scoreSamples(preprocessedData);
         return Pair.of(preprocessedData, scores);
+    }
+
+    private static <T> void serialize(final File outputFile,
+                                      final T object) {
+        try (final FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
+             final ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream)) {
+            objectOutputStream.writeObject(object);
+        } catch (final IOException e) {
+            throw new GATKException(String.format("Exception encountered during serialization of %s to %s: %s",
+                    object.getClass(), outputFile.getAbsolutePath(), e));
+        }
     }
 
     private static <T> T deserialize(final File inputFile,
