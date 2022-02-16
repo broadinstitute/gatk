@@ -40,6 +40,7 @@ workflow GvsExtractCohortFromSampleNames {
     Float? snps_truth_sensitivity_filter_level_override
     Float? indels_truth_sensitivity_filter_level_override
 
+    File? interval_weights_bed
     File? gatk_override
   }
 
@@ -64,6 +65,7 @@ workflow GvsExtractCohortFromSampleNames {
       default_dataset = gvs_dataset,
       extract_table_prefix = extraction_uuid,
 
+      interval_weights_bed = interval_weights_bed,
       wgs_intervals = wgs_intervals,
       scatter_count = scatter_count,
 
