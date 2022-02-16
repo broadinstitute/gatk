@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsExtractCallset.wdl" as CallsetInterval
-import "GvsUtils.wdl" as Utils
+import "https://raw.githubusercontent.com/broadinstitute/gatk/a08a18f709bf85e7bd429d41d6e8a36876f1098f/scripts/variantstore/wdl/GvsUtils.wdl" as Utils
 
 workflow GvsRescatterCallsetInterval {
   input {
