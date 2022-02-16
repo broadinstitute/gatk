@@ -68,6 +68,7 @@ workflow GvsExtractCallset {
           ref_fai = reference_index,
           ref_dict = reference_dict,
           interval_weights_bed = interval_weights_bed,
+          gatk_override = gatk_override,
           scatter_count = scatter_count,
           output_gcs_dir = output_gcs_dir,
           split_intervals_disk_size_override = split_intervals_disk_size_override,
