@@ -158,6 +158,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     protected void afterNthPass(final int n) {
         if (n == 0) {
             writeAnnotationsToHDF5();
+            data.clear();
             writeScoresToHDF5();
             scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
         }
@@ -227,14 +228,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     @Override
     public Object onTraversalSuccess() {
-//        logger.info(String.format("Extracted annotations for %s total variants.", dataBatch.getFlattenedData().size()));
-
-//        logger.info("Scoring...");
-//        final double[] scores;
-//        if (pythonScriptFile != null) {
-//
-//            scores = VariantAnnotationUtils.readScores(outputScoresFile);
-//        } else {
 //            final VariantAnnotationUtils.Scorer scorer = VariantAnnotationUtils.deserialize(
 //                    new File(modelPrefix + SCORER_SER_SUFFIX), // TODO clean up
 //                    VariantAnnotationUtils.Scorer.class);
@@ -260,16 +253,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 //                        exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
 //            }
 //            logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
-//        }
-//
-//        // TODO decouple setting of scores and VCF writing
-//        LabeledVariantAnnotationsData.setScores(dataBatch.getFlattenedData(), scores);
-//        logger.info("Scoring complete.");
-//
-//        logger.info("Writing VCF...");
-//        writeVCF(false, false,true);
-
-//        vcfWriter.close();
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
