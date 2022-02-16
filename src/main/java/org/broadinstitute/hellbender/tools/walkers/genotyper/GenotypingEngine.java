@@ -133,7 +133,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
             final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles);
             final GenotypesContext reducedGenotypes = allelesToKeep.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc, GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), true);
+                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0), true);
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 

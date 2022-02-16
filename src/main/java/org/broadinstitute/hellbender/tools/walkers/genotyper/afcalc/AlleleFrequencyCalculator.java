@@ -77,7 +77,9 @@ public final class AlleleFrequencyCalculator {
         final double[] log10Likelihoods;
         if (g.hasLikelihoods()) {
             log10Likelihoods = g.getLikelihoods().getAsVector();
-        } else if ( g.isHomRef() || g.isNoCall()) {
+        } else if ( g.isHomRef()) {
+            //no-call with no PLs seems risky, but there are a few places in the QUAL/AF code where we subset alleles,
+            // but then leave the genotypes as no-calls
             if (g.getPloidy() != 2) {
                 throw new IllegalStateException("Likelihoods are required to calculate posteriors for hom-refs with ploidy != 2, " +
                         "but were not found for genotype " + g + " with ploidy " + g.getPloidy());
