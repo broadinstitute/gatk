@@ -10,9 +10,10 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.MultiVariantWalker;
+import org.broadinstitute.hellbender.engine.MultiplePassVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
@@ -41,7 +42,7 @@ import java.util.stream.Collectors;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
+public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
     private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
 
@@ -106,15 +107,6 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
             optional = true)
     private boolean trustAllPolymorphic = false;
 
-    // TODO document and validate batchSize * number of annotations <= HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX
-    @Argument(
-            fullName = "batch-size",
-            minValue = 1,
-            optional = true
-    )
-    private int batchSize = 100000;
-
-    // TODO document and validate batchSize * number of annotations <= HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX
     @Advanced
     @Argument(
             fullName = "omit-alleles-in-hdf5"
@@ -125,9 +117,7 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
     File outputAnnotationsFile;
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
 
-    LabeledVariantAnnotationsData dataBatch;
-
-    int batchIndex = 0;
+    LabeledVariantAnnotationsData data;
 
     // TODO document, make enum (extract labeled vs. extract all)
     public boolean isExtractVariantsNotOverlappingResources() {
@@ -172,64 +162,67 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
         }
         resourceLabels.forEach(String::intern);
 
-//        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
-//            throw new CommandLineException(
-//                    "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
-//                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
-//        }
-//
-//        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRUTH_LABEL)) {
-//            throw new CommandLineException(
-//                    "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
-//                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
-//        }
+        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
+            throw new CommandLineException(
+                    "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
+                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
+        }
 
-        dataBatch = new LabeledVariantAnnotationsData(annotationNames, resourceLabels, batchSize, useASAnnotations);
+        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRUTH_LABEL)) {
+            throw new CommandLineException(
+                    "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
+                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
+        }
+
+        data = new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations);
     }
 
     @Override
-    public void apply(final VariantContext vc,
-                      final ReadsContext readsContext,
-                      final ReferenceContext ref,
-                      final FeatureContext featureContext) {
-        addVariantToBatchIfItPassesExtractionChecks(vc, featureContext);
+    protected int numberOfPasses() {
+        return 2;
+    }
 
-        if (dataBatch.size() == batchSize) {
-            consumeBatch();
+    @Override
+    protected void nthPassApply(final VariantContext variant,
+                                final ReadsContext readsContext,
+                                final ReferenceContext referenceContext,
+                                final FeatureContext featureContext,
+                                final int n) {
+        if (n == 0) {
+            addVariantIfItPassesExtractionChecks(variant, featureContext);
+        } else if (n == 1) {
+
+        } else {
+            throw new GATKException.ShouldNeverReachHereException(
+                    "Tools currently inheriting from LabeledVariantAnnotationsWalker should make no more than two passes.");
         }
     }
 
-    void consumeBatch() {
-        dataBatch.writeBatchToHDF5(outputAnnotationsFile, batchIndex, omitAllelesInHDF5);
-        doBatchWork();
-        dataBatch.clear();
-        batchIndex++;
+    @Override
+    protected void afterNthPass(final int n) {
+        if (n == 0) {
+            data.writeHDF5(outputAnnotationsFile, omitAllelesInHDF5);
+            doExtraWorkAfterNthPass(0);
+        } else if (n == 1) {
+
+        } else {
+            throw new GATKException.ShouldNeverReachHereException(
+                    "Tools currently inheriting from LabeledVariantAnnotationsWalker should make no more than two passes.");
+        }
     }
 
-    void doBatchWork() {
+    protected void doExtraWorkAfterNthPass(final int n) {
         // override
     }
 
     @Override
     public Object onTraversalSuccess() {
-
-        // final batch
-        if (dataBatch.size() > 0) {
-            consumeBatch();
-        }
-
-        afterOnTraversalSuccess();
-
         return null;
     }
 
-    public void afterOnTraversalSuccess() {
-        // override
-    }
-
     // code here and below for filtering and determining variant type was essentially retained from VQSR
-    private void addVariantToBatchIfItPassesExtractionChecks(final VariantContext vc,
-                                                             final FeatureContext featureContext) {
+    private void addVariantIfItPassesExtractionChecks(final VariantContext vc,
+                                                      final FeatureContext featureContext) {
         // TODO dump unneeded VariantContext info if in Extract
         if (vc == null) {
             return;
@@ -242,7 +235,7 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
             if (variantTypesToExtract.contains(variantType)) {
                 final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
                 if (isExtractVariantsNotOverlappingResources() || !overlappingResourceLabels.isEmpty()) {
-                    dataBatch.add(vc,
+                    data.add(vc,
                             vc.getAlternateAlleles(),
                             Collections.singletonList(variantType),
                             Collections.singletonList(overlappingResourceLabels));
@@ -267,7 +260,7 @@ public class LabeledVariantAnnotationsBatchWalker extends MultiVariantWalker {
                     }
                 }
             }
-            dataBatch.add(vc,
+            data.add(vc,
                     extractedAltAllelePerDatum,
                     extractedVariantTypePerDatum,
                     extractedLabelsPerDatum);

@@ -2,19 +2,24 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.primitives.Doubles;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hdf5.HDF5File;
-import org.broadinstitute.hdf5.HDF5LibException;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.MultiplePassVariantWalker;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsModel;
@@ -25,6 +30,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VcfUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
@@ -32,9 +38,12 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -48,12 +57,10 @@ import java.util.stream.IntStream;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public class ScoreVariantAnnotations extends LabeledVariantAnnotationsBatchWalker {
+public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
 
-    private static final String SCORER_PKL_SUFFIX = ".scorer.pkl";
-    private static final String SCORER_SER_SUFFIX = ".scorer.ser";
     private static final String SCORES_HDF5_SUFFIX = ".scores.hdf5";
 
     @Argument(
@@ -66,14 +73,11 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsBatchWalke
     private String modelPrefix;
 
     private File outputScoresFile;
-    private File outputVCFFile;
-    private VariantContextWriter vcfWriter;
 
     private VariantAnnotationsScorer snpScorer;
     private VariantAnnotationsScorer indelScorer;
-    private final List<Double> aggregateScores = new ArrayList<>(10_000_000);
 
-    @Override
+    // TODO document, make enum (extract labeled vs. extract all)
     public boolean isExtractVariantsNotOverlappingResources() {
         return true;
     }
@@ -115,7 +119,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsBatchWalke
         }
 
         outputScoresFile = new File(outputPrefix + SCORES_HDF5_SUFFIX);
-        outputVCFFile = new File(outputPrefix + ".vcf"); // TODO add -O VCF output
 
         for (final File outputFile : Collections.singletonList(outputScoresFile)) {
             if ((outputFile.exists() && !outputFile.canWrite()) ||
@@ -123,44 +126,40 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsBatchWalke
                 throw new UserException(String.format("Cannot create output file at %s.", outputFile));
             }
         }
-
-        vcfWriter = createVCFWriter(outputVCFFile);
-        vcfWriter.writeHeader(constructVCFHeader());
     }
 
     @Override
-    void doBatchWork() {
-        final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(outputAnnotationsFile);
-        final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabelBatch(outputAnnotationsFile, "snp", batchIndex);
-        final double[][] allAnnotations = LabeledVariantAnnotationsData.readAnnotationsBatch(outputAnnotationsFile, batchIndex);
-        final int numAll = allAnnotations.length;
-        final List<Double> allScores = new ArrayList<>(Collections.nCopies(numAll, Double.NaN));
-        if (variantTypesToExtract.contains(VariantType.SNP)) {
-            final File snpAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isSNP);
-            final File snpScoresFile = IOUtils.createTempFile("snp", ".scores.hdf5");
-            snpScorer.scoreSamples(snpAnnotationsFile, snpScoresFile);
-            final double[] snpScores = VariantAnnotationsScorer.readScores(snpScoresFile);
-            final Iterator<Double> snpScoresIterator = Arrays.stream(snpScores).iterator();
-            IntStream.range(0, numAll).filter(isSNP::get).forEach(i -> allScores.set(i, snpScoresIterator.next()));
+    protected void doExtraWorkAfterNthPass(final int n) {
+        if (n == 0) {
+            final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(outputAnnotationsFile);
+            final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(outputAnnotationsFile, "snp");
+            final double[][] allAnnotations = LabeledVariantAnnotationsData.readAnnotations(outputAnnotationsFile);
+            final int numAll = allAnnotations.length;
+            final List<Double> allScores = new ArrayList<>(Collections.nCopies(numAll, Double.NaN));
+            if (variantTypesToExtract.contains(VariantType.SNP)) {
+                final File snpAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isSNP);
+                final File snpScoresFile = IOUtils.createTempFile("snp", ".scores.hdf5");
+                snpScorer.scoreSamples(snpAnnotationsFile, snpScoresFile);
+                final double[] snpScores = VariantAnnotationsScorer.readScores(snpScoresFile);
+                final Iterator<Double> snpScoresIterator = Arrays.stream(snpScores).iterator();
+                IntStream.range(0, numAll).filter(isSNP::get).forEach(i -> allScores.set(i, snpScoresIterator.next()));
+            }
+            if (variantTypesToExtract.contains(VariantType.INDEL)) {
+                final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
+                final File indelAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isIndel);
+                final File indelScoresFile = IOUtils.createTempFile("indel", ".scores.hdf5");
+                indelScorer.scoreSamples(indelAnnotationsFile, indelScoresFile);
+                final double[] indelScores = VariantAnnotationsScorer.readScores(indelScoresFile);
+                final Iterator<Double> indelScoresIterator = Arrays.stream(indelScores).iterator();
+                IntStream.range(0, numAll).filter(isIndel::get).forEach(i -> allScores.set(i, indelScoresIterator.next()));
+            }
+            VariantAnnotationsScorer.writeScores(outputScoresFile, Doubles.toArray(allScores));
+            logger.info(String.format("Scores written to %s.", outputScoresFile.getAbsolutePath()));
         }
-        if (variantTypesToExtract.contains(VariantType.INDEL)) {
-            final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
-            final File indelAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isIndel);
-            final File indelScoresFile = IOUtils.createTempFile("indel", ".scores.hdf5");
-            indelScorer.scoreSamples(indelAnnotationsFile, indelScoresFile);
-            final double[] indelScores = VariantAnnotationsScorer.readScores(indelScoresFile);
-            final Iterator<Double> indelScoresIterator = Arrays.stream(indelScores).iterator();
-            IntStream.range(0, numAll).filter(isIndel::get).forEach(i -> allScores.set(i, indelScoresIterator.next()));
-        }
-        aggregateScores.addAll(allScores);
     }
 
     @Override
-    public void afterOnTraversalSuccess() {
-
-        VariantAnnotationsScorer.writeScores(outputScoresFile, Doubles.toArray(aggregateScores));
-        logger.info(String.format("Scores written to %s.", outputScoresFile.getAbsolutePath()));
-
+    public Object onTraversalSuccess() {
 //        logger.info(String.format("Extracted annotations for %s total variants.", dataBatch.getFlattenedData().size()));
 
 //        logger.info("Scoring...");
@@ -203,13 +202,11 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsBatchWalke
 //        logger.info("Writing VCF...");
 //        writeVCF(false, false,true);
 
-        vcfWriter.close();
+//        vcfWriter.close();
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
-    }
 
-    private static int numPassingFilter(List<Boolean> isPassing) {
-        return isPassing.stream().mapToInt(x -> x ? 1 : 0).sum();
+        return null;
     }
 
     private VCFHeader constructVCFHeader() {

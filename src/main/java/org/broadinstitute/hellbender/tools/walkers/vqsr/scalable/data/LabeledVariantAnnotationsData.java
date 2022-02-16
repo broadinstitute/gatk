@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.LinkedListMultimap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -15,6 +14,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /*
  * TODO this whole class needs refactoring. it's cleaned up significantly from VQSR version,
@@ -35,6 +36,8 @@ public final class LabeledVariantAnnotationsData {
     private static final int CHUNK_DIVISOR = 16;
     private static final int MAXIMUM_CHUNK_SIZE = HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / CHUNK_DIVISOR;
 
+    private static final int INITIAL_SIZE = 10_000_000;
+
     // TODO make labels enum?
     public static final String TRAINING_LABEL = "training";
     public static final String TRUTH_LABEL = "truth";
@@ -42,14 +45,14 @@ public final class LabeledVariantAnnotationsData {
     private final List<String> sortedAnnotationNames;
     final List<String> sortedLabels;
 
-    private final LinkedListMultimap<VariantContext, LabeledVariantAnnotationsDatum> variantContextsToDataMultimap;
+//    private final LinkedListMultimap<VariantContext, LabeledVariantAnnotationsDatum> variantContextsToDataMultimap;
+    private final List<List<LabeledVariantAnnotationsDatum>> data;
     private final boolean useASAnnotations;
 
     public LabeledVariantAnnotationsData(final Collection<String> annotationNames,
                                          final Collection<String> labels,
-                                         final int initialSize,
                                          final boolean useASAnnotations) {
-        this.variantContextsToDataMultimap = LinkedListMultimap.create(initialSize);
+        this.data = new ArrayList<>(INITIAL_SIZE);
         this.sortedAnnotationNames = ImmutableList.copyOf(annotationNames.stream().distinct().sorted().collect(Collectors.toList()));
         if (sortedAnnotationNames.size() != annotationNames.size()) {
             logger.warn(String.format("Ignoring duplicate annotations: %s.", Utils.getDuplicatedItems(annotationNames)));
@@ -62,11 +65,11 @@ public final class LabeledVariantAnnotationsData {
     }
 
     public int size() {
-        return variantContextsToDataMultimap.size();
+        return data.size();
     }
 
     public void clear() {
-        variantContextsToDataMultimap.clear();
+        data.clear();
     }
 
     public void add(final VariantContext vc,
@@ -75,17 +78,16 @@ public final class LabeledVariantAnnotationsData {
                     final List<Set<String>> labelsPerDatum) {
         if (!useASAnnotations) {
             // if altAllele is null we are not in AS mode
-            variantContextsToDataMultimap.put(vc,
+            data.add(Collections.singletonList(
                     new LabeledVariantAnnotationsDatum(vc,
                             altAllelesPerDatum,
                             variantTypePerDatum.get(0),
                             labelsPerDatum.get(0),
                             sortedAnnotationNames,
-                            useASAnnotations));
+                            useASAnnotations)));
         } else {
             // AS mode
-            variantContextsToDataMultimap.putAll(vc,
-                    IntStream.range(0, altAllelesPerDatum.size()).boxed()
+            data.add(IntStream.range(0, altAllelesPerDatum.size()).boxed()
                             .map(i -> new LabeledVariantAnnotationsDatum(vc,
                                     Collections.singletonList(altAllelesPerDatum.get(i)),
                                     variantTypePerDatum.get(i),
@@ -96,64 +98,44 @@ public final class LabeledVariantAnnotationsData {
         }
     }
 
-    private List<LabeledVariantAnnotationsDatum> getFlattenedData() {
-        return Collections.unmodifiableList(variantContextsToDataMultimap.values());
+    private Stream<LabeledVariantAnnotationsDatum> streamFlattenedData() {
+        return data.stream().flatMap(List::stream);
     }
 
-    public void writeBatchToHDF5(final File outputFile,
-                                 final int batchIndex,
-                                 final boolean omitAllelesInHDF5) {
+    public void writeHDF5(final File outputFile,
+                          final boolean omitAllelesInHDF5) {
         // TODO validate
-        try (final HDF5File outputHDF5File = new HDF5File(outputFile, batchIndex == 0 ? HDF5File.OpenMode.CREATE : HDF5File.OpenMode.READ_WRITE)) {
+        try (final HDF5File outputHDF5File = new HDF5File(outputFile, HDF5File.OpenMode.CREATE)) {
             IOUtils.canReadFile(outputHDF5File.getFile());
-
-            HDF5Utils.writeIntervals(outputHDF5File, String.format("/intervals/chunk_%d", batchIndex),
-                    getFlattenedData().stream().map(datum -> datum.interval).collect(Collectors.toList()));
+            HDF5Utils.writeIntervals(outputHDF5File, "/intervals",
+                    streamFlattenedData().map(datum -> datum.interval).collect(Collectors.toList()));
             if (!omitAllelesInHDF5) {
-                outputHDF5File.makeStringArray(String.format("/ref/chunk_%d", batchIndex),
-                        getFlattenedData().stream().map(datum -> datum.refAllele.getDisplayString()).toArray(String[]::new));
+                outputHDF5File.makeStringArray("/alleles/ref",
+                        streamFlattenedData().map(datum -> datum.refAllele.getDisplayString()).toArray(String[]::new));
                 if (!useASAnnotations) {
-                    outputHDF5File.makeStringArray(String.format("/alt/chunk_%d", batchIndex),
-                            getFlattenedData().stream()
+                    outputHDF5File.makeStringArray("/alleles/alt",
+                            streamFlattenedData()
                                     .map(datum -> datum.altAlleles.stream().map(Allele::getDisplayString).collect(Collectors.joining(",")))
                                     .toArray(String[]::new));
                 } else {
-                    outputHDF5File.makeStringArray(String.format("/alt/chunk_%d", batchIndex),
-                            getFlattenedData().stream().map(datum -> datum.altAlleles.get(0).getDisplayString()).toArray(String[]::new));
+                    outputHDF5File.makeStringArray("/alleles/alt",
+                            streamFlattenedData().map(datum -> datum.altAlleles.get(0).getDisplayString()).toArray(String[]::new));
                 }
             }
             outputHDF5File.makeStringArray("/annotations/names", sortedAnnotationNames.toArray(new String[0]));
-
-            // TODO clean this up
-            // for the below quantities, we also write the additional fields num_chunks, num_rows, and num_columns
-            // so that HDF5Utils.readChunkedDoubleMatrix can be used to read the result
-            final double[][] annotations = getFlattenedData().stream().map(datum -> datum.annotations).toArray(double[][]::new);
-            outputHDF5File.makeDoubleMatrix(String.format("/annotations/chunk_%d", batchIndex), annotations);
-            outputHDF5File.makeDouble("/annotations" + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH,
-                    batchIndex == 0 ? annotations.length : (int) outputHDF5File.readDouble("/annotations" + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH) + annotations.length);
-            outputHDF5File.makeDouble("/annotations" + HDF5Utils.NUMBER_OF_COLUMNS_SUB_PATH, annotations[0].length);
-            outputHDF5File.makeDouble("/annotations" + HDF5Utils.NUMBER_OF_CHUNKS_SUB_PATH, batchIndex + 1);
-
-            final double[] isSNP = getFlattenedData().stream().mapToDouble(datum -> datum.variantType == VariantType.SNP ? 1 : 0).toArray();
-            outputHDF5File.makeDoubleArray(String.format("/labels/snp/chunk_%d", batchIndex), isSNP);
-            outputHDF5File.makeDouble("/labels/snp" + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH,
-                    batchIndex == 0 ? isSNP.length : (int) outputHDF5File.readDouble("/labels/snp" + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH) + isSNP.length);
-            outputHDF5File.makeDouble("/labels/snp" + HDF5Utils.NUMBER_OF_COLUMNS_SUB_PATH, 1);
-            outputHDF5File.makeDouble("/labels/snp" + HDF5Utils.NUMBER_OF_CHUNKS_SUB_PATH, batchIndex + 1);
-
+            HDF5Utils.writeChunkedDoubleMatrix(outputHDF5File, "/annotations",
+                    streamFlattenedData().map(datum -> datum.annotations).toArray(double[][]::new), MAXIMUM_CHUNK_SIZE);
+            outputHDF5File.makeDoubleArray("/labels/snp",
+                    streamFlattenedData().mapToDouble(datum -> datum.variantType == VariantType.SNP ? 1 : 0).toArray());
             for (final String label : sortedLabels) {
-                final double[] isLabel = getFlattenedData().stream().mapToDouble(datum -> datum.labels.contains(label) ? 1 : 0).toArray();
-                outputHDF5File.makeDoubleArray(String.format("/labels/%s/chunk_%d", label, batchIndex), isLabel);
-                outputHDF5File.makeDouble(String.format("/labels/%s/%s", label, HDF5Utils.NUMBER_OF_ROWS_SUB_PATH),
-                        batchIndex == 0 ? isSNP.length : (int) outputHDF5File.readDouble(String.format("/labels/%s/%s", label, HDF5Utils.NUMBER_OF_ROWS_SUB_PATH)) + isSNP.length);
-                outputHDF5File.makeDouble(String.format("/labels/%s/%s", label, HDF5Utils.NUMBER_OF_COLUMNS_SUB_PATH), 1);
-                outputHDF5File.makeDouble(String.format("/labels/%s/%s", label, HDF5Utils.NUMBER_OF_CHUNKS_SUB_PATH), batchIndex + 1);
+                outputHDF5File.makeDoubleArray(String.format("/labels/%s", label),
+                        streamFlattenedData().mapToDouble(datum -> datum.labels.contains(label) ? 1 : 0).toArray());
             }
         } catch (final HDF5LibException exception) {
-            throw new GATKException(String.format("Exception encountered during writing of annotations and metadata to (chunk_%d) (%s). Output file at %s may be in a bad state.",
-                    batchIndex, exception, outputFile.getAbsolutePath()));
+            throw new GATKException(String.format("Exception encountered during writing of annotations and metadata (%s). Output file at %s may be in a bad state.",
+                    exception, outputFile.getAbsolutePath()));
         }
-        logger.debug(String.format("Annotations and metadata (chunk_%d) written to %s.", batchIndex, outputFile.getAbsolutePath()));
+        logger.debug(String.format("Annotations and metadata written to %s.", outputFile.getAbsolutePath()));
     }
 
     public static List<String> readAnnotationNames(final File annotationsFile) {
@@ -176,73 +158,15 @@ public final class LabeledVariantAnnotationsData {
         }
     }
 
-    public static double[][] readAnnotationsBatch(final File annotationsFile,
-                                                  final int batchIndex) {
-        try (final HDF5File annotationsHDF5File = new HDF5File(annotationsFile, HDF5File.OpenMode.READ_ONLY)) {
-            IOUtils.canReadFile(annotationsHDF5File.getFile());
-            return annotationsHDF5File.readDoubleMatrix(String.format("/annotations/chunk_%d", batchIndex));
-        } catch (final HDF5LibException exception) {
-            throw new GATKException(String.format("Exception encountered during reading of annotations (chunk_%d) from %s: %s",
-                    batchIndex, annotationsFile.getAbsolutePath(), exception));
-        }
-    }
-
     public static List<Boolean> readLabel(final File annotationsFile,
                                           final String label) {
         try (final HDF5File annotationsHDF5File = new HDF5File(annotationsFile, HDF5File.OpenMode.READ_ONLY)) {
             IOUtils.canReadFile(annotationsHDF5File.getFile());
-            return Arrays.stream(readChunkedDoubleArray(annotationsHDF5File, String.format("/labels/%s", label))).boxed().map(d -> d == 1).collect(Collectors.toList());
+            return Arrays.stream(annotationsHDF5File.readDoubleArray(String.format("/labels/%s", label))).boxed().map(d -> d == 1).collect(Collectors.toList());
         } catch (final HDF5LibException exception) {
             throw new GATKException(String.format("Exception encountered during reading of label %s from %s: %s",
                     label, annotationsFile.getAbsolutePath(), exception));
         }
-    }
-
-    public static List<Boolean> readLabelBatch(final File annotationsFile,
-                                               final String label,
-                                               final int batchIndex) {
-        try (final HDF5File annotationsHDF5File = new HDF5File(annotationsFile, HDF5File.OpenMode.READ_ONLY)) {
-            IOUtils.canReadFile(annotationsHDF5File.getFile());
-            return Arrays.stream(annotationsHDF5File.readDoubleArray(String.format("/labels/%s/chunk_%d", label, batchIndex))).boxed().map(d -> d == 1).collect(Collectors.toList());
-        } catch (final HDF5LibException exception) {
-            throw new GATKException(String.format("Exception encountered during reading of label %s from %s: %s",
-                    label, annotationsFile.getAbsolutePath(), exception));
-        }
-    }
-
-    public static double[] readChunkedDoubleArray(final HDF5File file,
-                                                  final String path) {
-        Utils.nonNull(file);
-        IOUtils.canReadFile(file.getFile());
-        Utils.nonNull(path);
-
-        final String numRowsPath = path + HDF5Utils.NUMBER_OF_ROWS_SUB_PATH;
-        final String numColumnsPath = path + HDF5Utils.NUMBER_OF_COLUMNS_SUB_PATH;
-        final String numChunksPath = path + HDF5Utils.NUMBER_OF_CHUNKS_SUB_PATH;
-        Utils.validateArg(file.isPresent(numRowsPath) && file.isPresent(numColumnsPath) && file.isPresent(numChunksPath),
-                String.format("HDF5 file %s does not contain a chunked array in path %s.", file.getFile().getAbsolutePath(), path));
-
-        final int numRows = (int) file.readDouble(numRowsPath);
-        final int numColumns = (int) file.readDouble(numColumnsPath);
-        final int numChunks = (int) file.readDouble(numChunksPath);
-
-        Utils.validateArg(numColumns == 1,
-                String.format("HDF5 file %s does not contain a chunked array with a single column in path %s.", file.getFile().getAbsolutePath(), path));
-
-        final double[] fullArray = new double[numRows];
-        int numRowsRead = 0;
-        for (int chunkIndex = 0; chunkIndex < numChunks; chunkIndex++) {
-            final double[] arrayChunk = file.readDoubleArray(path + HDF5Utils.CHUNK_INDEX_PATH_SUFFIX + chunkIndex);
-            if (numRowsRead + arrayChunk.length > numRows) {
-                throw new UserException.BadInput("Array chunk contains too many rows.");
-            }
-            System.arraycopy(arrayChunk, 0, fullArray, numRowsRead, arrayChunk.length);
-            numRowsRead += arrayChunk.length;
-        }
-        if (numRowsRead != numRows) {
-            throw new UserException.BadInput("Array chunks do not contain expected total number of rows.");
-        }
-        return fullArray;
     }
 
     public static File subsetAnnotationsToTemporaryFile(final List<String> annotationNames,
