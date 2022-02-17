@@ -8,21 +8,20 @@ workflow GvsCreateVAT {
         File inputFileofIndexFileNames
         String project_id
         String dataset_name
-        File nirvana_data_directory
-        File vat_schema_json_file
-        File variant_transcript_schema_json_file
-        File genes_schema_json_file
+        File? nirvana_data_directory = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz"
+        File? vat_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json"
+        File? variant_transcript_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json"
+        File? genes_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json"
         String output_path
         String table_suffix
 
         String? service_account_json_path
-        File AnAcAf_annotations_template
+        File? AnAcAf_annotations_template = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/vat/custom_annotations_template.tsv"
         File ancestry_file
-        File reference
     }
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
-
+    File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
 
     call MakeSubpopulationFiles {
         input:
@@ -158,9 +157,9 @@ task BigQueryLoadJson {
     }
 
     input {
-        File nirvana_schema
-        File vt_schema
-        File genes_schema
+        File? nirvana_schema
+        File? vt_schema
+        File? genes_schema
         String project_id
         String dataset_name
         String output_path

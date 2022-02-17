@@ -13,45 +13,13 @@ The pipeline takes in a jointVCF and outputs a table in BigQuery.
 ### Run GvsCreateVAT:
 
 Most of the inputs are constants — like the reference, or a table schema — and dont require any additional work (and paths can be found in the [example inputs json](scripts/variantstore/wdl/GvsCreateVAT.example.inputs.json)). However for the specific data being put in the VAT, three inputs need to be created.
-The first two of these inputs are two files — one of the file/vcf/shards you want to use for the VAT, and their corresponding index files. These are labelled as `inputFileofFileNames` and `inputFileofIndexFileNames`.
 
-You will need to know where all of the GVS extract output files live.
-Example of creating the files of file names and indices:
-`gsutil ls gs://prod-drc-broad/beta-release-99k-v3/beta_99k_*.vcf.gz > inputFileofFileNames.txt`
-`gsutil ls gs://prod-drc-broad/beta-release-99k-v3/beta_99k_*.vcf.gz.tbi > inputFileofIndexFileNames.txt`
+The first two of these inputs are two files — one of the file/vcf/shards you want to use for the VAT, and their corresponding index files. These are labelled as `inputFileofFileNames` and `inputFileofIndexFileNames` and need to be copied into a GCP bucket that this pipeline will have access to (eg. this bucket: `gs://aou-genomics-curation-prod-processing/vat/`) for easy access during the workflow.
+The third input is the ancestry file from the ancestry pipeline which will be used to calculate AC, AN and AF for all subpopulations. It needs to be copied into a GCP bucket that this pipeline will have access to. This input has been labelled as the `ancestry_file`.
 
-Those two created files will then need to get copied into a GCP bucket that this pipeline will have access to (eg. this bucket: `gs://aou-genomics-curation-prod-processing/vat/`)
-
-The third input is the ancestry file that Lee has made and it needs to be copied into a GCP bucket that this pipeline will have access to (eg. this bucket: `gs://aou-genomics-curation-prod-processing/vat/`) for easy access during the workflow. This input has been labelled as the `ancestry_file`.
 Most of the other files are specific to where the VAT will live, like the project_id and dataset_name and the table_suffix which will name the VAT itself as vat_`table_suffix` as well as a GCP bucket location, the output_path, for the intermediary files and the VAT export in tsv form.
 
-The other inputs can be copied from where I’ve put several files (maybe we should find a better place?!? Since many are in my scratch dir for now—tho anything in my scratch dir is also living in github as it’s things like what BQ schema is needed)
-
-The provided [example inputs json](scripts/variantstore/wdl/GvsCreateVAT.example.inputs.json) indicates all of the needed inputs.
-
-
-
-
-
-
-
-### Brief overview of the pipeline itself:
-
-- `MakeSubpopulationFiles` grabs Lee’s ancestry file and keeps only the columns it needs. It also grabs the File of shard names / paths. Each of those paths is then used to kick off one of the next step which is a subworkflow of three tasks. There will be a subworkflow for each vcf shard.
-
-  - `ExtractAnAcAfFromVCF` is the first step of the subworkflow and filters out bad sites, sites with too many alt alleles, duplicate variants and calculates the AC, AN and AF values for each subpopulation
-  - `AnnotateVCF` is the second step of the subworkflow and adds Nirvana annotations to each of the variants
-  - `PrepAnnotationJson` is the final step and prepares the data to be loaded into a BQ table, and loads it into a GCP staging bucket, using the output_path
-
-- `BigQueryLoadJson` creates BQ tables (two temporary and one that is the VAT) and then gets everything from the staging buckets (`genes` and `vt`) and loads it into the two temp tables in BQ. Those two tables are joined together to create the VAT.
-
-- `BigQuerySmokeTest` checks that the number of variants in the new VAT is the same as the expected number from the many subworkflows. This will never fail the pipeline, but is helpful to validate results.
-
-- `BigQueryExportVat` takes the VAT and exports it by chromosome into a series of tsv files and loads it into a GCP bucket in the directory created by the `output_path`
-
-
-
-
+The provided [example inputs json](scripts/variantstore/wdl/GvsCreateVAT.example.inputs.json) indicates all of the inputs.
 
 
 ### Notes:
@@ -60,11 +28,7 @@ When running this pipeline, currently I try to stay around 5k-10k shards—I hav
 
 Note that there are two temporary tables that are created in addition to the main VAT table: the Genes and VT tables. They have a time to live of 24 hours.
 The VAT table is created by that query fresh each time so that there is no risk of duplicates.  
-HOWEVER the Genes and VT tables are not. They are cleaned up after 24 hours, but this code needs to be tweaked so that you can’t get into a state where duplicates are created here. The real question here is going to be, is there a use case that we might want to run where adding to a VAT that was created say weeks ago is beneficial, but given that calculations occur on a sample summing level, this seems unlikely   
-
-
-
-
+HOWEVER the Genes and VT tables are not. They are cleaned up after 24 hours, but this code needs to be tweaked so that you can’t get into a state where duplicates are created here. The real question here is going to be, is there a use case that we might want to run where adding to a VAT that was created say weeks ago is beneficial, but given that calculations occur on a sample summing level, this seems unlikely.
 
 
 To check that all of the shards have successfully made it past the first of the sub workflow steps (the most complicated and likely to fail) they will need to be annotated / transformed into json files and put here:
