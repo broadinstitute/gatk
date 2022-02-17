@@ -143,35 +143,22 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                 final ReferenceContext referenceContext,
                                 final FeatureContext featureContext,
                                 final int n) {
-        final List<Triple<List<Allele>, VariantType, Set<String>>> metadata = extractMetadata(variant, featureContext);
-        if (!metadata.isEmpty()) {
-            if (pythonScriptFile == null) {
-                if (n == 0) {
-                    data.add(variant,
-                            metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
-                            metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
-                            metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
+        final List<Triple<List<Allele>, VariantType, Set<String>>> metadata = extractVariantMetadata(variant, featureContext);
+        final boolean isVariantExtracted = !metadata.isEmpty();
+        if (isVariantExtracted) {
+            if (n == 0) {
+                addExtractedVariantToData(variant, metadata);
+                if (pythonScriptFile == null) {
                     final List<Double> scores = data.getData().get(data.size() - 1).stream()
                             .map(d -> d.getVariantType() == VariantType.SNP
-                                    ? snpScorer.scoreSamples(Stream.of(d.getAnnotations()).toArray(double[][]::new))[0]
-                                    : indelScorer.scoreSamples(Stream.of(d.getAnnotations()).toArray(double[][]::new))[0])
+                                    ? snpScorer.score(Stream.of(d.getAnnotations()).toArray(double[][]::new))[0]
+                                    : indelScorer.score(Stream.of(d.getAnnotations()).toArray(double[][]::new))[0])
                             .collect(Collectors.toList());
                     scoresIterator = scores.listIterator();
-                    writeVariantToVCF(variant,
-                            metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
-                            metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
+                    writeExtractedVariantToVCF(variant, metadata);
                 }
-            } else {
-                if (n == 0) {
-                    data.add(variant,
-                            metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
-                            metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
-                            metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
-                } else if (n == 1) {
-                    writeVariantToVCF(variant,
-                            metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
-                            metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
-                }
+            } else if (pythonScriptFile != null && n == 1) {
+                writeExtractedVariantToVCF(variant, metadata);
             }
         } else if (n == numberOfPasses()) {
             vcfWriter.add(variant);
@@ -180,15 +167,10 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     @Override
     protected void afterNthPass(final int n) {
-        if (pythonScriptFile == null) {
-            writeAnnotationsToHDF5();
-            data.clear();
-            writeScoresToHDF5();
-        } else {
-            if (n == 0) {
-                writeAnnotationsToHDF5();
-                data.clear();
-                writeScoresToHDF5();
+        if (n == 0) {
+            writeAnnotationsToHDF5AndClearData();
+            readAnnotationsAndWriteScoresToHDF5();
+            if (pythonScriptFile != null) {
                 scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
             }
         }
@@ -199,37 +181,40 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         }
     }
 
-    private void writeScoresToHDF5() {
+    private void readAnnotationsAndWriteScoresToHDF5() {
         final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(outputAnnotationsFile);
         final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(outputAnnotationsFile, "snp");
         final double[][] allAnnotations = LabeledVariantAnnotationsData.readAnnotations(outputAnnotationsFile);
         final int numAll = allAnnotations.length;
         final List<Double> allScores = new ArrayList<>(Collections.nCopies(numAll, Double.NaN));
         if (variantTypesToExtract.contains(VariantType.SNP)) {
-            final File snpAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isSNP);
-            final File snpScoresFile = IOUtils.createTempFile("snp", ".scores.hdf5");
-            snpScorer.scoreSamples(snpAnnotationsFile, snpScoresFile);
-            final double[] snpScores = VariantAnnotationsScorer.readScores(snpScoresFile);
-            final Iterator<Double> snpScoresIterator = Arrays.stream(snpScores).iterator();
-            IntStream.range(0, numAll).filter(isSNP::get).forEach(i -> allScores.set(i, snpScoresIterator.next()));
+            scoreVariantTypeAndSetElementsOfAllScores(annotationNames, allAnnotations, isSNP, snpScorer, allScores);
         }
         if (variantTypesToExtract.contains(VariantType.INDEL)) {
             final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
-            final File indelAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isIndel);
-            final File indelScoresFile = IOUtils.createTempFile("indel", ".scores.hdf5");
-            indelScorer.scoreSamples(indelAnnotationsFile, indelScoresFile);
-            final double[] indelScores = VariantAnnotationsScorer.readScores(indelScoresFile);
-            final Iterator<Double> indelScoresIterator = Arrays.stream(indelScores).iterator();
-            IntStream.range(0, numAll).filter(isIndel::get).forEach(i -> allScores.set(i, indelScoresIterator.next()));
+            scoreVariantTypeAndSetElementsOfAllScores(annotationNames, allAnnotations, isIndel, indelScorer, allScores);
         }
         VariantAnnotationsScorer.writeScores(outputScoresFile, Doubles.toArray(allScores));
         logger.info(String.format("Scores written to %s.", outputScoresFile.getAbsolutePath()));
     }
 
+    private static void scoreVariantTypeAndSetElementsOfAllScores(final List<String> annotationNames,
+                                                                  final double[][] allAnnotations,
+                                                                  final List<Boolean> isVariantType,
+                                                                  final VariantAnnotationsScorer variantTypeScorer,
+                                                                  final List<Double> allScores) {
+        final File variantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isVariantType);
+        final File variantTypeScoresFile = IOUtils.createTempFile("temp", ".scores.hdf5");
+        variantTypeScorer.score(variantTypeAnnotationsFile, variantTypeScoresFile);
+        final double[] variantTypeScores = VariantAnnotationsScorer.readScores(variantTypeScoresFile);
+        final Iterator<Double> variantTypeScoresIterator = Arrays.stream(variantTypeScores).iterator();
+        IntStream.range(0, allScores.size()).filter(isVariantType::get).forEach(i -> allScores.set(i, variantTypeScoresIterator.next()));
+    }
+
     @Override
-    void writeVariantToVCF(final VariantContext vc,
-                           final List<Allele> altAlleles,
-                           final Set<String> labels) {
+    void writeExtractedVariantToVCF(final VariantContext vc,
+                                    final List<Allele> altAlleles,
+                                    final Set<String> labels) {
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         final List<String> sortedLabels = labels.stream().sorted().collect(Collectors.toList());
         sortedLabels.forEach(l -> builder.attribute(l, true));
@@ -258,15 +243,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     @Override
     public Object onTraversalSuccess() {
-//            final VariantAnnotationUtils.Scorer scorer = VariantAnnotationUtils.deserialize(
-//                    new File(modelPrefix + SCORER_SER_SUFFIX), // TODO clean up
-//                    VariantAnnotationUtils.Scorer.class);
-//            final double[][] data = this.dataBatch.getFlattenedData().stream().map(vd -> vd.annotations).toArray(double[][]::new);
-//            final Pair<double[][], double[]> preprocessedDataAndScores = scorer.preprocessAndScoreSamples(data);
-//            final double[][] preprocessedData = preprocessedDataAndScores.getLeft();
-//            scores = preprocessedDataAndScores.getRight();
-//            VariantAnnotationUtils.writeScores(outputScoresFile, scores);
-//
 //            // write preprocessed annotations
 //            // TODO clean this up
 //            final List<String> annotationNames = this.dataBatch.getSortedAnnotationKeys();
@@ -288,22 +264,4 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
         return null;
     }
-
-//    @Override
-//    void writeVariantToVCF(final VariantContext vc,
-//                           final Triple<List<Allele>, VariantType, Set<String>> metadata) {
-//        // TODO validate
-//
-//        final VariantContextBuilder builder = new VariantContextBuilder(SCORE_KEY, datum.loc.getContig(), datum.loc.getStart(), datum.loc.getEnd(), alleles);
-//        builder.attribute(VCFConstants.END_KEY, datum.loc.getEnd());
-//
-//        if (writeScores) {
-//            builder.attribute(SCORE_KEY, String.format("%.4f", datum.score));
-//        }
-//
-//        if (datum.labels.contains(VariantLabeledAnnotationsData.TRAINING_LABEL)) {
-//            builder.attribute(GATKVCFConstants.POSITIVE_LABEL_KEY, true);
-//        }
-//        vcfWriter.add(builder.make());
-//    }
 }

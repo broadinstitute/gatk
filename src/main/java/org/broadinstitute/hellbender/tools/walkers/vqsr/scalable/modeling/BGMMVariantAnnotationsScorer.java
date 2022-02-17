@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -32,18 +31,23 @@ public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsSco
     }
 
     @Override
-    public void scoreSamples(final File inputAnnotationsFile,
-                             final File outputScoresFile) {
+    public void score(final File inputAnnotationsFile,
+                      final File outputScoresFile) {
         final List<String> inputAnnotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputAnnotationsFile);
         Utils.validateArg(inputAnnotationNames.equals(annotationNames), "Annotation names must be identical.");
-        final double[][] data = LabeledVariantAnnotationsData.readAnnotations(inputAnnotationsFile);
-        final double[] scores = preprocessAndScoreSamples(data).getRight();
+        final double[][] annotations = LabeledVariantAnnotationsData.readAnnotations(inputAnnotationsFile);
+        final double[] scores = score(annotations);
         VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
     }
 
     @Override
-    public double[] scoreSamples(double[][] annotations) {
-        return preprocessAndScoreSamples(annotations).getRight();
+    public double[] score(final double[][] annotations) {
+        final double[][] preprocessedAnnotations = preprocesser.transform(annotations);
+        return bgmm.scoreSamples(preprocessedAnnotations);
+    }
+
+    public double[][] preprocess(final double[][] annotations) {
+        return preprocesser.transform(annotations);
     }
 
     public void serialize(final File scorerFile) {
@@ -52,12 +56,6 @@ public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsSco
 
     public static BGMMVariantAnnotationsScorer deserialize(final File scorerFile) {
         return deserialize(scorerFile, BGMMVariantAnnotationsScorer.class);
-    }
-
-    private Pair<double[][], double[]> preprocessAndScoreSamples(final double[][] data) {
-        final double[][] preprocessedData = preprocesser.transform(data);
-        final double[] scores = bgmm.scoreSamples(preprocessedData);
-        return Pair.of(preprocessedData, scores);
     }
 
     private static <T> void serialize(final File outputFile,

@@ -10,10 +10,10 @@ import java.util.function.Function;
 
 public interface VariantAnnotationsScorer {
 
-    void scoreSamples(final File inputAnnotationsFile,
-                      final File outputScoresFile);
+    void score(final File inputAnnotationsFile,
+               final File outputScoresFile);
 
-    double[] scoreSamples(final double[][] annotations);
+    double[] score(final double[][] annotations);
 
     // TODO
     static Function<Double, Double> createScoreToTruthSensitivityConverter(final double[] truthScores) {

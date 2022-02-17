@@ -25,8 +25,8 @@ public final class PythonSklearnVariantAnnotationsScorer implements VariantAnnot
     }
 
     @Override
-    public void scoreSamples(final File inputAnnotationsFile,
-                             final File outputScoresFile) {
+    public void score(final File inputAnnotationsFile,
+                      final File outputScoresFile) {
         final PythonScriptExecutor executor = new PythonScriptExecutor(true);
         final ProcessOutput pythonProcessOutput = executor.executeScriptAndGetOutput(
                 pythonScriptFile.getAbsolutePath(),
@@ -39,7 +39,7 @@ public final class PythonSklearnVariantAnnotationsScorer implements VariantAnnot
     }
 
     @Override
-    public double[] scoreSamples(double[][] annotations) {
+    public double[] score(double[][] annotations) {
         throw new NotImplementedException("Online scoring is not implemented.");
     }
 

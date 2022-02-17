@@ -45,10 +45,10 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
         // load annotation training data
         // TODO validate annotation names and trainingData size
         final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(trainingAnnotationsFile);
-        final double[][] trainingData = LabeledVariantAnnotationsData.readAnnotations(trainingAnnotationsFile);
+        final double[][] trainingAnnotations = LabeledVariantAnnotationsData.readAnnotations(trainingAnnotationsFile);
 
-        final int nSamples = trainingData.length;
-        final int nFeatures = trainingData[0].length;
+        final int nSamples = trainingAnnotations.length;
+        final int nFeatures = trainingAnnotations[0].length;
 
         final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
         final BayesianGaussianMixtureModeller bgmm = new BayesianGaussianMixtureModeller.Builder()
@@ -73,22 +73,22 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
 
         // preprocess
         final Preprocesser preprocesser = new Preprocesser();
-        final double[][] preprocessedTrainingData = preprocesser.fitTransform(trainingData);
+        final double[][] preprocessedTrainingAnnotations = preprocesser.fitTransform(trainingAnnotations);
 
         if (!hyperparameters.warmStart || hyperparameters.warmStartSubsample == 0. || hyperparameters.warmStartSubsample == 1.) {
-            bgmm.fit(preprocessedTrainingData);
+            bgmm.fit(preprocessedTrainingAnnotations);
         } else {
             final int nSubsamples = (int) (hyperparameters.warmStartSubsample * nSamples);
             logger.info(String.format("Performing warm start with a subsample fraction (%d / %d) of the data...",
                     nSubsamples, nSamples));
             final List<Integer> shuffledIndices = IntStream.range(0, nSamples).boxed().collect(Collectors.toList());
             Collections.shuffle(shuffledIndices, new Random(RANDOM_SEED_FOR_WARM_START_SUBSAMPLING));
-            final double[][] preprocessedTrainingDataSubsample =
+            final double[][] preprocessedTrainingAnnotationsSubsample =
                     shuffledIndices.subList(0, nSubsamples).stream()
-                            .map(i -> preprocessedTrainingData[i])
+                            .map(i -> preprocessedTrainingAnnotations[i])
                             .toArray(double[][]::new);
-            bgmm.fit(preprocessedTrainingDataSubsample);
-            bgmm.fit(preprocessedTrainingData);
+            bgmm.fit(preprocessedTrainingAnnotationsSubsample); // perform hyperparameters.nInit initializations and fits with subsample
+            bgmm.fit(preprocessedTrainingAnnotations);          // perform final fit with full sample
         }
 
 
