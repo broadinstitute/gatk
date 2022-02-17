@@ -1,8 +1,11 @@
-# Using OpenJDK 8
+# Using OpenJDK 11
 # This Dockerfile does not require any files that are in the GATK4 repo.
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 #### Basic image utilities
+#Set noninteractive and timezone or tzdata install stops to ask where you live
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=America/Boston
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
@@ -15,7 +18,7 @@ RUN apt-get update && \
     less \
     bedtools \
     samtools \
-    openjdk-8-jdk \
+    openjdk-11-jdk \
     tabix \
     gpg-agent \
     build-essential \
@@ -24,14 +27,18 @@ RUN apt-get update && \
     apt-get -y autoclean  && \
     apt-get -y autoremove
 
-#### Specific for google cloud support
-RUN export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
-    echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
-    apt-get update -y && apt-get install google-cloud-sdk -y && \
-    apt-get -y autoremove && \
-    apt-get -y clean
-###########
+#### install and configure gcloud
+RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && \
+    apt-get update -y && \
+    apt-get install google-cloud-sdk -y && \ 
+    apt-get -y clean && \
+    apt-get -y autoclean && \
+    apt-get -y autoremove 
+
+RUN gcloud config set core/disable_usage_reporting true && \
+    gcloud config set component_manager/disable_update_check true 
+      
 
 # Set environment variables.
 ENV HOME /root
