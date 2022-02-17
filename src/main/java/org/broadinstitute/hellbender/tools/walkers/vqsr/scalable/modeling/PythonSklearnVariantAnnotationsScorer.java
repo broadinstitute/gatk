@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
@@ -35,6 +36,11 @@ public final class PythonSklearnVariantAnnotationsScorer implements VariantAnnot
         if (pythonProcessOutput.getExitValue() != 0) {
             throw executor.getScriptException(executor.getExceptionMessageFromScriptError(pythonProcessOutput));
         }
+    }
+
+    @Override
+    public double[] scoreSamples(double[][] annotations) {
+        throw new NotImplementedException("Online scoring is not implemented.");
     }
 
     private static List<String> composePythonArguments(final File annotationsFile,

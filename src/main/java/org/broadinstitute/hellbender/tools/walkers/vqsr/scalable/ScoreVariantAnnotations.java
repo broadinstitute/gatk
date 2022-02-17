@@ -1,23 +1,18 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.primitives.Doubles;
-import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
-import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -31,7 +26,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.utils.variant.VcfUtils;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
@@ -44,6 +38,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * TODO
@@ -89,7 +84,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     @Override
     protected int numberOfPasses() {
-        return 2;
+        return pythonScriptFile == null ? 1 : 2;
     }
 
     @Override
@@ -128,6 +123,10 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                     : null;
         }
 
+        if (snpScorer == null && indelScorer == null) {
+            throw new UserException.BadInput("At least one serialized scorer must be present in model files.");
+        }
+
         outputScoresFile = new File(outputPrefix + SCORES_HDF5_SUFFIX);
 
         for (final File outputFile : Collections.singletonList(outputScoresFile)) {
@@ -144,23 +143,53 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                 final ReferenceContext referenceContext,
                                 final FeatureContext featureContext,
                                 final int n) {
-        if (n == 0) {
-            addVariantToDataIfItPassesTypeChecks(variant, featureContext);
-        } else if (n == 1) {
-            if (!writeVariantToVCFIfItPassesTypeChecks(variant, featureContext)) {
-                final VariantContextBuilder builder = new VariantContextBuilder(variant);
-                vcfWriter.add(builder.make());
+        final List<Triple<List<Allele>, VariantType, Set<String>>> metadata = extractMetadata(variant, featureContext);
+        if (!metadata.isEmpty()) {
+            if (pythonScriptFile == null) {
+                if (n == 0) {
+                    data.add(variant,
+                            metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
+                            metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
+                            metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
+                    final List<Double> scores = data.getData().get(data.size() - 1).stream()
+                            .map(d -> d.getVariantType() == VariantType.SNP
+                                    ? snpScorer.scoreSamples(Stream.of(d.getAnnotations()).toArray(double[][]::new))[0]
+                                    : indelScorer.scoreSamples(Stream.of(d.getAnnotations()).toArray(double[][]::new))[0])
+                            .collect(Collectors.toList());
+                    scoresIterator = scores.listIterator();
+                    writeVariantToVCF(variant,
+                            metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
+                            metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
+                }
+            } else {
+                if (n == 0) {
+                    data.add(variant,
+                            metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
+                            metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
+                            metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
+                } else if (n == 1) {
+                    writeVariantToVCF(variant,
+                            metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
+                            metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
+                }
             }
+        } else if (n == numberOfPasses()) {
+            vcfWriter.add(variant);
         }
     }
 
     @Override
     protected void afterNthPass(final int n) {
-        if (n == 0) {
+        if (pythonScriptFile == null) {
             writeAnnotationsToHDF5();
-            data.clear();
             writeScoresToHDF5();
-            scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
+        } else {
+            if (n == 0) {
+                writeAnnotationsToHDF5();
+                data.clear();
+                writeScoresToHDF5();
+                scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
+            }
         }
         if (n == numberOfPasses()) {
             if (vcfWriter != null) {
@@ -197,11 +226,11 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     }
 
     @Override
-    void writeVariantToVCFIfItPassesTypeChecks(final VariantContext vc,
-                                               final Triple<List<Allele>, VariantType, Set<String>> metadata) {
-        final List<Allele> altAlleles = metadata.getLeft();
+    void writeVariantToVCF(final VariantContext vc,
+                           final List<Allele> altAlleles,
+                           final Set<String> labels) {
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        final List<String> sortedLabels = metadata.getRight().stream().sorted().collect(Collectors.toList());
+        final List<String> sortedLabels = labels.stream().sorted().collect(Collectors.toList());
         sortedLabels.forEach(l -> builder.attribute(l, true));
         final double bestScore = useASAnnotations
                 ? altAlleles.stream().mapToDouble(a -> scoresIterator.next()).max().getAsDouble()

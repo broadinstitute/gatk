@@ -1,15 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
-import org.broadinstitute.hdf5.HDF5File;
-import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
-import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import java.io.File;
-import java.util.Arrays;
 
 public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 

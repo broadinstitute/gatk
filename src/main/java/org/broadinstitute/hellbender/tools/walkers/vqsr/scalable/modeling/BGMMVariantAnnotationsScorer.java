@@ -41,6 +41,11 @@ public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsSco
         VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
     }
 
+    @Override
+    public double[] scoreSamples(double[][] annotations) {
+        return preprocessAndScoreSamples(annotations).getRight();
+    }
+
     public void serialize(final File scorerFile) {
         serialize(scorerFile, this);
     }

@@ -109,7 +109,7 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/score-test/test.bgmm.snp",
-                "--model-prefix", "/home/slee/working/vqsr/scalable/train-test/test.bgmm.snp",
+                "--model-prefix", "/home/slee/working/vqsr/scalable/train-test/test.bgmm",
                 "-A", "FS",
                 "-A", "ReadPosRankSum",
                 "-A", "MQRankSum",
@@ -118,7 +118,7 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
                 "-A", "MQ",
                 "--trust-all-polymorphic",
                 "-mode", "SNP",
-                "--resource:extracted-training,training=true,truth=false", "/home/slee/working/vqsr/scalable/extract-test/test.snp.vcf",
+                "--resource:extracted-training,training=true,truth=false", "/home/slee/working/vqsr/scalable/extract-exact-match/test.snp.vcf",
                 "--resource:hapmap,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
                 "--resource:omni,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
                 "--verbosity", "INFO"

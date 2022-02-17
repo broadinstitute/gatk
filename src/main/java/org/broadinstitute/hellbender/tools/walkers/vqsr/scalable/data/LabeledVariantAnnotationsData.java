@@ -44,7 +44,7 @@ public final class LabeledVariantAnnotationsData {
     private final List<String> sortedAnnotationNames;
     final List<String> sortedLabels;
 
-    private final List<LabeledVariantAnnotationsDatum> data;
+    private final List<List<LabeledVariantAnnotationsDatum>> data;
     private final boolean useASAnnotations;
 
     public LabeledVariantAnnotationsData(final Collection<String> annotationNames,
@@ -75,14 +75,26 @@ public final class LabeledVariantAnnotationsData {
     }
 
     public void add(final VariantContext vc,
-                    final List<Allele> altAlleles,
-                    final VariantType variantType,
-                    final Set<String> labels) {
-        data.add(new LabeledVariantAnnotationsDatum(vc, altAlleles, variantType, labels, sortedAnnotationNames, useASAnnotations));
+                    final List<List<Allele>> altAllelesPerDatum,
+                    final List<VariantType> variantTypePerDatum,
+                    final List<Set<String>> labelsPerDatum) {
+        if (!useASAnnotations) {
+            data.add(Collections.singletonList(new LabeledVariantAnnotationsDatum(
+                    vc, altAllelesPerDatum.get(0), variantTypePerDatum.get(0), labelsPerDatum.get(0), sortedAnnotationNames, useASAnnotations)));
+        } else {
+            data.add(IntStream.range(0, altAllelesPerDatum.size()).boxed()
+                    .map(i -> new LabeledVariantAnnotationsDatum(
+                            vc, altAllelesPerDatum.get(i), variantTypePerDatum.get(i), labelsPerDatum.get(i), sortedAnnotationNames, useASAnnotations))
+                    .collect(Collectors.toList()));
+        }
+    }
+
+    public List<List<LabeledVariantAnnotationsDatum>> getData() {
+        return Collections.unmodifiableList(data);
     }
 
     private Stream<LabeledVariantAnnotationsDatum> streamFlattenedData() {
-        return data.stream();
+        return data.stream().flatMap(List::stream);
     }
 
     public void writeHDF5(final File outputFile,

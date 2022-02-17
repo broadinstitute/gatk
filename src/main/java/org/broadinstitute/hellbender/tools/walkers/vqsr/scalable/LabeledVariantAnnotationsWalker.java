@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -13,6 +12,7 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -22,7 +22,6 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.MultiplePassVariantWalker;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /**
@@ -215,8 +213,16 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                                 final FeatureContext featureContext,
                                 final int n) {
         if (n == 0) {
-            addVariantToDataIfItPassesTypeChecks(variant, featureContext);
-            writeVariantToVCFIfItPassesTypeChecks(variant, featureContext);
+            final List<Triple<List<Allele>, VariantType, Set<String>>> metadata = extractMetadata(variant, featureContext);
+            if (!metadata.isEmpty()) {
+                data.add(variant,
+                        metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
+                        metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
+                        metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
+                writeVariantToVCF(variant,
+                        metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
+                        metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
+            }
         }
     }
 
@@ -248,29 +254,18 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         return null;
     }
 
-    boolean addVariantToDataIfItPassesTypeChecks(final VariantContext vc,
-                                                 final FeatureContext featureContext) {
-        return consumeVariantIfItPassesTypeChecks(vc, featureContext,
-                (v, m) -> data.add(vc, m.getLeft(), m.getMiddle(), m.getRight()));
-    }
-
-    boolean writeVariantToVCFIfItPassesTypeChecks(final VariantContext vc,
-                                                  final FeatureContext featureContext) {
-        return consumeVariantIfItPassesTypeChecks(vc, featureContext, (v, m) -> writeVariantToVCFIfItPassesTypeChecks(vc, m));
-    }
-
     void writeAnnotationsToHDF5() {
         data.writeHDF5(outputAnnotationsFile, omitAllelesInHDF5);
     }
 
-    void writeVariantToVCFIfItPassesTypeChecks(final VariantContext vc,
-                                               final Triple<List<Allele>, VariantType, Set<String>> metadata) {
-        final List<Allele> altAlleles = metadata.getLeft();
+    void writeVariantToVCF(final VariantContext vc,
+                           final List<Allele> altAlleles,
+                           final Set<String> labels) {
         final List<Allele> alleles = ListUtils.union(Collections.singletonList(vc.getReference()), altAlleles);
         final VariantContextBuilder builder = new VariantContextBuilder(
                 vc.getSource(), vc.getContig(), vc.getStart(), vc.getEnd(), alleles);
         builder.attribute(VCFConstants.END_KEY, vc.getEnd());
-        final List<String> sortedLabels = metadata.getRight().stream().sorted().collect(Collectors.toList());
+        final List<String> sortedLabels = labels.stream().sorted().collect(Collectors.toList());
         sortedLabels.forEach(l -> builder.attribute(l, true));
         vcfWriter.add(builder.make());
     }
@@ -299,43 +294,30 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     }
 
     // logic here and below for filtering and determining variant type was retained from VQSR, but has been refactored
-    private boolean consumeVariantIfItPassesTypeChecks(final VariantContext vc,
-                                                       final FeatureContext featureContext,
-                                                       final BiConsumer<VariantContext, Triple<List<Allele>, VariantType, Set<String>>> variantAndMetadataConsumer) {
+    List<Triple<List<Allele>, VariantType, Set<String>>> extractMetadata(final VariantContext vc,
+                                                                         final FeatureContext featureContext) {
         // if variant is filtered, do not consume here
         if (vc == null || !(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
-            return false;
+            return Collections.emptyList();
         }
-        boolean isVariantConsumed = false;
         if (!useASAnnotations) {
             final VariantType variantType = VariantType.getVariantType(vc);
             if (variantTypesToExtract.contains(variantType)) {
                 final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
                 if (!isExtractOnlyLabeledVariants() || !overlappingResourceLabels.isEmpty()) {
-                    final Triple<List<Allele>, VariantType, Set<String>> metadata =
-                            Triple.of(vc.getAlternateAlleles(), variantType, overlappingResourceLabels);
-                    variantAndMetadataConsumer.accept(vc, metadata);
-                    isVariantConsumed = true;
+                    return Collections.singletonList(Triple.of(vc.getAlternateAlleles(), variantType, overlappingResourceLabels));
                 }
             }
         } else {
-            for (final Allele altAllele : vc.getAlternateAlleles()) {
-                if (GATKVCFConstants.isSpanningDeletion(altAllele)) {
-                    continue;
-                }
-                final VariantType variantType = VariantType.getVariantType(vc, altAllele);
-                if (variantTypesToExtract.contains(variantType)) {
-                    final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, vc.getReference(), altAllele, featureContext);
-                    if (!isExtractOnlyLabeledVariants() || !overlappingResourceLabels.isEmpty()) {
-                        final Triple<List<Allele>, VariantType, Set<String>> metadata =
-                                Triple.of(Collections.singletonList(altAllele), variantType, overlappingResourceLabels);
-                        variantAndMetadataConsumer.accept(vc, metadata);
-                        isVariantConsumed = true;
-                    }
-                }
-            }
+            return vc.getAlternateAlleles().stream()
+                    .filter(a -> !GATKVCFConstants.isSpanningDeletion(a))
+                    .map(a -> Pair.of(a, VariantType.getVariantType(vc, a)))
+                    .filter(p -> variantTypesToExtract.contains(p.getRight()))
+                    .map(p -> Triple.of(Collections.singletonList(p.getLeft()), p.getRight(), findOverlappingResourceLabels(vc, vc.getReference(), p.getLeft(), featureContext)))
+                    .filter(t -> !isExtractOnlyLabeledVariants() || !t.getRight().isEmpty())
+                    .collect(Collectors.toList());
         }
-        return isVariantConsumed;
+        return Collections.emptyList();
     }
 
     private Set<String> findOverlappingResourceLabels(final VariantContext vc,
