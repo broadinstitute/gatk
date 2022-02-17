@@ -97,16 +97,30 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
         runCommandLine(arguments);
     }
 
-//    @Test
-//    public void testJbxSNP() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.train",
-//                "--python-script", PYTHON_SCRIPT,
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/jbx/hyperparameters.json",
-//                "--mode", "SNP",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
+    @Test
+    public void testJbxAll() {
+        final String[] arguments = {
+                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.extract.annot.hdf5",
+                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.train",
+                "--python-script", PYTHON_SCRIPT,
+                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/jbx/hyperparameters.json",
+                "--mode", "SNP",
+                "--mode", "INDEL",
+                "--verbosity", "INFO"
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
+    public void testJbxSNP() {
+        final String[] arguments = {
+                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.annot.hdf5",
+                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.train",
+                "--python-script", PYTHON_SCRIPT,
+                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/jbx/hyperparameters.json",
+                "--mode", "SNP",
+                "--verbosity", "INFO"
+        };
+        runCommandLine(arguments);
+    }
 }
