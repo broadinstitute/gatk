@@ -11,7 +11,7 @@ WORKDIR /gatk
 RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 RUN add-apt-repository universe && apt update
 RUN apt-get --assume-yes install git-lfs
-RUN git lfs install
+RUN git lfs install --force
 
 RUN git lfs pull
 
