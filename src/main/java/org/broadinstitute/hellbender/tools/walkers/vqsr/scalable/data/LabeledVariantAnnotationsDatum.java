@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.List;
 import java.util.Set;
 
-final class LabeledVariantAnnotationsDatum implements Locatable {
+public final class LabeledVariantAnnotationsDatum implements Locatable {
     final SimpleInterval interval;
     final Allele refAllele;
     final ImmutableList<Allele> altAlleles;
@@ -51,6 +51,14 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
     @Override
     public int getEnd() {
         return interval.getEnd();
+    }
+
+    public VariantType getVariantType() {
+        return variantType;
+    }
+
+    public double[] getAnnotations() {
+        return annotations;
     }
 
     // code retained from VQSR
