@@ -188,9 +188,11 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         final int numAll = allAnnotations.length;
         final List<Double> allScores = new ArrayList<>(Collections.nCopies(numAll, Double.NaN));
         if (variantTypesToExtract.contains(VariantType.SNP)) {
+            logger.info("Scoring SNP variants...");
             scoreVariantTypeAndSetElementsOfAllScores(annotationNames, allAnnotations, isSNP, snpScorer, allScores);
         }
         if (variantTypesToExtract.contains(VariantType.INDEL)) {
+            logger.info("Scoring INDEL variants...");
             final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
             scoreVariantTypeAndSetElementsOfAllScores(annotationNames, allAnnotations, isIndel, indelScorer, allScores);
         }
@@ -216,8 +218,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                     final List<Allele> altAlleles,
                                     final Set<String> labels) {
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        final List<String> sortedLabels = labels.stream().sorted().collect(Collectors.toList());
-        sortedLabels.forEach(l -> builder.attribute(l, true));
+        labels.stream().sorted().forEach(l -> builder.attribute(l, true));
         final double bestScore = useASAnnotations
                 ? altAlleles.stream().mapToDouble(a -> scoresIterator.next()).max().getAsDouble()
                 : scoresIterator.next();

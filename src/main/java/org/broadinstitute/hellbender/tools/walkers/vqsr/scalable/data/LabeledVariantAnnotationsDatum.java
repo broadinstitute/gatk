@@ -57,6 +57,10 @@ public final class LabeledVariantAnnotationsDatum implements Locatable {
         return variantType;
     }
 
+    public ImmutableSet<String> getLabels() {
+        return labels;
+    }
+
     public double[] getAnnotations() {
         return annotations;
     }

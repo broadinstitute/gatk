@@ -256,11 +256,16 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         if (data.size() == 0) {
             throw new GATKException("None of the specified input variants were present in the resource VCFs.");
         }
-        //        for (final String resourceLabel : data.sortedLabels) {
-//            logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
-//                    (int) data.getData().stream().flatMap(List::stream).mapToDouble(datum -> datum.labels.contains(resourceLabel) ? 1 : 0).sum(),
-//                    resourceLabel));
-//        }
+        for (final VariantType variantType : variantTypesToExtract) {
+            logger.info(String.format("Extracted annotations for %d variants of type %s.",
+                    data.getData().stream().flatMap(List::stream).mapToInt(datum -> datum.getVariantType() == variantType ? 1 : 0).sum(),
+                    variantType));
+        }
+        for (final String resourceLabel : data.getSortedLabels()) {
+            logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
+                    data.getData().stream().flatMap(List::stream).mapToInt(datum -> datum.getLabels().contains(resourceLabel) ? 1 : 0).sum(),
+                    resourceLabel));
+        }
         logger.info(String.format("Extracted annotations for %s total variants.", data.size()));
         data.writeHDF5(outputAnnotationsFile, omitAllelesInHDF5);
         data.clear();
@@ -272,9 +277,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         final List<Allele> alleles = ListUtils.union(Collections.singletonList(vc.getReference()), altAlleles);
         final VariantContextBuilder builder = new VariantContextBuilder(
                 vc.getSource(), vc.getContig(), vc.getStart(), vc.getEnd(), alleles);
-        builder.attribute(VCFConstants.END_KEY, vc.getEnd());
-        final List<String> sortedLabels = labels.stream().sorted().collect(Collectors.toList());
-        sortedLabels.forEach(l -> builder.attribute(l, true));
+        labels.stream().sorted().forEach(l -> builder.attribute(l, true));
         vcfWriter.add(builder.make());
     }
 
