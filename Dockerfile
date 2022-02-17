@@ -3,6 +3,7 @@ FROM broadinstitute/gatk-dev:gatkbase-3.0.0_rc1 AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
 ARG RELEASE=false
 
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
 RUN ls .
 ADD . /gatk
 WORKDIR /gatk
@@ -22,6 +23,7 @@ RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unz
 # Using OpenJDK 8
 FROM broadinstitute/gatk-dev:gatkbase-3.0.0_rc1
 
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
 WORKDIR /gatk
 
 # Location of the unzipped gatk bundle files

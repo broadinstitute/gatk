@@ -50,7 +50,7 @@ WORKDIR /root
 CMD ["bash"]
 
 ENV JAVA_LIBRARY_PATH /usr/lib/jni
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
 
 RUN java -version
 
