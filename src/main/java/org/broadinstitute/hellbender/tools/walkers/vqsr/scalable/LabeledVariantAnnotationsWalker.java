@@ -12,7 +12,6 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.collections4.ListUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -213,34 +212,33 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                                 final FeatureContext featureContext,
                                 final int n) {
         if (n == 0) {
-            final List<Triple<List<Allele>, VariantType, Set<String>>> metadata = extractMetadata(variant, featureContext);
-            if (!metadata.isEmpty()) {
-                data.add(variant,
-                        metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
-                        metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
-                        metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
-                writeVariantToVCF(variant,
-                        metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
-                        metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
+            final List<Triple<List<Allele>, VariantType, Set<String>>> metadata = extractVariantMetadata(variant, featureContext);
+            final boolean isVariantExtracted = !metadata.isEmpty();
+            if (isVariantExtracted) {
+                addExtractedVariantToData(variant, metadata);
+                writeExtractedVariantToVCF(variant, metadata);
             }
         }
+    }
+
+    void addExtractedVariantToData(VariantContext variant, List<Triple<List<Allele>, VariantType, Set<String>>> metadata) {
+        data.add(variant,
+                metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
+                metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
+                metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
+    }
+
+    void writeExtractedVariantToVCF(final VariantContext variant,
+                                    final List<Triple<List<Allele>, VariantType, Set<String>>> metadata) {
+        writeExtractedVariantToVCF(variant,
+                metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
+                metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
     }
 
     @Override
     protected void afterNthPass(final int n) {
         if (n == 0) {
-            writeAnnotationsToHDF5();
-            if (data.size() == 0) {
-                throw new GATKException("None of the specified input variants were present in the resource VCFs.");
-            }
-
-//        for (final String resourceLabel : data.sortedLabels) {
-//            logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
-//                    (int) data.getData().stream().flatMap(List::stream).mapToDouble(datum -> datum.labels.contains(resourceLabel) ? 1 : 0).sum(),
-//                    resourceLabel));
-//        }
-            logger.info(String.format("Extracted annotations for %s total variants.", data.size()));
-            data.clear();
+            writeAnnotationsToHDF5AndClearData();
         }
         if (n == numberOfPasses()) {
             if (vcfWriter != null) {
@@ -254,13 +252,23 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         return null;
     }
 
-    void writeAnnotationsToHDF5() {
+    void writeAnnotationsToHDF5AndClearData() {
+        if (data.size() == 0) {
+            throw new GATKException("None of the specified input variants were present in the resource VCFs.");
+        }
+        //        for (final String resourceLabel : data.sortedLabels) {
+//            logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
+//                    (int) data.getData().stream().flatMap(List::stream).mapToDouble(datum -> datum.labels.contains(resourceLabel) ? 1 : 0).sum(),
+//                    resourceLabel));
+//        }
+        logger.info(String.format("Extracted annotations for %s total variants.", data.size()));
         data.writeHDF5(outputAnnotationsFile, omitAllelesInHDF5);
+        data.clear();
     }
 
-    void writeVariantToVCF(final VariantContext vc,
-                           final List<Allele> altAlleles,
-                           final Set<String> labels) {
+    void writeExtractedVariantToVCF(final VariantContext vc,
+                                    final List<Allele> altAlleles,
+                                    final Set<String> labels) {
         final List<Allele> alleles = ListUtils.union(Collections.singletonList(vc.getReference()), altAlleles);
         final VariantContextBuilder builder = new VariantContextBuilder(
                 vc.getSource(), vc.getContig(), vc.getStart(), vc.getEnd(), alleles);
@@ -294,8 +302,8 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     }
 
     // logic here and below for filtering and determining variant type was retained from VQSR, but has been refactored
-    List<Triple<List<Allele>, VariantType, Set<String>>> extractMetadata(final VariantContext vc,
-                                                                         final FeatureContext featureContext) {
+    List<Triple<List<Allele>, VariantType, Set<String>>> extractVariantMetadata(final VariantContext vc,
+                                                                                final FeatureContext featureContext) {
         // if variant is filtered, do not consume here
         if (vc == null || !(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
             return Collections.emptyList();
@@ -311,9 +319,9 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         } else {
             return vc.getAlternateAlleles().stream()
                     .filter(a -> !GATKVCFConstants.isSpanningDeletion(a))
-                    .map(a -> Pair.of(a, VariantType.getVariantType(vc, a)))
-                    .filter(p -> variantTypesToExtract.contains(p.getRight()))
-                    .map(p -> Triple.of(Collections.singletonList(p.getLeft()), p.getRight(), findOverlappingResourceLabels(vc, vc.getReference(), p.getLeft(), featureContext)))
+                    .filter(a -> variantTypesToExtract.contains(VariantType.getVariantType(vc, a)))
+                    .map(a -> Triple.of(Collections.singletonList(a), VariantType.getVariantType(vc, a),
+                            findOverlappingResourceLabels(vc, vc.getReference(), a, featureContext)))
                     .filter(t -> !isExtractOnlyLabeledVariants() || !t.getRight().isEmpty())
                     .collect(Collectors.toList());
         }

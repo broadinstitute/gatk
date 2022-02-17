@@ -190,7 +190,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
         }
         final File outputScoresFile = new File(outputPrefix + outputPrefixTag + outputSuffix);
-        scorer.scoreSamples(annotationsFile, outputScoresFile);
+        scorer.score(annotationsFile, outputScoresFile);
         return outputScoresFile;
     }
 }
