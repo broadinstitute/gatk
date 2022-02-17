@@ -63,15 +63,15 @@ workflow GvsExtractCohortFromSampleNames {
       data_project = gvs_project,
       query_project = query_project,
       default_dataset = gvs_dataset,
-      extract_table_prefix = GvsPrepareCallset.fq_cohort_extract_table_prefix,
+      extract_table_prefix = extraction_uuid,
 
       extract_project = sub(fq_gvs_extraction_destination_dataset, "\\..*", "")
       extract_dataset = sub(fq_gvs_extraction_destination_dataset, ".*\\.", "")
 
-      fq_samples_to_extract_table = "~{fq_gvs_extraction_destination_dataset}.~{GvsPrepareCallset.fq_cohort_extract_table_prefix}__SAMPLES",
-      fq_cohort_extract_table  = "~{fq_gvs_extraction_destination_dataset}.~{GvsPrepareCallset.fq_cohort_extract_table_prefix}__DATA",
-      fq_ranges_cohort_vet_extract_table = "~{fq_gvs_extraction_destination_dataset}.~{GvsPrepareCallset.fq_cohort_extract_table_prefix}__VET_DATA",
-      fq_ranges_cohort_ref_extract_table = "~{fq_gvs_extraction_destination_dataset}.~{GvsPrepareCallset.fq_cohort_extract_table_prefix}__REF_DATA",
+      fq_samples_to_extract_table = "~{fq_gvs_extraction_destination_dataset}.~{extraction_uuid}__SAMPLES",
+      fq_cohort_extract_table  = "~{fq_gvs_extraction_destination_dataset}.~{extraction_uuid}__DATA",
+      fq_ranges_cohort_vet_extract_table = "~{fq_gvs_extraction_destination_dataset}.~{extraction_uuid}__VET_DATA",
+      fq_ranges_cohort_ref_extract_table = "~{fq_gvs_extraction_destination_dataset}.~{extraction_uuid}__REF_DATA",
 
       interval_weights_bed = interval_weights_bed,
       wgs_intervals = wgs_intervals,
