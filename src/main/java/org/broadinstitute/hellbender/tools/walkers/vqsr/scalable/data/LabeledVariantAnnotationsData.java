@@ -62,6 +62,10 @@ public final class LabeledVariantAnnotationsData {
         this.useASAnnotations = useASAnnotations;
     }
 
+    public List<String> getSortedAnnotationNames() {
+        return sortedAnnotationNames;
+    }
+
     public List<String> getSortedLabels() {
         return sortedLabels;
     }
@@ -130,7 +134,6 @@ public final class LabeledVariantAnnotationsData {
             throw new GATKException(String.format("Exception encountered during writing of annotations and metadata (%s). Output file at %s may be in a bad state.",
                     exception, outputFile.getAbsolutePath()));
         }
-        logger.debug(String.format("Annotations and metadata written to %s.", outputFile.getAbsolutePath()));
     }
 
     public static List<String> readAnnotationNames(final File annotationsFile) {

@@ -78,13 +78,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     }
 
     @Override
-    public boolean isOutputSitesOnlyVCF() {
-        return outputSitesOnlyVCFs;
-    }
-
-    @Override
     protected int numberOfPasses() {
-        return pythonScriptFile == null ? 1 : 2;
+        return 2;
     }
 
     @Override
@@ -145,23 +140,15 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                 final int n) {
         final List<Triple<List<Allele>, VariantType, Set<String>>> metadata = extractVariantMetadata(variant, featureContext);
         final boolean isVariantExtracted = !metadata.isEmpty();
-        if (isVariantExtracted) {
-            if (n == 0) {
-                addExtractedVariantToData(variant, metadata);
-                if (pythonScriptFile == null) {
-                    final List<Double> scores = data.getData().get(data.size() - 1).stream()
-                            .map(d -> d.getVariantType() == VariantType.SNP
-                                    ? snpScorer.score(Stream.of(d.getAnnotations()).toArray(double[][]::new))[0]
-                                    : indelScorer.score(Stream.of(d.getAnnotations()).toArray(double[][]::new))[0])
-                            .collect(Collectors.toList());
-                    scoresIterator = scores.listIterator();
-                    writeExtractedVariantToVCF(variant, metadata);
-                }
-            } else if (pythonScriptFile != null && n == 1) {
+        if (n == 0 && isVariantExtracted) {
+            addExtractedVariantToData(variant, metadata);
+        }
+        if (n == 1) {
+            if (isVariantExtracted) {
                 writeExtractedVariantToVCF(variant, metadata);
+            } else {
+                vcfWriter.add(variant);
             }
-        } else if (n == numberOfPasses()) {
-            vcfWriter.add(variant);
         }
     }
 
@@ -170,11 +157,9 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         if (n == 0) {
             writeAnnotationsToHDF5AndClearData();
             readAnnotationsAndWriteScoresToHDF5();
-            if (pythonScriptFile != null) {
-                scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
-            }
+            scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
         }
-        if (n == numberOfPasses()) {
+        if (n == 1) {
             if (vcfWriter != null) {
                 vcfWriter.close();
             }

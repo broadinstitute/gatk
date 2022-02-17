@@ -123,4 +123,17 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
         };
         runCommandLine(arguments);
     }
+
+    @Test
+    public void testJbxBGMMAll() {
+        final String[] arguments = {
+                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.extract.annot.hdf5",
+                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.bgmm.all.train",
+                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
+                "--mode", "SNP",
+                "--mode", "INDEL",
+                "--verbosity", "INFO"
+        };
+        runCommandLine(arguments);
+    }
 }

@@ -139,10 +139,6 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         return true;
     }
 
-    public boolean isOutputSitesOnlyVCF() {
-        return true;
-    }
-
     public void beforeOnTraversalStart() {
         // override
     }
@@ -240,7 +236,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         if (n == 0) {
             writeAnnotationsToHDF5AndClearData();
         }
-        if (n == numberOfPasses()) {
+        if (n == 1) {
             if (vcfWriter != null) {
                 vcfWriter.close();
             }
@@ -267,7 +263,11 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                     resourceLabel));
         }
         logger.info(String.format("Extracted annotations for %s total variants.", data.size()));
+
+        logger.info("Writing annotations...");
         data.writeHDF5(outputAnnotationsFile, omitAllelesInHDF5);
+        logger.info(String.format("Annotations and metadata written to %s.", outputAnnotationsFile.getAbsolutePath()));
+
         data.clear();
     }
 

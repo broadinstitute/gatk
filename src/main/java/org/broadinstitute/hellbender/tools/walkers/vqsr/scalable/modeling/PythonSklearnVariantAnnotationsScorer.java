@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 
@@ -10,6 +12,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public final class PythonSklearnVariantAnnotationsScorer implements VariantAnnotationsScorer, Serializable {
@@ -36,11 +39,6 @@ public final class PythonSklearnVariantAnnotationsScorer implements VariantAnnot
         if (pythonProcessOutput.getExitValue() != 0) {
             throw executor.getScriptException(executor.getExceptionMessageFromScriptError(pythonProcessOutput));
         }
-    }
-
-    @Override
-    public double[] score(double[][] annotations) {
-        throw new NotImplementedException("Online scoring is not implemented.");
     }
 
     private static List<String> composePythonArguments(final File annotationsFile,

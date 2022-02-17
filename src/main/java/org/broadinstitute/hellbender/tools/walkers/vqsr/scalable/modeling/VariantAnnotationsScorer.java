@@ -13,8 +13,6 @@ public interface VariantAnnotationsScorer {
     void score(final File inputAnnotationsFile,
                final File outputScoresFile);
 
-    double[] score(final double[][] annotations);
-
     // TODO
     static Function<Double, Double> createScoreToTruthSensitivityConverter(final double[] truthScores) {
         return x -> x;
