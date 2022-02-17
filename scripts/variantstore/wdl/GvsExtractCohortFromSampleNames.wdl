@@ -17,8 +17,8 @@ workflow GvsExtractCohortFromSampleNames {
     String fq_gvs_extraction_destination_dataset
     String fq_gvs_extraction_temp_tables_dataset
 
-    extract_project = "fc-aou-cdr-synth-test-2"
-    extract_dataset = "wgs_extracted_cohorts"
+    String extract_project = "fc-aou-cdr-synth-test-2"
+    String extract_dataset = "wgs_extracted_cohorts"
 
     String extraction_uuid
     String? output_gcs_dir
