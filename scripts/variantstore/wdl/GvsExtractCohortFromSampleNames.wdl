@@ -65,8 +65,8 @@ workflow GvsExtractCohortFromSampleNames {
       default_dataset = gvs_dataset,
       extract_table_prefix = extraction_uuid,
 
-      extract_project = sub(fq_gvs_extraction_destination_dataset, "\\..*", "")
-      extract_dataset = sub(fq_gvs_extraction_destination_dataset, ".*\\.", "")
+      extract_project = sub(fq_gvs_extraction_destination_dataset, "\\..*", ""),
+      extract_dataset = sub(fq_gvs_extraction_destination_dataset, ".*\\.", ""),
 
       fq_samples_to_extract_table = "~{fq_gvs_extraction_destination_dataset}.~{extraction_uuid}__SAMPLES",
       fq_cohort_extract_table  = "~{fq_gvs_extraction_destination_dataset}.~{extraction_uuid}__DATA",
