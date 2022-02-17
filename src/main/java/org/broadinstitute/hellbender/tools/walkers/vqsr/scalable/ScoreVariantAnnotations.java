@@ -182,6 +182,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     protected void afterNthPass(final int n) {
         if (pythonScriptFile == null) {
             writeAnnotationsToHDF5();
+            data.clear();
             writeScoresToHDF5();
         } else {
             if (n == 0) {
