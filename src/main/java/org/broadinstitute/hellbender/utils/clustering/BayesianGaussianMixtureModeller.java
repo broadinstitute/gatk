@@ -249,10 +249,8 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
         final RealMatrix X = new Array2DRowRealMatrix(data);
         final int nSamples = X.getRowDimension();
         final RealMatrix weightedLogProb = estimateWeightedLogProb(X);
-        final RealVector logProbNorm = new ArrayRealVector(                     // logProbNorm = logsumexp(weightedLogProb, axis=1)
-                IntStream.range(0, nSamples).mapToDouble(
-                        i -> NaturalLogUtils.logSumExp(weightedLogProb.getRow(i))).toArray());
-        return logProbNorm.toArray();
+        return IntStream.range(0, nSamples).mapToDouble(                                // logsumexp(weightedLogProb, axis=1)
+                i -> NaturalLogUtils.logSumExp(weightedLogProb.getRow(i))).toArray();
     }
 
     /**

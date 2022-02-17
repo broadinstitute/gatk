@@ -14,6 +14,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.List;
+import java.util.stream.Stream;
 
 public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsScorer, Serializable {
     private static final long serialVersionUID = 1L;
@@ -36,14 +37,9 @@ public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsSco
         final List<String> inputAnnotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputAnnotationsFile);
         Utils.validateArg(inputAnnotationNames.equals(annotationNames), "Annotation names must be identical.");
         final double[][] annotations = LabeledVariantAnnotationsData.readAnnotations(inputAnnotationsFile);
-        final double[] scores = score(annotations);
-        VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
-    }
-
-    @Override
-    public double[] score(final double[][] annotations) {
         final double[][] preprocessedAnnotations = preprocesser.transform(annotations);
-        return bgmm.scoreSamples(preprocessedAnnotations);
+        final double[] scores = bgmm.scoreSamples(preprocessedAnnotations);
+        VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
     }
 
     public double[][] preprocess(final double[][] annotations) {
