@@ -754,6 +754,18 @@ public class GencodeFuncotation implements Funcotation {
      */
     public enum VariantClassification {
 
+        // __        ___    ____  _   _ ___ _   _  ____
+        // \ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+        //  \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+        //   \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+        //    \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+        //
+        // When new types are added to VariantClassification
+        // or when existing types are modified, they MUST
+        // also be added to the ALL_VC_NAMES variable.
+        //
+        // There does not seem to be a good way around this.
+
         /** Variant classification could not be determined. */
         COULD_NOT_DETERMINE("COULD_NOT_DETERMINE",99),
 

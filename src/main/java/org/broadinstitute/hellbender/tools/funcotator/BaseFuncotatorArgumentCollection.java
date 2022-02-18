@@ -120,7 +120,7 @@ public abstract class BaseFuncotatorArgumentCollection implements Serializable {
     @Argument(
             fullName = FuncotatorArgumentDefinitions.CUSTOM_VARIANT_CLASS_ORDER_FILE,
             optional = true,
-            doc = "TSV File containing custom Variant Classification severity map of the form: VARIANT_CLASSIFICATION\tSEV.  VARIANT_CLASSIFICAITON must match one of the VariantClassification names (" + GencodeFuncotation.VariantClassification.ALL_VC_NAMES + ").  SEV is an unsigned integer, where lower is sorted first."
+            doc = "TSV File containing custom Variant Classification severity map of the form: VARIANT_CLASSIFICATION\tSEV.  VARIANT_CLASSIFICATION must match one of the VariantClassification names (" + GencodeFuncotation.VariantClassification.ALL_VC_NAMES + ").  SEV is an unsigned integer, where lower is sorted first."
     )
     public GATKPath customVariantClassificationOrderFile = null;
 }

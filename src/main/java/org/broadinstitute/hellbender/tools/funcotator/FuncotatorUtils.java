@@ -2359,38 +2359,44 @@ public final class FuncotatorUtils {
             if ( !Files.exists(customSeverityFile.toPath()) ) {
                 throw new UserException("Custom severity file does not exist: " + customSeverityFile);
             }
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(customSeverityFile.getInputStream()));
+            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(customSeverityFile.getInputStream()))) {
 
-            int lineNum = 1;
-            while ( reader.ready() ) {
-                final String line = reader.readLine();
+                int lineNum = 1;
+                String line = null;
+                while ( (line = reader.readLine()) != null ) {
 
-                // Ignore empty lines:
-                if (line.length() == 0) {
-                    continue;
+                    // Ignore empty lines:
+                    if ( line.length() == 0 ) {
+                        continue;
+                    }
+
+                    final String[] lineFields = line.split("\t", -1);
+                    if ( lineFields.length != 2 ) {
+                        throw new UserException.MalformedFile(customSeverityFile + ":" + lineNum + " has " + lineFields.length + " fields!  Each TSV line must have 2 fields!");
+                    }
+
+                    try {
+                        final String vcName = lineFields[ 0 ];
+                        final int    sev    = Integer.parseInt(lineFields[ 1 ]);
+
+                        try {
+                            logger.info("    Setting new Variant Classification severity: " + vcName + " = " + sev);
+                            GencodeFuncotation.VariantClassification.valueOf(vcName).setSeverity(sev);
+                        }
+                        catch (final IllegalArgumentException ex) {
+                            throw new UserException.MalformedFile(customSeverityFile + ":" + lineNum + ": invalid/unknown variant classification specified (possible typo): " + vcName);
+                        }
+                    }
+                    catch ( final NumberFormatException ex ) {
+                        throw new UserException.MalformedFile(customSeverityFile + ":" + lineNum + ": severity is not an integer  (" + lineFields[ 1 ] + ")!  Custom severities must be integer values!");
+                    }
+
+                    lineNum += 1;
                 }
-
-                final String[] lineFields = line.split("\t");
-                if (lineFields.length != 2) {
-                    throw new UserException("Line " + lineNum + " has " + lineFields.length + " fields!  Each TSV line must have 2 fields!");
-                }
-
-                try {
-                    final String vcName = lineFields[ 0 ];
-                    final int    sev    = Integer.parseInt(lineFields[ 1 ]);
-
-                    logger.info("    Setting new Variant Classification severity: " + vcName + " = " + sev);
-                    GencodeFuncotation.VariantClassification.valueOf(vcName).setSeverity(sev);
-                }
-                catch (final NumberFormatException ex) {
-                    throw new UserException("Severity on line " + lineNum + " is not an integer  ("+ lineFields[1] +")!  Custom severities must be integer values!", ex);
-                }
-
-                lineNum += 1;
             }
         }
         catch (final IOException ex) {
-            throw new UserException("Could not read from custom Variant Classification file: " + customSeverityFile, ex);
+            throw new UserException.CouldNotReadInputFile("Could not read from custom Variant Classification file: " + customSeverityFile, ex);
         }
     }
 
