@@ -125,7 +125,7 @@ public final class AlleleSubsettingUtils {
             attributes.remove(GATKVCFConstants.GENOTYPE_PRIOR_KEY);
             gb.noAttributes().attributes(attributes);
             if (newLog10GQ != Double.NEGATIVE_INFINITY) {
-                gb.log10PError(newLog10GQ);
+                gb.log10PError(Math.max(newLog10GQ, -9.9)); //do cap here in case we want to
             }
             if (useNewLikelihoods) {
                 gb.PL(newLikelihoods);
