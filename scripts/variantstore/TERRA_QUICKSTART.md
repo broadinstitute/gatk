@@ -90,17 +90,32 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 
 This step extracts the data in BigQuery into a sharded joint called VCF 
 
+To prepare the dataset for extraction by putting it into a single vet and ref_ranges table, run the `GvsPrepareRangesCallset` workflow with the following parameters:
+
+
+| Parameter      | Description                                                                                     |
+| ---------------- |-------------------------------------------------------------------------------------------------|
+| data_project | The name of the google project containing the dataset                                           |
+| default_dataset  | The name of the dataset                                                                         |
+| destination_cohort_table_prefix | The name of the preparation table that this step is creating                                    |
+| fq_sample_mapping_table | The fully qualified table name of the samples to extract (e.g. <project>.<dataset>.sample_info) |
+
+**Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
+
+
+Now the data is ready to be extracted!
+
 This is done by running the `GvsExtractCallset` workflow with the following parameters:
 
 
-| Parameter      | Description |
-| ----------------- | ----------- |
+| Parameter      | Description               |
+| ----------------- |--------------------------|
 | data_project | The name of the google project containing the dataset |
 | default_dataset      | The name of the dataset  |
-| output_file\_base\_name | Base name for generated VCFs |
-| filter\_set_name | the name of the filter set identifier created in step #3 |
-| fq_samples_to_extract_table | fully qualified table name of the samples to extract (e.g. <project>.<dataset>.sample_info) |
-| scatter_count | scatter count for extract (e.g. 100 for quickstart) |
+| output_file\_base\_name | Base name for generated VCFs  |
+| filter\_set_name | The name of the filter set identifier created in step #3  |
+| fq_samples_to_extract_table | The fully qualified table name of the samples to extract (e.g. <project>.<dataset>.sample_info) |
+| scatter_count | The scatter count for extract (e.g. 100 for quickstart)  |
 | wgs_intervals | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
