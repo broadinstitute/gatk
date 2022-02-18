@@ -6,6 +6,8 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 /**
  * TODO
+ *
+ * DEVELOPER NOTE: See documentation in {@link LabeledVariantAnnotationsWalker}.
  */
 @CommandLineProgramProperties(
         // TODO

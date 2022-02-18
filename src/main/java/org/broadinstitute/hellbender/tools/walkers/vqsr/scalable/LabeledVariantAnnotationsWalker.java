@@ -12,7 +12,6 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -28,6 +27,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsScorer;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -46,7 +46,48 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 /**
- * TODO
+ * Base walker for both {@link ExtractVariantAnnotations} and {@link ScoreVariantAnnotations},
+ * which enforces identical variant-extraction behavior in both tools via {@link #extractVariantMetadata}.
+ *
+ * This base implementation covers functionality for {@link ExtractVariantAnnotations}. Namely, it is a single-pass
+ * walker, performing the operations:
+ *
+ *   - nthPassApply(n = 0)
+ *      - if variant/alleles pass filters and variant-type checks, then:
+ *          - add variant/alleles to a {@link LabeledVariantAnnotationsData} collection
+ *          - write variant/alleles with labels appended to a sites-only VCF file
+ *   - afterNthPass(n = 0)
+ *      - write the resulting {@link LabeledVariantAnnotationsData} collection to an HDF5 file
+ *
+ * This results in the following output:
+ *
+ *   - an HDF5 file, with the directory structure documented in {@link LabeledVariantAnnotationsData#writeHDF5};
+ *     note that the matrix of annotations contains a single row per datum (i.e., per allele, in allele-specific mode,
+ *     and per variant otherwise)
+ *   - a sites-only VCF file, containing a single line per extracted variant, with labels appended
+ *
+ * In contrast, the {@link ScoreVariantAnnotations} implementation overrides methods to yield a two-pass walker,
+ * performing the operations:
+ *
+ *   - nthPassApply(n = 0)
+ *      - if variant/alleles pass filters and variant-type checks, then:
+ *          - add variant/alleles to a {@link LabeledVariantAnnotationsData} collection
+ *   - afterNthPass(n = 0)
+ *      - write the resulting {@link LabeledVariantAnnotationsData} collection to an HDF5 file
+ *      - pass this annotations HDF5 file to a {@link VariantAnnotationsScorer}, which generates and writes scores to an HDF5 file
+ *      - read the scores back in and load them into an iterator
+ *   - nthPassApply(n = 1)
+ *      - if variant/alleles pass filters and variant-type checks (which are identical to the first pass), then:
+ *          - draw the corresponding score (or scores, in allele-specific mode) from the iterator
+ *          - write the variant (with all alleles, not just those extracted) with the score
+ *            (or best score, in allele-specific mode) appended to a VCF file
+ *      - else:
+ *          - write an unprocessed copy of the variant to a VCF file
+ *
+ * This results in the following output:
+ *
+ *   - an HDF5 file, as above
+ *   - a VCF file, containing the input variants, with labels and scores appended for those passing variant-type checks TODO + truth-sensitivity scores + filters applied?
  */
 @CommandLineProgramProperties(
         // TODO
@@ -55,7 +96,7 @@ import java.util.stream.Collectors;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
-public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
+public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
     private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
     private static final String VCF_SUFFIX = ".vcf.gz";
@@ -67,9 +108,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     String outputPrefix;
 
     /**
-     * Any set of VCF files to use as lists of training or truth sites.
-     * Training - The program builds the model using input variants that overlap with these training sites.
-     * Truth - The program uses these truth sites to determine where to set the cutoff in sensitivity.
+     * TODO
      */
     @Argument(
             fullName = StandardArgumentDefinitions.RESOURCE_LONG_NAME,
@@ -82,6 +121,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     private List<VariantType> variantTypesToExtractList = new ArrayList<>(Arrays.asList(VariantType.SNP, VariantType.INDEL));
 
     /**
+     * TODO fix up
      * Extract per-allele annotations.
      * Annotations should be specified using their full names with AS_ prefix.
      * Non-allele-specific annotations will be applied to all alleles.
@@ -219,21 +259,6 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         }
     }
 
-    // TODO maybe clean up all this Triple and metadata business with a class?
-    void addExtractedVariantToData(VariantContext variant, List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
-        data.add(variant,
-                metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
-                metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
-                metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
-    }
-
-    void writeExtractedVariantToVCF(final VariantContext variant,
-                                    final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
-        writeExtractedVariantToVCF(variant,
-                metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
-                metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
-    }
-
     @Override
     protected void afterNthPass(final int n) {
         if (n == 0) {
@@ -247,6 +272,21 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     @Override
     public Object onTraversalSuccess() {
         return null;
+    }
+
+    // TODO maybe clean up all this Triple and metadata business with a class?
+    void addExtractedVariantToData(VariantContext variant, List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
+        data.add(variant,
+                metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
+                metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
+                metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
+    }
+
+    void writeExtractedVariantToVCF(final VariantContext variant,
+                                    final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
+        writeExtractedVariantToVCF(variant,
+                metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
+                metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
     }
 
     void writeAnnotationsToHDF5AndClearData() {
@@ -299,8 +339,8 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
     /**
      * Performs variant-filter and variant-type checks to determine variants/alleles suitable for extraction, and returns
-     * a corresponding list of metadata. This method should not be overridden, as it is intended to enforce common
-     * extraction behavior in all child tools. Logic here and below for filtering and determining variant type
+     * a corresponding list of metadata. This method should not be overridden, as it is intended to enforce identical
+     * variant-extraction behavior in all child tools. Logic here and below for filtering and determining variant type
      * was retained from VQSR, but has been heavily refactored.
      */
     List<Triple<List<Allele>, VariantType, TreeSet<String>>> extractVariantMetadata(final VariantContext vc,

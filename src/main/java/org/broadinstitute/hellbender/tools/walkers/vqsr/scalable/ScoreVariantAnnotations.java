@@ -42,6 +42,8 @@ import java.util.stream.IntStream;
 
 /**
  * TODO
+ *
+ * DEVELOPER NOTE: See documentation in {@link LabeledVariantAnnotationsWalker}.
  */
 @CommandLineProgramProperties(
         // TODO
