@@ -30,7 +30,6 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
     private static final int RANDOM_SEED_FOR_WARM_START_SUBSAMPLING = 0;
 
     public static final String BGMM_FIT_HDF5_SUFFIX = ".bgmmFit.hdf5";
-    public static final String BGMM_TRANSFORMED_ANNOTATIONS_HDF5_SUFFIX = ".bgmmTransAnnot.hdf5";
     public static final String BGMM_SCORER_SER_SUFFIX = ".bgmmScorer.ser";
 
     private final Hyperparameters hyperparameters;
@@ -91,23 +90,6 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
             bgmm.fit(preprocessedTrainingAnnotations);          // perform final fit with full sample
         }
 
-
-        // TODO clean this up, method for inputAnnotationsFile -> outputPreprocessedAnnotationsFile
-//        // write preprocessed annotations
-//        final File outputPreprocessedAnnotationsFile = new File(outputPrefix + ".annot.pre.hdf5");
-//        try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) { // TODO allow appending
-//            IOUtils.canReadFile(hdf5File.getFile());
-//
-//            hdf5File.makeStringArray("/annotations/names", annotationNames);
-//            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/annotations", preprocessedTrainingData, maximumChunkSize);
-//            hdf5File.makeDoubleArray("/labels/training", isTraining.stream().mapToDouble(x -> x ? 1 : 0).toArray());
-//            hdf5File.makeDoubleArray("/labels/truth", isTraining.stream().mapToDouble(x -> x ? 1 : 0).toArray());
-//        } catch (final HDF5LibException exception) {
-//            throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
-//                    exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
-//        }
-//        logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
-
         // serialize scorer = preprocesser + BGMM
         // TODO fix up output paths and validation, logging
         final BGMMVariantAnnotationsScorer scorer = new BGMMVariantAnnotationsScorer(annotationNames, preprocesser, bgmm);
@@ -119,7 +101,9 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
         fit.write(new File(outputPrefix + BGMM_FIT_HDF5_SUFFIX), "/bgmm");
     }
 
-    // mean and covariance priors are each specified by a single number here
+    // TODO document differences from the sklearn API
+    // mean and covariance priors are each specified by a single number here;
+    // init_params and warm_start_subsample also require specific documentation
     static final class Hyperparameters {
         @JsonProperty("n_components")
         int nComponents = 6;
@@ -200,6 +184,7 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
         }
     }
 
+    // TODO tighten this up?
     static final class Preprocesser implements Serializable {
         private static final long serialVersionUID = 1L;
 

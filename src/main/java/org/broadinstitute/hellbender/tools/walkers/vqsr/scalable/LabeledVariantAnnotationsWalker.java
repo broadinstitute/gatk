@@ -10,9 +10,9 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -58,7 +58,7 @@ import java.util.stream.Collectors;
 public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
     private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
-    private static final String VCF_SUFFIX = ".vcf";
+    private static final String VCF_SUFFIX = ".vcf.gz";
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -146,7 +146,8 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     @Override
     public void onTraversalStart() {
 
-        beforeOnTraversalStart();
+        // TODO generally clean up validation
+        beforeOnTraversalStart();   // perform additional validation, set modes in child tools, etc.
 
         // TODO validate annotation names and AS mode
 
@@ -165,7 +166,8 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
             }
         }
 
-        final Set<String> resourceLabels = new TreeSet<>();
+        // TODO extract some of this here and in findOverlappingResourceLabels
+        final TreeSet<String> resourceLabels = new TreeSet<>();
         for (final FeatureInput<VariantContext> resource : resources) {
             final TreeSet<String> trackResourceLabels = resource.getTagAttributes().entrySet().stream()
                     .filter(e -> e.getValue().equals("true"))
@@ -175,7 +177,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
             resourceLabels.addAll(trackResourceLabels);
             logger.info( String.format("Found %s track: labels = %s", resource.getName(), trackResourceLabels));
         }
-        resourceLabels.forEach(String::intern);
+        resourceLabels.forEach(String::intern); // TODO not sure if this is necessary?
 
         // TODO let child tools specify required labels
         if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
@@ -208,7 +210,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                                 final FeatureContext featureContext,
                                 final int n) {
         if (n == 0) {
-            final List<Triple<List<Allele>, VariantType, Set<String>>> metadata = extractVariantMetadata(variant, featureContext);
+            final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata = extractVariantMetadata(variant, featureContext);
             final boolean isVariantExtracted = !metadata.isEmpty();
             if (isVariantExtracted) {
                 addExtractedVariantToData(variant, metadata);
@@ -217,7 +219,8 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         }
     }
 
-    void addExtractedVariantToData(VariantContext variant, List<Triple<List<Allele>, VariantType, Set<String>>> metadata) {
+    // TODO maybe clean up all this Triple and metadata business with a class?
+    void addExtractedVariantToData(VariantContext variant, List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
         data.add(variant,
                 metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
                 metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
@@ -225,7 +228,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     }
 
     void writeExtractedVariantToVCF(final VariantContext variant,
-                                    final List<Triple<List<Allele>, VariantType, Set<String>>> metadata) {
+                                    final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
         writeExtractedVariantToVCF(variant,
                 metadata.stream().map(Triple::getLeft).flatMap(List::stream).collect(Collectors.toList()),
                 metadata.stream().map(Triple::getRight).flatMap(Set::stream).collect(Collectors.toSet()));
@@ -235,8 +238,6 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
     protected void afterNthPass(final int n) {
         if (n == 0) {
             writeAnnotationsToHDF5AndClearData();
-        }
-        if (n == 1) {
             if (vcfWriter != null) {
                 vcfWriter.close();
             }
@@ -254,13 +255,11 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         }
         for (final VariantType variantType : variantTypesToExtract) {
             logger.info(String.format("Extracted annotations for %d variants of type %s.",
-                    data.getData().stream().flatMap(List::stream).mapToInt(datum -> datum.getVariantType() == variantType ? 1 : 0).sum(),
-                    variantType));
+                    data.getVariantTypeFlat().stream().mapToInt(t -> t == variantType ? 1 : 0).sum(), variantType));
         }
-        for (final String resourceLabel : data.getSortedLabels()) {
+        for (final String label : data.getSortedLabels()) {
             logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
-                    data.getData().stream().flatMap(List::stream).mapToInt(datum -> datum.getLabels().contains(resourceLabel) ? 1 : 0).sum(),
-                    resourceLabel));
+                    data.isLabelFlat(label).stream().mapToInt(b -> b ? 1 : 0).sum(), label));
         }
         logger.info(String.format("Extracted annotations for %s total variants.", data.size()));
 
@@ -271,55 +270,59 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
         data.clear();
     }
 
+    /**
+     * Writes a sites-only VCF containing the extracted variants and corresponding labels.
+     */
     void writeExtractedVariantToVCF(final VariantContext vc,
                                     final List<Allele> altAlleles,
                                     final Set<String> labels) {
         final List<Allele> alleles = ListUtils.union(Collections.singletonList(vc.getReference()), altAlleles);
         final VariantContextBuilder builder = new VariantContextBuilder(
                 vc.getSource(), vc.getContig(), vc.getStart(), vc.getEnd(), alleles);
-        labels.stream().sorted().forEach(l -> builder.attribute(l, true));
+        labels.forEach(l -> builder.attribute(l, true)); // labels should already be sorted as a TreeSet
         vcfWriter.add(builder.make());
     }
 
     // modified from VQSR code
+    // TODO we're just writing a standard sites-only VCF here, maybe there's a nicer way to do this?
     VCFHeader constructVCFHeader(final List<String> sortedLabels) {
-        //TODO: this should be refactored/consolidated as part of
-        // https://github.com/broadinstitute/gatk/issues/2112
-        // https://github.com/broadinstitute/gatk/issues/121,
-        // https://github.com/broadinstitute/gatk/issues/1116 and
-        // Initialize VCF header lines
         Set<VCFHeaderLine> hInfo = getDefaultToolVCFHeaderLines();
-        hInfo.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
+        // TODO extract
         hInfo.addAll(sortedLabels.stream()
                 .map(l -> new VCFInfoHeaderLine(l, 1, VCFHeaderLineType.Flag, String.format("This site was labeled as %s according to resources", l)))
                 .collect(Collectors.toList()));
         hInfo.add(GATKVCFHeaderLines.getFilterLine(VCFConstants.PASSES_FILTERS_v4));
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        if (hasReference()) {
-            hInfo = VcfUtils.updateHeaderContigLines(
-                    hInfo, referenceArguments.getReferencePath(), sequenceDictionary, true);
-        } else if (null != sequenceDictionary) {
-            hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
-        }
+        hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
         return new VCFHeader(hInfo);
     }
 
-    // logic here and below for filtering and determining variant type was retained from VQSR, but has been refactored
-    List<Triple<List<Allele>, VariantType, Set<String>>> extractVariantMetadata(final VariantContext vc,
-                                                                                final FeatureContext featureContext) {
+    /**
+     * Performs variant-filter and variant-type checks to determine variants/alleles suitable for extraction, and returns
+     * a corresponding list of metadata. This method should not be overridden, as it is intended to enforce common
+     * extraction behavior in all child tools. Logic here and below for filtering and determining variant type
+     * was retained from VQSR, but has been heavily refactored.
+     */
+    List<Triple<List<Allele>, VariantType, TreeSet<String>>> extractVariantMetadata(final VariantContext vc,
+                                                                                    final FeatureContext featureContext) {
         // if variant is filtered, do not consume here
         if (vc == null || !(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
             return Collections.emptyList();
         }
         if (!useASAnnotations) {
+            // in non-allele-specific mode, get a singleton list of the triple
+            // (list of alt alleles passing variant-type checks, variant type, set of labels)
             final VariantType variantType = VariantType.getVariantType(vc);
             if (variantTypesToExtract.contains(variantType)) {
-                final Set<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
+                final TreeSet<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
                 if (!isExtractOnlyLabeledVariants() || !overlappingResourceLabels.isEmpty()) {
                     return Collections.singletonList(Triple.of(vc.getAlternateAlleles(), variantType, overlappingResourceLabels));
                 }
             }
         } else {
+            // in allele-specific mode, get a list containing the triples
+            // (singleton list of alt allele, variant type, set of labels)
+            // corresponding to alt alleles that pass variant-type checks
             return vc.getAlternateAlleles().stream()
                     .filter(a -> !GATKVCFConstants.isSpanningDeletion(a))
                     .filter(a -> variantTypesToExtract.contains(VariantType.getVariantType(vc, a)))
@@ -328,14 +331,15 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                     .filter(t -> !isExtractOnlyLabeledVariants() || !t.getRight().isEmpty())
                     .collect(Collectors.toList());
         }
+        // if variant-type checks failed, return an empty list
         return Collections.emptyList();
     }
 
-    private Set<String> findOverlappingResourceLabels(final VariantContext vc,
-                                                      final Allele refAllele,
-                                                      final Allele altAllele,
-                                                      final FeatureContext featureContext) {
-        final Set<String> overlappingResourceLabels = new TreeSet<>();
+    private TreeSet<String> findOverlappingResourceLabels(final VariantContext vc,
+                                                          final Allele refAllele,
+                                                          final Allele altAllele,
+                                                          final FeatureContext featureContext) {
+        final TreeSet<String> overlappingResourceLabels = new TreeSet<>();
         for (final FeatureInput<VariantContext> resource : resources) {
             final List<VariantContext> resourceVCs = featureContext.getValues(resource, featureContext.getInterval().getStart());
             for (final VariantContext resourceVC : resourceVCs) {
@@ -346,7 +350,7 @@ public class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
                     overlappingResourceLabels.addAll(resource.getTagAttributes().entrySet().stream()
                             .filter(e -> e.getValue().equals("true"))
                             .map(Map.Entry::getKey)
-                            .collect(Collectors.toSet()));
+                            .collect(Collectors.toCollection(TreeSet::new)));
                 }
             }
         }

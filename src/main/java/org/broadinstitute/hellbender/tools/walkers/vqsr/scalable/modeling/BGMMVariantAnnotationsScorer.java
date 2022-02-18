@@ -14,7 +14,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.List;
-import java.util.stream.Stream;
 
 public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsScorer, Serializable {
     private static final long serialVersionUID = 1L;

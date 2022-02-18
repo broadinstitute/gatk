@@ -184,7 +184,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     @Test
     public void testJbxAll() {
         final String[] arguments = {
-                "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.extract",
                 "-A", "FS",

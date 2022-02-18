@@ -36,9 +36,9 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * TODO
@@ -138,7 +138,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                 final ReferenceContext referenceContext,
                                 final FeatureContext featureContext,
                                 final int n) {
-        final List<Triple<List<Allele>, VariantType, Set<String>>> metadata = extractVariantMetadata(variant, featureContext);
+        final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata = extractVariantMetadata(variant, featureContext);
         final boolean isVariantExtracted = !metadata.isEmpty();
         if (n == 0 && isVariantExtracted) {
             addExtractedVariantToData(variant, metadata);
@@ -155,11 +155,32 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     @Override
     protected void afterNthPass(final int n) {
         if (n == 0) {
+            // TODO if BGMM, preprocess annotations and write to HDF5
+//            // write preprocessed annotations
+//            // TODO clean this up
+//            final List<String> annotationNames = this.dataBatch.getSortedAnnotationKeys();
+//
+//            final File outputPreprocessedAnnotationsFile = new File(outputPrefix + ".annot.pre.hdf5");
+//            try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) { // TODO allow appending
+//                IOUtils.canReadFile(hdf5File.getFile());
+//
+//                hdf5File.makeStringArray("/data/annotation_names", annotationNames.toArray(new String[0]));
+//                HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedData, maximumChunkSize);
+//                hdf5File.makeDoubleArray("/data/is_training", this.dataBatch.getFlattenedData().stream().mapToDouble(x -> x.labels.contains("training") ? 1 : 0).toArray());
+//            } catch (final HDF5LibException exception) {
+//                throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
+//                        exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
+//            }
+//            logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
             writeAnnotationsToHDF5AndClearData();
             readAnnotationsAndWriteScoresToHDF5();
             scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
         }
         if (n == 1) {
+            if (scoresIterator.hasNext()) {
+                throw new IllegalStateException("Traversals of scores and variants " +
+                        "(or alleles, in allele-specific mode) were not correctly synchronized.");
+            }
             if (vcfWriter != null) {
                 vcfWriter.close();
             }
@@ -203,7 +224,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                     final List<Allele> altAlleles,
                                     final Set<String> labels) {
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        labels.stream().sorted().forEach(l -> builder.attribute(l, true));
+        labels.forEach(l -> builder.attribute(l, true)); // labels should already be sorted as a TreeSet
         final double bestScore = useASAnnotations
                 ? altAlleles.stream().mapToDouble(a -> scoresIterator.next()).max().getAsDouble()
                 : scoresIterator.next();
@@ -211,6 +232,9 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         vcfWriter.add(builder.make());
     }
 
+    /**
+     * Copies the header from the input VCF and adds info lines for the score and label keys.
+     */
     @Override
     VCFHeader constructVCFHeader(final List<String> sortedLabels) {
         final VCFHeader inputHeader = getHeaderForVariants();
@@ -220,6 +244,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         hInfo.add(GATKVCFHeaderLines.getInfoLine(SCORE_KEY));
 
         hInfo.addAll(getDefaultToolVCFHeaderLines());
+        // TODO extract
         hInfo.addAll(sortedLabels.stream()
                 .map(l -> new VCFInfoHeaderLine(l, 1, VCFHeaderLineType.Flag, String.format("This site was labeled as %s according to resources", l)))
                 .collect(Collectors.toList()));
@@ -229,22 +254,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     @Override
     public Object onTraversalSuccess() {
-//            // write preprocessed annotations
-//            // TODO clean this up
-//            final List<String> annotationNames = this.dataBatch.getSortedAnnotationKeys();
-//
-//            final File outputPreprocessedAnnotationsFile = new File(outputPrefix + ".annot.pre.hdf5");
-//            try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) { // TODO allow appending
-//                IOUtils.canReadFile(hdf5File.getFile());
-//
-//                hdf5File.makeStringArray("/data/annotation_names", annotationNames.toArray(new String[0]));
-//                HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedData, maximumChunkSize);
-//                hdf5File.makeDoubleArray("/data/is_training", this.dataBatch.getFlattenedData().stream().mapToDouble(x -> x.labels.contains("training") ? 1 : 0).toArray());
-//            } catch (final HDF5LibException exception) {
-//                throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
-//                        exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
-//            }
-//            logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 

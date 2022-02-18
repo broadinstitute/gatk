@@ -3,6 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 
+/**
+ * Logic for determining variant types was retained from VQSR.
+ */
 public enum VariantType {
     SNP,
     INDEL;
@@ -22,22 +25,8 @@ public enum VariantType {
         }
     }
 
-    static boolean checkVariantType(final VariantContext vc,
-                                    final Allele allele,
-                                    final VariantType mode) {
-        switch (mode) {
-            case SNP:
-                //note that spanning deletions are considered SNPs by this logic
-                return vc.getReference().length() == allele.length();
-            case INDEL:
-                return (vc.getReference().length() != allele.length()) || allele.isSymbolic();
-            default:
-                throw new IllegalStateException("Encountered unknown mode: " + mode);
-        }
-    }
-
-    static boolean checkVariantType(final VariantContext vc,
-                                    final VariantType mode) {
+    private static boolean checkVariantType(final VariantContext vc,
+                                            final VariantType mode) {
         switch (mode) {
             case SNP:
                 return vc.isSNP() || vc.isMNP();

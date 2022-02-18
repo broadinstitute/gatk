@@ -137,14 +137,18 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                     logMessageTag, numTrainingAndVariantType, annotationNames.size(), annotationNames));
             final File trainingAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isTrainingAndVariantType);
             trainAndSerializeModel(trainingAnnotationsFile, outputPrefixTag);
-            logger.info(String.format("Model trained and serialized with output prefix \"%s\".", outputPrefix + outputPrefixTag));
+            logger.info(String.format("%s model trained and serialized with output prefix \"%s\".", logMessageTag, outputPrefix + outputPrefixTag));
 
+            // TODO if BGMM, preprocess annotations and write to HDF5
+
+            logger.info(String.format("Scoring %d %s training sites...", numTrainingAndVariantType, logMessageTag));
             final File trainingScoresFile = score(trainingAnnotationsFile, outputPrefixTag, TRAINING_SCORES_HDF5_SUFFIX);
             logger.info(String.format("Training scores written to %s.", trainingScoresFile.getAbsolutePath()));
 
             final List<Boolean> isTruthAndVariantType = Streams.zip(isTruth.stream(), isVariantType.stream(), (a, b) -> a && b).collect(Collectors.toList());
             final int numTruthAndVariantType = numPassingFilter(isTruthAndVariantType);
             if (numTruthAndVariantType > 0) {
+                logger.info(String.format("Scoring %d %s truth sites...", numTruthAndVariantType, logMessageTag));
                 final File truthAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isTruthAndVariantType);
                 final File truthScoresFile = score(truthAnnotationsFile, outputPrefixTag, TRUTH_SCORES_HDF5_SUFFIX);
                 logger.info(String.format("Truth scores written to %s.", truthScoresFile.getAbsolutePath()));
