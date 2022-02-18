@@ -134,7 +134,7 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
     @Test
     public void testJbxSNP() {
         final String[] arguments = {
-//                "-L", "chr1:1-50000000",
+                "-L", "chr1:1-100000000",
                 "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.test",
                 "--python-script", PYTHON_SCRIPT,
