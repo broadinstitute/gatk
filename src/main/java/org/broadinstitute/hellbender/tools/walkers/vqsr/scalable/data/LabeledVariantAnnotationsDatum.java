@@ -10,22 +10,26 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.List;
-import java.util.Set;
+import java.util.TreeSet;
 
-public final class LabeledVariantAnnotationsDatum implements Locatable {
+/**
+ * Represents metadata and annotations extracted from either a variant or a single alt allele (if in allele-specific mode).
+ * Intended to be package-private and accessed only by {@link LabeledVariantAnnotationsData}.
+ */
+final class LabeledVariantAnnotationsDatum implements Locatable {
     final SimpleInterval interval;
     final Allele refAllele;
-    final ImmutableList<Allele> altAlleles;
+    final ImmutableList<Allele> altAlleles; // in allele-specific mode, this contains a single alt allele; otherwise, it contains all alt alleles that passed variant-type checks
     final VariantType variantType;
-    final ImmutableSet<String> labels;
-    final double[] annotations;
+    final ImmutableSet<String> labels;      // sorted TreeSet
+    final double[] annotations;             // TODO use ImmutableDoubleArray?
 
-    public LabeledVariantAnnotationsDatum(final VariantContext vc,
-                                          final List<Allele> altAlleles,
-                                          final VariantType variantType,
-                                          final Set<String> labels,
-                                          final List<String> sortedAnnotationNames,
-                                          final boolean useASAnnotations) {
+    LabeledVariantAnnotationsDatum(final VariantContext vc,
+                                   final List<Allele> altAlleles,
+                                   final VariantType variantType,
+                                   final TreeSet<String> labels,
+                                   final List<String> sortedAnnotationNames,
+                                   final boolean useASAnnotations) {
         Utils.validate(!useASAnnotations || altAlleles.size() == 1,
                 "Datum should only be associated with one alt allele in allele-specific mode.");
         this.interval = new SimpleInterval(vc);
@@ -51,18 +55,6 @@ public final class LabeledVariantAnnotationsDatum implements Locatable {
     @Override
     public int getEnd() {
         return interval.getEnd();
-    }
-
-    public VariantType getVariantType() {
-        return variantType;
-    }
-
-    public ImmutableSet<String> getLabels() {
-        return labels;
-    }
-
-    public double[] getAnnotations() {
-        return annotations;
     }
 
     // code retained from VQSR

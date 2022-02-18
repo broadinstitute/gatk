@@ -134,6 +134,7 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
     @Test
     public void testJbxSNP() {
         final String[] arguments = {
+//                "-L", "chr1:1-50000000",
                 "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.test",
                 "--python-script", PYTHON_SCRIPT,
@@ -147,10 +148,11 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
                 "-A", "COMBINED_TREE_SCORE",
                 "--trust-all-polymorphic",
                 "--mode", "SNP",
-                "--resource:extracted-training,training=true,truth=false", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.vcf",
-                "--resource:hapmap,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--verbosity", "INFO"
+                "--resource:extracted,extracted=true", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.vcf.gz",
+                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
     }
