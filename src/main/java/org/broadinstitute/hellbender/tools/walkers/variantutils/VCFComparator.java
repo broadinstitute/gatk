@@ -468,7 +468,7 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     continue;
                 }
                 final Object actualValue = actual.get(key);
-                if (expectedValue instanceof List && actualValue instanceof List || (key.contains("RAW") || key.equals(GATKVCFConstants.AS_SB_TABLE_KEY))) {
+                if (expectedValue instanceof List && actualValue instanceof List || key.equals(GATKVCFConstants.AS_SB_TABLE_KEY)) { //|| (key.contains("RAW") joint in OR with AS_SB_TABLE
                     // both values are lists, compare element by element
                     final List<? extends Object> expectedList, actualList;
                     if (key.contains("RAW") || key.equals(GATKVCFConstants.AS_SB_TABLE_KEY)) {
@@ -488,11 +488,13 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                             throw makeVariantExceptionFromDifference(key, actualList.toString(), expectedList.toString());
                         }
                     }
-                    final int iterationEnd = IGNORE_NON_REF_DATA ? expectedList.size()-1 : expectedList.size();  //exclusive
+                    //we've already gotten rid of stars... I think -- do we have to sort the alts?  Maybe...  I should be using my own AlleleSpecificAnnotationData!!!
+                    final int iterationEnd = IGNORE_NON_REF_DATA && actualAlts.contains(Allele.NON_REF_ALLELE) ? expectedAlts.size()-1 : expectedAlts.size();  //exclusive
                     for (int i = 0; i < iterationEnd; i++) {
                         if (i >= actualList.size() || i >= expectedList.size()) {
                             //TODO: the toStrings here don't do a great job
-                            throw makeVariantExceptionFromDifference(key, actualValue.toString(), expectedValue.toString());
+                            //throw makeVariantExceptionFromDifference(key, actualValue.toString(), expectedValue.toString());
+                            break;  //RAW_GT_COUNT is somehow a list, but it's not AS
                         }
                         if (key.equals(GATKVCFConstants.AS_INBREEDING_COEFFICIENT_KEY)) {
                             final double actualPerAlleleValue = Double.parseDouble(actualList.get(i).toString());
@@ -505,8 +507,8 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                         }
                         if (key.contains("AS_") && key.contains("RankSum")) {
                             final double actualPerAlleleValue, expectedPerAlleleValue;
-                            if (!((String) actualList.get(i)).isEmpty() && ((String) actualList.get(i)).equals("NaN")) {
-                                if (!key.contains("RAW")) {
+                            if ((!((String) actualList.get(i)).isEmpty() && ((String) actualList.get(i)).equals("NaN"))) {
+                                //if (!key.contains("RAW")) {
                                     actualPerAlleleValue = Double.parseDouble(actualList.get(i).toString());
                                     expectedPerAlleleValue = Double.parseDouble(expectedList.get(i).toString());
                                     if (!isAttributeEqualDoubleSmart(key,
@@ -515,14 +517,21 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                                         throw makeVariantExceptionFromDifference(key, Double.toString(actualPerAlleleValue), Double.toString(expectedPerAlleleValue));
                                     }
                                     continue;
-                                }
+                                //}
                             } else {
-                                //logger.warn("GATK version-specific NaN versus empty AS_RAW annotation discrepancy");
+                                if (!MUTE_DIFFS && !ALLOW_NAN_MISMATCH) {
+                                    logger.warn("GATK version-specific NaN versus empty AS_RAW annotation discrepancy");
+                                }
                             }
                         }
                         //this needs some cleanup -- two exceptions??
-                       if (!isAttributeValueEqual(key, actualList.get(i), expectedList.get(i))) {
-                            throw makeVariantExceptionFromDifference(key, actualList.get(i).toString(), expectedList.get(i).toString());
+                       final boolean check;
+                        try
+                       {check = isAttributeValueEqual(key, actualList.get(i), expectedList.get(i)); }
+                       catch (final UserException e){
+                           if (!IGNORE_STAR_ATTRIBUTES && !actualAlts.get(i).equals(Allele.SPAN_DEL) && !actualAlts.get(i).equals(Allele.SPAN_DEL)) {
+                               throw makeVariantExceptionFromDifference(key, actualList.get(i).toString(), expectedList.get(i).toString());
+                           }
                         }
                     }
                 } else {  //if not list
@@ -658,7 +667,10 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         }
         if (!actual.isHomRef()) {
             if (actual.hasGQ() && (Math.abs(actual.getGQ() - expected.getGQ())) > LIKELIHOOD_TOLERANCE) {
-                throw makeGenotypeExceptionFromDifference("GQ value", Integer.toString(actual.getGQ()), Integer.toString(expected.getGQ()));
+                //allele subsetting can return GQs over 99, which apparently are capped on VCF write
+                if (actual.getGQ() < 99 || expected.getGQ() < 99) {
+                    throw makeGenotypeExceptionFromDifference("GQ value", Integer.toString(actual.getGQ()), Integer.toString(expected.getGQ()));
+                }
             }
         }
         if (IGNORE_GENOTYPE_ANNOTATIONS) {
@@ -729,11 +741,11 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             }
         }
         final VariantContextBuilder vcBuilder = new VariantContextBuilder(variant);
-        vcBuilder.alleles(relevantAlleles);
         final List<Allele> orderedRelevantAlleles = new ArrayList<>(relevantAlleles);
-        if (vcBuilder.getGenotypes().size() == 1) {
+        if (vcBuilder.getGenotypes().size() == 1 && !IGNORE_NON_REF_DATA) {
             orderedRelevantAlleles.add(Allele.NON_REF_ALLELE);
         }
+        vcBuilder.alleles(orderedRelevantAlleles);
         //subset allele-specific annotations
         //final List<Map<String,Object>> annotations = GATKVariantContextUtils.splitAttributesIntoPerAlleleLists(variant, Collections.emptyList(), getHeaderForVariants());
         //final int[] keepAlleleIndices = isSingleSample ? AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(variant.getAlleles(), orderedRelevantAlleles, variant.getStart(), variant.getGenotype(0), false) : AlleleSubsettingUtils.getIndexesOfRelevantAlleles()
