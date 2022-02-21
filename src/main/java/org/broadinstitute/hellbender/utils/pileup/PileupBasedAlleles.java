@@ -145,7 +145,7 @@ public final class PileupBasedAlleles {
      */
     @VisibleForTesting
     static boolean evaluateBadRead(final GATKRead read, final ReferenceContext referenceContext, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForRead) {
-        if (args.badReadThreshold <= 0) {
+        if (args.badReadThreshold <= 0.0) {
             return false;
         }
         if (args.badReadProperPair && !read.isProperlyPaired()) {
@@ -161,9 +161,9 @@ public final class PileupBasedAlleles {
 
         // Assert that the edit distance for the read is in line
         if (args.badReadEditDistance > 0.0) {
-            if (! read.hasAttribute("NM")) {
-                SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart());
-            }
+//            if (! read.hasAttribute("NM")) {
+                SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart() - 1);
+//            }
             int mismatches = read.getAttributeAsInteger("NM");
             if (mismatches > (read.getLength() * args.badReadEditDistance)) {
                 return true;
