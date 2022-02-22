@@ -89,6 +89,7 @@ public final class StandardArgumentDefinitions {
     // Constants for use as companion attributes in WDL WorkflowInput/WorkflowOutput annotations. These values
     // are used by the WDL generator to emit separate task/workflow input and output arguments for companion files.
     public static final String INPUT_INDEX_COMPANION = INPUT_LONG_NAME + "Index";
+    public static final String VARIANT_INDEX_COMPANION = VARIANT_LONG_NAME + "Index";
     public static final String OUTPUT_INDEX_COMPANION = OUTPUT_LONG_NAME + "Index";
     public static final String REFERENCE_INDEX_COMPANION = REFERENCE_LONG_NAME + "Index";
     public static final String REFERENCE_DICTIONARY_COMPANION = REFERENCE_LONG_NAME + "Dictionary";
