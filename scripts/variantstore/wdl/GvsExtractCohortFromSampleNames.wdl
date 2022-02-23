@@ -12,6 +12,7 @@ workflow GvsExtractCohortFromSampleNames {
     String query_project
     String gvs_project
     String gvs_dataset
+    String cohort_table_prefix
 
     # not using the defaults in GvsPrepareCallset because we're using pre created datasets defined by the caller
     String fq_gvs_extraction_destination_dataset
@@ -45,7 +46,7 @@ workflow GvsExtractCohortFromSampleNames {
 
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
-      destination_cohort_table_prefix = fq_gvs_extraction_destination_dataset,
+      destination_cohort_table_prefix = cohort_table_prefix,
       sample_names_to_extract         = cohort_sample_names,
       data_project                    = gvs_project,
       query_labels                    = ["extraction_uuid=~{extraction_uuid}"],
