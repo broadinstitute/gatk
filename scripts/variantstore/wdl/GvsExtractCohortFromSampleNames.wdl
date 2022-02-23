@@ -20,6 +20,7 @@ workflow GvsExtractCohortFromSampleNames {
 
     String extraction_uuid
     String? output_gcs_dir
+    String? service_account_json_path
 
     # Extract parameters
     File wgs_intervals
@@ -55,7 +56,8 @@ workflow GvsExtractCohortFromSampleNames {
       fq_petvet_dataset               = "~{gvs_project}.~{gvs_dataset}",
       fq_sample_mapping_table         = "~{gvs_project}.~{gvs_dataset}.sample_info",
       fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset,
-      fq_destination_dataset          = fq_gvs_extraction_destination_dataset
+      fq_destination_dataset          = fq_gvs_extraction_destination_dataset,
+      service_account_json_path       = service_account_json_path
   }
 
   call GvsExtractCallset.GvsExtractCallset {
@@ -79,6 +81,7 @@ workflow GvsExtractCohortFromSampleNames {
 
       output_file_base_name = output_file_base_name,
       output_gcs_dir = output_gcs_dir,
+      service_account_json_path = service_account_json_path,
       gatk_override = gatk_override
   }
 
