@@ -88,7 +88,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
         this.activityProfile = new BandPassActivityProfile(assemblyRegionArgs.maxProbPropagationDistance, assemblyRegionArgs.activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
-        this.pendingAlignmentData = trackPileups? new ArrayDeque<>(): null;
+        this.pendingAlignmentData = trackPileups ? new ArrayDeque<>() : null;
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
         // for uncovered locations. This is critical for reproducing GATK 3.x behavior!
@@ -218,7 +218,8 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
     }
 
     private void fillNextAssemblyRegionWithPileupData(final AssemblyRegion region){
-        if (pendingAlignmentData==null){
+        // Save ourselves the memory footprint and work of saving the pileups in the event they aren't needed for processing.
+        if (pendingAlignmentData == null){
             return;
         }
         final List<AlignmentAndReferenceContext> overlappingAlignmentData = new ArrayList<>();

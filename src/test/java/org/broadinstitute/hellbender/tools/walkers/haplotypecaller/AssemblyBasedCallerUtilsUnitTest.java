@@ -1391,7 +1391,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final Haplotype hapD = new Haplotype("ACCTGAA".getBytes());
         final Haplotype hapF = new Haplotype("GAAGAAG".getBytes()); // testing repeated kmers
 
-        Map<Kmer, Integer> flatSupportAllKmers = new HashMap<Kmer, Integer>() { private static final long serialVersionUID = 0L; {
+        Map<Kmer, Integer> flatSupportAllKmers = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L; {
             put(new Kmer("ACC"), 1);
             put(new Kmer("CCT"), 1);
             put(new Kmer("CTG"), 1);
@@ -1405,7 +1406,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             put(new Kmer("AAG"), 1);
         }};
 
-        Map<Kmer, Integer> hapDKmersHighSupport = new HashMap<Kmer, Integer>() { private static final long serialVersionUID = 0L;{
+        Map<Kmer, Integer> hapDKmersHighSupport = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L;{
             put(new Kmer("ACC"), 10);
             put(new Kmer("CCT"), 10);
             put(new Kmer("CTG"), 10);
@@ -1419,7 +1421,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             put(new Kmer("AAG"), 1);
         }};
 
-        Map<Kmer, Integer> hapDKmers = new HashMap<Kmer, Integer>() { private static final long serialVersionUID = 0L; {
+        Map<Kmer, Integer> hapDKmers = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L; {
             put(new Kmer("ACC"), 10);
             put(new Kmer("CCT"), 10);
             put(new Kmer("CTG"), 10);
@@ -1427,7 +1430,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             put(new Kmer("GAA"), 10);
         }};
 
-        Map<Kmer, Integer> hapFRepeatedKmers = new HashMap<Kmer, Integer>() { private static final long serialVersionUID = 0L; {
+        Map<Kmer, Integer> hapFRepeatedKmers = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L; {
             put(new Kmer("GAA"), 1);
         }};
 
@@ -1439,7 +1443,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,2,3,Arrays.asList(hapA,hapB)},
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,3,3,Arrays.asList(hapA,hapB,hapC)},
 
-                // Repetative kmers in hapF don't get double counted
+                // Repetitive kmers in hapF don't get double counted
                 new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,2,3,Arrays.asList(hapF,hapD)},
                 new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,1,3,Arrays.asList(hapD)}, //currently repeated kmers only count as singular evidence
 
