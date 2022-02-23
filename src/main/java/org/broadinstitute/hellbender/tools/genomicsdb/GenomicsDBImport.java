@@ -514,7 +514,8 @@ public final class GenomicsDBImport extends GATKTool {
     private static void assertVariantFileIsCompressedAndIndexed(final Path path) {
         if (!path.toString().toLowerCase().endsWith(FileExtensions.COMPRESSED_VCF)) {
             throw new UserException("Input variant files must be block compressed vcfs when using " +
-                BYPASS_FEATURE_READER + ", but " + path.toString() + " does not appear to be");
+                BYPASS_FEATURE_READER + ", but " + path.toString() + " does not end with " +
+                    "the standard file extension " + FileExtensions.COMPRESSED_VCF);
         }
         Path indexPath = path.resolveSibling(path.getFileName() + FileExtensions.COMPRESSED_VCF_INDEX);
         IOUtils.assertFileIsReadable(indexPath);
