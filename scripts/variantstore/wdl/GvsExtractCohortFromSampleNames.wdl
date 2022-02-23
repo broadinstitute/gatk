@@ -42,6 +42,11 @@ workflow GvsExtractCohortFromSampleNames {
     Float? snps_truth_sensitivity_filter_level_override
     Float? indels_truth_sensitivity_filter_level_override
 
+    Int? extract_preemptible_override
+    Int? extract_maxretries_override
+    Int? split_intervals_disk_size_override
+    Int? split_intervals_mem_override
+
     File? gatk_override
   }
 
@@ -85,7 +90,13 @@ workflow GvsExtractCohortFromSampleNames {
       gatk_override = gatk_override,
       fq_samples_to_extract_table = "~{GvsPrepareCallset.fq_cohort_extract_table_prefix}__SAMPLES",
       fq_ranges_cohort_vet_extract_table = "~{GvsPrepareCallset.fq_cohort_extract_table_prefix}__VET_DATA",
-      fq_ranges_cohort_ref_extract_table = "~{GvsPrepareCallset.fq_cohort_extract_table_prefix}__REF_DATA"
+      fq_ranges_cohort_ref_extract_table = "~{GvsPrepareCallset.fq_cohort_extract_table_prefix}__REF_DATA",
+
+      extract_preemptible_override = extract_preemptible_override,
+      extract_maxretries_override = extract_maxretries_override,
+      split_intervals_disk_size_override = split_intervals_disk_size_override,
+      split_intervals_mem_override = split_intervals_mem_override
+
   }
 
   output {
