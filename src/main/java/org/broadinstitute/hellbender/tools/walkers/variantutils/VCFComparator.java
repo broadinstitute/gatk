@@ -51,12 +51,18 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
             VCFConstants.DEPTH_KEY, GATKVCFConstants.QUAL_BY_DEPTH_KEY, GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
             GATKVCFConstants.VQS_LOD_KEY, GATKVCFConstants.AS_VQS_LOD_KEY, GATKVCFConstants.AS_FILTER_STATUS_KEY,
             GATKVCFConstants.CULPRIT_KEY, GATKVCFConstants.AS_CULPRIT_KEY); //AC should be the same
+    private boolean failOnCompletion = false;
 
     @Argument(fullName = "warn-on-errors",
             shortName = "warn-on-errors",
             doc = "just emit warnings on errors instead of terminating the run at the first instance",
             optional = true)
     Boolean WARN_ON_ERROR = false;
+
+    @Argument(fullName = "finish-before-failing",
+    doc = "emit warnings as necesarry, but perform the whole comparison before failing",
+    optional= true)
+    Boolean FINISH_BEFORE_FAILING = false;
 
     @Argument(fullName = IGNORE_QUALS_LONG_NAME, optional = true, mutex={POSITIONS_ONLY_LONG_NAME})
     Boolean IGNORE_QUALS = false;
@@ -721,8 +727,11 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         if (MUTE_DIFFS && (alleleNumberIsDifferent || inbreedingCoeffIsDifferent)) {
             return;
         }
-        if (WARN_ON_ERROR) {
+        if (WARN_ON_ERROR || FINISH_BEFORE_FAILING) {
             logger.warn("***** " + e.getMessage() + " *****");
+            if (FINISH_BEFORE_FAILING) {
+                failOnCompletion = true;
+            }
         } else {
             throw e;
         }
@@ -854,5 +863,12 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
         final double relativeDiff = diff / (expected);
         return expected > 25.0 || relativeDiff < 0.01 || diff < 0.5 ////25 is in the "jitter" zone
                 || qualByDepthWillHaveJitter(expectedQual, expectedDP);
+    }
+
+    public Object onTraversalSuccess() {
+        if (failOnCompletion) {
+            throw new UserException("Some comparisons failed.  See stderr log for details.");
+        }
+        return null;
     }
 }
