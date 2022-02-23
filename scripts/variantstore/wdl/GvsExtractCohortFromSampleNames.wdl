@@ -45,7 +45,7 @@ workflow GvsExtractCohortFromSampleNames {
 
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
-      destination_cohort_table_prefix = extraction_uuid,
+      destination_cohort_table_prefix = fq_gvs_extraction_destination_dataset,
       sample_names_to_extract         = cohort_sample_names,
       data_project                    = gvs_project,
       query_labels                    = ["extraction_uuid=~{extraction_uuid}"],
