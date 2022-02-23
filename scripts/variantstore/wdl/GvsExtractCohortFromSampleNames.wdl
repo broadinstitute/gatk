@@ -82,7 +82,10 @@ workflow GvsExtractCohortFromSampleNames {
       output_file_base_name = output_file_base_name,
       output_gcs_dir = output_gcs_dir,
       service_account_json_path = service_account_json_path,
-      gatk_override = gatk_override
+      gatk_override = gatk_override,
+      fq_samples_to_extract_table = "~{fq_cohort_extract_table_prefix}__SAMPLES",
+      fq_ranges_cohort_vet_extract_table = "~{fq_cohort_extract_table_prefix}__VET_DATA",
+      fq_ranges_cohort_ref_extract_table = "~{fq_cohort_extract_table_prefix}__REF_DATA"
   }
 
   output {
