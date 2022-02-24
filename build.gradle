@@ -73,10 +73,8 @@ final guavaVersion = System.getProperty('guava.version', '27.1-jre')
 final log4j2Version = System.getProperty('log4j2Version', '2.17.1')
 final testNGVersion = '7.0.0'
 
-// Using the shaded version to avoid conflicts between its protobuf dependency
-// and that of Hadoop/Spark (either the one we reference explicitly, or the one
-// provided by dataproc).
-final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.117.0-alpha:shaded'
+final googleCloudNioDependency = 'com.google.cloud:google-coud-nio:0.117.0-alpha'
+
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -267,9 +265,7 @@ dependencies {
     implementation 'com.opencsv:opencsv:3.4'
     implementation 'com.google.guava:guava:' + guavaVersion
     implementation 'com.github.samtools:htsjdk:'+ htsjdkVersion
-    implementation(googleCloudNioDependency) {
-        transitive = false
-    }
+    implementation(googleCloudNioDependency)
 
     implementation 'com.google.cloud:google-cloud-bigquery:' + bigQueryVersion
     implementation 'com.google.cloud:google-cloud-bigquerystorage:1.5.1'
