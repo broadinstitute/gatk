@@ -72,7 +72,8 @@ workflow GvsExtractCallset {
           output_gcs_dir = output_gcs_dir,
           split_intervals_disk_size_override = split_intervals_disk_size_override,
           split_intervals_mem_override = split_intervals_mem_override,
-          service_account_json_path = service_account_json_path
+          service_account_json_path = service_account_json_path,
+          gatk_override = gatk_override
     }
 
     call Utils.GetBQTablesMaxLastModifiedTimestamp {
