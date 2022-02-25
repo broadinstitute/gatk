@@ -152,16 +152,15 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsSitesOnlyVCF
+   - name: GvsCreateVAT
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsSitesOnlyVCF.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
      testParameterFiles:
-       - /scripts/variantstore/wdl/GvsSitesOnlyVCF.example.inputs.json
+       - /scripts/variantstore/wdl/GvsCreateVAT.example.inputs.json
      filters:
        branches:
          - master
          - ah_var_store
-         - rc-remove-sites-only-step
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
