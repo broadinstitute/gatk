@@ -68,8 +68,8 @@ final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.3')
-final bigQueryVersion = System.getProperty('bigQuery.version', '1.117.1')
-final guavaVersion = System.getProperty('guava.version', '27.1-jre')
+final bigQueryVersion = System.getProperty('bigQuery.version', '2.9.0')
+final guavaVersion = System.getProperty('guava.version', '31.0.1-jre')
 final log4j2Version = System.getProperty('log4j2Version', '2.17.1')
 final testNGVersion = '7.0.0'
 
@@ -179,7 +179,7 @@ configurations.all {
         force 'com.google.guava:guava:' + guavaVersion
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
-        force 'com.google.protobuf:protobuf-java:3.8.0'
+        force 'com.google.protobuf:protobuf-java:3.19.4'
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
@@ -268,7 +268,7 @@ dependencies {
     implementation(googleCloudNioDependency)
 
     implementation 'com.google.cloud:google-cloud-bigquery:' + bigQueryVersion
-    implementation 'com.google.cloud:google-cloud-bigquerystorage:1.5.1'
+    implementation 'com.google.cloud:google-cloud-bigquerystorage:2.9.1'
 
     implementation "gov.nist.math.jama:gov.nist.math.jama:1.1.1"
 

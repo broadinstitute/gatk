@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.dragstr;
 
-import com.google.common.io.Files;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceDictionaryCodec;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -17,6 +16,7 @@ import org.broadinstitute.hellbender.tools.dragstr.STRDecimationTable;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -79,7 +79,15 @@ public final class STRTableFileBuilder implements AutoCloseable {
         Utils.validateArg(maxRepeatLength >= 1, "max repeat length must be positive");
         Utils.nonNull(decimationTable, "decimation table must not be negative");
         Utils.nonNull(dictionary, "dictionary must not be negative");
-        final File tempDir = Files.createTempDir();
+
+        File tempDir;
+        try {
+            tempDir = Files.createTempDirectory("STRTableFileBuilder").toFile();
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Unable to create temp directory for StreamingProcessController", e);
+        }
+
         return new STRTableFileBuilder(tempDir, generateTextSitesFile, dictionary, decimationTable, maxPeriod, maxRepeatLength);
     }
 

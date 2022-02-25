@@ -1,13 +1,14 @@
 package org.broadinstitute.hellbender.utils;
 
-import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -29,9 +30,17 @@ public final class ZipUtilsTest {
         Assert.assertFalse(zipFile.exists());
         ZipUtils.zip(aBin, new GATKPath(zipFile.toString()));
         Assert.assertTrue(zipFile.isFile());
-        final File unzipRoot = Files.createTempDir();
+
+        File unzipRoot;
+        try {
+            unzipRoot = Files.createTempDirectory("testZipAndUnzipSingleFile").toFile();
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Unable to create temp directory for testZipAndUnzipSingleFile", e);
+        }
         unzipRoot.delete();
         Assert.assertFalse(unzipRoot.exists());
+
         ZipUtils.unzip(new GATKPath(zipFile.toString()), unzipRoot);
         Assert.assertTrue(unzipRoot.isDirectory());
         final File[] subFiles = unzipRoot.listFiles();
@@ -51,9 +60,16 @@ public final class ZipUtilsTest {
         Assert.assertTrue(zipFile.exists());
         Assert.assertTrue(zipFile.isFile());
         // now unzip.
-        final File unzipRoot = Files.createTempDir();
+        File unzipRoot;
+        try {
+            unzipRoot = Files.createTempDirectory("zipAndUnzipFullFileData").toFile();
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Unable to create temp directory for zipAndUnzipFullFileData", e);
+        }
         FileUtils.deleteDirectory(unzipRoot);
         Assert.assertFalse(unzipRoot.exists());
+
         ZipUtils.unzip(new GATKPath(zipFile.toString()), unzipRoot);
         Assert.assertTrue(unzipRoot.exists());
         // now we compare the unzipped content with the original input content.
@@ -74,9 +90,16 @@ public final class ZipUtilsTest {
         Assert.assertTrue(zipFile.exists());
         Assert.assertTrue(zipFile.isFile());
         // now unzip.
-        final File unzipRoot = Files.createTempDir();
+        File unzipRoot;
+        try {
+            unzipRoot = Files.createTempDirectory("testZipFullAndUnzipSubset").toFile();
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Unable to create temp directory for testZipFullAndUnzipSubset", e);
+        }
         FileUtils.deleteDirectory(unzipRoot);
         Assert.assertFalse(unzipRoot.exists());
+
         final Random rdn = new Random(Arrays.hashCode(files));
         final String[] only = IntStream.range(0, files.length)
            .filter(i -> rdn.nextBoolean())
@@ -113,7 +136,13 @@ public final class ZipUtilsTest {
         Assert.assertTrue(zipFile.exists());
         Assert.assertTrue(zipFile.isFile());
         // now unzip.
-        final File unzipRoot = Files.createTempDir();
+        File unzipRoot;
+        try {
+            unzipRoot = Files.createTempDirectory("zipAndUnzipFullFileData").toFile();
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Unable to create temp directory for zipAndUnzipFullFileData", e);
+        }
         FileUtils.deleteDirectory(unzipRoot);
         Assert.assertFalse(unzipRoot.exists());
 
