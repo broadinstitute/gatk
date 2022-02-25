@@ -469,6 +469,7 @@ task BigQueryExportVat {
           gcloud config set project ~{project_id}
         fi
 
+        # note: tab delimiter and compression creates tsv.gz files
         bq query --nouse_legacy_sql --project_id=~{project_id} \
         'EXPORT DATA OPTIONS(
         uri="~{export_path}",
