@@ -91,7 +91,7 @@ workflows:
          - ah_var_store
          - rsa_split_intervals_part_2
          - kc_cluster_vqsr
-         - kc_quoting_bug         
+         - kc_quoting_bug
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -101,7 +101,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_quoting_bug         
+         - kc_quoting_bug
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -178,7 +178,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_wire_cohort_wdl
+         - rsa_cohort_wdl_fixes
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
