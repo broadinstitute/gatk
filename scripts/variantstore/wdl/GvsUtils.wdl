@@ -72,7 +72,7 @@ task SplitIntervals {
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
     String? output_gcs_dir
-    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-split-intervals-odd-02252022/gatk-4.2.0.0-474-g1837c10-SNAPSHOT.jar"
+    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-split-intervals-odd-02252022/gatk.jar"
     String? service_account_json_path
   }
 
