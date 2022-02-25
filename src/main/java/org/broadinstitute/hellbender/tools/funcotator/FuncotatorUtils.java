@@ -2357,7 +2357,7 @@ public final class FuncotatorUtils {
             logger.info("Setting custom variant classification severities from: " + customSeverityFile);
 
             if ( !Files.exists(customSeverityFile.toPath()) ) {
-                throw new UserException("Custom severity file does not exist: " + customSeverityFile);
+                throw new UserException.CouldNotReadInputFile("Custom severity file does not exist: " + customSeverityFile);
             }
             try (final BufferedReader reader = new BufferedReader(new InputStreamReader(customSeverityFile.getInputStream()))) {
 
