@@ -135,7 +135,7 @@ public class GetPileupSummaries extends LocusWalker {
     private double maxPopulationAlleleFrequency = DEFAULT_MAX_POPULATION_AF;
 
     @Argument(fullName = MIN_MAPPING_QUALITY_LONG_NAME, shortName = MIN_MAPPING_QUALITY_SHORT_NAME, doc = "Minimum read mapping quality", optional = true)
-    private int minMappingQuality = DEFAULT_MINIMUM_MAPPING_QUALITY;
+    private int minMappingQuality = 0; // DEFAULT_MINIMUM_MAPPING_QUALITY;
 
     private final List<PileupSummary> pileupSummaries = new ArrayList<>();
 

@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.formats.records;
 
 import org.broadinstitute.hellbender.utils.Utils;
 
-public class CalledCopyRatioSegment extends CopyRatioSegment{
+public class CalledCopyRatioSegment extends CopyRatioSegment {
 // sato: can we make this a comparable?
     //  implements Comparable<CalledCopyRatioSegment>
     //    @Override
