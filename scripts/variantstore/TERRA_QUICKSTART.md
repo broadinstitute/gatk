@@ -36,8 +36,6 @@ These are the required parameters which must be supplied to the workflow:
 | project_id            | The name of the google project containing the dataset |
 | dataset_name          | The name of the dataset you created above       |
 | external_sample_names | datamodel  (e.g `this.samples.sample_id`)     |
-| workspace_namespace   | name of the current workspace namespace | ## is this still needed?
-| workspace_name        | name of the current workspace | ## is this still needed?
 
 ## 1.2 Load data
 
