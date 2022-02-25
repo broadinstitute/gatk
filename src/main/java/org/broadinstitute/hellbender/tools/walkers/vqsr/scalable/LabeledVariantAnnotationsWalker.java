@@ -53,7 +53,7 @@ import java.util.stream.Collectors;
  * walker, performing the operations:
  *
  *   - nthPassApply(n = 0)
- *      - if variant/alleles pass filters and variant-type checks, then:
+ *      - if variant/alleles pass filters and variant-type/overlapping-resource checks, then:
  *          - add variant/alleles to a {@link LabeledVariantAnnotationsData} collection
  *          - write variant/alleles with labels appended to a sites-only VCF file
  *   - afterNthPass(n = 0)
@@ -351,7 +351,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         }
         if (!useASAnnotations) {
             // in non-allele-specific mode, get a singleton list of the triple
-            // (list of alt alleles passing variant-type checks, variant type, set of labels)
+            // (list of alt alleles passing variant-type and overlapping-resource checks, variant type, set of labels)
             final VariantType variantType = VariantType.getVariantType(vc);
             if (variantTypesToExtract.contains(variantType)) {
                 final TreeSet<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
@@ -362,7 +362,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         } else {
             // in allele-specific mode, get a list containing the triples
             // (singleton list of alt allele, variant type, set of labels)
-            // corresponding to alt alleles that pass variant-type checks
+            // corresponding to alt alleles that pass variant-type and overlapping-resource checks
             return vc.getAlternateAlleles().stream()
                     .filter(a -> !GATKVCFConstants.isSpanningDeletion(a))
                     .filter(a -> variantTypesToExtract.contains(VariantType.getVariantType(vc, a)))
@@ -371,7 +371,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                     .filter(t -> !isExtractOnlyLabeledVariants() || !t.getRight().isEmpty())
                     .collect(Collectors.toList());
         }
-        // if variant-type checks failed, return an empty list
+        // if variant-type and overlapping-resource checks failed, return an empty list
         return Collections.emptyList();
     }
 

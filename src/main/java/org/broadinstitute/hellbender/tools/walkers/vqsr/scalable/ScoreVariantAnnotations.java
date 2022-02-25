@@ -37,6 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -55,6 +56,8 @@ import java.util.stream.IntStream;
 public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
+    private static final String TRUTH_SENSITIVITY_KEY = "TRUTH_SENSITIVITY";
+    private static final String SCORE_AND_TRUTH_SENSITIVITY_FORMAT = "%.4f";
 
     private static final String SCORES_HDF5_SUFFIX = ".scores.hdf5";
 
@@ -69,9 +72,13 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     private File outputScoresFile;
     private Iterator<Double> scoresIterator;
+    private Iterator<Boolean> isSNPIterator;
 
     private VariantAnnotationsScorer snpScorer;
     private VariantAnnotationsScorer indelScorer;
+
+    private Function<Double, Double> snpTruthSensitivityConverter;
+    private Function<Double, Double> indelTruthSensitivityConverter;
 
     // TODO document, make enum (extract labeled vs. extract all)
     @Override
@@ -98,6 +105,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             PythonScriptExecutor.checkPythonEnvironmentForPackage("sklearn");
             PythonScriptExecutor.checkPythonEnvironmentForPackage("dill");
 
+            // TODO extract method and constants
             final File snpScorerPklFile = new File(modelPrefix + ".snp.scorer.pkl");
             snpScorer = snpScorerPklFile.canRead()
                     ? new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, snpScorerPklFile)
@@ -110,6 +118,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             logger.info("Python script was not provided, running in BGMM mode...");
             // TODO validate BGMM model inputs
 
+            // TODO extract method and constants
             final File snpScorerSerFile = new File(modelPrefix + ".snp" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
             snpScorer = snpScorerSerFile.canRead()
                     ? BGMMVariantAnnotationsScorer.deserialize(snpScorerSerFile)
@@ -120,9 +129,20 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                     : null;
         }
 
+        // TODO validate modes
         if (snpScorer == null && indelScorer == null) {
             throw new UserException.BadInput("At least one serialized scorer must be present in model files.");
         }
+
+        // TODO extract method and constants
+        final File snpTruthScores = new File(modelPrefix + ".snp.truthScores.hdf5");
+        snpTruthSensitivityConverter = snpTruthScores.canRead()
+                ? VariantAnnotationsScorer.createScoreToTruthSensitivityConverter(VariantAnnotationsScorer.readScores(snpTruthScores))
+                : null;
+        final File indelTruthScores = new File(modelPrefix + ".indel.truthScores.hdf5");
+        indelTruthSensitivityConverter = indelTruthScores.canRead()
+                ? VariantAnnotationsScorer.createScoreToTruthSensitivityConverter(VariantAnnotationsScorer.readScores(indelTruthScores))
+                : null;
 
         outputScoresFile = new File(outputPrefix + SCORES_HDF5_SUFFIX);
 
@@ -177,6 +197,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             writeAnnotationsToHDF5AndClearData();
             readAnnotationsAndWriteScoresToHDF5();
             scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
+            isSNPIterator = LabeledVariantAnnotationsData.readLabel(outputAnnotationsFile, "snp").iterator();
         }
         if (n == 1) {
             if (scoresIterator.hasNext()) {
@@ -227,11 +248,29 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                     final Set<String> labels) {
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
         labels.forEach(l -> builder.attribute(l, true)); // labels should already be sorted as a TreeSet
-        final double bestScore = useASAnnotations
-                ? altAlleles.stream().mapToDouble(a -> scoresIterator.next()).max().getAsDouble()
-                : scoresIterator.next();
-        builder.attribute(SCORE_KEY, bestScore);
+
+        final List<Double> scores = useASAnnotations
+                ? altAlleles.stream().map(a -> scoresIterator.next()).collect(Collectors.toList())
+                : Collections.singletonList(scoresIterator.next());
+        final double score = Collections.max(scores);
+        final int scoreIndex = scores.indexOf(score);
+        builder.attribute(SCORE_KEY, formatDouble(score));
+
+        final List<Boolean> isSNP = useASAnnotations
+                ? altAlleles.stream().map(a -> isSNPIterator.next()).collect(Collectors.toList())
+                : Collections.singletonList(isSNPIterator.next());
+        final boolean isSNPMax = isSNP.get(scoreIndex);
+        final Function<Double, Double> truthSensitivityConverter = isSNPMax ? snpTruthSensitivityConverter : indelTruthSensitivityConverter;
+        if (truthSensitivityConverter != null) {
+            final double truthSensitivity = truthSensitivityConverter.apply(score);
+            builder.attribute(TRUTH_SENSITIVITY_KEY, formatDouble(truthSensitivity));
+        }
+
         vcfWriter.add(builder.make());
+    }
+
+    private static String formatDouble(final double x) {
+        return String.format(SCORE_AND_TRUTH_SENSITIVITY_FORMAT, x);
     }
 
     /**
@@ -244,6 +283,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
         final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);
         hInfo.add(GATKVCFHeaderLines.getInfoLine(SCORE_KEY));
+        hInfo.add(new VCFInfoHeaderLine(TRUTH_SENSITIVITY_KEY, 1, VCFHeaderLineType.Float,
+                String.format("Truth sensitivity corresponding to the value of %s", SCORE_KEY)));
 
         hInfo.addAll(getDefaultToolVCFHeaderLines());
         // TODO extract
