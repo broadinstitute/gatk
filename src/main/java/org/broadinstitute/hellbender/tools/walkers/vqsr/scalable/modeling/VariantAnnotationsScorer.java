@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
+import com.google.common.math.Quantiles;
+import org.apache.commons.math3.random.EmpiricalDistribution;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -33,9 +36,12 @@ public interface VariantAnnotationsScorer {
     void score(final File inputAnnotationsFile,
                final File outputScoresFile);
 
-    // TODO
+    // TODO document that this is 1 - ECDF
     static Function<Double, Double> createScoreToTruthSensitivityConverter(final double[] truthScores) {
-        return x -> x;
+        // TODO validate
+        final EmpiricalDistribution empiricalDistribution = new EmpiricalDistribution();
+        empiricalDistribution.load(truthScores);
+        return score -> 1. - empiricalDistribution.cumulativeProbability(score);
     }
 
     static double[] readScores(final File inputFile) {
