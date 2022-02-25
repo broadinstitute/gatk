@@ -93,12 +93,12 @@ This step extracts the data in BigQuery into a sharded joint called VCF
 To prepare the dataset for extraction by putting it into a single vet and ref_ranges table, run the `GvsPrepareRangesCallset` workflow with the following parameters:
 
 
-| Parameter      | Description                                                                                     |
-| ---------------- |-------------------------------------------------------------------------------------------------|
-| data_project | The name of the google project containing the dataset                                           |
-| default_dataset  | The name of the dataset                                                                         |
-| destination_cohort_table_prefix | The name of the preparation table that this step is creating                                    |
-| fq_sample_mapping_table | The fully qualified table name of the samples to extract (e.g. <project>.<dataset>.sample_info) |
+| Parameter      | Description    |
+| ---------------- |---------------------------------------------------|
+| data_project | The name of the google project containing the dataset |
+| default_dataset  | The name of the dataset  |
+| destination_cohort_table_prefix | The name of the preparation table that this step is creating (e.g. <destination_cohort_table_prefix>__REF_RANGES) |
+| fq_sample_mapping_table | The fully qualified table name of the samples to extract (e.g. <project>.<dataset>.sample_info)  |
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
