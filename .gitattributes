@@ -5,8 +5,7 @@ src/test/resources/large/funcotator/funcotator_dataSources/dna_repair_genes/hg38
 src/test/resources/large/funcotator/funcotator_dataSources/familial/hg38 -filter=lfs -diff=lfs -merge=lfs -text
 src/test/resources/large/funcotator/funcotator_dataSources/hgnc/hg38 -filter=lfs -diff=lfs -merge=lfs -text
 src/test/resources/large/funcotator/funcotator_dataSources/simple_uniprot/hg38 -filter=lfs -diff=lfs -merge=lfs -text
-
 #Otherwise, track everything in large
 src/test/resources/large/** filter=lfs diff=lfs merge=lfs -text
 src/main/resources/large/** filter=lfs diff=lfs merge=lfs -text
-
+*.psd filter=lfs diff=lfs merge=lfs -text
