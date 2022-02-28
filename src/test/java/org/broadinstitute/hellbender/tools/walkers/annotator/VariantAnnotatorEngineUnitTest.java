@@ -79,7 +79,7 @@ public final class VariantAnnotatorEngineUnitTest extends GATKBaseTest {
         final VariantContext result = vae.finalizeAnnotations(vc, vc);
         Assert.assertNull(result.getAttribute(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY));
         Assert.assertNotNull(result.getAttribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
-        Assert.assertNotNull(result.getAttribute(GATKVCFConstants.ALLELE_BALANCE_KEY));
+        Assert.assertNotNull(result.getAttribute(GATKVCFConstants.ALLELE_BALANCE_KEY)); 
         Assert.assertEquals(result.getAttribute(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY), "6.54");
     }
 
