@@ -114,10 +114,10 @@ public final class SVUtils {
     /**
      * Converts locatable (uses 1-based, closed intervals) to 1-based half-open SVInterval. Conversion: end + 1
      */
-    public static SVInterval locatableToSVInterval(Locatable loc,
-                                                   Map<String, Integer> contigNameToID) {
+    public static SVInterval locatableToSVInterval(final Locatable loc,
+                                                   final Map<String, Integer> contigNameToID) {
         try {
-            Integer contigID = contigNameToID.get(loc.getContig());
+            final Integer contigID = contigNameToID.get(loc.getContig());
             return new SVInterval(contigID, loc.getStart(), loc.getEnd() + 1);
         } catch (NullPointerException e) {
             throw new IllegalArgumentException("Contig " + loc.getContig() + " not in provided contig ID to name map");

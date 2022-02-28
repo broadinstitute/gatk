@@ -107,8 +107,8 @@ public class SVInterval implements Comparable<SVInterval> {
     /**
      * Assumes half-open, 1-based interval being converted to closed, 1-based interval. Conversion: end - 1
      */
-    public SimpleInterval toSimpleInterval(String[] contigIDToName) {
-        Integer contigID = this.getContig();  // non-negative
+    public SimpleInterval toSimpleInterval(final String[] contigIDToName) {
+        final Integer contigID = this.getContig();  // non-negative
         if (contigID >= contigIDToName.length) {
             throw new ArrayIndexOutOfBoundsException("Contig ID " + contigID + " out of bounds of provided contig ID to name map");
         }
