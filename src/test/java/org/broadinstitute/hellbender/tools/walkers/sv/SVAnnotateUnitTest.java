@@ -101,7 +101,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final SVIntervalTree<String> transcriptionStartSiteTree = initTree();
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
         SVAnnotate.annotateNearestTranscriptionStartSite(variantInterval,
-                variantConsequenceDict, transcriptionStartSiteTree, 5000, contigNameToID);
+                variantConsequenceDict, transcriptionStartSiteTree, contigNameToID);
         if (expectedNearestTSSGene == null) {
             Assert.assertNull(variantConsequenceDict.get(GATKSVVCFConstants.NEAREST_TSS));
         } else {
@@ -624,7 +624,6 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final String[] contigIDToName = new String[]{"chr1"};
         final int promoterWindow = 200;
         final int maxBreakendLen = -1;
-        final int maxContigLength = 5000;
 
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
@@ -639,7 +638,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final Map<String, Object> actualAttributes =
                 SVAnnotate.annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
                 transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications, contigNameToID,
-                contigIDToName, maxBreakendLen, maxContigLength);
+                contigIDToName, maxBreakendLen);
 
         Assert.assertEquals(actualAttributes, expectedAttributes);
     }

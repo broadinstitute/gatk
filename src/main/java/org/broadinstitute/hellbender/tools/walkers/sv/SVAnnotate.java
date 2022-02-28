@@ -227,7 +227,6 @@ public final class SVAnnotate extends VariantWalker {
                                                                                 GATKSVVCFConstants.TSS_DUP);
     private Map<String, Integer> contigNameToID;
     private String[] contigIDToName;
-    private int maxContigLength;
 
     @VisibleForTesting
     protected enum StructuralVariantAnnotationType {
@@ -308,7 +307,6 @@ public final class SVAnnotate extends VariantWalker {
         final VCFHeader header = getHeaderForVariants();
         // get contigs from VCF
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
-        maxContigLength = sequenceDictionary.getSequences().stream().mapToInt(SAMSequenceRecord::getSequenceLength).max().getAsInt() + 1;
         contigNameToID = buildContigNameToIDMap(sequenceDictionary);
         contigIDToName = buildContigIDToNameArray(contigNameToID);
         // TODO: more elegant way to make reference inputs optional than checking 10x?
@@ -440,18 +438,13 @@ public final class SVAnnotate extends VariantWalker {
     @VisibleForTesting
     protected static int countBreakendsInsideFeature(final SimpleInterval variantInterval,
                                                      final SimpleInterval featureInterval) {
-        int count = 0;
-        if (variantInterval.getContig().equals(featureInterval.getContig())) {
-            if (variantInterval.getStart() >= featureInterval.getStart() &&
-                    variantInterval.getStart() <= featureInterval.getEnd()) {
-                count++;
-            }
-            if (variantInterval.getEnd() >= featureInterval.getStart() &&
-                    variantInterval.getEnd() <= featureInterval.getEnd()) {
-                count++;
-            }
+        if (!featureInterval.overlaps(variantInterval) || variantInterval.contains(featureInterval)) {
+            return 0;
+        } else if (featureInterval.contains(variantInterval)) {
+            return 2;
+        } else {
+            return 1;
         }
-        return count;
     }
 
     @VisibleForTesting
@@ -461,9 +454,8 @@ public final class SVAnnotate extends VariantWalker {
         variantConsequenceDict.get(key).add(value);
     }
 
-    @VisibleForTesting
-    protected static String annotateInsertion(final SimpleInterval variantInterval,
-                                              final GencodeGtfTranscriptFeature gtfTranscript) {
+    private static String getSimpleConsequence(final SimpleInterval variantInterval,
+                                               final GencodeGtfTranscriptFeature gtfTranscript) {
         final List<GencodeGtfFeature> gtfFeaturesForTranscript = gtfTranscript.getAllFeatures();
         String consequence = GATKSVVCFConstants.INTRONIC;
         for (GencodeGtfFeature gtfFeature : gtfFeaturesForTranscript) {
@@ -480,13 +472,19 @@ public final class SVAnnotate extends VariantWalker {
     }
 
     @VisibleForTesting
+    protected static String annotateInsertion(final SimpleInterval variantInterval,
+                                              final GencodeGtfTranscriptFeature gtfTranscript) {
+        return getSimpleConsequence(variantInterval, gtfTranscript);
+    }
+
+    @VisibleForTesting
     protected static String annotateDeletion(final SimpleInterval variantInterval,
                                              final GencodeGtfTranscriptFeature gtfTranscript) {
         // For DEL only, return LOF if the variant overlaps the transcription start site
         if (variantOverlapsTranscriptionStartSite(variantInterval, gtfTranscript)) {
             return GATKSVVCFConstants.LOF;
         } else {
-            return annotateInsertion(variantInterval, gtfTranscript);
+            return getSimpleConsequence(variantInterval, gtfTranscript);
         }
     }
 
@@ -498,8 +496,8 @@ public final class SVAnnotate extends VariantWalker {
             return GATKSVVCFConstants.COPY_GAIN;
         } else if (variantOverlapsTranscriptionStartSite(variantInterval, gtfTranscript)) {
             return GATKSVVCFConstants.TSS_DUP;
-        } else if (countBreakendsInsideFeature(variantInterval, transcriptInterval) == 1) {
-            return GATKSVVCFConstants.DUP_PARTIAL;
+        } else if (!transcriptInterval.contains(variantInterval)) {
+            return GATKSVVCFConstants.DUP_PARTIAL;  // if one breakpoint inside transcript and one past the end
         } else {
             // both breakpoints inside transcript
             final List<GencodeGtfFeature> gtfFeaturesForTranscript = gtfTranscript.getAllFeatures();
@@ -539,6 +537,16 @@ public final class SVAnnotate extends VariantWalker {
         return GATKSVVCFConstants.INTRONIC;
     }
 
+    /**
+     * Annotate variant consequence for SV of type CNV (multiallelic copy number variant).
+     * The consequence may depend on the individual's copy number at the site, so the variant is annotated as if it were
+     * a biallelic duplication and then certain consequence categories are reclassified to PREDICTED_MSV_EXON_OVERLAP
+     * @param variantInterval - interval covered by the CNV
+     * @param gtfTranscript - overlapping transcript
+     * @param MSVExonOverlapClassifications - consequence categories from annotating a duplication that should be
+     *                                      reclassified to PREDICTED_MSV_EXON_OVERLAP for a CNV
+     * @return
+     */
     @VisibleForTesting
     protected static String annotateCopyNumberVariant(final SimpleInterval variantInterval,
                                                       final GencodeGtfTranscriptFeature gtfTranscript,
@@ -572,7 +580,7 @@ public final class SVAnnotate extends VariantWalker {
     @VisibleForTesting
     protected static String annotateBreakend(final SimpleInterval variantInterval,
                                              final GencodeGtfTranscriptFeature gtfTranscript) {
-        final String consequence = annotateInsertion(variantInterval, gtfTranscript);
+        final String consequence = getSimpleConsequence(variantInterval, gtfTranscript);
         if (consequence.equals(GATKSVVCFConstants.LOF)) {
             return GATKSVVCFConstants.BREAKEND_EXON;
         }
@@ -650,10 +658,9 @@ public final class SVAnnotate extends VariantWalker {
                 nonCodingIntervalTree.overlappers(SVUtils.locatableToSVInterval(variantInterval, contigNameToID));
         for (Iterator<SVIntervalTree.Entry<String>> it = nonCodingFeaturesForVariant; it.hasNext(); ) {
             SVIntervalTree.Entry<String> featureEntry = it.next();
-            String consequence = GATKSVVCFConstants.NONCODING_BREAKPOINT;
-            if (variantSpansFeature(variantInterval, featureEntry.getInterval().toSimpleInterval(contigIDToName))) {
-                consequence = GATKSVVCFConstants.NONCODING_SPAN;
-            }
+            final String consequence =
+                    variantSpansFeature(variantInterval, featureEntry.getInterval().toSimpleInterval(contigIDToName)) ?
+                    GATKSVVCFConstants.NONCODING_SPAN : GATKSVVCFConstants.NONCODING_BREAKPOINT;
             updateVariantConsequenceDict(variantConsequenceDict, consequence, featureEntry.getValue());
         }
     }
@@ -663,7 +670,6 @@ public final class SVAnnotate extends VariantWalker {
     protected static void annotateNearestTranscriptionStartSite(final SimpleInterval variantInterval,
                                                                 final Map<String, Set<String>> variantConsequenceDict,
                                                                 final SVIntervalTree<String> transcriptionStartSiteTree,
-                                                                final int maxContigLength,
                                                                 final Map<String, Integer> contigNameToID) {
         // TODO: keep all nearest TSS for dispersed CPX / CTX or choose closest?
         final int variantContigID = getContigIDFromName(variantInterval.getContig(), contigNameToID);
@@ -671,16 +677,19 @@ public final class SVAnnotate extends VariantWalker {
         final SVIntervalTree.Entry<String> nearestBefore = transcriptionStartSiteTree.max(svInterval);
         final SVIntervalTree.Entry<String> nearestAfter = transcriptionStartSiteTree.min(svInterval);
         // nearest TSS only "valid" for annotation if non-null and on the same contig as the variant
-        final boolean beforeInvalid = (nearestBefore == null || nearestBefore.getInterval().getContig() != variantContigID );
-        final boolean afterInvalid = (nearestAfter == null || nearestAfter.getInterval().getContig() != variantContigID );
-        // if at least one result is valid, keep one with shorter distance
-        if (!(beforeInvalid && afterInvalid)) {
-            // if result is invalid, set distance to longest contig length so that other TSS will be kept
-            final int distanceBefore = beforeInvalid ? maxContigLength : nearestBefore.getInterval().gapLen(svInterval);
-            final int distanceAfter = afterInvalid ? maxContigLength : svInterval.gapLen(nearestAfter.getInterval());
-            final String nearestTSSGeneName = (distanceBefore < distanceAfter) ? nearestBefore.getValue() : nearestAfter.getValue();
+        final boolean beforeValid = nearestBefore != null && nearestBefore.getInterval().getContig() == variantContigID;
+        final boolean afterValid = nearestAfter != null && nearestAfter.getInterval().getContig() == variantContigID;
+        // only update if at least one TSS is valid
+        if (beforeValid || afterValid) {
+            // set distance to closest valid TSS
+            final int distanceBefore = beforeValid ? nearestBefore.getInterval().gapLen(svInterval) : Integer.MAX_VALUE;
+            final int distanceAfter = afterValid ? svInterval.gapLen(nearestAfter.getInterval()) : Integer.MAX_VALUE;
+            final String nearestTSSGeneName =
+                    (distanceBefore < distanceAfter) ? nearestBefore.getValue() : nearestAfter.getValue();
             updateVariantConsequenceDict(variantConsequenceDict, GATKSVVCFConstants.NEAREST_TSS, nearestTSSGeneName);
         }
+
+
         // TODO: return consequence instead? easier for unit tests...
     }
 
@@ -830,8 +839,7 @@ public final class SVAnnotate extends VariantWalker {
                                                               final Set<String> MSVExonOverlapClassifications,
                                                               final Map<String, Integer> contigNameToID,
                                                               final String[] contigIDToName,
-                                                              final int maxBreakendLen,
-                                                              final int maxContigLength) {
+                                                              final int maxBreakendLen) {
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
         final StructuralVariantAnnotationType overallSVType = getSVType(variant);
         final List<SVSegment> svSegments = getSVSegments(variant, overallSVType, maxBreakendLen);
@@ -866,7 +874,7 @@ public final class SVAnnotate extends VariantWalker {
         if (transcriptionStartSiteTree != null && !anyPromoterOverlaps && noCodingAnnotations) {
             for (SVSegment svSegment : svSegments) {
                 annotateNearestTranscriptionStartSite(svSegment.getInterval(), variantConsequenceDict,
-                        transcriptionStartSiteTree, maxContigLength, contigNameToID);
+                        transcriptionStartSiteTree, contigNameToID);
             }
         }
 
@@ -882,7 +890,7 @@ public final class SVAnnotate extends VariantWalker {
                       final FeatureContext featureContext) {
         final Map<String, Object> attributes = annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
                 transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications, contigNameToID,
-                contigIDToName, maxBreakendLen, maxContigLength);
+                contigIDToName, maxBreakendLen);
         final VariantContext annotated = new VariantContextBuilder(variant)
                 .putAttributes(attributes)
                 .make();
