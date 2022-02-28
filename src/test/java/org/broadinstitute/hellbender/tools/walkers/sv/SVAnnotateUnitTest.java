@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.bed.FullBEDFeature;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -96,12 +98,12 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
             final SimpleInterval variantInterval,
             final String expectedNearestTSSGene)
     {
-        final Map<String, Integer> contigNameToID =
-                createContigNameToIDMap(Arrays.asList("chr1", "chr2", "chr3", "chr4"), Arrays.asList(0, 1, 2, 3));
+        final SAMSequenceDictionary sequenceDictionary =
+                createSequenceDictionary(Arrays.asList("chr1", "chr2", "chr3", "chr4"));
         final SVIntervalTree<String> transcriptionStartSiteTree = initTree();
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
         SVAnnotate.annotateNearestTranscriptionStartSite(variantInterval,
-                variantConsequenceDict, transcriptionStartSiteTree, contigNameToID);
+                variantConsequenceDict, transcriptionStartSiteTree, sequenceDictionary);
         if (expectedNearestTSSGene == null) {
             Assert.assertNull(variantConsequenceDict.get(GATKSVVCFConstants.NEAREST_TSS));
         } else {
@@ -283,18 +285,18 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     ) {
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
-        final Map<String,Integer> contigNameToID = createContigNameToIDMap(Arrays.asList("chr1"), Arrays.asList(0));
+        final SAMSequenceDictionary sequenceDictionary = createSequenceDictionary(Arrays.asList("chr1"));
         final int promoterWindow = 1000;
 
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
-                SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, promoterWindow);
+                SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, promoterWindow);
         final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.getGtfIntervalTree();
 
         final String[] cpxIntervalStrings = cpxIntervalsString.split(",");
         for (String cpxIntervalString : cpxIntervalStrings) {
             SVAnnotate.SVSegment cpxSegment = SVAnnotate.parseCPXIntervalString(cpxIntervalString);
             SVAnnotate.annotateGeneOverlaps(cpxSegment.getInterval(), cpxSegment.getIntervalSVType(),
-                    variantConsequenceDict, MSVExonOverlapClassifications, contigNameToID, gtfIntervalTree);
+                    variantConsequenceDict, MSVExonOverlapClassifications, sequenceDictionary, gtfIntervalTree);
         }
 
         Assert.assertEquals(variantConsequenceDict.keySet(), expectedConsequences);
@@ -620,68 +622,67 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
             final VariantContext variant,
             final Map<String, Object> expectedAttributes
     ) {
-        final Map<String,Integer> contigNameToID = createContigNameToIDMap(Arrays.asList("chr1"), Arrays.asList(0));
-        final String[] contigIDToName = new String[]{"chr1"};
+        final SAMSequenceDictionary sequenceDictionary = createSequenceDictionary(Arrays.asList("chr1"));
         final int promoterWindow = 200;
         final int maxBreakendLen = -1;
 
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
-                SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, promoterWindow);
+                SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, promoterWindow);
         final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.getGtfIntervalTree();
         final SVIntervalTree<String> promoterIntervalTree = gtfTrees.getPromoterIntervalTree();
         final SVIntervalTree<String> transcriptionStartSiteTree = gtfTrees.getTranscriptionStartSiteTree();
         final FeatureDataSource<FullBEDFeature> tinyNoncodingBedSource = loadTinyNoncodingBEDSource();
         final SVIntervalTree<String> nonCodingIntervalTree =
-                SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, contigNameToID);
+                SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, sequenceDictionary);
 
         final Map<String, Object> actualAttributes =
                 SVAnnotate.annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
-                transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications, contigNameToID,
-                contigIDToName, maxBreakendLen);
+                transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications, sequenceDictionary,
+                maxBreakendLen);
 
         Assert.assertEquals(actualAttributes, expectedAttributes);
     }
 
-    // Utility function to create contigNameToID map from list of contigs and list of IDs
-    public static Map<String, Integer> createContigNameToIDMap(final List<String> names, final List<Integer> IDs) {
-        if (names.size() != IDs.size()) {
-            throw new TestException("Contig names and IDs lists are not the same length");
+    public static SAMSequenceDictionary createSequenceDictionary(final List<String> contigs) {
+        final int toyContigLen = 100000;
+        final int n = contigs.size();
+        final List<SAMSequenceRecord> sequenceRecords = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            sequenceRecords.add(new SAMSequenceRecord(contigs.get(i), toyContigLen));
         }
-        final Map<String,Integer> contigNameToID = new HashMap<>();
-        for (int i = 0 ; i < names.size() ; i++) {
-            contigNameToID.put(names.get(i), IDs.get(i));
-        }
-        return contigNameToID;
+        return new SAMSequenceDictionary(sequenceRecords);
     }
 
-    // Test building interval trees (GTF and BED) with different contigNameToID maps
+    // Test building interval trees (GTF and BED) with different sequence dictionaries
     // and expected number of elements in BED interval tree & transcript interval tree
     @DataProvider(name = "buildIntervalTrees")
     public Object[][] getBuildIntervalTreesTestData() {
         return new Object[][] {
-                { createContigNameToIDMap(Arrays.asList("chr1"), Arrays.asList(0)), 2, 2 },
-                { createContigNameToIDMap(Arrays.asList("chr1", "chr2"), Arrays.asList(0, 1)), 3, 3 }
+                { createSequenceDictionary(Arrays.asList("chr1")), 2, 2 },
+                { createSequenceDictionary(Arrays.asList("chr1", "chr2")), 3, 3 }
         };
     }
 
-    // Test building BED and GTF interval trees from toy files with different contigNameToID maps
+    // Test building BED and GTF interval trees from toy files with different sequence dictionaries
     @Test(dataProvider = "buildIntervalTrees")
     public void testIgnoreUnknownContigsWhenBuildingIntervalTrees(
-            final Map<String, Integer> contigNameToID,
+            final SAMSequenceDictionary sequenceDictionary,
             final int expectedBEDTreeSize,
             final int expectedTranscriptTreeSize
     ) {
         final FeatureDataSource<FullBEDFeature> tinyNoncodingBedSource = loadTinyNoncodingBEDSource();
         final SVIntervalTree<String> nonCodingIntervalTree =
-                SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, contigNameToID);
+                SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, sequenceDictionary);
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
-                SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, contigNameToID, 100);
+                SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, 100);
         final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.getGtfIntervalTree();
         // check size to ensure contigs not included in the map are excluded from the interval tree successfully
         Assert.assertEquals(nonCodingIntervalTree.size(), expectedBEDTreeSize);
         Assert.assertEquals(gtfIntervalTree.size(), expectedTranscriptTreeSize);
+
+        createSequenceDictionary(Arrays.asList("chr1", "chr2", "chr3"));
 
     }
 }

@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVLocation;
 
@@ -107,12 +108,12 @@ public class SVInterval implements Comparable<SVInterval> {
     /**
      * Assumes half-open, 1-based interval being converted to closed, 1-based interval. Conversion: end - 1
      */
-    public SimpleInterval toSimpleInterval(final String[] contigIDToName) {
+    public SimpleInterval toSimpleInterval(final SAMSequenceDictionary sequenceDictionary) {
         final Integer contigID = this.getContig();  // non-negative
-        if (contigID >= contigIDToName.length) {
-            throw new ArrayIndexOutOfBoundsException("Contig ID " + contigID + " out of bounds of provided contig ID to name map");
+        if (contigID >= sequenceDictionary.size()) {
+            throw new ArrayIndexOutOfBoundsException("Contig ID " + contigID + " out of bounds of provided sequence dictionary");
         }
-        return new SimpleInterval(contigIDToName[contigID], this.getStart(), this.getEnd() - 1);
+        return new SimpleInterval(sequenceDictionary.getSequence(contigID).getContig(), this.getStart(), this.getEnd() - 1);
     }
 
     // assumes the interval is half-open

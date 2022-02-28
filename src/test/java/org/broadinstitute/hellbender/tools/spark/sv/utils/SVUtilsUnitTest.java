@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.utils;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecordComparator;
-import htsjdk.samtools.SAMRecordCoordinateComparator;
-import htsjdk.samtools.SAMRecordQueryNameComparator;
+import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SVInterval;
@@ -15,9 +12,8 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
-import static org.broadinstitute.hellbender.tools.walkers.sv.SVAnnotateUnitTest.createContigNameToIDMap;
+import static org.broadinstitute.hellbender.tools.walkers.sv.SVAnnotateUnitTest.createSequenceDictionary;
 
 /**
  * Unit tests for SVUtils.
@@ -69,9 +65,9 @@ public class SVUtilsUnitTest extends GATKBaseTest {
             final SVInterval expectedSVInterval,
             final SimpleInterval locatable)
     {
-        final Map<String, Integer> contigNameToID = createContigNameToIDMap(Arrays.asList("chr1", "chr2"), Arrays.asList(0, 1));
+        final SAMSequenceDictionary sequenceDictionary = createSequenceDictionary(Arrays.asList("chr1", "chr2"));
         try {
-            Assert.assertEquals(SVUtils.locatableToSVInterval(locatable, contigNameToID), expectedSVInterval);
+            Assert.assertEquals(SVUtils.locatableToSVInterval(locatable, sequenceDictionary), expectedSVInterval);
         } catch (IllegalArgumentException e) {
             Assert.assertNull(expectedSVInterval);
         }
