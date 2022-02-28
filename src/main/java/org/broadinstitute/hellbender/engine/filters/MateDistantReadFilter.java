@@ -23,8 +23,8 @@ public class MateDistantReadFilter extends ReadFilter {
     public MateDistantReadFilter() {
     }
 
-    public MateDistantReadFilter( final int minMappingQualityScore ) {
-        this.mateTooDistantLength = minMappingQualityScore;
+    public MateDistantReadFilter( final int mateTooDistantLength ) {
+        this.mateTooDistantLength = mateTooDistantLength;
     }
 
     @Override public boolean test( final GATKRead read ) {
