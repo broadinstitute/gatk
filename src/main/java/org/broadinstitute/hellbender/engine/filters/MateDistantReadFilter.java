@@ -14,10 +14,18 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY, summary = "Keep only paired reads with mates mapped >= mate-too-distant-length (default 1KB) apart or on different contigs", extraDocs = ReadFilterLibrary.MappedReadFilter.class)
 public class MateDistantReadFilter extends ReadFilter {
+    public static final int DEFAULT_MATE_TOO_DISTANT_THRESHOLD = 1000;
     private static final long serialVersionUID = 1L;
 
     @Argument(fullName = ReadFilterArgumentDefinitions.MATE_TOO_DISTANT_LENGTH, doc="Minimum start location difference at which mapped mates are considered distant", optional=true)
-    public static final int mateTooDistantLength = 1000;
+    public int mateTooDistantLength = DEFAULT_MATE_TOO_DISTANT_THRESHOLD;
+
+    public MateDistantReadFilter() {
+    }
+
+    public MateDistantReadFilter( final int minMappingQualityScore ) {
+        this.mateTooDistantLength = minMappingQualityScore;
+    }
 
     @Override public boolean test( final GATKRead read ) {
         return read.isPaired() && !read.isUnmapped() && !read.mateIsUnmapped() &&
