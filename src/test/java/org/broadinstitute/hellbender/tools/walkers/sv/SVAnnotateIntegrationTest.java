@@ -17,11 +17,11 @@ import java.util.*;
 
 
 public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
-    final String inputVCFPath = getToolTestDataDir() + "integration.vcf.gz";
-    final File inputVCF = new File(inputVCFPath);
-    private final String largeFileDirectory = GATKBaseTest.largeFileTestDir + "SVAnnotate/";
-    final File gtf = new File(largeFileDirectory + "MANE.selected.GRCh38.v0.95.select_ensembl_genomic.gtf");
-    final File noncodingElements = new File(largeFileDirectory + "noncoding.selected.hg38.bed.gz");
+    final String INPUT_VCF_PATH = getToolTestDataDir() + "integration.vcf.gz";
+    final File inputVCF = new File(INPUT_VCF_PATH);
+    private final String LARGE_FILE_DIR = GATKBaseTest.largeFileTestDir + "SVAnnotate/";
+    final File GTF_FILE = new File(LARGE_FILE_DIR + "MANE.selected.GRCh38.v0.95.select_ensembl_genomic.gtf");
+    final File NONCODING_ELEMENTS_FILE = new File(LARGE_FILE_DIR + "noncoding.selected.hg38.bed.gz");
 
     final List<String> allAnnotationInfoKeys = Arrays.asList(GATKSVVCFConstants.LOF, GATKSVVCFConstants.PROMOTER,
             GATKSVVCFConstants.DUP_PARTIAL, GATKSVVCFConstants.NONCODING_BREAKPOINT, GATKSVVCFConstants.NONCODING_SPAN,
@@ -91,8 +91,8 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                 // Run with GTF and noncoding BED file. Check a variant that has both
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, gtf)
-                        .add(SVAnnotate.NON_CODING_BED_NAME, noncodingElements),
+                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, GTF_FILE)
+                        .add(SVAnnotate.NON_CODING_BED_NAME, NONCODING_ELEMENTS_FILE),
                         "ref_panel_1kg_v1_INV_chr21_1",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.NONCODING_BREAKPOINT),
@@ -100,7 +100,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                 // Noncoding only. Check same variant for just the noncoding annotation
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add(SVAnnotate.NON_CODING_BED_NAME, noncodingElements),
+                        .add(SVAnnotate.NON_CODING_BED_NAME, NONCODING_ELEMENTS_FILE),
                         "ref_panel_1kg_v1_INV_chr21_1",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.NONCODING_BREAKPOINT),
@@ -108,14 +108,14 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                 // Protein-coding GTF only
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, gtf),
+                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, GTF_FILE),
                         "ref_panel_1kg_v1_BND_chr22_7",
                         SVAnnotateUnitTest.createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.INTRONIC), Arrays.asList("BCL2L13"))},
                 // Toggle promoter window and check for addition of promoter annotation to previous variant
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, gtf)
+                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, GTF_FILE)
                         .add(SVAnnotate.PROMOTER_WINDOW_NAME, 8000),
                         "ref_panel_1kg_v1_BND_chr22_7",
                         SVAnnotateUnitTest.createAttributesMap(
@@ -124,7 +124,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
                 // Toggle BND annotation and check for change from default
                 {new ArgumentsBuilder()
                         .addVCF(inputVCF)
-                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, gtf)
+                        .add(SVAnnotate.PROTEIN_CODING_GTF_NAME, GTF_FILE)
                         .add(SVAnnotate.MAX_BND_LEN_NAME, 12000),
                         "ref_panel_1kg_v1_BND_chr22_7",
                         SVAnnotateUnitTest.createAttributesMap(
@@ -150,7 +150,7 @@ public class SVAnnotateIntegrationTest extends CommandLineProgramTest {
 
         // Load input and output VCFs into memory for comparisons
         Pair<VCFHeader, List<VariantContext>> inputVCFHeaderAndVariants =
-                VariantContextTestUtils.readEntireVCFIntoMemory(inputVCFPath);
+                VariantContextTestUtils.readEntireVCFIntoMemory(INPUT_VCF_PATH);
         Pair<VCFHeader, List<VariantContext>> outputVCFHeaderAndVariants =
                 VariantContextTestUtils.readEntireVCFIntoMemory(output.getPath());
         List<VariantContext> inputVariants = inputVCFHeaderAndVariants.getRight();

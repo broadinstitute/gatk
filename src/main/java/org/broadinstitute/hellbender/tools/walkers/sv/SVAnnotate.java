@@ -16,6 +16,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SVInterval;
@@ -629,11 +630,10 @@ public final class SVAnnotate extends VariantWalker {
     /**
      Annotate promoter overlaps and return a boolean: true if there are any promoter overlaps, false if not
      */
-    private static boolean annotatePromoterOverlaps(final SimpleInterval variantInterval,
+    private static void annotatePromoterOverlaps(final SimpleInterval variantInterval,
                                                     final Map<String, Set<String>> variantConsequenceDict,
                                                     final SVIntervalTree<String> promoterIntervalTree,
                                                     final Map<String, Integer> contigNameToID) {
-        boolean anyPromoterOverlaps = false;
         final Set<String> codingAnnotationGenes = new HashSet<>();
         variantConsequenceDict.values().forEach(codingAnnotationGenes::addAll);
         final Iterator<SVIntervalTree.Entry<String>> promotersForVariant =
@@ -643,10 +643,8 @@ public final class SVAnnotate extends VariantWalker {
             final String promoterName = promoterEntry.getValue();
             if (!codingAnnotationGenes.contains(promoterName)) {
                 updateVariantConsequenceDict(variantConsequenceDict, GATKSVVCFConstants.PROMOTER, promoterName);
-                anyPromoterOverlaps = true;
             }
         }
-        return anyPromoterOverlaps;
     }
 
     private static void annotateNonCodingOverlaps(final SimpleInterval variantInterval,
@@ -747,33 +745,42 @@ public final class SVAnnotate extends VariantWalker {
                                                                                 final int maxBreakendLen,
                                                                                 final int svLen,
                                                                                 final String chrom, final String chr2) {
-        StructuralVariantAnnotationType annotateAs = StructuralVariantAnnotationType.BND;
-        if (complexType.contains("CTX")) {
-            annotateAs = StructuralVariantAnnotationType.CTX;
-        } else if (maxBreakendLen > 0 && chrom.equals(chr2) && svLen <= maxBreakendLen) {
+        if (complexType != null && complexType.contains("CTX")) {
+            return StructuralVariantAnnotationType.CTX;
+        } else if (maxBreakendLen > 0 && chr2 != null && chrom.equals(chr2) && svLen <= maxBreakendLen) {
             // if maxBreakendLenForOverlapAnnotation argument provided, annotate as DUP or DEL if applicable
-            final String strand = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, "NONE");
+            final String strand = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
+            if (strand == null) {
+                return StructuralVariantAnnotationType.BND;  // not enough info to annotate as DEL or DUP TODO: throw error?
+            }
             if (strand.equals(GATKSVVCFConstants.BND_DELETION_STRANDS)) {
-                annotateAs = StructuralVariantAnnotationType.DEL;
+                return StructuralVariantAnnotationType.DEL;
             } else if (strand.equals(GATKSVVCFConstants.BND_DUPLICATION_STRANDS)) {
-                annotateAs = StructuralVariantAnnotationType.DUP;
+                return StructuralVariantAnnotationType.DUP;
             }
         }
-        return annotateAs;
+        return StructuralVariantAnnotationType.BND;
     }
 
     @VisibleForTesting
     protected static List<SVSegment> getSVSegments(final VariantContext variant,
                                                    final StructuralVariantAnnotationType overallSVType,
                                                    final int maxBreakendLen) {
-        final List<SVSegment> intervals = new ArrayList<>();
-        final String complexType = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, "NONE");
+        final List<SVSegment> intervals;
+        final String complexType = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
         final String chrom = variant.getContig();
         final int pos = variant.getStart();
-        final String chr2 = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, "NONE");
+        final String chr2 = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, null);
         final int end2 = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, pos);
         if (overallSVType.equals(StructuralVariantAnnotationType.CPX)) {
-            final List<String> cpxIntervalsString = variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, "NONE");
+            final List<String> cpxIntervalsString = variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, null);
+            if (cpxIntervalsString == null) {
+                throw new UserException("Complex (CPX) variant must contain CPX_INTERVALS INFO field");
+            }
+            if (complexType == null) {
+                throw new UserException("Complex (CPX) variant must contain CPX_TYPE INFO field");
+            }
+            intervals = new ArrayList<>(cpxIntervalsString.size() + 1);
             for (final String cpxInterval : cpxIntervalsString) {
                 intervals.add(parseCPXIntervalString(cpxInterval));
             }
@@ -782,11 +789,16 @@ public final class SVAnnotate extends VariantWalker {
                         new SimpleInterval(chrom, pos, pos + 1)));
             }
         } else if (overallSVType.equals(StructuralVariantAnnotationType.CTX)) {
+            intervals = new ArrayList<>(2);
             intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));  // CHROM:POS-POS+1
             // annotate both breakpoints of translocation - CHR2:END2-END2+1
+            if (chr2 == null) {
+                throw new UserException("Translocation (CTX) variant represented as a single record must contain CHR2 INFO field");
+            }
             intervals.add(new SVSegment(overallSVType,
                     new SimpleInterval(chr2, end2, end2 + 1)));
         } else if (overallSVType.equals(StructuralVariantAnnotationType.BND)){
+            intervals = new ArrayList<>(2);
             final int svLen = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
             // if BND representation of CTX event, get intervals as if BND but annotate as CTX
             final StructuralVariantAnnotationType annotateAs = getAnnotationTypeForBreakend(variant, complexType,
@@ -796,7 +808,7 @@ public final class SVAnnotate extends VariantWalker {
                 intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, pos, pos + svLen)));
             } else {
                 intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, pos, pos)));
-                if (chr2.equals(chrom)) {
+                if (chr2 != null && chr2.equals(chrom)) {
                     // will either have END2 or SVLEN - check which is in INFO and use that for second breakpoint
                     if (svLen > 0) {
                         intervals.add(new SVSegment(annotateAs,
@@ -804,15 +816,16 @@ public final class SVAnnotate extends VariantWalker {
                     } else if (end2 != pos) {
                         intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, end2, end2)));
                     }
-                } else if (!chr2.equals("NONE")) {
+                } else if (chr2 != null) {
                     // BND has CHR2 field and it is not equal to the main contig
                     intervals.add(new SVSegment(annotateAs, new SimpleInterval(chr2, end2, end2))); // if no end2 would just add duplicate segment which is ok
                 } // TODO: else parse ALT field? Or just annotate this position and annotate the rest in the other records?
             }
         } else if (overallSVType.equals(StructuralVariantAnnotationType.INS)) {
-            intervals.add(new SVSegment(overallSVType, new SimpleInterval(chrom, pos, pos + 1)));
+            intervals = Collections.singletonList(new SVSegment(overallSVType,
+                    new SimpleInterval(chrom, pos, pos + 1)));
         } else {
-            intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));
+            intervals = Collections.singletonList(new SVSegment(overallSVType, new SimpleInterval(variant)));
         }
 
         return intervals;
@@ -854,12 +867,10 @@ public final class SVAnnotate extends VariantWalker {
         final boolean noCodingAnnotations = variantConsequenceDict.isEmpty();
 
         // then annotate promoter overlaps and non-coding feature overlaps
-        boolean anyPromoterOverlaps = false;
         if (promoterIntervalTree != null) {
             for (final SVSegment svSegment : svSegments) {
-                anyPromoterOverlaps = anyPromoterOverlaps ||
-                        annotatePromoterOverlaps(svSegment.getInterval(), variantConsequenceDict, promoterIntervalTree,
-                                contigNameToID);
+                annotatePromoterOverlaps(svSegment.getInterval(), variantConsequenceDict, promoterIntervalTree,
+                        contigNameToID);
             }
         }
 
@@ -871,7 +882,8 @@ public final class SVAnnotate extends VariantWalker {
         }
 
         // annotate nearest TSS for intergenic variants with no promoter overlaps
-        if (transcriptionStartSiteTree != null && !anyPromoterOverlaps && noCodingAnnotations) {
+        if (transcriptionStartSiteTree != null && !variantConsequenceDict.containsKey(GATKSVVCFConstants.PROMOTER) &&
+                noCodingAnnotations) {
             for (SVSegment svSegment : svSegments) {
                 annotateNearestTranscriptionStartSite(svSegment.getInterval(), variantConsequenceDict,
                         transcriptionStartSiteTree, contigNameToID);

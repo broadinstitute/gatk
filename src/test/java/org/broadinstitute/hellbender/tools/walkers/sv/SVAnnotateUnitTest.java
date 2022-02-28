@@ -112,8 +112,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
 
     // Toy GTF contains toy genes
     private FeatureDataSource<GencodeGtfGeneFeature> loadToyGTFSource() {
-        final File toyGTFFile = new File(getToolTestDataDir() + "unittest.gtf");
-        return new FeatureDataSource<>(toyGTFFile);
+        final File TOY_GTF_FILE = new File(getToolTestDataDir() + "unittest.gtf");
+        return new FeatureDataSource<>(TOY_GTF_FILE);
     }
 
     // Load toy GTF and check for expected promoter and TSS intervals
@@ -324,7 +324,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
     // create list of SV segments with SAME SVTYPE - convenience function for testing getSVSegments
     private List<SVAnnotate.SVSegment> createListOfSVSegments(final SVAnnotate.StructuralVariantAnnotationType svType,
                                                               final SimpleInterval[] intervals) {
-        final List<SVAnnotate.SVSegment> segments = new ArrayList<>();
+        final List<SVAnnotate.SVSegment> segments = new ArrayList<>(intervals.length);
         for (final SimpleInterval interval : intervals) {
             segments.add(new SVAnnotate.SVSegment(svType, interval));
         }
