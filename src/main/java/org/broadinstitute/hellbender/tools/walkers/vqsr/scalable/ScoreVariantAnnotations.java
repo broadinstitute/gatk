@@ -260,6 +260,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 ? altAlleles.stream().map(a -> isSNPIterator.next()).collect(Collectors.toList())
                 : Collections.singletonList(isSNPIterator.next());
         final boolean isSNPMax = isSNP.get(scoreIndex);
+        builder.attribute("snp", isSNPMax);
+
         final Function<Double, Double> truthSensitivityConverter = isSNPMax ? snpTruthSensitivityConverter : indelTruthSensitivityConverter;
         if (truthSensitivityConverter != null) {
             final double truthSensitivity = truthSensitivityConverter.apply(score);
@@ -288,6 +290,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
         hInfo.addAll(getDefaultToolVCFHeaderLines());
         // TODO extract
+        hInfo.add(new VCFInfoHeaderLine("snp", 1, VCFHeaderLineType.Flag, "This site was considered a SNP during filtering"));
         hInfo.addAll(sortedLabels.stream()
                 .map(l -> new VCFInfoHeaderLine(l, 1, VCFHeaderLineType.Flag, String.format("This site was labeled as %s according to resources", l)))
                 .collect(Collectors.toList()));
