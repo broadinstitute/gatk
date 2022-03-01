@@ -269,24 +269,15 @@ public final class SVAnnotate extends VariantWalker {
     // Container class for all SVIntervalTree trees created from the GTF
     @VisibleForTesting
     protected static final class GTFIntervalTreesContainer {
-        private final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree;
-        private final SVIntervalTree<String> promoterIntervalTree;
-        private final SVIntervalTree<String> transcriptionStartSiteTree;
+        protected final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree;
+        protected final SVIntervalTree<String> promoterIntervalTree;
+        protected final SVIntervalTree<String> transcriptionStartSiteTree;
         private GTFIntervalTreesContainer(final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree,
                                           final SVIntervalTree<String> promoterIntervalTree,
                                           final SVIntervalTree<String> transcriptionStartSiteTree) {
             this.gtfIntervalTree = gtfIntervalTree;
             this.promoterIntervalTree = promoterIntervalTree;
             this.transcriptionStartSiteTree = transcriptionStartSiteTree;
-        }
-        public SVIntervalTree<GencodeGtfTranscriptFeature> getGtfIntervalTree() {
-            return gtfIntervalTree;
-        }
-        public SVIntervalTree<String> getPromoterIntervalTree() {
-            return promoterIntervalTree;
-        }
-        public SVIntervalTree<String> getTranscriptionStartSiteTree() {
-            return transcriptionStartSiteTree;
         }
     }
 
@@ -300,9 +291,9 @@ public final class SVAnnotate extends VariantWalker {
         if (proteinCodingGTFFile != null) {
             final FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource = new FeatureDataSource<>(proteinCodingGTFFile);
             final GTFIntervalTreesContainer gtfTrees = buildIntervalTreesFromGTF(proteinCodingGTFSource, sequenceDictionary, promoterWindow);
-            gtfIntervalTree = gtfTrees.getGtfIntervalTree();
-            promoterIntervalTree = gtfTrees.getPromoterIntervalTree();
-            transcriptionStartSiteTree = gtfTrees.getTranscriptionStartSiteTree();
+            gtfIntervalTree = gtfTrees.gtfIntervalTree;
+            promoterIntervalTree = gtfTrees.promoterIntervalTree;
+            transcriptionStartSiteTree = gtfTrees.transcriptionStartSiteTree;
         }
 
         // Load noncoding BED file into memory as interval tree of noncoding elements if BED provided

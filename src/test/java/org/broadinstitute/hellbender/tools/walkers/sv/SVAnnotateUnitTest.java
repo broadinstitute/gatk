@@ -290,7 +290,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
 
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
                 SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, promoterWindow);
-        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.getGtfIntervalTree();
+        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
 
         final String[] cpxIntervalStrings = cpxIntervalsString.split(",");
         for (String cpxIntervalString : cpxIntervalStrings) {
@@ -629,9 +629,9 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
                 SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, promoterWindow);
-        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.getGtfIntervalTree();
-        final SVIntervalTree<String> promoterIntervalTree = gtfTrees.getPromoterIntervalTree();
-        final SVIntervalTree<String> transcriptionStartSiteTree = gtfTrees.getTranscriptionStartSiteTree();
+        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
+        final SVIntervalTree<String> promoterIntervalTree = gtfTrees.promoterIntervalTree;
+        final SVIntervalTree<String> transcriptionStartSiteTree = gtfTrees.transcriptionStartSiteTree;
         final FeatureDataSource<FullBEDFeature> tinyNoncodingBedSource = loadTinyNoncodingBEDSource();
         final SVIntervalTree<String> nonCodingIntervalTree =
                 SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, sequenceDictionary);
@@ -677,7 +677,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
                 SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, 100);
-        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.getGtfIntervalTree();
+        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
         // check size to ensure contigs not included in the map are excluded from the interval tree successfully
         Assert.assertEquals(nonCodingIntervalTree.size(), expectedBEDTreeSize);
         Assert.assertEquals(gtfIntervalTree.size(), expectedTranscriptTreeSize);
