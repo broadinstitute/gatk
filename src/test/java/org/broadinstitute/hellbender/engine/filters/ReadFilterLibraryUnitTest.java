@@ -826,12 +826,14 @@ public final class ReadFilterLibraryUnitTest {
         final GATKRead pairedRead = simpleGoodRead(header);
         pairedRead.setMateIsUnmapped();
         Assert.assertFalse(MATE_DISTANT.test(pairedRead), "MATE_DISTANT " + pairedRead.toString());
-        pairedRead.setMatePosition(pairedRead.getContig(), pairedRead.getStart() + MateDistantReadFilter.mateTooDistantLength - 1);
+        pairedRead.setMatePosition(pairedRead.getContig(), pairedRead.getStart() + MateDistantReadFilter.DEFAULT_MATE_TOO_DISTANT_THRESHOLD - 1);
         Assert.assertFalse(MATE_DISTANT.test(pairedRead), "MATE_DISTANT " + pairedRead.toString());
-        pairedRead.setMatePosition(pairedRead.getContig(), pairedRead.getStart() + MateDistantReadFilter.mateTooDistantLength);
+        pairedRead.setMatePosition(pairedRead.getContig(), pairedRead.getStart() + MateDistantReadFilter.DEFAULT_MATE_TOO_DISTANT_THRESHOLD);
         Assert.assertTrue(MATE_DISTANT.test(pairedRead), "MATE_DISTANT " + pairedRead.toString());
         pairedRead.setMatePosition("differentContig", pairedRead.getStart());
         Assert.assertTrue(MATE_DISTANT.test(pairedRead), "MATE_DISTANT " + pairedRead.toString());
+        pairedRead.setMatePosition(pairedRead.getContig(), pairedRead.getStart() + MateDistantReadFilter.DEFAULT_MATE_TOO_DISTANT_THRESHOLD + 1);
+        Assert.assertFalse(new MateDistantReadFilter(MateDistantReadFilter.DEFAULT_MATE_TOO_DISTANT_THRESHOLD + 10).test(pairedRead), "MATE_DISTANT " + pairedRead.toString());
     }
 
     @Test
