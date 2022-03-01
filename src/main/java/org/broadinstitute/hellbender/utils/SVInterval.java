@@ -106,7 +106,10 @@ public class SVInterval implements Comparable<SVInterval> {
     public int getEnd() { return end; }
 
     /**
-     * Assumes half-open, 1-based interval being converted to closed, 1-based interval. Conversion: end - 1
+     * Converts SVInterval to SimpleInterval
+     * Assumes half-open, 1-based SVInterval being converted to closed, 1-based SimpleInterval. Conversion: end - 1
+     * @param sequenceDictionary - SAMSequenceDictionary to map contig ID to name
+     * @return - SimpleInterval representing the SVInterval
      */
     public SimpleInterval toSimpleInterval(final SAMSequenceDictionary sequenceDictionary) {
         final Integer contigID = this.getContig();  // non-negative

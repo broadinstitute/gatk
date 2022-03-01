@@ -66,6 +66,7 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
             new SVInterval(2, 1, 2)
     };
 
+    // initialize toy TSS SVIntervalTree to test nearest TSS annotation
     private static SVIntervalTree<String> initTree() {
         final SVIntervalTree<String> tree = new SVIntervalTree<>();
         final String[] genes = {"A", "B", "C", "D", "E"};
@@ -112,7 +113,10 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         }
     }
 
-    // Toy GTF contains toy genes
+    /**
+     * Load toy GTF containing toy genes into FeatureDataSource
+     * @return - toy GTF loaded into FeatureDataSource
+     */
     private FeatureDataSource<GencodeGtfGeneFeature> loadToyGTFSource() {
         final File TOY_GTF_FILE = new File(getToolTestDataDir() + "unittest.gtf");
         return new FeatureDataSource<>(TOY_GTF_FILE);
@@ -153,7 +157,10 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
             GATKSVVCFConstants.COPY_GAIN,
             GATKSVVCFConstants.TSS_DUP);
 
-    // Load only the first transcript from the first gene in the toy GTF
+    /**
+     * Get the first transcript from the first gene in the toy GTF
+     * @return - first transcript from the first gene in the toy GTF
+     */
     private GencodeGtfTranscriptFeature loadToyGtfTranscript() {
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource();
         // get only first gene, EMMA1, which has only one transcript
@@ -323,7 +330,12 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         Assert.assertEquals(SVAnnotate.sortVariantConsequenceDict(before), expectedAfter);
     }
 
-    // create list of SV segments with SAME SVTYPE - convenience function for testing getSVSegments
+    /**
+     * Create list of SV segments with SAME SVTYPE - convenience function for testing getSVSegments
+     * @param svType - SV type for all segments
+     * @param intervals - list of intervals
+     * @return - list of SV segments with provided SV type, one for each interval
+     */
     private List<SVAnnotate.SVSegment> createListOfSVSegments(final SVAnnotate.StructuralVariantAnnotationType svType,
                                                               final SimpleInterval[] intervals) {
         final List<SVAnnotate.SVSegment> segments = new ArrayList<>(intervals.length);
@@ -333,7 +345,12 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         return segments;
     }
 
-    // Assert two lists of SVAnnotate.SVSegment objects are equal in contents
+    /**
+     * Assert two lists of SVAnnotate.SVSegment objects are equal in contents
+     * Lists must be same size and contain equal SVSegments in the same order
+     * @param segmentsA - first list of SVSegments to compare
+     * @param segmentsB - second list of SVSegments to compare
+     */
     private void assertSegmentListEqual(final List<SVAnnotate.SVSegment> segmentsA,
                                         final List<SVAnnotate.SVSegment> segmentsB) {
         final int lengthA = segmentsA.size();
@@ -349,7 +366,9 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         }
     }
 
-    // Utility function to create a VariantContext object with relevant attributes for testing
+    /**
+     * Utility function to create a VariantContext object with relevant attributes for testing
+     */
     private VariantContext createVariantContext(final String chrom, final int pos, final int end, final String chr2,
                                                 final Integer end2, final String ref, final String alt,
                                                 final Integer svLen, final String strands, final String cpxType,
@@ -550,9 +569,14 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
                 expectedSVSegmentsWithBNDOverlap != null ? expectedSVSegmentsWithBNDOverlap : expectedSVSegments);
     }
 
-    // Utility function to create key -> value Map for each key,value in lists
-    // For testing INFO field annotations
-    // Visible for use in integration tests as well
+    /**
+     * Utility function to create key -> value Map for each key,value in lists
+     * For testing INFO field annotations
+     * Visible for use in integration tests as well
+     * @param keys - list of keys
+     * @param values - list of values
+     * @return - key -> value map for each key,value in input lists, paired based on order of lists
+     */
     protected static Map<String, Object> createAttributesMap(final List<String> keys, final List<Object> values) {
         final Map<String, Object> attributes = new HashMap<>();
         final int len = keys.size();
@@ -607,7 +631,11 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         };
     }
 
-    // Tiny noncoding BED file has a few noncoding elements to test noncoding annotation
+    /**
+     * Load tiny noncoding BED file into FeatureDataSource
+     * Tiny noncoding BED file has a few noncoding elements to test noncoding annotation
+     * @return - tiny noncoding BED file loaded into FeatureDataSource
+     */
     private FeatureDataSource<FullBEDFeature> loadTinyNoncodingBEDSource() {
         return new FeatureDataSource<>(getToolTestDataDir() + "noncoding.unittest.bed");
     }
@@ -644,6 +672,13 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         Assert.assertEquals(actualAttributes, expectedAttributes);
     }
 
+    /**
+     * Create synthetic SAMSequenceDictionary for provided contig list. Convenience function for testing.
+     * Visible for use in tests for other classes.
+     * @param contigs - list of contig names (Strings) in the desired order
+     * @return - SAMSequenceDictionary containing the provided contigs, in the provided order,
+     *          with a length of 100000 for each
+     */
     public static SAMSequenceDictionary createSequenceDictionary(final List<String> contigs) {
         final int toyContigLen = 100000;
         final int n = contigs.size();
@@ -681,8 +716,5 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         // check size to ensure contigs not included in the map are excluded from the interval tree successfully
         Assert.assertEquals(nonCodingIntervalTree.size(), expectedBEDTreeSize);
         Assert.assertEquals(gtfIntervalTree.size(), expectedTranscriptTreeSize);
-
-        createSequenceDictionary(Arrays.asList("chr1", "chr2", "chr3"));
-
     }
 }

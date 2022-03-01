@@ -306,17 +306,33 @@ public final class SVAnnotate extends VariantWalker {
         updateAndWriteHeader(header);
     }
 
+    /**
+     * Check if strand of transcript from GTF is negative
+     * @param transcript - protein-coding GTF transcript to check
+     * @return - boolean True if negative strand, False if positive
+     */
     @VisibleForTesting
     protected static boolean isNegativeStrand(final GencodeGtfTranscriptFeature transcript) {
         return transcript.getGenomicStrand().equals(Strand.decode("-"));
     }
 
+    /**
+     * Get transcription start site from GTF transcript: first (5') base of transcript
+     * @param transcript - protein-coding GTF transcript
+     * @return - int position of TSS on transcript (start of transcript if + strand, end if - strand)
+     */
     @VisibleForTesting
     protected static int getTranscriptionStartSite(final GencodeGtfTranscriptFeature transcript) {
         final boolean negativeStrand = isNegativeStrand(transcript);
         return negativeStrand ? transcript.getEnd() : transcript.getStart();  // GTF codec reassigns start to be earlier in contig;
     }
 
+    /**
+     * Get promoter interval for GTF transcript: user-defined window upstream (5') of TSS
+     * @param transcript - protein-coding GTF transcript
+     * @param promoterWindow - size of promoter window in bp
+     * @return - SimpleInterval representing promoter region of size promoterWindow upstream of TSS
+     */
     @VisibleForTesting
     protected static SimpleInterval getPromoterInterval(final GencodeGtfTranscriptFeature transcript,
                                                         final int promoterWindow) {
@@ -327,6 +343,12 @@ public final class SVAnnotate extends VariantWalker {
         return new SimpleInterval(transcript.getContig(), promoterLeft, promoterRight);
     }
 
+    /**
+     * Checks if a given variant overlaps the TSS of a given transcript
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param gtfTranscript - protein-coding GTF transcript
+     * @return - boolean True if variant overlaps TSS of transcript, False if not
+     */
     private static boolean variantOverlapsTranscriptionStartSite(final SimpleInterval variantInterval,
                                                                  final GencodeGtfTranscriptFeature gtfTranscript) {
         final int tss = getTranscriptionStartSite(gtfTranscript);
@@ -334,11 +356,11 @@ public final class SVAnnotate extends VariantWalker {
     }
 
     /**
-     * builds transcript, TSS, and promoter interval trees from protein-coding GTF
+     * Builds transcript, TSS, and promoter interval trees from protein-coding GTF
      * @param proteinCodingGTFSource - GTF as FeatureDataSource
      * @param sequenceDictionary - SAMSequenceDictionary for VCF
      * @param promoterWindow - size of promoter window in bp
-     * @return - transcript, promoter, and TSS interval trees for annotation
+     * @return - container class packaging transcript, promoter, and TSS interval trees for annotation
      */
     @VisibleForTesting
     protected static GTFIntervalTreesContainer buildIntervalTreesFromGTF(final FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource,
@@ -364,6 +386,12 @@ public final class SVAnnotate extends VariantWalker {
         return new GTFIntervalTreesContainer(gtfIntervalTree, promoterIntervalTree, transcriptionStartSiteTree);
     }
 
+    /**
+     * Builds interval tree of noncoding elements to annotate from BED file input
+     * @param BEDSource - noncoding element BED file as FeatureDataSource
+     * @param sequenceDictionary - SAMSequenceDictionary for VCF
+     * @return - SVIntervalTree of nonocoding elements for annotation
+     */
     @VisibleForTesting
     protected static SVIntervalTree<String> buildIntervalTreeFromBED(final FeatureDataSource<FullBEDFeature> BEDSource,
                                                             final SAMSequenceDictionary sequenceDictionary) {
@@ -379,6 +407,10 @@ public final class SVAnnotate extends VariantWalker {
         return BEDIntervalTree;
     }
 
+    /**
+     * Adds SV functional annotation INFO keys to VCF header
+     * @param header - starting VCF header to which to add INFO keys
+     */
     private void addAnnotationInfoKeysToHeader(final VCFHeader header) {
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.LOF, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) on which the SV is predicted to have a loss-of-function effect."));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.INT_EXON_DUP, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Gene(s) on which the SV is predicted to result in intragenic exonic duplication without breaking any coding sequences."));
@@ -399,17 +431,33 @@ public final class SVAnnotate extends VariantWalker {
 
     }
 
+    /**
+     * Updates VCF header with SV annotation INFO keys and writes header
+     * @param header - starting VCF header
+     */
     private void updateAndWriteHeader(final VCFHeader header) {
         addAnnotationInfoKeysToHeader(header);
         vcfWriter.writeHeader(header);
     }
 
+    /**
+     * Checks if a given variant interval spans (contains) a given feature interval
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param featureInterval - SimpleInterval representing feature (ie. transcript, noncoding element)
+     * @return - boolean True if variant spans feature, False otherwise
+     */
     @VisibleForTesting
     protected static boolean variantSpansFeature(final SimpleInterval variantInterval,
                                                  final SimpleInterval featureInterval) {
         return variantInterval.contains(featureInterval);
     }
 
+    /**
+     * Counts variant endpoints (breakends) inside feature interval
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param featureInterval - SimpleInterval representing feature (ie. transcript, noncoding element)
+     * @return - int count of variant breakends that fall within the feature interval (0, 1, or 2)
+     */
     @VisibleForTesting
     protected static int countBreakendsInsideFeature(final SimpleInterval variantInterval,
                                                      final SimpleInterval featureInterval) {
@@ -422,6 +470,12 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
+    /**
+     * Adds key:value pair to provided variant consequence dictionary
+     * @param variantConsequenceDict - map of variant consequence -> feature name
+     * @param key - key (consequence) to add
+     * @param value - value (feature name) to add
+     */
     @VisibleForTesting
     protected static void updateVariantConsequenceDict(final Map<String, Set<String>> variantConsequenceDict,
                                                        final String key, final String value) {
@@ -429,6 +483,13 @@ public final class SVAnnotate extends VariantWalker {
         variantConsequenceDict.get(key).add(value);
     }
 
+    /**
+     * Common functionality underlying protein-coding consequence annotation for insertion, deletion, breakend, or
+     * inversion SVs
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param gtfTranscript - protein-coding GTF transcript
+     * @return - preliminary consequence of the variant on the transcript
+     */
     private static String getSimpleConsequence(final SimpleInterval variantInterval,
                                                final GencodeGtfTranscriptFeature gtfTranscript) {
         final List<GencodeGtfFeature> gtfFeaturesForTranscript = gtfTranscript.getAllFeatures();
@@ -446,12 +507,24 @@ public final class SVAnnotate extends VariantWalker {
         return consequence;
     }
 
+    /**
+     * Get consequence of insertion variant on transcript
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param gtfTranscript - protein-coding GTF transcript
+     * @return - consequence of insertion variant on transcript
+     */
     @VisibleForTesting
     protected static String annotateInsertion(final SimpleInterval variantInterval,
                                               final GencodeGtfTranscriptFeature gtfTranscript) {
         return getSimpleConsequence(variantInterval, gtfTranscript);
     }
 
+    /**
+     * Get consequence of deletion variant on transcript
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param gtfTranscript - protein-coding GTF transcript
+     * @return - consequence of deletion variant on transcript
+     */
     @VisibleForTesting
     protected static String annotateDeletion(final SimpleInterval variantInterval,
                                              final GencodeGtfTranscriptFeature gtfTranscript) {
@@ -463,6 +536,12 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
+    /**
+     * Get consequence of duplication variant on transcript
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param gtfTranscript - protein-coding GTF transcript
+     * @return - consequence of duplication variant on transcript
+     */
     @VisibleForTesting
     protected static String annotateDuplication(final SimpleInterval variantInterval,
                                                 final GencodeGtfTranscriptFeature gtfTranscript) {
@@ -513,14 +592,14 @@ public final class SVAnnotate extends VariantWalker {
     }
 
     /**
-     * Annotate variant consequence for SV of type CNV (multiallelic copy number variant).
+     * Get consequence for SV of type CNV (multiallelic copy number variant).
      * The consequence may depend on the individual's copy number at the site, so the variant is annotated as if it were
      * a biallelic duplication and then certain consequence categories are reclassified to PREDICTED_MSV_EXON_OVERLAP
-     * @param variantInterval - interval covered by the CNV
-     * @param gtfTranscript - overlapping transcript
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param gtfTranscript - protein-coding GTF transcript
      * @param MSVExonOverlapClassifications - consequence categories from annotating a duplication that should be
      *                                      reclassified to PREDICTED_MSV_EXON_OVERLAP for a CNV
-     * @return
+     * @return - consequence of CNV on transcript
      */
     @VisibleForTesting
     protected static String annotateCopyNumberVariant(final SimpleInterval variantInterval,
@@ -534,6 +613,13 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
+    /**
+     * Get consequence of inversion variant on transcript
+     * Shares common logic (simple consequence + TSS overlap -> LOF) and adds check for spanning inversions
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param gtfTranscript - protein-coding GTF transcript
+     * @return - consequence of inversion variant on transcript
+     */
     @VisibleForTesting
     protected static String annotateInversion(final SimpleInterval variantInterval,
                                               final GencodeGtfTranscriptFeature gtfTranscript) {
@@ -545,13 +631,28 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
+    /**
+     * Get consequence of translocation on transcript
+     * Only called with transcripts that overlap the translocation variant, so consequence is automatically LOF
+     * because any translocation that breaks a gene is predicted to cause loss of function of that gene.
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param gtfTranscript - protein-coding GTF transcript
+     * @return - consequence of translocation on transcript
+     */
     @VisibleForTesting
     protected static String annotateTranslocation(final SimpleInterval variantInterval,
                                                   final GencodeGtfTranscriptFeature gtfTranscript) {
-        // already checked for transcript overlap, and if a translocation breakpoint falls inside a gene it's automatically LOF
         return GATKSVVCFConstants.LOF;
     }
 
+    /**
+     * Get consequence of breakend on transcript
+     * Shares common logic with deletions (simple consequence + TSS overlap check) but low-confidence BNDs should not
+     * be annotated as LOF, so LOF consequences are changed to BREAKEND_EXONIC
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param gtfTranscript - protein-coding GTF transcript
+     * @return - consequence of breakend on transcript
+     */
     @VisibleForTesting
     protected static String annotateBreakend(final SimpleInterval variantInterval,
                                              final GencodeGtfTranscriptFeature gtfTranscript) {
@@ -562,6 +663,14 @@ public final class SVAnnotate extends VariantWalker {
         return consequence;
     }
 
+    /**
+     * Add consequence of structural variant on an overlapping transcript to consequence dictionary for variant
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param svType - SV type
+     * @param transcript - protein-coding GTF transcript
+     * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
+     * @param MSVExonOverlapClassifications - consequence classes to reclassify for CNVs
+     */
     @VisibleForTesting
     protected static void annotateTranscript(final SimpleInterval variantInterval,
                                              final StructuralVariantAnnotationType svType,
@@ -602,7 +711,11 @@ public final class SVAnnotate extends VariantWalker {
     }
 
     /**
-     Annotate promoter overlaps and return a boolean: true if there are any promoter overlaps, false if not
+     * Add annotations for any overlapping promoters for a variant to its consequence dictionary
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
+     * @param promoterIntervalTree - interval tree of promoters from GTF to find promoters overlapping variant
+     * @param sequenceDictionary - SAMSequenceDictionary from VCF
      */
     private static void annotatePromoterOverlaps(final SimpleInterval variantInterval,
                                                     final Map<String, Set<String>> variantConsequenceDict,
@@ -621,6 +734,13 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
+    /**
+     * Add annotations for any overlapping noncoding elements for a variant to its consequence dictionary
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
+     * @param nonCodingIntervalTree - interval tree of noncoding elements from BED to find features overlapping variant
+     * @param sequenceDictionary - SAMSequenceDictionary from VCF
+     */
     private static void annotateNonCodingOverlaps(final SimpleInterval variantInterval,
                                                   final Map<String, Set<String>> variantConsequenceDict,
                                                   final SVIntervalTree<String> nonCodingIntervalTree,
@@ -636,7 +756,14 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
-
+    /**
+     * Add nearest TSS annotation to a variant's consequence dictionary
+     * To be run on intergenic variants that don't overlap promoters
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
+     * @param transcriptionStartSiteTree - interval tree of TSS locations from GTF to find nearest TSS to variant
+     * @param sequenceDictionary - SAMSequenceDictionary from VCF
+     */
     @VisibleForTesting
     protected static void annotateNearestTranscriptionStartSite(final SimpleInterval variantInterval,
                                                                 final Map<String, Set<String>> variantConsequenceDict,
@@ -659,11 +786,13 @@ public final class SVAnnotate extends VariantWalker {
                     (distanceBefore < distanceAfter) ? nearestBefore.getValue() : nearestAfter.getValue();
             updateVariantConsequenceDict(variantConsequenceDict, GATKSVVCFConstants.NEAREST_TSS, nearestTSSGeneName);
         }
-
-
-        // TODO: return consequence instead? easier for unit tests...
     }
 
+    /**
+     * Get SV type for variant from ALT field of VCF
+     * @param variant - VCF record
+     * @return - SV type determined from ALT field of VCF
+     */
     @VisibleForTesting
     protected static StructuralVariantAnnotationType getSVType(final VariantContext variant) {
         if (variant.getAlternateAlleles().size() > 1) {
@@ -690,6 +819,15 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
+    /**
+     * Add protein-coding annotations for any transcripts overlapping the variant to the variant consequence dictionary
+     * @param variantInterval - SimpleInterval representing structural variant
+     * @param svType - SV type
+     * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
+     * @param MSVExonOverlapClassifications - consequence classes to reclassify for CNVs
+     * @param sequenceDictionary - SAMSequenceDictionary from VCF
+     * @param gtfIntervalTree - interval tree of protein-coding transcripts from GTF to find overlappers with variant
+     */
     @VisibleForTesting
     protected static void annotateGeneOverlaps(final SimpleInterval variantInterval,
                                                final StructuralVariantAnnotationType svType,
@@ -705,6 +843,12 @@ public final class SVAnnotate extends VariantWalker {
         }
     }
 
+    /**
+     * Parse one interval string from CPX_INTERVALS INFO field into an SVSegment representing the SV type and
+     * interval of one of the components of the complex event
+     * @param cpxInterval - one element from CPX_INTERVALS list, a string representing one component of complex SV
+     * @return - SVSegment representing one component of the complex SV (type and interval)
+     */
     @VisibleForTesting
     protected static SVSegment parseCPXIntervalString(final String cpxInterval) {
         final String[] parsed = cpxInterval.split("_");
@@ -713,6 +857,17 @@ public final class SVAnnotate extends VariantWalker {
         return new SVSegment(svTypeForInterval, interval);
     }
 
+    /**
+     * Get SV type to use for annotation for a breakend VCF record
+     * Breakend may represent BND, CTX, or DEL / DUP if the user specifies {@value MAX_BND_LEN_NAME}
+     * @param variant - SimpleInterval representing structural variant
+     * @param complexType - type of complex event - CPX_TYPE INFO field value
+     * @param maxBreakendLen - Max size of BND in bp to annotate as DEL / DUP if applicable
+     * @param svLen - SV length in bp - SVLEN INFO field value
+     * @param chrom - chromosome where the variant is located - CHROM field of VCF
+     * @param chr2 - second chromosome for the variant - CHR2 INFO field value
+     * @return - SV type to use for annotation of breakend record
+     */
     private static StructuralVariantAnnotationType getAnnotationTypeForBreakend(final VariantContext variant,
                                                                                 final String complexType,
                                                                                 final int maxBreakendLen,
@@ -735,6 +890,17 @@ public final class SVAnnotate extends VariantWalker {
         return StructuralVariantAnnotationType.BND;
     }
 
+    /**
+     * Get list of SVSegments (type and interval) to annotate as one variant for a given VCF record
+     * For simple variants, the list will contain one element representing the SV. Exceptions include:
+     * - reciprocal translocations yield two positions (one on each chromosome)
+     * - complex SVs yield multiple segments, one for each component of the complex event
+     * - breakend records containing two breakpoints will yield two positions
+     * @param variant - VCF record
+     * @param overallSVType - SV type determined from ALT field of VCF record
+     * @param maxBreakendLen - Max size of BND in bp to annotate as DEL / DUP if applicable
+     * @return - list of SVSegments (type and interval) to annotate as part of the variant
+     */
     @VisibleForTesting
     protected static List<SVSegment> getSVSegments(final VariantContext variant,
                                                    final StructuralVariantAnnotationType overallSVType,
@@ -804,7 +970,12 @@ public final class SVAnnotate extends VariantWalker {
         return intervals;
     }
 
-    // For each annotation INFO key, sort the list of genes
+    /**
+     * Create a copy of the variant consequence dictionary in which the feature names for each consequence are sorted
+     * in alphabetical order
+     * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
+     * @return - a consequence -> feature name map in which the feature names are sorted alphabetically
+     */
     @VisibleForTesting
     protected static Map<String, Object> sortVariantConsequenceDict(final Map<String,Set<String>> variantConsequenceDict) {
         final Map<String, Object> sorted = new HashMap<>();
@@ -816,6 +987,19 @@ public final class SVAnnotate extends VariantWalker {
         return sorted;
     }
 
+    /**
+     * Create a consequence -> feature name map and add all annotations for protein-coding, promoter, nearest TSS,
+     * and noncoding consequences for a variant
+     * @param variant - VCF record
+     * @param gtfIntervalTree - interval tree of protein-coding transcripts from GTF to find overlappers with variant
+     * @param promoterIntervalTree - interval tree of promoters from GTF to find promoters overlapping variant
+     * @param transcriptionStartSiteTree - interval tree of TSS locations from GTF to find nearest TSS to variant
+     * @param nonCodingIntervalTree - interval tree of noncoding elements from BED to find features overlapping variant
+     * @param MSVExonOverlapClassifications - consequence classes to reclassify for CNVs
+     * @param sequenceDictionary - SAMSequenceDictionary from VCF
+     * @param maxBreakendLen - Max size of BND in bp to annotate as DEL / DUP if applicable
+     * @return - map of consequence -> feature name containing all annotations for the variant
+     */
     @VisibleForTesting
     protected static Map<String, Object> annotateStructuralVariant(final VariantContext variant,
                                                               final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree,

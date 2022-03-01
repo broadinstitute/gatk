@@ -111,6 +111,13 @@ public final class SVUtils {
         }
     }
 
+    /**
+     * Get numeric contig ID from string contig name based on SAMSequenceDictionary
+     * @throws IllegalArgumentException if contig name is not in sequence dictionary
+     * @param contigName - string version of contig name
+     * @param sequenceDictionary - SAMSequenceDictionary to map from name to ID
+     * @return - Integer contig ID
+     */
     public static Integer getContigIDFromName(final String contigName, final SAMSequenceDictionary sequenceDictionary) {
         final Integer contigID = sequenceDictionary.getSequenceIndex(contigName);
         if (contigID == -1) {
@@ -121,16 +128,15 @@ public final class SVUtils {
 
 
     /**
-     * Converts locatable (uses 1-based, closed intervals) to 1-based half-open SVInterval. Conversion: end + 1
+     * Converts locatable (uses 1-based, closed intervals) to SVInterval (1-based half-open). Conversion: end + 1
+     * @param loc - Locatable object (uses 1-based, closed intervals) to convert
+     * @param sequenceDictionary - SAMSequenceDictionary to map to numeric contig ID
+     * @return - SVInterval representing the same interval as the locatable, converted to 1-based half-open
      */
     public static SVInterval locatableToSVInterval(final Locatable loc,
                                                    final SAMSequenceDictionary sequenceDictionary) {
-        try {
-            final Integer contigID = getContigIDFromName(loc.getContig(), sequenceDictionary);
-            return new SVInterval(contigID, loc.getStart(), loc.getEnd() + 1);
-        } catch (NullPointerException e) {
-            throw new IllegalArgumentException("Contig " + loc.getContig() + " not in provided contig ID to name map");
-        }
+        final Integer contigID = getContigIDFromName(loc.getContig(), sequenceDictionary);
+        return new SVInterval(contigID, loc.getStart(), loc.getEnd() + 1);
     }
 
     // =================================================================================================================
