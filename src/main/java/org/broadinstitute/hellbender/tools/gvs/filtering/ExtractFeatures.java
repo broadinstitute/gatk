@@ -35,7 +35,7 @@ public class ExtractFeatures extends ExtractTool {
     private ExtractFeaturesEngine engine;
 
     @Argument(
-            fullName = "alt-allele-table",
+            fullName = "alt-allele-table", // TODO does this still need to be fq if we will have the dataset name now? Do we even need it at all? Isn't this always the same table name?
             doc = "Fully qualified name of the table where the alternate allele info is",
             optional = false
     )
@@ -113,6 +113,7 @@ public class ExtractFeatures extends ExtractTool {
 
         engine = new ExtractFeaturesEngine(
             projectID,
+            datasetID,
             vcfWriter,
             header,
             annotationEngine,
