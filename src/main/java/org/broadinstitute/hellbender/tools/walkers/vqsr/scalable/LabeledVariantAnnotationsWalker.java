@@ -247,7 +247,8 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     }
 
     // TODO maybe clean up all this Triple and metadata business with a class?
-    void addExtractedVariantToData(final VariantContext variant,
+    void addExtractedVariantToData(final LabeledVariantAnnotationsData data,
+                                   final VariantContext variant,
                                    final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
         data.add(variant,
                 metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
