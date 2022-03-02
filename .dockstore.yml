@@ -89,9 +89,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_split_intervals_part_2
-         - kc_cluster_vqsr
-         - kc_quoting_bug
+         - rc-split-intervals-odd
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -120,9 +118,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_rescattering_wf
-         - rc_add_dropstate_extract_wdl
-         - kc_splitter
+         - rc-split-intervals-odd
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -177,7 +173,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_cohort_wdl_fixes
+         - rc-split-intervals-odd
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
