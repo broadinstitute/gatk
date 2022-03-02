@@ -22,6 +22,22 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
     }
 
     @Test
+    public void test1kgp50ExomesAllUnlabeled() {
+        final String[] arguments = {
+                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.annot.hdf5",
+                "--unlabeled-annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.unlabeled.annot.hdf5",
+                "--truth-sensitivity-threshold", "0.95",
+                "-O", "/home/slee/working/vqsr/scalable/train-test/test.all-unlabeled",
+                "--python-script", PYTHON_SCRIPT,
+                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
+                "--mode", "SNP",
+                "--mode", "INDEL",
+                "--verbosity", "INFO"
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
     public void test1kgp50ExomesSNP() {
         final String[] arguments = {
                 "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.annot.hdf5",

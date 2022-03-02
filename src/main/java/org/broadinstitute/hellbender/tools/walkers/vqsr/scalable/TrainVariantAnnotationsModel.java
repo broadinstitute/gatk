@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.collect.Streams;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -44,11 +45,18 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
     private static final String TRAINING_SCORES_HDF5_SUFFIX = ".trainingScores.hdf5";
     private static final String TRUTH_SCORES_HDF5_SUFFIX = ".truthScores.hdf5";
+    private static final String UNLABELED_SCORES_HDF5_SUFFIX = ".unlabeledScores.hdf5";
 
     @Argument(
             fullName = "annotations-hdf5",
             doc = "HDF5 file containing annotations extracted with ExtractVariantAnnotations.")
     private File inputAnnotationsFile;
+
+    @Argument(
+            fullName = "unlabeled-annotations-hdf5",
+            optional = true,
+            doc = "HDF5 file containing annotations extracted with ExtractVariantAnnotations.")
+    private File inputUnlabeledAnnotationsFile;
 
     @Argument(
             fullName = "python-script",
@@ -67,6 +75,14 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     private String outputPrefix;
 
     @Argument(
+            fullName = "truth-sensitivity-threshold",
+            doc = "",
+            optional = true,
+            minValue = 0.,
+            maxValue = 1.) // TODO
+    private Double truthSensitivityThreshold;
+
+    @Argument(
             fullName = "mode",
             doc = "Variant types for which to train models. Duplicate values will be ignored.",
             minElements = 1,
@@ -80,6 +96,10 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
         IOUtils.canReadFile(inputAnnotationsFile);
         IOUtils.canReadFile(hyperparametersJSONFile);
+
+        if (inputUnlabeledAnnotationsFile != null) {
+            IOUtils.canReadFile(inputUnlabeledAnnotationsFile);
+        }
 
         // TODO test output and fail early
 
@@ -115,6 +135,20 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         if (variantTypes.contains(VariantType.INDEL)) {
             final List<Boolean> isIndel = isSNP.stream().map(x -> !x).collect(Collectors.toList());
             doModelingAndScoringWork(annotationNames, allAnnotations, isTraining, isTruth, isIndel, "INDEL", ".indel");
+        }
+
+        // TODO extract, validate (including against truth-sensitivity-threshold and existence of truth scores)
+        if (inputUnlabeledAnnotationsFile != null && truthSensitivityThreshold != null) {
+            final List<String> unlabeledAnnotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputUnlabeledAnnotationsFile); // TODO validate
+            final double[][] allUnlabeledAnnotations = LabeledVariantAnnotationsData.readAnnotations(inputUnlabeledAnnotationsFile);
+            final List<Boolean> isUnlabeledSNP = LabeledVariantAnnotationsData.readLabel(inputUnlabeledAnnotationsFile, "snp");
+            if (variantTypes.contains(VariantType.SNP)) {
+                doNegativeModelingAndScoringWork(unlabeledAnnotationNames, allUnlabeledAnnotations, isUnlabeledSNP, "SNP", ".snp");
+            }
+            if (variantTypes.contains(VariantType.INDEL)) {
+                final List<Boolean> isUnlabeledIndel = isUnlabeledSNP.stream().map(x -> !x).collect(Collectors.toList());
+                doNegativeModelingAndScoringWork(unlabeledAnnotationNames, allUnlabeledAnnotations, isUnlabeledIndel, "INDEL", ".indel");
+            }
         }
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
@@ -156,6 +190,39 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         } else {
             throw new UserException.BadInput(String.format("Attempted to train %s model, " +
                     "but no suitable training sites were found in the provided annotations.", logMessageTag));
+        }
+    }
+
+    private void doNegativeModelingAndScoringWork(final List<String> unlabeledAnnotationNames,
+                                                  final double[][] allUnlabeledAnnotations,
+                                                  final List<Boolean> isVariantType,
+                                                  final String logMessageTag,
+                                                  final String outputPrefixTag) {
+        final int numVariantType = numPassingFilter(isVariantType);
+
+        if (numVariantType > 0) {
+            logger.info(String.format("Determining %s score threshold corresponding to truth-sensitivity threshold of %.4f ...", logMessageTag, truthSensitivityThreshold));
+            final File truthScoresFile = new File(outputPrefix + outputPrefixTag + TRUTH_SCORES_HDF5_SUFFIX);
+            final double[] truthScores = VariantAnnotationsScorer.readScores(truthScoresFile);
+            final double scoreThreshold = new Percentile(1 - truthSensitivityThreshold).evaluate(truthScores);
+
+            logger.info(String.format("Scoring %d unlabeled %s sites and retaining those below score threshold of %.4f...",
+                    numVariantType, logMessageTag, scoreThreshold));
+            final File unlabeledAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(unlabeledAnnotationNames, allUnlabeledAnnotations, isVariantType);
+            final File unlabeledScoresFile = score(unlabeledAnnotationsFile, outputPrefixTag, UNLABELED_SCORES_HDF5_SUFFIX);
+            final double[] unlabeledScores = VariantAnnotationsScorer.readScores(unlabeledScoresFile);
+            final List<Boolean> isNegativeTraining = Arrays.stream(unlabeledScores).boxed().map(s -> s < scoreThreshold).collect(Collectors.toList()); // length matches unlabeledAnnotationsFile
+            final int numNegativeTraining = numPassingFilter(isNegativeTraining);
+            final double[][] unlabeledAnnotations = LabeledVariantAnnotationsData.readAnnotations(unlabeledAnnotationsFile);
+
+            logger.info(String.format("Training %s negative model with %d unlabeled sites x %d annotations %s...",
+                    logMessageTag, numNegativeTraining, unlabeledAnnotationNames.size(), unlabeledAnnotationNames));
+            final File negativeTrainingAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(unlabeledAnnotationNames, unlabeledAnnotations, isNegativeTraining);
+            trainAndSerializeModel(negativeTrainingAnnotationsFile, outputPrefixTag + ".negative");
+            logger.info(String.format("%s negative model trained and serialized with output prefix \"%s\".", logMessageTag, outputPrefix + outputPrefixTag + ".negative"));
+        } else {
+            throw new UserException.BadInput(String.format("Attempted to train %s negative model, " +
+                    "but no suitable sites were found in the provided annotations.", logMessageTag));
         }
     }
 
