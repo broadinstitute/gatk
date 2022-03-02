@@ -82,7 +82,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     // TODO document, make enum (extract labeled vs. extract all)
     @Override
-    public boolean isExtractOnlyLabeledVariants() {
+    public boolean isExtractUnlabeledVariant() {
         return false;
     }
 
@@ -92,7 +92,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     }
 
     @Override
-    public void beforeOnTraversalStart() {
+    public void afterOnTraversalStart() {
 
         if (pythonScriptFile != null) {
             logger.info("Python script was provided, running in PYTHON mode...");

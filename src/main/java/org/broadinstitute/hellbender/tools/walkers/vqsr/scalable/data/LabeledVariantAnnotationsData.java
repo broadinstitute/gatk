@@ -52,8 +52,9 @@ public final class LabeledVariantAnnotationsData {
 
     public LabeledVariantAnnotationsData(final Collection<String> annotationNames,
                                          final Collection<String> labels,
-                                         final boolean useASAnnotations) {
-        this.data = new ArrayList<>(INITIAL_SIZE);
+                                         final boolean useASAnnotations,
+                                         final int initialSize) {
+        this.data = new ArrayList<>(initialSize);
         this.sortedAnnotationNames = ImmutableList.copyOf(annotationNames.stream().distinct().sorted().collect(Collectors.toList()));
         if (sortedAnnotationNames.size() != annotationNames.size()) {
             logger.warn(String.format("Ignoring duplicate annotations: %s.", Utils.getDuplicatedItems(annotationNames)));
@@ -63,6 +64,12 @@ public final class LabeledVariantAnnotationsData {
             logger.warn(String.format("Ignoring duplicate labels: %s.", Utils.getDuplicatedItems(labels)));
         }
         this.useASAnnotations = useASAnnotations;
+    }
+
+    public LabeledVariantAnnotationsData(final Collection<String> annotationNames,
+                                         final Collection<String> labels,
+                                         final boolean useASAnnotations) {
+        this(annotationNames, labels, useASAnnotations, INITIAL_SIZE);
     }
 
     public List<String> getSortedAnnotationNames() {
@@ -90,6 +97,22 @@ public final class LabeledVariantAnnotationsData {
                     vc, altAllelesPerDatum.get(0), variantTypePerDatum.get(0), labelsPerDatum.get(0), sortedAnnotationNames, useASAnnotations)));
         } else {
             data.add(IntStream.range(0, altAllelesPerDatum.size()).boxed()
+                    .map(i -> new LabeledVariantAnnotationsDatum(
+                            vc, altAllelesPerDatum.get(i), variantTypePerDatum.get(i), labelsPerDatum.get(i), sortedAnnotationNames, useASAnnotations))
+                    .collect(Collectors.toList()));
+        }
+    }
+
+    public void set(final int index,
+                    final VariantContext vc,
+                    final List<List<Allele>> altAllelesPerDatum,
+                    final List<VariantType> variantTypePerDatum,
+                    final List<TreeSet<String>> labelsPerDatum) {
+        if (!useASAnnotations) {
+            data.set(index, Collections.singletonList(new LabeledVariantAnnotationsDatum(
+                    vc, altAllelesPerDatum.get(0), variantTypePerDatum.get(0), labelsPerDatum.get(0), sortedAnnotationNames, useASAnnotations)));
+        } else {
+            data.set(index, IntStream.range(0, altAllelesPerDatum.size()).boxed()
                     .map(i -> new LabeledVariantAnnotationsDatum(
                             vc, altAllelesPerDatum.get(i), variantTypePerDatum.get(i), labelsPerDatum.get(i), sortedAnnotationNames, useASAnnotations))
                     .collect(Collectors.toList()));
