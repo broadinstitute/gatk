@@ -1,14 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.qc;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.util.PeekableIterator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
+import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -35,6 +38,12 @@ public class CompareSAMFiles extends GATKTool {
     @Argument(fullName = "mode")
     public String mode = "RIBOSOME";
 
+    @Argument(fullName = "out1")
+    public File outSamFile1;
+
+    @Argument(fullName = "out2")
+    public File outSamFile2;
+
     PeekableIterator<GATKRead> read1Iterator;
     PeekableIterator<GATKRead> read2Iterator;
 
@@ -44,6 +53,10 @@ public class CompareSAMFiles extends GATKTool {
     QuerynameSetComparison queryNameSetComparison;
 
     ReadsDataSource reads2;
+
+    SAMFileGATKReadWriter writer1;
+    SAMFileGATKReadWriter writer2;
+
     public void onTraversalStart(){
         queryNameComparator = new ReadQueryNameComparator();
         read1Iterator = new PeekableIterator<>(directlyAccessEngineReadsDataSource().iterator());
@@ -59,6 +72,13 @@ public class CompareSAMFiles extends GATKTool {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
+
+        if (outSamFile1 != null){
+            Utils.nonNull(outSamFile2, "If out1 is specified, out2 must both be non-null");
+            writer1 = createSAMWriter(new GATKPath(outSamFile1.getAbsolutePath()), false);
+            writer2 = createSAMWriter(new GATKPath(outSamFile2.getAbsolutePath()), false);
+        }
+
     }
 
     private QuerynameSetComparison getQuerynameComparison(String mode) throws FileNotFoundException {
@@ -66,10 +86,13 @@ public class CompareSAMFiles extends GATKTool {
             return new CompareRibosomalReads(new File("ribosome.tsv"));
         } else if (mode.equals("DUPLICATE")){
             return new CompareDuplicateMarking();
+        } else if (mode.equals("DIFF")) {
+            Utils.nonNull(outSamFile1, "out1 must be specified under the DIFF mode");
+            Utils.nonNull(outSamFile2, "out2 must be specified under the DIFF mode");
+            return new SamDiff(writer1, writer2);
         } else {
             throw new UserException("Unrecognizable mode " + mode);
         }
-
     }
 
     boolean read1Behind;
@@ -176,6 +199,12 @@ public class CompareSAMFiles extends GATKTool {
         }
 
         queryNameSetComparison.writeSummary(outputTable, getHeaderForReads());
+
+        if (writer1 != null){
+            writer1.close();
+            writer2.close();
+        }
+        
         return "SUCCESS";
     }
 

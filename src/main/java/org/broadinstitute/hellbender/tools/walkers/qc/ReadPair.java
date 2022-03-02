@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class ReadPair {
@@ -30,7 +31,6 @@ public class ReadPair {
         } else if (read.isSupplementaryAlignment()) {
             this.secondaryAlignments.add(read);
         } else {
-            int d = 3;
             throw new UserException("Unknown read type");
         }
     }
@@ -49,5 +49,16 @@ public class ReadPair {
             }
         }
         return firstOfPair.isDuplicate();
+    }
+
+    public List<GATKRead> getReads(final boolean onlyPrimaryAlignments){
+        List<GATKRead> reads = Arrays.asList(firstOfPair, secondOfPair);
+        if (onlyPrimaryAlignments){
+            return(reads);
+        } else {
+            reads.addAll(secondaryAlignments);
+            reads.addAll(supplementaryAlignments);
+            return(reads);
+        }
     }
 }
