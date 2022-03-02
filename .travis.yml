@@ -192,10 +192,13 @@ script:
   DOCKER_TAG=$(docker images -q | head -n 1);
   DATE=$(date +%Y-%m-%d);
   DOCKER_NIGHTLY_TAG=broadinstitute/gatk-nightly:$DATE-$(git describe)-NIGHTLY-SNAPSHOT;
+  DOCKER_NIGHTLY_TAG_LATEST=broadinstitute/gatk-nightly:latest;
 
   echo "Pushing Nightly Docker image";
   docker tag $DOCKER_TAG $DOCKER_NIGHTLY_TAG;
+  docker tag $DOCKER_TAG $DOCKER_NIGHTLY_TAG_LATEST;
   docker push $DOCKER_NIGHTLY_TAG;
+  docker push $DOCKER_NIGHTLY_TAG_LATEST;
   fi;
 
 after_success:
