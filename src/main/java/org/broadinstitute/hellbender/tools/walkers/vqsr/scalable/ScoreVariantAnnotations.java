@@ -163,7 +163,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata = extractVariantMetadata(variant, featureContext);
         final boolean isVariantExtracted = !metadata.isEmpty();
         if (n == 0 && isVariantExtracted) {
-            addExtractedVariantToData(variant, metadata);
+            addExtractedVariantToData(data, variant, metadata);
         }
         if (n == 1) {
             if (isVariantExtracted) {
