@@ -122,6 +122,7 @@ workflow GvsCreateFilterSet {
                 fq_alt_allele_table      = fq_alt_allele_table,
                 excess_alleles_threshold = excess_alleles_threshold,
                 read_project_id          = query_project,
+                default_dataset_id       = default_dataset,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
                 service_account_json_path     = service_account_json_path,
                 query_project            = query_project,
@@ -349,6 +350,7 @@ task ExtractFilterTask {
 
         String fq_alt_allele_table
         String read_project_id
+        String default_dataset_id
         String output_file
         Int? excess_alleles_threshold
 
@@ -392,6 +394,7 @@ task ExtractFilterTask {
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id}
+                --dataset-id ~{default_dataset_id}
     >>>
 
     runtime {
