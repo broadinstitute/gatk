@@ -21,8 +21,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.MultiplePassVariantWalker;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
@@ -98,7 +96,7 @@ import java.util.stream.Collectors;
 @DocumentedFeature
 public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
-    private static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
+    static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
     private static final String VCF_SUFFIX = ".vcf.gz";
 
     @Argument(
@@ -140,7 +138,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             shortName = "A",
             doc = "The names of the annotations to extract.",
             minElements = 1)
-    private List<String> annotationNames = new ArrayList<>();
+    List<String> annotationNames = new ArrayList<>();
 
     @Argument(
             fullName = "ignore-filter",
@@ -165,30 +163,25 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     @Argument(
             fullName = "omit-alleles-in-hdf5"
     )
-    private boolean omitAllelesInHDF5 = false;
+    boolean omitAllelesInHDF5 = false;
 
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     Set<VariantType> variantTypesToExtract;
+    TreeSet<String> resourceLabels = new TreeSet<>();
 
     File outputAnnotationsFile;
     VariantContextWriter vcfWriter;
 
     LabeledVariantAnnotationsData data;
 
-    public boolean isExtractOnlyLabeledVariants() {
+    public boolean isExtractUnlabeledVariant() {
         return true;
-    }
-
-    public void beforeOnTraversalStart() {
-        // override
     }
 
     @Override
     public void onTraversalStart() {
 
         // TODO generally clean up validation
-        beforeOnTraversalStart();   // perform additional validation, set modes in child tools, etc.
-
         // TODO validate annotation names and AS mode
 
         if (ignoreInputFilters != null) {
@@ -207,7 +200,6 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         }
 
         // TODO extract some of this here and in findOverlappingResourceLabels
-        final TreeSet<String> resourceLabels = new TreeSet<>();
         for (final FeatureInput<VariantContext> resource : resources) {
             final TreeSet<String> trackResourceLabels = resource.getTagAttributes().entrySet().stream()
                     .filter(e -> e.getValue().equals("true"))
@@ -236,6 +228,12 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
 
         vcfWriter = createVCFWriter(outputVCFFile);
         vcfWriter.writeHeader(constructVCFHeader(data.getSortedLabels()));
+
+        afterOnTraversalStart();   // perform additional validation, set modes in child tools, etc.
+    }
+
+    public void afterOnTraversalStart() {
+        // override
     }
 
     @Override
@@ -244,38 +242,13 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     }
 
     @Override
-    protected void nthPassApply(final VariantContext variant,
-                                final ReadsContext readsContext,
-                                final ReferenceContext referenceContext,
-                                final FeatureContext featureContext,
-                                final int n) {
-        if (n == 0) {
-            final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata = extractVariantMetadata(variant, featureContext);
-            final boolean isVariantExtracted = !metadata.isEmpty();
-            if (isVariantExtracted) {
-                addExtractedVariantToData(variant, metadata);
-                writeExtractedVariantToVCF(variant, metadata);
-            }
-        }
-    }
-
-    @Override
-    protected void afterNthPass(final int n) {
-        if (n == 0) {
-            writeAnnotationsToHDF5AndClearData();
-            if (vcfWriter != null) {
-                vcfWriter.close();
-            }
-        }
-    }
-
-    @Override
     public Object onTraversalSuccess() {
         return null;
     }
 
     // TODO maybe clean up all this Triple and metadata business with a class?
-    void addExtractedVariantToData(VariantContext variant, List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
+    void addExtractedVariantToData(final VariantContext variant,
+                                   final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
         data.add(variant,
                 metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
                 metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
@@ -355,7 +328,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             final VariantType variantType = VariantType.getVariantType(vc);
             if (variantTypesToExtract.contains(variantType)) {
                 final TreeSet<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
-                if (!isExtractOnlyLabeledVariants() || !overlappingResourceLabels.isEmpty()) {
+                if (isExtractUnlabeledVariant() || !overlappingResourceLabels.isEmpty()) {
                     return Collections.singletonList(Triple.of(vc.getAlternateAlleles(), variantType, overlappingResourceLabels));
                 }
             }
@@ -368,7 +341,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                     .filter(a -> variantTypesToExtract.contains(VariantType.getVariantType(vc, a)))
                     .map(a -> Triple.of(Collections.singletonList(a), VariantType.getVariantType(vc, a),
                             findOverlappingResourceLabels(vc, vc.getReference(), a, featureContext)))
-                    .filter(t -> !isExtractOnlyLabeledVariants() || !t.getRight().isEmpty())
+                    .filter(t -> isExtractUnlabeledVariant() || !t.getRight().isEmpty())
                     .collect(Collectors.toList());
         }
         // if variant-type and overlapping-resource checks failed, return an empty list

@@ -30,6 +30,31 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     }
 
     @Test
+    public void test1kgp50ExomesAllUnlabeled() {
+        final String[] arguments = {
+                "-L", "chr1",
+                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
+                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled",
+                "--maximum-number-of-unlabeled-variants", "1000000",
+                "-A", "FS",
+                "-A", "ReadPosRankSum",
+                "-A", "MQRankSum",
+                "-A", "QD",
+                "-A", "SOR",
+                "-A", "MQ",
+                "--trust-all-polymorphic",
+                "--mode", "SNP",
+                "--mode", "INDEL",
+                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--verbosity", "INFO"
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
     public void test1kgp50ExomesSNP() {
         final String[] arguments = {
                 "-L", "chr1",
