@@ -107,12 +107,22 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
             // TODO extract method and constants
             final File snpScorerPklFile = new File(modelPrefix + ".snp.scorer.pkl");
+            final File snpNegativeScorerPklFile = new File(modelPrefix + ".snp.negative.scorer.pkl");
             snpScorer = snpScorerPklFile.canRead()
-                    ? new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, snpScorerPklFile)
+                    ? snpNegativeScorerPklFile.canRead()
+                        ? combinePositiveAndNegativeScorer(
+                            new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, snpScorerPklFile),
+                            new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, snpNegativeScorerPklFile))
+                        : new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, snpScorerPklFile)
                     : null;
             final File indelScorerPklFile = new File(modelPrefix + ".indel.scorer.pkl");
+            final File indelNegativeScorerPklFile = new File(modelPrefix + ".indel.negative.scorer.pkl");
             indelScorer = indelScorerPklFile.canRead()
-                    ? new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, indelScorerPklFile)
+                    ? indelNegativeScorerPklFile.canRead()
+                        ? combinePositiveAndNegativeScorer(
+                                new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, indelScorerPklFile),
+                                new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, indelNegativeScorerPklFile))
+                        : new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, indelScorerPklFile)
                     : null;
         } else {
             logger.info("Python script was not provided, running in BGMM mode...");
@@ -120,12 +130,22 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
             // TODO extract method and constants
             final File snpScorerSerFile = new File(modelPrefix + ".snp" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
+            final File snpNegativeScorerSerFile = new File(modelPrefix + ".snp.negative" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
             snpScorer = snpScorerSerFile.canRead()
-                    ? BGMMVariantAnnotationsScorer.deserialize(snpScorerSerFile)
+                    ? snpNegativeScorerSerFile.canRead()
+                        ? combinePositiveAndNegativeScorer(
+                                BGMMVariantAnnotationsScorer.deserialize(snpScorerSerFile),
+                                BGMMVariantAnnotationsScorer.deserialize(snpNegativeScorerSerFile))
+                        : BGMMVariantAnnotationsScorer.deserialize(snpScorerSerFile)
                     : null;
             final File indelScorerSerFile = new File(modelPrefix + ".indel" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
+            final File indelNegativeScorerSerFile = new File(modelPrefix + ".indel.negative" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
             indelScorer = indelScorerSerFile.canRead()
-                    ? BGMMVariantAnnotationsScorer.deserialize(indelScorerSerFile)
+                    ? indelNegativeScorerSerFile.canRead()
+                        ? combinePositiveAndNegativeScorer(
+                                BGMMVariantAnnotationsScorer.deserialize(indelScorerSerFile),
+                                BGMMVariantAnnotationsScorer.deserialize(indelNegativeScorerSerFile))
+                        : BGMMVariantAnnotationsScorer.deserialize(indelScorerSerFile)
                     : null;
         }
 
@@ -152,6 +172,24 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 throw new UserException(String.format("Cannot create output file at %s.", outputFile));
             }
         }
+    }
+
+    private static VariantAnnotationsScorer combinePositiveAndNegativeScorer(final VariantAnnotationsScorer positiveScorer,
+                                                                             final VariantAnnotationsScorer negativeScorer) {
+        return new VariantAnnotationsScorer() {
+            @Override
+            public void score(final File inputAnnotationsFile,
+                              final File outputScoresFile) {
+                final File tempPositiveScoresFile = IOUtils.createTempFile("positive", "scores.hdf5");
+                final File tempNegativeScoresFile = IOUtils.createTempFile("negative", "scores.hdf5");
+                positiveScorer.score(inputAnnotationsFile, tempPositiveScoresFile);
+                final double[] positiveScores = VariantAnnotationsScorer.readScores(tempPositiveScoresFile);
+                negativeScorer.score(inputAnnotationsFile, tempNegativeScoresFile);
+                final double[] negativeScores = VariantAnnotationsScorer.readScores(tempNegativeScoresFile);
+                final double[] scores = IntStream.range(0, positiveScores.length).mapToDouble(i -> positiveScores[i] - negativeScores[i]).toArray();
+                VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
+            }
+        };
     }
 
     @Override
