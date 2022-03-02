@@ -71,9 +71,9 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             if (isVariantExtracted) {
                 final boolean isUnlabeled = metadata.stream().map(Triple::getRight).allMatch(Set::isEmpty);
                 if (!isUnlabeled) {
-                    addExtractedVariantToData(variant, metadata);
+                    addExtractedVariantToData(data, variant, metadata);
                 } else {
-                    addExtractedVariantToUnlabeledDataReservoir(variant, metadata);
+                    addExtractedVariantToData(unlabeledDataReservoir, variant, metadata);
                 }
                 writeExtractedVariantToVCF(variant, metadata);
             }
@@ -102,15 +102,6 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
-    }
-
-    // TODO clean up
-    private void addExtractedVariantToUnlabeledDataReservoir(final VariantContext variant,
-                                                             final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
-        unlabeledDataReservoir.add(variant,
-                metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
-                metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
-                metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
     }
 
     // TODO clean up

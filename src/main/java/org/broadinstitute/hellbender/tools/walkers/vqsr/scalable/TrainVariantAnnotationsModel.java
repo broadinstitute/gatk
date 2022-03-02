@@ -47,7 +47,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
     @Argument(
             fullName = "annotations-hdf5",
-            doc = "HDF5 file containing annotations extracted with ExtractAnnotations.")
+            doc = "HDF5 file containing annotations extracted with ExtractVariantAnnotations.")
     private File inputAnnotationsFile;
 
     @Argument(
