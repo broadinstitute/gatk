@@ -41,12 +41,13 @@ public final class GenomicsDBOptions {
                 + ") must be at least one greater than genotype calculation max alternate alleles ("
                 + GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME + "), accounting for the non-ref allele");
         }
-        this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
         if (genotypeCalcArgs != null) {
             this.maxGenotypeCount = genotypeCalcArgs.maxGenotypeCount;
+            this.maxDiploidAltAllelesThatCanBeGenotyped = genotypeCalcArgs.maxAlternateAlleles + 1; //genotypeCalcArgs refers to output, so add one for internal NON_REF
         } else {
             // Some defaults
             this.maxGenotypeCount = GenotypeCalculationArgumentCollection.DEFAULT_MAX_GENOTYPE_COUNT;
+            this.maxDiploidAltAllelesThatCanBeGenotyped = genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped;
         }
     }
 
