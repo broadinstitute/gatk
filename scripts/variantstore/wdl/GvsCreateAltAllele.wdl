@@ -2,37 +2,33 @@ version 1.0
 
 workflow GvsCreateAltAllele {
   input {
-    String dataset_project
-    String query_project_id = dataset_project
-    String default_dataset
+    String dataset_name
+    String project_id
 
     String? service_account_json_path
   }
 
   call GetVetTableNames {
     input:
-      query_project_id = query_project_id,
-      dataset_project_id = dataset_project,
-      dataset_name = default_dataset,
+      dataset_name = dataset_name,
+      project_id = project_id,
       service_account_json_path = service_account_json_path
   }
 
   call CreateAltAlleleTable {
     input:
-      query_project_id = query_project_id,
-      dataset_project_id = dataset_project,
-      dataset_name = default_dataset,
+      dataset_name = dataset_name,
+      project_id = project_id,
       service_account_json_path = service_account_json_path
   }
 
   scatter (idx in range(length(GetVetTableNames.vet_tables))) {
     call PopulateAltAlleleTable {
       input:
+        dataset_name = dataset_name,
+        project_id = project_id,
         create_table_done = CreateAltAlleleTable.done,
         vet_table_name = GetVetTableNames.vet_tables[idx],
-        query_project_id = query_project_id,
-        dataset_project_id = dataset_project,
-        dataset_name = default_dataset,
         service_account_json_path = service_account_json_path
     }
   }
@@ -48,9 +44,8 @@ task GetVetTableNames {
   }
 
   input {
-    String query_project_id
-    String dataset_project_id
     String dataset_name
+    String project_id
 
     String? service_account_json_path
   }
@@ -63,27 +58,26 @@ task GetVetTableNames {
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
       gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{query_project_id}
+      gcloud config set project ~{project_id}
     fi
 
-    echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
-    bq query --location=US --project_id=~{query_project_id} --format=csv --use_legacy_sql=false \
-    'SELECT table_name FROM `~{dataset_project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name LIKE "vet_%" ORDER BY table_name' > vet_tables.csv
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+    'SELECT table_name FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name LIKE "vet_%" ORDER BY table_name' > vet_tables.csv
 
     # remove the header row from the CSV file
     sed -i 1d vet_tables.csv
   >>>
-
-  output {
-    Array[String] vet_tables = read_lines("vet_tables.csv")
-  }
-
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
     cpu: 1
+  }
+
+  output {
+    Array[String] vet_tables = read_lines("vet_tables.csv")
   }
 }
 
@@ -93,9 +87,8 @@ task CreateAltAlleleTable {
   }
 
   input {
-    String query_project_id
-    String dataset_project_id
     String dataset_name
+    String project_id
 
     String? service_account_json_path
   }
@@ -108,12 +101,12 @@ task CreateAltAlleleTable {
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
       gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{query_project_id}
+      gcloud config set project ~{project_id}
     fi
 
-    echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
-    bq query --location=US --project_id=~{query_project_id} --format=csv --use_legacy_sql=false \
-    'CREATE OR REPLACE TABLE `~{dataset_project_id}.~{dataset_name}.alt_allele` (
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+    'CREATE OR REPLACE TABLE `~{project_id}.~{dataset_name}.alt_allele` (
       location INT64,
       sample_id INT64,
       ref STRING,
@@ -142,16 +135,15 @@ task CreateAltAlleleTable {
     CLUSTER BY location, sample_id;'
 
   >>>
-
-  output {
-    String done = "done"
-  }
-
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
+  }
+
+  output {
+    String done = "done"
   }
 }
 
@@ -161,11 +153,11 @@ task PopulateAltAlleleTable {
   }
 
   input {
+    String dataset_name
+    String project_id
+
     String create_table_done
     String vet_table_name
-    String query_project_id
-    String dataset_project_id
-    String dataset_name
 
     String? service_account_json_path
   }
@@ -182,20 +174,19 @@ task PopulateAltAlleleTable {
     fi
 
     python3 /app/populate_alt_allele_table.py \
-      --query_project ~{query_project_id} \
+      --query_project ~{project_id} \
       --vet_table_name ~{vet_table_name} \
-      --fq_dataset ~{dataset_project_id}.~{dataset_name} \
+      --fq_dataset ~{project_id}.~{dataset_name} \
       $SERVICE_ACCOUNT_STANZA
   >>>
-
-  output {
-    String done = "~{vet_table_name}"
-  }
-
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20220211"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
+  }
+
+  output {
+    String done = "~{vet_table_name}"
   }
 }

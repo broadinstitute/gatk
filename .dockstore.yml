@@ -99,7 +99,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_quoting_bug
+         - rsa_optional_inputs
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl

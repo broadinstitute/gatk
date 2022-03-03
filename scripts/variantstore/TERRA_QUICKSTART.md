@@ -11,7 +11,7 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
 
 1. You will need to have or create a BigQuery dataset (we'll call this `dataset_name` later on).
 2. Grant the "BigQuery Data Editor" role on that **dataset** to your Terra PROXY group.  Your proxy group name can be found on your Terra Profile page and look something like `PROXY_12345678901234567890@firecloud.org`.
-3. Grant the following roles on the Google **project** (we'll call this `project_id` later on) containing the dataset to your proxy group.
+3. Grant the following roles on the Google **project** (we'll call this `project_id` later on) containing the dataset to your proxy group:
     - BigQuery data editor
     - BigQuery job user
     - BigQuery Read Session User
@@ -23,46 +23,47 @@ A sample set for the quickstart has already been created with 10 samples and pat
 ## 1.1 Assign Gvs IDs and Create Loading Tables
 To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set and update the BigQuery dataset with the sample name to ID mapping info.
 
-This workflow should be run on a **sample set** as the root entity, for the quickstart that is the `gvs_demo_10` sample set.
+This workflow should be run on a **sample set** as the root entity, for this workspace, the `gvs_demo_10` sample set.
 
 These are the required parameters which must be supplied to the workflow:
 
 | Parameter             | Description |
 | --------------------- | ----------- |
-| dataset_name          | The name of the dataset you created above       |
-| project_id            | The name of the google project containing the dataset |
-| external_sample_names | From the sample set data model (e.g `this.samples.sample_id`)     |
+| dataset_name          | the name of the dataset you created above       |
+| project_id            | the name of the google project containing the dataset |
+| external_sample_names | `this.samples.sample_id` (the sample identifier column from the `gvs_demo_10` sample set) |
 
 ## 1.2 Load data
-Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.
+Next, your re-blocked gVCF files will be copied into the `ref_ranges_*` and `vet_*` tables by running the `GvsImportGenomes` workflow.
 
-This workflow should be run on a **sample set** as the root entity, for the quickstart that is the `gvs_demo_10` sample set.
+This workflow should be run on a **sample set** as the root entity, for this workspace, the `gvs_demo_10` sample set.
 
 These are the required parameters which must be supplied to the workflow:
 
 | Parameter             | Description |
-| -----------------     | ----------- |
-| dataset_name          | The name of the dataset you created above       |
-| project_id            | The name of the google project containing the dataset |
-| external_sample_names | From the sample set data model (e.g `this.samples.sample_id`, same as step 1.1)     |
-| input_vcf_indexes     | reblocked gvcf indexes for this sample; from the sample set data model (e.g. `this.samples.hg38_reblocked_gvcf_index`) |
-| input_vcfs            | reblocked gvcf for this sample; from the sample set data model (e.g. `this.samples.hg38_reblocked_gvcf`) |
+| --------------------- | ----------- |
+| dataset_name          | the name of the dataset you created above       |
+| project_id            | the name of the google project containing the dataset |
+| external_sample_names | `this.samples.sample_id` (the sample identifier from the `gvs_demo_10` sample set) |
+| input_vcf_indexes     | `this.samples.hg38_reblocked_gvcf_index` (reblocked gvcf index file for each sample) |
+| input_vcfs            | `this.samples.hg38_reblocked_gvcf` (reblocked gvcf file for each sample) |
 
 ## 2. Create Alt Allele Table
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.
 
+This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
+
 This is done by running the `GvsCreateAltAllele` workflow with the following parameters:
 
-| Parameter      | Description |
+| Parameter         | Description |
 | ----------------- | ----------- |
-| data_project | The name of the google project containing the dataset |
-| default_dataset      | The name of the dataset  |
-
-**Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
+| dataset_name      | the name of the dataset you created above  |
+| project_id        | the name of the google project containing the dataset |
 
 ## 3. Create Filter Set
-
 This step calculates features from the ALT_ALLELE table, and trains the VQSR filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.  
+
+This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
 
 This is done by running the `GvsCreateFilterSet` workflow with the following parameters:
 
@@ -77,11 +78,11 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 
 **Note:** VQSR dies with the default/recommended configuration, so we set SNPsVariantRecalibratorClassic.max-gaussians to 4 here.
 
-**Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
-
 ## 5. Extract Cohort
 
-This step extracts the data in BigQuery into a sharded joint called VCF 
+This step extracts the data in BigQuery into a sharded joint called VCF.
+
+This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
 
 To prepare the dataset for extraction by putting it into a single vet and ref_ranges table, run the `GvsPrepareRangesCallset` workflow with the following parameters:
 
@@ -93,13 +94,13 @@ To prepare the dataset for extraction by putting it into a single vet and ref_ra
 | destination_cohort_table_prefix | The name of the preparation table that this step is creating (e.g. <destination_cohort_table_prefix>__REF_RANGES) |
 | fq_sample_mapping_table | The fully qualified table name of the samples to extract (e.g. <project>.<dataset>.sample_info)  |
 
-**Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
-
+**Note:** This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
 Now the data is ready to be extracted!
 
-This is done by running the `GvsExtractCallset` workflow with the following parameters:
+This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
 
+This is done by running the `GvsExtractCallset` workflow with the following parameters:
 
 | Parameter      | Description               |
 | ----------------- |--------------------------|
@@ -111,8 +112,6 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | scatter_count | The scatter count for extract (e.g. 100 for quickstart)  |
 | wgs_intervals | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
 
-**Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
-
-## 6. Your VCF is ready!!
+## 6. Your VCF files are ready!
 
 The sharded VCF output files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`
