@@ -26,44 +26,44 @@ workflow GvsImportGenomes {
 
   call GetSampleIds {
     input:
-      external_sample_names = external_sample_names,
-      project_id = project_id,
       dataset_name = dataset_name,
+      project_id = project_id,
+      external_sample_names = external_sample_names,
       table_name = "sample_info",
       service_account_json_path = service_account_json_path
   }
 
   call CheckForDuplicateData {
     input:
-      project_id = project_id,
       dataset_name = dataset_name,
+      project_id = project_id,
       sample_names = external_sample_names,
       service_account_json_path = service_account_json_path
   }
 
   call CreateFOFNs {
     input:
-      input_vcf_list = write_lines(input_vcfs),
-      input_vcf_index_list = write_lines(input_vcf_indexes),
-      sample_name_list = write_lines(external_sample_names),
       batch_size = 1,
+      input_vcf_index_list = write_lines(input_vcf_indexes),
+      input_vcf_list = write_lines(input_vcfs),
+      sample_name_list = write_lines(external_sample_names),
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
     call LoadData {
       input:
-        project_id = project_id,
         dataset_name = dataset_name,
-        input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
-        input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
-        sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
-        service_account_json_path = service_account_json_path,
-        sample_map = GetSampleIds.sample_map,
+        project_id = project_id,
+        duplicate_check_passed = CheckForDuplicateData.done,
         drop_state = "FORTY",
         drop_state_includes_greater_than = false,
+        input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
+        input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+        interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
         load_data_preemptible_override = load_data_preemptible_override,
-        duplicate_check_passed = CheckForDuplicateData.done
+        sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
+        sample_map = GetSampleIds.sample_map,
+        service_account_json_path = service_account_json_path,
     }
   }
 
@@ -82,9 +82,11 @@ workflow GvsImportGenomes {
 
 task CheckForDuplicateData {
   input {
-    String project_id
     String dataset_name
+    String project_id
+
     Array[String] sample_names
+
     String? service_account_json_path
   }
 
@@ -152,10 +154,10 @@ task CheckForDuplicateData {
 
 task CreateFOFNs {
   input {
-    File input_vcf_list
-    File input_vcf_index_list
-    File sample_name_list
     Int batch_size
+    File input_vcf_index_list
+    File input_vcf_list
+    File sample_name_list
   }
 
   command <<<
@@ -183,22 +185,20 @@ task CreateFOFNs {
 
 task LoadData {
   input {
-    Array[File] input_vcfs
-    Array[File] input_vcf_indexes
-    Array[String] sample_names
-    File interval_list
-    File sample_map
-    String? service_account_json_path
-    String? drop_state
-    Boolean? drop_state_includes_greater_than = false
+    String dataset_name
+    String project_id
 
     Boolean duplicate_check_passed
+    Array[File] input_vcf_indexes
+    Array[File] input_vcfs
+    File interval_list
+    File sample_map
+    Array[String] sample_names
 
-    String project_id
-    String dataset_name
-
-    # runtime
+    String? drop_state
+    Boolean? drop_state_includes_greater_than = false
     Int? load_data_preemptible_override
+    String? service_account_json_path
   }
 
   Boolean load_ref_ranges = true
@@ -310,9 +310,11 @@ task SetIsLoadedColumn {
   }
 
   input {
-    Array[String] load_done
     String dataset_name
     String project_id
+
+    Array[String] load_done
+
     String? service_account_json_path
   }
 
@@ -351,10 +353,12 @@ task GetSampleIds {
   }
 
   input {
-    Array[String] external_sample_names
-    String project_id
     String dataset_name
+    String project_id
+
+    Array[String] external_sample_names
     String table_name
+
     String? service_account_json_path
  }
 
