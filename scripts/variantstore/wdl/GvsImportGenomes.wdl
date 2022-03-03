@@ -11,7 +11,7 @@ workflow GvsImportGenomes {
     Array[File] input_vcf_indexes
 
     Int? load_data_preemptible_override
-    File? load_data_gatk_override
+    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_ranges_prepare_20220118/gatk-package-4.2.0.0-462-gc0e684c-SNAPSHOT-local.jar"
     String? service_account_json_path
   }
 
@@ -61,7 +61,7 @@ workflow GvsImportGenomes {
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
-        load_data_gatk_override = load_data_gatk_override,
+        gatk_override = load_data_gatk_override,
         load_data_preemptible_override = load_data_preemptible_override,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetSampleIds.sample_map,
@@ -199,7 +199,7 @@ task LoadData {
 
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
-    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_ranges_prepare_20220118/gatk-package-4.2.0.0-462-gc0e684c-SNAPSHOT-local.jar"
+    File? gatk_override
     Int? load_data_preemptible_override
     String? service_account_json_path
   }
@@ -230,7 +230,7 @@ task LoadData {
     # workaround for https://github.com/broadinstitute/cromwell/issues/3647
     export TMPDIR=/tmp
 
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" load_data_gatk_override}
+    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
