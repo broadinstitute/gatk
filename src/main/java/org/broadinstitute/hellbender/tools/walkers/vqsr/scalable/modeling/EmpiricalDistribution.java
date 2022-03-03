@@ -589,15 +589,19 @@ public class EmpiricalDistribution extends AbstractRealDistribution {
     }
 
     /**
+     * {@inheritDoc}
      * @since 3.1
      */
+    @Deprecated
     public boolean isSupportLowerBoundInclusive() {
         return true;
     }
 
     /**
+     * {@inheritDoc}
      * @since 3.1
      */
+    @Deprecated
     public boolean isSupportUpperBoundInclusive() {
         return true;
     }
