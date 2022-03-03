@@ -229,7 +229,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             final int numTrainingAndVariantType = numPassingFilter(isTrainingAndVariantType);
             final File trainingAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isTrainingAndVariantType);
             logger.info(String.format("Re-scoring %d %s training sites...", numTrainingAndVariantType, logMessageTag));
-            final File trainingScoresFile = score(trainingAnnotationsFile, outputPrefixTag, TRAINING_SCORES_HDF5_SUFFIX);
+            final File trainingScoresFile = positiveNegativeScore(trainingAnnotationsFile, outputPrefixTag, TRAINING_SCORES_HDF5_SUFFIX);
             logger.info(String.format("Training scores written to %s.", trainingScoresFile.getAbsolutePath()));
 
             final List<Boolean> isTruthAndVariantType = Streams.zip(isTruth.stream(), isVariantType.stream(), (a, b) -> a && b).collect(Collectors.toList());
@@ -237,7 +237,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             if (numTruthAndVariantType > 0) {
                 logger.info(String.format("Re-scoring %d %s truth sites...", numTruthAndVariantType, logMessageTag));
                 final File truthAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, allAnnotations, isTruthAndVariantType);
-                final File truthScoresFile = score(truthAnnotationsFile, outputPrefixTag, TRUTH_SCORES_HDF5_SUFFIX);
+                final File truthScoresFile = positiveNegativeScore(truthAnnotationsFile, outputPrefixTag, TRUTH_SCORES_HDF5_SUFFIX);
                 logger.info(String.format("Truth scores written to %s.", truthScoresFile.getAbsolutePath()));
             }
         } else {

@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
-import com.google.common.math.Quantiles;
-import org.apache.commons.math3.random.EmpiricalDistribution;
-import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -43,6 +40,17 @@ public interface VariantAnnotationsScorer {
         final EmpiricalDistribution empiricalDistribution = new EmpiricalDistribution();
         empiricalDistribution.load(truthScores);
         return score -> 1. - empiricalDistribution.cumulativeProbability(score);
+//        final double minTruthScore = Doubles.min(truthScores);
+//        final double maxTruthScore = Doubles.max(truthScores);
+//        return score -> {
+//            if (score <= minTruthScore) {
+//                return 1.;
+//            } else if (score >= maxTruthScore) {
+//                return 0.;
+//            } else {
+//                return 1. - empiricalDistribution.cumulativeProbability(score);
+//            }
+//        };
     }
 
     static double[] readScores(final File inputFile) {
