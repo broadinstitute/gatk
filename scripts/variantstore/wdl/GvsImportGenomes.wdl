@@ -201,7 +201,6 @@ task LoadData {
     Int? load_data_preemptible_override
   }
 
-
   Boolean load_ref_ranges = true
   Boolean load_pet = false
   Boolean load_vet = true
@@ -229,7 +228,7 @@ task LoadData {
     # workaround for https://github.com/broadinstitute/cromwell/issues/3647
     export TMPDIR=/tmp
 
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+    export GATK_LOCAL_JAR=~{gatk_override}
 
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
