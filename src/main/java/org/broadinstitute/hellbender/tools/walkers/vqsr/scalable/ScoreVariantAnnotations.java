@@ -110,7 +110,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             final File snpNegativeScorerPklFile = new File(modelPrefix + ".snp.negative.scorer.pkl");
             snpScorer = snpScorerPklFile.canRead()
                     ? snpNegativeScorerPklFile.canRead()
-                        ? combinePositiveAndNegativeScorer(
+                        ? VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
                             new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, snpScorerPklFile),
                             new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, snpNegativeScorerPklFile))
                         : new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, snpScorerPklFile)
@@ -119,7 +119,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             final File indelNegativeScorerPklFile = new File(modelPrefix + ".indel.negative.scorer.pkl");
             indelScorer = indelScorerPklFile.canRead()
                     ? indelNegativeScorerPklFile.canRead()
-                        ? combinePositiveAndNegativeScorer(
+                        ? VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
                                 new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, indelScorerPklFile),
                                 new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, indelNegativeScorerPklFile))
                         : new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, indelScorerPklFile)
@@ -133,7 +133,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             final File snpNegativeScorerSerFile = new File(modelPrefix + ".snp.negative" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
             snpScorer = snpScorerSerFile.canRead()
                     ? snpNegativeScorerSerFile.canRead()
-                        ? combinePositiveAndNegativeScorer(
+                        ? VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
                                 BGMMVariantAnnotationsScorer.deserialize(snpScorerSerFile),
                                 BGMMVariantAnnotationsScorer.deserialize(snpNegativeScorerSerFile))
                         : BGMMVariantAnnotationsScorer.deserialize(snpScorerSerFile)
@@ -142,7 +142,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             final File indelNegativeScorerSerFile = new File(modelPrefix + ".indel.negative" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
             indelScorer = indelScorerSerFile.canRead()
                     ? indelNegativeScorerSerFile.canRead()
-                        ? combinePositiveAndNegativeScorer(
+                        ? VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
                                 BGMMVariantAnnotationsScorer.deserialize(indelScorerSerFile),
                                 BGMMVariantAnnotationsScorer.deserialize(indelNegativeScorerSerFile))
                         : BGMMVariantAnnotationsScorer.deserialize(indelScorerSerFile)
@@ -172,24 +172,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 throw new UserException(String.format("Cannot create output file at %s.", outputFile));
             }
         }
-    }
-
-    private static VariantAnnotationsScorer combinePositiveAndNegativeScorer(final VariantAnnotationsScorer positiveScorer,
-                                                                             final VariantAnnotationsScorer negativeScorer) {
-        return new VariantAnnotationsScorer() {
-            @Override
-            public void score(final File inputAnnotationsFile,
-                              final File outputScoresFile) {
-                final File tempPositiveScoresFile = IOUtils.createTempFile("positive", "scores.hdf5");
-                final File tempNegativeScoresFile = IOUtils.createTempFile("negative", "scores.hdf5");
-                positiveScorer.score(inputAnnotationsFile, tempPositiveScoresFile);
-                final double[] positiveScores = VariantAnnotationsScorer.readScores(tempPositiveScoresFile);
-                negativeScorer.score(inputAnnotationsFile, tempNegativeScoresFile);
-                final double[] negativeScores = VariantAnnotationsScorer.readScores(tempNegativeScoresFile);
-                final double[] scores = IntStream.range(0, positiveScores.length).mapToDouble(i -> positiveScores[i] - negativeScores[i]).toArray();
-                VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
-            }
-        };
     }
 
     @Override
