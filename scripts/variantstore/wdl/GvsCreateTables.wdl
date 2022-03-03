@@ -2,47 +2,49 @@ version 1.0
 
 workflow CreateBQTables {
 
-    input {
-        Int max_table_id
-        String project_id
-        String dataset_name
-        String? service_account_json_path
-        String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
-        String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
-        String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
-        Int? preemptible_tries
-    }
+  input {
+    String dataset_name
+    String project_id
 
-    call CreateTables as CreateVetTables {
-        input:
-        project_id = project_id,
-        dataset_name = dataset_name,
-        datatype = "vet",
-        max_table_id = max_table_id,
-        schema_json = vet_schema_json,
-        superpartitioned = "true",
-        partitioned = "true",
-        service_account_json_path = service_account_json_path,
-        preemptible_tries = preemptible_tries
-    }
+    Int max_table_id
+    String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
+    String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
+    String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
 
-    call CreateTables as CreateRefRangesTables {
-        input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            datatype = "ref_ranges",
-            max_table_id = max_table_id,
-            schema_json = ref_ranges_schema_json,
-            superpartitioned = "true",
-            partitioned = "true",
-            service_account_json_path = service_account_json_path,
-            preemptible_tries = preemptible_tries
-    }
+    Int? preemptible_tries
+    String? service_account_json_path
+  }
 
-    output {
-      String vetDone = CreateVetTables.done
-      String refDone = CreateRefRangesTables.done
-    }
+  call CreateTables as CreateVetTables {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      datatype = "vet",
+      max_table_id = max_table_id,
+      schema_json = vet_schema_json,
+      superpartitioned = "true",
+      partitioned = "true",
+      service_account_json_path = service_account_json_path,
+      preemptible_tries = preemptible_tries
+  }
+
+  call CreateTables as CreateRefRangesTables {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      datatype = "ref_ranges",
+      max_table_id = max_table_id,
+      schema_json = ref_ranges_schema_json,
+      superpartitioned = "true",
+      partitioned = "true",
+      service_account_json_path = service_account_json_path,
+      preemptible_tries = preemptible_tries
+  }
+
+  output {
+    String vetDone = CreateVetTables.done
+    String refDone = CreateRefRangesTables.done
+  }
 }
 
 
@@ -53,20 +55,20 @@ task CreateTables {
   }
 
 	input {
-      String project_id
-      String dataset_name
-      String datatype
-      Int max_table_id
-      String schema_json
-      String superpartitioned
-      String partitioned
-      String? service_account_json_path
+    String project_id
+    String dataset_name
+    String datatype
+    Int max_table_id
+    String schema_json
+    String superpartitioned
+    String partitioned
+    String? service_account_json_path
 
-      # runtime
-      Int? preemptible_tries
-    }
+    # runtime
+    Int? preemptible_tries
+  }
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command <<<
     set -x

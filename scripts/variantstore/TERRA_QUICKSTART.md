@@ -24,7 +24,7 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
 
 A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Run the two import workflows against this sample set by selecting "sample_set" as the root entity type ("Step 1") and `gvs_demo-10` for the data ("Step 2").  If you are creating your own sample set, note that the sample table should have a column for the re-blocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files need to be in the same location.
 
-## 1.1 Assign Gvs IDs
+## 1.1 Assign Gvs IDs and Create Loading Tables
 To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set and update the BigQuery dataset with the sample name to ID mapping info.
 
 This workflow should be run on a **sample set** as the root entity, for the quickstart that is the `gvs_demo_10` sample set.
@@ -33,27 +33,25 @@ These are the required parameters which must be supplied to the workflow:
 
 | Parameter             | Description |
 | --------------------- | ----------- |
-| project_id            | The name of the google project containing the dataset |
 | dataset_name          | The name of the dataset you created above       |
+| project_id            | The name of the google project containing the dataset |
 | external_sample_names | datamodel  (e.g `this.samples.sample_id`)     |
 
 ## 1.2 Load data
-
 Next, your re-blocked gVCF files should be imported into GVS by running the `GvsImportGenomes` workflow.
 
 This workflow should be run on a **sample set** as the root entity, for the quickstart that is the `gvs_demo_10` sample set.
 
 These are the required parameters which must be supplied to the workflow:
 
-| Parameter      | Description |
-| ----------------- | ----------- |
-| dataset_name      | The name of the dataset you created above       |
-| project_id | The name of the google project containing the dataset |
+| Parameter             | Description |
+| -----------------     | ----------- |
+| dataset_name          | The name of the dataset you created above       |
+| project_id            | The name of the google project containing the dataset |
 | external_sample_names | from datamodel  (e.g `this.samples.sample_id`)     |
-| input_vcf | reblocked gvcf for this sample; from datamodel (e.g. `this.samples.hg38_reblocked_gvcf`) |
-| input_vcf_indexes | reblocked gvcf indexes for this sample; from datamodel (e.g. `this.samples.hg38_reblocked_gvcf_index`) |
-| interval_list | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
-
+| input_vcf             | reblocked gvcf for this sample; from datamodel (e.g. `this.samples.hg38_reblocked_gvcf`) |
+| input_vcf_indexes     | reblocked gvcf indexes for this sample; from datamodel (e.g. `this.samples.hg38_reblocked_gvcf_index`) |
+| interval_list         | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
 
 ## 2. Create Alt Allele Table
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.

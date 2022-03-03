@@ -5,12 +5,14 @@ import "GvsCreateTables.wdl" as GvsCreateTables
 workflow GvsAssignIds {
 
   input {
-    Array[String] external_sample_names
-    String project_id
     String dataset_name
-    String? service_account_json_path
+    String project_id
+
+    Array[String] external_sample_names
+
     File? assign_ids_gatk_override
     Int? create_tables_preemptible_tries
+    String? service_account_json_path
   }
 
   String sample_info_table = "sample_info"
@@ -24,7 +26,7 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       datatype = "sample_info",
       schema_json = sample_info_schema_json,
-      max_table_id=1,
+      max_table_id = 1,
       superpartitioned = "false",
       partitioned = "false",
       service_account_json_path = service_account_json_path,
@@ -37,7 +39,7 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       datatype = "sample_load_status",
       schema_json = sample_load_status_json,
-      max_table_id=1,
+      max_table_id = 1,
       superpartitioned = "false",
       partitioned = "false",
       service_account_json_path = service_account_json_path,
@@ -57,11 +59,11 @@ workflow GvsAssignIds {
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
     input:
-    project_id = project_id,
-    dataset_name = dataset_name,
-    max_table_id = AssignIds.max_table_id,
-    service_account_json_path = service_account_json_path,
-    preemptible_tries = create_tables_preemptible_tries
+      project_id = project_id,
+      dataset_name = dataset_name,
+      max_table_id = AssignIds.max_table_id,
+      service_account_json_path = service_account_json_path,
+      preemptible_tries = create_tables_preemptible_tries
   }
 
   output {
