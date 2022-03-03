@@ -4,6 +4,7 @@ import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.hipparchus.stat.fitting.EmpiricalDistribution;
 
 import java.io.File;
 import java.util.function.Function;
