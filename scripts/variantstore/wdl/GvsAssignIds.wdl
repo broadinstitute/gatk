@@ -11,7 +11,7 @@ workflow GvsAssignIds {
     Array[String] external_sample_names
 
     File? assign_ids_gatk_override
-    Int? create_tables_preemptible_tries
+    Int? create_tables_preemptible_override
     String? service_account_json_path
   }
 
@@ -30,7 +30,7 @@ workflow GvsAssignIds {
       superpartitioned = "false",
       partitioned = "false",
       service_account_json_path = service_account_json_path,
-      preemptible_tries = create_tables_preemptible_tries,
+      preemptible_tries = create_tables_preemptible_override,
   }
 
   call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
@@ -43,7 +43,7 @@ workflow GvsAssignIds {
       superpartitioned = "false",
       partitioned = "false",
       service_account_json_path = service_account_json_path,
-      preemptible_tries = create_tables_preemptible_tries,
+      preemptible_tries = create_tables_preemptible_override,
   }
 
   call AssignIds {
@@ -63,7 +63,7 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       max_table_id = AssignIds.max_table_id,
       service_account_json_path = service_account_json_path,
-      preemptible_tries = create_tables_preemptible_tries
+      preemptible_tries = create_tables_preemptible_override
   }
 
   output {
@@ -74,18 +74,19 @@ workflow GvsAssignIds {
 
 task AssignIds {
   input {
-    Array[String] sample_names
-    String project_id
     String dataset_name
+    String project_id
+
     String sample_info_table
-    String? service_account_json_path
+    Array[String] sample_names
     String table_creation_done
-    Int samples_per_table = 4000
 
     # runtime
     File? gatk_override
+    String? service_account_json_path
   }
 
+  Int samples_per_table = 4000
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   meta {

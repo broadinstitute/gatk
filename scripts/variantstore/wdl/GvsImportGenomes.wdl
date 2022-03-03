@@ -62,7 +62,7 @@ workflow GvsImportGenomes {
         sample_map = GetSampleIds.sample_map,
         drop_state = "FORTY",
         drop_state_includes_greater_than = false,
-        preemptible_tries = load_data_preemptible_tries,
+        load_data_preemptible_tries = load_data_preemptible_tries,
         duplicate_check_passed = CheckForDuplicateData.done
     }
   }
@@ -197,14 +197,14 @@ task LoadData {
     String project_id
     String dataset_name
 
-    Boolean load_ref_ranges = true
-    Boolean load_pet = false
-    Boolean load_vet = true
-
     # runtime
-    Int? preemptible_tries
+    Int? load_data_preemptible_tries
   }
 
+
+  Boolean load_ref_ranges = true
+  Boolean load_pet = false
+  Boolean load_vet = true
   String gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_ranges_prepare_20220118/gatk-package-4.2.0.0-462-gc0e684c-SNAPSHOT-local.jar"
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -276,7 +276,7 @@ task LoadData {
     maxRetries: 1
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
-    preemptible: select_first([preemptible_tries, 5])
+    preemptible: select_first([load_data_preemptible_tries, 5])
     cpu: 1
   }
   output {
@@ -359,9 +359,7 @@ task GetSampleIds {
     String? service_account_json_path
     Int samples_per_table = 4000
 
-    # runtime
-    Int? preemptible_tries
-  }
+ }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   Int num_samples = length(external_sample_names)
@@ -423,7 +421,7 @@ task GetSampleIds {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
-    preemptible: select_first([preemptible_tries, 5])
+    preemptible: 5
     cpu: 1
   }
   output {
