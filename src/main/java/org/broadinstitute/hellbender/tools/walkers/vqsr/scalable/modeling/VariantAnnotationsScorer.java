@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 /**
  * File interface for passing annotations to a scoring backend and returning scores.
@@ -62,5 +63,19 @@ public interface VariantAnnotationsScorer {
             throw new GATKException(String.format("Exception encountered during writing of scores (%s). Output file at %s may be in a bad state.",
                     exception, outputFile.getAbsolutePath()));
         }
+    }
+
+    static VariantAnnotationsScorer combinePositiveAndNegativeScorer(final VariantAnnotationsScorer positiveScorer,
+                                                                     final VariantAnnotationsScorer negativeScorer) {
+        return (inputAnnotationsFile, outputScoresFile) -> {
+            final File tempPositiveScoresFile = IOUtils.createTempFile("positive", "scores.hdf5");
+            final File tempNegativeScoresFile = IOUtils.createTempFile("negative", "scores.hdf5");
+            positiveScorer.score(inputAnnotationsFile, tempPositiveScoresFile);
+            final double[] positiveScores = VariantAnnotationsScorer.readScores(tempPositiveScoresFile);
+            negativeScorer.score(inputAnnotationsFile, tempNegativeScoresFile);
+            final double[] negativeScores = VariantAnnotationsScorer.readScores(tempNegativeScoresFile);
+            final double[] scores = IntStream.range(0, positiveScores.length).mapToDouble(i -> positiveScores[i] - negativeScores[i]).toArray();
+            VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
+        };
     }
 }
