@@ -83,7 +83,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     // TODO document, make enum (extract labeled vs. extract all)
     @Override
     public boolean isExtractUnlabeledVariant() {
-        return false;
+        return true;
     }
 
     @Override
