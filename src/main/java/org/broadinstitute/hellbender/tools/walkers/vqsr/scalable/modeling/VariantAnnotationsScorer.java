@@ -41,17 +41,6 @@ public interface VariantAnnotationsScorer {
         final EmpiricalDistribution empiricalDistribution = new EmpiricalDistribution();
         empiricalDistribution.load(truthScores);
         return score -> 1. - empiricalDistribution.cumulativeProbability(score);
-//        final double minTruthScore = Doubles.min(truthScores);
-//        final double maxTruthScore = Doubles.max(truthScores);
-//        return score -> {
-//            if (score <= minTruthScore) {
-//                return 1.;
-//            } else if (score >= maxTruthScore) {
-//                return 0.;
-//            } else {
-//                return 1. - empiricalDistribution.cumulativeProbability(score);
-//            }
-//        };
     }
 
     static double[] readScores(final File inputFile) {
