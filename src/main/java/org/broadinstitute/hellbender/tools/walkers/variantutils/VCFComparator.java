@@ -703,20 +703,20 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                         }
                     }
                 }
+            }
 
-                if (actual.hasPL() != expected.hasPL()) {
-                    throw makeGenotypeExceptionFromDifference("PL presence", Boolean.toString(actual.hasPL()), Boolean.toString(expected.hasPL()));
+            if (actual.hasPL() != expected.hasPL()) {
+                throw makeGenotypeExceptionFromDifference("PL presence", Boolean.toString(actual.hasPL()), Boolean.toString(expected.hasPL()));
+            }
+            if (actual.hasPL() && expected.hasPL()) {
+                final int[] actualPls = actual.getPL();
+                final int[] expectedPls = expected.getPL();
+                if (actualPls.length != expectedPls.length) {
+                    throw new UserException("PL lengths for genotype vary: actual is size " + actualPls.length + " and expected is " + expectedPls.length);
                 }
-                if (actual.hasPL() && expected.hasPL()) {
-                    final int[] actualPls = actual.getPL();
-                    final int[] expectedPls = expected.getPL();
-                    if (actualPls.length != expectedPls.length) {
-                        throw new UserException("PL lengths for genotype vary: actual is size " + actualPls.length + " and expected is " + expectedPls.length);
-                    }
-                    for (int i = 0; i < actualPls.length; i++) {
-                        if (Math.abs(actualPls[i] - expectedPls[i]) > LIKELIHOOD_TOLERANCE) {
-                            throw makeGenotypeExceptionFromDifference("PL value", Arrays.toString(actual.getPL()), Arrays.toString(expected.getPL()));
-                        }
+                for (int i = 0; i < actualPls.length; i++) {
+                    if (Math.abs(actualPls[i] - expectedPls[i]) > LIKELIHOOD_TOLERANCE) {
+                        throw makeGenotypeExceptionFromDifference("PL value", Arrays.toString(actual.getPL()), Arrays.toString(expected.getPL()));
                     }
                 }
             }
