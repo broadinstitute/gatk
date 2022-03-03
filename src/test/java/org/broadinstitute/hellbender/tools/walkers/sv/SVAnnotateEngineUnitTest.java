@@ -192,18 +192,23 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
     @DataProvider(name = "toyPointVariants")
     public Object[][] getToyPointVariantTestData() {
         return new Object[][] {
+                // in UTR
                 { new SimpleInterval("chr1", 150, 151),
                         new SimpleInterval("chr1", 150, 150),
                         GATKSVVCFConstants.UTR, GATKSVVCFConstants.UTR, GATKSVVCFConstants.LOF },
+                // in intron
                 { new SimpleInterval("chr1", 250, 251),
                         new SimpleInterval("chr1", 250, 250),
                         GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.INTRONIC, GATKSVVCFConstants.LOF },
+                // in CDS
                 { new SimpleInterval("chr1", 350, 351),
                         new SimpleInterval("chr1", 350, 350),
                         GATKSVVCFConstants.LOF, GATKSVVCFConstants.BREAKEND_EXON, GATKSVVCFConstants.LOF },
+                // overlap last base of a feature (CDS) only
                 { new SimpleInterval("chr1", 600, 601),
                         new SimpleInterval("chr1", 600, 600),
                         GATKSVVCFConstants.LOF, GATKSVVCFConstants.BREAKEND_EXON, GATKSVVCFConstants.LOF },
+                // overlap first base of a feature (UTR) only
                 { new SimpleInterval("chr1", 100, 101),
                         new SimpleInterval("chr1", 100, 100),
                         GATKSVVCFConstants.UTR, GATKSVVCFConstants.UTR, GATKSVVCFConstants.LOF }
@@ -594,7 +599,13 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                         "<DUP>", 200, null, null, null),
                         createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.PROMOTER,GATKSVVCFConstants.INTERGENIC),
-                                Arrays.asList("EMMA2", true)) }
+                                Arrays.asList("EMMA2", true)) },
+                // check annotate promoter for all segments in multi-segment SV
+                { createVariantContext("chr1", 30, 30, "chr1", 3030, null,
+                        "<BND>", null, "-+", null, null),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.PROMOTER, GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList(Arrays.asList("EMMA1", "EMMA2"), true)) }
         };
     }
 
@@ -608,24 +619,27 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
             final VariantContext variant,
             final Map<String, Object> expectedAttributes
     ) {
-        final SAMSequenceDictionary sequenceDictionary = SVAnnotateUnitTest.createSequenceDictionary(Arrays.asList("chr1"));
+        final SAMSequenceDictionary sequenceDictionary =
+                SVAnnotateUnitTest.createSequenceDictionary(Arrays.asList("chr1"));
         final int promoterWindow = 200;
         final int maxBreakendLen = -1;
 
-        final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = SVAnnotateUnitTest.loadToyGTFSource(TOY_GTF_FILE);
+        final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource =
+                SVAnnotateUnitTest.loadToyGTFSource(TOY_GTF_FILE);
         final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
                 SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, promoterWindow);
         final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
         final SVIntervalTree<String> promoterIntervalTree = gtfTrees.promoterIntervalTree;
         final SVIntervalTree<String> transcriptionStartSiteTree = gtfTrees.transcriptionStartSiteTree;
-        final FeatureDataSource<FullBEDFeature> tinyNoncodingBedSource = SVAnnotateUnitTest.loadTinyNoncodingBEDSource(TINY_NONCODING_BED_FILE);
+        final FeatureDataSource<FullBEDFeature> tinyNoncodingBedSource =
+                SVAnnotateUnitTest.loadTinyNoncodingBEDSource(TINY_NONCODING_BED_FILE);
         final SVIntervalTree<String> nonCodingIntervalTree =
                 SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, sequenceDictionary);
 
         final Map<String, Object> actualAttributes =
                 SVAnnotateEngine.annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
-                        transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications, sequenceDictionary,
-                        maxBreakendLen);
+                        transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications,
+                        sequenceDictionary, maxBreakendLen);
 
         Assert.assertEquals(actualAttributes, expectedAttributes);
     }
