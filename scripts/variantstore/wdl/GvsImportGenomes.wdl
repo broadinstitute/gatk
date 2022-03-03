@@ -10,7 +10,7 @@ workflow GvsImportGenomes {
     Array[File] input_vcfs
     Array[File] input_vcf_indexes
 
-    Int? load_data_preemptible_tries
+    Int? load_data_preemptible_override
     String? service_account_json_path
   }
 
@@ -62,7 +62,7 @@ workflow GvsImportGenomes {
         sample_map = GetSampleIds.sample_map,
         drop_state = "FORTY",
         drop_state_includes_greater_than = false,
-        load_data_preemptible_tries = load_data_preemptible_tries,
+        load_data_preemptible_override = load_data_preemptible_override,
         duplicate_check_passed = CheckForDuplicateData.done
     }
   }
@@ -198,7 +198,7 @@ task LoadData {
     String dataset_name
 
     # runtime
-    Int? load_data_preemptible_tries
+    Int? load_data_preemptible_override
   }
 
 
@@ -276,7 +276,7 @@ task LoadData {
     maxRetries: 1
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
-    preemptible: select_first([load_data_preemptible_tries, 5])
+    preemptible: select_first([load_data_preemptible_override, 5])
     cpu: 1
   }
   output {
@@ -357,10 +357,9 @@ task GetSampleIds {
     String dataset_name
     String table_name
     String? service_account_json_path
-    Int samples_per_table = 4000
-
  }
 
+  Int samples_per_table = 4000
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   Int num_samples = length(external_sample_names)
 
