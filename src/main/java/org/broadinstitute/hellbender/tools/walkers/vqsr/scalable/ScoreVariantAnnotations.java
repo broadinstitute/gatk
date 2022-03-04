@@ -80,12 +80,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     private Function<Double, Double> snpTruthSensitivityConverter;
     private Function<Double, Double> indelTruthSensitivityConverter;
 
-    // TODO document, make enum (extract labeled vs. extract all)
-    @Override
-    public boolean isExtractUnlabeledVariant() {
-        return true;
-    }
-
     @Override
     protected int numberOfPasses() {
         return 2;
@@ -180,7 +174,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                 final ReferenceContext referenceContext,
                                 final FeatureContext featureContext,
                                 final int n) {
-        final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata = extractVariantMetadata(variant, featureContext);
+        final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata = extractVariantMetadata(variant, featureContext, true);
         final boolean isVariantExtracted = !metadata.isEmpty();
         if (n == 0 && isVariantExtracted) {
             addExtractedVariantToData(data, variant, metadata);
