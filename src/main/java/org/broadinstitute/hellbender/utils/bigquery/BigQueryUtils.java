@@ -412,20 +412,11 @@ public final class BigQueryUtils {
     public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
                                                                   final List<String> fieldsToRetrieve,
                                                                   final String projectID,
+                                                                  //final String datasetID,
                                                                   final String userDefinedFunctions,
                                                                   Map<String, String> labels) {
 
-        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, userDefinedFunctions, false, labels);
-    }
-
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
-                                                                  final List<String> fieldsToRetrieve,
-                                                                  final String projectID,
-                                                                  final String userDefinedFunctions,
-                                                                  final boolean runQueryInBatchMode,
-                                                                  Map<String, String> labels) {
-        final String datasetID = "temp_tables";
-        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, datasetID, userDefinedFunctions, runQueryInBatchMode, labels);
+        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, datasetID, userDefinedFunctions, false, labels);
     }
 
     public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
