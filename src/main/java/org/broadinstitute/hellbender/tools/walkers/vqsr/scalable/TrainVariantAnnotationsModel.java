@@ -201,7 +201,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                                                   final double[][] unlabeledAnnotations,
                                                   final List<Boolean> isUnlabeledVariantType,
                                                   final double[][] labeledAnnotations,
-                                                  final List<Boolean> isLabeledTraining,
+//                                                  final List<Boolean> isLabeledTraining,
                                                   final List<Boolean> isLabeledTruth,
                                                   final List<Boolean> isLabeledVariantType,
                                                   final String logMessageTag,
