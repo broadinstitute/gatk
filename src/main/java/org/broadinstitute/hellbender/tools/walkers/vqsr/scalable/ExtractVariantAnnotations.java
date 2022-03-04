@@ -77,19 +77,21 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
                 final boolean isUnlabeled = metadata.stream().map(Triple::getRight).allMatch(Set::isEmpty);
                 if (!isUnlabeled) {
                     addExtractedVariantToData(data, variant, metadata);
+                    writeExtractedVariantToVCF(variant, metadata);
                 } else {
                     // Algorithm R for reservoir sampling: https://en.wikipedia.org/wiki/Reservoir_sampling#Simple_algorithm
                     if (unlabeledIndex < maximumNumberOfUnlabeledVariants) {
                         addExtractedVariantToData(unlabeledDataReservoir, variant, metadata);
+                        writeExtractedVariantToVCF(variant, metadata);
                     } else {
                         final int j = rng.nextInt(unlabeledIndex);
                         if (j < maximumNumberOfUnlabeledVariants) {
                             setExtractedVariantInData(unlabeledDataReservoir, variant, metadata, j);
+                            writeExtractedVariantToVCF(variant, metadata);
                         }
                     }
                     unlabeledIndex++;
                 }
-                writeExtractedVariantToVCF(variant, metadata);
             }
         }
     }
