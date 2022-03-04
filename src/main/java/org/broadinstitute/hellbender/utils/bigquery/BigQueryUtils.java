@@ -426,9 +426,8 @@ public final class BigQueryUtils {
                                                                   final String userDefinedFunctions,
                                                                   final boolean runQueryInBatchMode,
                                                                   Map<String, String> labels) {
-        final String tempTableDataset = datasetID;
         final String tempTableName = String.format("%s_%s", "temp_table", UUID.randomUUID().toString().replace('-', '_'));
-        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
+        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, datasetID, tempTableName);
 
         final String queryStringWithUDFs = userDefinedFunctions == null ? queryString : userDefinedFunctions + queryString;
 
