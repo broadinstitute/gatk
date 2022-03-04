@@ -252,12 +252,12 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             trainAndSerializeModel(negativeTrainingAnnotationsFile, outputPrefixTag + ".negative");
             logger.info(String.format("%s negative model trained and serialized with output prefix \"%s\".", logMessageTag, outputPrefix + outputPrefixTag + ".negative"));
 
-            final List<Boolean> isLabeledTrainingAndVariantType = Streams.zip(isLabeledTraining.stream(), isLabeledVariantType.stream(), (a, b) -> a && b).collect(Collectors.toList());
-            final int numLabeledTrainingAndVariantType = numPassingFilter(isLabeledTrainingAndVariantType);
-            final File labeledTrainingAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, labeledAnnotations, isLabeledTrainingAndVariantType);
-            logger.info(String.format("Re-scoring %d %s training sites...", numLabeledTrainingAndVariantType, logMessageTag));
-            final File labeledTrainingScoresFile = positiveNegativeScore(labeledTrainingAnnotationsFile, outputPrefixTag, TRAINING_SCORES_HDF5_SUFFIX);
-            logger.info(String.format("Training scores written to %s.", labeledTrainingScoresFile.getAbsolutePath()));
+//            final List<Boolean> isLabeledTrainingAndVariantType = Streams.zip(isLabeledTraining.stream(), isLabeledVariantType.stream(), (a, b) -> a && b).collect(Collectors.toList());
+//            final int numLabeledTrainingAndVariantType = numPassingFilter(isLabeledTrainingAndVariantType);
+//            final File labeledTrainingAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, labeledAnnotations, isLabeledTrainingAndVariantType);
+//            logger.info(String.format("Re-scoring %d %s training sites...", numLabeledTrainingAndVariantType, logMessageTag));
+//            final File labeledTrainingScoresFile = positiveNegativeScore(labeledTrainingAnnotationsFile, outputPrefixTag, TRAINING_SCORES_HDF5_SUFFIX);
+//            logger.info(String.format("Training scores written to %s.", labeledTrainingScoresFile.getAbsolutePath()));
 
             final List<Boolean> isLabeledTruthAndVariantType = Streams.zip(isLabeledTruth.stream(), isLabeledVariantType.stream(), (a, b) -> a && b).collect(Collectors.toList());
             final int numLabeledTruthAndVariantType = numPassingFilter(isLabeledTruthAndVariantType);
