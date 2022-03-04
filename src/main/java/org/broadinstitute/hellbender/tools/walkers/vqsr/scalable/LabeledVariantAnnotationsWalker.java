@@ -174,10 +174,6 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
 
     LabeledVariantAnnotationsData data;
 
-    public boolean isExtractUnlabeledVariant() {
-        return true;
-    }
-
     @Override
     public void onTraversalStart() {
 
@@ -247,9 +243,9 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     }
 
     // TODO maybe clean up all this Triple and metadata business with a class?
-    void addExtractedVariantToData(final LabeledVariantAnnotationsData data,
-                                   final VariantContext variant,
-                                   final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
+    static void addExtractedVariantToData(final LabeledVariantAnnotationsData data,
+                                          final VariantContext variant,
+                                          final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
         data.add(variant,
                 metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
                 metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
@@ -318,7 +314,8 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
      * was retained from VQSR, but has been heavily refactored.
      */
     List<Triple<List<Allele>, VariantType, TreeSet<String>>> extractVariantMetadata(final VariantContext vc,
-                                                                                    final FeatureContext featureContext) {
+                                                                                    final FeatureContext featureContext,
+                                                                                    final boolean isExtractUnlabeled) {
         // if variant is filtered, do not consume here
         if (vc == null || !(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
             return Collections.emptyList();
@@ -329,7 +326,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             final VariantType variantType = VariantType.getVariantType(vc);
             if (variantTypesToExtract.contains(variantType)) {
                 final TreeSet<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
-                if (isExtractUnlabeledVariant() || !overlappingResourceLabels.isEmpty()) {
+                if (isExtractUnlabeled || !overlappingResourceLabels.isEmpty()) {
                     return Collections.singletonList(Triple.of(vc.getAlternateAlleles(), variantType, overlappingResourceLabels));
                 }
             }
@@ -342,7 +339,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                     .filter(a -> variantTypesToExtract.contains(VariantType.getVariantType(vc, a)))
                     .map(a -> Triple.of(Collections.singletonList(a), VariantType.getVariantType(vc, a),
                             findOverlappingResourceLabels(vc, vc.getReference(), a, featureContext)))
-                    .filter(t -> isExtractUnlabeledVariant() || !t.getRight().isEmpty())
+                    .filter(t -> isExtractUnlabeled || !t.getRight().isEmpty())
                     .collect(Collectors.toList());
         }
         // if variant-type and overlapping-resource checks failed, return an empty list

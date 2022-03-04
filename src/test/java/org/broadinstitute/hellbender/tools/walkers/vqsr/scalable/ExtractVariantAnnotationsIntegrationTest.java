@@ -35,7 +35,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
                 "-O", "/home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled",
-                "--maximum-number-of-unlabeled-variants", "1000000",
+                "--maximum-number-of-unlabeled-variants", "10000",
                 "-A", "FS",
                 "-A", "ReadPosRankSum",
                 "-A", "MQRankSum",

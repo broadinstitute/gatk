@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -16,6 +18,7 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -43,16 +46,18 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             minValue = 0)
     private int maximumNumberOfUnlabeledVariants = 0;
 
-    LabeledVariantAnnotationsData unlabeledDataReservoir;
-    boolean isExtractToUnlabeledDataReservoir;
+    @Argument(
+            fullName = "reservoir-sampling-random-seed",
+            doc = "") // TODO
+    private int reservoirSamplingRandomSeed = 0;
 
-    @Override
-    public boolean isExtractUnlabeledVariant() {
-        return isExtractToUnlabeledDataReservoir;
-    }
+    RandomGenerator rng;
+    LabeledVariantAnnotationsData unlabeledDataReservoir; // will not be sorted in genomic order
+    int unlabeledIndex = 0;
 
     @Override
     public void afterOnTraversalStart() {
+        rng = RandomGeneratorFactory.createRandomGenerator(new Random(reservoirSamplingRandomSeed));
         unlabeledDataReservoir = maximumNumberOfUnlabeledVariants == 0
                 ? null
                 : new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations, maximumNumberOfUnlabeledVariants);
@@ -65,15 +70,24 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
                                 final FeatureContext featureContext,
                                 final int n) {
         if (n == 0) {
-            isExtractToUnlabeledDataReservoir = unlabeledDataReservoir != null && unlabeledDataReservoir.size() < maximumNumberOfUnlabeledVariants;
-            final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata = extractVariantMetadata(variant, featureContext);
+            final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata = extractVariantMetadata(
+                    variant, featureContext, unlabeledDataReservoir != null);
             final boolean isVariantExtracted = !metadata.isEmpty();
             if (isVariantExtracted) {
                 final boolean isUnlabeled = metadata.stream().map(Triple::getRight).allMatch(Set::isEmpty);
                 if (!isUnlabeled) {
                     addExtractedVariantToData(data, variant, metadata);
                 } else {
-                    addExtractedVariantToData(unlabeledDataReservoir, variant, metadata);
+                    // Algorithm R for reservoir sampling: https://en.wikipedia.org/wiki/Reservoir_sampling#Simple_algorithm
+                    if (unlabeledIndex < maximumNumberOfUnlabeledVariants) {
+                        addExtractedVariantToData(unlabeledDataReservoir, variant, metadata);
+                    } else {
+                        final int j = rng.nextInt(unlabeledIndex);
+                        if (j < maximumNumberOfUnlabeledVariants) {
+                            setExtractedVariantInData(unlabeledDataReservoir, variant, metadata, j);
+                        }
+                    }
+                    unlabeledIndex++;
                 }
                 writeExtractedVariantToVCF(variant, metadata);
             }
@@ -102,6 +116,16 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 
         return null;
+    }
+
+    private static void setExtractedVariantInData(final LabeledVariantAnnotationsData data,
+                                                  final VariantContext variant,
+                                                  final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata,
+                                                  final int index) {
+        data.set(index, variant,
+                metadata.stream().map(Triple::getLeft).collect(Collectors.toList()),
+                metadata.stream().map(Triple::getMiddle).collect(Collectors.toList()),
+                metadata.stream().map(Triple::getRight).collect(Collectors.toList()));
     }
 
     // TODO clean up
