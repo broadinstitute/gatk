@@ -393,7 +393,7 @@ task ExtractFilterTask {
                 ~{sep=" " query_label_args} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
-                --project-id ~{read_project_id}
+                --project-id ~{read_project_id} \
                 --dataset-id ~{default_dataset_id}
     >>>
 
