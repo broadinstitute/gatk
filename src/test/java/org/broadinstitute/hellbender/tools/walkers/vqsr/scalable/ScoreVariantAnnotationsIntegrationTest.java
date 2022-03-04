@@ -159,6 +159,35 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
     }
 
     @Test
+    public void testJbxAllUnlabeled() {
+        final String[] arguments = {
+                "-L", "chr1",
+                "-L", "chr2",
+                "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
+                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.score",
+                "--python-script", PYTHON_SCRIPT,
+                "--model-prefix", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.train",
+                "-A", "FS",
+                "-A", "ReadPosRankSum",
+                "-A", "MQRankSum",
+                "-A", "QD",
+                "-A", "SOR",
+                "-A", "MQ",
+                "-A", "COMBINED_TREE_SCORE",
+                "--trust-all-polymorphic",
+                "--mode", "SNP",
+                "--mode", "INDEL",
+                "--resource:extracted,extracted=true", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.extract.vcf.gz",
+                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--verbosity", "INFO"
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
     public void testJbxSNP() {
         final String[] arguments = {
                 "-L", "chr1:1-100000000",
