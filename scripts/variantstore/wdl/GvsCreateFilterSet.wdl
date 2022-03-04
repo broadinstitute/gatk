@@ -131,7 +131,6 @@ workflow GvsCreateFilterSet {
         tranches_filename = filter_set_name + ".snps.tranches",
         recalibration_tranche_values = snp_recalibration_tranche_values,
         recalibration_annotation_values = snp_recalibration_annotation_values,
-        downsampleFactor = 1,
         model_report_filename = filter_set_name + ".snps.model.report",
         hapmap_resource_vcf = hapmap_resource_vcf,
         hapmap_resource_vcf_index = hapmap_resource_vcf_index,
@@ -210,7 +209,6 @@ workflow GvsCreateFilterSet {
         use_allele_specific_annotations = true,
         disk_size = "1000",
         machine_mem_gb = SNP_VQSR_mem_gb_override,
-        downsampleFactor= 1,
         max_gaussians = SNP_VQSR_max_gaussians_override,
     }
   }

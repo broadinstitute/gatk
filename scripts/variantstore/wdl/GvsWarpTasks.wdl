@@ -5,7 +5,6 @@ task SNPsVariantRecalibratorCreateModel {
     input {
         String recalibration_filename
         String tranches_filename
-        Int downsampleFactor
         String model_report_filename
 
         Array[String] recalibration_tranche_values
@@ -45,7 +44,7 @@ task SNPsVariantRecalibratorCreateModel {
         -an ~{sep=' -an ' recalibration_annotation_values} \
         ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
         -mode SNP \
-        --sample-every-Nth-variant ~{downsampleFactor} \
+        --sample-every-Nth-variant 1 \
         --output-model ~{model_report_filename} \
         --max-gaussians ~{max_gaussians} \
         -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
@@ -227,7 +226,6 @@ task SNPsVariantRecalibrator {
         File dbsnp_resource_vcf_index
         Boolean use_allele_specific_annotations
         Int max_gaussians = 6
-        Int? downsampleFactor = 1
 
         Int disk_size
         Int? machine_mem_gb
@@ -261,7 +259,7 @@ task SNPsVariantRecalibrator {
         -an ~{sep=' -an ' recalibration_annotation_values} \
         ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
         -mode SNP \
-        --sample-every-Nth-variant ~{downsampleFactor} \
+        --sample-every-Nth-variant 1 \
         ~{model_report_arg} \
         --max-gaussians ~{max_gaussians} \
         -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
