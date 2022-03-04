@@ -128,6 +128,22 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
     }
 
     @Test
+    public void testJbxAllUnlabeled() {
+        final String[] arguments = {
+                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.extract.annot.hdf5",
+                "--unlabeled-annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.extract.unlabeled.annot.hdf5",
+                "--truth-sensitivity-threshold", "0.95",
+                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.train",
+                "--python-script", PYTHON_SCRIPT,
+                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/jbx/hyperparameters.json",
+                "--mode", "SNP",
+                "--mode", "INDEL",
+                "--verbosity", "INFO"
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
     public void testJbxSNP() {
         final String[] arguments = {
                 "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.annot.hdf5",

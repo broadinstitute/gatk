@@ -148,9 +148,10 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                         labeledAnnotations, labeledIsTraining, labeledIsTruth, labeledIsSNP, "SNP", ".snp");
             }
             if (variantTypes.contains(VariantType.INDEL)) {
+                final List<Boolean> labeledIsIndel = labeledIsSNP.stream().map(x -> !x).collect(Collectors.toList());
                 final List<Boolean> unlabeledIsIndel = unlabeledIsSNP.stream().map(x -> !x).collect(Collectors.toList());
                 doNegativeModelingAndScoringWork(unlabeledAnnotationNames, unlabeledAnnotations, unlabeledIsIndel,
-                        labeledAnnotations, labeledIsTraining, labeledIsTruth, labeledIsSNP,"INDEL", ".indel");
+                        labeledAnnotations, labeledIsTraining, labeledIsTruth, labeledIsIndel,"INDEL", ".indel");
             }
         }
 
