@@ -412,7 +412,7 @@ public final class BigQueryUtils {
     public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
                                                                   final List<String> fieldsToRetrieve,
                                                                   final String projectID,
-                                                                  //final String datasetID,
+                                                                  final String datasetID,
                                                                   final String userDefinedFunctions,
                                                                   Map<String, String> labels) {
 
@@ -426,9 +426,6 @@ public final class BigQueryUtils {
                                                                   final String userDefinedFunctions,
                                                                   final boolean runQueryInBatchMode,
                                                                   Map<String, String> labels) {
-        // TODO here's the temp_tables!!!! This is a dataset---and for the query we are creating a TABLE that will live inside this dataset
-        // I think ideally we want to use  / pass in the default dataset name---and then we want the temp_table here to be called temp_table_<hash>
-        // final String tempTableDataset = "temp_tables"; <--original, but lets grab the default instead
         final String tempTableDataset = datasetID;
         final String tempTableName = String.format("%s_%s", "temp_table", UUID.randomUUID().toString().replace('-', '_'));
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
