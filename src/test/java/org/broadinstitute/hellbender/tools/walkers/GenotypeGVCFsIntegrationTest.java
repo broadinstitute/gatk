@@ -287,22 +287,34 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testMaxAltsToCombineInGenomicsDB() {
-        final File tempGenomicsDB = GenomicsDBTestUtils.createTempGenomicsDB(CEUTRIO_20_21_GATK3_4_G_VCF, new SimpleInterval("20", 1, 11_000_000));
-        final String genomicsDBUri = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB);
-        final List<String> args = new ArrayList<String>();
+    public void testMaxAltsToCombineInGenomicsDB() throws IOException {
+        //multi-input tests
+        //8 ALT VC will get dropped if GDB max is < 8 because GDB doesn't return PLs and GGVCFs drops variants with no PLs
+        final String gnarlyTestPath = toolsTestDir + "walkers/GnarlyGenotyper/";
+        final List<File> inputs = Arrays.asList(new File(gnarlyTestPath + "sample6.vcf"),
+                new File(gnarlyTestPath + "sample7.vcf"),
+                new File(gnarlyTestPath + "sample8.vcf"),
+                new File(gnarlyTestPath + "sample9.vcf"));
+        final SimpleInterval interval =  new SimpleInterval("chr20", 257008, 257008);
+        final File tempGenomicsDB2 = GenomicsDBTestUtils.createTempGenomicsDB(inputs, interval);
+        final String genomicsDBUri2 = GenomicsDBTestUtils.makeGenomicsDBUri(tempGenomicsDB2);
+        final List<String> args = new ArrayList<>();
+        args.add("--"+GenomicsDBArgumentCollection.MAX_ALTS_LONG_NAME);
+        args.add("7");
         args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
-        args.add("3");
-        args.add("--" + GenomicsDBArgumentCollection.MAX_ALTS_LONG_NAME);
-        args.add("4");
-        runGenotypeGVCFSAndAssertCount(genomicsDBUri, args, 3, VariantContextTestUtils::assertVariantContextMaxAltAlleleCount, b37_reference_20_21);
+        args.add("5");
+        final File output = runGenotypeGVCFS(genomicsDBUri2, null, args, hg38Reference);
+        final Pair<VCFHeader, List<VariantContext>> outputDataNoVariant = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertTrue(outputDataNoVariant.getRight().isEmpty());
 
-        args.clear();
+        //8 ALT VC will be output if GDB max is >= 8, but with only as many ALTs are requested in the GenotypeCalculationArguments
+        final List<String> args2 = new ArrayList<String>();
+        args.add("--"+GenomicsDBArgumentCollection.MAX_ALTS_LONG_NAME);
+        args.add("15");
         args.add("--"+GenotypeCalculationArgumentCollection.MAX_ALTERNATE_ALLELES_LONG_NAME);
-        args.add("2");
-        args.add("--" + GenomicsDBArgumentCollection.MAX_ALTS_LONG_NAME);
-        args.add("20");
-        runGenotypeGVCFSAndAssertCount(genomicsDBUri, args, 2, VariantContextTestUtils::assertVariantContextMaxAltAlleleCount, b37_reference_20_21);
+        args.add("5");
+        runGenotypeGVCFSAndAssertComparison(genomicsDBUri2, getTestFile("fourSamplesEightAlts.expected.vcf"), args2,
+                VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, hg38Reference);
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
@@ -333,12 +345,17 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         File output = runGenotypeGVCFS(genomicsDBUri, null, args, b37_reference_20_21);
     }
 
+    @Test
+    public void testGDBMaxAltsGreaterThanGGVCFsMaxAlts() throws IOException {
+
+    }
+
     private void runAndCheckGenomicsDBOutput(final ArgumentsBuilder args, final File expected, final File output) {
         Utils.resetRandomGenerator();
         runCommandLine(args);
 
         // Note that if this isn't working it will take *FOREVER*
-        // runs in 0.06 minutes with no input intervals specfied
+        // runs in 0.06 minutes with no input intervals specified
         final List<VariantContext> expectedVC = VariantContextTestUtils.getVariantContexts(expected);
         final List<VariantContext> actualVC = VariantContextTestUtils.getVariantContexts(output);
         assertForEachElementInLists(actualVC, expectedVC, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes);
@@ -427,6 +444,10 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         );
     }
 
+
+    /**
+     * Note that this method does not use expected for comparison, but rather for updating exact match outputs
+     */
     private File runGenotypeGVCFS(String input, File expected, List<String> additionalArguments, String reference) {
         final File output = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected : createTempFile("genotypegvcf", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
