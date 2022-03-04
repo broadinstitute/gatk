@@ -5,7 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateFilterSet {
   input {
-    String default_dataset
+    String dataset_name
     String project_id
 
     String filter_set_name
@@ -13,8 +13,10 @@ workflow GvsCreateFilterSet {
     Int scatter_count
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
+    Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
     String? service_account_json_path
+    Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
   }
 
@@ -45,11 +47,11 @@ workflow GvsCreateFilterSet {
   File wgs_intervals = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
   # fully-qualified table names
-  String fq_sample_table = "~{project_id}.~{default_dataset}.sample_table"
-  String fq_alt_allele_table = "~{project_id}.~{default_dataset}.alt_allele"
-  String fq_info_destination_table = "~{project_id}.~{default_dataset}.filter_set_info"
-  String fq_tranches_destination_table = "~{project_id}.~{default_dataset}.filter_set_tranches"
-  String fq_filter_sites_destination_table = "~{project_id}.~{default_dataset}.filter_set_sites"
+  String fq_sample_table = "~{project_id}.~{dataset_name}.sample_table"
+  String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
+  String fq_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
+  String fq_tranches_destination_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
+  String fq_filter_sites_destination_table = "~{project_id}.~{dataset_name}.filter_set_sites"
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -98,7 +100,6 @@ workflow GvsCreateFilterSet {
       input_vcfs = ExtractFilterTask.output_vcf,
       output_vcf_name = "${filter_set_name}.vcf.gz",
       preemptible_tries = 3,
-      gatk_override = gatk_override
   }
 
   call Tasks.IndelsVariantRecalibrator {
@@ -117,7 +118,8 @@ workflow GvsCreateFilterSet {
       dbsnp_resource_vcf_index = dbsnp_vcf_index,
       use_allele_specific_annotations = true,
       disk_size = "1000",
-      machine_mem_gb = INDEL_VQSR_mem_gb_override
+      machine_mem_gb = INDEL_VQSR_mem_gb_override,
+      max_gaussians = INDEL_VQSR_max_gaussians_override,
   }
 
   if (GetNumSamplesLoaded.num_samples > snps_variant_recalibration_threshold) {
@@ -141,7 +143,8 @@ workflow GvsCreateFilterSet {
         dbsnp_resource_vcf_index = dbsnp_vcf_index,
         use_allele_specific_annotations = true,
         disk_size = "1000",
-        machine_mem_gb = SNP_VQSR_mem_gb_override
+        machine_mem_gb = SNP_VQSR_mem_gb_override,
+        max_gaussians = SNP_VQSR_max_gaussians_override,
     }
 
     scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
@@ -184,7 +187,6 @@ workflow GvsCreateFilterSet {
         gather_type = "CONVENTIONAL",
         output_vcf_name = "${filter_set_name}.vrecalibration.gz",
         preemptible_tries = 3,
-        gatk_override = gatk_override
     }
   }
 
@@ -208,7 +210,8 @@ workflow GvsCreateFilterSet {
         use_allele_specific_annotations = true,
         disk_size = "1000",
         machine_mem_gb = SNP_VQSR_mem_gb_override,
-        downsampleFactor= 1
+        downsampleFactor= 1,
+        max_gaussians = SNP_VQSR_max_gaussians_override,
     }
   }
 

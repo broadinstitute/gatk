@@ -61,25 +61,21 @@ This is done by running the `GvsCreateAltAllele` workflow with the following par
 | project_id        | the name of the google project containing the dataset |
 
 ## 3. Create Filter Set
-This step calculates features from the ALT_ALLELE table, and trains the VQSR filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.  
+This step calculates features from the ALT_ALLELE table, trains the VQSR filtering model along with site-level QC filters, and loads them into BigQuery into a series of `filter_set_*` tables.  
 
 This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
 
 This is done by running the `GvsCreateFilterSet` workflow with the following parameters:
 
-| Parameter      | Description |
-| ----------------- | ----------- |
-| data_project | The name of the google project containing the dataset |
-| default_dataset      | The name of the dataset  |
-| filter_set_name | A unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 4  |
-| output_file_base_name | TODO: should be defaulted and optional |
-| SNPsVariantRecalibratorClassic.max-gaussians | 4 |
-| wgs_intervals | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
-
-**Note:** VQSR dies with the default/recommended configuration, so we set SNPsVariantRecalibratorClassic.max-gaussians to 4 here.
+| Parameter                         | Description |
+| --------------------------------- | ----------- |
+| dataset_name                      | the name of the dataset you created above  |
+| project_id                        | the name of the google project containing the dataset |
+| filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 4 |
+| INDEL_VQSR_max_gaussians_override | you don't need to set this unless a previous run of IndelsVariantRecalibrator task failed to converge, start with 3 and lower as needed |
+| SNP_VQSR_max_gaussians_override   | you don't need to set this unless a previous run of SNPsVariantRecalibratorClassic task failed to converge, start with 5 and lower as needed |
 
 ## 5. Extract Cohort
-
 This step extracts the data in BigQuery into a sharded joint called VCF.
 
 This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.

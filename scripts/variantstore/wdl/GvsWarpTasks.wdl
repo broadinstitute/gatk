@@ -148,7 +148,6 @@ task IndelsVariantRecalibrator {
         File sites_only_variant_filtered_vcf
         File sites_only_variant_filtered_vcf_index
 
-        File? excluded_sites_bed
         File mills_resource_vcf
         File axiomPoly_resource_vcf
         File dbsnp_resource_vcf
@@ -159,7 +158,6 @@ task IndelsVariantRecalibrator {
         Int max_gaussians = 4
 
         Int disk_size
-        String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
         Int? machine_mem_gb
     }
 
@@ -173,7 +171,6 @@ task IndelsVariantRecalibrator {
         gatk --java-options -Xmx~{java_mem}g \
         VariantRecalibrator \
         -V ~{sites_only_variant_filtered_vcf} \
-        ~{"-XL " + excluded_sites_bed} \
         -O ~{recalibration_filename} \
         --output-model indels.model \
         --rscript-file indels.Rscript \
@@ -195,7 +192,7 @@ task IndelsVariantRecalibrator {
         cpu: "2"
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 1
-        docker: gatk_docker
+        docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
     }
 
     output {
@@ -220,7 +217,6 @@ task SNPsVariantRecalibrator {
         File sites_only_variant_filtered_vcf
         File sites_only_variant_filtered_vcf_index
 
-        File? excluded_sites_bed
         File hapmap_resource_vcf
         File omni_resource_vcf
         File one_thousand_genomes_resource_vcf
@@ -234,7 +230,6 @@ task SNPsVariantRecalibrator {
         Int? downsampleFactor = 1
 
         Int disk_size
-        String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
         Int? machine_mem_gb
 
     }
@@ -257,7 +252,6 @@ task SNPsVariantRecalibrator {
         gatk --java-options -Xmx~{java_mem}g \
         VariantRecalibrator \
         -V ~{sites_only_variant_filtered_vcf} \
-        ~{"-XL " + excluded_sites_bed} \
         -O ~{recalibration_filename} \
         --output-model snps.model \
         --rscript-file snps.Rscript \
@@ -281,7 +275,7 @@ task SNPsVariantRecalibrator {
         cpu: 2
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 0
-        docker: gatk_docker
+        docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
     }
 
     output {
