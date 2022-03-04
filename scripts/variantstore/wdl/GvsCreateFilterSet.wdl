@@ -24,7 +24,6 @@ workflow GvsCreateFilterSet {
 
   File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_extract_perf_20220111/gatk-package-4.2.0.0-455-g40a40bc-SNAPSHOT-local.jar"
 
-  Array[String] indel_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.5", "99.0", "97.0", "96.0", "95.0", "94.0", "93.5", "93.0", "92.0", "91.0", "90.0"]
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
 
   # reference files
@@ -108,7 +107,7 @@ workflow GvsCreateFilterSet {
       sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
       recalibration_filename = filter_set_name + ".indels.recal",
       tranches_filename = filter_set_name + ".indels.tranches",
-      recalibration_tranche_values = indel_recalibration_tranche_values,
+      recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.5", "99.0", "97.0", "96.0", "95.0", "94.0", "93.5", "93.0", "92.0", "91.0", "90.0"],
       recalibration_annotation_values = indel_recalibration_annotation_values,
       mills_resource_vcf = mills_resource_vcf,
       mills_resource_vcf_index = mills_resource_vcf_index,
@@ -305,7 +304,6 @@ task ExtractFilterTask {
     String fq_sample_table
 
     File intervals
-    File? excluded_intervals
 
     String fq_alt_allele_table
     String read_project_id
@@ -316,42 +314,34 @@ task ExtractFilterTask {
     File? gatk_override
     String? service_account_json_path
     String query_project
-    Array[String]? query_labels
-
-    Int? local_sort_max_records_in_ram = 1000000
   }
 
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-  # Note the coercion of optional query_labels using select_first([expr, default])
-  Array[String] query_label_args = if defined(query_labels) then prefix("--query-labels ", select_first([query_labels])) else []
 
   command <<<
     set -e
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     if [ ~{has_service_account_file} = 'true' ]; then
-    gsutil cp ~{service_account_json_path} local.service_account.json
-    export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-    gcloud auth activate-service-account --key-file=local.service_account.json
-    gcloud config set project ~{query_project}
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{query_project}
     fi
 
     df -h
 
-    gatk --java-options "-Xmx4g" \
-    ExtractFeatures \
-    --ref-version 38  \
-    -R "~{reference}" \
-    -O "~{output_file}" \
-    --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
-    --sample-table ~{fq_sample_table} \
-    --alt-allele-table ~{fq_alt_allele_table} \
-    ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
-    ~{sep=" " query_label_args} \
-    -L ~{intervals} \
-    ~{"-XL " + excluded_intervals} \
-    --project-id ~{read_project_id}
+    gatk --java-options "-Xmx4g" ExtractFeatures \
+      --ref-version 38  \
+      -R "~{reference}" \
+      -O "~{output_file}" \
+      --local-sort-max-records-in-ram 1000000 \
+      --sample-table ~{fq_sample_table} \
+      --alt-allele-table ~{fq_alt_allele_table} \
+      ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
+      -L ~{intervals} \
+      --project-id ~{read_project_id}
   >>>
 
   runtime {
