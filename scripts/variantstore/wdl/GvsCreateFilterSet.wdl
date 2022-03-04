@@ -47,7 +47,7 @@ workflow GvsCreateFilterSet {
   File wgs_intervals = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
   # fully-qualified table names
-  String fq_sample_table = "~{project_id}.~{dataset_name}.sample_table"
+  String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
   String fq_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
   String fq_tranches_destination_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
