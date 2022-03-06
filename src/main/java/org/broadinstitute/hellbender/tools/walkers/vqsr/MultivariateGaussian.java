@@ -24,7 +24,8 @@ class MultivariateGaussian {
     private Matrix cachedSigmaInverse;
     final private double[] pVarInGaussian;
     int pVarInGaussianIndex;
-    final private static double EPSILON = 1e-200;
+    private static final double EPSILON = 1e-200;
+    private static final double COVARIANCE_REGULARIZATION_EPSILON = 1E-6;
 
     public MultivariateGaussian( final int numVariants, final int numAnnotations  ) {
         mu = new double[numAnnotations];
@@ -187,9 +188,9 @@ class MultivariateGaussian {
         for( final VariantDatum datum : data ) {
             final double prob = pVarInGaussian[datumIndex++];
             for( int iii = 0; iii < mu.length; iii++ ) {
-                double deltaMu = prob * (datum.annotations[iii]-mu[iii]);
                 for( int jjj = 0; jjj < mu.length; jjj++ ) {
-                    pVarSigma.set(iii, jjj, deltaMu * (datum.annotations[jjj]-mu[jjj]));
+                    final double regCovar = iii == jjj ? COVARIANCE_REGULARIZATION_EPSILON : 0.;
+                    pVarSigma.set(iii, jjj, prob * (datum.annotations[iii]-mu[iii]) * (datum.annotations[jjj]-mu[jjj]) + regCovar);
                 }
             }
             sigma.plusEquals( pVarSigma );
@@ -228,7 +229,8 @@ class MultivariateGaussian {
             final double prob = pVarInGaussian[datumIndex++];
             for( int iii = 0; iii < mu.length; iii++ ) {
                 for( int jjj = 0; jjj < mu.length; jjj++ ) {
-                    pVarSigma.set(iii, jjj, prob * (datum.annotations[iii]-mu[iii]) * (datum.annotations[jjj]-mu[jjj]));
+                    final double regCovar = iii == jjj ? COVARIANCE_REGULARIZATION_EPSILON : 0.;
+                    pVarSigma.set(iii, jjj, prob * (datum.annotations[iii]-mu[iii]) * (datum.annotations[jjj]-mu[jjj]) + regCovar);
                 }
             }
             sigma.plusEquals( pVarSigma );

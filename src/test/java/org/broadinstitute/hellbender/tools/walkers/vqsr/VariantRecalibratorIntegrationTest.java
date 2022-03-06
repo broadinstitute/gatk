@@ -497,7 +497,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
     }
 
     //One of the Gaussians has a covariance matrix with a determinant of zero, (can be confirmed that the entries of sigma for the row and column with the index of the constant annotation are zero) which leads to all +Inf LODs if we don't throw
-    @Test(expectedExceptions={UserException.VQSRPositiveModelFailure.class})
+    @Test(expectedExceptions = {UserException.VQSRPositiveModelFailure.class}, enabled = false)
     public void testAnnotationsWithNoVarianceSpecified() throws IOException {
         // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
         List<String> args = new ArrayList<>(alleleSpecificVQSRParamsTooManyAnnotations.length);
@@ -511,7 +511,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(varRecalTool.instanceMain(args.toArray(new String[args.size()])), true);
     }
 
-    @Test(expectedExceptions={UserException.VQSRNegativeModelFailure.class})
+    @Test(expectedExceptions = {UserException.VQSRNegativeModelFailure.class})
     public void testNoNegativeTrainingData() throws IOException {
         // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
         List<String> args = new ArrayList<>(alleleSpecificVQSRParamsNoNegativeData.length);
