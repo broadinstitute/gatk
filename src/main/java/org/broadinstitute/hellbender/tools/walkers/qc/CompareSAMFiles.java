@@ -204,7 +204,7 @@ public class CompareSAMFiles extends GATKTool {
             writer1.close();
             writer2.close();
         }
-        
+
         return "SUCCESS";
     }
 

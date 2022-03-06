@@ -24,6 +24,24 @@ public class CompareSAMFilesTest extends CommandLineProgramTest {
     final String ribosomeBamHg38 = rHome + "SM-B1511_Ill_Kapa_2_lane_1.query_sorted.hg38.ribosome_pairs.bam";
 
     @Test
+    public void testDiff(){
+        final File out1 = new File(gatkHome + "diff_out1.bam");
+        final File out2 = new File(gatkHome + "diff_out2.bam");
+        final String dHome = "/Volumes/dsde_working/tsato/hydro.gen/Analysis/874_twist_RNA/sam_diff/";
+        final File sam1 = new File(dHome);
+        final File sam2 = new File(dHome);
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .add("I", sam1)
+                .add("read2", sam2)
+                .add("out1", out1.getAbsolutePath())
+                .add("out2", out2.getAbsolutePath())
+                .add("mode", "DIFF");
+        runCommandLine(args, CompareSAMFiles.class.getSimpleName());
+        int d = 3;
+    }
+
+
+    @Test
     public void testRibosome(){
         final File out = new File(gatkHome + "ribosome_test.csv");
         final ArgumentsBuilder args = new ArgumentsBuilder()
