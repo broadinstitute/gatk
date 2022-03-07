@@ -19,6 +19,7 @@ import java.util.*;
 public class SVAnnotateUnitTest extends GATKBaseTest {
     protected final File TOY_GTF_FILE = new File(getToolTestDataDir() + "unittest.gtf");
     protected final File TINY_NONCODING_BED_FILE = new File(getToolTestDataDir() + "noncoding.unittest.bed");
+
     /**
      * Load toy GTF containing toy genes into FeatureDataSource
      * Visible for use in SVAnnotateEngineUnitTest
@@ -76,8 +77,8 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final int toyContigLen = 100000;
         final int n = contigs.size();
         final List<SAMSequenceRecord> sequenceRecords = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            sequenceRecords.add(new SAMSequenceRecord(contigs.get(i), toyContigLen));
+        for (final String contig : contigs) {
+            sequenceRecords.add(new SAMSequenceRecord(contig, toyContigLen));
         }
         return new SAMSequenceDictionary(sequenceRecords);
     }
@@ -103,11 +104,10 @@ public class SVAnnotateUnitTest extends GATKBaseTest {
         final SVIntervalTree<String> nonCodingIntervalTree =
                 SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, sequenceDictionary);
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource = loadToyGTFSource(TOY_GTF_FILE);
-        final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
+        final SVAnnotateEngine.GTFIntervalTreesContainer gtfTrees =
                 SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, 100);
-        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
         // check size to ensure contigs not included in the map are excluded from the interval tree successfully
         Assert.assertEquals(nonCodingIntervalTree.size(), expectedBEDTreeSize);
-        Assert.assertEquals(gtfIntervalTree.size(), expectedTranscriptTreeSize);
+        Assert.assertEquals(gtfTrees.getTranscriptIntervalTree().size(), expectedTranscriptTreeSize);
     }
 }

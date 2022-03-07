@@ -208,27 +208,10 @@ public final class SVAnnotate extends VariantWalker {
     private int maxBreakendLen = -1;
 
     private VariantContextWriter vcfWriter = null;
-    private SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree;
-    private SVIntervalTree<String> promoterIntervalTree;
     private SVIntervalTree<String> nonCodingIntervalTree;
-    private SVIntervalTree<String> transcriptionStartSiteTree;
+    private SVAnnotateEngine.GTFIntervalTreesContainer gtfIntervalTrees;
     private SAMSequenceDictionary sequenceDictionary;
     private SVAnnotateEngine svAnnotateEngine;
-
-    // Container class for all SVIntervalTree trees created from the GTF
-    @VisibleForTesting
-    protected static final class GTFIntervalTreesContainer {
-        protected final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree;
-        protected final SVIntervalTree<String> promoterIntervalTree;
-        protected final SVIntervalTree<String> transcriptionStartSiteTree;
-        private GTFIntervalTreesContainer(final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree,
-                                          final SVIntervalTree<String> promoterIntervalTree,
-                                          final SVIntervalTree<String> transcriptionStartSiteTree) {
-            this.gtfIntervalTree = gtfIntervalTree;
-            this.promoterIntervalTree = promoterIntervalTree;
-            this.transcriptionStartSiteTree = transcriptionStartSiteTree;
-        }
-    }
 
     @Override
     public void onTraversalStart() {
@@ -239,10 +222,7 @@ public final class SVAnnotate extends VariantWalker {
         // Load protein-coding GTF data into memory as interval tree of transcripts if GTF provided
         if (proteinCodingGTFFile != null) {
             final FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource = new FeatureDataSource<>(proteinCodingGTFFile);
-            final GTFIntervalTreesContainer gtfTrees = buildIntervalTreesFromGTF(proteinCodingGTFSource, sequenceDictionary, promoterWindow);
-            gtfIntervalTree = gtfTrees.gtfIntervalTree;
-            promoterIntervalTree = gtfTrees.promoterIntervalTree;
-            transcriptionStartSiteTree = gtfTrees.transcriptionStartSiteTree;
+            gtfIntervalTrees = buildIntervalTreesFromGTF(proteinCodingGTFSource, sequenceDictionary, promoterWindow);
         }
 
         // Load noncoding BED file into memory as interval tree of noncoding elements if BED provided
@@ -254,8 +234,8 @@ public final class SVAnnotate extends VariantWalker {
         vcfWriter = createVCFWriter(outputFile);
         updateAndWriteHeader(header);
 
-        svAnnotateEngine = new SVAnnotateEngine(gtfIntervalTree, promoterIntervalTree, nonCodingIntervalTree,
-                transcriptionStartSiteTree, sequenceDictionary, maxBreakendLen);
+        svAnnotateEngine = new SVAnnotateEngine(gtfIntervalTrees, nonCodingIntervalTree, sequenceDictionary,
+                maxBreakendLen);
     }
 
     /**
@@ -305,9 +285,11 @@ public final class SVAnnotate extends VariantWalker {
      * @return - container class packaging transcript, promoter, and TSS interval trees for annotation
      */
     @VisibleForTesting
-    protected static GTFIntervalTreesContainer buildIntervalTreesFromGTF(final FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource,
-                                                                final SAMSequenceDictionary sequenceDictionary, final int promoterWindow) {
-        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = new SVIntervalTree<>();
+    protected static SVAnnotateEngine.GTFIntervalTreesContainer buildIntervalTreesFromGTF(
+            final FeatureDataSource<GencodeGtfGeneFeature> proteinCodingGTFSource,
+            final SAMSequenceDictionary sequenceDictionary, final int promoterWindow
+    ) {
+        final SVIntervalTree<GencodeGtfTranscriptFeature> transcriptIntervalTree = new SVIntervalTree<>();
         final SVIntervalTree<String> promoterIntervalTree = new SVIntervalTree<>();
         final SVIntervalTree<String> transcriptionStartSiteTree = new SVIntervalTree<>();
         for (final GencodeGtfGeneFeature gene : proteinCodingGTFSource) {
@@ -317,7 +299,7 @@ public final class SVAnnotate extends VariantWalker {
                 if (contigID < 0) {
                     continue; // if GTF input contains chromosome not in VCF sequence dictionary, just ignore it
                 }
-                gtfIntervalTree.put(SVUtils.locatableToSVInterval(transcript, sequenceDictionary), transcript);
+                transcriptIntervalTree.put(SVUtils.locatableToSVInterval(transcript, sequenceDictionary), transcript);
                 final String geneName = transcript.getGeneName();
                 final int tss = getTranscriptionStartSite(transcript);
                 transcriptionStartSiteTree.put(new SVInterval(contigID, tss, tss + 1), geneName);
@@ -325,7 +307,7 @@ public final class SVAnnotate extends VariantWalker {
                 promoterIntervalTree.put(SVUtils.locatableToSVInterval(promoterInterval, sequenceDictionary), geneName);
             }
         }
-        return new GTFIntervalTreesContainer(gtfIntervalTree, promoterIntervalTree, transcriptionStartSiteTree);
+        return new SVAnnotateEngine.GTFIntervalTreesContainer(transcriptIntervalTree, promoterIntervalTree, transcriptionStartSiteTree);
     }
 
     /**

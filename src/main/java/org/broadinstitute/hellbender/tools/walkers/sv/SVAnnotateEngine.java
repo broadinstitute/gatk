@@ -19,32 +19,16 @@ import java.util.*;
 
 public class SVAnnotateEngine {
     private final int maxBreakendLen;
-    private final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree;
-    private final SVIntervalTree<String> promoterIntervalTree;
+    private final GTFIntervalTreesContainer gtfIntervalTrees;
     private final SVIntervalTree<String> nonCodingIntervalTree;
-    private final SVIntervalTree<String> transcriptionStartSiteTree;
     private final SAMSequenceDictionary sequenceDictionary;
 
-    private final Set<String> MSVExonOverlapClassifications = Sets.newHashSet(GATKSVVCFConstants.LOF,
+    private final Set<String> MSV_EXON_OVERLAP_CLASSIFICATIONS = Sets.newHashSet(GATKSVVCFConstants.LOF,
             GATKSVVCFConstants.INT_EXON_DUP,
             GATKSVVCFConstants.DUP_PARTIAL,
             GATKSVVCFConstants.PARTIAL_EXON_DUP,
             GATKSVVCFConstants.COPY_GAIN,
             GATKSVVCFConstants.TSS_DUP);
-
-    public SVAnnotateEngine(final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree,
-                            final SVIntervalTree<String> promoterIntervalTree,
-                            final SVIntervalTree<String> nonCodingIntervalTree,
-                            final SVIntervalTree<String> transcriptionStartSiteTree,
-                            final SAMSequenceDictionary sequenceDictionary,
-                            final int maxBreakendLen) {
-        this.gtfIntervalTree = gtfIntervalTree;
-        this.promoterIntervalTree = promoterIntervalTree;
-        this.nonCodingIntervalTree = nonCodingIntervalTree;
-        this.transcriptionStartSiteTree = transcriptionStartSiteTree;
-        this.sequenceDictionary = sequenceDictionary;
-        this.maxBreakendLen = maxBreakendLen;
-    }
 
     @VisibleForTesting
     protected enum StructuralVariantAnnotationType {
@@ -86,6 +70,43 @@ public class SVAnnotateEngine {
         public int hashCode() {
             return Objects.hash(intervalSVType, interval);
         }
+    }
+
+    // Container class for all SVIntervalTree trees created from the GTF
+    @VisibleForTesting
+    public static final class GTFIntervalTreesContainer {
+        private final SVIntervalTree<GencodeGtfTranscriptFeature> transcriptIntervalTree;
+        private final SVIntervalTree<String> promoterIntervalTree;
+        private final SVIntervalTree<String> transcriptionStartSiteTree;
+        protected GTFIntervalTreesContainer(final SVIntervalTree<GencodeGtfTranscriptFeature> transcriptIntervalTree,
+                                            final SVIntervalTree<String> promoterIntervalTree,
+                                            final SVIntervalTree<String> transcriptionStartSiteTree) {
+            this.transcriptIntervalTree = transcriptIntervalTree;
+            this.promoterIntervalTree = promoterIntervalTree;
+            this.transcriptionStartSiteTree = transcriptionStartSiteTree;
+        }
+
+        public SVIntervalTree<GencodeGtfTranscriptFeature> getTranscriptIntervalTree() {
+            return transcriptIntervalTree;
+        }
+
+        public SVIntervalTree<String> getPromoterIntervalTree() {
+            return promoterIntervalTree;
+        }
+
+        public SVIntervalTree<String> getTranscriptionStartSiteTree() {
+            return transcriptionStartSiteTree;
+        }
+    }
+
+    public SVAnnotateEngine(final GTFIntervalTreesContainer gtfIntervalTrees,
+                            final SVIntervalTree<String> nonCodingIntervalTree,
+                            final SAMSequenceDictionary sequenceDictionary,
+                            final int maxBreakendLen) {
+        this.gtfIntervalTrees = gtfIntervalTrees;
+        this.nonCodingIntervalTree = nonCodingIntervalTree;
+        this.sequenceDictionary = sequenceDictionary;
+        this.maxBreakendLen = maxBreakendLen;
     }
 
     /**
@@ -330,14 +351,12 @@ public class SVAnnotateEngine {
      * @param svType - SV type
      * @param transcript - protein-coding GTF transcript
      * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
-     * @param MSVExonOverlapClassifications - consequence classes to reclassify for CNVs
      */
     @VisibleForTesting
-    protected static void annotateTranscript(final SimpleInterval variantInterval,
+    protected void annotateTranscript(final SimpleInterval variantInterval,
                                              final StructuralVariantAnnotationType svType,
                                              final GencodeGtfTranscriptFeature transcript,
-                                             final Map<String, Set<String>> variantConsequenceDict,
-                                             final Set<String> MSVExonOverlapClassifications) {
+                                             final Map<String, Set<String>> variantConsequenceDict) {
         final String consequence;
         switch (svType) {
             case DEL:
@@ -350,7 +369,7 @@ public class SVAnnotateEngine {
                 consequence = annotateDuplication(variantInterval, transcript);
                 break;
             case CNV:
-                consequence = annotateCopyNumberVariant(variantInterval,transcript, MSVExonOverlapClassifications);
+                consequence = annotateCopyNumberVariant(variantInterval,transcript, MSV_EXON_OVERLAP_CLASSIFICATIONS);
                 break;
             case INV:
                 consequence = annotateInversion(variantInterval, transcript);
@@ -375,17 +394,15 @@ public class SVAnnotateEngine {
      * Add annotations for any overlapping promoters for a variant to its consequence dictionary
      * @param variantInterval - SimpleInterval representing structural variant
      * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
-     * @param promoterIntervalTree - interval tree of promoters from GTF to find promoters overlapping variant
-     * @param sequenceDictionary - SAMSequenceDictionary from VCF
      */
-    private static void annotatePromoterOverlaps(final SimpleInterval variantInterval,
-                                                 final Map<String, Set<String>> variantConsequenceDict,
-                                                 final SVIntervalTree<String> promoterIntervalTree,
-                                                 final SAMSequenceDictionary sequenceDictionary) {
+    private void annotatePromoterOverlaps(final SimpleInterval variantInterval,
+                                                 final Map<String, Set<String>> variantConsequenceDict) {
         final Set<String> codingAnnotationGenes = new HashSet<>();
         variantConsequenceDict.values().forEach(codingAnnotationGenes::addAll);
         final Iterator<SVIntervalTree.Entry<String>> promotersForVariant =
-                promoterIntervalTree.overlappers(SVUtils.locatableToSVInterval(variantInterval, sequenceDictionary));
+                gtfIntervalTrees.getPromoterIntervalTree().overlappers(
+                        SVUtils.locatableToSVInterval(variantInterval, sequenceDictionary)
+                );
         for (final Iterator<SVIntervalTree.Entry<String>> it = promotersForVariant; it.hasNext(); ) {
             final SVIntervalTree.Entry<String> promoterEntry = it.next();
             final String promoterName = promoterEntry.getValue();
@@ -399,13 +416,9 @@ public class SVAnnotateEngine {
      * Add annotations for any overlapping noncoding elements for a variant to its consequence dictionary
      * @param variantInterval - SimpleInterval representing structural variant
      * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
-     * @param nonCodingIntervalTree - interval tree of noncoding elements from BED to find features overlapping variant
-     * @param sequenceDictionary - SAMSequenceDictionary from VCF
      */
-    private static void annotateNonCodingOverlaps(final SimpleInterval variantInterval,
-                                                  final Map<String, Set<String>> variantConsequenceDict,
-                                                  final SVIntervalTree<String> nonCodingIntervalTree,
-                                                  final SAMSequenceDictionary sequenceDictionary) {
+    private void annotateNonCodingOverlaps(final SimpleInterval variantInterval,
+                                                  final Map<String, Set<String>> variantConsequenceDict) {
         final Iterator<SVIntervalTree.Entry<String>> nonCodingFeaturesForVariant =
                 nonCodingIntervalTree.overlappers(SVUtils.locatableToSVInterval(variantInterval, sequenceDictionary));
         for (Iterator<SVIntervalTree.Entry<String>> it = nonCodingFeaturesForVariant; it.hasNext(); ) {
@@ -422,19 +435,15 @@ public class SVAnnotateEngine {
      * To be run on intergenic variants that don't overlap promoters
      * @param variantInterval - SimpleInterval representing structural variant
      * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
-     * @param transcriptionStartSiteTree - interval tree of TSS locations from GTF to find nearest TSS to variant
-     * @param sequenceDictionary - SAMSequenceDictionary from VCF
      */
     @VisibleForTesting
-    protected static void annotateNearestTranscriptionStartSite(final SimpleInterval variantInterval,
-                                                                final Map<String, Set<String>> variantConsequenceDict,
-                                                                final SVIntervalTree<String> transcriptionStartSiteTree,
-                                                                final SAMSequenceDictionary sequenceDictionary) {
+    protected void annotateNearestTranscriptionStartSite(final SimpleInterval variantInterval,
+                                                         final Map<String, Set<String>> variantConsequenceDict) {
         // TODO: keep all nearest TSS for dispersed CPX / CTX or choose closest?
         final int variantContigID = SVUtils.getContigIDFromName(variantInterval.getContig(), sequenceDictionary);
         final SVInterval svInterval = SVUtils.locatableToSVInterval(variantInterval, sequenceDictionary);
-        final SVIntervalTree.Entry<String> nearestBefore = transcriptionStartSiteTree.max(svInterval);
-        final SVIntervalTree.Entry<String> nearestAfter = transcriptionStartSiteTree.min(svInterval);
+        final SVIntervalTree.Entry<String> nearestBefore = gtfIntervalTrees.getTranscriptionStartSiteTree().max(svInterval);
+        final SVIntervalTree.Entry<String> nearestAfter = gtfIntervalTrees.getTranscriptionStartSiteTree().min(svInterval);
         // nearest TSS only "valid" for annotation if non-null and on the same contig as the variant
         final boolean beforeValid = nearestBefore != null && nearestBefore.getInterval().getContig() == variantContigID;
         final boolean afterValid = nearestAfter != null && nearestAfter.getInterval().getContig() == variantContigID;
@@ -485,22 +494,18 @@ public class SVAnnotateEngine {
      * @param variantInterval - SimpleInterval representing structural variant
      * @param svType - SV type
      * @param variantConsequenceDict - running map of consequence -> feature name for variant to update
-     * @param MSVExonOverlapClassifications - consequence classes to reclassify for CNVs
-     * @param sequenceDictionary - SAMSequenceDictionary from VCF
-     * @param gtfIntervalTree - interval tree of protein-coding transcripts from GTF to find overlappers with variant
      */
     @VisibleForTesting
-    protected static void annotateGeneOverlaps(final SimpleInterval variantInterval,
+    protected void annotateGeneOverlaps(final SimpleInterval variantInterval,
                                                final StructuralVariantAnnotationType svType,
-                                               final Map<String, Set<String>> variantConsequenceDict,
-                                               final Set<String> MSVExonOverlapClassifications,
-                                               final SAMSequenceDictionary sequenceDictionary,
-                                               final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree) {
+                                               final Map<String, Set<String>> variantConsequenceDict) {
         final Iterator<SVIntervalTree.Entry<GencodeGtfTranscriptFeature>> gtfTranscriptsForVariant =
-                gtfIntervalTree.overlappers(SVUtils.locatableToSVInterval(variantInterval, sequenceDictionary));
+                gtfIntervalTrees.getTranscriptIntervalTree().overlappers(
+                        SVUtils.locatableToSVInterval(variantInterval, sequenceDictionary)
+                );
         for (Iterator<SVIntervalTree.Entry<GencodeGtfTranscriptFeature>> it = gtfTranscriptsForVariant; it.hasNext(); ) {
             SVIntervalTree.Entry<GencodeGtfTranscriptFeature> transcriptEntry = it.next();
-            annotateTranscript(variantInterval, svType, transcriptEntry.getValue(), variantConsequenceDict, MSVExonOverlapClassifications);
+            annotateTranscript(variantInterval, svType, transcriptEntry.getValue(), variantConsequenceDict);
         }
     }
 
@@ -654,31 +659,16 @@ public class SVAnnotateEngine {
      * Create a consequence -> feature name map and add all annotations for protein-coding, promoter, nearest TSS,
      * and noncoding consequences for a variant
      * @param variant - VCF record
-     * @param gtfIntervalTree - interval tree of protein-coding transcripts from GTF to find overlappers with variant
-     * @param promoterIntervalTree - interval tree of promoters from GTF to find promoters overlapping variant
-     * @param transcriptionStartSiteTree - interval tree of TSS locations from GTF to find nearest TSS to variant
-     * @param nonCodingIntervalTree - interval tree of noncoding elements from BED to find features overlapping variant
-     * @param MSVExonOverlapClassifications - consequence classes to reclassify for CNVs
-     * @param sequenceDictionary - SAMSequenceDictionary from VCF
-     * @param maxBreakendLen - Max size of BND in bp to annotate as DEL / DUP if applicable
      * @return - map of consequence -> feature name containing all annotations for the variant
      */
     @VisibleForTesting
-    protected static Map<String, Object> annotateStructuralVariant(final VariantContext variant,
-                                                                   final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree,
-                                                                   final SVIntervalTree<String> promoterIntervalTree,
-                                                                   final SVIntervalTree<String> transcriptionStartSiteTree,
-                                                                   final SVIntervalTree<String> nonCodingIntervalTree,
-                                                                   final Set<String> MSVExonOverlapClassifications,
-                                                                   final SAMSequenceDictionary sequenceDictionary,
-                                                                   final int maxBreakendLen) {
+    protected Map<String, Object> annotateStructuralVariant(final VariantContext variant) {
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
         final StructuralVariantAnnotationType overallSVType = getSVType(variant);
         final List<SVSegment> svSegments = getSVSegments(variant, overallSVType, maxBreakendLen);
-        if (gtfIntervalTree != null) {
+        if (gtfIntervalTrees != null && gtfIntervalTrees.getTranscriptIntervalTree() != null) {
             for (SVSegment svSegment : svSegments) {
-                annotateGeneOverlaps(svSegment.getInterval(), svSegment.getIntervalSVType(), variantConsequenceDict,
-                        MSVExonOverlapClassifications, sequenceDictionary, gtfIntervalTree);
+                annotateGeneOverlaps(svSegment.getInterval(), svSegment.getIntervalSVType(), variantConsequenceDict);
             }
         }
 
@@ -686,31 +676,28 @@ public class SVAnnotateEngine {
         final boolean noCodingAnnotations = variantConsequenceDict.isEmpty();
 
         // then annotate promoter overlaps and non-coding feature overlaps
-        if (promoterIntervalTree != null) {
+        if (gtfIntervalTrees != null && gtfIntervalTrees.getPromoterIntervalTree() != null) {
             for (final SVSegment svSegment : svSegments) {
-                annotatePromoterOverlaps(svSegment.getInterval(), variantConsequenceDict, promoterIntervalTree,
-                        sequenceDictionary);
+                annotatePromoterOverlaps(svSegment.getInterval(), variantConsequenceDict);
             }
         }
 
         if (nonCodingIntervalTree != null) {
             for (SVSegment svSegment : svSegments) {
-                annotateNonCodingOverlaps(svSegment.getInterval(), variantConsequenceDict, nonCodingIntervalTree,
-                        sequenceDictionary);
+                annotateNonCodingOverlaps(svSegment.getInterval(), variantConsequenceDict);
             }
         }
 
         // annotate nearest TSS for intergenic variants with no promoter overlaps
-        if (transcriptionStartSiteTree != null && !variantConsequenceDict.containsKey(GATKSVVCFConstants.PROMOTER) &&
-                noCodingAnnotations) {
+        if (gtfIntervalTrees != null && gtfIntervalTrees.getTranscriptionStartSiteTree() != null &&
+                !variantConsequenceDict.containsKey(GATKSVVCFConstants.PROMOTER) && noCodingAnnotations) {
             for (SVSegment svSegment : svSegments) {
-                annotateNearestTranscriptionStartSite(svSegment.getInterval(), variantConsequenceDict,
-                        transcriptionStartSiteTree, sequenceDictionary);
+                annotateNearestTranscriptionStartSite(svSegment.getInterval(), variantConsequenceDict);
             }
         }
 
         final Map<String, Object> attributes = sortVariantConsequenceDict(variantConsequenceDict);
-        if (gtfIntervalTree != null) {
+        if (gtfIntervalTrees != null && gtfIntervalTrees.getTranscriptIntervalTree() != null) {
             attributes.put(GATKSVVCFConstants.INTERGENIC, noCodingAnnotations);
         }
         return attributes;
@@ -721,10 +708,8 @@ public class SVAnnotateEngine {
      * @param variant - input VCF record
      * @return - VariantContext equal to input + functional annotation INFO keys
      */
-    protected VariantContext createAnnotatedStructuralVariantContext(final VariantContext variant) {
-        final Map<String, Object> attributes = annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
-                transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications, sequenceDictionary,
-                maxBreakendLen);
+    public VariantContext createAnnotatedStructuralVariantContext(final VariantContext variant) {
+        final Map<String, Object> attributes = annotateStructuralVariant(variant);
         return new VariantContextBuilder(variant)
                 .putAttributes(attributes)
                 .make();

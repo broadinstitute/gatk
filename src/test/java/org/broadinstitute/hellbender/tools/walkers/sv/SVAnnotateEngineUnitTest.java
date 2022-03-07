@@ -25,7 +25,7 @@ import java.util.*;
 public class SVAnnotateEngineUnitTest extends GATKBaseTest {
     private final File TOY_GTF_FILE = new File(getToolTestDataDir().replaceFirst("Engine", "") + "unittest.gtf");
     private final File TINY_NONCODING_BED_FILE = new File(getToolTestDataDir().replaceFirst("Engine", "") + "noncoding.unittest.bed");
-    private final Set<String> MSVExonOverlapClassifications = Sets.newHashSet(GATKSVVCFConstants.LOF,
+    private final Set<String> MSV_EXON_OVERLAP_CLASSIFICATIONS = Sets.newHashSet(GATKSVVCFConstants.LOF,
             GATKSVVCFConstants.INT_EXON_DUP,
             GATKSVVCFConstants.DUP_PARTIAL,
             GATKSVVCFConstants.PARTIAL_EXON_DUP,
@@ -110,9 +110,11 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
         final SAMSequenceDictionary sequenceDictionary =
                 SVAnnotateUnitTest.createSequenceDictionary(Arrays.asList("chr1", "chr2", "chr3", "chr4"));
         final SVIntervalTree<String> transcriptionStartSiteTree = initTree();
+        SVAnnotateEngine svAnnotateEngine = new SVAnnotateEngine(
+                new SVAnnotateEngine.GTFIntervalTreesContainer(null, null, transcriptionStartSiteTree),
+                null, sequenceDictionary, -1);
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
-        SVAnnotateEngine.annotateNearestTranscriptionStartSite(variantInterval,
-                variantConsequenceDict, transcriptionStartSiteTree, sequenceDictionary);
+        svAnnotateEngine.annotateNearestTranscriptionStartSite(variantInterval, variantConsequenceDict);
         if (expectedNearestTSSGene == null) {
             Assert.assertNull(variantConsequenceDict.get(GATKSVVCFConstants.NEAREST_TSS));
         } else {
@@ -180,7 +182,7 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
         Assert.assertEquals(actualDeletionConsequence, expectedDeletionConsequence);
 
         final String actualCopyNumberVariantConsequence =
-                SVAnnotateEngine.annotateCopyNumberVariant(toyVariant, toyTranscript, MSVExonOverlapClassifications);
+                SVAnnotateEngine.annotateCopyNumberVariant(toyVariant, toyTranscript, MSV_EXON_OVERLAP_CLASSIFICATIONS);
         Assert.assertEquals(actualCopyNumberVariantConsequence, expectedCopyNumberVariantConsequence);
 
         final String actualInversionConsequence = SVAnnotateEngine.annotateInversion(toyVariant, toyTranscript);
@@ -265,15 +267,16 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
         final SAMSequenceDictionary sequenceDictionary = SVAnnotateUnitTest.createSequenceDictionary(Arrays.asList("chr1"));
         final int promoterWindow = 1000;
 
-        final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
+        final SVAnnotateEngine.GTFIntervalTreesContainer gtfTrees =
                 SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, promoterWindow);
-        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
+        SVAnnotateEngine svAnnotateEngine = new SVAnnotateEngine(gtfTrees, null, sequenceDictionary,
+                -1);
 
         final String[] cpxIntervalStrings = cpxIntervalsString.split(",");
         for (String cpxIntervalString : cpxIntervalStrings) {
             SVAnnotateEngine.SVSegment cpxSegment = SVAnnotateEngine.parseCPXIntervalString(cpxIntervalString);
-            SVAnnotateEngine.annotateGeneOverlaps(cpxSegment.getInterval(), cpxSegment.getIntervalSVType(),
-                    variantConsequenceDict, MSVExonOverlapClassifications, sequenceDictionary, gtfIntervalTree);
+            svAnnotateEngine.annotateGeneOverlaps(cpxSegment.getInterval(), cpxSegment.getIntervalSVType(),
+                    variantConsequenceDict);
         }
 
         Assert.assertEquals(variantConsequenceDict.keySet(), expectedConsequences);
@@ -626,20 +629,18 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
 
         final FeatureDataSource<GencodeGtfGeneFeature> toyGTFSource =
                 SVAnnotateUnitTest.loadToyGTFSource(TOY_GTF_FILE);
-        final SVAnnotate.GTFIntervalTreesContainer gtfTrees =
+        final SVAnnotateEngine.GTFIntervalTreesContainer gtfTrees =
                 SVAnnotate.buildIntervalTreesFromGTF(toyGTFSource, sequenceDictionary, promoterWindow);
-        final SVIntervalTree<GencodeGtfTranscriptFeature> gtfIntervalTree = gtfTrees.gtfIntervalTree;
-        final SVIntervalTree<String> promoterIntervalTree = gtfTrees.promoterIntervalTree;
-        final SVIntervalTree<String> transcriptionStartSiteTree = gtfTrees.transcriptionStartSiteTree;
+
         final FeatureDataSource<FullBEDFeature> tinyNoncodingBedSource =
                 SVAnnotateUnitTest.loadTinyNoncodingBEDSource(TINY_NONCODING_BED_FILE);
         final SVIntervalTree<String> nonCodingIntervalTree =
                 SVAnnotate.buildIntervalTreeFromBED(tinyNoncodingBedSource, sequenceDictionary);
 
+        SVAnnotateEngine svAnnotateEngine = new SVAnnotateEngine(gtfTrees, nonCodingIntervalTree,
+                sequenceDictionary, maxBreakendLen);
         final Map<String, Object> actualAttributes =
-                SVAnnotateEngine.annotateStructuralVariant(variant, gtfIntervalTree, promoterIntervalTree,
-                        transcriptionStartSiteTree, nonCodingIntervalTree, MSVExonOverlapClassifications,
-                        sequenceDictionary, maxBreakendLen);
+                svAnnotateEngine.annotateStructuralVariant(variant);
 
         Assert.assertEquals(actualAttributes, expectedAttributes);
     }
