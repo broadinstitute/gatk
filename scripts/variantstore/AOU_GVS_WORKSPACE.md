@@ -53,8 +53,6 @@ These are the required parameters which must be supplied to the workflow:
 | project_id             | The name of the google project containing the dataset |
 | dataset_name           | The name of the dataset you created above       |
 | external\_sample_names | Sample ids from the data model that will be mapped to gvs ids       |
-| workspace_namespace    | The namespace of the workspace       |
-| workspace_name         | The name of the workspace       |
 
 If you will be using control samples in with your data and would like to assign those values manually you can pick an optional number to start the ids at so that there are reserved lower ordinal ids to use later
 This optional parameter is: maxId
@@ -76,29 +74,29 @@ These are the required parameters which must be supplied to the workflow:
 
 **Note:**
 Samples that will be batched and loaded together must be put into a sample_set ahead of time, otherwise their loading may cause conflicts.
-This workflow must be done piecemeal if over 4000 samples are to be loaded as only 4000 samples can be loaded in at a time. The best way to do this currently is to create sample_sets of 4000 samples each.
-The workflow can then be run once for each sample_set. if the same sample_set is inadvertantly run twice the workflow will detect that the samples already exist in the system and the second duplicate workflow will fail.
-If any of the imports have failed on a single sample, check that all of the other samples have been loaded in that sample_set during that workflow. Sometimes a sample will fail during loading while there are still samples in the queue waiting for loading to begin. Because of the failure, these samples will not be loaded at all.
-Keep track of the samples that have not been loaded whether because they failed, or because they were in the queue when another sample failed. They will need to be added later.
+- This workflow must be done piecemeal if over 4000 samples are to be loaded as only 4000 samples can be loaded in at a time. The best way to do this currently is to create sample_sets of 4000 samples each.
+- The workflow can then be run once for each sample_set. If the same sample_set is inadvertently run twice the workflow will detect that the samples already exist in the system and the workflow will fail.
+- If any of the imports have failed on a single sample, check that all of the other samples have been loaded in that sample_set during that workflow. Sometimes a sample will fail during loading while there are still samples in the queue waiting for loading to begin. Because of the failure, these samples will not be loaded at all.
+- Keep track of the samples that have not been loaded whether because they failed, or because they were in the queue when another sample failed. They will need to be added later.
 
 Once all sample_sets have been run, if there have been any failures, collect all non-loaded samples together in a new sample_set and load that in.
 
-Check the status table to see what samples have a STARTED log, but no FINISHED log.
-`SELECT info.sample_name, info.sample_id from `aou-genomics-curation-prod.beta2_99k.sample_info` as info left join `aou-genomics-curation-prod.beta2_99k.sample_load_status` as status on info.sample_id=status.sample_id where status.sample_id is null order by info.sample_id`
+Check the status table to see what samples have a STARTED log, but do not have a FINISHED log.
+>SELECT info.sample_name, info.sample_id from `<PROJECT>.<DATASET>.sample_info` as info left join `<PROJECT>.<DATASET>.sample_load_status` as status on info.sample_id=status.sample_id where status.sample_id is null order by info.sample_id
 
 A sample cannot be partially loaded into a single table, however it is possible for a sample to fail before it has been loaded into all the necessary tables. A sample may be loaded into either a vet or ref_ranges table, but not the other.
 For the samples that failed during import, it's important to check if they were loaded into either the vet and ref_ranges table. They may have been loaded into both--in which case, yay! That sample is all set.
 They may have been loaded into neither, in which case they will need to be loaded again with the other non-loaded samples. If they are in the vet table, but not the ref_ranges table or the reverse, you will need to remove them from that table with the following query:
-`DELETE FROM beta2_99k.ref_ranges_015 WHERE sample_id = 56238`
-`DELETE FROM beta2_99k.sample_load_status WHERE sample_id IN (56238)`
+`DELETE FROM <DATASET>.ref_ranges_015 WHERE sample_id = 56238`
+`DELETE FROM <DATASET>.sample_load_status WHERE sample_id IN (56238)`
 
 
 ### 3.3 Update the is_loaded field
 This is currently a manual step.
 Run
 
-update `spec-ops-aou.aou_gvs_template.sample_info` set is_loaded = TRUE where cast(sample_id as STRING) in (
-select partition_id from `spec-ops-aou.aou_gvs_template.INFORMATION_SCHEMA.PARTITIONS` where total_logical_bytes > 0 AND table_name like 'vet_%'
+> update `<PROJECT>.<DATASET>.sample_info` set is_loaded = TRUE where cast(sample_id as STRING) in (
+select partition_id from `<PROJECT>.<DATASET>.INFORMATION_SCHEMA.PARTITIONS` where total_logical_bytes > 0 AND table_name like 'vet_%'
 )
 
 
