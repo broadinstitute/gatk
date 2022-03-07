@@ -73,7 +73,7 @@ final guavaVersion = System.getProperty('guava.version', '31.0.1-jre')
 final log4j2Version = System.getProperty('log4j2Version', '2.17.1')
 final testNGVersion = '7.0.0'
 
-final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.123.20'
+final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.123.23'
 
 
 final baseJarName = 'gatk'
