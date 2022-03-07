@@ -112,13 +112,6 @@ This is done by running the `GvsCreateAltAllele` workflow with the following par
 
 **Note:** This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`
 
-To calibrate the cost of this workflow, two things must be considered.
-The first is the compute cost which can be easily collected from Terra.
-The second is the query cost which takes a bit more digging to find. Each TB of data scanned costs $5, and to find how much data was scanned, you'll need to search in the logs of each shard.
-From the execution directory, open the call-PopulateAltAlleleTable directory and for each shard, check the PopulateAltAlleleTable-0.log for a line listing the scanned data. It will look something like this:
-`COMPLETED (13787.631365537643 seconds, 1 retries, 1792149.0 MBs) - into alt allele from vet_001`
-
-
 ## 5. Create Filter Set
 
 This step calculates features from the ALT_ALLELE table, and trains the VQSR filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.
@@ -135,10 +128,12 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 
 Sometimes this workflow will fail because the Gaussians have not converged. Dont panic! It can happen to anyone's data!
 The first step in this case will be to adjust the Guassian for the failed step (there are two possible steps: model creation for the SNPS and model creation for the InDels) to a lower number. 
-By default, in the WDL, the max number of guassians attempted is 4 for InDels and 6 for SNPs
+By default, in the WDL, the max number of guassians attempted is 4 for InDels and 6 for SNPs.
+- IndelsVariantRecalibrator.max_gaussians
+- SNPsVariantRecalibratorClassic.max_gaussians (if you’re creating a callset with less than 20,000 samples)
+- SNPsVariantRecalibratorCreateModel.max_gaussians (if you’re creating a callset with more than 20,000 samples)
 You can then kick off the workflow again. 
-If that still does not work, or you would prefer to not change the max number of Guassians initially tried, then you can remove a column from the model creation
-eg you can remove "AS_SOR" from snp_recalibration_annotation_values and run the workflow again.
+
 When running the workflow additional times, make sure to change the filter_set_name (and for consistency the output_file_basename) so that the results do not overwrite the previous run
 
 ## 6. Extract Cohort
