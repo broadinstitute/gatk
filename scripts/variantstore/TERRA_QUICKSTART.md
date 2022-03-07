@@ -71,14 +71,13 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | --------------------------------- | ----------- |
 | dataset_name                      | the name of the dataset you created above  |
 | project_id                        | the name of the google project containing the dataset |
-| filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 4 |
+| filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 5 |
 | INDEL_VQSR_max_gaussians_override | you don't need to set this unless a previous run of IndelsVariantRecalibrator task failed to converge, start with 3 and lower as needed |
 | SNP_VQSR_max_gaussians_override   | you don't need to set this unless a previous run of SNPsVariantRecalibratorClassic task failed to converge, start with 5 and lower as needed |
 
 ## 4. Prepare Callset
 This step performs the heavy lifting in BigQuery to gather all the data required to create a jointly called VCF.  
 
-This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
 
 This is done by running the `GvsPrepareRangesCallset` workflow with the following parameters:
 
@@ -89,22 +88,6 @@ This is done by running the `GvsPrepareRangesCallset` workflow with the followin
 | destination_cohort_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in step 3); you will want to make note of this for use in the next step |
 
 ## 5. Extract Cohort
-This step extracts the data in BigQuery into a sharded joint called VCF.
-
-This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
-
-To prepare the dataset for extraction by putting it into a single vet and ref_ranges table, run the `GvsPrepareRangesCallset` workflow with the following parameters:
-
-
-| Parameter      | Description    |
-| ---------------- |---------------------------------------------------|
-| data_project | The name of the google project containing the dataset |
-| default_dataset  | The name of the dataset  |
-| destination_cohort_table_prefix | The name of the preparation table that this step is creating (e.g. <destination_cohort_table_prefix>__REF_RANGES) |
-| fq_sample_mapping_table | The fully qualified table name of the samples to extract (e.g. <project>.<dataset>.sample_info)  |
-
-**Note:** This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`
-
 Now the data is ready to be extracted!
 
 This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
