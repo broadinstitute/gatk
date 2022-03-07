@@ -497,6 +497,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
     }
 
     //One of the Gaussians has a covariance matrix with a determinant of zero, (can be confirmed that the entries of sigma for the row and column with the index of the constant annotation are zero) which leads to all +Inf LODs if we don't throw
+    //This convergence failure was fixed in https://github.com/broadinstitute/gatk/pull/7709
     @Test(expectedExceptions = {UserException.VQSRPositiveModelFailure.class}, enabled = false)
     public void testAnnotationsWithNoVarianceSpecified() throws IOException {
         // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
