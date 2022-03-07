@@ -24,7 +24,7 @@ workflow GvsCreateFilterSet {
         File? excluded_intervals
 
         String output_file_base_name
-        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_extract_perf_20220111/gatk-package-4.2.0.0-455-g40a40bc-SNAPSHOT-local.jar"
+        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc_testing_dataset_id_20220303/gatk-package-4.2.0.0-478-g29bb3da-SNAPSHOT-local.jar"
 
         File dbsnp_vcf
         File dbsnp_vcf_index
