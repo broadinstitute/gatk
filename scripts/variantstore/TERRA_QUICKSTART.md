@@ -30,8 +30,8 @@ These are the required parameters which must be supplied to the workflow:
 | Parameter             | Description |
 | --------------------- | ----------- |
 | dataset_name          | the name of the dataset you created above       |
-| project_id            | the name of the google project containing the dataset |
 | external_sample_names | `this.samples.sample_id` (the sample identifier column from the `gvs_demo_10` sample set) |
+| project_id            | the name of the google project containing the dataset |
 
 ## 1.2 Load data
 Next, your re-blocked gVCF files will be copied into the `ref_ranges_*` and `vet_*` tables by running the `GvsImportGenomes` workflow.
@@ -43,10 +43,10 @@ These are the required parameters which must be supplied to the workflow:
 | Parameter             | Description |
 | --------------------- | ----------- |
 | dataset_name          | the name of the dataset you created above       |
-| project_id            | the name of the google project containing the dataset |
 | external_sample_names | `this.samples.sample_id` (the sample identifier from the `gvs_demo_10` sample set) |
 | input_vcf_indexes     | `this.samples.hg38_reblocked_gvcf_index` (reblocked gvcf index file for each sample) |
 | input_vcfs            | `this.samples.hg38_reblocked_gvcf` (reblocked gvcf file for each sample) |
+| project_id            | the name of the google project containing the dataset |
 
 ## 2. Create Alt Allele Table
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.
@@ -70,9 +70,9 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | Parameter                         | Description |
 | --------------------------------- | ----------- |
 | dataset_name                      | the name of the dataset you created above  |
-| project_id                        | the name of the google project containing the dataset |
 | filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 5 |
 | INDEL_VQSR_max_gaussians_override | you don't need to set this unless a previous run of IndelsVariantRecalibrator task failed to converge, start with 3 and lower as needed |
+| project_id                        | the name of the google project containing the dataset |
 | SNP_VQSR_max_gaussians_override   | you don't need to set this unless a previous run of SNPsVariantRecalibratorClassic task failed to converge, start with 5 and lower as needed |
 
 ## 4. Prepare Callset
@@ -83,8 +83,8 @@ This is done by running the `GvsPrepareRangesCallset` workflow with the followin
 | Parameter                       | Description |
 |--------------------- | ----------- |
 | dataset_name         | the name of the dataset you created above  |
-| project_id           | the name of the google project containing the dataset |
 | extract_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in step 3); you will want to make note of this for use in the next step |
+| project_id           | the name of the google project containing the dataset |
 
 ## 5. Extract Cohort
 Now the data is ready to be extracted!
@@ -96,10 +96,10 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | Parameter            | Description              |
 | -------------------- | -------------------------|
 | dataset_name         | the name of the dataset you created above  |
-| project_id           | the name of the google project containing the dataset |
 | extract_table_prefix | the unique, descriptive name for the tables containing the callset you chose in step 4  |
 | filter_set_name      | the name of the filter set created in step 3  |
-| scatter_count        | how wide to scatter extract (use 100 for the Quickstart)  |
+| project_id           | the name of the google project containing the dataset |
+| scatter_count        | how wide to scatter the extract task (use 100 for the Quickstart)  |
 
 ## 6. Your VCF files are ready!
 

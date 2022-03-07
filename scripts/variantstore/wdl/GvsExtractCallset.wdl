@@ -8,8 +8,6 @@ workflow GvsExtractCallset {
     String dataset_name
 
     String filter_set_name
-    # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
-    # without a default value, ranges users are forced to specify a value even though it is meaningless
     String extract_table_prefix
     String query_project = project_id
     Int scatter_count
@@ -180,7 +178,7 @@ task ExtractTask {
             FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
                 --filter-set-site-table ~{fq_filter_set_site_table}
                 --tranches-table ~{fq_filter_set_tranches_table}
-                --filter-set-name ~{filter_set_name}
+                --filter-set-name ~{filter_set_name}'
         fi
 
         if [ ~{mode} = "RANGES-RAW" ]; then
