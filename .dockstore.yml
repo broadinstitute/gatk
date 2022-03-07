@@ -138,7 +138,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_optional_inputs
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -148,6 +147,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_optional_inputs
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
