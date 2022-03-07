@@ -10,7 +10,7 @@ workflow GvsExtractCallset {
     String filter_set_name
     # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
     # without a default value, ranges users are forced to specify a value even though it is meaningless
-    String extract_table_prefix = ""
+    String extract_table_prefix
     String query_project = project_id
     Int scatter_count
 
