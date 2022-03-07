@@ -3,14 +3,17 @@ package org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypesCache;
+import org.broadinstitute.hellbender.utils.GenotypeCounts;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -38,7 +41,6 @@ public final class GnarlyGenotyperEngine {
 
     // cache the ploidy 2 PL array sizes for increasing numbers of alts up to the maximum of maxAltAllelesToOutput
     private int[] likelihoodSizeCache;
-    private final ArrayList<GenotypeLikelihoodCalculator> glcCache = new ArrayList<>();
     private Set<Class<? extends InfoFieldAnnotation>> allASAnnotations;
 
     private final int maxAltAllelesToOutput;
@@ -54,15 +56,11 @@ public final class GnarlyGenotyperEngine {
         this.stripASAnnotations = stripASAnnotations;
 
         if (!summarizePls) {
-            final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
 
             //initialize PL size cache -- HTSJDK cache only goes up to 4 alts, but I need 6
             likelihoodSizeCache = new int[maxAltAllelesToOutput + 1 + 1]; //+1 for ref and +1 so index == numAlleles
-            glcCache.add(null); //add a null at index zero because zero alleles (incl. ref) makes no sense
             for (final int numAlleles : IntStream.rangeClosed(1, maxAltAllelesToOutput + 1).boxed().collect(Collectors.toList())) {
                 likelihoodSizeCache[numAlleles] = GenotypeLikelihoods.numLikelihoods(numAlleles, ASSUMED_PLOIDY);
-                //GL calculator cache is indexed by the total number of alleles, including ref
-                glcCache.add(numAlleles, GLCprovider.getInstance(ASSUMED_PLOIDY, numAlleles));
             }
         }
 
@@ -409,16 +407,7 @@ public final class GnarlyGenotyperEngine {
             gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
         } else {
             final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-
-            GenotypeLikelihoodCalculator glCalc;
-            if ( allelesToUse.size() <= maxAllelesToOutput ) {
-                glCalc = glcCache.get(allelesToUse.size());
-            } else {
-                final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
-                glCalc = GLCprovider.getInstance(ASSUMED_PLOIDY, allelesToUse.size());
-            }
-            
-            final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
+            final GenotypeAlleleCounts alleleCounts = GenotypesCache.get(ASSUMED_PLOIDY, maxLikelihoodIndex);
 
             gb.alleles(alleleCounts.asAlleleList(allelesToUse));
             final int numAltAlleles = allelesToUse.size() - 1;

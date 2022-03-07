@@ -309,7 +309,7 @@ public final class RecalDatum implements Serializable {
         }
 
         // this is just a straight binomial PDF
-        double log10Prob = MathUtils.log10BinomialProbability((int) nObservations, (int) nErrors, QualityUtils.qualToErrorProbLog10(Qempirical));
+        double log10Prob = MathUtils.log10BinomialProbability((int) nObservations, (int) nErrors, QualityUtils.qualToErrorProb(Qempirical));
         if ( Double.isInfinite(log10Prob) || Double.isNaN(log10Prob) )
             log10Prob = -Double.MAX_VALUE;
 

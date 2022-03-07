@@ -77,6 +77,16 @@ public final class IndexRangeUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "correctFromToData", dependsOnMethods = "testCorrectConstruction")
+    public void testSumInt(final int from, final int to) {
+        final IndexRange range = new IndexRange(from,to);
+        final IntUnaryOperator linearFunc = n -> 3*n + 11;
+        Assert.assertEquals(range.sumInt(linearFunc), IntStream.range(from, to).map(linearFunc).sum(), 1.0e-8);
+
+        final IntUnaryOperator cubicFunc = n -> 3*n*n*n - 4*n*n + 17;
+        Assert.assertEquals(range.sumInt(cubicFunc), IntStream.range(from, to).map(cubicFunc).sum(), 1.0e-8);
+    }
+
+    @Test(dataProvider = "correctFromToData", dependsOnMethods = "testCorrectConstruction")
     public void testFilter(final int from, final int to) {
         final IndexRange range = new IndexRange(from,to);
         final IntPredicate pred = n -> Math.sin(n) < 0.4;

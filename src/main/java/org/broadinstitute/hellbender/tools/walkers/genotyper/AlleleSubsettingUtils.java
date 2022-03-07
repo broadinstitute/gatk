@@ -4,14 +4,16 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFFormatHeaderLine;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.Permutation;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -32,9 +34,6 @@ public final class AlleleSubsettingUtils {
     private AlleleSubsettingUtils() {}  // prevent instantiation
     private static final int PL_INDEX_OF_HOM_REF = 0;
     public static final int NUM_OF_STRANDS = 2; // forward and reverse strands
-
-    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
-
 
     /**
      * Create the new GenotypesContext with the subsetted PLs and ADs
@@ -352,12 +351,10 @@ public final class AlleleSubsettingUtils {
             final double GLDiffBetweenRefAndBestVariantGenotype = Math.abs(glsVector[indexOfMostLikelyVariantGenotype] - glsVector[PL_INDEX_OF_HOM_REF]);
             final int ploidy = genotype.getPloidy() > 0 ? genotype.getPloidy() : defaultPloidy;
 
-            final int[] alleleCounts = new GenotypeLikelihoodCalculators()
-                    .getInstance(ploidy, vc.getNAlleles()).genotypeAlleleCountsAt(indexOfMostLikelyVariantGenotype)
-                    .alleleCountsByIndex(vc.getNAlleles() - 1);
+            final GenotypeAlleleCounts mostLikelyGenotypeAlleleCounts = GenotypesCache.get(ploidy, indexOfMostLikelyVariantGenotype);
 
-            for (int allele = 1; allele < alleleCounts.length; allele++) {
-                if (alleleCounts[allele] > 0) {
+            for (int allele = 1; allele < vc.getNAlleles(); allele++) {
+                if (mostLikelyGenotypeAlleleCounts.containsAllele(allele)) {
                     likelihoodSums[allele] += GLDiffBetweenRefAndBestVariantGenotype;
                 }
             }
@@ -381,10 +378,7 @@ public final class AlleleSubsettingUtils {
         final int[] result = new int[GenotypeLikelihoods.numLikelihoods(newAlleles.size(), ploidy)];
         final Permutation<Allele> allelePermutation = new IndexedAlleleList<>(originalAlleles).permutation(new IndexedAlleleList<>(newAlleles));
 
-        final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, originalAlleles.size());
-        for (int oldPLIndex = 0; oldPLIndex < glCalc.genotypeCount(); oldPLIndex++) {
-            final GenotypeAlleleCounts oldAlleleCounts = glCalc.genotypeAlleleCountsAt(oldPLIndex);
-
+        for (final GenotypeAlleleCounts oldAlleleCounts : GenotypeAlleleCounts.iterable(ploidy, originalAlleles.size())) {
             final boolean containsOnlyNewAlleles = IntStream.range(0, oldAlleleCounts.distinctAlleleCount())
                     .map(oldAlleleCounts::alleleIndexAt).allMatch(allelePermutation::isKept);
 
@@ -394,8 +388,8 @@ public final class AlleleSubsettingUtils {
                 final int[] newAlleleCounts = IntStream.range(0, newAlleles.size()).flatMap(newAlleleIndex ->
                         IntStream.of(newAlleleIndex, oldAlleleCounts.alleleCountFor(allelePermutation.fromIndex(newAlleleIndex)))).toArray();
 
-                final int newPLIndex = glCalc.alleleCountsToIndex(newAlleleCounts);
-                result[newPLIndex] = oldPLIndex;
+                final int newPLIndex = GenotypeIndexCalculator.alleleCountsToIndex(newAlleleCounts);
+                result[newPLIndex] = oldAlleleCounts.index();
             }
         }
         return  result;
@@ -445,39 +439,6 @@ public final class AlleleSubsettingUtils {
         return indexMapping;
     }
 
-    public static int[] getIndexesOfRelevantAlleles(final List<Allele> remappedAlleles, final List<Allele> targetAlleles, final int position, final Genotype g) {
-        Utils.nonEmpty(remappedAlleles);
-        Utils.nonEmpty(targetAlleles);
-
-        final int[] indexMapping = new int[targetAlleles.size()];
-
-        // the reference likelihoods should always map to each other (even if the alleles don't)
-        indexMapping[0] = 0;
-
-        for ( int i = 1; i < targetAlleles.size(); i++ ) {
-            // if there's more than 1 spanning deletion (*) allele then we need to use the best one
-            if (targetAlleles.get(i) == Allele.SPAN_DEL && g.hasPL()) {
-                final int occurrences = Collections.frequency(remappedAlleles, Allele.SPAN_DEL);
-                if (occurrences > 1) {
-                    final int indexOfBestDel = indexOfBestDel(remappedAlleles, g.getPL(), g.getPloidy());
-                    if (indexOfBestDel == -1) {
-                        throw new IllegalArgumentException("At position " + position + " targetAlleles contains a spanning deletion, but remappedAlleles does not.");
-                    }
-                    indexMapping[i] = indexOfBestDel;
-                    continue;
-                }
-            }
-
-            final int indexOfRemappedAllele = remappedAlleles.indexOf(targetAlleles.get(i));
-            if (indexOfRemappedAllele == -1) {
-                throw new IllegalArgumentException("At position " + position + " targetAlleles contains a " + targetAlleles.get(i) + " allele, but remappedAlleles does not.");
-            }
-            indexMapping[i] = indexOfRemappedAllele;
-        }
-
-        return indexMapping;
-    }
-
     /**
      * Returns the index of the best spanning deletion allele based on AD counts
      *
@@ -492,7 +453,8 @@ public final class AlleleSubsettingUtils {
 
         for ( int i = 0; i < alleles.size(); i++ ) {
             if ( alleles.get(i) == Allele.SPAN_DEL ) {
-                final int homAltIndex = findHomIndex(GL_CALCS.getInstance(ploidy, alleles.size()), i, ploidy);
+                //In the canonical order, the homozygous genotype of the ith allele is immediately followed by the first genotype containing the (i+1)th allele.
+                final int homAltIndex = (int) GenotypeIndexCalculator.indexOfFirstGenotypeWithAllele(ploidy, i +1) - 1;
                 final int PL = PLs[homAltIndex];
                 if ( PL < bestPL ) {
                     bestIndex = i;
@@ -502,25 +464,6 @@ public final class AlleleSubsettingUtils {
         }
 
         return bestIndex;
-    }
-
-    /** //TODO simplify these methods
-     * Returns the index of the PL that represents the homozygous genotype of the given i'th allele
-     *
-     * @param i           the index of the allele with the list of alleles
-     * @param ploidy      the ploidy of the sample
-     * @return the hom index
-     */
-    private static int findHomIndex(final GenotypeLikelihoodCalculator calculator, final int i, final int ploidy) {
-        // some quick optimizations for the common case
-        if ( ploidy == 2 )
-            return GenotypeLikelihoods.calculatePLindex(i, i);
-        if ( ploidy == 1 )
-            return i;
-
-        final int[] alleleIndexes = new int[ploidy];
-        Arrays.fill(alleleIndexes, i);
-        return calculator.allelesToIndex(alleleIndexes);
     }
 
     /**

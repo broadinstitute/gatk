@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
+import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -46,13 +47,6 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals((long) numbers.length, r.observationCount());
         Assert.assertTrue(r.mean() - 3224.625 < 2e-10);
         Assert.assertTrue(r.stddev() - 9072.6515881128 < 2e-10);
-    }
-
-    @Test
-    public void log10BinomialProbability() throws Exception {
-        Assert.assertEquals(MathUtils.log10BinomialProbability(2, 1), log10(0.5),1E-9);
-        Assert.assertEquals(MathUtils.log10BinomialProbability(4, 1), log10(0.25),1E-9);
-        Assert.assertEquals(MathUtils.log10BinomialProbability(4, 2), log10(0.375),1E-9);
     }
 
     @Test(dataProvider = "log10OneMinusPow10Data")
@@ -152,14 +146,6 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testLog10Gamma() {
-        //The expected values were checked against Wolphram Alpha
-        Assert.assertEquals(MathUtils.log10Gamma(4.0), 0.7781513, 1e-6);
-        Assert.assertEquals(MathUtils.log10Gamma(10), 5.559763, 1e-6);
-        Assert.assertEquals(MathUtils.log10Gamma(10654), 38280.532152137, 1e-6);
-    }
-
-    @Test
     public void testBinomialProbability() {
         // results from Wolfram Alpha
         Assert.assertEquals(MathUtils.binomialProbability(3, 2, 0.5), 0.375, 0.0001);
@@ -169,71 +155,6 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(MathUtils.binomialProbability(300, 150, 0.98), 6.462892e-168, 1e-169);
         Assert.assertEquals(MathUtils.binomialProbability(300, 120, 0.98), 3.090054e-221, 1e-222);
         Assert.assertEquals(MathUtils.binomialProbability(300, 112, 0.98), 2.34763e-236, 1e-237);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testBinomialProbabilityError() {
-        Assert.assertEquals(MathUtils.binomialProbability(3, 2, 1.5), 0.375, 0.0001);
-    }
-
-    @Test
-    public void testBinomialCoefficient() {
-        // results from Wolfram Alpha
-        Assert.assertEquals(MathUtils.binomialCoefficient(4, 2), 6.0, 1e-6);
-        Assert.assertEquals(MathUtils.binomialCoefficient(10, 3), 120.0, 1e-6);
-        Assert.assertEquals(MathUtils.binomialCoefficient(20, 3), 1140.0, 1e-6);
-        Assert.assertEquals(MathUtils.binomialCoefficient(100, 4), 3921225.0, 1e-6);
-    }
-
-    @Test
-    public void testExactBinomialCoefficient() {
-        Assert.assertEquals(MathUtils.exactBinomialCoefficient(4, 2), 6);
-        Assert.assertEquals(MathUtils.exactBinomialCoefficient(10, 3), 120);
-        Assert.assertEquals(MathUtils.exactBinomialCoefficient(20, 3), 1140);
-        Assert.assertEquals(MathUtils.exactBinomialCoefficient(20, 8), 125970);
-        Assert.assertEquals(MathUtils.exactBinomialCoefficient(100, 4), 3921225);
-        Assert.assertEquals(MathUtils.exactBinomialCoefficient(100, 96), 3921225);
-        Assert.assertEquals(MathUtils.exactBinomialCoefficient(100, 50), LONG_OVERFLOW);
-    }
-
-    @Test
-    public void testLog10BinomialCoefficient() {
-        // note that we can test the binomial coefficient calculation indirectly via Newton's identity
-        // (1+z)^m = sum (m choose k)z^k
-        double[] z_vals = new double[]{0.999, 0.9, 0.8, 0.5, 0.2, 0.01, 0.0001};
-        int[] exponent = new int[]{5, 15, 25, 50, 100};
-        for (double z : z_vals) {
-            double logz = log10(z);
-            for (int exp : exponent) {
-                double expected_log = exp * log10(1 + z);
-                double[] newtonArray_log = new double[1 + exp];
-                for (int k = 0; k <= exp; k++) {
-                    newtonArray_log[k] = MathUtils.log10BinomialCoefficient(exp, k) + k * logz;
-                }
-                Assert.assertEquals(MathUtils.log10SumLog10(newtonArray_log), expected_log, 1e-6);
-            }
-        }
-
-        // results from Wolfram Alpha
-        Assert.assertEquals(MathUtils.log10BinomialCoefficient(4, 2), 0.7781513, 1e-6);
-        Assert.assertEquals(MathUtils.log10BinomialCoefficient(10, 3), 2.079181, 1e-6);
-        Assert.assertEquals(MathUtils.log10BinomialCoefficient(103928, 119), 400.2156, 1e-4);
-    }
-
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testLogBinomialCoefficientErrorN() {
-        Assert.assertEquals(MathUtils.log10BinomialCoefficient(-1, 1), 0.0, 1e-6);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testLogBinomialCoefficientErrorK() {
-        Assert.assertEquals(MathUtils.log10BinomialCoefficient(1, -1), 0.0, 1e-6);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testLogBinomialCoefficientErrorKmoreThanN() {
-        Assert.assertEquals(MathUtils.log10BinomialCoefficient(1, 2), 0.0, 1e-6);
     }
 
     @Test
@@ -341,32 +262,6 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
         assertEqualsDoubleArray(normalizedExpected, normalized, error);
         assertEqualsDoubleArray(normalizedLog10Expected, normalizedLog10, error);
         assertEqualsDoubleArray(normalizedLogInLogExpected, normalizedLogInLog10, error);
-    }
-
-    @Test
-    public void testLog10Factorial() {
-        // results from Wolfram Alpha
-        Assert.assertEquals(log10Factorial(4), 1.3802112, 1e-6);
-        Assert.assertEquals(log10Factorial(10), 6.559763, 1e-6);
-        Assert.assertEquals(log10Factorial(200), 374.896888, 1e-3);
-        Assert.assertEquals(log10Factorial(12342), 45138.2626503, 1e-1);
-
-
-        int small_start = 1;
-        int med_start = 200;
-        int large_start = 12342;
-        double log10Factorial_small = 0;
-        double log10Factorial_middle = log10Factorial(med_start);
-        double log10Factorial_large = log10Factorial(large_start);
-        for ( int i = 1; i < 1000; i++ ) {
-            log10Factorial_small += log10(i + small_start);
-            log10Factorial_middle += log10(i + med_start);
-            log10Factorial_large += log10(i + large_start);
-
-            Assert.assertEquals(log10Factorial(small_start + i),log10Factorial_small,1e-6);
-            Assert.assertEquals(log10Factorial(med_start + i),log10Factorial_middle,1e-3);
-            Assert.assertEquals(log10Factorial(large_start + i),log10Factorial_large,1e-1);
-        }
     }
 
     @Test
@@ -931,8 +826,6 @@ public final class MathUtilsUnitTest extends GATKBaseTest {
                 new double[]{8000,100,20,80,2},
                 new double[]{90,20000,400,20,4,1280,720,1}
         );
-
-        Assert.assertTrue(! Double.isInfinite(MathUtils.log10Gamma(1e-3)) && ! Double.isNaN(MathUtils.log10Gamma(1e-3)));
 
         int[] numAlleleSampled = new int[]{2,5,10,20,25};
         for ( double[] alleles : testAlleles ) {

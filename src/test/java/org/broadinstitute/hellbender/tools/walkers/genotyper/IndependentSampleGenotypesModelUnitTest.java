@@ -36,7 +36,7 @@ public final class IndependentSampleGenotypesModelUnitTest {
             Assert.assertNotNull(sampleLikelihoods);
             final double[] values = sampleLikelihoods.getAsVector();
             Assert.assertNotNull(values);
-            Assert.assertEquals(values.length, new GenotypeLikelihoodCalculators().getInstance(ploidies[i], genotypingAlleleList.numberOfAlleles()).genotypeCount());
+            Assert.assertEquals(values.length, GenotypeIndexCalculator.genotypeCount(ploidies[i], genotypingAlleleList.numberOfAlleles()));
             for (int j = 0; j < values.length; j++)
                 Assert.assertTrue(values[j] <= 0);
         }

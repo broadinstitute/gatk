@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.math3.util.MathArrays;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeIndexCalculator;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
@@ -23,7 +24,7 @@ import java.util.List;
  * </p>
  *
  * <p>
- *     Such priors are obtained by invoking {@link #getLog10Priors(GenotypeLikelihoodCalculator, List).
+ *     Such priors are obtained by invoking {@link #getLog10Priors}
  *     This method takes on the list of alleles for that variant, an a reference to the genotype likelihood calculator witch determines the ploidy.
  * </p>
  * assumptions
@@ -134,30 +135,26 @@ public final class GenotypePriorCalculator {
     }
 
     /**
-     * Calculates the priors given the alleles to genetype and a likelihood calculator that determines the ploidy
-     * of the sample at that site.
-     * @param lkCalculator the input calculator
+     * Calculates the priors given the alleles to genotype
+     *
      * @param alleles the input alleles.
-     * @throws IllegalArgumentException if either input is {@code null} or the calculator maximum number of supported alleles is less that the input allele size.
      * @return never {@code null}, the array will have as many positions as necessary to hold the priors of all possible
      * unphased genotypes as per the number of input alleles and the input calculator's ploidy.
      */
-    public double[] getLog10Priors(final GenotypeLikelihoodCalculator lkCalculator, final List<Allele> alleles) {
-        Utils.nonNull(lkCalculator);
+    public double[] getLog10Priors(final int ploidy,  final List<Allele> alleles) {
         Utils.nonNull(alleles);
-        if (lkCalculator.alleleCount() < alleles.size()) {
-            throw new IllegalArgumentException("the number of alleles in the input calculator must be at least as large as the number of alleles in the input list");
-        }
         final int[] alleleTypes = calculateAlleleTypes(alleles);
-        final int numberOfGenotypes = lkCalculator.genotypeCount();
-        final double[] result = new double[numberOfGenotypes];
-        // implied = result[0] = 0.0;
-        for (int g = 1; g < numberOfGenotypes; g++) {
-            final GenotypeAlleleCounts gac = lkCalculator.genotypeAlleleCountsAt(g);
-            result[g] = gac.sumOverAlleleIndicesAndCounts((idx, cnt) -> cnt == 2
-                    ? homValues[alleleTypes[idx]]
-                    : hetValues[alleleTypes[idx]] + diffValues[alleleTypes[idx]] * (cnt - 1));
+
+        final double[] result = new double[GenotypeIndexCalculator.genotypeCount(ploidy, alleles.size())];
+
+        for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, alleles.size())) {
+            // implied = result[0] = 0.0;
+            if (gac.index() > 0) {
+                result[gac.index()] = gac.sumOverAlleleIndicesAndCounts((allele, count) -> count == 2 ? homValues[alleleTypes[allele]]
+                        : hetValues[alleleTypes[allele]] + diffValues[alleleTypes[allele]] * (count - 1));
+            }
         }
+
         return result;
     }
 

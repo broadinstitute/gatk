@@ -6,13 +6,13 @@ import htsjdk.variant.variantcontext.VariantContext;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.MathArrays;
-import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeIndexCalculator;
+import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 
 import java.util.Arrays;
 import java.util.List;
@@ -24,8 +24,6 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public final class AlleleFrequencyCalculator {
-
-    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
     private static final double THRESHOLD_FOR_ALLELE_COUNT_CONVERGENCE = 0.1;
     private static final int HOM_REF_GENOTYPE_INDEX = 0;
 
@@ -69,45 +67,43 @@ public final class AlleleFrequencyCalculator {
      * @param g must have likelihoods or (if approximateHomRefsFromGQ is true) be hom-ref with GQ
      *          (see {@link org.broadinstitute.hellbender.utils.GenotypeUtils#genotypeIsUsableForAFCalculation(Genotype)
      *          genotypeIsUsableForAFCalculation} )
-     * @param glCalc
      * @param log10AlleleFrequencies
-     * @return
      */
-    private static double[] log10NormalizedGenotypePosteriors(final Genotype g, final GenotypeLikelihoodCalculator glCalc, final double[] log10AlleleFrequencies) {
+    private static double[] log10NormalizedGenotypePosteriors(final Genotype g, final double[] log10AlleleFrequencies) {
         final double[] log10Likelihoods;
         if (g.hasLikelihoods()) {
             log10Likelihoods = g.getLikelihoods().getAsVector();
-        } else if ( g.isHomRef()) {
-            if (g.getPloidy() != 2) {
-                throw new IllegalStateException("Likelihoods are required to calculate posteriors for hom-refs with ploidy != 2, " +
-                        "but were not found for genotype " + g + " with ploidy " + g.getPloidy());
-            }
-            if (g.hasGQ()) {
-                log10Likelihoods = GenotypeUtils.makeApproximateDiploidLog10LikelihoodsFromGQ(g, log10AlleleFrequencies.length);
-            } else {
-                throw new IllegalStateException("Genotype " + g + " does not contain GQ necessary to calculate posteriors.");
-            }
+        } else if (g.isHomRef()) {
+            Utils.validate(g.getPloidy() == 2,() -> "Likelihoods are required to calculate posteriors for hom-refs with ploidy != 2, " +
+                        "but were not found for genotype " + g);
+            Utils.validate(g.hasGQ(), () -> "Genotype " + g + " does not contain GQ necessary to calculate posteriors.");
+            log10Likelihoods = GenotypeUtils.makeApproximateDiploidLog10LikelihoodsFromGQ(g, log10AlleleFrequencies.length);
         } else {
             //no-call with no PLs are too risky -- don't assume they're reblocked hom-refs
             throw new IllegalStateException("Genotype " + g + " does not contain likelihoods necessary to calculate posteriors.");
         }
-        final double[] log10Posteriors = new IndexRange(0, glCalc.genotypeCount()).mapToDouble(genotypeIndex -> {
-            final GenotypeAlleleCounts gac = glCalc.genotypeAlleleCountsAt(genotypeIndex);
-            return gac.log10CombinationCount() + log10Likelihoods[genotypeIndex]
+
+        final int ploidy = g.getPloidy();
+        final int alleleCount = log10AlleleFrequencies.length;
+        final double[] log10Posteriors = new double[GenotypeIndexCalculator.genotypeCount(ploidy, alleleCount)];
+        Utils.validate(log10Likelihoods.length == log10Posteriors.length, "Ploidy, allele count, and genotype likelihoods are inconsistent");
+
+        for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, alleleCount)) {
+            log10Posteriors[gac.index()] = gac.log10CombinationCount() + log10Likelihoods[gac.index()]
                     + gac.sumOverAlleleIndicesAndCounts((index, count) -> count * log10AlleleFrequencies[index]);
-        });
+        }
+
         return MathUtils.normalizeLog10(log10Posteriors);
     }
 
     private static int[] genotypeIndicesWithOnlyRefAndSpanDel(final int ploidy, final List<Allele> alleles) {
-        final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, alleles.size());
         final boolean spanningDeletionPresent = alleles.contains(Allele.SPAN_DEL);
         if (!spanningDeletionPresent) {
             return new int[] {HOM_REF_GENOTYPE_INDEX};
         } else {
             final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
             // allele counts are in the GenotypeLikelihoodCalculator format of {ref index, ref count, span del index, span del count}
-            return new IndexRange(0, ploidy + 1).mapToInteger(n -> glCalc.alleleCountsToIndex(new int[]{0, ploidy - n, spanDelIndex, n}));
+            return new IndexRange(0, ploidy + 1).mapToInteger(n -> GenotypeIndexCalculator.alleleCountsToIndex(0, ploidy - n, spanDelIndex, n));
         }
     }
 
@@ -171,9 +167,8 @@ public final class AlleleFrequencyCalculator {
                 continue;
             }
             final int ploidy = g.getPloidy() == 0 ? defaultPloidy : g.getPloidy();
-            final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, numAlleles);
 
-            final double[] log10GenotypePosteriors = log10NormalizedGenotypePosteriors(g, glCalc, log10AlleleFrequencies);
+            final double[] log10GenotypePosteriors = log10NormalizedGenotypePosteriors(g,log10AlleleFrequencies);
 
             //the total probability
             if (!spanningDeletionPresent) {
@@ -196,9 +191,10 @@ public final class AlleleFrequencyCalculator {
             // for each allele, we collect the log10 probabilities of genotypes in which the allele is absent, then add (in log space)
             // to get the log10 probability that the allele is absent in this sample
             log10AbsentPosteriors.forEach(DoubleArrayList::clear);  // clear the buffers.  Note that this is O(1) due to the primitive backing array
-            for (int genotype = 0; genotype < glCalc.genotypeCount(); genotype++) {
-                final double log10GenotypePosterior = log10GenotypePosteriors[genotype];
-                glCalc.genotypeAlleleCountsAt(genotype).forEachAbsentAlleleIndex(a -> log10AbsentPosteriors.get(a).add(log10GenotypePosterior), numAlleles);
+
+            for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(ploidy, numAlleles)) {
+                final double log10GenotypePosterior = log10GenotypePosteriors[gac.index()];
+                gac.forEachAbsentAlleleIndex(a -> log10AbsentPosteriors.get(a).add(log10GenotypePosterior), numAlleles);
             }
 
             final double[] log10PNoAllele = log10AbsentPosteriors.stream()
@@ -242,8 +238,8 @@ public final class AlleleFrequencyCalculator {
         final int ploidy = log10GenotypeLikelihoods.length - 1;
 
         final double[] log10UnnormalizedPosteriors = new IndexRange(0, ploidy + 1)
-                .mapToDouble(n -> log10GenotypeLikelihoods[n] + MathUtils.log10BinomialCoefficient(ploidy, n)
-                        + MathUtils.logToLog10(Gamma.logGamma(n + snpPseudocount ) + Gamma.logGamma(ploidy - n + refPseudocount)));
+                .mapToDouble(n -> log10GenotypeLikelihoods[n] + MathUtils.logToLog10(CombinatoricsUtils.binomialCoefficientLog(ploidy, n)
+                        + Gamma.logGamma(n + snpPseudocount ) + Gamma.logGamma(ploidy - n + refPseudocount)));
 
         return (returnZeroIfRefIsMax && MathUtils.maxElementIndex(log10UnnormalizedPosteriors) == 0) ? 0.0 :
                 1 - MathUtils.normalizeFromLog10ToLinearSpace(log10UnnormalizedPosteriors)[0];
@@ -262,13 +258,13 @@ public final class AlleleFrequencyCalculator {
             if (!GenotypeUtils.genotypeIsUsableForAFCalculation(g)) {
                 continue;
             }
-            final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(g.getPloidy(), numAlleles);
 
-            final double[] log10GenotypePosteriors = log10NormalizedGenotypePosteriors(g, glCalc, log10AlleleFrequencies);
+            final double[] log10GenotypePosteriors = log10NormalizedGenotypePosteriors(g, log10AlleleFrequencies);
 
-            new IndexRange(0, glCalc.genotypeCount()).forEach(genotypeIndex ->
-                glCalc.genotypeAlleleCountsAt(genotypeIndex).forEachAlleleIndexAndCount((alleleIndex, count) ->
-                        log10Result[alleleIndex] = MathUtils.log10SumLog10(log10Result[alleleIndex], log10GenotypePosteriors[genotypeIndex] + MathUtils.log10(count))));
+            for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(g.getPloidy(), numAlleles)) {
+                gac.forEachAlleleIndexAndCount((alleleIndex, count) -> log10Result[alleleIndex] =
+                        MathUtils.log10SumLog10(log10Result[alleleIndex], log10GenotypePosteriors[gac.index()] + MathUtils.log10(count)));
+            }
         }
         return MathUtils.applyToArrayInPlace(log10Result, x -> Math.pow(10.0, x));
     }

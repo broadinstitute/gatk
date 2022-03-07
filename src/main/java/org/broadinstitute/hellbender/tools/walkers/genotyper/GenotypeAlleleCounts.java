@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
+import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.utils.functional.IntToDoubleBiFunction;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
@@ -17,6 +19,9 @@ import java.util.stream.IntStream;
 
 /**
  * Collection of allele counts for a genotype. It encompasses what alleles are present in the genotype and in what number.</p>
+ *
+ * Also, it stores its index within the canonical ordering of genotypes and can efficiently generate the next genotype in that order, which is used
+ * in  static method for iterating over all genotypes of a given ploidy and allele count.
  *
  * <p>Alleles are represented herein by their indices running from <b>0</b> to <b>N-1</b> where <i>N</i> is the number of alleles.</p>
  *
@@ -52,18 +57,18 @@ import java.util.stream.IntStream;
  *     <tr><td>2</td><td><b>0/1/1</b></td></tr>
  *     <tr><td>3</td><td><b>1/1/1</b></td></tr>
  *     <tr><td>4</td><td><b>0/0/2</b></td></tr>
- *     <tr><td>6</td><td><b>0/1/2</b></td></tr>
- *     <tr><td>7</td><td><b>1/1/2</b></td></tr>
- *     <tr><td>8</td><td><b>0/2/2</b></td></tr>
- *     <tr><td>9</td><td><b>1/2/2</b></td></tr>
- *     <tr><td>10</td><td><b>2/2/2</b></td></tr>
- *     <tr><td>11</td><td><b>0/0/3</b></td></tr>
- *     <tr><td>12</td><td><b>0/1/3</b></td></tr>
- *     <tr><td>13</td><td><b>1/1/3</b></td></tr>
- *     <tr><td>14</td><td><b>0/2/3</b></td></tr>
- *     <tr><td>15</td><td><b>1/2/3</b></td></tr>
- *     <tr><td>16</td><td><b>2/2/3</b></td></tr>
- *     <tr><td>17</td><td><b>0/3/3</b></td></tr>
+ *     <tr><td>5</td><td><b>0/1/2</b></td></tr>
+ *     <tr><td>6</td><td><b>1/1/2</b></td></tr>
+ *     <tr><td>7</td><td><b>0/2/2</b></td></tr>
+ *     <tr><td>8</td><td><b>1/2/2</b></td></tr>
+ *     <tr><td>9</td><td><b>2/2/2</b></td></tr>
+ *     <tr><td>10</td><td><b>0/0/3</b></td></tr>
+ *     <tr><td>11</td><td><b>0/1/3</b></td></tr>
+ *     <tr><td>12</td><td><b>1/1/3</b></td></tr>
+ *     <tr><td>13</td><td><b>0/2/3</b></td></tr>
+ *     <tr><td>14</td><td><b>1/2/3</b></td></tr>
+ *     <tr><td>15</td><td><b>2/2/3</b></td></tr>
+ *     <tr><td>16</td><td><b>0/3/3</b></td></tr>
  *     <tr><td>...</td><td>...</td></tr>
  * </table>
  *
@@ -79,7 +84,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      * [0, 2] = AA:  log10(1)
      * [0, 1, 1, 1, 2, 1] = ABC: log10(6)
      * [0, 2, 1, 2] = AABB: log10(4!/(2!2!))
-     * This is evaluated lazily i.e. it is initialized to {@link GenotypeAlleleCounts::UNCOMPUTED_LOG_10_COMBINATION_COUNT}
+     * This is evaluated lazily i.e. it is initialized to {@link GenotypeAlleleCounts#UNCOMPUTED_LOG_10_COMBINATION_COUNT}
      * and only calculated if its getter is invoked.
      */
     private double log10CombinationCount = UNCOMPUTED_LOG_10_COMBINATION_COUNT;
@@ -90,7 +95,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
     private final int ploidy;
 
     /**
-     * Sorted array of integer pairs as described in {@link #GenotypeAlleleCounts(int, int, int...)}.
+     * Sorted array of format {allele 1, count 1, allele 2, count 2. . .}, where allele1, allele2. . . are in order
      */
     private int[] sortedAlleleCounts;
 
@@ -100,7 +105,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
     private int distinctAlleleCount;
 
     /**
-     * Index of this genotype within genotypes of the same ploidy and number of alleles.
+     * Index of this genotype within genotypes of the same ploidy
      */
     private int index;
 
@@ -142,12 +147,51 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
 
     public int ploidy() { return ploidy; }
 
+    private static Iterator<GenotypeAlleleCounts> iterator(final int ploidy, final int alleleCount) {
+        return new Iterator<GenotypeAlleleCounts>() {
+            private int index = 0;
+            private int numGenotypes = GenotypeIndexCalculator.genotypeCount(ploidy, alleleCount);
+            private GenotypeAlleleCounts alleleCounts = first(ploidy);
+
+            @Override
+            public boolean hasNext() {
+                return index < numGenotypes;
+            }
+
+            @Override
+            public GenotypeAlleleCounts next() {
+                if (index++ > 0) {
+                    alleleCounts.increase();
+                }
+                return alleleCounts;
+            }
+        };
+    }
+
+    /**
+     * Iterate over all GenotypeAlleleCounts for a given ploidy and allele count in the canonical order.
+     *
+     * This is the preferred way to access all GenotypeAlleleCounts in sequence, such as when computing genotype likelihoods.
+     * Thanks to the efficiency of the increase() method this iteration is extremely fast.
+     */
+    public static Iterable<GenotypeAlleleCounts> iterable(final int ploidy, final int alleleCount) {
+        return new Iterable<GenotypeAlleleCounts>() {
+            private final int p = ploidy;
+            private final int a = alleleCount;
+
+            @Override
+            public Iterator<GenotypeAlleleCounts> iterator() {
+                return GenotypeAlleleCounts.iterator(p,a);
+            }
+        };
+    }
+
     /**
      * Increases the allele counts a number of times.
      *
      * <p>
      *     This method must not be invoked on cached genotype-allele-counts that are meant to remain constant,
-     *     such as the ones contained in {@link GenotypeLikelihoodCalculators::genotypeTableByPloidy}.
+     *     such as the ones contained in {@link GenotypesCache#genotypeTableByPloidy}.
      * </p>
      *
      * @param times the number of times to increase.
@@ -162,11 +206,11 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
     }
 
     /**
-     * Updates the genotype counts to match the next genotype according to the canonical ordering of PLs.
+     * Returns the next genotype allele counts object in the canonical ordering of genotypes.
      *
      * <p>
      *     This method must not be invoked on cached genotype-allele-counts that are meant to remain constant,
-     *     such as the ones contained in {@link GenotypeLikelihoodCalculators::genotypeTableByPloidy}
+     *     such as the ones contained in {@link GenotypesCache#genotypeTableByPloidy}
      * </p>
      */
     protected GenotypeAlleleCounts increase() {
@@ -307,14 +351,14 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      * Gets the log10 combination count, computing it if uninitialized.  Note that the invoked MathUtils method uses fast cached
      * log10 values of integers for any reasonable ploidy.
      *
-     * This method should be invoked on instances of {@link GenotypeAlleleCounts} cached in {@link GenotypeLikelihoodCalculators::genotypeTableByPloidy}.
+     * This method should be invoked on instances of {@link GenotypeAlleleCounts} cached in {@link GenotypesCache#genotypeTableByPloidy}.
      * Such usage allows the result of this computation to be cached once for an entire run of HaplotypeCaller.
      * @return
      */
     public double log10CombinationCount() {
         if (log10CombinationCount == UNCOMPUTED_LOG_10_COMBINATION_COUNT) {
-            log10CombinationCount = MathUtils.log10Factorial(ploidy)
-                    - new IndexRange(0, distinctAlleleCount).sum(n -> MathUtils.log10Factorial(sortedAlleleCounts[2*n+1]));
+            log10CombinationCount = MathUtils.logToLog10(CombinatoricsUtils.factorialLog(ploidy)
+                    - new IndexRange(0, distinctAlleleCount).sum(n -> CombinatoricsUtils.factorialLog(sortedAlleleCounts[2*n+1])));
         }
         return log10CombinationCount;
     }
@@ -513,90 +557,6 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
         return rank < 0 ? 0 : alleleCountAt(rank);
     }
 
-    /**
-     * Returns the allele counts for each allele index to maximum.
-     * @param maximumAlleleIndex the maximum allele index required.
-     * @throws IllegalArgumentException if {@code maximumAlleleIndex} is less than 0.
-     * @return never {@code null}, an array of exactly {@code maximumAlleleIndex + 1} positions with the counts
-     * of each allele where the position in the array is equal to its index.
-     */
-    public int[] alleleCountsByIndex(final int maximumAlleleIndex) {
-        Utils.validateArg(maximumAlleleIndex >= 0, "the requested allele count cannot be less than 0");
-        final int[] result = new int[maximumAlleleIndex + 1];
-        copyAlleleCountsByIndex(result, 0, 0, maximumAlleleIndex);
-        return result;
-    }
-
-
-    private void copyAlleleCountsByIndex(final int[] dest, final int offset, final int minimumAlleleIndex, final int maximumAlleleIndex) {
-
-        // First we determine what section of the sortedAlleleCounts array contains the counts of interest,
-        // By the present allele rank range of interest.
-        final int minimumAlleleRank = alleleRankFor(minimumAlleleIndex);
-        final int maximumAlleleRank = alleleRankFor(maximumAlleleIndex);
-
-        // If the min or max allele index are absent (returned rank < 0) we note where the would be inserted; that
-        // way we avoid going through the rest of positions in the sortedAlleleCounts array.
-        // The range of interest is then [startRank,endRank].
-        final int startRank = minimumAlleleRank < 0 ? - minimumAlleleRank - 1 : minimumAlleleRank;
-        final int endRank = maximumAlleleRank < 0 ? - maximumAlleleRank - 2 : maximumAlleleRank;
-
-        // Iteration variables:
-        int nextIndex = minimumAlleleIndex; // next index that we want to output the count for.
-        int nextRank = startRank; // next rank to query in sortedAlleleCounts.
-        int nextSortedAlleleCountsOffset = nextRank << 1; // offset in sortedAlleleCounts where the info is present for the next rank.
-        int nextDestOffset = offset; // next offset in destination array where to set the count for the nextIndex.
-
-        while (nextRank++ <= endRank) {
-            final int alleleIndex = sortedAlleleCounts[nextSortedAlleleCountsOffset++];
-            // fill non-present allele counts with 0s.
-            while (alleleIndex > nextIndex) {
-                dest[nextDestOffset++] = 0;
-                nextIndex++;
-            }
-            // It is guaranteed that at this point alleleIndex == nextIndex
-            // thanks to the condition of the enclosing while: there must be at least one index of interest that
-            // is present in the remaining (nextRank,endRank] interval as otherwise endRank would be less than nextRank.
-            dest[nextDestOffset++] = sortedAlleleCounts[nextSortedAlleleCountsOffset++];
-            nextIndex++;
-        }
-        // Finally we take care of trailing requested allele indices.
-        while (nextIndex++ <= maximumAlleleIndex) {
-            dest[nextDestOffset++] = 0;
-        }
-    }
-
-    /**
-     * Copies the sorted allele counts into an array.
-     *
-     * <p>
-     *     Sorted allele counts are disposed as an even-sized array where even positions indicate the allele index and
-     *     the following odd positions the number of copies of that allele in this genotype allele count:
-     * </p>
-     * <p><pre>
-     *     [ allele_0, freq_0, allele_1, freq_1 ... ]
-     * </pre></p>
-     *
-     * <p>
-     *     With {@code offset} you can indicate an alternative first position in the destination array.
-     * </p>
-     *
-     * @param dest where to copy the counts.
-     * @param offset starting position.
-     *
-     * @throws IllegalArgumentException if {@code dest} is {@code null}, {@code offset} is less than 0
-     *   or {@code dest} is not large enough considering the number of alleles present in this genotype
-     *   allele counts and the {@code offset} provided. A total of
-     *   <code>{@link #distinctAlleleCount()} * 2 positions</code>
-     *   are required for the job.
-     */
-    public void copyAlleleCounts(final int[] dest, final int offset) {
-        Utils.nonNull(dest, "the destination cannot be null");
-        Utils.validateArg(offset >= 0, "the offset cannot be negative");
-        final int sortedAlleleCountsLength = distinctAlleleCount << 1;
-        Utils.validateArg(offset + sortedAlleleCountsLength <= dest.length, "the input array does not have enough capacity");
-        System.arraycopy(sortedAlleleCounts, 0, dest, offset, sortedAlleleCountsLength);
-    }
 
     /**
      * Instantiates the first genotype possible provided a total ploidy.

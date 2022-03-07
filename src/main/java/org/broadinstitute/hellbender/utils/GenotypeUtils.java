@@ -1,13 +1,11 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeIndexCalculator;
 import picard.util.MathUtil;
 
-import java.util.Arrays;
-
 public final class GenotypeUtils {
-    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
     final static int TYPICAL_BASE_QUALITY = 30;
     //from the genotype likelihoods equations assuming the SNP ref conf model with no mismatches
     //PL[2] = GQ; scaleFactor = PL[3]/GQ ~ -10 * DP * log10(P_error) / (-10 * DP * log10(1/ploidy)) where BASE_QUALITY = -10 * log10(P_error)
@@ -153,9 +151,25 @@ public final class GenotypeUtils {
     }
 
     /**
-     * Make approximate likelihoods for a diploid genotype without PLs.
-     * For a hom-ref, as long as we have GQ we can make a very accurate QUAL calculation
-     * since the hom-var likelihood should make a minuscule contribution
+     * Make approximate likelihoods for a diploid genotype (with arbitrary allele count) without PLs given genotype quality GQ.
+     *
+     * The method is as follows:
+     * 1) For the biallelic diploid case with alleles A,B, the genotype likelihoods would be
+     * AA: 0, AB: GQ, BB: PLOIDY_2_HOM_VAR_SCALE_FACTOR * GQ
+     *
+     * 2) For arbitrary allele count, set the genotype likelihoods as
+     * AA: same as AA in the biallelic case
+     * AB, AC, AD etc:  same as AB in the biallelic case
+     * BB, BC, CC, BD etc: same as BB in the biallelic case
+     *
+     * WARNING: this calculation is completely bogus!  Legacy javadoc said: "For a hom-ref, as long as we have GQ we can
+     * make a very accurate QUAL calculation since the hom-var likelihood should make a minuscule contribution."  Basically,
+     * the bogusness of this method doesn't matter because the voodoo only involves the very small hom-var contribution.
+     * That's true, but for multiallelics it incorrectly assigns the same GQ to every het genotype, essentially deflating
+     * the qulity of the hom-ref call.
+     *
+     * In summary, the effect of this calculation is to depress the QUAL of multiallelic hom refs by a small amount for
+     * no reason whatsoever.
      * @param g a diploid genotype with GQ
      * @param nAlleles number of alleles (including reference)
      * @return log10 likelihoods
@@ -163,20 +177,17 @@ public final class GenotypeUtils {
     public static double[] makeApproximateDiploidLog10LikelihoodsFromGQ(Genotype g, int nAlleles) {
         Utils.validate(g.getPloidy() == 2, "This method can only be used to approximate likelihoods for diploid genotypes");
         Utils.validate(g.hasGQ(), "Genotype must have GQ in order to approximate PLs");
-        final int[] perSampleIndexesOfRelevantAlleles = new int[nAlleles];
-        Arrays.fill(perSampleIndexesOfRelevantAlleles, 1);
-        perSampleIndexesOfRelevantAlleles[0] = 0;  //ref still maps to ref
-        //use these values for diploid ref/ref, ref/alt, alt/alt likelihoods
-        final int gq = g.getGQ();
-        final int ploidy = g.getPloidy();
-        //here we supply likelihoods for ref/ref, ref/alt, and alt/alt and then generalize to multiallic PLs if necessary
-        final int[] approxLikelihoods = {0, gq, PLOIDY_2_HOM_VAR_SCALE_FACTOR*gq};
-        //map likelihoods for any other alts to biallelic ref/alt likelihoods above
-        final int[] genotypeIndexMapByPloidy = GL_CALCS.getInstance(ploidy, nAlleles).newToOldGenotypeMap(perSampleIndexesOfRelevantAlleles); //probably horribly slow
-        final int[] PLs = new int[genotypeIndexMapByPloidy.length];
-        for (int i = 0; i < PLs.length; i++) {
-            PLs[i] = approxLikelihoods[genotypeIndexMapByPloidy[i]];
+
+        final int homRefLikelihood = 0;
+        final int hetLikelihood = g.getGQ();
+        final int homVarLikelihood = PLOIDY_2_HOM_VAR_SCALE_FACTOR * g.getGQ();
+
+        final int[] PLs = new int[GenotypeIndexCalculator.genotypeCount(2, nAlleles)];
+        //TODO: replace with GenotypesCache::iterator
+        for (final GenotypeAlleleCounts gac : GenotypeAlleleCounts.iterable(2, nAlleles)) {
+                PLs[gac.index()] = gac.index() == 0 ? homRefLikelihood : (gac.containsAllele(0) ? hetLikelihood : homVarLikelihood);
         }
+
         return GenotypeLikelihoods.fromPLs(PLs).getAsVector();  //fromPLs converts from Phred-space back to log10-space
     }
 

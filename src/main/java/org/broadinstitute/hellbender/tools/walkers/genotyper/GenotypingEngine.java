@@ -216,19 +216,16 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         return extractPNoAlt(alleles, gt, gpArray);
     }
 
-    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
-
     private double extractPNoAlt(final List<Allele> alleles, final Genotype gt, final double[] posteriors) {
         if (!alleles.contains(Allele.SPAN_DEL)) {
             return posteriors[0] - Math.max(0, QualityUtils.phredSum(posteriors));
         } else {
             // here we need to get indices of genotypes composed of REF and * alleles
             final int ploidy = gt.getPloidy();
-            final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, alleles.size());
             final int spanDelIndex = alleles.indexOf(Allele.SPAN_DEL);
             // allele counts are in the GenotypeLikelihoodCalculator format of {ref index, ref count, span del index, span del count}
             final double[] nonVariantLog10Posteriors = IntStream.rangeClosed(0, ploidy)
-                    .map(n -> glCalc.alleleCountsToIndex(0, ploidy - n, spanDelIndex, n))
+                    .map(n -> GenotypeIndexCalculator.alleleCountsToIndex(0, ploidy - n, spanDelIndex, n))
                     .mapToDouble(n -> posteriors[n])
                     .toArray();
 

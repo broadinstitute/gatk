@@ -4,9 +4,8 @@ import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.util.MathArrays;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeIndexCalculator;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -20,7 +19,6 @@ import java.util.stream.IntStream;
  */
 public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
     private static final double EPS = 1.0e-3;
-    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
 
     private static final Allele A = Allele.create("A", true);
     private static final Allele B = Allele.create("C");
@@ -326,9 +324,8 @@ public class AlleleFrequencyCalculatorUnitTest extends GATKBaseTest {
     // make PLs that correspond to an obvious call i.e. one PL is relatively big and the rest are zero
     // alleleCounts is the GenotypeAlleleCounts format for the obvious genotype, with repeats but in no particular order
     private static int[] PLsForObviousCall(final int ploidy, final int numAlleles, final int[] alleleCounts, final int PL)   {
-        final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, numAlleles);
-        final int[] result = Collections.nCopies(glCalc.genotypeCount(), PL).stream().mapToInt(n->n).toArray();
-        result[glCalc.alleleCountsToIndex(alleleCounts)] = 0;
+        final int[] result = Collections.nCopies(GenotypeIndexCalculator.genotypeCount(ploidy, numAlleles), PL).stream().mapToInt(n->n).toArray();
+        result[GenotypeIndexCalculator.alleleCountsToIndex(alleleCounts)] = 0;
         return result;
     }
 

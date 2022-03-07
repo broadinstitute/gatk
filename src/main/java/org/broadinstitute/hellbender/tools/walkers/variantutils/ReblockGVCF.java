@@ -6,9 +6,12 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -30,10 +33,10 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
-import org.broadinstitute.hellbender.utils.variant.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.broadinstitute.hellbender.utils.variant.writers.ReblockingGVCFBlockCombiner;
 import org.broadinstitute.hellbender.utils.variant.writers.ReblockingGVCFWriter;
@@ -107,8 +110,6 @@ public final class ReblockGVCF extends MultiVariantWalker {
     public static final String QUAL_APPROX_LONG_NAME = "do-qual-score-approximation";
     public static final String QUAL_APPROX_SHORT_NAME = "do-qual-approx";
     public static final String ALLOW_MISSING_LONG_NAME = "allow-missing-hom-ref-data";
-
-    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written")
@@ -429,8 +430,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
             return true;
         }
         final int minLikelihoodIndex = MathUtils.minElementIndex(pls);
-        final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(genotype.getPloidy(), vc.getAlleles().size());
-        final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(minLikelihoodIndex);
+        final GenotypeAlleleCounts alleleCounts = GenotypesCache.get(genotype.getPloidy(), minLikelihoodIndex);
 
         final List<Allele> finalAlleles = alleleCounts.asAlleleList(vc.getAlleles());
         return (pls != null && pls[0] < rgqThreshold)
@@ -712,8 +712,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
                     + variant.getContig() + ":" + variant.getStart());
         }
         final int minLikelihoodIndex = MathUtils.minElementIndex(pls);
-        final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(origG.getPloidy(), variant.getAlleles().size());
-        final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(minLikelihoodIndex);
+        final GenotypeAlleleCounts alleleCounts = GenotypesCache.get(origG.getPloidy(), minLikelihoodIndex);
 
         final List<Allele> finalAlleles = alleleCounts.asAlleleList(variant.getAlleles());
         hasPLAndPosteriorMismatch = !finalAlleles.containsAll(origG.getAlleles());

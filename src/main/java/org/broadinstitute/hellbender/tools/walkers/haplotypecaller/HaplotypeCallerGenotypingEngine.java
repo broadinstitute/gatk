@@ -362,7 +362,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     private VariantContext removeAltAllelesIfTooManyGenotypes(final int ploidy, final Map<Allele, List<Haplotype>> alleleMapper, final VariantContext mergedVC) {
 
         final int originalAlleleCount = alleleMapper.size();
-        practicalAlleleCountForPloidy.putIfAbsent(ploidy, GenotypeLikelihoodCalculators.computeMaxAcceptableAlleleCount(ploidy, maxGenotypeCountToEnumerate));
+        practicalAlleleCountForPloidy.putIfAbsent(ploidy, GenotypeIndexCalculator.computeMaxAcceptableAlleleCount(ploidy, maxGenotypeCountToEnumerate));
         final int practicalAlleleCount = practicalAlleleCountForPloidy.get(ploidy);
 
         if (originalAlleleCount > practicalAlleleCount) {
