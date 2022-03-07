@@ -75,6 +75,19 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | INDEL_VQSR_max_gaussians_override | you don't need to set this unless a previous run of IndelsVariantRecalibrator task failed to converge, start with 3 and lower as needed |
 | SNP_VQSR_max_gaussians_override   | you don't need to set this unless a previous run of SNPsVariantRecalibratorClassic task failed to converge, start with 5 and lower as needed |
 
+## 4. Prepare Callset
+This step performs the heavy lifting in BigQuery to gather all the data required to create a jointly called VCF.  
+
+This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
+
+This is done by running the `GvsPrepareRangesCallset` workflow with the following parameters:
+
+| Parameter                       | Description |
+|-------------------------------- | ----------- |
+| data_project                    | The name of the google project containing the dataset |
+| default_dataset                 | The name of the dataset  |
+| destination_cohort_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in step 3); you will want to make note of this for use in the next step |
+
 ## 5. Extract Cohort
 This step extracts the data in BigQuery into a sharded joint called VCF.
 
