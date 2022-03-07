@@ -76,16 +76,15 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | SNP_VQSR_max_gaussians_override   | you don't need to set this unless a previous run of SNPsVariantRecalibratorClassic task failed to converge, start with 5 and lower as needed |
 
 ## 4. Prepare Callset
-This step performs the heavy lifting in BigQuery to gather all the data required to create a jointly called VCF.  
-
+This step performs the heavy lifting in BigQuery to gather all the data required to create a jointly called VCF.
 
 This is done by running the `GvsPrepareRangesCallset` workflow with the following parameters:
 
 | Parameter                       | Description |
-|-------------------------------- | ----------- |
-| data_project                    | The name of the google project containing the dataset |
-| default_dataset                 | The name of the dataset  |
-| destination_cohort_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in step 3); you will want to make note of this for use in the next step |
+|--------------------- | ----------- |
+| dataset_name         | the name of the dataset you created above  |
+| project_id           | the name of the google project containing the dataset |
+| extract_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in step 3); you will want to make note of this for use in the next step |
 
 ## 5. Extract Cohort
 Now the data is ready to be extracted!
@@ -94,16 +93,14 @@ This workflow does not use the Terra data model to run, so be sure to select `Ru
 
 This is done by running the `GvsExtractCallset` workflow with the following parameters:
 
-| Parameter      | Description               |
-| ----------------- |--------------------------|
-| data_project | The name of the google project containing the dataset |
-| default_dataset      | The name of the dataset  |
-| output_file\_base\_name | Base name for generated VCFs  |
-| filter\_set_name | The name of the filter set identifier created in step #3  |
-| fq_samples_to_extract_table | The fully qualified table name of the samples to extract (e.g. <project>.<dataset>.sample_info) |
-| scatter_count | The scatter count for extract (e.g. 100 for quickstart)  |
-| wgs_intervals | Intervals to load (Use `gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list` for WGS) |
+| Parameter            | Description              |
+| -------------------- | -------------------------|
+| dataset_name         | the name of the dataset you created above  |
+| project_id           | the name of the google project containing the dataset |
+| extract_table_prefix | the unique, descriptive name for the tables containing the callset you chose in step 4  |
+| filter_set_name      | the name of the filter set created in step 3  |
+| scatter_count        | how wide to scatter extract (use 100 for the Quickstart)  |
 
 ## 6. Your VCF files are ready!
 
-The sharded VCF output files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`
+The sharded VCF output files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`.

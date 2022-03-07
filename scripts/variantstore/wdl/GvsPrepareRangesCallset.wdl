@@ -4,7 +4,7 @@ workflow GvsPrepareCallset {
  input {
     String project_id
     String dataset_name
-    String destination_cohort_table_prefix
+    String extract_table_prefix
 
     # inputs with defaults
     String query_project = project_id
@@ -22,7 +22,7 @@ workflow GvsPrepareCallset {
 
   call PrepareRangesCallsetTask {
     input:
-      destination_cohort_table_prefix = destination_cohort_table_prefix,
+      destination_cohort_table_prefix = extract_table_prefix,
       sample_names_to_extract         = sample_names_to_extract,
       query_project                   = query_project,
       fq_petvet_dataset               = fq_petvet_dataset,

@@ -3,143 +3,115 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallset {
-   input {
-        String data_project
-        String default_dataset
+  input {
+    String project_id
+    String dataset_name
 
-        File wgs_intervals
-        Int scatter_count
+    String filter_set_name
+    # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
+    # without a default value, ranges users are forced to specify a value even though it is meaningless
+    String extract_table_prefix = ""
+    String query_project = project_id
+    Int scatter_count
 
-        File reference
-        File reference_index
-        File reference_dict
+    Int? extract_maxretries_override
+    Int? extract_preemptible_override
+    String? output_file_base_name = filter_set_name
+    String? output_gcs_dir
+    String? service_account_json_path
+    Int? split_intervals_disk_size_override
+    Int? split_intervals_mem_override
+  }
 
-        # For reblocking v1, the default is "SIXTY" instead of "FORTY"
-        String? drop_state = "FORTY"
+  File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+  File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
+  File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+  File wgs_intervals = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
-        File? interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-split-intervals-odd-02252022/gatk.jar"
+  String fq_cohort_extract_table  = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__DATA"
+  String fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info"
+  String fq_filter_set_site_table = "~{project_id}.~{dataset_name}.filter_set_sites"
+  String fq_filter_set_tranches_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
+  String fq_ranges_cohort_ref_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__REF_DATA"
+  String fq_ranges_cohort_vet_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__VET_DATA"
+  String fq_samples_to_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
+  String fq_ranges_dataset = "~{project_id}.~{dataset_name}"
 
-        # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
-        # without a default value, ranges users are forced to specify a value even though it is meaningless
-        String extract_table_prefix = ""
-        String query_project = data_project
-        String fq_ranges_dataset = "~{data_project}.~{default_dataset}"
+  Array[String] tables_patterns_for_datetime_check = ["~{extract_table_prefix}__%"]
 
-        Boolean do_not_filter_override = false
-        String? filter_set_name
-        Boolean? vqslod_filter_by_site
-        String fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
-        String fq_filter_set_site_table = "~{data_project}.~{default_dataset}.filter_set_sites"
-        String fq_filter_set_tranches_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
-
-        # if these are unset, default sensitivity levels will be used
-        Float? snps_truth_sensitivity_filter_level_override
-        Float? indels_truth_sensitivity_filter_level_override
-
-        File? excluded_intervals
-        Boolean? emit_pls = false
-        Int? extract_preemptible_override
-        Int? extract_maxretries_override
-        Int? split_intervals_disk_size_override
-        Int? split_intervals_mem_override
-
-        String mode = "RANGES-PREPARED"
-
-        String? service_account_json_path
-
-        String output_file_base_name
-        String? output_gcs_dir
-        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-split-intervals-odd-02252022/gatk.jar"
-        Int local_disk_for_extract = 150
-
-        String fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__SAMPLES"
-        String fq_cohort_extract_table  = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__DATA"
-
-        String fq_ranges_cohort_vet_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__VET_DATA"
-        String fq_ranges_cohort_ref_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__REF_DATA"
-   }
-
-   Array[String] tables_patterns_for_datetime_check = if (mode == "RANGES") then ["pet_%","vet_%"] else ["~{extract_table_prefix}__%"]
-
-    call Utils.SplitIntervals {
-      input:
-          intervals = wgs_intervals,
-          ref_fasta = reference,
-          ref_fai = reference_index,
-          ref_dict = reference_dict,
-          interval_weights_bed = interval_weights_bed,
-          scatter_count = scatter_count,
-          output_gcs_dir = output_gcs_dir,
-          split_intervals_disk_size_override = split_intervals_disk_size_override,
-          split_intervals_mem_override = split_intervals_mem_override,
-          service_account_json_path = service_account_json_path,
-          gatk_override = gatk_override
-    }
-
-    call Utils.GetBQTablesMaxLastModifiedTimestamp {
-        input:
-            query_project = query_project,
-            data_project = data_project,
-            data_dataset = default_dataset,
-            table_patterns = tables_patterns_for_datetime_check,
-            service_account_json_path = service_account_json_path
-    }
-
-    scatter(i in range(length(SplitIntervals.interval_files))) {
-        call ExtractTask {
-            input:
-                gatk_override                   = gatk_override,
-                reference                       = reference,
-                reference_index                 = reference_index,
-                reference_dict                  = reference_dict,
-                fq_samples_to_extract_table     = fq_samples_to_extract_table,
-                interval_index                  = i,
-                intervals                       = SplitIntervals.interval_files[i],
-                fq_cohort_extract_table         = fq_cohort_extract_table,
-                fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
-                fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
-                read_project_id                 = query_project,
-                mode                            = mode,
-                do_not_filter_override          = do_not_filter_override,
-                fq_ranges_dataset               = fq_ranges_dataset,
-                fq_filter_set_info_table        = fq_filter_set_info_table,
-                fq_filter_set_site_table        = fq_filter_set_site_table,
-                fq_filter_set_tranches_table    = fq_filter_set_tranches_table,
-                filter_set_name                 = filter_set_name,
-                vqslod_filter_by_site           = vqslod_filter_by_site,
-                snps_truth_sensitivity_filter_level = snps_truth_sensitivity_filter_level_override,
-                indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level_override,
-                excluded_intervals              = excluded_intervals,
-                emit_pls                        = emit_pls,
-                service_account_json_path       = service_account_json_path,
-                drop_state                      = drop_state,
-                output_file                     = "${output_file_base_name}_${i}.vcf.gz",
-                output_gcs_dir                  = output_gcs_dir,
-                local_disk                      = local_disk_for_extract,
-                max_last_modified_timestamp     = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
-                extract_preemptible_override    = extract_preemptible_override,
-                extract_maxretries_override     = extract_maxretries_override
-        }
-    }
-
-    call SumBytes {
-      input:
-        file_sizes_bytes = flatten([ExtractTask.output_vcf_bytes, ExtractTask.output_vcf_index_bytes])
-    }
-
-    call CreateManifest {
-      input:
-        manifest_lines = ExtractTask.manifest,
+  call Utils.SplitIntervals {
+    input:
+        intervals = wgs_intervals,
+        ref_fasta = reference,
+        ref_fai = reference_index,
+        ref_dict = reference_dict,
+        interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed",
+        scatter_count = scatter_count,
         output_gcs_dir = output_gcs_dir,
-        service_account_json_path = service_account_json_path
-    }
+        split_intervals_disk_size_override = split_intervals_disk_size_override,
+        split_intervals_mem_override = split_intervals_mem_override,
+        service_account_json_path = service_account_json_path,
+  }
 
-    output {
-      Array[File] output_vcfs = ExtractTask.output_vcf
-      Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
-      Float total_vcfs_size_mb = SumBytes.total_mb
-      File manifest = CreateManifest.manifest
-    }
+  call Utils.GetBQTablesMaxLastModifiedTimestamp {
+      input:
+          query_project = query_project,
+          data_project = project_id,
+          data_dataset = dataset_name,
+          table_patterns = tables_patterns_for_datetime_check,
+          service_account_json_path = service_account_json_path
+  }
+
+  scatter(i in range(length(SplitIntervals.interval_files))) {
+      call ExtractTask {
+          input:
+              gatk_override                   = gatk_override,
+              reference                       = reference,
+              reference_index                 = reference_index,
+              reference_dict                  = reference_dict,
+              fq_samples_to_extract_table     = fq_samples_to_extract_table,
+              interval_index                  = i,
+              intervals                       = SplitIntervals.interval_files[i],
+              fq_cohort_extract_table         = fq_cohort_extract_table,
+              fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
+              fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
+              read_project_id                 = query_project,
+              mode                            = "RANGES-PREPARED",
+              do_not_filter_override          = false,
+              fq_ranges_dataset               = fq_ranges_dataset,
+              fq_filter_set_info_table        = fq_filter_set_info_table,
+              fq_filter_set_site_table        = fq_filter_set_site_table,
+              fq_filter_set_tranches_table    = fq_filter_set_tranches_table,
+              filter_set_name                 = filter_set_name,
+              service_account_json_path       = service_account_json_path,
+              drop_state                      = "FORTY",
+              output_file                     = "${output_file_base_name}_${i}.vcf.gz",
+              output_gcs_dir                  = output_gcs_dir,
+              max_last_modified_timestamp     = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
+              extract_preemptible_override    = extract_preemptible_override,
+              extract_maxretries_override     = extract_maxretries_override
+      }
+  }
+
+  call SumBytes {
+    input:
+      file_sizes_bytes = flatten([ExtractTask.output_vcf_bytes, ExtractTask.output_vcf_index_bytes])
+  }
+
+  call CreateManifest {
+    input:
+      manifest_lines = ExtractTask.manifest,
+      output_gcs_dir = output_gcs_dir,
+      service_account_json_path = service_account_json_path
+  }
+
+  output {
+    Array[File] output_vcfs = ExtractTask.output_vcf
+    Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
+    Float total_vcfs_size_mb = SumBytes.total_mb
+    File manifest = CreateManifest.manifest
+  }
 }
 
 ################################################################################
@@ -172,12 +144,6 @@ task ExtractTask {
         String fq_filter_set_site_table
         String fq_filter_set_tranches_table
         String? filter_set_name
-        Boolean? vqslod_filter_by_site
-        Float? snps_truth_sensitivity_filter_level
-        Float? indels_truth_sensitivity_filter_level
-
-        File? excluded_intervals
-        Boolean? emit_pls
 
         # Runtime Options:
         String? service_account_json_path
@@ -186,7 +152,6 @@ task ExtractTask {
         Int? extract_maxretries_override
 
         Int? local_sort_max_records_in_ram = 10000000
-        Int local_disk
 
         # for call-caching -- check if DB tables haven't been updated since the last run
         String max_last_modified_timestamp
@@ -216,9 +181,6 @@ task ExtractTask {
                 --filter-set-site-table ~{fq_filter_set_site_table}
                 --tranches-table ~{fq_filter_set_tranches_table}
                 --filter-set-name ~{filter_set_name}
-                ~{true='--vqslod-filter-by-site' false='' vqslod_filter_by_site}
-                ~{"--snps-truth-sensitivity-filter-level " + snps_truth_sensitivity_filter_level}
-                ~{"--indels-truth-sensitivity-filter-level " + indels_truth_sensitivity_filter_level}'
         fi
 
         if [ ~{mode} = "RANGES-RAW" ]; then
@@ -239,9 +201,7 @@ task ExtractTask {
                 --sample-table ~{fq_samples_to_extract_table} \
                 ~{"--inferred-reference-state " + drop_state} \
                 -L ~{intervals} \
-                ~{"-XL " + excluded_intervals} \
                 --project-id ~{read_project_id} \
-                ~{true='--emit-pls' false='' emit_pls} \
                 ${FILTERING_ARGS}
 
         # Drop trailing slash if one exists
@@ -273,7 +233,7 @@ task ExtractTask {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
         memory: "12 GB"
-        disks: "local-disk ~{local_disk} HDD"
+        disks: "local-disk 150 HDD"
         bootDiskSizeGb: 15
         preemptible: select_first([extract_preemptible_override, "2"])
         maxRetries: select_first([extract_maxretries_override, "3"])
