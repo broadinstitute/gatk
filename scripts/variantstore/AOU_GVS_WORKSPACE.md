@@ -80,6 +80,7 @@ Samples that will be batched and loaded together must be put into a sample_set a
 - Keep track of the samples that have not been loaded whether because they failed, or because they were in the queue when another sample failed. They will need to be added later.
 
 Once all sample_sets have been run, if there have been any failures, collect all non-loaded samples together in a new sample_set and load that in.
+>SELECT info.sample_name, info.sample_id from `<PROJECT>.<DATASET>.sample_info` as info left join `<PROJECT>.<DATASET>.sample_load_status` as status on info.sample_id=status.sample_id where status.sample_id is null order by info.sample_id
 
 Check the status table to see what samples have a STARTED log, but do not have a FINISHED log.
 >SELECT info.sample_name, info.sample_id from `<PROJECT>.<DATASET>.sample_info` as info left join `<PROJECT>.<DATASET>.sample_load_status` as status on info.sample_id=status.sample_id where status.sample_id is null order by info.sample_id
