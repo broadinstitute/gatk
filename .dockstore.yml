@@ -80,6 +80,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_optional_inputs
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
@@ -173,7 +174,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-split-intervals-odd
+         - rsa_optional_inputs
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
