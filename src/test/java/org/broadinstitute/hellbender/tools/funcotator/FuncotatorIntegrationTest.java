@@ -2114,11 +2114,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(variantContexts.size(), expectedVariantContexts.size());
 
-        System.out.println("VC Severities:");
-        for ( GencodeFuncotation.VariantClassification vc : GencodeFuncotation.VariantClassification.values()) {
-            System.out.println(vc.toString() + " : " + vc.getSeverity());
-        }
-
         try {
             IntegrationTestSpec.assertEqualTextFiles(outputFile, new File(expectedFilePath), "#");
         }
@@ -2128,11 +2123,6 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         // Reset severity:
         GencodeFuncotation.VariantClassification.resetSeveritiesToDefault();
-
-        System.out.println("VC Severities:");
-        for ( GencodeFuncotation.VariantClassification vc : GencodeFuncotation.VariantClassification.values()) {
-            System.out.println(vc.toString() + " : " + vc.getSeverity());
-        }
     }
 
 }
