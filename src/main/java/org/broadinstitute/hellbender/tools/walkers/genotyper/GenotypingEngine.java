@@ -133,7 +133,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
             final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles);
             final GenotypesContext reducedGenotypes = allelesToKeep.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL);
+                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc,
+                            GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL);  //with no PLs in some reblocked GVCFs, no-calls are just going to cause problems, so keep 0/0 genotypes as such without trying to recall
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
@@ -391,7 +392,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * {@link GenotypeLikelihoods#MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED}.
      */
     protected final boolean cannotBeGenotyped(final VariantContext vc) {
-        //
         if (vc.getNAlleles() <= GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED
                 && vc.getGenotypes().stream().anyMatch(GenotypeUtils::genotypeIsUsableForAFCalculation)) {
             return false;

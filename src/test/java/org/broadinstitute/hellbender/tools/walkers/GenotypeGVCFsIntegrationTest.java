@@ -286,7 +286,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         runGenotypeGVCFSAndAssertComparison(genomicsDBUri, expected, args, VariantContextTestUtils::assertVariantContextsHaveSameGenotypes, reference);
     }
 
-    @Test
+    @Test  //here GDBMaxAlts is greater than GGVCFsMaxAlts
     public void testMaxAltsToCombineInGenomicsDB() throws IOException {
         //multi-input tests
         //8 ALT VC will get dropped if GDB max is < 8 because GDB doesn't return PLs and GGVCFs drops variants with no PLs
