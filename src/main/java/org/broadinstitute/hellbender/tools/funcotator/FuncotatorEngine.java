@@ -111,6 +111,11 @@ public final class FuncotatorEngine implements AutoCloseable {
 
         // Determine whether we have to convert given variants from B37 to HG19:
         mustConvertInputContigsToHg19 = determineReferenceAndDatasourceCompatibility();
+
+        // Read in the custom variant classification order file here so that it can be shared across all engines:
+        if (funcotatorArgs.customVariantClassificationOrderFile != null) {
+            FuncotatorUtils.setVariantClassificationCustomSeverity(funcotatorArgs.customVariantClassificationOrderFile);
+        }
     }
 
     /**

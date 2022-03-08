@@ -12,6 +12,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -33,11 +34,9 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -81,6 +80,9 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     // TODO: Get rid of this variable and use the general data sources path (issue #5350 - https://github.com/broadinstitute/gatk/issues/5350):
     private static final String DS_PIK3CA_DIR            = largeFileTestDir + "funcotator" + File.separator + "small_ds_pik3ca" + File.separator;
+
+    private static final String  MEDIUM_DATASOURCES_DIR     = largeFileTestDir + "funcotator" + File.separator + "funcotator_dataSources" + File.separator;
+
     private static final String MAF_TEST_CONFIG          = toolsTestDir + "funcotator" + File.separator + "maf.config";
     private static final String XSV_CLINVAR_COL_TEST_VCF = toolsTestDir + "funcotator" + File.separator + "clinvar_hg19_column_test.vcf";
     private static final String DS_XSV_CLINVAR_COL_TEST  = largeFileTestDir + "funcotator" + File.separator + "small_ds_clinvar_hg19" + File.separator;
@@ -2073,6 +2075,56 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
     }
 
+    @Test
+    public void testCustomVariantClassificationOrder() {
+
+        final FuncotatorArgumentDefinitions.OutputFormatType outputFormatType = FuncotatorArgumentDefinitions.OutputFormatType.VCF;
+        final File outputFile = getOutputFile(outputFormatType);
+
+        final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
+                largeFileTestDir + "funcotator" + File.separator + "custom_vc_order_files" + File.separator + "custom_vc_input_test.vcf",
+                outputFile,
+                b37Reference,
+                MEDIUM_DATASOURCES_DIR,
+                FuncotatorTestConstants.REFERENCE_VERSION_HG19,
+                outputFormatType,
+                false);
+
+        // We need this argument since we are testing on a subset of b37
+        arguments.add(FuncotatorArgumentDefinitions.FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION, true);
+
+        // It's best to make this run on BEST_EFFECT with this test
+        arguments.add(FuncotatorArgumentDefinitions.TRANSCRIPT_SELECTION_MODE_LONG_NAME, TranscriptSelectionMode.BEST_EFFECT);
+
+        // Add the new ordering of the variant classifications:
+        final GATKPath custom_vc_path = new GATKPath(largeFileTestDir + "funcotator" + File.separator
+                + "custom_vc_order_files" + File.separator + "custom_vc_order_for_int_test.tsv");
+        arguments.add(FuncotatorArgumentDefinitions.CUSTOM_VARIANT_CLASS_ORDER_FILE, custom_vc_path.toPath().toUri().toString());
+
+        // Run Funcotator:
+        runCommandLine(arguments);
+
+        // Validate results:
+        final String expectedFilePath = largeFileTestDir + "funcotator" + File.separator + "custom_vc_order_files" + File.separator + "custom_vc_expected_out.vcf";
+
+        final Pair<VCFHeader, List<VariantContext>> vcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(outputFile.getAbsolutePath());
+        final List<VariantContext> variantContexts = vcfInfo.getRight();
+        final Pair<VCFHeader, List<VariantContext>> expectedVcfInfo = VariantContextTestUtils.readEntireVCFIntoMemory(expectedFilePath);
+        final List<VariantContext> expectedVariantContexts = expectedVcfInfo.getRight();
+
+        Assert.assertEquals(variantContexts.size(), expectedVariantContexts.size());
+
+        try {
+            IntegrationTestSpec.assertEqualTextFiles(outputFile, new File(expectedFilePath), "#");
+        }
+        catch ( final IOException ex ) {
+            throw new GATKException("Error opening expected file: " + expectedFilePath, ex);
+        }
+
+        // Reset severity:
+        GencodeFuncotation.VariantClassification.resetSeveritiesToDefault();
     }
+
+}
 
 
