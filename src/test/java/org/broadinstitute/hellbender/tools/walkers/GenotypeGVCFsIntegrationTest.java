@@ -345,11 +345,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         File output = runGenotypeGVCFS(genomicsDBUri, null, args, b37_reference_20_21);
     }
 
-    @Test
-    public void testGDBMaxAltsGreaterThanGGVCFsMaxAlts() throws IOException {
-
-    }
-
     private void runAndCheckGenomicsDBOutput(final ArgumentsBuilder args, final File expected, final File output) {
         Utils.resetRandomGenerator();
         runCommandLine(args);
