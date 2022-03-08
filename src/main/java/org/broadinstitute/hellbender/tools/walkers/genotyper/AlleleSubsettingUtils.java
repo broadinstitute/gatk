@@ -45,17 +45,13 @@ public final class AlleleSubsettingUtils {
      * @param originalAlleles          the original alleles
      * @param allelesToKeep            the subset of alleles to use with the new Genotypes
      * @param assignmentMethod         assignment strategy for the (subsetted) PLs
-     * @param depth                    the original variant DP or 0 if there was no DP
-     * @param suppressUninformativePLs             force the output of a PL array even if there is no data
      * @return                         a new non-null GenotypesContext
      */
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
                                                  final List<Allele> originalAlleles,
                                                  final List<Allele> allelesToKeep,
                                                  final GenotypePriorCalculator gpc,
-                                                 final GenotypeAssignmentMethod assignmentMethod,
-                                                 final int depth,
-                                                 final boolean suppressUninformativePLs) {
+                                                 final GenotypeAssignmentMethod assignmentMethod) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
         Utils.nonNull(allelesToKeep, "allelesToKeep is null");
         Utils.nonEmpty(allelesToKeep, "must keep at least one allele");
@@ -94,9 +90,6 @@ public final class AlleleSubsettingUtils {
                 newLog10GQ = -0.1*g.getGQ();
             }
 
-            final boolean useNewLikelihoods = !suppressUninformativePLs ||
-                    (newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods)));
-
             final GenotypeBuilder gb = new GenotypeBuilder(g);
             final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
             attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
@@ -107,9 +100,7 @@ public final class AlleleSubsettingUtils {
             if (newLog10GQ != Double.NEGATIVE_INFINITY && g.hasGQ()) {  //only put GQ if originally present
                 gb.log10PError(newLog10GQ);
             }
-            if (useNewLikelihoods) {
-                gb.PL(newLikelihoods);
-            }
+            gb.PL(newLikelihoods);
 
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles(), gpc);
 

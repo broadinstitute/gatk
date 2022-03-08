@@ -77,7 +77,7 @@ public final class AlleleFrequencyCalculator {
         final double[] log10Likelihoods;
         if (g.hasLikelihoods()) {
             log10Likelihoods = g.getLikelihoods().getAsVector();
-        } else if (g.isHomRef()) {
+        } else if ( g.isHomRef()) {
             if (g.getPloidy() != 2) {
                 throw new IllegalStateException("Likelihoods are required to calculate posteriors for hom-refs with ploidy != 2, " +
                         "but were not found for genotype " + g + " with ploidy " + g.getPloidy());
@@ -88,6 +88,7 @@ public final class AlleleFrequencyCalculator {
                 throw new IllegalStateException("Genotype " + g + " does not contain GQ necessary to calculate posteriors.");
             }
         } else {
+            //no-call with no PLs are too risky -- don't assume they're reblocked hom-refs
             throw new IllegalStateException("Genotype " + g + " does not contain likelihoods necessary to calculate posteriors.");
         }
         final double[] log10Posteriors = new IndexRange(0, glCalc.genotypeCount()).mapToDouble(genotypeIndex -> {

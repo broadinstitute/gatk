@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -28,15 +29,29 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
     private static final String hg38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
     private static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
+    public static final String WARP_PROD_REBLOCKING_ARGS = " -do-qual-approx --floor-blocks -GQB 20 -GQB 30 -GQB 40 ";
 
-    @Test  //covers inputs with "MQ" annotation
-    public void testJustOneSample() throws Exception {
+    @DataProvider(name = "getCommandLineArgsForExactTest")
+    public Object[][] getCommandLineArgsForExactTest() {
+        return new Object[][]{
+                //covers inputs with old format "MQ" annotation
+                {getTestFile("gvcfForReblocking.g.vcf"), getTestFile("testJustOneSample.expected.g.vcf"), " -L chr20:69771 -rgq-threshold 19", hg38_reference_20_21},
+                //Broad production arguments on WGS data
+                {getTestFile("prodWgsInput.g.vcf "), getTestFile("prodWgsOutput.g.vcf"), WARP_PROD_REBLOCKING_ARGS, hg38Reference},
+                //Exome data with AS annotations and zero DP regression test
+                {getTestFile("prodWesInput.g.vcf "), getTestFile("prodWesOutput.g.vcf"), WARP_PROD_REBLOCKING_ARGS, hg38Reference}
+        };
+    }
+
+    @Test(dataProvider = "getCommandLineArgsForExactTest")
+    public void testWithExactComparison(final File input, final File expected, final String extraArgs, final String reference) throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-L chr20:69771 -O %s -R " + hg38_reference_20_21 +
-                        " -V " + getToolTestDataDir() + "gvcfForReblocking.g.vcf -rgq-threshold 19" +
+                " -O %s -R " + reference +
+                        " -V " + input.getAbsolutePath() +
+                        extraArgs +
                         " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
-                Arrays.asList(getToolTestDataDir() + "testJustOneSample.expected.g.vcf"));
-        spec.executeTest("testJustOneSample", this);
+                Arrays.asList(expected.getAbsolutePath()));
+        spec.executeTest("testWithExactComparison", this);
     }
 
     @Test

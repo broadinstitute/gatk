@@ -47,7 +47,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     @Test
     public void testCleanUpHighQualityVariant() {
         final ReblockGVCF reblocker = new ReblockGVCF();
-        //We need an annotation engine for cleanUpHighQualityVariant()
+        //We need an annotation engine for cleanUpHighQualityVariant(), but this is just a dummy; annotations won't initialize properly without runCommandLine()
         reblocker.createAnnotationEngine();
         //...and a vcfwriter
         reblocker.vcfWriter = new ReblockingGVCFWriter(new GVCFWriterUnitTest.MockWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
@@ -381,7 +381,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         origAttributes.put(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, "123769.00|46800.00|0.00|0.00");
         originalBuilder.attributes(origAttributes);
         final VariantContext originalVC = originalBuilder.make();
-        final Genotype newG = VariantContextTestUtils.makeG("sample1", LONG_REF, LONG_SNP, 41, 0, 37, 200, 100, 200, 400, 600, 800, 1200);
+        final Genotype newG = VariantContextTestUtils.makeG("sample1", LONG_REF, LONG_SNP, 41, 0, 37, 200, 100, 200);
         final VariantContext regenotypedVC = makeDeletionVC("", Arrays.asList(LONG_REF, LONG_SNP, Allele.NON_REF_ALLELE), LONG_REF.length(), newG);
 
         final Map<String, Object> subsetAnnotations = ReblockGVCF.subsetAnnotationsIfNecessary(annotationEngine, true, null, originalVC, regenotypedVC);

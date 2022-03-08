@@ -139,6 +139,7 @@ public final class GenotypeUtils {
     /**
      * Do we have (or can we infer) likelihoods necessary for allele frequency calculation?
      * Some reblocked and/or DRAGEN GVCFs omit likelihoods for ref blocks, but we can estimate them
+     * If GenomicsDB max alt threshold is too low, non-reference genotypes may also be missing PLs -- we can't estimate, so reject those
      * @param g a genotype of unknown call and ploidy
      * @return  true if we have enough info for AF calculation
      */
