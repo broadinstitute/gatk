@@ -308,15 +308,15 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
 
         // IOUtils.getPath() triggers the requester pays check, it's not lazily delayed until trying to read
         // the file.
+        try {
+            //Assert that this fails when no project is provided
+            setNoProjectForRequesterPays();
+            Assert.assertThrows(StorageException.class, () -> {
+                try( final Stream<String> lines = Files.lines(IOUtils.getPath(FILE_IN_REQUESTER_PAYS_BUCKET))) {
+                   lines.anyMatch(line -> line.contains(LINE_IN_REMOTE_TEXT_FILE));
+                }
+            });
 
-        //Assert that this fails when no project is provided
-        setNoProjectForRequesterPays();
-        Assert.assertThrows(StorageException.class, () -> {
-            try( final Stream<String> lines = Files.lines(IOUtils.getPath(FILE_IN_REQUESTER_PAYS_BUCKET))) {
-               lines.anyMatch(line -> line.contains(LINE_IN_REMOTE_TEXT_FILE));
-            }
-        });
-        try{
             setRequesterPays();
             try( final Stream<String> lines = Files.lines(IOUtils.getPath(FILE_IN_REQUESTER_PAYS_BUCKET))) {
                 Assert.assertTrue(lines.anyMatch(line -> line.contains(LINE_IN_REMOTE_TEXT_FILE)),
