@@ -116,7 +116,7 @@ import java.util.*;
  *     Gene(s) for which the SV is predicted to duplicate the transcription start site (TSS). This occurs when a
  *     duplication has one breakpoint before the start of a transcript and the other breakpoint within the transcript.
  *     When the duplication is in tandem, the result is that there is one intact copy of the full endogenous gene, but
- *     an additional transcription start site is duplicated upstream (5’) of the endogenous TSS. </p></li>
+ *     an additional transcription start site is duplicated upstream (5') of the endogenous TSS. </p></li>
  *     <li><p><i>PREDICTED_DUP_PARTIAL</i><br />
  *     Gene(s) which are partially overlapped by an SV's duplication, but the transcription start site is not
  *     duplicated. The partial duplication occurs when a duplication has one breakpoint within the transcript and one
