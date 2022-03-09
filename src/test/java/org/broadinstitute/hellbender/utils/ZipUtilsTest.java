@@ -138,10 +138,10 @@ public final class ZipUtilsTest {
         // now unzip.
         File unzipRoot;
         try {
-            unzipRoot = Files.createTempDirectory("zipAndUnzipFullFileData").toFile();
+            unzipRoot = Files.createTempDirectory("testZipSubsetAndUnzipFull").toFile();
         }
         catch ( IOException e ) {
-            throw new GATKException("Unable to create temp directory for zipAndUnzipFullFileData", e);
+            throw new GATKException("Unable to create temp directory for testZipSubsetAndUnzipFull", e);
         }
         FileUtils.deleteDirectory(unzipRoot);
         Assert.assertFalse(unzipRoot.exists());

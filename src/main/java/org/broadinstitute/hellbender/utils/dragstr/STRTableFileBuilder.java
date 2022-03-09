@@ -85,7 +85,7 @@ public final class STRTableFileBuilder implements AutoCloseable {
             tempDir = Files.createTempDirectory("STRTableFileBuilder").toFile();
         }
         catch ( IOException e ) {
-            throw new GATKException("Unable to create temp directory for StreamingProcessController", e);
+            throw new GATKException("Unable to create temp directory for STRTableFileBuilder", e);
         }
 
         return new STRTableFileBuilder(tempDir, generateTextSitesFile, dictionary, decimationTable, maxPeriod, maxRepeatLength);
