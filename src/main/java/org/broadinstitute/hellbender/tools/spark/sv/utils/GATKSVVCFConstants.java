@@ -73,6 +73,8 @@ public final class GATKSVVCFConstants {
     public static final String CPX_EVENT_ALT_ARRANGEMENTS = "ALT_ARRANGEMENT";
     public static final String CPX_SV_REF_SEGMENTS = "SEGMENTS";
     public static final String CPX_EVENT_KEY = "CPX_EVENT";
+    public static final String CPX_INTERVALS = "CPX_INTERVALS";
+    public static final String CPX_TYPE = "CPX_TYPE";
 
     // not defined in output vcf header but used in internal id that is currently output in the ID column
     public static final String INTERVAL_VARIANT_ID_FIELD_SEPARATOR = "_";
@@ -86,6 +88,8 @@ public final class GATKSVVCFConstants {
     public static final String DEPTH_ALGORITHM = "depth";
     public static final String CONTIG2_ATTRIBUTE = "CHR2";
     public static final String END2_ATTRIBUTE = "END2";
+    public static final String BND_DELETION_STRANDS = "+-";
+    public static final String BND_DUPLICATION_STRANDS = "-+";
 
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
@@ -101,6 +105,23 @@ public final class GATKSVVCFConstants {
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
 
+    // functional annotations
+    public static final String LOF = "PREDICTED_LOF";
+    public static final String INT_EXON_DUP = "PREDICTED_INTRAGENIC_EXON_DUP";
+    public static final String COPY_GAIN = "PREDICTED_COPY_GAIN";
+    public static final String DUP_PARTIAL = "PREDICTED_DUP_PARTIAL";
+    public static final String PARTIAL_EXON_DUP = "PREDICTED_PARTIAL_EXON_DUP";
+    public static final String INTRONIC = "PREDICTED_INTRONIC";
+    public static final String INV_SPAN = "PREDICTED_INV_SPAN";
+    public static final String UTR = "PREDICTED_UTR";
+    public static final String MSV_EXON_OVERLAP = "PREDICTED_MSV_EXON_OVERLAP";
+    public static final String PROMOTER = "PREDICTED_PROMOTER";
+    public static final String BREAKEND_EXON = "PREDICTED_BREAKEND_EXONIC";
+    public static final String INTERGENIC = "PREDICTED_INTERGENIC";
+    public static final String NONCODING_SPAN = "PREDICTED_NONCODING_SPAN";
+    public static final String NONCODING_BREAKPOINT = "PREDICTED_NONCODING_BREAKPOINT";
+    public static final String NEAREST_TSS = "PREDICTED_NEAREST_TSS";
+    public static final String TSS_DUP = "PREDICTED_TSS_DUP";
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

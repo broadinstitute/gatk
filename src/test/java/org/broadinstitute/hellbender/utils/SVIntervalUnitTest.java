@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.SVInterval;
 import org.testng.Assert;
@@ -7,7 +8,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import static org.broadinstitute.hellbender.tools.walkers.sv.SVAnnotateUnitTest.createSequenceDictionary;
 
 public class SVIntervalUnitTest extends GATKBaseTest {
     @Test(groups = "sv")
@@ -65,5 +69,28 @@ public class SVIntervalUnitTest extends GATKBaseTest {
     @Test(groups = "sv", dataProvider = "forTestCtorArgsValidators", expectedExceptions = IllegalArgumentException.class)
     public void test(final int contig, final int start, final int end, final SVInterval.SVIntervalConstructorArgsValidator argsValidator) {
         new SVInterval(contig, start, end, argsValidator);
+    }
+
+    @DataProvider(name="toSimpleInterval")
+    public Object[][] getToSimpleIntervalData() {
+        return new Object[][] {
+                { new SVInterval(0, 1, 101), new SimpleInterval("chr1", 1, 100)},
+                { new SVInterval(1, 201, 202), new SimpleInterval("chr2", 201, 201)},
+                { new SVInterval(2, 2, 3), null}
+        };
+    }
+
+
+    @Test(dataProvider = "toSimpleInterval")
+    public void testToSimpleInterval(
+            final SVInterval interval,
+            final SimpleInterval expectedSimpleInterval)
+    {
+        final SAMSequenceDictionary sequenceDictionary = createSequenceDictionary(Arrays.asList("chr1", "chr2"));
+        try {
+            Assert.assertEquals(interval.toSimpleInterval(sequenceDictionary), expectedSimpleInterval);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            Assert.assertNull(expectedSimpleInterval);
+        }
     }
 }

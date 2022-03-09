@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVLocation;
 
@@ -38,7 +39,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.SVLocation;
  */
 @DefaultSerializer(SVInterval.Serializer.class)
 @VisibleForTesting
-public final class SVInterval implements Comparable<SVInterval> {
+public class SVInterval implements Comparable<SVInterval> {
     private final int contig;
     private final int start;
     private final int end;
@@ -103,6 +104,20 @@ public final class SVInterval implements Comparable<SVInterval> {
     public int getContig() { return contig; }
     public int getStart() { return start; }
     public int getEnd() { return end; }
+
+    /**
+     * Converts SVInterval to SimpleInterval
+     * Assumes half-open, 1-based SVInterval being converted to closed, 1-based SimpleInterval. Conversion: end - 1
+     * @param sequenceDictionary - SAMSequenceDictionary to map contig ID to name
+     * @return - SimpleInterval representing the SVInterval
+     */
+    public SimpleInterval toSimpleInterval(final SAMSequenceDictionary sequenceDictionary) {
+        final Integer contigID = this.getContig();  // non-negative
+        if (contigID >= sequenceDictionary.size()) {
+            throw new ArrayIndexOutOfBoundsException("Contig ID " + contigID + " out of bounds of provided sequence dictionary");
+        }
+        return new SimpleInterval(sequenceDictionary.getSequence(contigID).getContig(), this.getStart(), this.getEnd() - 1);
+    }
 
     // assumes the interval is half-open
     public int getLength() { return end - start; }
