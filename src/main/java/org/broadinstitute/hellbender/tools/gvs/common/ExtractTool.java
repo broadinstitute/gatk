@@ -38,6 +38,15 @@ public abstract class ExtractTool extends GATKTool {
     )
     protected String projectID = null;
 
+
+    @Argument(
+            fullName = "dataset-id",
+            doc = "ID of the Google Cloud dataset to use when executing queries",
+            optional = true // I guess, but wont it break otherwise or require that a dataset be created with the name temp_tables?
+    )
+    protected String datasetID = null;
+
+
     @Argument(
             fullName = "sample-table",
             doc = "Fully qualified name of a bigquery table containing a single column `sample` that describes the full list of samples to extract",

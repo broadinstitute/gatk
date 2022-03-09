@@ -24,7 +24,7 @@ workflow GvsCreateFilterSet {
         File? excluded_intervals
 
         String output_file_base_name
-        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_extract_perf_20220111/gatk-package-4.2.0.0-455-g40a40bc-SNAPSHOT-local.jar"
+        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc_testing_dataset_id_20220303/gatk-package-4.2.0.0-484-gf9e5c0e-SNAPSHOT-local.jar"
 
         File dbsnp_vcf
         File dbsnp_vcf_index
@@ -122,6 +122,7 @@ workflow GvsCreateFilterSet {
                 fq_alt_allele_table      = fq_alt_allele_table,
                 excess_alleles_threshold = excess_alleles_threshold,
                 read_project_id          = query_project,
+                default_dataset_id       = default_dataset,
                 output_file              = "${output_file_base_name}_${i}.vcf.gz",
                 service_account_json_path     = service_account_json_path,
                 query_project            = query_project,
@@ -349,6 +350,7 @@ task ExtractFilterTask {
 
         String fq_alt_allele_table
         String read_project_id
+        String default_dataset_id
         String output_file
         Int? excess_alleles_threshold
 
@@ -391,7 +393,8 @@ task ExtractFilterTask {
                 ~{sep=" " query_label_args} \
                 -L ~{intervals} \
                 ~{"-XL " + excluded_intervals} \
-                --project-id ~{read_project_id}
+                --project-id ~{read_project_id} \
+                --dataset-id ~{default_dataset_id}
     >>>
 
     runtime {

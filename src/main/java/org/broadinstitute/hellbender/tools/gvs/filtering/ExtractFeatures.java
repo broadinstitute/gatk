@@ -113,6 +113,7 @@ public class ExtractFeatures extends ExtractTool {
 
         engine = new ExtractFeaturesEngine(
             projectID,
+            datasetID,
             vcfWriter,
             header,
             annotationEngine,

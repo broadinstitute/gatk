@@ -51,6 +51,7 @@ public class ExtractFeaturesEngine {
 
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
     private final String projectID;
+    private final String datasetID;
 
     private final TableReference altAlleleTable;
     private final TableReference sampleListTable;
@@ -69,6 +70,7 @@ public class ExtractFeaturesEngine {
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
     public ExtractFeaturesEngine(final String projectID,
+                               final String datasetID,
                                final VariantContextWriter vcfWriter,
                                final VCFHeader vcfHeader,
                                final VariantAnnotatorEngine annotationEngine,
@@ -93,6 +95,7 @@ public class ExtractFeaturesEngine {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
+        this.datasetID = datasetID;
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
         this.altAlleleTable = new TableReference(fqAltAlleleTable, SchemaUtils.ALT_ALLELE_FIELDS);
@@ -134,6 +137,7 @@ public class ExtractFeaturesEngine {
                 featureQueryString,
                 SchemaUtils.FEATURE_EXTRACT_FIELDS,
                 projectID,
+                datasetID,
                 userDefinedFunctions,
                 useBatchQueries,
                 cleanQueryLabels);
