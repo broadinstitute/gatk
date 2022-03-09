@@ -600,6 +600,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
         for (final VariantContext given : givenAlleles) {
+            //these are events from single haplotypes, so we can do a simple comparison without trimming
             if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)))) {
                 allVariationEvents.add(given);
             }
