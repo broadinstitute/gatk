@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
-
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
