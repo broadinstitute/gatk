@@ -1612,7 +1612,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="PairHMMResultsModes")
     public Object[][] PairHMMResultsModes() {
         return new Object[][] {
-                {PairHMM.Implementation.AVX_LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.AVX.hmmresults.txt")}, //TODO disabled because of failures on travis
+                {PairHMM.Implementation.AVX_LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.AVX.hmmresults.txt")},
                 {PairHMM.Implementation.LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.Java.hmmresults.txt")},
                 {PairHMM.Implementation.ORIGINAL, new File(TEST_FILES_DIR, "expected.Original.hmmresults.txt")},
                 {PairHMM.Implementation.EXACT, new File(TEST_FILES_DIR, "expected.Exact.hmmresults.txt")},
