@@ -12,8 +12,19 @@ public class ReadPair {
     private GATKRead secondOfPair;
     private List<GATKRead> secondaryAlignments = new ArrayList<>(10);
     private List<GATKRead> supplementaryAlignments = new ArrayList<>(10); // Finally understand the difference
+    private String queryName = null;
 
-    ReadPair() { }
+
+    public ReadPair() { }
+
+    public ReadPair(final GATKRead read) {
+        this.queryName = read.getName();
+        add(read);
+    }
+
+    public String getQueryName() {
+        return queryName;
+    }
 
     public GATKRead getFirstOfPair(){
         return firstOfPair;
@@ -24,6 +35,14 @@ public class ReadPair {
     }
 
     public void add(final GATKRead read) {
+        if (this.queryName == null){
+            this.queryName = read.getName();
+        }
+
+        if (! this.queryName.equals(read.getName())){
+            throw new UserException("Read names do not match: " + this.queryName + " vs " + read.getName());
+        }
+
         if (read.isFirstOfPair()) {
             this.firstOfPair = read;
         } else if (read.isSecondOfPair()) {
