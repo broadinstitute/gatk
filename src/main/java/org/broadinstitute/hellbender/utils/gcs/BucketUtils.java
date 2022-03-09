@@ -26,10 +26,10 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.http.nio.HttpFileSystemProvider;
 import org.broadinstitute.http.nio.HttpsFileSystemProvider;
-import shaded.cloud_nio.com.google.api.gax.retrying.RetrySettings;
-import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
-import shaded.cloud_nio.com.google.cloud.http.HttpTransportOptions;
-import shaded.cloud_nio.org.threeten.bp.Duration;
+import com.google.api.gax.retrying.RetrySettings;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.http.HttpTransportOptions;
+import org.threeten.bp.Duration;
 
 import java.io.*;
 import java.net.URL;

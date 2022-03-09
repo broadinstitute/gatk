@@ -19,7 +19,7 @@ import org.testng.annotations.Test;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
-import shaded.cloud_nio.com.google.common.collect.Comparators;
+import com.google.common.collect.Comparators;
 
 import java.io.File;
 import java.io.IOException;
