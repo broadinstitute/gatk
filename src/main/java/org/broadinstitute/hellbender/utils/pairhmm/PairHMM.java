@@ -371,7 +371,7 @@ public abstract class PairHMM implements Closeable{
     }
 
     /**
-     * Method to be invoked implementing HMM engines to be used for storing results for various debugging purposes
+     * Method to be invoked by implementing HMM engines to output the various hmm inputs/outputs with uniform formatting.
      */
     protected void writeToResultsFileIfApplicable(byte[] readBases, byte[] readQuals, byte[] readInsQuals, byte[] readDelQuals, byte[] overallGCP, byte[] alleleBases, double lk) {
 

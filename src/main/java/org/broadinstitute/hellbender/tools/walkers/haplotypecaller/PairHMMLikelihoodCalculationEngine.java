@@ -114,6 +114,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      *
      * @param constantGCP the gap continuation penalty to use with the PairHMM
      * @param hmmType the type of the HMM to use
+     * @param resultsFile output file to dump per-read, per-haplotype inputs and outputs for debugging purposes (null if not enabled).
      * @param log10globalReadMismappingRate the global mismapping probability, in log10(prob) units.  A value of
      *                                      -3 means that the chance that a read doesn't actually belong at this
      *                                      location in the genome is 1 in 1000.  The effect of this parameter is
