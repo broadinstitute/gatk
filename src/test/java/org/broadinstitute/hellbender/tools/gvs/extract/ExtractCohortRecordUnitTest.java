@@ -32,6 +32,7 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(allDefinedRecord.getRefAllele(), "CTTT");
         Assert.assertEquals(allDefinedRecord.getAltAllele(), "C");
         Assert.assertEquals(allDefinedRecord.getCallGT(), "1/1");
+        // Assert.assertEquals(allDefinedRecord.getCallAD(), "0,1"); // TODO need to add this to the extract Avro!
         Assert.assertEquals(allDefinedRecord.getCallGQ(), "3");
         Assert.assertEquals(allDefinedRecord.getCallRGQ(), "38");
         Assert.assertEquals(allDefinedRecord.getQUALApprox(), "38");
@@ -55,6 +56,7 @@ public class ExtractCohortRecordUnitTest extends GATKBaseTest {
         Assert.assertNull(someNullsRecord.getRefAllele());
         Assert.assertNull(someNullsRecord.getAltAllele());
         Assert.assertNull(someNullsRecord.getCallGT());
+        Assert.assertNull(someNullsRecord.getCallAD());
         Assert.assertNull(someNullsRecord.getCallGQ());
         Assert.assertNull(someNullsRecord.getCallRGQ());
         Assert.assertNull(someNullsRecord.getQUALApprox());
