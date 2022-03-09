@@ -115,6 +115,7 @@ def create_final_extract_vet_table(fq_destination_table_vet_data):
               alt           STRING,
               call_GT       STRING,
               call_GQ       INT64,
+              call_AD       STRING,
               AS_QUALapprox STRING,
               QUALapprox    STRING,
               call_PL       STRING	
@@ -180,7 +181,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids):
   def get_ref_subselect(fq_vet_table, samples, id):
     sample_stanza = ','.join([str(s) for s in samples])
-    sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, AS_QUALapprox, QUALapprox, CALL_PL FROM \n" \
+    sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL FROM \n" \
           f" `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
     return sql
 
@@ -189,7 +190,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 
     if len(partition_samples) > 0:
       subs = {}
-      insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, AS_QUALapprox, QUALapprox, CALL_PL) \n WITH \n"
+      insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL) \n WITH \n"
       fq_vet_table = f"{fq_ranges_dataset}.{VET_TABLE_PREFIX}{i:03}"
       j = 1
 
@@ -264,7 +265,7 @@ def make_extract_table(control_samples,
 
     ## TODO -- provide a cmdline arg to override this (so we can simulate smaller datasets)
 
-    global PET_VET_TABLE_COUNT
+    global PET_VET_TABLE_COUNT ## TODO why are we using PET here?
     PET_VET_TABLE_COUNT = max_tables
 
     global TEMP_TABLE_TTL_HOURS
@@ -289,7 +290,7 @@ def make_extract_table(control_samples,
     sample_ids = get_all_sample_ids(fq_destination_table_samples)
     print(f"Discovered {len(sample_ids)} samples in {fq_destination_table_samples}...")
 
-    # create the tables for exract data
+    # create the tables for extract data
     create_final_extract_ref_table(fq_destination_table_ref_data)
     create_final_extract_vet_table(fq_destination_table_vet_data)
 
