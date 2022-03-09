@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import com.google.common.collect.Lists;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.CoordMath;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -9,6 +11,7 @@ import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
@@ -62,10 +65,26 @@ public class SVCallRecord implements SVLocatable {
                         final List<String> algorithms,
                         final List<Allele> alleles,
                         final List<Genotype> genotypes,
-                        final Map<String,Object> attributes) {
+                        final Map<String,Object> attributes,
+                        final SAMSequenceDictionary dictionary) {
+        this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, length, algorithms, alleles, genotypes, attributes);
+        validateCoordinates(dictionary);
+    }
+
+    protected SVCallRecord(final String id,
+                           final String contigA,
+                           final int positionA,
+                           final Boolean strandA,
+                           final String contigB,
+                           final int positionB,
+                           final Boolean strandB,
+                           final StructuralVariantType type,
+                           final Integer length,
+                           final List<String> algorithms,
+                           final List<Allele> alleles,
+                           final List<Genotype> genotypes,
+                           final Map<String, Object> attributes) {
         Utils.nonNull(id);
-        Utils.nonNull(contigA);
-        Utils.nonNull(contigB);
         Utils.nonNull(type);
         Utils.nonNull(algorithms);
         Utils.nonNull(alleles);
@@ -91,19 +110,40 @@ public class SVCallRecord implements SVLocatable {
         this.strandB = strands.getRight();
     }
 
-    public SVCallRecord(final String id,
-                        final String contigA,
-                        final int positionA,
+    /**
+     * Convenience constructor without extra attributes
+     */
+    public SVCallRecord(final SVCallRecord baseRecord,
+                        final String id,
                         final Boolean strandA,
-                        final String contigB,
-                        final int positionB,
                         final Boolean strandB,
                         final StructuralVariantType type,
                         final Integer length,
                         final List<String> algorithms,
                         final List<Allele> alleles,
-                        final List<Genotype> genotypes) {
-        this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, length, algorithms, alleles, genotypes, Collections.emptyMap());
+                        final List<Genotype> genotypes,
+                        final Map<String,Object> attributes) {
+        this(id, baseRecord.getContigA(), baseRecord.getPositionA(), strandA, baseRecord.getContigB(),
+                baseRecord.getPositionB(), strandB, type, length, algorithms, alleles, genotypes, attributes);
+    }
+
+    /**
+     * Ensures start/end loci are valid and ordered
+     */
+    private void validateCoordinates(final SAMSequenceDictionary dictionary) {
+        Utils.nonNull(contigA);
+        Utils.nonNull(contigB);
+        Utils.nonNull(dictionary);
+        validatePosition(contigA, positionA, dictionary);
+        validatePosition(contigB, positionB, dictionary);
+        Utils.validateArg(IntervalUtils.compareLocatables(getPositionAInterval(), getPositionBInterval(), dictionary) <= 0,
+                "End coordinate cannot precede start");
+    }
+
+    private static void validatePosition(final String contig, final int position, final SAMSequenceDictionary dictionary) {
+        final SAMSequenceRecord seq = dictionary.getSequence(contig);
+        Utils.validateArg(seq != null, "Contig " + contig + " not found in dictionary");
+        Utils.validateArg(position > 0 && position <= seq.getSequenceLength(), "Invalid position " + contig + ":" + position);
     }
 
     private static Map<String, Object> validateAttributes(final Map<String, Object> attributes) {

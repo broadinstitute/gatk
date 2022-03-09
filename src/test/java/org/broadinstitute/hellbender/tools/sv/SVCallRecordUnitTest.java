@@ -55,4 +55,24 @@ public class SVCallRecordUnitTest {
     public void testIsCNV(final SVCallRecord record, final boolean expected) {
         Assert.assertEquals(record.isSimpleCNV(), expected);
     }
+
+    @DataProvider(name = "testCreateInvalidCoordinatesData")
+    public Object[][] testCreateInvalidCoordinatesData() {
+        return new Object[][]{
+                {"chr1", 0, "chr1", 248956422},
+                {"chr1", 1, "chr1", 248956423},
+                {"chr1", 1, "chr1", 248956423},
+                {"chr1", 1, "chr2", 242193530},
+                {"chr1", 2, "chr1", 1},
+                {"chr2", 1, "chr1", 2}
+        };
+    }
+
+    @Test(dataProvider="testCreateInvalidCoordinatesData", expectedExceptions = { IllegalArgumentException.class })
+    public void testCreateInvalidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
+        new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, StructuralVariantType.BND,
+                null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyMap(), SVTestUtils.hg38Dict);
+        Assert.fail("Expected exception not thrown");
+    }
 }

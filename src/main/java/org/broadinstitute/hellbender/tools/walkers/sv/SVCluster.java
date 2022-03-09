@@ -405,7 +405,7 @@ public final class SVCluster extends MultiVariantWalker {
 
         // Add to clustering buffer
         if (convertInversions) {
-            SVCallRecordUtils.convertInversionsToBreakends(filteredCall).forEachOrdered(clusterEngine::add);
+            SVCallRecordUtils.convertInversionsToBreakends(filteredCall, dictionary).forEachOrdered(clusterEngine::add);
         } else {
             clusterEngine.add(filteredCall);
         }
@@ -461,7 +461,7 @@ public final class SVCluster extends MultiVariantWalker {
         // Build new variant
         final SVCallRecord finalCall = new SVCallRecord(newId, call.getContigA(), call.getPositionA(), call.getStrandA(),
                 call.getContigB(), call.getPositionB(), call.getStrandB(), call.getType(), call.getLength(),
-                call.getAlgorithms(), call.getAlleles(), filledGenotypes, call.getAttributes());
+                call.getAlgorithms(), call.getAlleles(), filledGenotypes, call.getAttributes(), dictionary);
         final VariantContextBuilder builder = SVCallRecordUtils.getVariantBuilder(finalCall);
         if (omitMembers) {
             builder.rmAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY);

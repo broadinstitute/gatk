@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
@@ -93,6 +94,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
     private final BreakpointSummaryStrategy breakpointSummaryStrategy;
     private final InsertionLengthSummaryStrategy insertionLengthSummaryStrategy;
     private final ReferenceSequenceFile reference;
+    private final SAMSequenceDictionary dictionary;
 
     private static final AlleleCollectionCollapserComparator ALLELE_COMPARATOR = new AlleleCollectionCollapserComparator();
 
@@ -101,6 +103,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                                 final BreakpointSummaryStrategy breakpointSummaryStrategy,
                                 final InsertionLengthSummaryStrategy insertionLengthSummaryStrategy) {
         this.reference = Utils.nonNull(reference);
+        this.dictionary = reference.getSequenceDictionary();
         this.altAlleleSummaryStrategy = altAlleleSummaryStrategy;
         this.breakpointSummaryStrategy = breakpointSummaryStrategy;
         this.insertionLengthSummaryStrategy = insertionLengthSummaryStrategy;
@@ -135,7 +138,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         final List<Genotype> harmonizedGenotypes = harmonizeAltAlleles(altAlleles, genotypes);
 
         return new SVCallRecord(id, exampleCall.getContigA(), start, exampleCall.getStrandA(), exampleCall.getContigB(),
-                end, exampleCall.getStrandB(), type, length, algorithms, alleles, harmonizedGenotypes, attributes);
+                end, exampleCall.getStrandB(), type, length, algorithms, alleles, harmonizedGenotypes, attributes, dictionary);
     }
 
     /**
@@ -807,9 +810,12 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         if (exampleCall.getType().equals(StructuralVariantType.INS)) {
             // Insertions are a single locus
             return Pair.of(newStart, newStart);
-        } else {
+        } else if (exampleCall.getContigA().equals(exampleCall.getContigB())) {
             // Do not let end precede start
-            return Pair.of(newStart, Math.max(newEnd, newStart));
+            return Pair.of(newStart, Math.max(newStart, newEnd));
+        } else {
+            // Different contigs, so no constraint on position order
+            return Pair.of(newStart, newEnd);
         }
     }
 

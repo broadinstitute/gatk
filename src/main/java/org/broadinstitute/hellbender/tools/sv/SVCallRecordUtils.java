@@ -238,17 +238,17 @@ public final class SVCallRecordUtils {
      * @param record inversion record
      * @return stream of BND records pair, or the original record if not an INV
      */
-    public static Stream<SVCallRecord> convertInversionsToBreakends(final SVCallRecord record) {
+    public static Stream<SVCallRecord> convertInversionsToBreakends(final SVCallRecord record, final SAMSequenceDictionary dictionary) {
         if (!record.getType().equals(StructuralVariantType.INV)) {
             return Stream.of(record);
         }
         Utils.validateArg(record.isIntrachromosomal(), "Inversion " + record.getId() + " is not intrachromosomal");
         final SVCallRecord positiveBreakend = new SVCallRecord(record.getId(), record.getContigA(),
                 record.getPositionA(), true, record.getContigB(), record.getPositionB(), true, StructuralVariantType.BND, null,
-                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes());
+                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), dictionary);
         final SVCallRecord negativeBreakend = new SVCallRecord(record.getId(), record.getContigA(),
                 record.getPositionA(), false, record.getContigB(), record.getPositionB(), false, StructuralVariantType.BND, null,
-                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes());
+                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), dictionary);
         return Stream.of(positiveBreakend, negativeBreakend);
     }
 
