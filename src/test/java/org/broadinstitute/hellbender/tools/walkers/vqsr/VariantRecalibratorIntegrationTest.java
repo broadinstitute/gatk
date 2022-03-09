@@ -25,6 +25,9 @@ import java.util.stream.Stream;
  * from the command line, in order to ensure that the initial state of the random number generator is the same
  * between versions. In all cases, the variants in the expected files are identical to those produced by GATK3,
  * though the VCF headers were hand modified to account for small differences in the metadata lines.
+ *
+ * UPDATE: The expected results from GATK3 were updated in https://github.com/broadinstitute/gatk/pull/7709.
+ * However, we left the original comments referencing GATK3 below untouched.
  */
 public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
 
