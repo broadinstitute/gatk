@@ -364,8 +364,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             final int bin = getBin(af);
             final Genotype evalGenotype = evalVC.getGenotype(sample);
             final Genotype truthGenotype = truthVC != null? truthVC.getGenotype(mappedSample) : null;
-            if (truthGenotype != null && truthGenotype.isNoCall()) {
-                //not confident in truth, so skip
+            if ((truthGenotype != null && truthGenotype.isNoCall()) || (evalGenotype != null && evalGenotype.isNoCall())) {
+                //not confident in truth, or eval is a noCall, so skip
                 continue;
             }
             final double evalDosageFrac = getDosageFrac(evalGenotype, evalVC.getReference(), dosageField);
@@ -373,7 +373,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             final ConcordanceState concordanceState = getConcordanceState(truthGenotype, evalGenotype, evalVC.isFiltered());
             if (evalVC.isSNP()) {
                 aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
-                if (af >= minAfForAccuracyMetrics) {
+                if (af >= minAfForAccuracyMetrics && af < firstBinRightEdge) {
                     snpMetrics.get(i).incrementMetrics(concordanceState);
                 }
             } else if (evalVC.isIndel()) {
