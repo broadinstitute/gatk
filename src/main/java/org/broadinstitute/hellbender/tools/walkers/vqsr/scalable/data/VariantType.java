@@ -15,25 +15,13 @@ public enum VariantType {
         switch (resourceVC.getType()) {
             case SNP:
             case MNP:
-                return checkVariantType(vc, SNP);
+                return getVariantType(vc) == SNP;
             case INDEL:
             case MIXED:
             case SYMBOLIC:
-                return checkVariantType(vc, INDEL);
+                return getVariantType(vc) == INDEL;
             default:
                 return false;
-        }
-    }
-
-    private static boolean checkVariantType(final VariantContext vc,
-                                            final VariantType mode) {
-        switch (mode) {
-            case SNP:
-                return vc.isSNP() || vc.isMNP();
-            case INDEL:
-                return vc.isStructuralIndel() || vc.isIndel() || vc.isMixed() || vc.isSymbolic();
-            default:
-                throw new IllegalStateException("Encountered unknown mode: " + mode);
         }
     }
 
