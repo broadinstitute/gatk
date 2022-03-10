@@ -212,9 +212,17 @@ public final class Haplotype extends Allele {
         Utils.validateArg( this.cigar.getReadLength() == length(), () -> "Read length " + length() + " not equal to the read length of the cigar " + cigar.getReadLength() + " " + this.cigar);
     }
 
-    public Haplotype insertAllele( final Allele refAllele, final Allele altAllele, final int refInsertLocation, final int genomicInsertLocation ) {
-        // refInsertLocation is in ref haplotype offset coordinates NOT genomic coordinates
-        final Pair<Integer, CigarOperator> haplotypeInsertLocationAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(alignmentStartHapwrtRef, cigar, refInsertLocation);
+    /**
+     *
+     * @param refAllele             allele, contained in this haplotype, to be replaced
+     * @param altAllele             new allele, the bases of which replace those of refAllele
+     * @param insertLocation     location in the genome at which the new allele starts
+     *
+     * Example: suppose this haplotype starts at position 100 on its contig and has bases ACCGTTATATCG and we wish to
+     * delete the GTT.  Then refAllele = CGTT, alt allele = C, and insertLocation = 102.
+     */
+    public Haplotype insertAllele(final Allele refAllele, final Allele altAllele, final int insertLocation) {
+        final Pair<Integer, CigarOperator> haplotypeInsertLocationAndOperator = ReadUtils.getReadIndexForReferenceCoordinate((int) getStartPosition(), cigar, insertLocation);
 
         // can't insert outside the haplotype or into a deletion
         if( haplotypeInsertLocationAndOperator.getLeft() == ReadUtils.READ_INDEX_NOT_FOUND || !haplotypeInsertLocationAndOperator.getRight().consumesReadBases() ) {

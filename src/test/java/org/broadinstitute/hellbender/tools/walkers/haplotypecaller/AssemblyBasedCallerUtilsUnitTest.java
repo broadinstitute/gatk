@@ -328,7 +328,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
     }
 
     private Haplotype applyVariant(final VariantContext vc, final Haplotype refHaplotype, final int altIndex) {
-        Haplotype retHaplotype = refHaplotype.insertAllele(vc.getReference(), vc.getAlternateAllele(altIndex), vc.getStart() - (int) refHaplotype.getStartPosition(), vc.getStart());
+        Haplotype retHaplotype = refHaplotype.insertAllele(vc.getReference(), vc.getAlternateAllele(altIndex), vc.getStart());
         if (retHaplotype == null) {
             return refHaplotype;
         }
@@ -1270,22 +1270,22 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
                 Arrays.asList(Allele.create((byte) 'A', true), Allele.create((byte) 'C', false))).make();
 
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
-                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, refHaplotype, assemblyResultSet);
+        addGivenAlleles(Collections.singletonList(givenVC), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "ACAACCCCGGGGTTTT");
 
 
         // adding the same VC should have no effect
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
-                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, refHaplotype, assemblyResultSet);
+        addGivenAlleles(Collections.singletonList(givenVC), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
 
         // add another SNP
         final VariantContext givenVC2 = new VariantContextBuilder("test", "chr", 5, 5,
                 Arrays.asList(Allele.create((byte) 'C', true), Allele.create((byte) 'G', false))).make();
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC2), maxMnpDistance,
-                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, refHaplotype, assemblyResultSet);
+        addGivenAlleles(Collections.singletonList(givenVC2), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, assemblyResultSet);
         // SNP is not found in existing variation, so it's added to the ref and the first SNP
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 4);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(2).getBaseString(), "AAAAGCCCGGGGTTTT");
@@ -1295,8 +1295,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         // haplotype that contains the overlapping 2nd SNP
         final VariantContext givenVC3 = new VariantContextBuilder("test", "chr", 5, 7,
                 Arrays.asList(Allele.create("CCC".getBytes(), true), Allele.create((byte) 'C', false))).make();
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC3), maxMnpDistance,
-                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, refHaplotype, assemblyResultSet);
+        addGivenAlleles(Collections.singletonList(givenVC3), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 6);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(4).getBaseString(), "AAAACCGGGGTTTT");
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(5).getBaseString(), "ACAACCGGGGTTTT");
@@ -1304,8 +1304,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         // adding an equivalent deletion should do nothing
         final VariantContext givenVC4 = new VariantContextBuilder("test", "chr", 5, 8,
                 Arrays.asList(Allele.create("CCCC".getBytes(), true), Allele.create("CC".getBytes(), false))).make();
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC4), maxMnpDistance,
-                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, refHaplotype, assemblyResultSet);
+        addGivenAlleles(Collections.singletonList(givenVC4), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 6);
 
         // finally, add a haplotype with two new phased SNPs, after which adding an allele with one of these SNPs does nothing
@@ -1321,8 +1321,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         final VariantContext givenVC5 = new VariantContextBuilder("test", "chr", 8, 8,
                 Arrays.asList(Allele.create((byte) 'C', true), Allele.create((byte) 'T', false))).make();
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC5), maxMnpDistance,
-                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, refHaplotype, assemblyResultSet);
+        addGivenAlleles(Collections.singletonList(givenVC5), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 7);
     }
 
@@ -1346,8 +1346,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
                 Arrays.asList(Allele.create((byte) 'A', true), Allele.create((byte) 'C', false), Allele.create((byte) 'T', false))).make();
 
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
-                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, refHaplotype, assemblyResultSet);
+        addGivenAlleles(Collections.singletonList(givenVC), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 3);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "ACAACCCCGGGGTTTT");
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(2).getBaseString(), "ATAACCCCGGGGTTTT");
@@ -1378,8 +1378,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
                 Arrays.asList(Allele.create((byte) 'A', true), Allele.create('A' + new String(insertedBases), false))).make();
 
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
-                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, refHaplotype, assemblyResultSet);
+        addGivenAlleles(Collections.singletonList(givenVC), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "AA" + new String(insertedBases) + "AACCCCGGGGTTTT");
     }
