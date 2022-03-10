@@ -13,6 +13,7 @@ workflow GvsCreateFilterSet {
     Int scatter_count
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
+    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
     String? service_account_json_path
@@ -44,7 +45,6 @@ workflow GvsCreateFilterSet {
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
   File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
   File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
-  File wgs_intervals = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
   # fully-qualified table names
   String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
@@ -70,7 +70,7 @@ workflow GvsCreateFilterSet {
 
   call Utils.SplitIntervals {
     input:
-      intervals = wgs_intervals,
+      intervals = interval_list,
       ref_fasta = reference,
       ref_fai = reference_index,
       ref_dict = reference_dict,

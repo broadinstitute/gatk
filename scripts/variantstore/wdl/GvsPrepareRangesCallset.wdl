@@ -1,7 +1,7 @@
 version 1.0
 
 workflow GvsPrepareCallset {
- input {
+  input {
     String project_id
     String dataset_name
     String extract_table_prefix
@@ -10,14 +10,15 @@ workflow GvsPrepareCallset {
     String query_project = project_id
     String destination_project = project_id
     String destination_dataset = dataset_name
+    String fq_temp_table_dataset = "~{destination_project}.temp_tables"
 
+    Array[String]? query_labels
     File? sample_names_to_extract
     String? service_account_json_path
   }
 
   String fq_petvet_dataset = "~{project_id}.~{dataset_name}"
   String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
-  String fq_temp_table_dataset = "~{destination_project}.temp_tables"
   String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
   call PrepareRangesCallsetTask {
@@ -25,6 +26,7 @@ workflow GvsPrepareCallset {
       destination_cohort_table_prefix = extract_table_prefix,
       sample_names_to_extract         = sample_names_to_extract,
       query_project                   = query_project,
+      query_labels                    = query_labels,
       fq_petvet_dataset               = fq_petvet_dataset,
       fq_sample_mapping_table         = fq_sample_mapping_table,
       fq_temp_table_dataset           = fq_temp_table_dataset,
@@ -53,10 +55,13 @@ task PrepareRangesCallsetTask {
     String fq_sample_mapping_table
     String fq_temp_table_dataset
     String fq_destination_dataset
-    Int temp_table_ttl_in_hours
+    Array[String]? query_labels
+    Int temp_table_ttl_in_hours = 24
 
     String? service_account_json_path
   }
+  # Note the coercion of optional query_labels using select_first([expr, default])
+  Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   String use_sample_names_file = if (defined(sample_names_to_extract)) then 'true' else 'false'
@@ -89,6 +94,7 @@ task PrepareRangesCallsetTask {
           --destination_cohort_table_prefix ~{destination_cohort_table_prefix} \
           ~{sample_list_param} \
           --query_project ~{query_project} \
+          ~{sep=" " query_label_args} \
           --fq_sample_mapping_table ~{fq_sample_mapping_table} \
           --ttl ~{temp_table_ttl_in_hours} \
           $SERVICE_ACCOUNT_STANZA

@@ -11,6 +11,7 @@ workflow GvsExtractCallset {
     String extract_table_prefix
     String query_project = project_id
     Int scatter_count
+    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     Int? extract_maxretries_override
     Int? extract_preemptible_override
@@ -24,7 +25,6 @@ workflow GvsExtractCallset {
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
   File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
   File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
-  File wgs_intervals = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
   File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-split-intervals-odd-02252022/gatk.jar"
   String fq_cohort_extract_table  = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__DATA"
@@ -40,7 +40,7 @@ workflow GvsExtractCallset {
 
   call Utils.SplitIntervals {
     input:
-        intervals = wgs_intervals,
+        intervals = interval_list,
         ref_fasta = reference,
         ref_fai = reference_index,
         ref_dict = reference_dict,
@@ -88,7 +88,7 @@ workflow GvsExtractCallset {
               output_gcs_dir                  = output_gcs_dir,
               max_last_modified_timestamp     = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
               extract_preemptible_override    = extract_preemptible_override,
-              extract_maxretries_override     = extract_maxretries_override
+              extract_maxretries_override     = extract_maxretries_override,
       }
   }
 

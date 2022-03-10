@@ -10,6 +10,7 @@ workflow GvsImportGenomes {
     Array[File] input_vcfs
     Array[File] input_vcf_indexes
 
+    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? load_data_preemptible_override
     File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_ranges_prepare_20220118/gatk-package-4.2.0.0-462-gc0e684c-SNAPSHOT-local.jar"
     String? service_account_json_path
@@ -60,7 +61,7 @@ workflow GvsImportGenomes {
         drop_state_includes_greater_than = false,
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
-        interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list",
+        interval_list = interval_list,
         gatk_override = load_data_gatk_override,
         load_data_preemptible_override = load_data_preemptible_override,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
