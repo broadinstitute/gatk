@@ -98,7 +98,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * The quantity that changes whether the GATK considers the possibility of a het genotype at all is the ploidy,
      * which determines how many chromosomes each individual in the species carries.
      */
-    @Argument(fullName = "heterozygosity", doc = "Heterozygosity value used to compute prior likelihoods for any locus.  See the GATKDocs for full details on the meaning of this population genetics concept", optional = true)
+    @Argument(fullName = "heterozygosity", doc = "Heterozygosity value used to compute prior probabilities for any locus.  See the GATKDocs for full details on the meaning of this population genetics concept", optional = true)
     public Double snpHeterozygosity = HomoSapiensConstants.SNP_HETEROZYGOSITY;
 
     /**
