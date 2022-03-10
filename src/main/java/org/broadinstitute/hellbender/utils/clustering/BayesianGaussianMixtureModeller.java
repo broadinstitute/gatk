@@ -244,7 +244,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
      */
     public double[] scoreSamples(final double[][] data) {
         if (!isFitAvailable) {
-            throw new UnsupportedOperationException("Cannot score samples before model has been fit or set.");
+            throw new IllegalStateException("Cannot score samples before model has been fit or set.");
         }
         final RealMatrix X = new Array2DRowRealMatrix(data);
         final int nSamples = X.getRowDimension();
