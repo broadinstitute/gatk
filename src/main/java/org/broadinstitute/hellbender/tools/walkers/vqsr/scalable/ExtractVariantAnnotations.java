@@ -82,12 +82,10 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
                     // Algorithm R for reservoir sampling: https://en.wikipedia.org/wiki/Reservoir_sampling#Simple_algorithm
                     if (unlabeledIndex < maximumNumberOfUnlabeledVariants) {
                         addExtractedVariantToData(unlabeledDataReservoir, variant, metadata);
-                        writeExtractedVariantToVCF(variant, metadata);
                     } else {
                         final int j = rng.nextInt(unlabeledIndex);
                         if (j < maximumNumberOfUnlabeledVariants) {
                             setExtractedVariantInData(unlabeledDataReservoir, variant, metadata, j);
-                            writeExtractedVariantToVCF(variant, metadata);
                         }
                     }
                     unlabeledIndex++;
@@ -102,6 +100,7 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             writeAnnotationsToHDF5AndClearData();
             if (unlabeledDataReservoir != null) {
                 writeUnlabeledAnnotationsToHDF5AndClearData();
+                // TODO write extracted unlabeled variants to VCF, which can be used to mark extraction in scoring step
             }
             if (vcfWriter != null) {
                 vcfWriter.close();
@@ -143,6 +142,7 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
         logger.info(String.format("Extracted unlabeled annotations for %s total variants.", unlabeledDataReservoir.size()));
 
         logger.info("Writing unlabeled annotations...");
+        // TODO coordinate sort
         unlabeledDataReservoir.writeHDF5(outputUnlabeledAnnotationsFile, omitAllelesInHDF5);
         logger.info(String.format("Unlabeled annotations and metadata written to %s.", outputUnlabeledAnnotationsFile.getAbsolutePath()));
 
