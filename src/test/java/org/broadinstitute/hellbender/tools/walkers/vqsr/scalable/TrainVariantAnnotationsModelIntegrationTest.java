@@ -1,7 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
 public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProgramTest {
 
@@ -35,6 +40,34 @@ public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProg
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
+
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.trainingScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.trainingScores.hdf5");
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.truthScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.truthScores.hdf5");
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.unlabeledScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.unlabeledScores.hdf5");
+        runSystemCommand("diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.scorer.pkl /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.scorer.pkl");
+        runSystemCommand("diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.negative.scorer.pkl /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.negative.scorer.pkl");
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.trainingScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.trainingScores.hdf5");
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.truthScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.truthScores.hdf5");
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.unlabeledScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.unlabeledScores.hdf5");
+        runSystemCommand("diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.scorer.pkl /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.scorer.pkl");
+        runSystemCommand("diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.negative.scorer.pkl /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.negative.scorer.pkl");
+    }
+
+    private static void runSystemCommand(final String command) {
+        try {
+            Process process = Runtime.getRuntime().exec(command);
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()));
+            while (reader.readLine() != null) {
+                Assert.fail(command);
+            }
+
+            reader.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Test
