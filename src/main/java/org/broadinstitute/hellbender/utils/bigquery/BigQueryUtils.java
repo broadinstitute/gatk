@@ -412,21 +412,22 @@ public final class BigQueryUtils {
     public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
                                                                   final List<String> fieldsToRetrieve,
                                                                   final String projectID,
+                                                                  final String datasetID,
                                                                   final String userDefinedFunctions,
                                                                   Map<String, String> labels) {
 
-        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, userDefinedFunctions, false, labels);
+        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, datasetID, userDefinedFunctions, false, labels);
     }
 
     public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
                                                                   final List<String> fieldsToRetrieve,
                                                                   final String projectID,
+                                                                  final String datasetID,
                                                                   final String userDefinedFunctions,
                                                                   final boolean runQueryInBatchMode,
                                                                   Map<String, String> labels) {
-        final String tempTableDataset = "temp_tables";
-        final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
-        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
+        final String tempTableName = String.format("%s_%s", "temp_table", UUID.randomUUID().toString().replace('-', '_'));
+        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, datasetID, tempTableName);
 
         final String queryStringWithUDFs = userDefinedFunctions == null ? queryString : userDefinedFunctions + queryString;
 
@@ -446,7 +447,7 @@ public final class BigQueryUtils {
 
         executeQuery(projectID, queryStringIntoTempTable, runQueryInBatchMode, labels);
 
-        final Table tableInfo = getBigQueryEndPoint(projectID).getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
+        final Table tableInfo = getBigQueryEndPoint(projectID).getTable( TableId.of(projectID, datasetID, tempTableName) );
         logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
 
         TableReference tr = new TableReference(tempTableFullyQualified, fieldsToRetrieve);
