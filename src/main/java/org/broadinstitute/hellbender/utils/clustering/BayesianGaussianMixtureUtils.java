@@ -240,10 +240,6 @@ final class BayesianGaussianMixtureUtils {
         final int nComponents = means.size();
         final int nFeatures = means.get(0).getDimension();
 
-
-
-
-
         final List<RealMatrix> covariances = new ArrayList<>(Collections.nCopies(nComponents, null));
         for (int k = 0; k < nComponents; k++) {
             final RealMatrix diff = X.copy();

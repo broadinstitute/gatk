@@ -180,9 +180,8 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         // TODO generally clean up validation
         // TODO validate annotation names and AS mode
 
-        if (ignoreInputFilters != null) {
-            ignoreInputFilterSet.addAll(ignoreInputFilters);
-        }
+        ignoreInputFilterSet.addAll(ignoreInputFilters);
+
         variantTypesToExtract = EnumSet.copyOf(variantTypesToExtractList);
 
         outputAnnotationsFile = new File(outputPrefix + ANNOTATIONS_HDF5_SUFFIX);
@@ -313,9 +312,9 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
      * variant-extraction behavior in all child tools. Logic here and below for filtering and determining variant type
      * was retained from VQSR, but has been heavily refactored.
      */
-    List<Triple<List<Allele>, VariantType, TreeSet<String>>> extractVariantMetadata(final VariantContext vc,
-                                                                                    final FeatureContext featureContext,
-                                                                                    final boolean isExtractUnlabeled) {
+    final List<Triple<List<Allele>, VariantType, TreeSet<String>>> extractVariantMetadata(final VariantContext vc,
+                                                                                          final FeatureContext featureContext,
+                                                                                          final boolean isExtractUnlabeled) {
         // if variant is filtered, do not consume here
         if (vc == null || !(ignoreAllFilters || vc.isNotFiltered() || ignoreInputFilterSet.containsAll(vc.getFilters()))) {
             return Collections.emptyList();
@@ -358,10 +357,10 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                     continue;
                 }
                 if (isValidVariant(vc, resourceVC, trustAllPolymorphic)) {
-                    overlappingResourceLabels.addAll(resource.getTagAttributes().entrySet().stream()
+                    resource.getTagAttributes().entrySet().stream()
                             .filter(e -> e.getValue().equals("true"))
                             .map(Map.Entry::getKey)
-                            .collect(Collectors.toCollection(TreeSet::new)));
+                            .forEach(overlappingResourceLabels::add);
                 }
             }
         }
