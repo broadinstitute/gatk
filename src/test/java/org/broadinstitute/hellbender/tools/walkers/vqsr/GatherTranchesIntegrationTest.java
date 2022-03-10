@@ -19,7 +19,7 @@ public class GatherTranchesIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testCombine2Shards() throws Exception {
         final File recal1 = new File(testDir + "snpTranches.scattered.txt");  //this is the output of VariantRecalibratorIntegrationTest.testVariantRecalibratorSNPscattered
-        final File recal2 = new File(testDir + "snpTranches.scattered.2.txt"); //this is the output of running the equivalent commandline as above outside of the integration test :-/
+        final File recal2 = new File(testDir + "snpTranches.scattered.2.txt"); //this is a copy of the above
 
         final File recal_original = new File(testDir + "expected/snpTranches.gathered.txt");
 
