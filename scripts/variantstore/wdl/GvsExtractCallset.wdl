@@ -12,10 +12,10 @@ workflow GvsExtractCallset {
     String query_project = project_id
     Int scatter_count
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    String output_file_base_name = filter_set_name
 
     Int? extract_maxretries_override
     Int? extract_preemptible_override
-    String? output_file_base_name = filter_set_name
     String? output_gcs_dir
     String? service_account_json_path
     Int? split_intervals_disk_size_override
