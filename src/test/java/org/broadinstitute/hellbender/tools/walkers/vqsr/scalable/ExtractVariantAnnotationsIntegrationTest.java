@@ -1,7 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
 public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 
@@ -30,7 +35,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     }
 
     @Test
-    public void test1kgp50ExomesAllUnlabeled() {
+    public void test1kgp50ExomesAllUnlabeled() throws IOException {
         final String[] arguments = {
                 "-L", "chr1",
                 "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
@@ -52,6 +57,28 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
+
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.annot.hdf5 /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.annot.hdf5");
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.unlabeled.annot.hdf5 /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.unlabeled.annot.hdf5");
+        runSystemCommand("diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.unlabeled.vcf.gz /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.unlabeled.vcf.gz");
+        runSystemCommand("diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.unlabeled.vcf.gz.tbi /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.unlabeled.vcf.gz.tbi");
+    }
+
+    private static void runSystemCommand(final String command) {
+        try {
+            Process process = Runtime.getRuntime().exec(command);
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()));
+            while (reader.readLine() != null) {
+                Assert.fail(command);
+            }
+
+            reader.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Test

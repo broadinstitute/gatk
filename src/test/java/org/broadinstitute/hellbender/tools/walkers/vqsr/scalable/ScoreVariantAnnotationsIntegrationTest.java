@@ -1,7 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
 public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 
@@ -58,6 +63,27 @@ public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTe
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
+
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/score-test/test.all-unlabeled.annot.hdf5 /home/slee/working/vqsr/scalable/score-test/expected/test.all-unlabeled.annot.hdf5");
+        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/score-test/test.all-unlabeled.scores.hdf5 /home/slee/working/vqsr/scalable/score-test/expected/test.all-unlabeled.scores.hdf5");
+        runSystemCommand("bcftools view -H /home/slee/working/vqsr/scalable/score-test/test.all-unlabeled.vcf.gz > /tmp/1.vcf; bcftools view -H /home/slee/working/vqsr/scalable/score-test/expected/test.all-unlabeled.vcf.gz > /tmp/2.vcf; diff /tmp/1.vcf /tmp/2.vcf; rm /tmp/1.vcf /tmp/2.vcf");
+    }
+
+    private static void runSystemCommand(final String command) {
+        try {
+            Process process = Runtime.getRuntime().exec(command);
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()));
+            while (reader.readLine() != null) {
+                Assert.fail(command);
+            }
+
+            reader.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Test
