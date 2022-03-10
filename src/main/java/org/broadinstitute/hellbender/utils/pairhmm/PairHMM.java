@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMUtils;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -13,6 +15,8 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Closeable;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +34,8 @@ public abstract class PairHMM implements Closeable{
 
     protected byte[] previousHaplotypeBases;
     protected int hapStartIndex;
+
+    protected OutputStreamWriter debugOutputStream;
 
     public enum Implementation {
         /* Very slow implementation which uses very accurate log10 sum functions. Only meant to be used as a reference test implementation */
@@ -228,6 +234,7 @@ public abstract class PairHMM implements Closeable{
                         readBases, readQuals, readInsQuals, readDelQuals, overallGCP, isFirstHaplotype, nextAlleleBases);
                 logLikelihoods.set(a, readIndex, lk);
                 mLogLikelihoodArray[idx++] = lk;
+                writeToResultsFileIfApplicable(readBases, readQuals, readInsQuals, readDelQuals, overallGCP, alleleBases, lk);
             }
             readIndex++;
         }
@@ -238,6 +245,7 @@ public abstract class PairHMM implements Closeable{
             }
         }
     }
+
 
     /**
      * Compute the total probability of read arising from haplotypeBases given base substitution, insertion, and deletion
@@ -351,11 +359,45 @@ public abstract class PairHMM implements Closeable{
     }
 
     /**
+     * Attach a debugOuputStream to this HMM instance
+     */
+    public void setAndInitializeDebugOutputStream(final OutputStreamWriter writer) {
+        try {
+            debugOutputStream = writer;
+            debugOutputStream.write("# hap-bases read-bases read-qual read-ins-qual read-del-qual gcp expected-result");
+        } catch (IOException e) {
+            throw new GATKException("Error writing to specified HMM results output stream", e);
+        }
+    }
+
+    /**
+     * Method to be invoked by implementing HMM engines to output the various hmm inputs/outputs with uniform formatting.
+     */
+    protected void writeToResultsFileIfApplicable(byte[] readBases, byte[] readQuals, byte[] readInsQuals, byte[] readDelQuals, byte[] overallGCP, byte[] alleleBases, double lk) {
+
+        if (debugOutputStream!= null) {
+            try {
+                debugOutputStream.write("\n" + new String(alleleBases) + " " + new String(readBases) + " " + SAMUtils.phredToFastq(readQuals) + " " + SAMUtils.phredToFastq(readInsQuals) + " " + SAMUtils.phredToFastq(readDelQuals) + " " + SAMUtils.phredToFastq(overallGCP) + " " + String.format("%e",lk));
+            } catch (IOException e) {
+                throw new GATKException("Error writing to specified HMM results output stream", e);
+            }
+        }
+    }
+
+    /**
      * Called at the end of the program to close files, print profiling information etc 
      */
     @Override
     public void close() {
-        if(doProfiling)
-            logger.info("Total compute time in PairHMM computeLogLikelihoods() : "+(pairHMMComputeTime*1e-9));
+        if(doProfiling) {
+            logger.info("Total compute time in PairHMM computeLogLikelihoods() : " + (pairHMMComputeTime * 1e-9));
+        }
+        if(debugOutputStream != null) {
+            try {
+                debugOutputStream.close();
+            } catch (IOException e) {
+                throw new GATKException("Error closing the pairHMM debug output stream", e);
+            }
+        }
     }
 }
