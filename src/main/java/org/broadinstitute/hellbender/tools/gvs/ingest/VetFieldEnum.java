@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.StringUtils;
@@ -15,6 +16,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static htsjdk.variant.vcf.VCFConstants.DEPTH_KEY;
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY;
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.AS_VARIANT_DEPTH_KEY;
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.RAW_QUAL_APPROX_KEY;
+import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.VARIANT_DEPTH_KEY;
 
 /**
  * Expected headers for the Variant Table (VET)
@@ -104,13 +111,12 @@ public enum VetFieldEnum {
                 } else {
                     outValue = outNotAlleleSpecificAndOld;
                 }
-                // Spread MQ accross multiple alleles.
-                //TODO: check how hail does this and change this to do the same thing
+
                 double mq = Double.parseDouble(outValue);
                 if (variant.getAlleles().size() == 3) {
-                    outNotAlleleSpecific = (int) mq / 2 + VCFConstants.PHASED + (int) mq / 2;
+                    outNotAlleleSpecific = (int) mq + VCFConstants.PHASED + (int) mq;
                 } else if (variant.getAlleles().size() == 4) {
-                    outNotAlleleSpecific = (int) mq / 3 + VCFConstants.PHASED + (int) mq / 3 + VCFConstants.PHASED + (int) mq / 3;
+                    outNotAlleleSpecific = (int) mq + VCFConstants.PHASED + (int) mq + VCFConstants.PHASED + (int) mq;
                 } else {
                     throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
                 }
@@ -121,6 +127,11 @@ public enum VetFieldEnum {
 
     AS_RAW_MQRankSum { // TODO -- maybe rely on 1/1 for call_GT, also get rid of the | at the beginning
         public String getColumnValue(final VariantContext variant) {
+            // in the case where neither allele is reference, don't return a value
+            if (isGenotypeAllNonRef(variant.getGenotype(0))) {
+                return "";
+            }
+
             // e.g. AS_RAW_MQRankSum=|1.4,1|NaN;
             String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, null);
 
@@ -169,7 +180,7 @@ public enum VetFieldEnum {
 
     QUALapprox { // Required
         public String getColumnValue(final VariantContext variant) {
-            String out = getAttribute(variant, "QUALapprox", null);
+            String out = getAttribute(variant, RAW_QUAL_APPROX_KEY, null);
             if (out == null) {
                 throw new UserException("Cannot be missing required value for QUALapprox at site: " + variant.toString());
             }
@@ -179,10 +190,9 @@ public enum VetFieldEnum {
 
     AS_QUALapprox { // Required
         public String getColumnValue(final VariantContext variant) {
-            //TODO find a constant for "AS_QUALapprox"
-            String out = getAttribute(variant, "AS_QUALapprox", null);
+            String out = getAttribute(variant, AS_RAW_QUAL_APPROX_KEY, null);
             if (out == null) {
-                String outNotAlleleSpecific = getAttribute(variant, "QUALapprox", null);
+                String outNotAlleleSpecific = getAttribute(variant, RAW_QUAL_APPROX_KEY, null);
                 if (outNotAlleleSpecific == null) {
                     throw new UserException("Cannot be missing required value for AS_QUALapprox or QUALapprox at site: " + variant.toString());
                 }
@@ -210,6 +220,11 @@ public enum VetFieldEnum {
 
     AS_RAW_ReadPosRankSum {  // TODO -- maybe rely on 1/1 for call_GT
         public String getColumnValue(final VariantContext variant) {
+            // in the case where neither allele is reference, don't return a value
+            if (isGenotypeAllNonRef(variant.getGenotype(0))) {
+                return "";
+            }
+
             // e.g. AS_RAW_ReadPosRankSum=|-0.3,1|0.6,1
             String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, null);
 
@@ -284,11 +299,10 @@ public enum VetFieldEnum {
 
     AS_VarDP { // Required
         public String getColumnValue(final VariantContext variant) {
-            //TODO find a constant for "AS_VarDP"
-            String out = getAttribute(variant, "AS_VarDP", null);
+            String out = getAttribute(variant, AS_VARIANT_DEPTH_KEY, null);
             if (out == null) {
-                String varDP = getAttribute(variant, "VarDP", null);
-                String dP = getAttribute(variant, "DP", null);
+                String varDP = getAttribute(variant, VARIANT_DEPTH_KEY, null);
+                String dP = getAttribute(variant, DEPTH_KEY, null);
                 if (varDP == null || dP == null) {
                     throw new UserException("Cannot be missing required value for AS_VarDP, or VarDP and DP, at site:" + variant.toString());
                 }
@@ -372,6 +386,10 @@ public enum VetFieldEnum {
 
     public String getColumnValue(final VariantContext variant) {
         throw new IllegalArgumentException("Not implemented");
+    }
+
+    public static boolean isGenotypeAllNonRef(Genotype g) {
+        return g.getAllele(0).isNonReference() && g.getAllele(1).isNonReference();
     }
 
     static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
