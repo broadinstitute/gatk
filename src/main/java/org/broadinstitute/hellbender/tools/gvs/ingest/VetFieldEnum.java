@@ -128,14 +128,14 @@ public enum VetFieldEnum {
                 // Try to use non-AS version
                 // TODO: it looks like the AS_RAW version also trims to a single decimal point??
                 // e.g. MQRankSum=1.465 and turn it into |1.465,1|
-                String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.READ_POS_RANK_SUM_KEY, null);
+                String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY, null);
                 
                 
                 if ( outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||") ) {
                     return "";
                 }
                 
-                if (variant.getAlleles().size() == 3) { // GT 0/1 1/1
+                if (variant.getAlleles().size() == 3) { // GT 0/1 1/1 2/2
                     out = "|" + outNotAlleleSpecific + ",1|";
 
                 } else if (variant.getAlleles().size() == 4) { // GT 1/2
@@ -257,8 +257,8 @@ public enum VetFieldEnum {
     AS_SB_TABLE { // Required
         public String getColumnValue(final VariantContext variant) {
             String out = getAttribute(variant, GATKVCFConstants.AS_SB_TABLE_KEY, null);
-            String outNotAlleleSpecific = variant.getGenotype(0).getExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, null).toString();
             if (out == null) {
+                String outNotAlleleSpecific = variant.getGenotype(0).getExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, null).toString();
                 String[] outValues = outNotAlleleSpecific.split(",");
                 if (variant.getAlleles().size() == 3) {
                     outNotAlleleSpecific = outValues[0] + "," + outValues[1] + "|" + outValues[2] + "," + outValues[3];
