@@ -51,9 +51,9 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             doc = "") // TODO
     private int reservoirSamplingRandomSeed = 0;
 
-    RandomGenerator rng;
-    LabeledVariantAnnotationsData unlabeledDataReservoir; // will not be sorted in genomic order
-    int unlabeledIndex = 0;
+    private RandomGenerator rng;
+    private LabeledVariantAnnotationsData unlabeledDataReservoir; // will not be sorted in genomic order
+    private int unlabeledIndex = 0;
 
     @Override
     public void afterOnTraversalStart() {
