@@ -114,9 +114,9 @@ public enum VetFieldEnum {
 
                 double mq = Double.parseDouble(outValue);
                 if (variant.getAlleles().size() == 3) {
-                    outNotAlleleSpecific = (int) mq + VCFConstants.PHASED + (int) mq;
+                    outNotAlleleSpecific = 0 + VCFConstants.PHASED + (int) mq;
                 } else if (variant.getAlleles().size() == 4) {
-                    outNotAlleleSpecific = (int) mq + VCFConstants.PHASED + (int) mq + VCFConstants.PHASED + (int) mq;
+                    outNotAlleleSpecific = 0 + VCFConstants.PHASED + (int) mq + VCFConstants.PHASED + (int) mq;
                 } else {
                     throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
                 }

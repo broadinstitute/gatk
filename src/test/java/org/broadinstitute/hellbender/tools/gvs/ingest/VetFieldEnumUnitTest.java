@@ -137,7 +137,7 @@ public class VetFieldEnumUnitTest {
 
         Assert.assertEquals(VetFieldEnum.ref.getColumnValue(vc), "T");
         Assert.assertEquals(VetFieldEnum.alt.getColumnValue(vc), "A");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc), "5024|5024");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc), "0|5024");
         Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc), "-0.572,1");
         Assert.assertEquals(VetFieldEnum.QUALapprox.getColumnValue(vc), "154");
         Assert.assertEquals(VetFieldEnum.AS_QUALapprox.getColumnValue(vc), "154");
@@ -189,7 +189,7 @@ public class VetFieldEnumUnitTest {
 
         Assert.assertEquals(VetFieldEnum.ref.getColumnValue(vc), "C");
         Assert.assertEquals(VetFieldEnum.alt.getColumnValue(vc), "CTTT,CTT");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc), "2808|2808|2808");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc), "0|2808|2808");
         Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc), "");
         Assert.assertEquals(VetFieldEnum.QUALapprox.getColumnValue(vc), "52");
         Assert.assertEquals(VetFieldEnum.AS_QUALapprox.getColumnValue(vc), "31|29");
