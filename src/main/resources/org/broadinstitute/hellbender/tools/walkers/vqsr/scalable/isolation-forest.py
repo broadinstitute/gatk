@@ -69,11 +69,11 @@ def score(annotations_file,
 
     with open(scorer_pkl_file, 'rb') as f:
         scorer_lambda = dill.load(f)
-    scores = scorer_lambda(annotation_names_i, X_ni)
+    score_n = scorer_lambda(annotation_names_i, X_ni)
 
     with h5py.File(output_scores_file, 'w') as f:
-        scores_dset = f.create_dataset('data/scores', (len(scores),), dtype='d')
-        scores_dset[:] = scores
+        scores_dset = f.create_dataset('data/scores', (len(score_n),), dtype='d')
+        scores_dset[:] = score_n
 
 
 def main():
