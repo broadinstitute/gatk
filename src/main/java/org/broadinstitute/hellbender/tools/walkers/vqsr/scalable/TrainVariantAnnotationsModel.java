@@ -134,8 +134,10 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
         logger.info("Starting training...");
 
-        for (final VariantType variantType : variantTypes) {
-            doModelingWorkForVariantType(variantType);
+        for (final VariantType variantType : VariantType.values()) { // enforces order in which models are trained
+            if (variantTypes.contains(variantType)) {
+                doModelingWorkForVariantType(variantType);
+            }
         }
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
