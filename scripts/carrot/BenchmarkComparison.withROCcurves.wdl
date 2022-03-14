@@ -177,8 +177,6 @@ workflow BenchmarkComparison {
         Float evalindelRecall=BenchmarkVCFTestSample.indelRecall
         Float evalsnpF1Score=BenchmarkVCFTestSample.snpF1Score
         Float evalindelF1Score=BenchmarkVCFTestSample.indelF1Score
-        Array[File?] evalsnpRocs=BenchmarkVCFTestSample.snpRocs
-        Array[File?] evalnonSnpRocs=BenchmarkVCFTestSample.nonSnpRocs
 
         File? controlsummary=BenchmarkVCFControlSample.summary
         Float controlsnpPrecision=BenchmarkVCFControlSample.snpPrecision
@@ -187,8 +185,6 @@ workflow BenchmarkComparison {
         Float controlindelRecall=BenchmarkVCFControlSample.indelRecall
         Float controlsnpF1Score=BenchmarkVCFControlSample.snpF1Score
         Float controlindelF1Score=BenchmarkVCFControlSample.indelF1Score
-        Array[File?] controlsnpRocs=BenchmarkVCFControlSample.snpRocs
-        Array[File?] controlnonSnpRocs=BenchmarkVCFControlSample.nonSnpRocs
 
         Array[File] rocPlots = ROCPlot.plots
         File rocPlotsmerged = MergeROC.plots
