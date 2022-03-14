@@ -26,9 +26,6 @@ workflow GvsExtractCohortFromSampleNames {
     String? output_gcs_dir
     String? service_account_json_path
 
-#    Float? snps_truth_sensitivity_filter_level_override
-#    Float? indels_truth_sensitivity_filter_level_override
-
     Int? extract_preemptible_override
     Int? extract_maxretries_override
     Int? split_intervals_disk_size_override
@@ -39,15 +36,15 @@ workflow GvsExtractCohortFromSampleNames {
 
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
-      extract_table_prefix            = cohort_table_prefix, #
-      sample_names_to_extract         = cohort_sample_names, #
-      project_id                      = gvs_project, #
-      query_labels                    = ["extraction_uuid=~{extraction_uuid}"], #
-      query_project                   = query_project, #
+      extract_table_prefix            = cohort_table_prefix,
+      sample_names_to_extract         = cohort_sample_names,
+      project_id                      = gvs_project,
+      query_labels                    = ["extraction_uuid=~{extraction_uuid}"],
+      query_project                   = query_project,
       dataset_name                    = gvs_dataset, # unused if fq_* args are given
       destination_project             = destination_project_id,
       destination_dataset             = destination_dataset_name,
-      fq_temp_table_dataset = fq_gvs_extraction_temp_tables_dataset,
+      fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset,
       service_account_json_path       = service_account_json_path
   }
 
@@ -60,9 +57,6 @@ workflow GvsExtractCohortFromSampleNames {
 
       scatter_count = scatter_count,
       filter_set_name = filter_set_name,
-#      snps_truth_sensitivity_filter_level_override = snps_truth_sensitivity_filter_level_override,
-#      indels_truth_sensitivity_filter_level_override = indels_truth_sensitivity_filter_level_override,
-
       output_file_base_name = output_file_base_name,
       output_gcs_dir = output_gcs_dir,
       service_account_json_path = service_account_json_path,
