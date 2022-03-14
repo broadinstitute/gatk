@@ -32,6 +32,12 @@ workflows:
      filters:
          branches:
              - master
+   - name: cnv_joint_call_exomes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/cnv_wdl/germline/joint_call_exome_cnvs.wdl
+     filters:
+         branches:
+             - master
    - name: cram2filtered
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/cram2filtered.wdl

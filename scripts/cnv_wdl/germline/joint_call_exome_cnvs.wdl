@@ -5,6 +5,8 @@ import "https://raw.githubusercontent.com/broadinstitute/gatk-sv/v0.10-beta/wdl/
 
 workflow JointCallExomeCNVs {
 
+    # NOTE: We don’t recommend using this for more than ~300 samples.
+
     ##################################
     #### required basic arguments ####
     ##################################
