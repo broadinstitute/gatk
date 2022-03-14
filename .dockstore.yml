@@ -118,7 +118,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-split-intervals-odd
+         - rc-exomes-not-weights
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
