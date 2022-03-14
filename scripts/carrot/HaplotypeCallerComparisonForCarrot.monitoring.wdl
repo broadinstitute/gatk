@@ -144,12 +144,12 @@ version 1.0
     output {
     File output_vcf = select_first([MergeVCFs.output_vcf])
     File output_vcf_index = select_first([MergeVCFs.output_vcf_index])
-    Array[File] output_rintimes = HaplotypeCallerGATK4.hc_time_out
+    Array[File] output_runtimes = HaplotypeCallerGATK4.hc_time_out
     File representative_benchmarking = HaplotypeCallerGATK4.monitoring[39]
 
     File control_vcf = select_first([MergeVCFsCONTROL.output_vcf])
     File control_vcf_index = select_first([MergeVCFsCONTROL.output_vcf_index])
-    Array[File] control_output_rintimes = HaplotypeCallerGATK4CONTROL.hc_time_out
+    Array[File] control_output_runtimes = HaplotypeCallerGATK4CONTROL.hc_time_out
     File control_representative_benchmarking = HaplotypeCallerGATK4CONTROL.monitoring[39]
   }
   meta {
