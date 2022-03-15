@@ -89,6 +89,7 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
             bgmm.fit(preprocessedTrainingAnnotationsSubsample); // perform hyperparameters.nInit initializations and fits with subsample
             bgmm.fit(preprocessedTrainingAnnotations);          // perform final fit with full sample
         }
+        // TODO early fail if warmStart == false and warmStartSubsample nontrivial
 
         // serialize scorer = preprocesser + BGMM
         // TODO fix up output paths and validation, logging
