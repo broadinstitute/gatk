@@ -460,6 +460,8 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testAnnotationLengthsNotAgreeingWithHeader() {
+        //At chr1:1743714 F1R2 is R-length and too long
+        //AF is A-length and too short
         final File funkyDragenVariant = new File(getToolTestDataDir() + "badFormatAnnotationLengths.g.vcf");
         final File output = createTempFile("reblockedgvcf", ".vcf");
 

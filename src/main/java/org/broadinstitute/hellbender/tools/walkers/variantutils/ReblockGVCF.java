@@ -328,7 +328,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
             }
             //make sure result has annotations so we don't have to keep originalVC around
             result = new VariantContextBuilder(regenotyped).attributes(
-                    subsetAnnotationsIfNecessary(annotationEngine, doQualApprox, posteriorsKey, originalVC, regenotyped, getHeaderForVariants())).make();
+                    subsetAnnotationsIfNecessary(annotationEngine, doQualApprox, posteriorsKey, originalVC, regenotyped,
+                            getHeaderForVariants())).make();
         }
 
 
@@ -558,18 +559,18 @@ public final class ReblockGVCF extends MultiVariantWalker {
     VariantContext cleanUpHighQualityVariant(final VariantContext variant) {
         final Map<String, Object> attrMap = new HashMap<>();
 
-        final Genotype genotype = getCalledGenotype(variant);
+        final Genotype checkedAndFixedGenotype = getCalledGenotype(variant);
         VariantContextBuilder builder = new VariantContextBuilder(variant);  //QUAL from result is carried through
-        builder.attributes(attrMap).genotypes(genotype);  //clear attributes
+        builder.attributes(attrMap).genotypes(checkedAndFixedGenotype);  //clear attributes
 
-        final List<Allele> allelesToDrop = getAllelesToDrop(variant, genotype);
+        final List<Allele> allelesToDrop = getAllelesToDrop(variant, checkedAndFixedGenotype);
 
         final boolean allelesNeedSubsetting = !allelesToDrop.isEmpty();
         int[] relevantIndices = new int[variant.getNAlleles()];  //called alleles plus ref and non-ref
         final List<Allele> newAlleleSetUntrimmed = new ArrayList<>(variant.getAlleles());
         if(allelesNeedSubsetting && !keepAllAlts) {
             newAlleleSetUntrimmed.removeAll(allelesToDrop);
-            final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(variant.getStart(), variant.getGenotypes(), genotype.getPloidy(), variant.getAlleles(),
+            final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(variant.getStart(), GenotypesContext.create(checkedAndFixedGenotype), checkedAndFixedGenotype.getPloidy(), variant.getAlleles(),
                     newAlleleSetUntrimmed, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
                     getHeaderForVariants());
             if (gc.get(0).isHomRef() || !gc.get(0).hasGQ() || gc.get(0).getAlleles().contains(Allele.NO_CALL)) {  //could be low quality or no-call after subsetting
@@ -592,8 +593,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
             final int refBlockDepth;
             if (variant.hasAttribute(VCFConstants.DEPTH_KEY)) {  //prefer INFO depth because HaplotypeCaller GVCF block code uses all reads, not just informative
                 refBlockDepth = variant.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0);
-            } else if (genotype.hasDP()) {
-                refBlockDepth = genotype.getDP();
+            } else if (checkedAndFixedGenotype.hasDP()) {
+                refBlockDepth = checkedAndFixedGenotype.getDP();
             } else {
                 refBlockDepth = 0;
             }
@@ -735,6 +736,13 @@ public final class ReblockGVCF extends MultiVariantWalker {
         }
     }
 
+    /**
+     * Do the array lengths of the FORMAT annotations agree with their header definitions given the number of alleles
+     * @param nAlleles  number of alleles for this variant
+     * @param g genotype to check
+     * @param header    VCFHeader to get the expected annotation lengths
+     * @return  true if all the FORMAT annotation lengths validate
+     */
     public static boolean formatAnnotationsHaveCorrectLength(final int nAlleles, final Genotype g, final VCFHeader header) {
         boolean looksGood = true;
         for (final Map.Entry<String,Object> entry : g.getExtendedAttributes().entrySet()) {
@@ -751,31 +759,40 @@ public final class ReblockGVCF extends MultiVariantWalker {
         return looksGood;
     }
 
+    /**
+     * Attempt to correct FORMAT annotation array lengths by padding where NON_REFs appear to be missing or trimming
+     * where there appears to be an extra NON_REF entry
+     * @param nAlleles  the number of alleles in the variant
+     * @param g the genotype to check and correct
+     * @param header    VCFHeader to get the expected annotation lengths
+     * @param start variant start position to output informative errors
+     * @return  an updated annotation map for a GenotypeBuilder with invalid length annotations removed
+     */
     public static Map<String,Object> fixFormatAnnotations(final int nAlleles, final Genotype g, final VCFHeader header, final int start) {
         final Map<String,Object> returnMap = new LinkedHashMap<>();
         for (final Map.Entry<String,Object> entry : g.getExtendedAttributes().entrySet()) {
             final VCFFormatHeaderLine line = header.getFormatHeaderLine(entry.getKey());
-            final VCFHeaderLineCount count = line.getCountType();
-            final VCFHeaderLineType type = line.getType();
+            final VCFHeaderLineCount countType = line.getCountType();
+            final VCFHeaderLineType dataType = line.getType();
             Object emptyValue;
-            if (type.equals(VCFHeaderLineType.Integer)) {
+            if (dataType.equals(VCFHeaderLineType.Integer)) {
                 emptyValue = 0;
-            } else if (type.equals(VCFHeaderLineType.Float)) {
+            } else if (dataType.equals(VCFHeaderLineType.Float)) {
                 emptyValue = 0.0;
-            } else if (type.equals(VCFHeaderLineType.Flag)) {
+            } else if (dataType.equals(VCFHeaderLineType.Flag)) {
                 emptyValue = false;
             } else {
                 emptyValue = "";
             }
             String logMessage = "";
-            if (count.equals(VCFHeaderLineCount.G) || count.equals(VCFHeaderLineCount.A) || count.equals(VCFHeaderLineCount.R)) {
+            if (countType.equals(VCFHeaderLineCount.G) || countType.equals(VCFHeaderLineCount.A) || countType.equals(VCFHeaderLineCount.R)) {
                 final List<Object> originalValues = VariantContextGetters.attributeToList(entry.getValue());
-                if (count.equals(VCFHeaderLineCount.R)) {
+                if (countType.equals(VCFHeaderLineCount.R)) {
                     int lengthDiff = originalValues.size() - nAlleles;
                     if (lengthDiff == 0) {
                         returnMap.put(entry.getKey(), entry.getValue());
                     } else {
-                        logMessage += "At position " + start + " R-length attribute size didn't match expected count.";
+                        logMessage += "At position " + start + " R-length attribute size for " + entry.getKey() + "didn't match expected count.";
                         if (lengthDiff == -1) {
                             final List<Object> paddedValues = new ArrayList<>(originalValues);
                             paddedValues.add(emptyValue);
@@ -785,16 +802,16 @@ public final class ReblockGVCF extends MultiVariantWalker {
                             trimmedValues.remove(trimmedValues.size() - 1);
                             returnMap.put(entry.getKey(), trimmedValues);
                         } else {
-                            logMessage += "  R-length attribute cannot be subset and will be omitted.";
+                            logMessage += "  R-length attribute " + entry.getKey() + "cannot be subset and will be omitted.";
                         }
                         annotationLogger.warn(logMessage);
                     }
-                } else if (count.equals(VCFHeaderLineCount.A)) {
+                } else if (countType.equals(VCFHeaderLineCount.A)) {
                     int lengthDiff = originalValues.size() - (nAlleles - 1); //-1 to get ALT count
                     if (lengthDiff == 0) {
                         returnMap.put(entry.getKey(), entry.getValue());
                     } else {
-                        logMessage += "At position " + start + " A-length attribute size didn't match expected count.";
+                        logMessage += "At position " + start + " A-length attribute size  for " + entry.getKey() + "didn't match expected count.";
                         if (lengthDiff == -1) {
                             final List<Object> paddedValues = new ArrayList<>(originalValues);
                             paddedValues.add(emptyValue);
@@ -804,18 +821,24 @@ public final class ReblockGVCF extends MultiVariantWalker {
                             trimmedValues.remove(trimmedValues.size() - 1);
                             returnMap.put(entry.getKey(), trimmedValues);
                         } else {
-                            logMessage += "  A-length attribute cannot be subset and will be omitted.";
+                            logMessage += "  A-length attribute  " + entry.getKey() + "cannot be subset and will be omitted.";
                         }
                         annotationLogger.warn(logMessage);
                     }
-                } else if (count.equals(VCFHeaderLineCount.G)) {
-                        final int lengthDiff = originalValues.size() - GenotypeLikelihoods.numLikelihoods(nAlleles, g.getPloidy());
-                        if (lengthDiff == 0) {
-                            returnMap.put(entry.getKey(), entry.getValue());
-                        } else {
-                            annotationLogger.warn("At position " + start + " G-length attribute size didn't match expected count -- annotation cannot be subset to relevant ALT alleles and will be dropped");
-                            continue;
-                        }
+                } else if (countType.equals(VCFHeaderLineCount.G)) {
+                    final int lengthDiff = originalValues.size() - GenotypeLikelihoods.numLikelihoods(nAlleles, g.getPloidy());
+                    if (lengthDiff == 0) {
+                        returnMap.put(entry.getKey(), entry.getValue());
+                    } else {
+                        annotationLogger.warn("At position " + start + " G-length attribute size  for " + entry.getKey() + "didn't match expected count -- annotation cannot be subset to relevant ALT alleles and will be dropped");
+                        continue;
+                    }
+                } else if (countType.equals(VCFHeaderLineCount.INTEGER)) {
+                    final int expectedLength = line.getCount();
+                    if (originalValues.size() != expectedLength) {
+                        annotationLogger.warn("At position " + start + " integer-length attribute size for " + entry.getKey() + " didn't match expected count and will be dropped");
+                        continue;
+                    }
                 }
             } else {
                 returnMap.put(entry.getKey(), entry.getValue());
