@@ -149,6 +149,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     protected String datasetName = null;
 
 
+    @Argument(
+            fullName = "force-loading-from-non-allele-specific",
+            doc = "Even if there are allele-specific (AS) annotations, use backwards compatibility mode",
+            optional = true
+    )
+    protected boolean forceLoadingFromNonAlleleSpecific = false;
+
     // getGenotypes() returns list of lists for all samples at variant
     // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
     public static boolean isNoCall(VariantContext variant) {
@@ -212,7 +219,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         if (enableVet) {
-            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName);
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific);
         }
 
         // check the load status table to see if this sample has already been loaded...

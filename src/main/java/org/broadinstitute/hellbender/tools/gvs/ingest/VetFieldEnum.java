@@ -52,7 +52,7 @@ public enum VetFieldEnum {
     location, // Required-- encoded chromosome and position
 
     ref { // Required
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             final String referenceBase = variant.getReference().getBaseString();
             if (referenceBase == null) {
                 throw new IllegalArgumentException("Cannot be missing required value for reference_bases"); // TODO, should this be UserException too?
@@ -63,7 +63,7 @@ public enum VetFieldEnum {
 
     alt { // remove "<NON_REF>"
         //TODO what if this field is null and if <NON_REF> is not there--throw an error
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             List<String> outList = new ArrayList<>();
             for(Allele a : variant.getAlternateAlleles()) {
                 if (!a.isNonRefAllele()) { // TODO unit test this
@@ -78,16 +78,16 @@ public enum VetFieldEnum {
         // Required
         // can strip off the first one?
         // TODO sci notation?
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = getAttribute(variant, GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, null);
             String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, null);
             String outNotAlleleSpecificAndOld = getAttribute(variant, GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED, null);
             if (out == null && outNotAlleleSpecific == null && outNotAlleleSpecificAndOld == null) {
                 throw new UserException("Cannot be missing required value for alternate_bases.AS_RAW_MQ, RAW_MQandDP or RAW_MQ.");
             }
-            if (out != null) {
+            if (!forceLoadingFromNonAlleleSpecific && out != null) {
                 if(!out.endsWith("|0.00")) {
-// KC: we are seeing a TON of these!                    
+// KC: we are seeing a TON of these!
 //                    logger.warn("Expected AS_RAW_MQ value to end in |0.00. value is: " + out + " for variant " + variant.toString());
                 }
                 out = out.substring(0, out.lastIndexOf("|"));
@@ -126,7 +126,7 @@ public enum VetFieldEnum {
     },
 
     AS_RAW_MQRankSum { // TODO -- maybe rely on 1/1 for call_GT, also get rid of the | at the beginning
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             // in the case where neither allele is reference, don't return a value
             if (isGenotypeAllNonRef(variant.getGenotype(0))) {
                 return "";
@@ -135,17 +135,17 @@ public enum VetFieldEnum {
             // e.g. AS_RAW_MQRankSum=|1.4,1|NaN;
             String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, null);
 
-            if (out == null) {
+            if (forceLoadingFromNonAlleleSpecific || out == null) {
                 // Try to use non-AS version
                 // TODO: it looks like the AS_RAW version also trims to a single decimal point??
                 // e.g. MQRankSum=1.465 and turn it into |1.465,1|
                 String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY, null);
-                
-                
+
+
                 if ( outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||") ) {
                     return "";
                 }
-                
+
                 if (variant.getAlleles().size() == 3) { // GT 0/1 1/1 2/2
                     out = "|" + outNotAlleleSpecific + ",1|";
 
@@ -154,7 +154,7 @@ public enum VetFieldEnum {
                     out = "|" + outNotAlleleSpecific + ",1|" + outNotAlleleSpecific + ",1|";
                 } else {
                     throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
-                }               
+                }
             }
 
             if ( out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
@@ -179,7 +179,7 @@ public enum VetFieldEnum {
     },
 
     QUALapprox { // Required
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = getAttribute(variant, RAW_QUAL_APPROX_KEY, null);
             if (out == null) {
                 throw new UserException("Cannot be missing required value for QUALapprox at site: " + variant.toString());
@@ -189,7 +189,7 @@ public enum VetFieldEnum {
     },
 
     AS_QUALapprox { // Required
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = getAttribute(variant, AS_RAW_QUAL_APPROX_KEY, null);
             if (out == null) {
                 String outNotAlleleSpecific = getAttribute(variant, RAW_QUAL_APPROX_KEY, null);
@@ -219,7 +219,7 @@ public enum VetFieldEnum {
     },
 
     AS_RAW_ReadPosRankSum {  // TODO -- maybe rely on 1/1 for call_GT
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             // in the case where neither allele is reference, don't return a value
             if (isGenotypeAllNonRef(variant.getGenotype(0))) {
                 return "";
@@ -228,7 +228,7 @@ public enum VetFieldEnum {
             // e.g. AS_RAW_ReadPosRankSum=|-0.3,1|0.6,1
             String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, null);
 
-            if (out == null) {
+            if (forceLoadingFromNonAlleleSpecific || out == null) {
                 // Try to use non-AS version
                 // TODO: it looks like the AS_RAW version also trims to a single decimal point??
                 // e.g. ReadPosRankSum=-0.511 and turn it into |-0.511,1|
@@ -246,7 +246,7 @@ public enum VetFieldEnum {
                     out = "|" + outNotAlleleSpecific + ",1|" + outNotAlleleSpecific + ",1|";
                 } else {
                     throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
-                }               
+                }
             }
 
             if (out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
@@ -270,9 +270,9 @@ public enum VetFieldEnum {
     },
 
     AS_SB_TABLE { // Required
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = getAttribute(variant, GATKVCFConstants.AS_SB_TABLE_KEY, null);
-            if (out == null) {
+            if (forceLoadingFromNonAlleleSpecific || out == null) {
                 String outNotAlleleSpecific = variant.getGenotype(0).getExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, null).toString();
                 String[] outValues = outNotAlleleSpecific.split(",");
                 if (variant.getAlleles().size() == 3) {
@@ -298,7 +298,7 @@ public enum VetFieldEnum {
     },
 
     AS_VarDP { // Required
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = getAttribute(variant, AS_VARIANT_DEPTH_KEY, null);
             if (out == null) {
                 String varDP = getAttribute(variant, VARIANT_DEPTH_KEY, null);
@@ -321,14 +321,14 @@ public enum VetFieldEnum {
     },
 
     call_GT {
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             // TODO how is missing handled?
             return CommonCode.getGTString(variant);
         }
     },
 
     call_AD {
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = variant.getGenotype(0).hasAD() ? Arrays.stream(variant.getGenotype(0).getAD())
                     .mapToObj(String::valueOf)
                     .collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)) : "";
@@ -354,7 +354,7 @@ public enum VetFieldEnum {
     // },
 
     call_GQ { // Required
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             if (!variant.getGenotype(0).hasGQ()) {
                 //throw new UserException("Cannot be missing required value for call.GQ");
                 return "";
@@ -364,19 +364,19 @@ public enum VetFieldEnum {
     },
 
     call_PGT {
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             return variant.getGenotype(0).hasAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY) ? String.valueOf(variant.getGenotype(0).getAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY)) : "";
         }
     },
 
     call_PID {
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             return variant.getGenotype(0).hasAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY) ? String.valueOf(variant.getGenotype(0).getAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY)) : "";
         }
     },
 
     call_PL {
-        public String getColumnValue(final VariantContext variant) {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             return variant.getGenotype(0).hasPL() ? Arrays.stream(variant.getGenotype(0).getPL())
                     .mapToObj(String::valueOf)
                     .collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)) : "";
@@ -384,7 +384,7 @@ public enum VetFieldEnum {
     };
 
 
-    public String getColumnValue(final VariantContext variant) {
+    public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
         throw new IllegalArgumentException("Not implemented");
     }
 

@@ -12,7 +12,7 @@ workflow GvsImportGenomes {
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? load_data_preemptible_override
-    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_ranges_prepare_20220118/gatk-package-4.2.0.0-462-gc0e684c-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_vqsr_magic_20220315/gatk-package-4.2.0.0-474-g0720892-SNAPSHOT-local.jar"
     String? service_account_json_path
   }
 
@@ -200,6 +200,8 @@ task LoadData {
 
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
+    Boolean force_loading_from_non_allele_specific = false
+
     File? gatk_override
     Int? load_data_preemptible_override
     String? service_account_json_path
@@ -261,6 +263,7 @@ task LoadData {
         -V ${updated_input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
+        --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
         --project-id ~{project_id} \
         --dataset-name ~{dataset_name} \

@@ -44,7 +44,7 @@ public class VetFieldEnumUnitTest {
                 .DP(64)
                 .GQ(36)
                 .AD(new int[]{22,42,0})
-                .attribute(STRAND_BIAS_BY_SAMPLE_KEY, new int[]{1,21,6,50})
+                .attribute(STRAND_BIAS_BY_SAMPLE_KEY, "1,21,6,50")
                 .make();
 
         builderA.attribute(AS_RAW_RMS_MAPPING_QUALITY_KEY,"29707.00|39366.00|2405.00")
@@ -61,21 +61,21 @@ public class VetFieldEnumUnitTest {
         // generally expect
         //     leading | to be removed
         //     NON_REF allele specific vales
-        Assert.assertEquals(VetFieldEnum.ref.getColumnValue(vc), "C");
-        Assert.assertEquals(VetFieldEnum.alt.getColumnValue(vc), "A");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc), "29707|39366");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc), "-0.2,1");
-        Assert.assertEquals(VetFieldEnum.QUALapprox.getColumnValue(vc), "74");
-        Assert.assertEquals(VetFieldEnum.AS_QUALapprox.getColumnValue(vc), "74");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_ReadPosRankSum.getColumnValue(vc), "2.4,1");
-        Assert.assertEquals(VetFieldEnum.AS_SB_TABLE.getColumnValue(vc), "1,21|3,39");
-        Assert.assertEquals(VetFieldEnum.AS_VarDP.getColumnValue(vc), "22|42");
+        Assert.assertEquals(VetFieldEnum.ref.getColumnValue(vc, false), "C");
+        Assert.assertEquals(VetFieldEnum.alt.getColumnValue(vc, false), "A");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc, false), "29707|39366");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc, false), "-0.2,1");
+        Assert.assertEquals(VetFieldEnum.QUALapprox.getColumnValue(vc, false), "74");
+        Assert.assertEquals(VetFieldEnum.AS_QUALapprox.getColumnValue(vc, false), "74");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_ReadPosRankSum.getColumnValue(vc, false), "2.4,1");
+        Assert.assertEquals(VetFieldEnum.AS_SB_TABLE.getColumnValue(vc, false), "1,21|3,39");
+        Assert.assertEquals(VetFieldEnum.AS_VarDP.getColumnValue(vc, false), "22|42");
 
-        Assert.assertEquals(VetFieldEnum.call_GQ.getColumnValue(vc), "36");
-        Assert.assertEquals(VetFieldEnum.call_AD.getColumnValue(vc), "22,42");
-        Assert.assertEquals(VetFieldEnum.call_GT.getColumnValue(vc), "0/1");
+        Assert.assertEquals(VetFieldEnum.call_GQ.getColumnValue(vc, false), "36");
+        Assert.assertEquals(VetFieldEnum.call_AD.getColumnValue(vc, false), "22,42");
+        Assert.assertEquals(VetFieldEnum.call_GT.getColumnValue(vc, false), "0/1");
 
-        Assert.assertEquals(VetFieldEnum.call_PL.getColumnValue(vc), "74,0,34,707,390,467");
+        Assert.assertEquals(VetFieldEnum.call_PL.getColumnValue(vc, false), "74,0,34,707,390,467");
 
     }
 
@@ -98,8 +98,8 @@ public class VetFieldEnumUnitTest {
 
         VariantContext vc = builderA.make();
 
-        Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc), "");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_ReadPosRankSum.getColumnValue(vc), "");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc, false), "");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_ReadPosRankSum.getColumnValue(vc, false), "");
     }
 
     @Test
@@ -118,7 +118,7 @@ public class VetFieldEnumUnitTest {
                 .DP(8)
                 .GQ(35)
                 .AD(new int[]{2,6,0})
-                .attribute(STRAND_BIAS_BY_SAMPLE_KEY, "2,0,6,0") // KCIBUL: why doesn't this work with: new int[]{2,0,6,0}  What is right?
+                .attribute(STRAND_BIAS_BY_SAMPLE_KEY, "2,0,6,0")
                 .make();
 
         builderA.attribute(AS_RAW_QUAL_APPROX_KEY,"|154|0")
@@ -135,21 +135,21 @@ public class VetFieldEnumUnitTest {
 
         VariantContext vc = builderA.make();
 
-        Assert.assertEquals(VetFieldEnum.ref.getColumnValue(vc), "T");
-        Assert.assertEquals(VetFieldEnum.alt.getColumnValue(vc), "A");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc), "0|5024");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc), "-0.572,1");
-        Assert.assertEquals(VetFieldEnum.QUALapprox.getColumnValue(vc), "154");
-        Assert.assertEquals(VetFieldEnum.AS_QUALapprox.getColumnValue(vc), "154");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_ReadPosRankSum.getColumnValue(vc), "1.067,1");
-        Assert.assertEquals(VetFieldEnum.AS_SB_TABLE.getColumnValue(vc), "2,0|6,0");
-        Assert.assertEquals(VetFieldEnum.AS_VarDP.getColumnValue(vc), "2|6");
+        Assert.assertEquals(VetFieldEnum.ref.getColumnValue(vc, false), "T");
+        Assert.assertEquals(VetFieldEnum.alt.getColumnValue(vc, false), "A");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc, false), "0|5024");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc, false), "-0.572,1");
+        Assert.assertEquals(VetFieldEnum.QUALapprox.getColumnValue(vc, false), "154");
+        Assert.assertEquals(VetFieldEnum.AS_QUALapprox.getColumnValue(vc, false), "154");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_ReadPosRankSum.getColumnValue(vc, false), "1.067,1");
+        Assert.assertEquals(VetFieldEnum.AS_SB_TABLE.getColumnValue(vc, false), "2,0|6,0");
+        Assert.assertEquals(VetFieldEnum.AS_VarDP.getColumnValue(vc, false), "2|6");
 
-        Assert.assertEquals(VetFieldEnum.call_GQ.getColumnValue(vc), "35");
-        Assert.assertEquals(VetFieldEnum.call_AD.getColumnValue(vc), "2,6");
-        Assert.assertEquals(VetFieldEnum.call_GT.getColumnValue(vc), "0/1");
+        Assert.assertEquals(VetFieldEnum.call_GQ.getColumnValue(vc, false), "35");
+        Assert.assertEquals(VetFieldEnum.call_AD.getColumnValue(vc, false), "2,6");
+        Assert.assertEquals(VetFieldEnum.call_GT.getColumnValue(vc, false), "0/1");
 
-         Assert.assertEquals(VetFieldEnum.call_PL.getColumnValue(vc), "154,0,35,161,53,214");
+         Assert.assertEquals(VetFieldEnum.call_PL.getColumnValue(vc, false), "154,0,35,161,53,214");
     }
 
     @Test
@@ -171,7 +171,7 @@ public class VetFieldEnumUnitTest {
                 .DP(10)
                 .GQ(18)
                 .AD(new int[]{1,6,3,0})
-                .attribute(STRAND_BIAS_BY_SAMPLE_KEY, "1,0,4,5") // KCIBUL: why doesn't this work with: new int[]{2,0,6,0}  What is right?
+                .attribute(STRAND_BIAS_BY_SAMPLE_KEY, "1,0,4,5")
                 .make();
 
         builderA.attribute(AS_RAW_QUAL_APPROX_KEY,"|31|29|0")
@@ -187,21 +187,54 @@ public class VetFieldEnumUnitTest {
 
         VariantContext vc = builderA.make();
 
-        Assert.assertEquals(VetFieldEnum.ref.getColumnValue(vc), "C");
-        Assert.assertEquals(VetFieldEnum.alt.getColumnValue(vc), "CTTT,CTT");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc), "0|2808|2808");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc), "");
-        Assert.assertEquals(VetFieldEnum.QUALapprox.getColumnValue(vc), "52");
-        Assert.assertEquals(VetFieldEnum.AS_QUALapprox.getColumnValue(vc), "31|29");
-        Assert.assertEquals(VetFieldEnum.AS_RAW_ReadPosRankSum.getColumnValue(vc), "");
-        Assert.assertEquals(VetFieldEnum.AS_SB_TABLE.getColumnValue(vc), "1,0|2,2|2,2");
-        Assert.assertEquals(VetFieldEnum.AS_VarDP.getColumnValue(vc), "1|6|3");
+        Assert.assertEquals(VetFieldEnum.ref.getColumnValue(vc, false), "C");
+        Assert.assertEquals(VetFieldEnum.alt.getColumnValue(vc, false), "CTTT,CTT");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc, false), "0|2808|2808");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc, false), "");
+        Assert.assertEquals(VetFieldEnum.QUALapprox.getColumnValue(vc, false), "52");
+        Assert.assertEquals(VetFieldEnum.AS_QUALapprox.getColumnValue(vc, false), "31|29");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_ReadPosRankSum.getColumnValue(vc, false), "");
+        Assert.assertEquals(VetFieldEnum.AS_SB_TABLE.getColumnValue(vc, false), "1,0|2,2|2,2");
+        Assert.assertEquals(VetFieldEnum.AS_VarDP.getColumnValue(vc, false), "1|6|3");
 
-        Assert.assertEquals(VetFieldEnum.call_GQ.getColumnValue(vc), "18");
-        Assert.assertEquals(VetFieldEnum.call_AD.getColumnValue(vc), "1,6,3");
-        Assert.assertEquals(VetFieldEnum.call_GT.getColumnValue(vc), "1/2");
+        Assert.assertEquals(VetFieldEnum.call_GQ.getColumnValue(vc, false), "18");
+        Assert.assertEquals(VetFieldEnum.call_AD.getColumnValue(vc, false), "1,6,3");
+        Assert.assertEquals(VetFieldEnum.call_GT.getColumnValue(vc, false), "1/2");
 
-        Assert.assertEquals(VetFieldEnum.call_PL.getColumnValue(vc), "52,29,21,80,0,23,127,39,78,117");
+        Assert.assertEquals(VetFieldEnum.call_PL.getColumnValue(vc, false), "52,29,21,80,0,23,127,39,78,117");
+    }
+
+    @Test
+    public void testForceNonASLoading(){
+        VariantContextBuilder builderA =
+                new VariantContextBuilder("a","1",1729859,1729859,
+                        Arrays.asList(Allele.REF_C,Allele.ALT_G,Allele.NON_REF_ALLELE));
+
+
+        Genotype g = new GenotypeBuilder(SAMPLE_1)
+                .alleles(Arrays.asList(Allele.REF_C, Allele.ALT_G))
+                .AD(new int[]{22,42,0})
+                .attribute(STRAND_BIAS_BY_SAMPLE_KEY, "6,7,8,9")
+                .make();
+
+        builderA.attribute(AS_RAW_RMS_MAPPING_QUALITY_KEY,"29707.00|39366.00|2405.00")
+                .attribute(AS_RAW_MAP_QUAL_RANK_SUM_KEY,"|-0.2,1|-2.5,1")
+                .attribute(AS_RAW_QUAL_APPROX_KEY,"|74|0")
+                .attribute(AS_RAW_READ_POS_RANK_SUM_KEY,"|2.4,1|1.5,1")
+                .attribute(AS_SB_TABLE_KEY,"1,1|2,2|3,3")
+                .attribute(MAP_QUAL_RANK_SUM_KEY,"-3.1")
+                .attribute(RAW_QUAL_APPROX_KEY,"52")
+                .attribute(RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,"1000,18")
+                .attribute(READ_POS_RANK_SUM_KEY,"-4.1")
+
+                .genotypes(Arrays.asList(g));
+
+        VariantContext vc = builderA.make();
+
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQ.getColumnValue(vc, true), "0|1000");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_MQRankSum.getColumnValue(vc, true), "-3.1,1");
+        Assert.assertEquals(VetFieldEnum.AS_RAW_ReadPosRankSum.getColumnValue(vc, true), "-4.1,1");
+        Assert.assertEquals(VetFieldEnum.AS_SB_TABLE.getColumnValue(vc, true), "6,7|8,9");
     }
 
 }

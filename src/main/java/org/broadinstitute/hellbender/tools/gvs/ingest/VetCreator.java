@@ -35,11 +35,13 @@ public class VetCreator {
     private static String VET_FILETYPE_PREFIX = "vet_";
     private static String PREFIX_SEPARATOR = "_";
     private PendingBQWriter vetBQJsonWriter = null;
+    private boolean forceLoadingFromNonAlleleSpecific;
 
-
-    public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName) {
+    public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific) {
         this.sampleId = sampleId;
         this.outputType = outputType;
+        this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
+
         try {
             switch (outputType) {
                 case BQ:
@@ -93,7 +95,7 @@ public class VetCreator {
             } else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
                 row.add(sampleId);
             } else {
-                row.add(fieldEnum.getColumnValue(variant));
+                row.add(fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific));
             }
         }
         return row;
@@ -108,9 +110,9 @@ public class VetCreator {
             } else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
                 jsonObject.put(VetFieldEnum.sample_id.toString(), sampleId);
             } else if (fieldEnum.equals(VetFieldEnum.call_GQ)) {
-                jsonObject.put(fieldEnum.toString(), Integer.valueOf(fieldEnum.getColumnValue(variant)));
+                jsonObject.put(fieldEnum.toString(), Integer.valueOf(fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific)));
             } else {
-                String strVal = fieldEnum.getColumnValue(variant);
+                String strVal = fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific);
                 jsonObject.put(fieldEnum.toString(), strVal == "" ? null : strVal);
             }
         }
