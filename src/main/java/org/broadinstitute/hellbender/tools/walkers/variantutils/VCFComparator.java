@@ -205,10 +205,12 @@ public class VCFComparator extends MultiVariantWalkerGroupedByOverlap {
                     match = matches.get(1);
                 }
 
+                /*  I don't remember why this is here
                 if (isSingleSample && !GATKVariantContextUtils.genotypeHasConcreteAlt(match.getGenotype(0).getAlleles()) && !vc.getGenotype(0).isHomRef()) {
                     throwOrWarn(new UserException("Apparent unmatched high quality variant in " + vc.getSource() + " at " + vc.getContig() + ":" + vc.getStart()));
                     return;
                 }
+                */
 
                 final List<VariantContext> overlappingDels = variantContexts.stream().filter(v -> v.getStart() < vc.getStart() && v.overlaps(vc))
                         .collect(Collectors.toList());
