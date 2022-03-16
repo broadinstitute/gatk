@@ -44,7 +44,7 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             fullName = "maximum-number-of-unlabeled-variants",
             doc = "", // TODO
             minValue = 0)
-    private int maximumNumberOfUnlabeledVariants = 10_000_000;
+    private int maximumNumberOfUnlabeledVariants = 0;
 
     @Argument(
             fullName = "reservoir-sampling-random-seed",
