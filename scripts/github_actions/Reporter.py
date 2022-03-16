@@ -2,7 +2,7 @@
 #
 # This script creates a comment on github using the API token provided through GITHUB_API_TOKEN
 # It first checks if a comment already exists which was made with the given identity
-# and which mentions the same travis build ID as the current running one in the first line of the comment.
+# and which mentions the same github actions build ID as the current running one in the first line of the comment.
 # If no comment is found it creates a new one with a header and the log url.
 # If a matching comment is found this appends it's log information to the existing comment.
 #
@@ -14,22 +14,21 @@ import sys
 
 from github import Github
 
-key = os.environ["GITHUB_API_TOKEN"]
+key = os.environ["GITHUB_TOKEN"]
 test_type = os.getenv("TEST_TYPE", "")
 
 g = Github(key)
 
 github_login = g.get_user().login
 
-pull_number = os.environ["TRAVIS_PULL_REQUEST"]
-repo_name = os.environ["TRAVIS_REPO_SLUG"]
-job_number = os.environ["TRAVIS_JOB_NUMBER"]
-job_id = os.environ["TRAVIS_JOB_ID"]
-build_number = os.environ["TRAVIS_BUILD_NUMBER"]
-build_id = os.environ["TRAVIS_BUILD_ID"]
-jdk_version = os.getenv("TRAVIS_JDK_VERSION","")
-travis_page_url = os.getenv("TRAVIS_BUILD_WEB_URL")
-job_page_url = os.getenv("TRAVIS_JOB_WEB_URL")
+pull_number = os.environ["GITHUB_EVENT_NUMBER"]
+repo_name = os.environ["GITHUB_REPOSITORY"]
+job_number = os.environ["JOB_MATRIX_ID"]
+job_id = os.environ["GITHUB_RUN_ID"]
+build_id = os.environ["GITHUB_RUN_ID"]
+jdk_version = os.getenv("JDK_VERSION","")
+job_page_url = os.getenv("GITHUB_LOGS_URL")
+workflow_url = os.getenv("ACTIONS_JOB_WEB_URL")
 
 repo = g.get_repo(repo_name)
 pull = repo.get_pull(int(pull_number))
@@ -54,7 +53,7 @@ def update(comment):
 
 
 def new_comment(pull):
-    pull.create_issue_comment("Travis reported job failures from build [%s](%s)" % (build_number, travis_page_url)
+    pull.create_issue_comment("Github actions tests reported job failures from actions build [%s](%s)" % (build_id, workflow_url)
                               + "\nFailures in the following jobs:"
                               + "\n"
                               + "\n | Test Type | JDK | Job ID | Logs |"

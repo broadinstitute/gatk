@@ -1,1 +1,0 @@
-These scripts are intended to be run on Travis CI and may not run correctly outside of that environment.

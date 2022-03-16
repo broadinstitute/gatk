@@ -1,0 +1,313 @@
+name: Build and Test GATK 4
+on:
+  push:
+    branches: [ lb_github_actions ]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CROMWELL_VERSION: 51
+  TERM: dumb
+  GRADLE_OPTS: "-Xmx2048m -Dorg.gradle.daemon=false"
+  HELLBENDER_TEST_INPUTS: gs://hellbender/test/resources/
+  HELLBENDER_TEST_STAGING: gs://hellbender-test-logs/staging/
+  HELLBENDER_TEST_LOGS: /hellbender-test-logs/build_reports/
+  HELLBENDER_TEST_PROJECT: broad-dsde-dev
+  TEST_VERBOSITY: minimal
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  buildDocker:
+    name: build docker images
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout gatk
+        uses: actions/checkout@v2
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{github.sha}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+#Run our non-docker tests
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [ 8, 11 ]
+        experimental: [ false ]
+        scalaVersion: [ 2.11, 2.12 ]
+        testType: [ cloud, integration, unit ]
+        exclude:
+          - java: 11
+            scalaVersion: 2.11
+          - java: 8
+            scalaVersion: 2.12
+          - java: 8
+            testType: integration
+          - java: 8
+            testType: unit
+      fail-fast: false
+    continue-on-error: ${{ matrix.experimental }}
+    env:
+      TEST_TYPE: ${{ matrix.testType }}
+      SCALA_VERSION: ${{ matrix.scalaVersion }}
+    name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: 'Set up java ${{ matrix.Java }}'
+        uses: actions/setup-java@v2
+        with:
+          java-version: ${{ matrix.Java }}
+          distribution: 'adopt'
+          cache: gradle
+
+      - name: 'Grant execute permission for gradlew'
+        run: chmod +x gradlew
+
+      - name: 'Compile with Gradle'
+        run: |
+          ./gradlew compileJava ; ./gradlew installDist
+
+      #Google Cloud stuff
+      - id: 'auth'
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          project_id: ${{ env.HELLBENDER_TEST_PROJECT }}
+          create_credentials_file: true
+
+      - name: "export the credentials for GATK tests"
+        run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
+
+      - name: 'Set up Cloud SDK'
+        uses: google-github-actions/setup-gcloud@v0
+
+      - name: pull lfs files
+        run: git lfs pull
+
+      - name: compile test code
+        run: ./gradlew compileTestJava
+
+      - name: run-tests
+        id: jacoco-tests
+        run: |
+          ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} test jacocoTestReport
+
+      - uses: /broadinstitute/gatk/.github/actions/upload-results@lb_github_actions
+        if: always()
+        with:
+          warnPR: ${{ github.event_name == 'pull_request' && steps.jacoco-tests.outcome != 'success' }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          jdk-version: ${{ matrix.Java }}
+          test-type: ${{ matrix.testType }}
+          job-matrix-id: ${{ github.run_id }}.${{ strategy.job-index }}
+          repo-path: ${{ github.ref_name }}_${{ github.run_id }}.${{ strategy.job-index }}
+          bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
+          identifier: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
+
+  testOnDocker:
+    needs: buildDocker
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: [ 8 ]
+        experimental: [ false ]
+        scalaVersion: [ 2.11 ]
+        testType: [ integration, unit, variantcalling, conda ]
+      fail-fast: false
+    continue-on-error: ${{ matrix.experimental }}
+    env:
+      TEST_TYPE: ${{ matrix.testType }}
+      SCALA_VERSION: ${{ matrix.scalaVersion }}
+
+    name: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 #TODO make this shallow
+
+      - name: 'Set up java ${{ matrix.Java }}'
+        uses: actions/setup-java@v2
+        with:
+          java-version: ${{ matrix.Java }}
+          distribution: 'adopt'
+          cache: gradle
+
+      #Google Cloud stuff
+      - id: 'auth'
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          project_id: ${{ env.HELLBENDER_TEST_PROJECT }}
+          create_credentials_file: true
+
+      - name: "export the credentials for GATK tests"
+        run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
+
+      - name: 'Set up Cloud SDK'
+        uses: google-github-actions/setup-gcloud@v0
+
+      - name: build test jars
+        run: ./gradlew clean shadowTestClassJar shadowTestJar
+
+      - name: set up test folders and links
+        run: |
+          mkdir ./testJars;
+          echo $( find ./build/libs/ -name "gatk*test.jar");
+          cp -r $( find ./build/libs/ -name "gatk*test.jar" ) ./testJars;
+          cp -r $( find ./build/libs/ -name "gatk*testDependencies.jar" ) ./testJars;
+          mkdir -p build/reports/;
+          chmod -R a+w build/reports/;
+          cp scripts/docker/dockertest.gradle .
+
+      - name: pull docker
+        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: pull lfs files
+        run: git lfs pull
+
+      - name: run-docker-tests
+        id: docker-jacocco-tests
+        run: |
+          docker run \
+            -v $(pwd):/gatkCloneMountPoint:cached \
+            -v $(pwd)/testJars:/jars:cached \
+            --rm \
+            -e "scala.version=${SCALA_VERSION}" \
+            -e "TEST_VERBOSITY=minimal" \
+            -e "TEST_TYPE=${TEST_TYPE}" \
+            -t  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            bash --init-file /gatk/gatkenv.rc /root/run_unit_tests.sh;
+          TEST_EXIT_VALUE=$?;
+          $( exit ${TEST_EXIT_VALUE} );
+          sudo chmod -R a+w build/reports/;
+          mkdir build/reports/tests/test \
+           && cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test \
+           && rm -r build/reports/tests/testOnPackagedReleaseJar;
+
+      - uses: /broadinstitute/gatk/.github/actions/upload-results@lb_github_actions
+        if: always()
+        with:
+          warnPR: ${{ github.event_name == 'pull_request' && steps.docker-jacocco-tests.outcome != 'success' }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          jdk-version: ${{ matrix.Java }}
+          test-type: docker ${{ matrix.testType }}
+          job-matrix-id: ${{ github.run_id }}.${{ strategy.job-index }}
+          repo-path: ${{ github.ref_name }}_${{ github.run_id }}.${{ strategy.job-index }}
+          bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
+          identifier: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
+
+
+  wdlGen:
+    runs-on: ubuntu-latest
+    name: Test WDL Generation
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch: 0
+      - name: Set up java 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+          cache: gradle
+      - uses: /broadinstitute/gatk/.github/actions/install-cromwell@lb_github_actions
+        with:
+          CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run WDL Generation Test
+        run: ./gradlew gatkWDLGenValidation
+
+  wdlTests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        wdlTest: [ 'RUN_CNV_GERMLINE_COHORT_WDL', 'RUN_CNV_GERMLINE_CASE_WDL', 'RUN_CNV_SOMATIC_WDL', 'RUN_M2_WDL', 'RUN_CNN_WDL' ]
+    continue-on-error: true
+    name: WDL test ${{ matrix.wdlTest }} on cromwell
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: pull lfs files
+        run: git lfs pull
+      - name: Set up java 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+          cache: gradle
+      - uses: /broadinstitute/gatk/.github/actions/install-cromwell@lb_github_actions
+        with:
+          CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
+
+      - name: "Exporting Environment Variables for Wdl Scripts"
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]
+          then
+            echo "CI_PULL_REQUEST=${{ github.event.number }}" >> $GITHUB_ENV 
+          fi
+          echo "CI_COMMIT=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: "Installing GATK for tests"
+        run: |
+          ./gradlew assemble;
+          ./gradlew installDist;
+          echo "building a shadow jar for the wdl";
+          ./gradlew shadowJar;
+
+      - name: "CNV_GERMLINE_COHORT_WDL_TEST"
+        if: ${{ matrix.wdlTest  == 'RUN_CNV_GERMLINE_COHORT_WDL' }}
+        run: |
+          echo "Running CNV germline cohort workflow";
+          bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh COHORT;
+
+      - name: "CNV_GERMLINE_CASE_WDL_TEST"
+        if: ${{ matrix.wdlTest == 'RUN_CNV_GERMLINE_CASE_WDL' }}
+        run: |
+          echo "Running CNV germline case workflow";
+          bash scripts/cnv_cromwell_tests/germline/run_cnv_germline_workflows.sh CASE;
+
+      - name: "CNV_SOMATIC_WDL_TEST"
+        if: ${{ matrix.wdlTest == 'RUN_CNV_SOMATIC_WDL' }}
+        run: |
+          echo "Running CNV somatic workflows";
+          bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+
+      - name: "M2_WDL_TEST"
+        if: ${{ matrix.wdlTest == 'RUN_M2_WDL' }}
+        run: |
+          echo "Deleting some unused files before running M2 WDL...";
+          rm -Rf src/test/resources/large/VQSR;
+          echo "Running M2 WDL";
+          bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
+
+      - name: "CNN_WDL_TEST"
+        if: ${{ matrix.wdlTest == 'RUN_CNN_WDL' }}
+        run: |
+          echo "Running CNN WDL";
+          bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
