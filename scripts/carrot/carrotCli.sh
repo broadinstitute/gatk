@@ -138,4 +138,7 @@ carrot_cli template map_to_result "HaplotypeCaller orchestrated template" "EXOME
 carrot_cli template map_to_result "HaplotypeCaller orchestrated template" "EXOME1 controlsnpF1Score" BenchmarkVCFsHeadToHeadOrchestrated.EXOME1controlsnpF1Score
 carrot_cli template map_to_result "HaplotypeCaller orchestrated template" "EXOME1 controlindelF1Score" BenchmarkVCFsHeadToHeadOrchestrated.EXOME1controlindelF1Score
 
+carrot_cli template map_to_result "HaplotypeCaller orchestrated template" "ROC_Plots_Reported" BenchmarkVCFsHeadToHeadOrchestrated.ROC_Plots_Reported
+
+
 carrot_cli test create --name "HaplotypeCaller CARROT Regression Tests" --template "HaplotypeCaller orchestrated template" --description "Standard set of scientific tests to check for haplotype caller releases" --test_input_defaults "HC_carrot_test_default_inputs.json" --eval_input_defaults "HC_carrot_eval_default_inputs.json"
