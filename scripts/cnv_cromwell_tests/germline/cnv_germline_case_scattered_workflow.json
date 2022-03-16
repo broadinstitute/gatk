@@ -1,14 +1,14 @@
 {
   "CNVGermlineCaseScatteredWorkflow.normal_bams": [
-    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam",
-    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P2T_20xy-downsampled.bam",
-    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P35_20xy-downsampled.bam"
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam",
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P2T_20xy-downsampled.bam",
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P35_20xy-downsampled.bam"
     ],
   "CNVGermlineCaseScatteredWorkflow.normal_bais": [
-    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam.bai",
-    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P2T_20xy-downsampled.bam.bai",
-    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P35_20xy-downsampled.bam.bai"],
-  "CNVGermlineCaseScatteredWorkflow.contig_ploidy_model_tar": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-contig-ploidy-model.tar.gz",
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74NEG_20xy-downsampled.bam.bai",
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P2T_20xy-downsampled.bam.bai",
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/SM-74P35_20xy-downsampled.bam.bai"],
+  "CNVGermlineCaseScatteredWorkflow.contig_ploidy_model_tar": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-contig-ploidy-model.tar.gz",
   "CNVGermlineCaseScatteredWorkflow.gatk_docker": "__GATK_DOCKER__",
   "CNVGermlineCaseScatteredWorkflow.allosomal_contigs": ["X", "Y"],
   "CNVGermlineCaseScatteredWorkflow.ref_copy_number_autosomal_contigs": 2,
@@ -17,11 +17,11 @@
   "CNVGermlineCaseScatteredWorkflow.gcnv_max_training_epochs": 1,
   "CNVGermlineCaseScatteredWorkflow.gcnv_min_training_epochs": 1,
   "CNVGermlineCaseScatteredWorkflow.gcnv_model_tars": [
-    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-gcnv-model-0.tar.gz",
-    "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-gcnv-model-1.tar.gz"],
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-gcnv-model-0.tar.gz",
+    "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/wes-do-gc-gcnv-model-1.tar.gz"],
   "CNVGermlineCaseScatteredWorkflow.gcnv_num_thermal_advi_iters": 1,
-  "CNVGermlineCaseScatteredWorkflow.intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/ice_targets_chr20xy.interval_list",
-  "CNVGermlineCaseScatteredWorkflow.filtered_intervals": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/ice_targets_chr20xy.preprocessed.filtered.interval_list",
+  "CNVGermlineCaseScatteredWorkflow.intervals": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/ice_targets_chr20xy.interval_list",
+  "CNVGermlineCaseScatteredWorkflow.filtered_intervals": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/ice_targets_chr20xy.preprocessed.filtered.interval_list",
   "CNVGermlineCaseScatteredWorkflow.num_intervals_per_scatter": 20,
   "CNVGermlineCaseScatteredWorkflow.num_samples_per_scatter_block": 2,
   "CNVGermlineCaseScatteredWorkflow.gcnv_max_advi_iter_first_epoch": 10,
@@ -34,7 +34,7 @@
   "CNVGermlineCaseScatteredWorkflow.maximum_number_pass_events_per_sample": 10,
   "CNVGermlineCaseScatteredWorkflow.cpu_for_determine_germline_contig_ploidy": 1,
   "CNVGermlineCaseScatteredWorkflow.cpu_for_germline_cnv_caller": 1,
-  "CNVGermlineCaseScatteredWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.dict",
-  "CNVGermlineCaseScatteredWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.fasta.fai",
-  "CNVGermlineCaseScatteredWorkflow.ref_fasta": "/home/travis/build/broadinstitute/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.fasta"
+  "CNVGermlineCaseScatteredWorkflow.ref_fasta_dict": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.dict",
+  "CNVGermlineCaseScatteredWorkflow.ref_fasta_fai": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.fasta.fai",
+  "CNVGermlineCaseScatteredWorkflow.ref_fasta": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_germline_workflows_test_files/Homo_sapiens_assembly19.truncated.fasta"
 }

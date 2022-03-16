@@ -143,6 +143,7 @@ public final class FeatureInputUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(gcsInput.getFeaturePath(), expectedFeaturePath, "wrong featurePath");
         Assert.assertEquals(gcsInput.getName(), expectedLogicalName, "wrong logical name");
+        Assert.fail();
     }
 
     @Test(dataProvider = "HdfsPathAndNameData")
