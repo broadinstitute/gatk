@@ -7,6 +7,7 @@ import org.apache.commons.math3.linear.RealVector;
 import java.io.Serializable;
 
 public final class BayesianGaussianMixtureModeller implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     public enum InitMethod {
         K_MEANS_PLUS_PLUS, RANDOM, TEST

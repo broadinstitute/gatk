@@ -20,6 +20,7 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
     }
 
     static final class Preprocesser implements Serializable {
+        private static final long serialVersionUID = 1L;
 
         Preprocesser() {
         }
