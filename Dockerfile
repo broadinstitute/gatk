@@ -13,7 +13,8 @@ RUN add-apt-repository universe && apt update
 RUN apt-get --assume-yes install git-lfs
 RUN git lfs install --force
 
-RUN git lfs pull
+#Download only resources required for the build, not for testing
+RUN git lfs pull -include src/main/resources/large
 
 RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
 RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/
