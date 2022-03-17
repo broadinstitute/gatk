@@ -42,6 +42,9 @@ workflow GvsExtractCallset {
   String fq_ranges_dataset = "~{project_id}.~{dataset_name}"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
 
+  Boolean emit_pls = false
+  Boolean emit_ads = true
+
   call Utils.SplitIntervals {
     input:
       intervals = interval_list,
@@ -102,6 +105,8 @@ workflow GvsExtractCallset {
         max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
         extract_preemptible_override       = extract_preemptible_override,
         extract_maxretries_override        = extract_maxretries_override,
+        emit_pls                           = emit_pls,
+        emit_ads                           = emit_ads,
     }
   }
 
@@ -256,6 +261,8 @@ task ExtractTask {
         ~{"--inferred-reference-state " + drop_state} \
         -L ~{intervals} \
         --project-id ~{read_project_id} \
+        ~{true='--emit-pls' false='' emit_pls} \
+        ~{true='--emit-ads' false='' emit_ads} \
         ${FILTERING_ARGS}
 
     # Drop trailing slash if one exists
