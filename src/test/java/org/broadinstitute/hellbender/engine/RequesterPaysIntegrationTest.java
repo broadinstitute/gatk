@@ -23,7 +23,7 @@ public class RequesterPaysIntegrationTest extends CommandLineProgramTest {
     }
 
     //Files here are paid for by the bucket owners
-    private static final String NOT_REQUESTER = getGCPTestInputPath() + "org/broadinstitute/hellbender/engine/RequesterPaysIntegrationTest/";
+    private static final String OWNER = getGCPTestInputPath() + "org/broadinstitute/hellbender/engine/RequesterPaysIntegrationTest/";
 
     //Files here are requester pays
     private static final String REQUESTER = getGCPRequesterPaysBucket() + "test/resources/nio/";
@@ -31,23 +31,23 @@ public class RequesterPaysIntegrationTest extends CommandLineProgramTest {
     @DataProvider
     public Object[][] getRequesterPaysPaths(){
         return new Object[][]{
-                {NOT_REQUESTER, NOT_REQUESTER, NOT_REQUESTER, NOT_REQUESTER, false},
-                {NOT_REQUESTER, NOT_REQUESTER, NOT_REQUESTER, REQUESTER, true},
-                {NOT_REQUESTER, NOT_REQUESTER, REQUESTER, NOT_REQUESTER, true},
-                {NOT_REQUESTER, NOT_REQUESTER, REQUESTER, NOT_REQUESTER, true},
-                {NOT_REQUESTER, REQUESTER, NOT_REQUESTER, NOT_REQUESTER, true},
-                {NOT_REQUESTER, REQUESTER, NOT_REQUESTER, REQUESTER, true},
-                {NOT_REQUESTER, REQUESTER, REQUESTER, NOT_REQUESTER, true},
-                {NOT_REQUESTER, REQUESTER, REQUESTER, REQUESTER, true},
-                {REQUESTER, NOT_REQUESTER, NOT_REQUESTER, NOT_REQUESTER, true},
-                {REQUESTER, NOT_REQUESTER, NOT_REQUESTER, REQUESTER, true},
-                {REQUESTER, NOT_REQUESTER, REQUESTER, NOT_REQUESTER, true},
-                {REQUESTER, NOT_REQUESTER, REQUESTER, NOT_REQUESTER, true},
-                {REQUESTER, REQUESTER, NOT_REQUESTER, NOT_REQUESTER, true},
-                {REQUESTER, REQUESTER, NOT_REQUESTER, REQUESTER, true},
-                {REQUESTER, REQUESTER, REQUESTER, NOT_REQUESTER, true},
-                {REQUESTER, REQUESTER, REQUESTER, REQUESTER, true},
-        }   ;
+             //   {OWNER, OWNER, OWNER, OWNER, false},
+                {OWNER, OWNER, OWNER, REQUESTER, true},
+//                {OWNER, OWNER, REQUESTER, OWNER, true},
+//                {OWNER, OWNER, REQUESTER, REQUESTER, true},
+//                {OWNER, REQUESTER, OWNER, OWNER, true},
+//                {OWNER, REQUESTER, OWNER, REQUESTER, true},
+//                {OWNER, REQUESTER, REQUESTER, OWNER, true},
+//                {OWNER, REQUESTER, REQUESTER, REQUESTER, true},
+//                {REQUESTER, OWNER, OWNER, OWNER, true},
+//                {REQUESTER, OWNER, OWNER, REQUESTER, true},
+//                {REQUESTER, OWNER, REQUESTER, OWNER, true},
+//                {REQUESTER, OWNER, REQUESTER, REQUESTER, true},
+//                {REQUESTER, REQUESTER, OWNER, OWNER, true},
+//                {REQUESTER, REQUESTER, OWNER, REQUESTER, true},
+//                {REQUESTER, REQUESTER, REQUESTER, OWNER, true},
+//                {REQUESTER, REQUESTER, REQUESTER, REQUESTER, true},
+        };
     }
 
     @Test(dataProvider = "getRequesterPaysPaths", groups="cloud")
