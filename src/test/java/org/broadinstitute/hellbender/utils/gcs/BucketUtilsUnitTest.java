@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.cloud.storage.contrib.nio.SeekableByteChannelPrefetcher;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -17,6 +18,8 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,7 +37,7 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
      * a different project than the service account doing the testing or the test may fail because it can access the
      * file directly    through alternative permissions.
      */
-    public static final String FILE_IN_REQUESTER_PAYS_BUCKET = "gs://hellbender-requester-pays-test/test/resources/nio/big.txt";
+    public static final String FILE_IN_REQUESTER_PAYS_BUCKET = getGCPRequesterPaysBucket() + "test/resources/nio/big.txt";
 
     static {
         setDefaultNioOptions();
