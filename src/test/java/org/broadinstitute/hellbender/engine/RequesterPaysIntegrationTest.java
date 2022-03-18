@@ -31,22 +31,22 @@ public class RequesterPaysIntegrationTest extends CommandLineProgramTest {
     @DataProvider
     public Object[][] getRequesterPaysPaths(){
         return new Object[][]{
-             //   {OWNER, OWNER, OWNER, OWNER, false},
+                {OWNER, OWNER, OWNER, OWNER, false},
                 {OWNER, OWNER, OWNER, REQUESTER, true},
-//                {OWNER, OWNER, REQUESTER, OWNER, true},
-//                {OWNER, OWNER, REQUESTER, REQUESTER, true},
-//                {OWNER, REQUESTER, OWNER, OWNER, true},
-//                {OWNER, REQUESTER, OWNER, REQUESTER, true},
-//                {OWNER, REQUESTER, REQUESTER, OWNER, true},
-//                {OWNER, REQUESTER, REQUESTER, REQUESTER, true},
-//                {REQUESTER, OWNER, OWNER, OWNER, true},
-//                {REQUESTER, OWNER, OWNER, REQUESTER, true},
-//                {REQUESTER, OWNER, REQUESTER, OWNER, true},
-//                {REQUESTER, OWNER, REQUESTER, REQUESTER, true},
-//                {REQUESTER, REQUESTER, OWNER, OWNER, true},
-//                {REQUESTER, REQUESTER, OWNER, REQUESTER, true},
-//                {REQUESTER, REQUESTER, REQUESTER, OWNER, true},
-//                {REQUESTER, REQUESTER, REQUESTER, REQUESTER, true},
+                {OWNER, OWNER, REQUESTER, OWNER, true},
+                {OWNER, OWNER, REQUESTER, REQUESTER, true},
+                {OWNER, REQUESTER, OWNER, OWNER, true},
+                {OWNER, REQUESTER, OWNER, REQUESTER, true},
+                {OWNER, REQUESTER, REQUESTER, OWNER, true},
+                {OWNER, REQUESTER, REQUESTER, REQUESTER, true},
+                {REQUESTER, OWNER, OWNER, OWNER, true},
+                {REQUESTER, OWNER, OWNER, REQUESTER, true},
+                {REQUESTER, OWNER, REQUESTER, OWNER, true},
+                {REQUESTER, OWNER, REQUESTER, REQUESTER, true},
+                {REQUESTER, REQUESTER, OWNER, OWNER, true},
+                {REQUESTER, REQUESTER, OWNER, REQUESTER, true},
+                {REQUESTER, REQUESTER, REQUESTER, OWNER, true},
+                {REQUESTER, REQUESTER, REQUESTER, REQUESTER, true},
         };
     }
 
