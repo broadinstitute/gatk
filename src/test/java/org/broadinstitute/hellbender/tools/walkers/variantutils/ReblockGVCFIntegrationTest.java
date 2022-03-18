@@ -339,6 +339,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(expectedExceptions = UserException.class)
+    //ReblockGVCF can take multiple inputs, but only if they're non-overlapping shards from the same sample
     public void testMixedSamples() {
         final File output = createTempFile("reblockedgvcf", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();

@@ -90,8 +90,6 @@ import java.util.*;
 @BetaFeature
 public final class GnarlyGenotyper extends VariantWalker {
 
-    public static final int PIPELINE_MAX_ALT_COUNT = GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES;
-
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
 
     private static final boolean CALL_GENOTYPES = true;
