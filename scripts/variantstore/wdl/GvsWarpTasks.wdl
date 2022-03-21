@@ -5,7 +5,6 @@ task SNPsVariantRecalibratorCreateModel {
     input {
         String recalibration_filename
         String tranches_filename
-        Int downsampleFactor
         String model_report_filename
 
         Array[String] recalibration_tranche_values
@@ -45,7 +44,7 @@ task SNPsVariantRecalibratorCreateModel {
         -an ~{sep=' -an ' recalibration_annotation_values} \
         ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
         -mode SNP \
-        --sample-every-Nth-variant ~{downsampleFactor} \
+        --sample-every-Nth-variant 1 \
         --output-model ~{model_report_filename} \
         --max-gaussians ~{max_gaussians} \
         -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
@@ -148,7 +147,6 @@ task IndelsVariantRecalibrator {
         File sites_only_variant_filtered_vcf
         File sites_only_variant_filtered_vcf_index
 
-        File? excluded_sites_bed
         File mills_resource_vcf
         File axiomPoly_resource_vcf
         File dbsnp_resource_vcf
@@ -159,7 +157,6 @@ task IndelsVariantRecalibrator {
         Int max_gaussians = 4
 
         Int disk_size
-        String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
         Int? machine_mem_gb
     }
 
@@ -173,7 +170,6 @@ task IndelsVariantRecalibrator {
         gatk --java-options -Xmx~{java_mem}g \
         VariantRecalibrator \
         -V ~{sites_only_variant_filtered_vcf} \
-        ~{"-XL " + excluded_sites_bed} \
         -O ~{recalibration_filename} \
         --output-model indels.model \
         --rscript-file indels.Rscript \
@@ -195,7 +191,7 @@ task IndelsVariantRecalibrator {
         cpu: "2"
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 1
-        docker: gatk_docker
+        docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
     }
 
     output {
@@ -220,7 +216,6 @@ task SNPsVariantRecalibrator {
         File sites_only_variant_filtered_vcf
         File sites_only_variant_filtered_vcf_index
 
-        File? excluded_sites_bed
         File hapmap_resource_vcf
         File omni_resource_vcf
         File one_thousand_genomes_resource_vcf
@@ -231,10 +226,8 @@ task SNPsVariantRecalibrator {
         File dbsnp_resource_vcf_index
         Boolean use_allele_specific_annotations
         Int max_gaussians = 6
-        Int? downsampleFactor = 1
 
         Int disk_size
-        String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.1.9.0"
         Int? machine_mem_gb
 
     }
@@ -257,7 +250,6 @@ task SNPsVariantRecalibrator {
         gatk --java-options -Xmx~{java_mem}g \
         VariantRecalibrator \
         -V ~{sites_only_variant_filtered_vcf} \
-        ~{"-XL " + excluded_sites_bed} \
         -O ~{recalibration_filename} \
         --output-model snps.model \
         --rscript-file snps.Rscript \
@@ -267,7 +259,7 @@ task SNPsVariantRecalibrator {
         -an ~{sep=' -an ' recalibration_annotation_values} \
         ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
         -mode SNP \
-        --sample-every-Nth-variant ~{downsampleFactor} \
+        --sample-every-Nth-variant 1 \
         ~{model_report_arg} \
         --max-gaussians ~{max_gaussians} \
         -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
@@ -281,7 +273,7 @@ task SNPsVariantRecalibrator {
         cpu: 2
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 0
-        docker: gatk_docker
+        docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
     }
 
     output {

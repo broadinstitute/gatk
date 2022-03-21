@@ -9,7 +9,6 @@ task MergeVCFs {
     Int? merge_disk_override
     Int? preemptible_tries
     String? service_account_json_path
-    File? gatk_override
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -22,8 +21,6 @@ task MergeVCFs {
   }
 
   command {
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
       gcloud auth activate-service-account --key-file=local.service_account.json

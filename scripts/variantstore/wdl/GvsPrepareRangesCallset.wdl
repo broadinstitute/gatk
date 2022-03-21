@@ -1,127 +1,117 @@
 version 1.0
 
 workflow GvsPrepareCallset {
-   input {
-        String data_project
-        String default_dataset
-        String destination_cohort_table_prefix
-        File? sample_names_to_extract
+  input {
+    String project_id
+    String dataset_name
+    String extract_table_prefix
 
-        # inputs with defaults
-        String query_project = data_project
-        Array[String]? query_labels
-        String destination_project = data_project
-        String destination_dataset = default_dataset
+    # inputs with defaults
+    String query_project = project_id
+    String destination_project = project_id
+    String destination_dataset = dataset_name
+    String fq_temp_table_dataset = "~{destination_project}.temp_tables"
 
-        String fq_petvet_dataset = "~{data_project}.~{default_dataset}"
-        String fq_sample_mapping_table = "~{data_project}.~{default_dataset}.sample_info"
-        String fq_temp_table_dataset = "~{destination_project}.temp_tables"
-        String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
+    Array[String]? query_labels
+    File? sample_names_to_extract
+    String? service_account_json_path
+  }
 
-        Int temp_table_ttl_in_hours = 72
-        Boolean skip_vet_new_insert = false
-        String? service_account_json_path
-        String? docker
-    }
+  String fq_petvet_dataset = "~{project_id}.~{dataset_name}"
+  String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
+  String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:kc_ranges_prepare_2022_01_18"])
+  call PrepareRangesCallsetTask {
+    input:
+      destination_cohort_table_prefix = extract_table_prefix,
+      sample_names_to_extract         = sample_names_to_extract,
+      query_project                   = query_project,
+      query_labels                    = query_labels,
+      fq_petvet_dataset               = fq_petvet_dataset,
+      fq_sample_mapping_table         = fq_sample_mapping_table,
+      fq_temp_table_dataset           = fq_temp_table_dataset,
+      fq_destination_dataset          = fq_destination_dataset,
+      temp_table_ttl_in_hours         = 72,
+      service_account_json_path       = service_account_json_path,
+  }
 
-    call PrepareRangesCallsetTask {
-        input:
-            destination_cohort_table_prefix = destination_cohort_table_prefix,
-            sample_names_to_extract         = sample_names_to_extract,
-            query_project                   = query_project,
-            query_labels                    = query_labels,
-            fq_petvet_dataset               = fq_petvet_dataset,
-            fq_sample_mapping_table         = fq_sample_mapping_table,
-            fq_temp_table_dataset           = fq_temp_table_dataset,
-            fq_destination_dataset          = fq_destination_dataset,
-            temp_table_ttl_in_hours         = temp_table_ttl_in_hours,
-            service_account_json_path       = service_account_json_path,
-            docker                          = docker_final
-    }
-
-    output {
-      String fq_cohort_extract_table_prefix = PrepareRangesCallsetTask.fq_cohort_extract_table_prefix
-    }
-
+  output {
+    String fq_cohort_extract_table_prefix = PrepareRangesCallsetTask.fq_cohort_extract_table_prefix
+  }
 }
 
 task PrepareRangesCallsetTask {
-    # indicates that this task should NOT be call cached
-    meta {
-       volatile: true
+  # indicates that this task should NOT be call cached
+  meta {
+    volatile: true
+  }
+
+  input {
+    String destination_cohort_table_prefix
+    File? sample_names_to_extract
+    String query_project
+
+    String fq_petvet_dataset
+    String fq_sample_mapping_table
+    String fq_temp_table_dataset
+    String fq_destination_dataset
+    Array[String]? query_labels
+    Int temp_table_ttl_in_hours = 24
+
+    String? service_account_json_path
+  }
+  # Note the coercion of optional query_labels using select_first([expr, default])
+  Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  String use_sample_names_file = if (defined(sample_names_to_extract)) then 'true' else 'false'
+  String sample_list_param = if (defined(sample_names_to_extract)) then '--sample_names_to_extract sample_names_file' else '--fq_cohort_sample_names ' + fq_sample_mapping_table
+
+  parameter_meta {
+    sample_names_to_extract: {
+      localization_optional: true
     }
+  }
 
-    input {
-        String destination_cohort_table_prefix
-        File? sample_names_to_extract
-        String query_project
-        Array[String]? query_labels
+  command <<<
+      set -e
 
-        String fq_petvet_dataset
-        String fq_sample_mapping_table
-        String fq_temp_table_dataset
-        String fq_destination_dataset
-        Int temp_table_ttl_in_hours
+      echo ~{sample_list_param}
 
-        String? service_account_json_path
-        String docker
-    }
-    # Note the coercion of optional query_labels using select_first([expr, default])
-    Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
+      if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          SERVICE_ACCOUNT_STANZA="--sa_key_path local.service_account.json "
+      fi
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String use_sample_names_file = if (defined(sample_names_to_extract)) then 'true' else 'false'
-    String sample_list_param = if (defined(sample_names_to_extract)) then '--sample_names_to_extract sample_names_file' else '--fq_cohort_sample_names ' + fq_sample_mapping_table
+      if [ ~{use_sample_names_file} = 'true' ]; then
+          gsutil cp  ~{sample_names_to_extract} sample_names_file
+      fi
 
-    parameter_meta {
-      sample_names_to_extract: {
-        localization_optional: true
-      }
-    }
+      python3 /app/create_ranges_cohort_extract_data_table.py \
+          --fq_ranges_dataset ~{fq_petvet_dataset} \
+          --fq_temp_table_dataset ~{fq_temp_table_dataset} \
+          --fq_destination_dataset ~{fq_destination_dataset} \
+          --destination_cohort_table_prefix ~{destination_cohort_table_prefix} \
+          ~{sample_list_param} \
+          --query_project ~{query_project} \
+          ~{sep=" " query_label_args} \
+          --fq_sample_mapping_table ~{fq_sample_mapping_table} \
+          --ttl ~{temp_table_ttl_in_hours} \
+          $SERVICE_ACCOUNT_STANZA
+  >>>
+  output {
+    String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_cohort_extract_data_table.py
+  }
 
-    command <<<
-        set -e
-
-        echo ~{sample_list_param}
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            SERVICE_ACCOUNT_STANZA="--sa_key_path local.service_account.json "
-        fi
-
-        if [ ~{use_sample_names_file} = 'true' ]; then
-            gsutil cp  ~{sample_names_to_extract} sample_names_file
-        fi
-
-        python3 /app/create_ranges_cohort_extract_data_table.py \
-            --fq_ranges_dataset ~{fq_petvet_dataset} \
-            --fq_temp_table_dataset ~{fq_temp_table_dataset} \
-            --fq_destination_dataset ~{fq_destination_dataset} \
-            --destination_cohort_table_prefix ~{destination_cohort_table_prefix} \
-            ~{sample_list_param} \
-            --query_project ~{query_project} \
-            ~{sep=" " query_label_args} \
-            --fq_sample_mapping_table ~{fq_sample_mapping_table} \
-            --ttl ~{temp_table_ttl_in_hours} \
-            $SERVICE_ACCOUNT_STANZA
-    >>>
-
-    output {
-      String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_cohort_extract_data_table.py
-    }
-
-    runtime {
-        docker: docker
-        memory: "3 GB"
-        disks: "local-disk 100 HDD"
-        bootDiskSizeGb: 15
-        preemptible: 0
-        cpu: 1
-    }
-
- }
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:kc_ranges_prepare_2022_01_18"
+    memory: "3 GB"
+    disks: "local-disk 100 HDD"
+    bootDiskSizeGb: 15
+    preemptible: 0
+    cpu: 1
+  }
+}
 
 task LocalizeFile {
   input {

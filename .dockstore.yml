@@ -65,7 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_quoting_bug
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
@@ -89,7 +88,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-222-dataset-id
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -99,7 +97,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_quoting_bug
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -118,7 +115,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-split-intervals-odd
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -128,7 +124,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_quoting_bug
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
@@ -138,7 +133,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - ah_flag_in_prepare
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -173,7 +167,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-split-intervals-odd
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
