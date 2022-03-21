@@ -11,7 +11,6 @@ workflow GvsAssignIds {
     Array[String] external_sample_names
 
     File? assign_ids_gatk_override
-    Int? create_tables_preemptible_override
     String? service_account_json_path
   }
 
@@ -30,7 +29,6 @@ workflow GvsAssignIds {
       superpartitioned = "false",
       partitioned = "false",
       service_account_json_path = service_account_json_path,
-      preemptible_tries = create_tables_preemptible_override,
   }
 
   call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
@@ -43,7 +41,6 @@ workflow GvsAssignIds {
       superpartitioned = "false",
       partitioned = "false",
       service_account_json_path = service_account_json_path,
-      preemptible_tries = create_tables_preemptible_override,
   }
 
   call AssignIds {
@@ -63,7 +60,6 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       max_table_id = AssignIds.max_table_id,
       service_account_json_path = service_account_json_path,
-      preemptible_tries = create_tables_preemptible_override
   }
 
   output {

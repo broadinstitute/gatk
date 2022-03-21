@@ -1,7 +1,6 @@
 version 1.0
 
 workflow CreateBQTables {
-
   input {
     String dataset_name
     String project_id
@@ -26,7 +25,6 @@ workflow CreateBQTables {
       superpartitioned = "true",
       partitioned = "true",
       service_account_json_path = service_account_json_path,
-      preemptible_tries = preemptible_tries
   }
 
   call CreateTables as CreateRefRangesTables {
@@ -39,7 +37,6 @@ workflow CreateBQTables {
       superpartitioned = "true",
       partitioned = "true",
       service_account_json_path = service_account_json_path,
-      preemptible_tries = preemptible_tries
   }
 
   output {
@@ -65,8 +62,6 @@ task CreateTables {
     String partitioned
     String? service_account_json_path
 
-    # runtime
-    Int? preemptible_tries
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -126,7 +121,6 @@ task CreateTables {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
-    preemptible: select_first([preemptible_tries, 5])
     cpu: 1
   }
 }
