@@ -6,6 +6,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -35,20 +36,20 @@ import java.util.stream.Collectors;
         programGroup = VariantFilteringProgramGroup.class
 )
 @DocumentedFeature
+@BetaFeature
 public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
-    /**
-     * TODO
-     */
     @Argument(
             fullName = "maximum-number-of-unlabeled-variants",
-            doc = "", // TODO
+            doc = "Maximum number of unlabeled variants (or alleles, in allele-specific mode) to extract. " +
+                    "If greater than zero, reservoir sampling will be used to randomly sample this number " +
+                    "of sites from input sites that are not present in the specified resources.",
             minValue = 0)
     private int maximumNumberOfUnlabeledVariants = 0;
 
     @Argument(
             fullName = "reservoir-sampling-random-seed",
-            doc = "") // TODO
+            doc = "Random seed to use for reservoir sampling of unlabeled variants.")
     private int reservoirSamplingRandomSeed = 0;
 
     private RandomGenerator rng;
@@ -110,9 +111,6 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
 
     @Override
     public Object onTraversalSuccess() {
-
-        // TODO FAIL if annotations that are all NaN
-        // TODO WARN if annotations that have zero variance
 
         logger.info(String.format("%s complete.", getClass().getSimpleName()));
 

@@ -102,64 +102,50 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Output prefix.")
+            doc = "Prefix for output filenames.")
     String outputPrefix;
 
-    /**
-     * TODO
-     */
     @Argument(
             fullName = StandardArgumentDefinitions.RESOURCE_LONG_NAME,
-            doc = "") // TODO
+            doc = "Resource VCFs used to label extracted variants.") // TODO
     private List<FeatureInput<VariantContext>> resources = new ArrayList<>(10);
 
     @Argument(
+            fullName = StandardArgumentDefinitions.ANNOTATION_LONG_NAME,
+            shortName = "A",
+            doc = "Names of the annotations to extract.",
+            minElements = 1)
+    List<String> annotationNames = new ArrayList<>();
+
+    @Argument(
             fullName = "mode",
-            doc = "Variant types to extract")
+            doc = "Variant types to extract.")
     private List<VariantType> variantTypesToExtractList = new ArrayList<>(Arrays.asList(VariantType.SNP, VariantType.INDEL));
 
-    /**
-     * TODO fix up
-     * Extract per-allele annotations.
-     * Annotations should be specified using their full names with AS_ prefix.
-     * Non-allele-specific annotations will be applied to all alleles.
-     */
     @Argument(
             fullName = "use-allele-specific-annotations",
             doc = "If specified, attempt to use the allele-specific versions of the specified annotations.",
             optional = true)
     boolean useASAnnotations = false;
 
-    /**
-     * See the input VCF file's INFO field for a list of all available annotations.
-     */
-    @Argument(
-            fullName = StandardArgumentDefinitions.ANNOTATION_LONG_NAME,
-            shortName = "A",
-            doc = "The names of the annotations to extract.",
-            minElements = 1)
-    List<String> annotationNames = new ArrayList<>();
-
     @Argument(
             fullName = "ignore-filter",
-            doc = "If specified, use variants marked as filtered by the specified filter name in the input VCF file.",
+            doc = "Ignore the specified filter(s) in the input VCF.",
             optional = true)
     private List<String> ignoreInputFilters = new ArrayList<>();
 
     @Argument(
             fullName = "ignore-all-filters",
-            doc = "If specified, ignore all input filters.",
+            doc = "If specified, ignore all filters in the input VCF.",
             optional = true)
     private boolean ignoreAllFilters = false;
 
-    @Advanced
     @Argument(
             fullName = "trust-all-polymorphic",
-            doc = "Trust that unfiltered records in the resources contain only polymorphic sites to decrease runtime.",
+            doc = "If specified, trust that unfiltered records in the resources contain only polymorphic sites to decrease runtime.",
             optional = true)
     private boolean trustAllPolymorphic = false;
 
-    @Advanced
     @Argument(
             fullName = "omit-alleles-in-hdf5"
     )

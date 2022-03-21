@@ -115,6 +115,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         }
 
         // TODO test output and fail early
+        // TODO FAIL if annotations that are all NaN
+        // TODO WARN if annotations that have zero variance
 
         if (pythonScriptFile != null) {
             logger.info("Python script was provided, running in PYTHON mode...");
