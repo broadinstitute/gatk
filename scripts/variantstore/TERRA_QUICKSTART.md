@@ -73,6 +73,7 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters`); you will want to make note of this for use in step 5 |
 | INDEL_VQSR_max_gaussians_override | you don't need to set this unless a previous run of IndelsVariantRecalibrator task failed to converge, start with 3 and lower as needed |
 | project_id                        | the name of the google project containing the dataset |
+| scatter_count                     | how widely to scatter the task that extracts the features to filter on; 20 is plenty for 10 samples |
 | SNP_VQSR_max_gaussians_override   | you don't need to set this unless a previous run of SNPsVariantRecalibratorClassic task failed to converge, start with 5 and lower as needed |
 
 ## 4. Prepare Callset
@@ -99,7 +100,7 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | extract_table_prefix | the unique, descriptive name for the tables containing the callset you chose in step 4  |
 | filter_set_name      | the name of the filter set created in step 3  |
 | project_id           | the name of the google project containing the dataset |
-| scatter_count        | how wide to scatter the extract task (use 100 for the Quickstart)  |
+| scatter_count        | how wide to scatter the extract task (use 100 for the Quickstart's 10 samples) |
 
 ## 6. Your VCF files are ready!
 
