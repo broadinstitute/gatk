@@ -530,7 +530,7 @@ public final class ReadUtils {
             return read.getMateStart() - 1;           // case 1 (see header)
         } else {
             final int insertSize = Math.abs(read.getFragmentLength());    // the inferred insert size can be negative if the mate is mapped before the read (so we take the absolute value)
-            return read.getStart() + insertSize;  // case 2 (see header)
+            return read.getStart() + insertSize;  // case 2 (see header) // sato: this base is the first adapter read base.
         }
     }
 
@@ -740,8 +740,9 @@ public final class ReadUtils {
      * @return true if it is inside the read, false otherwise.
      */
     public static boolean isInsideRead(final GATKRead read, final int referenceCoordinate) {
-        return referenceCoordinate >= read.getStart() && referenceCoordinate <= read.getEnd();
-    }
+        return referenceCoordinate >= read.getUnclippedStart() && referenceCoordinate <= read.getUnclippedEnd();
+    } // sato: The adaptor boundary is defined to be the first base outside. So if we use
+    // e.g. the clipped end with a forward read, then the reference coordinate (adaptor boundary) wil always be strictly larger than the clipped end, by definition.
 
     /**
      * Returns the reverse complement of the read bases

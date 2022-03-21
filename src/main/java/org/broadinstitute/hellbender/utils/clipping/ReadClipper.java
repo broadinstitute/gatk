@@ -354,7 +354,7 @@ public class ReadClipper {
      */
     private GATKRead hardClipAdaptorSequence () {
         final int adaptorBoundary = read.getAdaptorBoundary();
-
+        // sato: adapterBoundary is the first base outside the read (i.e. inside adapter), and all the intervals here are closed, so we need to subtract 1
         if (adaptorBoundary == ReadUtils.CANNOT_COMPUTE_ADAPTOR_BOUNDARY || !ReadUtils.isInsideRead(read, adaptorBoundary)) {
             return read;
         }

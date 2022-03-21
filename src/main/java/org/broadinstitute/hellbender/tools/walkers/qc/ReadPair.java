@@ -22,6 +22,14 @@ public class ReadPair {
         add(read);
     }
 
+    public int size(){
+        int size = 0;
+        size = firstOfPair != null ? size + 1 : size;
+        size = secondOfPair != null ? size + 1 : size;
+        size += secondaryAlignments.size();
+        return size += supplementaryAlignments.size(); // what should we do with the supplementary alignments?
+    }
+
     public String getQueryName() {
         return queryName;
     }
@@ -34,6 +42,10 @@ public class ReadPair {
         return secondOfPair;
     }
 
+    public List<GATKRead> getSecondaryAlignments() {
+        return secondaryAlignments;
+    }
+
     public void add(final GATKRead read) {
         if (this.queryName == null){
             this.queryName = read.getName();
@@ -43,15 +55,21 @@ public class ReadPair {
             throw new UserException("Read names do not match: " + this.queryName + " vs " + read.getName());
         }
 
-        if (read.isFirstOfPair()) {
+        if (isPrimaryAlignment(read) && read.isFirstOfPair()) {
             this.firstOfPair = read;
-        } else if (read.isSecondOfPair()) {
+        } else if (isPrimaryAlignment(read) && read.isSecondOfPair()) {
             this.secondOfPair = read;
-        } else if (read.isSupplementaryAlignment()) {
+        } else if (read.isSecondaryAlignment()) {
             this.secondaryAlignments.add(read);
+        } else if (read.isSupplementaryAlignment()) {
+            this.supplementaryAlignments.add(read);
         } else {
             throw new UserException("Unknown read type");
         }
+    }
+
+    private boolean isPrimaryAlignment(final GATKRead read){
+        return ! read.isSecondaryAlignment() && ! read.isSupplementaryAlignment();
     }
 
     public boolean isDuplicateMarked() {
