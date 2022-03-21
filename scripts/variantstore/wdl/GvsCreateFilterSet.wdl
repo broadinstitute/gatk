@@ -80,18 +80,17 @@ workflow GvsCreateFilterSet {
   scatter(i in range(length(SplitIntervals.interval_files))) {
     call ExtractFilterTask {
       input:
-        gatk_override            = gatk_override,
-        reference                = reference,
-        reference_index          = reference_index,
-        reference_dict           = reference_dict,
-        fq_sample_table          = fq_sample_table,
-        intervals                = SplitIntervals.interval_files[i],
-        fq_alt_allele_table      = fq_alt_allele_table,
-        excess_alleles_threshold = 1000000,
-        read_project_id          = project_id,
-        output_file              = "${filter_set_name}_${i}.vcf.gz",
-        service_account_json_path     = service_account_json_path,
-        query_project            = project_id,
+        gatk_override             = gatk_override,
+        reference                 = reference,
+        reference_index           = reference_index,
+        reference_dict            = reference_dict,
+        fq_sample_table           = fq_sample_table,
+        intervals                 = SplitIntervals.interval_files[i],
+        fq_alt_allele_table       = fq_alt_allele_table,
+        excess_alleles_threshold  = 1000000,
+        output_file               = "${filter_set_name}_${i}.vcf.gz",
+        service_account_json_path = service_account_json_path,
+        query_project             = project_id,
     }
   }
 
@@ -307,7 +306,6 @@ task ExtractFilterTask {
     File intervals
 
     String fq_alt_allele_table
-    String read_project_id
     String output_file
     Int? excess_alleles_threshold
 
@@ -342,7 +340,7 @@ task ExtractFilterTask {
       --alt-allele-table ~{fq_alt_allele_table} \
       ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
       -L ~{intervals} \
-      --project-id ~{read_project_id}
+      --project-id ~{query_project}
   >>>
 
   runtime {
