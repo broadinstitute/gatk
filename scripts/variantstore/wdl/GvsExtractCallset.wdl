@@ -12,6 +12,7 @@ workflow GvsExtractCallset {
     String query_project = project_id
     Int scatter_count
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     String output_file_base_name = filter_set_name
 
     Int? extract_maxretries_override
@@ -44,7 +45,7 @@ workflow GvsExtractCallset {
       ref_fasta = reference,
       ref_fai = reference_index,
       ref_dict = reference_dict,
-      interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed",
+      interval_weights_bed = interval_weights_bed,
       scatter_count = scatter_count,
       output_gcs_dir = output_gcs_dir,
       split_intervals_disk_size_override = split_intervals_disk_size_override,

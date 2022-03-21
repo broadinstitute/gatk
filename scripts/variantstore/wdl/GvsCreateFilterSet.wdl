@@ -382,31 +382,31 @@ task PopulateFilterSetInfo {
     set -eo pipefail
 
     if [ ~{has_service_account_file} = 'true' ]; then
-    gsutil cp ~{service_account_json_path} local.service_account.json
-    export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-    gcloud auth activate-service-account --key-file=local.service_account.json
-    gcloud config set project ~{query_project}
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{query_project}
     fi
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     echo "Creating SNPs reacalibration file"
     gatk --java-options "-Xmx1g" \
-    CreateFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -mode SNP \
-    -V ~{snp_recal_file} \
-    -O ~{filter_set_name}.snps.recal.tsv
+      CreateFilteringFiles \
+      --ref-version 38 \
+      --filter-set-name ~{filter_set_name} \
+      -mode SNP \
+      -V ~{snp_recal_file} \
+      -O ~{filter_set_name}.snps.recal.tsv
 
     echo "Creating INDELs reacalibration file"
     gatk --java-options "-Xmx1g" \
-    CreateFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -mode INDEL \
-    -V ~{indel_recal_file} \
-    -O ~{filter_set_name}.indels.recal.tsv
+      CreateFilteringFiles \
+      --ref-version 38 \
+      --filter-set-name ~{filter_set_name} \
+      -mode INDEL \
+      -V ~{indel_recal_file} \
+      -O ~{filter_set_name}.indels.recal.tsv
 
     # merge into a single file
     echo "Merging SNP + INDELs"
@@ -417,11 +417,11 @@ task PopulateFilterSetInfo {
 
     echo "Loading combined TSV into ~{fq_info_destination_table}"
     bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
-    --range_partitioning=location,0,26000000000000,6500000000 \
-    --clustering_fields=location \
-    --schema "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" \
-    ${bq_table} \
-    ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
+      --range_partitioning=location,0,26000000000000,6500000000 \
+      --clustering_fields=location \
+      --schema "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" \
+      ${bq_table} \
+      ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
   >>>
 
   runtime {
