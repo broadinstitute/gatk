@@ -41,7 +41,7 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
 
     @Argument(
             fullName = "maximum-number-of-unlabeled-variants",
-            doc = "Maximum number of unlabeled variants (or alleles, in allele-specific mode) to extract. " +
+            doc = "Maximum number of unlabeled variants to extract. " +
                     "If greater than zero, reservoir sampling will be used to randomly sample this number " +
                     "of sites from input sites that are not present in the specified resources.",
             minValue = 0)
