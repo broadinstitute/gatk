@@ -29,6 +29,9 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
     private static final String hg38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
     private static final String b37_reference_20_21 = largeFileTestDir + "human_g1k_v37.20.21.fasta";
+    private static final List<String> EXPECTED_OUTPUT_ANNOTATIONS = Arrays.asList(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY,
+            GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, GATKVCFConstants.VARIANT_DEPTH_KEY,
+            VCFConstants.DEPTH_KEY, GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY, GATKVCFConstants.AS_VARIANT_DEPTH_KEY);
     public static final String WARP_PROD_REBLOCKING_ARGS = " -do-qual-approx --floor-blocks -GQB 20 -GQB 30 -GQB 40 ";
 
     @DataProvider(name = "getCommandLineArgsForExactTest")
@@ -263,7 +266,20 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         //all variants have GQ
         Assert.assertEquals(outputVCs.stream().filter(vc -> vc.getGenotype(0).hasGQ()).count(), outputVCs.size());
         //we didn't ask to drop GQ0s, but they might get merged together
-        Assert.assertEquals(inputVCs.stream().anyMatch(vc -> vc.getGenotype(0).getGQ() == 0), outputVCs.stream().anyMatch(vc -> vc.getGenotype(0).getGQ() == 0));
+        Assert.assertEquals(inputVCs.stream().anyMatch(vc -> vc.getGenotype(0).getGQ() == 0),
+                outputVCs.stream().anyMatch(vc -> vc.getGenotype(0).getGQ() == 0));
+
+        final List<VariantContext> variants = outputVCs.stream().filter(
+                vc -> vc.getGenotype(0).isHet() || vc.getGenotype(0).isHomVar()).collect(Collectors.toList());
+        Assert.assertTrue(variants.stream().allMatch(this::hasExpectedOutputAnnotations));
+    }
+
+    private boolean hasExpectedOutputAnnotations(final VariantContext vc) {
+        boolean hasAllExpectedAnnotations = true;
+        for (final String key : EXPECTED_OUTPUT_ANNOTATIONS) {
+            hasAllExpectedAnnotations &=  vc.hasAttribute(key);
+        }
+        return hasAllExpectedAnnotations;
     }
 
     @Test

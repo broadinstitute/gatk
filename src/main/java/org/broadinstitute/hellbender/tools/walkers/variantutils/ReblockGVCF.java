@@ -679,6 +679,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final boolean allelesNeedSubsetting = relevantIndices.length < variant.getNAlleles();
         copyInfoAnnotations(destination, variant, infoFieldAnnotationKeyNamesToRemove, annotationEngine, allelesNeedSubsetting, relevantIndices);
 
+        //assign or copy reblocking-specific annotations
         //generate qual annotations after we potentially drop alleles
         final Genotype updatedAllelesGenotype = updatedAllelesVC.getGenotype(0);
         if (doQualApprox) {
@@ -686,8 +687,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 addQualAnnotations(destination, posteriorsKey, annotationEngine, updatedAllelesVC);
             }
         } else {  //manually copy annotations that might be from reblocking and aren't part of AnnotationEngine
-            if (variant.hasAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY)) {
-                destination.put(GATKVCFConstants.AS_VARIANT_DEPTH_KEY, variant.getAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
+            if (variant.hasAttribute(GATKVCFConstants.VARIANT_DEPTH_KEY)) {
+                destination.put(GATKVCFConstants.VARIANT_DEPTH_KEY, variant.getAttribute(GATKVCFConstants.VARIANT_DEPTH_KEY));
             }
             if (variant.hasAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY)) {
                 destination.put(GATKVCFConstants.RAW_QUAL_APPROX_KEY, variant.getAttribute(GATKVCFConstants.RAW_QUAL_APPROX_KEY));
