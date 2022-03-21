@@ -345,6 +345,23 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         File output = runGenotypeGVCFS(genomicsDBUri, null, args, b37_reference_20_21);
     }
 
+    @Test
+    public void testGenotypingOnVCWithMissingPLs() {
+        //this regression test input:
+        // 1) is missing PLs because it had more than the allowed number of alts for GDB
+        // 2) has enough GQ0 samples to achieve a QUAL high enough to pass the initial threshold
+        final String input = toolsTestDir + "/walkers/GenotypeGVCFs/test.tooManyAltsNoPLs.g.vcf";
+        final List<String> args = new ArrayList<String>();
+        args.add("-G");
+        args.add("StandardAnnotation");
+        args.add("-G");
+        args.add("AS_StandardAnnotation");
+        final File output = runGenotypeGVCFS(input, null, args, hg38Reference);
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        //only variant is a big variant that shouldn't get output because it is missing PLs, but we should skip it gracefully
+        Assert.assertEquals(outputData.getRight().size(), 0);
+    }
+
     private void runAndCheckGenomicsDBOutput(final ArgumentsBuilder args, final File expected, final File output) {
         Utils.resetRandomGenerator();
         runCommandLine(args);

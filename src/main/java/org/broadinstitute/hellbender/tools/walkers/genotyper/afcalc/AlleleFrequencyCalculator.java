@@ -124,11 +124,14 @@ public final class AlleleFrequencyCalculator {
      * Compute the probability of the alleles segregating given the genotype likelihoods of the samples in vc
      *
      * @param vc the VariantContext holding the alleles and sample information.  The VariantContext
-     *           must have at least 1 alternative allele
+     *           must have at least 1 alternative allele. Hom-ref genotype likelihoods can be approximated
+     *           but
      * @return result (for programming convenience)
      */
     public AFCalculationResult calculate(final VariantContext vc, final int defaultPloidy) {
         Utils.nonNull(vc, "VariantContext cannot be null");
+        Utils.validate(vc.getGenotypes().stream().anyMatch(Genotype::hasLikelihoods),
+                "VariantContext must contain at least one genotype with likelihoods");
         final int numAlleles = vc.getNAlleles();
         final List<Allele> alleles = vc.getAlleles();
         Utils.validateArg( numAlleles > 1, () -> "VariantContext has only a single reference allele, but getLog10PNonRef requires at least one at all " + vc);

@@ -295,6 +295,8 @@ public final class AlleleSubsettingUtils {
         Utils.nonNull(vc, "vc is null");
         Utils.validateArg(defaultPloidy > 0, () -> "default ploidy must be > 0 but defaultPloidy=" + defaultPloidy);
         Utils.validateArg(numAltAllelesToKeep > 0, () -> "numAltAllelesToKeep must be > 0, but numAltAllelesToKeep=" + numAltAllelesToKeep);
+        Utils.validateArg(vc.getGenotypes().stream().anyMatch(Genotype::hasPL), () -> "Most likely alleles cannot be calculated without likelihoods");
+        //NOTE: this is used in the reblocking case when we have a hom-ref GT and real ALTs
         final boolean allHomRefData = vc.getGenotypes().stream().allMatch(g -> g.hasPL() && g.getPL()[0] == 0);  //PL=[0,0,0] is okay, we just don't want confident variants
 
         final boolean hasSymbolicNonRef = vc.hasAllele(Allele.NON_REF_ALLELE);
@@ -306,6 +308,10 @@ public final class AlleleSubsettingUtils {
         }
 
         final double[] likelihoodSums = calculateLikelihoodSums(vc, defaultPloidy, allHomRefData);
+        if (MathUtils.sum(likelihoodSums) == 0.0 && !allHomRefData) {
+            throw new IllegalStateException("No likelihood sum exceeded zero -- method was called for variant data " +
+                    "with no variant information.");
+        }
         return filterToMaxNumberOfAltAllelesBasedOnScores(numAltAllelesToKeep, vc.getAlleles(), likelihoodSums);
     }
 

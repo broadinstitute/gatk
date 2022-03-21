@@ -112,10 +112,13 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     /**
-     * Main entry function to calculate genotypes of a given VC with corresponding GLs that is shared across genotypers (namely GGVCFs and HC).
+     * Main entry function to calculate genotypes of a given VC with corresponding GLs that is shared across
+     * genotypers (namely GGVCFs and HC).
      *
      * Completes a variant context with genotype calls and associated annotations given the genotype likelihoods and
-     * the model that need to be applied.
+     * the model that need to be applied.  Hom-ref likelihoods can be approximated from GQs, but if not genotype has
+     * likelihoods then that variant is either all-ref or contains variants with no likelihoods, and in both cases
+     * we want to exit.
      *
      * @param vc                                 Input variant context to complete.
      * @return                                   VC with assigned genotypes
@@ -393,7 +396,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      */
     protected final boolean cannotBeGenotyped(final VariantContext vc) {
         if (vc.getNAlleles() <= GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED
-                && vc.getGenotypes().stream().anyMatch(GenotypeUtils::genotypeIsUsableForAFCalculation)) {
+            && vc.getGenotypes().stream().anyMatch(Genotype::hasLikelihoods)) {  //likelihoods may be missing when reading from GenomicsDB if there are more alts that GDB args allow
             return false;
         }
         // protect against too many alternate alleles that we can't even run AF on:
@@ -402,7 +405,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                     " alleles. Site will be skipped at location " + vc.getContig() + ":" + vc.getStart());
             return true;
         }else {
-            logger.warn("No genotype contained sufficient data to recalculate genotypes. Site will be skipped at location "
+            logger.warn("No genotype contained sufficient data to recalculate site and allele qualities. Site will be skipped at location "
                     + vc.getContig() + ":" + vc.getStart());
             return true;
         }

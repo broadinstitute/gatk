@@ -972,3 +972,7 @@ task installAll{  dependsOn installSpark, installDist }
 installDist.dependsOn downloadGsaLibFile
 
 defaultTasks 'bundle'
+
+test {
+    useJUnitPlatform()
+}
