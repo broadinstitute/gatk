@@ -65,31 +65,31 @@ workflow GvsExtractCallset {
   scatter(i in range(length(SplitIntervals.interval_files))) {
     call ExtractTask {
       input:
-        gatk_override                   = gatk_override,
-        reference                       = reference,
-        reference_index                 = reference_index,
-        reference_dict                  = reference_dict,
-        fq_samples_to_extract_table     = fq_samples_to_extract_table,
-        interval_index                  = i,
-        intervals                       = SplitIntervals.interval_files[i],
-        fq_cohort_extract_table         = fq_cohort_extract_table,
+        gatk_override                      = gatk_override,
+        reference                          = reference,
+        reference_index                    = reference_index,
+        reference_dict                     = reference_dict,
+        fq_samples_to_extract_table        = fq_samples_to_extract_table,
+        interval_index                     = i,
+        intervals                          = SplitIntervals.interval_files[i],
+        fq_cohort_extract_table            = fq_cohort_extract_table,
         fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
         fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
-        read_project_id                 = query_project,
-        mode                            = "RANGES-PREPARED",
-        do_not_filter_override          = false,
-        fq_ranges_dataset               = fq_ranges_dataset,
-        fq_filter_set_info_table        = fq_filter_set_info_table,
-        fq_filter_set_site_table        = fq_filter_set_site_table,
-        fq_filter_set_tranches_table    = fq_filter_set_tranches_table,
-        filter_set_name                 = filter_set_name,
-        service_account_json_path       = service_account_json_path,
-        drop_state                      = "FORTY",
-        output_file                     = "${output_file_base_name}_${i}.vcf.gz",
-        output_gcs_dir                  = output_gcs_dir,
-        max_last_modified_timestamp     = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
-        extract_preemptible_override    = extract_preemptible_override,
-        extract_maxretries_override     = extract_maxretries_override,
+        read_project_id                    = query_project,
+        mode                               = "RANGES-PREPARED",
+        do_not_filter_override             = false,
+        fq_ranges_dataset                  = fq_ranges_dataset,
+        fq_filter_set_info_table           = fq_filter_set_info_table,
+        fq_filter_set_site_table           = fq_filter_set_site_table,
+        fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
+        filter_set_name                    = filter_set_name,
+        service_account_json_path          = service_account_json_path,
+        drop_state                         = "FORTY",
+        output_file                        = "${output_file_base_name}_${i}.vcf.gz",
+        output_gcs_dir                     = output_gcs_dir,
+        max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
+        extract_preemptible_override       = extract_preemptible_override,
+        extract_maxretries_override        = extract_maxretries_override,
     }
   }
 
@@ -116,8 +116,6 @@ workflow GvsExtractCallset {
 ################################################################################
 task ExtractTask {
   input {
-    # ------------------------------------------------
-    # Input args:
     File reference
     File reference_index
     File reference_dict
@@ -158,8 +156,6 @@ task ExtractTask {
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
-  # ------------------------------------------------
-  # Run our command:
   command <<<
     set -e
     export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
@@ -300,7 +296,7 @@ task CreateManifest {
   >>>
   output {
     File manifest = "manifest.txt"
- }
+  }
 
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
