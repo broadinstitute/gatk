@@ -18,7 +18,7 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
 4. These tools expect re-blocked gVCF files as input, which are provided in this workspace
 
 ## 1. Import Data
-A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Run the two import workflows against this sample set by selecting "sample_set" as the root entity type ("Step 1") and `gvs_demo-10` for the data ("Step 2").  If you are creating your own sample set, note that the sample table should have a column for the re-blocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files need to be in the same location.
+A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Run the two import workflows against this sample set by selecting "sample_set" as the root entity type ("Step 1" on the workflow submission page) and `gvs_demo-10` for the data ("Step 2" on the workflow submission page).  If you are creating your own sample set, note that the sample table should have columns for the re-blocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files.
 
 ## 1.1 Assign Gvs IDs and Create Loading Tables
 To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set and update the BigQuery dataset with the sample name to ID mapping info.
@@ -70,7 +70,7 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | Parameter                         | Description |
 | --------------------------------- | ----------- |
 | dataset_name                      | the name of the dataset you created above  |
-| filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters` ); you will want to make note of this for use in step 5 |
+| filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters`); you will want to make note of this for use in step 5 |
 | INDEL_VQSR_max_gaussians_override | you don't need to set this unless a previous run of IndelsVariantRecalibrator task failed to converge, start with 3 and lower as needed |
 | project_id                        | the name of the google project containing the dataset |
 | SNP_VQSR_max_gaussians_override   | you don't need to set this unless a previous run of SNPsVariantRecalibratorClassic task failed to converge, start with 5 and lower as needed |
@@ -80,7 +80,7 @@ This step performs the heavy lifting in BigQuery to gather all the data required
 
 This is done by running the `GvsPrepareRangesCallset` workflow with the following parameters:
 
-| Parameter                       | Description |
+| Parameter            | Description |
 |--------------------- | ----------- |
 | dataset_name         | the name of the dataset you created above  |
 | extract_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in step 3); you will want to make note of this for use in the next step |
