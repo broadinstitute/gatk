@@ -151,7 +151,7 @@ task ValidateFilterSetName {
     if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
       echo "Filter set name ~{filter_set_name} found."
     else
-      echo "Error -- '~{filter_set_name}' is not an existing filter_set_name. The filter_set_names in ~{data_project}.~{data_dataset} are: " $FILTERSETS
+      echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{data_dataset} are " $FILTERSETS
       exit 1
     fi
   >>>
