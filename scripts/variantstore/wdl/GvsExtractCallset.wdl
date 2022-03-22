@@ -92,7 +92,7 @@ workflow GvsExtractCallset {
         fq_filter_set_site_table           = fq_filter_set_site_table,
         fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
         filter_set_name                    = filter_set_name,
-        filter_set_name_verified           = ValidateFilterSetName.message,
+        filter_set_name_verified           = ValidateFilterSetName.done,
         service_account_json_path          = service_account_json_path,
         drop_state                         = "FORTY",
         output_file                        = "${output_file_base_name}_${i}.vcf.gz",
@@ -145,23 +145,20 @@ task ValidateFilterSetName {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    FILTERSETS=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT filter_set_name as available_filter_set_names FROM ~{data_project}.~{data_dataset}.filter_set_info GROUP BY filter_set_name")
+    OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT filter_set_name as available_filter_set_names FROM ~{data_project}.~{data_dataset}.filter_set_info GROUP BY filter_set_name")
+    FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
-    echo "--------\n"
-    echo $FILTERSETS
-    echo "--------\n"
-
-    if [[ $FILTERSETS == *"~{filter_set_name}"* ]]; then
+    if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
       echo "Filter set name ~{filter_set_name} found."
     else
-      echo "Error -- `~{filter_set_name}` is not an existing filter_set_name. The filter_set_names in ~{data_project}.~{data_dataset}. are: \n"
+      echo "Error -- `~{filter_set_name}` is not an existing filter_set_name. The filter_set_names in ~{data_project}.~{data_dataset} are: \n"
       echo $FILTERSETS
       exit 1
     fi
   >>>
 
   output {
-    String message = read_string(stdout())
+    String done = read_string(stdout())
   }
 
   runtime {
