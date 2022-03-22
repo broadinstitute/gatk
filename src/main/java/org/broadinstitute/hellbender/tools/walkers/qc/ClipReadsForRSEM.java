@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
+import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
@@ -171,7 +172,12 @@ public class ClipReadsForRSEM extends GATKTool {
         final GATKRead clippedRead = ReadClipper.hardClipAdaptorSequence(read);
         final byte[] clippedReadBases = clippedRead.getBases();
         final byte[] clippedQuals = clippedRead.getBaseQualities(); // length = 123...that ok? Should be 124?
-        read.getLength(); // Maybe start with a genome bam
+
+        // For RSEM, remove H from the cigar
+        final List<CigarElement> matchCigarElement =  read.getCigarElements().stream().filter(ce -> ce.getOperator() == CigarOperator.M).collect(Collectors.toList());
+        Utils.validate(matchCigarElement.size() == 1, "There must be a singl match element but got: " + matchCigarElement);
+        clippedRead.setCigar(new CigarBuilder().add(matchCigarElement.get(0)).make());
+
         return clippedRead;
     }
 
