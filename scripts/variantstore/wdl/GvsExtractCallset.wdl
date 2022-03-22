@@ -4,8 +4,8 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallset {
   input {
-    String project_id
     String dataset_name
+    String project_id
 
     String filter_set_name
     String extract_table_prefix

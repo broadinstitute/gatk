@@ -1,11 +1,9 @@
 {
-  "GvsAoUReblockGvcf.ref_fasta": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
-  "GvsAoUReblockGvcf.ref_fasta_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
-  "GvsAoUReblockGvcf.ref_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
-  "GvsAoUReblockGvcf.service_account_json": "String",
   "GvsAoUReblockGvcf.gvcf": "${this.gvcf_path}",
   "GvsAoUReblockGvcf.gvcf_index": "${this.gvcf_index_path}",
-  "GvsAoUReblockGvcf.site_id": "${this.site_id}",
-  "GvsAoUReblockGvcf.docker_image": "String (optional, default = \"us.gcr.io/broad-gatk/gatk:4.2.2.0\")"
+  "GvsAoUReblockGvcf.ref_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  "GvsAoUReblockGvcf.ref_fasta": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "GvsAoUReblockGvcf.ref_fasta_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "GvsAoUReblockGvcf.service_account_json": "String",
+  "GvsAoUReblockGvcf.site_id": "${this.site_id}"
 }
-

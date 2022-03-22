@@ -1,4 +1,4 @@
 {
-  "GvsCreateAltAllele.data_project": "PROJECT_ID",
-  "GvsCreateAltAllele.default_dataset": "DATASET",
+  "GvsCreateAltAllele.dataset_name": "DATASET",
+  "GvsCreateAltAllele.project_id": "PROJECT_ID"
 }
