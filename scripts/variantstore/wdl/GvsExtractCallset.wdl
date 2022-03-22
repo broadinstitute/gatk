@@ -4,13 +4,14 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallset {
   input {
-    String project_id
     String dataset_name
+    String project_id
 
-    String filter_set_name
     String extract_table_prefix
+    String filter_set_name
     String query_project = project_id
     Int scatter_count
+
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     String output_file_base_name = filter_set_name
@@ -36,7 +37,6 @@ workflow GvsExtractCallset {
   String fq_ranges_cohort_vet_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__VET_DATA"
   String fq_samples_to_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
   String fq_ranges_dataset = "~{project_id}.~{dataset_name}"
-
   Array[String] tables_patterns_for_datetime_check = ["~{extract_table_prefix}__%"]
 
   call Utils.SplitIntervals {
@@ -151,11 +151,11 @@ task ValidateFilterSetName {
     if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
       echo "Filter set name ~{filter_set_name} found."
     else
-      echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{data_dataset} are " $FILTERSETS
+      echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{data_dataset} are"
+      echo $FILTERSETS
       exit 1
     fi
   >>>
-
   output {
     String done = read_string(stdout())
   }
