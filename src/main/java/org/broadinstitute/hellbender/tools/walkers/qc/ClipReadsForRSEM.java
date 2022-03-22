@@ -172,12 +172,19 @@ public class ClipReadsForRSEM extends GATKTool {
         final GATKRead clippedRead = ReadClipper.hardClipAdaptorSequence(read);
         final byte[] clippedReadBases = clippedRead.getBases();
         final byte[] clippedQuals = clippedRead.getBaseQualities(); // length = 123...that ok? Should be 124?
+        final int length = clippedRead.getLength();
 
         // For RSEM, remove H from the cigar
         final List<CigarElement> matchCigarElement =  read.getCigarElements().stream().filter(ce -> ce.getOperator() == CigarOperator.M).collect(Collectors.toList());
         Utils.validate(matchCigarElement.size() == 1, "There must be a singl match element but got: " + matchCigarElement);
-        clippedRead.setCigar(new CigarBuilder().add(matchCigarElement.get(0)).make());
-
+        // This commented version is the correct way. But sometimes the cigar and read length don't match (a bug in hardClipAdaptorSequence())
+        // final CigarElement matchCigarElem = matchCigarElement.get(0);
+        final CigarElement matchCigarElem = new CigarElement(clippedRead.getLength(), CigarOperator.M);
+        clippedRead.setCigar(new CigarBuilder().add(matchCigarElem).make());
+        // This could be off by one, but as long as we get the reads out, we should be ok.
+        // Remember this is just a proof of concept; we can fine tune it later, as long as we can verify that we can run RSEM on it.
+        Utils.validate(clippedRead.getLength() == matchCigarElem.getLength(),
+                "length of cigar operator and read must match but got: " + clippedRead.getLength() + ", " + matchCigarElem.getLength());
         return clippedRead;
     }
 
