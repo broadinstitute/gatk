@@ -62,6 +62,15 @@ workflow GvsExtractCallset {
       service_account_json_path = service_account_json_path
   }
 
+  call ValidateFilterSetName {
+    input:
+      query_project = query_project,
+      filter_set_name = filter_set_name,
+      data_project = project_id,
+      data_dataset = dataset_name,
+      service_account_json_path = service_account_json_path
+  }
+
   scatter(i in range(length(SplitIntervals.interval_files))) {
     call ExtractTask {
       input:
@@ -83,6 +92,7 @@ workflow GvsExtractCallset {
         fq_filter_set_site_table           = fq_filter_set_site_table,
         fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
         filter_set_name                    = filter_set_name,
+        filter_set_name_verified           = ValidateFilterSetName.message,
         service_account_json_path          = service_account_json_path,
         drop_state                         = "FORTY",
         output_file                        = "${output_file_base_name}_${i}.vcf.gz",
@@ -113,7 +123,56 @@ workflow GvsExtractCallset {
   }
 }
 
-################################################################################
+task ValidateFilterSetName {
+  input {
+    String filter_set_name
+    String data_project
+    String data_dataset
+    String query_project
+    String? service_account_json_path
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+  command <<<
+    set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{query_project}
+    fi
+
+    echo "project_id = ~{query_project}" > ~/.bigqueryrc
+
+    FILTERSETS=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT filter_set_name as available_filter_set_names FROM ~{data_project}.~{data_dataset}.filter_set_info GROUP BY filter_set_name")
+
+    echo "--------\n"
+    echo $FILTERSETS
+    echo "--------\n"
+
+    if [[ $FILTERSETS == *"~{filter_set_name}"* ]]; then
+      echo "Filter set name ~{filter_set_name} found."
+    else
+      echo "Error -- `~{filter_set_name}` is not an existing filter_set_name. The filter_set_names in ~{data_project}.~{data_dataset}. are: \n"
+      echo $FILTERSETS
+      exit 1
+    fi
+  >>>
+
+  output {
+    String message = read_string(stdout())
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
 task ExtractTask {
   input {
     File reference
@@ -141,6 +200,7 @@ task ExtractTask {
     String fq_filter_set_site_table
     String fq_filter_set_tranches_table
     String? filter_set_name
+    String filter_set_name_verified
 
     # Runtime Options:
     String? service_account_json_path
