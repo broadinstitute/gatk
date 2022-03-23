@@ -205,7 +205,11 @@ public class ClipReadsForRSEM extends GATKTool {
 
     // Contract: call passesRSEMFilter on the read pair before calling
     private boolean needsClipping(final GATKRead read1, final GATKRead read2){
-        Utils.validate(read1.getFragmentLength() == -1 * read2.getFragmentLength(), "Fragment lengths must be negative of each other");
+        if (read1.getFragmentLength() != -1 * read2.getFragmentLength()){
+            logger.warn(read1.getName() + ": Fragment lengths must be negative of each other but got " +
+                    read1.getFragmentLength() + ", " + read2.getFragmentLength());
+            return false;
+        }
 
         // If only one cigar element, then read1 and read2 are both 146M since we've already run RSEM read filter. No need to clip in this case.
         if (read1.getCigarElements().size() == 1){
