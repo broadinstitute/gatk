@@ -25,11 +25,11 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
             "DP", "FS", "MQ", "MQRankSum", "QD", "ReadPosRankSum", "SOR");
 
     private static final List<String> ALLELE_SPECIFIC_ANNOTATIONS = Arrays.asList(
-            "DP", "AS_QD", "AS_InbreedingCoeff");
+            "DP", "AS_FS", "AS_MQ", "AS_MQRankSum", "AS_QD", "AS_ReadPosRankSum", "AS_SOR");
 
     private static final File TEST_FILES_DIR = new File(largeFileTestDir,
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/");
-    private static final File INPUT_VCF = new File(TEST_FILES_DIR, "1kgp-50-exomes.sites_only.chr1.1-10M.vcf.gz");
+    private static final File INPUT_VCF = new File(TEST_FILES_DIR, "stroke_vqsr_magic_as.chr1.1-10M.vcf.gz");
     private static final File SNP_RESOURCE_VCF = new File(TEST_FILES_DIR, "1000G_omni2.5.hg38.chr1.1-10M.vcf.gz");
     private static final File INDEL_RESOURCE_VCF = new File(TEST_FILES_DIR, "Mills_and_1000G_gold_standard.indels.hg38.chr1.1-10M.vcf.gz");
 
@@ -88,6 +88,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         final File outputDir = createTempDir("testDir");
         final String outputPrefix = outputDir + "/test";
         argsBuilder.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, outputPrefix);
+        argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         runCommandLine(argsBuilder);
     }
 
