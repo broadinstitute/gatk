@@ -170,6 +170,8 @@ public class CompareSAMFiles extends GATKTool {
                 }
             }
         }
+
+
     }
 
     @Override
@@ -200,8 +202,9 @@ public class CompareSAMFiles extends GATKTool {
 
         queryNameSetComparison.writeSummary(outputTable, getHeaderForReads());
 
-        if (writer1 != null){
+        if (writer1 != null) {
             writer1.close();
+        } if (writer2 != null){
             writer2.close();
         }
 
