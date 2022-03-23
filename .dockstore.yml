@@ -115,7 +115,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_validate_filterset
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
