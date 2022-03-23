@@ -83,6 +83,7 @@ public class ClipReadsForRSEM extends GATKTool {
             } else {
                 currentReadPair.add(read);
             }
+            progressMeter.update(read);
 
         }
     }
