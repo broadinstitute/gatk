@@ -1,14 +1,95 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
+/**
+ * TODO
+ */
 public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
+
+    private static final List<String> NON_ALLELE_SPECIFIC_ANNOTATIONS = Arrays.asList(
+            "DP", "FS", "MQ", "MQRankSum", "QD", "ReadPosRankSum", "SOR");
+
+    private static final List<String> ALLELE_SPECIFIC_ANNOTATIONS = Arrays.asList(
+            "DP", "AS_QD", "AS_InbreedingCoeff");
+
+    private static final File TEST_FILES_DIR = new File(largeFileTestDir,
+            "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/");
+    private static final File INPUT_VCF = new File(TEST_FILES_DIR, "1kgp-50-exomes.sites_only.chr1.1-10M.vcf.gz");
+    private static final File SNP_RESOURCE_VCF = new File(TEST_FILES_DIR, "1000G_omni2.5.hg38.chr1.1-10M.vcf.gz");
+    private static final File INDEL_RESOURCE_VCF = new File(TEST_FILES_DIR, "Mills_and_1000G_gold_standard.indels.hg38.chr1.1-10M.vcf.gz");
+
+    @DataProvider(name = "dataValidInputs")
+    public Object[][] dataValidInputs() {
+        final Function<List<String>, ArgumentsBuilder> argumentsBuilderFromAnnotations = (annotations) -> {
+            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+            argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, INPUT_VCF);
+            annotations.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
+            return argsBuilder;
+        };
+
+        return new Object[][]{
+                {
+                        argumentsBuilderFromAnnotations.apply(NON_ALLELE_SPECIFIC_ANNOTATIONS)
+                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
+                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni,training=true,truth=true", SNP_RESOURCE_VCF)
+                },
+                {
+                        argumentsBuilderFromAnnotations.apply(NON_ALLELE_SPECIFIC_ANNOTATIONS)
+                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
+                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills,training=true,truth=true", INDEL_RESOURCE_VCF)
+                },
+                {
+                        argumentsBuilderFromAnnotations.apply(NON_ALLELE_SPECIFIC_ANNOTATIONS)
+                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
+                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
+                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni,training=true,truth=true", SNP_RESOURCE_VCF)
+                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills,training=true,truth=true", INDEL_RESOURCE_VCF)
+                },
+                {
+                        argumentsBuilderFromAnnotations.apply(ALLELE_SPECIFIC_ANNOTATIONS)
+                                .addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME)
+                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
+                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni,training=true,truth=true", SNP_RESOURCE_VCF)
+                },
+                {
+                        argumentsBuilderFromAnnotations.apply(ALLELE_SPECIFIC_ANNOTATIONS)
+                                .addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME)
+                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
+                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills,training=true,truth=true", INDEL_RESOURCE_VCF)
+                },
+                {
+                        argumentsBuilderFromAnnotations.apply(ALLELE_SPECIFIC_ANNOTATIONS)
+                                .addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME)
+                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
+                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
+                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni,training=true,truth=true", SNP_RESOURCE_VCF)
+                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills,training=true,truth=true", INDEL_RESOURCE_VCF)
+                }
+        };
+    }
+
+    @Test(dataProvider = "dataValidInputs")
+    public void testValidInputs(final ArgumentsBuilder argsBuilder) {
+        final File outputDir = createTempDir("testDir");
+        final String outputPrefix = outputDir + "/test";
+        argsBuilder.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, outputPrefix);
+        runCommandLine(argsBuilder);
+    }
 
     @Test
     public void test1kgp50ExomesAll() {

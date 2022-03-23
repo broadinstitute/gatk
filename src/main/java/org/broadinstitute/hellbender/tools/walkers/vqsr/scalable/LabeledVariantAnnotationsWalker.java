@@ -12,7 +12,6 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.Triple;
-import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -96,6 +95,13 @@ import java.util.stream.Collectors;
 @DocumentedFeature
 public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
+    public static final String MODE_LONG_NAME = "mode";
+    public static final String USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME = "use-allele-specific-annotations";
+    public static final String IGNORE_FILTER_LONG_NAME = "ignore-filter";
+    public static final String IGNORE_ALL_FILTERS_LONG_NAME = "ignore-all-filters";
+    public static final String DO_NOT_TRUST_ALL_POLYMORPHIC_LONG_NAME = "do-not-trust-all-polymorphic";
+    public static final String OMIT_ALLELES_IN_HDF5_LONG_NAME = "omit-alleles-in-hdf5";
+
     static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
     private static final String VCF_SUFFIX = ".vcf.gz";
 
@@ -112,42 +118,45 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
 
     @Argument(
             fullName = StandardArgumentDefinitions.ANNOTATION_LONG_NAME,
-            shortName = "A",
+            shortName = StandardArgumentDefinitions.ANNOTATION_SHORT_NAME,
             doc = "Names of the annotations to extract.",
             minElements = 1)
     List<String> annotationNames = new ArrayList<>();
 
     @Argument(
-            fullName = "mode",
+            fullName = MODE_LONG_NAME,
             doc = "Variant types to extract.")
     private List<VariantType> variantTypesToExtractList = new ArrayList<>(Arrays.asList(VariantType.SNP, VariantType.INDEL));
 
     @Argument(
-            fullName = "use-allele-specific-annotations",
-            doc = "If specified, attempt to use the allele-specific versions of the specified annotations.",
+            fullName = USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME,
+            doc = "If specified, use the allele-specific versions of the specified annotations.",
             optional = true)
     boolean useASAnnotations = false;
 
     @Argument(
-            fullName = "ignore-filter",
+            fullName = IGNORE_FILTER_LONG_NAME,
             doc = "Ignore the specified filter(s) in the input VCF.",
             optional = true)
     private List<String> ignoreInputFilters = new ArrayList<>();
 
     @Argument(
-            fullName = "ignore-all-filters",
+            fullName = IGNORE_ALL_FILTERS_LONG_NAME,
             doc = "If specified, ignore all filters in the input VCF.",
             optional = true)
     private boolean ignoreAllFilters = false;
 
     @Argument(
-            fullName = "trust-all-polymorphic",
-            doc = "If specified, trust that unfiltered records in the resources contain only polymorphic sites to decrease runtime.",
+            fullName = DO_NOT_TRUST_ALL_POLYMORPHIC_LONG_NAME,
+            doc = "If specified, do not trust that unfiltered records in the resources contain only polymorphic sites. " +
+                    "This will increase runtime.",
             optional = true)
-    private boolean trustAllPolymorphic = false;
+    private boolean doNotTrustAllPolymorphic = false;
 
     @Argument(
-            fullName = "omit-alleles-in-hdf5"
+            fullName = OMIT_ALLELES_IN_HDF5_LONG_NAME,
+            doc = "If specified, do not omit alleles in output HDF5 files in order to decrease file sizes.",
+            optional = true
     )
     boolean omitAllelesInHDF5 = false;
 
@@ -342,7 +351,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                 if (useASAnnotations && !doAllelesMatch(refAllele, altAllele, resourceVC)) {
                     continue;
                 }
-                if (isValidVariant(vc, resourceVC, trustAllPolymorphic)) {
+                if (isValidVariant(vc, resourceVC, !doNotTrustAllPolymorphic)) {
                     resource.getTagAttributes().entrySet().stream()
                             .filter(e -> e.getValue().equals("true"))
                             .map(Map.Entry::getKey)

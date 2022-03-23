@@ -5,6 +5,9 @@ import com.google.common.collect.ImmutableSet;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.LabeledVariantAnnotationsWalker;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -71,13 +74,24 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
                 //FIXME: we need to look at the ref allele here too
                 if (vc.hasAllele(altAllele)) {
                     final int altIndex = vc.getAlleleIndex(altAllele) - 1; //- 1 is to convert the index from all alleles (including reference) to just alternate alleles
-                    value = Double.parseDouble((String) valueList.get(altIndex));
+                    try {
+                        value = Double.parseDouble((String) valueList.get(altIndex));
+                    } catch (final IndexOutOfBoundsException e) {
+                        throw new UserException(String.format("Could not extract annotation %s from variant context: %s. " +
+                                "Encountered exception: %s", annotationName, vc, e));
+                    }
                 } else {
                     //if somehow our alleles got mixed up
-                    throw new IllegalStateException("ExtractAnnotationsVariantDatum allele " + altAllele + " is not contained in the input VariantContext.");
+                    throw new IllegalStateException("Allele " + altAllele + " is not contained in the input VariantContext.");
                 }
             } else {
-                value = vc.getAttributeAsDouble(annotationName, Double.NaN);
+                try {
+                    value = vc.getAttributeAsDouble(annotationName, Double.NaN);
+                } catch (final ClassCastException e) {
+                    throw new UserException(String.format("Could not extract annotation %s from variant context: %s. " +
+                                    "Ensure that %s is specified, if desired. Encountered exception: %s",
+                            annotationName, vc, LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME, e));
+                }
             }
             if (Double.isInfinite(value)) {
                 value = Double.NaN;
