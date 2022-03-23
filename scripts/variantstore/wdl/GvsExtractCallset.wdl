@@ -205,6 +205,9 @@ task ExtractTask {
     String output_file
     String? output_gcs_dir
 
+    Boolean emit_pls
+    Boolean emit_ads
+
     Boolean do_not_filter_override
     String fq_ranges_dataset
     String fq_filter_set_info_table
