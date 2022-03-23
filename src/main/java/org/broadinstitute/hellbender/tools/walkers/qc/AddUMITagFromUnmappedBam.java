@@ -60,12 +60,13 @@ public class AddUMITagFromUnmappedBam extends GATKTool {
         // Not sure if unmapped bam has sort order field set---check later.
         unmappedSamIterator = new PeekableIterator<>(unmappedSam.iterator());
 
-        if (alignedSamIterator.hasNext()){
-            currentRead1 = alignedSamIterator.next();
-        } else {
-            throw new UserException("aligned sam iterator is empty.");
-        }
-
+//        if (alignedSamIterator.hasNext()){
+//            currentRead1 = alignedSamIterator.next();
+//        } else {
+//            throw new UserException("aligned sam iterator is empty.");
+//        }
+//
+        // Initialize read2. Read1 will be initialized in traverse()
         if (unmappedSamIterator.hasNext()){
             currentRead2 = unmappedSamIterator.next();
         } else {
@@ -81,6 +82,7 @@ public class AddUMITagFromUnmappedBam extends GATKTool {
     public void traverse() {
         // will need to use this later
         while (alignedSamIterator.hasNext()){
+            currentRead1 = alignedSamIterator.next();
             int diff = queryNameComparator.compareReadNames(currentRead1, currentRead2);
 
             if (diff == 0) {
@@ -89,6 +91,8 @@ public class AddUMITagFromUnmappedBam extends GATKTool {
                 Utils.nonNull(umiTag, "umiTag is empty: read " + currentRead2.getName());
                 currentRead1.setAttribute(UMI_TAG, umiTag);
                 writer.addRead(currentRead1);
+
+                progressMeter.update(currentRead1);
                 continue;
             } else if (diff > 0){
                 // Read1 is ahead. Play unmapped reads foward until it catches up.
@@ -113,8 +117,6 @@ public class AddUMITagFromUnmappedBam extends GATKTool {
                 throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read: " +
                         "aligned read = " + currentRead1.getName() + ", unmapped read = " + currentRead2.getName());
             }
-
-            progressMeter.update(currentRead1);
         }
     }
 

@@ -14,13 +14,13 @@ public class AddUMITagFromUnmappedBamIntegrationTest extends CommandLineProgramT
     public void test(){
         final String home = "/Volumes/dsde_working/tsato/hydro.gen/Analysis/874_twist_RNA/add_umi/";
 
-//        final File alignedBam = new File(home + "SM-KYN26_SSIV_SM-LQZZ2_transcriptome.grouped.queryname_sorted.bam");
-//        final File unmappedSam = new File(home + "SM-KYN26_SSIV_SM-LQZZ2_UMI_extracted.bam");
-//        final File out = new File(home + "SM-KYN26_SSIV_SM-LQZZ2_transcriptome_with_UMI.bam");
+        final File alignedBam = new File(home + "SM-KYN26_SSIV_SM-LQZZ2_transcriptome.grouped.queryname_sorted.bam");
+        final File unmappedSam = new File(home + "SM-KYN26_SSIV_SM-LQZZ2_UMI_extracted.bam");
+        final File out = new File(home + "SM-KYN26_SSIV_SM-LQZZ2_transcriptome_with_UMI.bam");
 
-        final File alignedBam = new File(home + "SM-LVFDV_15_Min_Low_High_transcriptome.grouped.queryname_sorted.bam");
-        final File unmappedSam = new File(home + "SM-LVFDV_15_Min_Low_High_UMI_extracted.bam");
-        final File out = new File(home + "SM-LVFDV_15_Min_Low_High_transcriptome_with_UMI.bam");
+//        final File alignedBam = new File(home + "SM-LVFDV_15_Min_Low_High_transcriptome.grouped.queryname_sorted.bam");
+//        final File unmappedSam = new File(home + "SM-LVFDV_15_Min_Low_High_UMI_extracted.bam");
+//        final File out = new File(home + "SM-LVFDV_15_Min_Low_High_transcriptome_with_UMI.bam");
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("I", alignedBam)
