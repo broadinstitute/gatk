@@ -37,6 +37,12 @@ public class ClipReadsForRSEM extends GATKTool {
     @Argument(fullName = "read-length")
     public int readLength = 146;
 
+    @Argument(fullName = "disable-clipping", optional = true)
+    public boolean disableClipping = false;
+
+    // For readability
+    public boolean enableClipping = !disableClipping;
+
     PeekableIterator<GATKRead> read1Iterator;
     SAMFileGATKReadWriter writer;
 
@@ -81,7 +87,46 @@ public class ClipReadsForRSEM extends GATKTool {
         }
     }
 
-    // Wrap this in a read filter
+    public boolean passesRSEMFilter(final GATKRead read1, final GATKRead read2) {
+        // If either of the pair is unmapped, throw out
+        if (read1.getContig() == null || read2.getContig() == null){
+            return false;
+        }
+
+        // Chimeric reads are not allowed
+        if (!read1.getContig().equals(read2.getContig())){
+            return false;
+        }
+
+        // Cigar must contain at most two elements
+        // The only allowed cigar is entirely M, or M followed by S.
+        final Cigar cigar1 = read1.getCigar();
+        final List<CigarElement> cigarElements1 = cigar1.getCigarElements();
+        final Cigar cigar2 = read2.getCigar();
+        final List<CigarElement> cigarElements2 = cigar2.getCigarElements();
+
+
+        if (cigarElements1.size() != cigarElements2.size()){
+            // Cigars must have the same length
+            return false;
+        } else if (cigarElements1.size() == 1){ // And therefore read2 also has size 1
+            return cigarElements1.get(0).getOperator() == CigarOperator.M && cigarElements2.get(0).getOperator() == CigarOperator.M;
+        } else if (cigarElements1.size() == 2){
+            // The only allowed cigars are M followed by S in read1 and S followed by M, and vice versa
+            if ((cigarElements1.get(0).getOperator() == CigarOperator.M && cigarElements1.get(1).getOperator() == CigarOperator.S) ||
+                    (cigarElements1.get(0).getOperator() == CigarOperator.S && cigarElements1.get(1).getOperator() == CigarOperator.M)){
+                return false;
+            }
+
+            // Now check that e.g. 100M46S is paired with 46S100M
+            return cigarElements1.get(0) == cigarElements2.get(1) &&
+                    cigarElements1.get(1) == cigarElements2.get(0);
+        } else {
+            return false;
+        }
+
+    }
+
     public boolean passesRSEMFilter(final GATKRead read) {
         // Cigar must contain at most two elements
         // The only allowed cigar is entirely M, or M followed by S.
@@ -95,6 +140,7 @@ public class ClipReadsForRSEM extends GATKTool {
             return cigarElements.size() == 2 &&
                     cigarElements.stream().allMatch(ce -> ce.getOperator() == CigarOperator.M ||
                             ce.getOperator() == CigarOperator.S);
+
         }
     }
     /** Write reads in this order
@@ -109,21 +155,21 @@ public class ClipReadsForRSEM extends GATKTool {
         // Write Primary Reads. If either fails, we discard both, and we don't bother with the secondary alignments
         // First, check that the read pair passes the RSEM criteria. If not, no need to bother clipping.
         // The only acceptable cigar are 1) 146M, or 2) 142M4S with (insert size) < (read length)
-        if (passesRSEMFilter(firstOfPair) && passesRSEMFilter(secondOfPair)){
-            writer.addRead(needsClipping(firstOfPair) ? clipRead(firstOfPair) : firstOfPair);
-            writer.addRead(needsClipping(secondOfPair) ? clipRead(secondOfPair) : secondOfPair);
+        if (passesRSEMFilter(firstOfPair, secondOfPair)){
+            final boolean needsClippingPrimary = enableClipping && needsClipping(firstOfPair, secondOfPair);
+            writer.addRead(needsClippingPrimary ? clipRead(firstOfPair) : firstOfPair);
+            writer.addRead(needsClippingPrimary ? clipRead(secondOfPair) : secondOfPair);
             outputReadCount += 2;
 
             final List<Pair<GATKRead, GATKRead>> mateList = groupSecondaryReads(readPair.getSecondaryAlignments());
             for (Pair<GATKRead, GATKRead> mates : mateList){
                 // The pair is either both written or both not written
-                if (passesRSEMFilter(mates.getLeft()) && passesRSEMFilter(mates.getRight())){
-                    writer.addRead(needsClipping(mates.getLeft()) ? clipRead(mates.getLeft()) : mates.getLeft());
-                    writer.addRead(needsClipping(mates.getRight()) ? clipRead(mates.getRight()) : mates.getRight());
-                    outputReadCount += 2;
+                if (passesRSEMFilter(mates.getLeft(), mates.getRight())){
+                    final boolean needsClippingSecondary = enableClipping && needsClipping(mates.getLeft(), mates.getRight());
+                    writer.addRead(needsClippingSecondary ? clipRead(mates.getLeft()) : mates.getLeft());
+                    writer.addRead(needsClippingSecondary ? clipRead(mates.getRight()) : mates.getRight());
                 }
             }
-
             // Ignore supplementary reads
         }
     }
@@ -146,20 +192,27 @@ public class ClipReadsForRSEM extends GATKTool {
         // The pairs is (read1, read2)
         final List<Pair<GATKRead, GATKRead>> result = new ArrayList<>(read1Reads.size());
         for (GATKRead read1 : read1Reads){
-            final int mateStart = read1.getMateStart();
-            final Optional<GATKRead> read2 = read2Reads.stream().filter(r -> r.getStart() == mateStart).findFirst();
+            final Optional<GATKRead> read2 = read2Reads.stream().filter(r ->
+                            r.getStart() == read1.getMateStart() && r.getMateStart() == read1.getStart()).findFirst();
             if (read2.isPresent()){
                 result.add(new ImmutablePair<>(read1, read2.get()));
             } else {
-                logger.warn("Mate not found for a secondary alignment " + read1.getName());
+                logger.warn("Mate not found for the secondary alignment " + read1.getName());
             }
         }
         return result;
     }
 
-    private boolean needsClipping(final GATKRead read){
-        // Also check CIGAR?
-        return read.getFragmentLength() < readLength;
+    // Contract: call passesRSEMFilter on the read pair before calling
+    private boolean needsClipping(final GATKRead read1, final GATKRead read2){
+        Utils.validate(read1.getFragmentLength() == -1 * read2.getFragmentLength(), "Fragment lengths must be negative of each other");
+
+        // If only one cigar element, then read1 and read2 are both 146M since we've already run RSEM read filter. No need to clip in this case.
+        if (read1.getCigarElements().size() == 1){
+            return false;
+        }
+
+        return Math.abs(read1.getFragmentLength()) < readLength;
     }
 
     // TODO: replace with ReadClipper.hardClipAdaptorSequence(read)
