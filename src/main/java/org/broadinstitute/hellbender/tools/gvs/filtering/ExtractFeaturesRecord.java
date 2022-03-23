@@ -22,6 +22,7 @@ public class ExtractFeaturesRecord implements Locatable {
     private final String asReadPosRankSumFreqTable; // nullable
     private final Double rawMQ;
     private final Double rawAD;
+    private final Double sumAD;
     private final Double rawADGT1;
     private final int sbRefPlus;
     private final int sbRefMinus;
@@ -45,6 +46,7 @@ public class ExtractFeaturesRecord implements Locatable {
         this.allele = Objects.toString(genericRecord.get("allele"), null);
         this.rawQual = Double.valueOf(genericRecord.get(SchemaUtils.RAW_QUAL).toString());
         this.rawMQ = Double.valueOf(genericRecord.get(SchemaUtils.RAW_MQ).toString());
+        this.sumAD = Double.valueOf(genericRecord.get(SchemaUtils.SUM_AD).toString());
         this.rawAD = Double.valueOf(genericRecord.get(SchemaUtils.RAW_AD).toString());
         this.rawADGT1 = Double.valueOf(genericRecord.get("RAW_AD_GT_1").toString());
 
@@ -111,6 +113,8 @@ public class ExtractFeaturesRecord implements Locatable {
     public Double getRawMQ() { return this.rawMQ; }
 
     public Double getRawAD() { return this.rawAD; }
+
+    public Double getSumAD() { return this.sumAD; }
 
     public Double getRawADGT1() { return this.rawADGT1; }
 
