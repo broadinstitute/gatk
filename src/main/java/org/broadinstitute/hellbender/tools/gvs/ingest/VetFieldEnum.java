@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.ArrayList;
@@ -95,7 +96,7 @@ public enum VetFieldEnum {
                 out = Arrays
                         .stream(outValues)
                         .map(val -> val.endsWith(".00") ? val.substring(0, val.length() - 3) : val)
-                        .collect(Collectors.joining(VCFConstants.PHASED));
+                        .collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM));
                 return out;
             // If we have gvcfs that are not allele specific from GATK4 we'll get RAW_MQandDP.
             // We can drop DP here and use AS_VarDP when finalizing RMS Mapping Quality
@@ -114,9 +115,9 @@ public enum VetFieldEnum {
 
                 double mq = Double.parseDouble(outValue);
                 if (variant.getAlleles().size() == 3) {
-                    outNotAlleleSpecific = 0 + VCFConstants.PHASED + (int) mq;
+                    outNotAlleleSpecific = 0 + AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM + (int) mq;
                 } else if (variant.getAlleles().size() == 4) {
-                    outNotAlleleSpecific = 0 + VCFConstants.PHASED + (int) mq + VCFConstants.PHASED + (int) mq;
+                    outNotAlleleSpecific = 0 + AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM + (int) mq + AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM + (int) mq;
                 } else {
                     throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
                 }
@@ -207,7 +208,7 @@ public enum VetFieldEnum {
             List<String> outList = Arrays.asList(out.split("\\|"));
             if (outList.size() == 2 | outList.size() == 3) { // check length of array -- needs to be 2 or 3
                 if (outList.lastIndexOf(Collections.min(outList)) == outList.size() - 1) { // this should be the smallest value
-                    out = StringUtils.join(outList.subList(0, outList.size() - 1), VCFConstants.PHASED);
+                    out = StringUtils.join(outList.subList(0, outList.size() - 1), AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM);
                 } else {
                     throw new UserException(String.format("Expected the final value of AS_QUALapprox to be the smallest at %d", variant.getStart()));
                 }

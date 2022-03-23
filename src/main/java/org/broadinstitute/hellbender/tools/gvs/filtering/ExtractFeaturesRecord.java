@@ -46,7 +46,6 @@ public class ExtractFeaturesRecord implements Locatable {
         this.allele = Objects.toString(genericRecord.get("allele"), null);
         this.rawQual = Double.valueOf(genericRecord.get(SchemaUtils.RAW_QUAL).toString());
         this.rawMQ = Double.valueOf(genericRecord.get(SchemaUtils.RAW_MQ).toString());
-        this.sumAD = Double.valueOf(genericRecord.get(SchemaUtils.SUM_AD).toString());
         this.rawAD = Double.valueOf(genericRecord.get(SchemaUtils.RAW_AD).toString());
         this.rawADGT1 = Double.valueOf(genericRecord.get("RAW_AD_GT_1").toString());
 
@@ -80,6 +79,10 @@ public class ExtractFeaturesRecord implements Locatable {
         // if ref_ad is not defined, set it to zero
         Object refADNullable = genericRecord.get("ref_ad");
         this.refAD = ( refADNullable == null ) ? 0 : Double.valueOf(Objects.toString(refADNullable));
+
+        // if sum_AD is not defined, set it to zero
+        Object sumADNullable = genericRecord.get(SchemaUtils.SUM_AD);
+        this.sumAD = ( sumADNullable == null ) ? 0 : Double.valueOf(Objects.toString(sumADNullable));
 
     }
 
