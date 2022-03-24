@@ -75,4 +75,20 @@ public class SVCallRecordUnitTest {
                 Collections.emptyMap(), SVTestUtils.hg38Dict);
         Assert.fail("Expected exception not thrown");
     }
+
+    @DataProvider(name = "testCreateValidCoordinatesData")
+    public Object[][] testCreateValidCoordinatesData() {
+        return new Object[][]{
+                {"chr1", 1, "chr1", 1},  // Start == END should be valid, e.g. for insertions
+                {"chr1", 1, "chr1", 2},
+                {"chr1", 2, "chr2", 1}
+        };
+    }
+
+    @Test(dataProvider="testCreateValidCoordinatesData")
+    public void testCreateValidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
+        new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, StructuralVariantType.BND,
+                null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
+                Collections.emptyMap(), SVTestUtils.hg38Dict);
+    }
 }

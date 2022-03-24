@@ -49,6 +49,7 @@ public class CNVLinkage extends SVClusterLinkage<SVCallRecord> {
         if (a.getType() != b.getType()) return false;
 
         // Interval overlap
+        // Positions should be validated already by the SVCallRecord class - these checks are for thoroughness
         final SimpleInterval intervalA = getPaddedRecordInterval(a.getContigA(), a.getPositionA(), a.getPositionB());
         Utils.nonNull(intervalA, "Invalid interval " + new SimpleInterval(a.getContigA(), a.getPositionA(),
                 a.getPositionB()) + " for record " + a.getId());

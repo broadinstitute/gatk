@@ -212,33 +212,4 @@ public class CNVDefragmenterTest {
                 Collections.emptyList(), Collections.emptyMap(), dictionary);
         Assert.assertFalse(defragmenter.areClusterable(call1, call3));
     }
-
-    @Test(expectedExceptions = { IllegalArgumentException.class })
-    public void testAreClusterableInvalidIntervalCall1() {
-        final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 248966423, true, "chr1", 248976423, false, StructuralVariantType.DEL,
-                null, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
-                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Collections.emptyList(), Collections.emptyMap(), dictionary);
-        final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1000, true, "chr1", 2000, false, StructuralVariantType.DEL,
-                null, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
-                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Collections.emptyList(), Collections.emptyMap(), dictionary);
-        defragmenter.areClusterable(call1, call2);
-        Assert.fail("Expected exception not thrown");
-    }
-
-    @Test(expectedExceptions = { IllegalArgumentException.class })
-    public void testAreClusterableInvalidIntervalCall2() {
-        final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 248966423, true, "chr1", 248976423, false, StructuralVariantType.DEL,
-                null, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
-                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Collections.emptyList(), Collections.emptyMap(), dictionary);
-        final SVCallRecord call2 = new SVCallRecord("call2", "chr1", 1000, true, "chr1", 2000, false, StructuralVariantType.DEL,
-                null, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
-                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
-                Collections.emptyList(), Collections.emptyMap(), dictionary);
-        defragmenter.areClusterable(call2, call1);
-        Assert.fail("Expected exception not thrown");
-    }
-
 }
