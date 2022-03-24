@@ -108,10 +108,10 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
 
         return testConfigurations.stream()
                 .map(tagAndAddFunctionPairs -> new Object[]{
-                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")),
-                        tagAndAddFunctionPairs.stream().map(Pair::getRight)
-                                .reduce(Function.identity(), Function::andThen)
-                                .apply(baseArgsBuilderSupplier.get())})
+                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., nonAS.snp.positive
+                        tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
+                                .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
+                                .apply(baseArgsBuilderSupplier.get())})                                                  //  appropriate arguments
                 .toArray(Object[][]::new);
     }
 
