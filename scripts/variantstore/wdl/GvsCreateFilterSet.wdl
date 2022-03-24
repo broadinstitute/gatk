@@ -25,7 +25,7 @@ workflow GvsCreateFilterSet {
   # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
   Int snps_variant_recalibration_threshold = 20000
 
-  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_extract_perf_20220111/gatk-package-4.2.0.0-455-g40a40bc-SNAPSHOT-local.jar"
+  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_vqsr_magic_20220324/gatk-package-4.2.0.0-478-gd0e381c-SNAPSHOT-local.jar"
 
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
 
