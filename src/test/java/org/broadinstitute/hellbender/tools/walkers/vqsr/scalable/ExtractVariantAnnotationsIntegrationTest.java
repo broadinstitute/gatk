@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
+import com.google.common.collect.Lists;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -13,6 +14,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -30,65 +33,63 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     private static final File TEST_FILES_DIR = new File(largeFileTestDir,
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/");
     private static final File INPUT_VCF = new File(TEST_FILES_DIR, "stroke_vqsr_magic_as.chr1.1-10M.vcf.gz");
-    private static final File SNP_RESOURCE_VCF = new File(TEST_FILES_DIR, "1000G_omni2.5.hg38.chr1.1-10M.vcf.gz");
-    private static final File INDEL_RESOURCE_VCF = new File(TEST_FILES_DIR, "Mills_and_1000G_gold_standard.indels.hg38.chr1.1-10M.vcf.gz");
+    private static final File SNP_TRAINING_VCF = new File(TEST_FILES_DIR, "1000G_omni2.5.hg38.chr1.1-5M.vcf.gz");
+    private static final File SNP_TRUTH_VCF = new File(TEST_FILES_DIR, "1000G_omni2.5.hg38.chr1.5M-10M.vcf.gz");
+    private static final File INDEL_TRAINING_VCF = new File(TEST_FILES_DIR, "Mills_and_1000G_gold_standard.indels.hg38.chr1.1-5M.vcf.gz");
+    private static final File INDEL_TRUTH_VCF = new File(TEST_FILES_DIR, "Mills_and_1000G_gold_standard.indels.hg38.chr1.5M-10M.vcf.gz");
 
     @DataProvider(name = "dataValidInputs")
     public Object[][] dataValidInputs() {
-        final Function<List<String>, ArgumentsBuilder> argumentsBuilderFromAnnotations = (annotations) -> {
+        final Supplier<ArgumentsBuilder> baseArgsBuilderSupplier = () -> {
             final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-            argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, INPUT_VCF);
-            annotations.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
+            argsBuilder.addVCF(INPUT_VCF);
+
+            final File outputDir = createTempDir("testDir");
+            final String outputPrefix = outputDir + "/test";
+            argsBuilder.addOutput(outputPrefix);
+
+            argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
             return argsBuilder;
         };
 
-        return new Object[][]{
-                {
-                        argumentsBuilderFromAnnotations.apply(NON_ALLELE_SPECIFIC_ANNOTATIONS)
-                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
-                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni,training=true,truth=true", SNP_RESOURCE_VCF)
-                },
-                {
-                        argumentsBuilderFromAnnotations.apply(NON_ALLELE_SPECIFIC_ANNOTATIONS)
-                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
-                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills,training=true,truth=true", INDEL_RESOURCE_VCF)
-                },
-                {
-                        argumentsBuilderFromAnnotations.apply(NON_ALLELE_SPECIFIC_ANNOTATIONS)
-                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
-                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
-                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni,training=true,truth=true", SNP_RESOURCE_VCF)
-                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills,training=true,truth=true", INDEL_RESOURCE_VCF)
-                },
-                {
-                        argumentsBuilderFromAnnotations.apply(ALLELE_SPECIFIC_ANNOTATIONS)
-                                .addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME)
-                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
-                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni,training=true,truth=true", SNP_RESOURCE_VCF)
-                },
-                {
-                        argumentsBuilderFromAnnotations.apply(ALLELE_SPECIFIC_ANNOTATIONS)
-                                .addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME)
-                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
-                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills,training=true,truth=true", INDEL_RESOURCE_VCF)
-                },
-                {
-                        argumentsBuilderFromAnnotations.apply(ALLELE_SPECIFIC_ANNOTATIONS)
-                                .addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME)
-                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
-                                .add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
-                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni,training=true,truth=true", SNP_RESOURCE_VCF)
-                                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills,training=true,truth=true", INDEL_RESOURCE_VCF)
-                }
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addNonAlleleSpecificAnnotations = (argsBuilder) -> {
+            NON_ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
+            return argsBuilder;
         };
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addAlleleSpecificAnnotations = (argsBuilder) -> {
+            argsBuilder.addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME); // TODO check why removing this line still works
+            ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
+            return argsBuilder;
+        };
+
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addSNPModeAndResources = (argsBuilder) -> {
+            argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
+                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-training,training=true", SNP_TRAINING_VCF)
+                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-truth,truth=true", SNP_TRUTH_VCF);
+            return argsBuilder;
+        };
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addIndelModeAndResources = (argsBuilder) -> {
+            argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
+                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-training,training=true", INDEL_TRAINING_VCF)
+                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-truth,truth=true", INDEL_TRUTH_VCF);
+            return argsBuilder;
+        };
+
+        final List<List<Function<ArgumentsBuilder, ArgumentsBuilder>>> testConfigurations = Lists.cartesianProduct(
+                Arrays.asList(addNonAlleleSpecificAnnotations, addAlleleSpecificAnnotations),
+                Arrays.asList(addSNPModeAndResources, addIndelModeAndResources, addSNPModeAndResources.andThen(addIndelModeAndResources)));
+
+        // TODO add unlabeled
+
+        return testConfigurations.stream()
+                .map(addFunctions -> new Object[]{addFunctions.stream()
+                        .reduce(Function.identity(), Function::andThen)
+                        .apply(baseArgsBuilderSupplier.get())})
+                .toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "dataValidInputs")
     public void testValidInputs(final ArgumentsBuilder argsBuilder) {
-        final File outputDir = createTempDir("testDir");
-        final String outputPrefix = outputDir + "/test";
-        argsBuilder.add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, outputPrefix);
-        argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         runCommandLine(argsBuilder);
     }
 
