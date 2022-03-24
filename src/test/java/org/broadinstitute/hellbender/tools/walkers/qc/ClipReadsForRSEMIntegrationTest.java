@@ -25,9 +25,11 @@ public class ClipReadsForRSEMIntegrationTest extends CommandLineProgramTest {
         // final String bam = home + "test/SM-HESUP_SSIV_SM-LQZYY_transcriptome_test.bam";
         // final String output = home + "test/SM-HESUP_SSIV_SM-LQZYY_transcriptome_test_out.bam";
 
+        // Case 4
         final String bam = home + "test/SM-LVFDN_15_Min_Low_Mid_transcriptome.duplicate_marked.bam";
         final String output = home + "test/SM-LVFDN_15_Min_Low_Mid_transcriptome_out.bam";
 
+        // Case 5
         args.addInput(bam);
         args.addOutput(output);
         runCommandLine(args, ClipReadsForRSEM.class.getSimpleName());

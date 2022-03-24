@@ -116,12 +116,15 @@ public class ClipReadsForRSEM extends GATKTool {
             // The only allowed cigars are M followed by S in read1 and S followed by M, and vice versa
             if ((cigarElements1.get(0).getOperator() == CigarOperator.M && cigarElements1.get(1).getOperator() == CigarOperator.S) ||
                     (cigarElements1.get(0).getOperator() == CigarOperator.S && cigarElements1.get(1).getOperator() == CigarOperator.M)){
+                // Now check that e.g. 100M46S is paired with 46S100M
+                // We don't require the exact match in the sizes of the operators (for now). M
+                return cigarElements1.get(0).getOperator() == cigarElements2.get(1).getOperator() &&
+                        cigarElements1.get(1).getOperator() == cigarElements2.get(0).getOperator();
+            } else {
                 return false;
             }
 
-            // Now check that e.g. 100M46S is paired with 46S100M
-            return cigarElements1.get(0) == cigarElements2.get(1) &&
-                    cigarElements1.get(1) == cigarElements2.get(0);
+
         } else {
             return false;
         }
