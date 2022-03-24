@@ -29,7 +29,7 @@ print(f"running with prefix {output_table_prefix}")
 REF_VET_TABLE_COUNT = -1
 client = None
 
-EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
+EXTRACT_SAMPLE_TABLE = f"temp_table_prepare_{output_table_prefix}_sample_names"
 
 def dump_job_stats():
   total = 0
