@@ -8,12 +8,12 @@ workflow GvsAoUReblockGvcf {
   input {
     String gvcf
     String? gvcf_index
+    File ref_dict
     File ref_fasta
     File ref_fasta_index
-    File ref_dict
 
     # pass the service account as a string so a change in the file won't interfere with call caching
-    String? service_account_json 
+    String? service_account_json
     String? requester_pays_project
     String? site_id
     String docker_image = "us.gcr.io/broad-gatk/gatk:4.2.2.0"
