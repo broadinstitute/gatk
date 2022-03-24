@@ -22,6 +22,7 @@ public class ExtractFeaturesRecord implements Locatable {
     private final String asReadPosRankSumFreqTable; // nullable
     private final Double rawMQ;
     private final Double rawAD;
+    private final Double sumAD;
     private final Double rawADGT1;
     private final int sbRefPlus;
     private final int sbRefMinus;
@@ -79,6 +80,10 @@ public class ExtractFeaturesRecord implements Locatable {
         Object refADNullable = genericRecord.get("ref_ad");
         this.refAD = ( refADNullable == null ) ? 0 : Double.valueOf(Objects.toString(refADNullable));
 
+        // if sum_AD is not defined, set it to zero
+        Object sumADNullable = genericRecord.get(SchemaUtils.SUM_AD);
+        this.sumAD = ( sumADNullable == null ) ? 0 : Double.valueOf(Objects.toString(sumADNullable));
+
     }
 
     @Override
@@ -111,6 +116,8 @@ public class ExtractFeaturesRecord implements Locatable {
     public Double getRawMQ() { return this.rawMQ; }
 
     public Double getRawAD() { return this.rawAD; }
+
+    public Double getSumAD() { return this.sumAD; }
 
     public Double getRawADGT1() { return this.rawADGT1; }
 

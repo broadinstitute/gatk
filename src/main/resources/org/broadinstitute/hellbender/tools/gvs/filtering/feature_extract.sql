@@ -66,6 +66,7 @@ WITH
            AS_ReadPosRankSum,
            AS_ReadPosRankSum_ft,
            RAW_MQ,
+           SUM_AD,
            RAW_AD,
            RAW_AD_GT_1,
            aarsbi.SB_REF_PLUS as SB_REF_PLUS,
@@ -88,6 +89,7 @@ WITH
            `bqutil`.fn.median(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) / 10.0 as AS_ReadPosRankSum,
            freq_table(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) as AS_ReadPosRankSum_ft,
            IFNULL(SUM(RAW_MQ),0) as RAW_MQ,
+           IFNULL(SUM((SELECT SUM(CAST(x AS INT64)) FROM UNNEST(SPLIT(call_ad, ",")) x)),0) SUM_AD,
            IFNULL(SUM(AD),0) as RAW_AD,
            IFNULL(SUM(CASE WHEN AD > 1 THEN AD ELSE 0 END),0) as RAW_AD_GT_1, # to match GATK implementation
            IFNULL(SUM(REF_AD),0) as REF_AD,
