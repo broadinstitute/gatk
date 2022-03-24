@@ -60,14 +60,15 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
         return interval.getEnd();
     }
 
-    // code retained from VQSR
+    // code mostly retained from VQSR; some exception catching added
     private static double decodeAnnotation(final VariantContext vc,
                                            final List<Allele> altAlleles,
                                            final String annotationName,
                                            final boolean useASAnnotations) {
         double value;
         try {
-            //if we're in allele-specific mode and an allele-specific annotation has been requested, parse the appropriate value from the list
+            // if we're in allele-specific mode and an allele-specific annotation has been requested, parse the appropriate value from the list
+            // TODO: can we trigger allele-specific parsing based on annotation prefix or some other logic?
             if (useASAnnotations && annotationName.startsWith(GATKVCFConstants.ALLELE_SPECIFIC_PREFIX)) {
                 final List<Object> valueList = vc.getAttributeAsList(annotationName);
                 final Allele altAllele = altAlleles.get(0);

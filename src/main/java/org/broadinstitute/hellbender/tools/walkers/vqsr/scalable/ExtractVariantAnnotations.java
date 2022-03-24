@@ -39,8 +39,11 @@ import java.util.stream.Collectors;
 @BetaFeature
 public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
+    public static final String MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS_LONG_NAME = "maximum-number-of-unlabeled-variants";
+    public static final String RESERVOIR_SAMPLING_RANDOM_SEED_LONG_NAME = "reservoir-sampling-random-seed";
+
     @Argument(
-            fullName = "maximum-number-of-unlabeled-variants",
+            fullName = MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS_LONG_NAME,
             doc = "Maximum number of unlabeled variants to extract. " +
                     "If greater than zero, reservoir sampling will be used to randomly sample this number " +
                     "of sites from input sites that are not present in the specified resources.",
@@ -48,7 +51,7 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
     private int maximumNumberOfUnlabeledVariants = 0;
 
     @Argument(
-            fullName = "reservoir-sampling-random-seed",
+            fullName = RESERVOIR_SAMPLING_RANDOM_SEED_LONG_NAME,
             doc = "Random seed to use for reservoir sampling of unlabeled variants.")
     private int reservoirSamplingRandomSeed = 0;
 

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.collect.Lists;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -18,6 +19,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * TODO
@@ -37,6 +39,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     private static final File SNP_TRUTH_VCF = new File(TEST_FILES_DIR, "1000G_omni2.5.hg38.chr1.5M-10M.vcf.gz");
     private static final File INDEL_TRAINING_VCF = new File(TEST_FILES_DIR, "Mills_and_1000G_gold_standard.indels.hg38.chr1.1-5M.vcf.gz");
     private static final File INDEL_TRUTH_VCF = new File(TEST_FILES_DIR, "Mills_and_1000G_gold_standard.indels.hg38.chr1.5M-10M.vcf.gz");
+    private static final int MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = 100;
 
     @DataProvider(name = "dataValidInputs")
     public Object[][] dataValidInputs() {
@@ -75,21 +78,37 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
             return argsBuilder;
         };
 
-        final List<List<Function<ArgumentsBuilder, ArgumentsBuilder>>> testConfigurations = Lists.cartesianProduct(
-                Arrays.asList(addNonAlleleSpecificAnnotations, addAlleleSpecificAnnotations),
-                Arrays.asList(addSNPModeAndResources, addIndelModeAndResources, addSNPModeAndResources.andThen(addIndelModeAndResources)));
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addMaximumNumberOfUnlabeledVariants = (argsBuilder) -> {
+            argsBuilder.add(ExtractVariantAnnotations.MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS_LONG_NAME, MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS);
+            return argsBuilder;
+        };
+
+        final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
+                Arrays.asList(
+                        Pair.of("nonAS", addNonAlleleSpecificAnnotations),
+                        Pair.of("AS", addAlleleSpecificAnnotations)),
+                Arrays.asList(
+                        Pair.of("snp", addSNPModeAndResources),
+                        Pair.of("indel", addIndelModeAndResources),
+                        Pair.of("both", addSNPModeAndResources.andThen(addIndelModeAndResources))),
+                Arrays.asList(
+                        Pair.of("positive", Function.identity()),
+                        Pair.of("positiveUnlabeled", addMaximumNumberOfUnlabeledVariants)));
 
         // TODO add unlabeled
 
         return testConfigurations.stream()
-                .map(addFunctions -> new Object[]{addFunctions.stream()
-                        .reduce(Function.identity(), Function::andThen)
-                        .apply(baseArgsBuilderSupplier.get())})
+                .map(tagAndAddFunctionPairs -> new Object[]{
+                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")),
+                        tagAndAddFunctionPairs.stream().map(Pair::getRight)
+                                .reduce(Function.identity(), Function::andThen)
+                                .apply(baseArgsBuilderSupplier.get())})
                 .toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "dataValidInputs")
-    public void testValidInputs(final ArgumentsBuilder argsBuilder) {
+    public void testValidInputs(final String tag,
+                                final ArgumentsBuilder argsBuilder) {
         runCommandLine(argsBuilder);
     }
 
