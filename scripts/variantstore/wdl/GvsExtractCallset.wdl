@@ -7,10 +7,11 @@ workflow GvsExtractCallset {
     String dataset_name
     String project_id
 
-    String filter_set_name
     String extract_table_prefix
+    String filter_set_name
     String query_project = project_id
     Int scatter_count
+
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     String output_file_base_name = filter_set_name
@@ -36,7 +37,6 @@ workflow GvsExtractCallset {
   String fq_ranges_cohort_vet_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__VET_DATA"
   String fq_samples_to_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
   String fq_ranges_dataset = "~{project_id}.~{dataset_name}"
-
   Array[String] tables_patterns_for_datetime_check = ["~{extract_table_prefix}__%"]
 
   call Utils.SplitIntervals {
@@ -62,6 +62,15 @@ workflow GvsExtractCallset {
       service_account_json_path = service_account_json_path
   }
 
+  call ValidateFilterSetName {
+    input:
+      query_project = query_project,
+      filter_set_name = filter_set_name,
+      data_project = project_id,
+      data_dataset = dataset_name,
+      service_account_json_path = service_account_json_path
+  }
+
   scatter(i in range(length(SplitIntervals.interval_files))) {
     call ExtractTask {
       input:
@@ -83,6 +92,7 @@ workflow GvsExtractCallset {
         fq_filter_set_site_table           = fq_filter_set_site_table,
         fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
         filter_set_name                    = filter_set_name,
+        filter_set_name_verified           = ValidateFilterSetName.done,
         service_account_json_path          = service_account_json_path,
         drop_state                         = "FORTY",
         output_file                        = "${output_file_base_name}_${i}.vcf.gz",
@@ -113,7 +123,52 @@ workflow GvsExtractCallset {
   }
 }
 
-################################################################################
+task ValidateFilterSetName {
+  input {
+    String filter_set_name
+    String data_project
+    String data_dataset
+    String query_project
+    String? service_account_json_path
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+  command <<<
+    set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{query_project}
+    fi
+
+    echo "project_id = ~{query_project}" > ~/.bigqueryrc
+
+    OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT filter_set_name as available_filter_set_names FROM ~{data_project}.~{data_dataset}.filter_set_info GROUP BY filter_set_name")
+    FILTERSETS=${OUTPUT#"available_filter_set_names"}
+
+    if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
+      echo "Filter set name '~{filter_set_name}' found."
+    else
+      echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{data_dataset} are"
+      echo $FILTERSETS
+      exit 1
+    fi
+  >>>
+  output {
+    String done = read_string(stdout())
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
 task ExtractTask {
   input {
     File reference
@@ -141,6 +196,7 @@ task ExtractTask {
     String fq_filter_set_site_table
     String fq_filter_set_tranches_table
     String? filter_set_name
+    String filter_set_name_verified
 
     # Runtime Options:
     String? service_account_json_path
