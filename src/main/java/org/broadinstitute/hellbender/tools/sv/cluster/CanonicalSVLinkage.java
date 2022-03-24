@@ -136,6 +136,8 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         // Breakend proximity
         final SimpleInterval intervalA1 = a.getPositionAInterval().expandWithinContig(params.getWindow(), dictionary);
         final SimpleInterval intervalA2 = a.getPositionBInterval().expandWithinContig(params.getWindow(), dictionary);
+        Utils.nonNull(intervalA1, "Invalid start position " + a.getPositionA() + " in record " + a.getId());
+        Utils.nonNull(intervalA2, "Invalid end position " + a.getPositionB() + " in record " + a.getId());
         final SimpleInterval intervalB1 = b.getPositionAInterval();
         final SimpleInterval intervalB2 = b.getPositionBInterval();
         if (!(intervalA1.overlaps(intervalB1) && intervalA2.overlaps(intervalB2))) {

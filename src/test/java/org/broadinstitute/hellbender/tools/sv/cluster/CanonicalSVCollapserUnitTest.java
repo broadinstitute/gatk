@@ -1617,6 +1617,7 @@ public class CanonicalSVCollapserUnitTest {
         return new Object[][]{
                 // 1 variant
                 {
+                        new String[] {"chr1", "chr1"},
                         new int[]{1001}, // starts
                         new int[]{1100}, // ends
                         StructuralVariantType.DEL,
@@ -1627,6 +1628,7 @@ public class CanonicalSVCollapserUnitTest {
                 },
                 // 2 variants
                 {
+                        new String[] {"chr1", "chr1"},
                         new int[]{1001, 1011},
                         new int[]{1100, 1110},
                         StructuralVariantType.DEL,
@@ -1635,8 +1637,20 @@ public class CanonicalSVCollapserUnitTest {
                         new int[]{1011, 1100},
                         new int[]{1006, 1105}
                 },
+                // 2 variants
+                {
+                        new String[] {"chr1", "chr1"},
+                        new int[]{1001, 1011},
+                        new int[]{1000, 1110},
+                        StructuralVariantType.DEL,
+                        new int[]{1001, 1001},  // true median  second position is 1000 but not allowed since < 1001
+                        new int[]{1001, 1110},
+                        new int[]{1011, 1011},  // true min second position is 1000 but not allowed since < 1011
+                        new int[]{1006, 1055}
+                },
                 // 3 variants
                 {
+                        new String[] {"chr1", "chr1"},
                         new int[]{1001, 1011, 1021},
                         new int[]{1100, 1110, 1121},
                         StructuralVariantType.DUP,
@@ -1647,6 +1661,7 @@ public class CanonicalSVCollapserUnitTest {
                 },
                 // 3 variants, ends overlap starts
                 {
+                        new String[] {"chr1", "chr1"},
                         new int[]{1001, 1011, 1021},
                         new int[]{1031, 1011, 1021},
                         StructuralVariantType.DUP,
@@ -1655,8 +1670,9 @@ public class CanonicalSVCollapserUnitTest {
                         new int[]{1021, 1021}, // min end before max start
                         new int[]{1011, 1021}
                 },
-                // BND
+                // BND, same contig
                 {
+                        new String[] {"chr1", "chr1"},
                         new int[]{1001, 1011, 1021},
                         new int[]{1100, 1110, 1121},
                         StructuralVariantType.BND,
@@ -1665,8 +1681,20 @@ public class CanonicalSVCollapserUnitTest {
                         new int[]{1021, 1100},
                         new int[]{1011, 1110}
                 },
+                // BND, different contigs
+                {
+                        new String[] {"chr1", "chr2"},
+                        new int[]{1001, 1011, 1021},
+                        new int[]{1000, 1110, 1121},
+                        StructuralVariantType.BND,
+                        new int[]{1011, 1110},
+                        new int[]{1001, 1121},
+                        new int[]{1021, 1000}, // 1000 < 1021, but ok because on diff contigs
+                        new int[]{1011, 1077}
+                },
                 // INS, same start/end
                 {
+                        new String[] {"chr1", "chr1"},
                         new int[]{1001, 1011, 1021},
                         new int[]{1001, 1011, 1021},
                         StructuralVariantType.INS,
@@ -1677,6 +1705,7 @@ public class CanonicalSVCollapserUnitTest {
                 },
                 // INS, different start/end
                 {
+                        new String[] {"chr1", "chr1"},
                         new int[]{1001, 1011, 1021},
                         new int[]{1011, 1021, 1031},
                         StructuralVariantType.INS,
@@ -1689,27 +1718,27 @@ public class CanonicalSVCollapserUnitTest {
     }
 
     @Test(dataProvider= "collapseIntervalTestData")
-    public void collapseIntervalTest(final int[] starts, final int[] ends, final StructuralVariantType svtype,
+    public void collapseIntervalTest(final String[] contigs, final int[] starts, final int[] ends, final StructuralVariantType svtype,
                                      final int[] expectedMedian, final int[] expectedMinMax, final int[] expectedMaxMin,
                                      final int[] expectedMean) {
         final List<SVCallRecord> records =  IntStream.range(0, starts.length)
-                .mapToObj(i -> SVTestUtils.newCallRecordWithIntervalAndType(starts[i], ends[i], svtype)).collect(Collectors.toList());
+                .mapToObj(i -> SVTestUtils.newCallRecordWithContigsIntervalAndType(contigs[0], starts[i], contigs[1], ends[i], svtype)).collect(Collectors.toList());
+        collapseIntervalTestHelper(collapser, svtype, contigs, records, expectedMedian);
+        collapseIntervalTestHelper(collapserMinMax, svtype, contigs, records, expectedMinMax);
+        collapseIntervalTestHelper(collapserMaxMin, svtype, contigs, records, expectedMaxMin);
+        collapseIntervalTestHelper(collapserMean, svtype, contigs, records, expectedMean);
+    }
 
-        final Pair<Integer, Integer> resultMedian = collapser.collapseInterval(records);
-        Assert.assertEquals((int) resultMedian.getKey(), expectedMedian[0]);
-        Assert.assertEquals((int) resultMedian.getValue(), expectedMedian[1]);
-
-        final Pair<Integer, Integer> resultMinMax = collapserMinMax.collapseInterval(records);
-        Assert.assertEquals((int) resultMinMax.getKey(), expectedMinMax[0]);
-        Assert.assertEquals((int) resultMinMax.getValue(), expectedMinMax[1]);
-
-        final Pair<Integer, Integer> resultMaxMin = collapserMaxMin.collapseInterval(records);
-        Assert.assertEquals((int) resultMaxMin.getKey(), expectedMaxMin[0]);
-        Assert.assertEquals((int) resultMaxMin.getValue(), expectedMaxMin[1]);
-
-        final Pair<Integer, Integer> resultMean = collapserMean.collapseInterval(records);
-        Assert.assertEquals((int) resultMean.getKey(), expectedMean[0]);
-        Assert.assertEquals((int) resultMean.getValue(), expectedMean[1]);
+    private static void collapseIntervalTestHelper(final CanonicalSVCollapser collapser,
+                                                   final StructuralVariantType svtype,
+                                                   final String[] contigs,
+                                                   final List<SVCallRecord> records,
+                                                   final int[] expected) {
+        final Pair<Integer, Integer> result = collapser.collapseInterval(records);
+        Assert.assertEquals((int) result.getKey(), expected[0]);
+        Assert.assertEquals((int) result.getValue(), expected[1]);
+        // Test that the coordinates validate when we try to create a new record
+        SVTestUtils.newCallRecordWithContigsIntervalAndType(contigs[0], result.getKey(), contigs[1], result.getValue(), svtype);
     }
 
     @DataProvider(name = "collapseTypesTestData")

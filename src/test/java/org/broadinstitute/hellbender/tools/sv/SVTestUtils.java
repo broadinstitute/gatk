@@ -135,7 +135,7 @@ public class SVTestUtils {
             genotypes.add(makeGenotypeWithRefAllele(builder, refAllele));
         }
         return new SVCallRecord(id, contigA, positionA, strandA, contigB, positionB, strandB, type, length, algorithms,
-                newAlleles, genotypes);
+                newAlleles, genotypes, Collections.emptyMap(), hg38Dict);
     }
 
     public static final Genotype makeGenotypeWithRefAllele(final GenotypeBuilder builder, final Allele refAllele) {
@@ -411,6 +411,13 @@ public class SVTestUtils {
     // Note strands and length may not be set properly
     public static SVCallRecord newCallRecordWithIntervalAndType(final int start, final int end, final StructuralVariantType svtype) {
         return new SVCallRecord("", "chr1", start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
+                svtype, getLength(start, end, svtype), PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyMap());
+    }
+
+    // Note strands and length may not be set properly
+    public static SVCallRecord newCallRecordWithContigsIntervalAndType(final String startContig, final int start, final String endContig, final int end, final StructuralVariantType svtype) {
+        return new SVCallRecord("", startContig, start, getValidTestStrandA(svtype), endContig, end, getValidTestStrandB(svtype),
                 svtype, getLength(start, end, svtype), PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyMap());
     }

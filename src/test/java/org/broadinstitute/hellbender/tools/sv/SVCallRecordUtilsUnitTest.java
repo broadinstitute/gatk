@@ -348,7 +348,7 @@ public class SVCallRecordUtilsUnitTest {
     @Test
     public void testConvertInversionsToBreakends() {
         final SVCallRecord nonInversion = SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, StructuralVariantType.DEL);
-        final List<SVCallRecord> nonInversionResult = SVCallRecordUtils.convertInversionsToBreakends(nonInversion).collect(Collectors.toList());
+        final List<SVCallRecord> nonInversionResult = SVCallRecordUtils.convertInversionsToBreakends(nonInversion, SVTestUtils.hg38Dict).collect(Collectors.toList());
         Assert.assertEquals(nonInversionResult.size(), 1);
         Assert.assertNotNull(nonInversionResult.get(0));
         SVTestUtils.assertEqualsExceptMembership(nonInversionResult.get(0), nonInversion);
@@ -358,7 +358,7 @@ public class SVCallRecordUtilsUnitTest {
                 Collections.emptyList(),
                 Collections.emptyList(),
                 Collections.emptyMap());
-        final List<SVCallRecord> inversionResult = SVCallRecordUtils.convertInversionsToBreakends(inversion).collect(Collectors.toList());
+        final List<SVCallRecord> inversionResult = SVCallRecordUtils.convertInversionsToBreakends(inversion, SVTestUtils.hg38Dict).collect(Collectors.toList());
         Assert.assertEquals(inversionResult.size(), 2);
 
         final SVCallRecord bnd1 = inversionResult.get(0);
