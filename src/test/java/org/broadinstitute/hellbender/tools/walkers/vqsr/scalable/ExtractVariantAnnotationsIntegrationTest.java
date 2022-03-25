@@ -172,12 +172,23 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     }
 
     @Test(expectedExceptions = CommandLineException.class)
-    public void testMissingRequiredLabeledResource() {
+    public void testMissingTrainingResource() {
         final File outputDir = createTempDir("extract");
         final String outputPrefix = String.format("%s/test", outputDir);
         final ArgumentsBuilder argsBuilder = ADD_ALLELE_SPECIFIC_ANNOTATIONS.apply(BASE_ARGS_BUILDER_SUPPLIER.get());
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
                 .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-training,training=true", SNP_TRAINING_VCF) // only specify training label
+                .addOutput(outputPrefix);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testMissingTruthResource() {
+        final File outputDir = createTempDir("extract");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = ADD_ALLELE_SPECIFIC_ANNOTATIONS.apply(BASE_ARGS_BUILDER_SUPPLIER.get());
+        argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-truth,truth=true", SNP_TRUTH_VCF) // only specify truth label
                 .addOutput(outputPrefix);
         runCommandLine(argsBuilder);
     }
