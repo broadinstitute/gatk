@@ -294,7 +294,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private void processClusters() {
         if (!defragmenter.isEmpty()) {
             final List<SVCallRecord> defragmentedCalls = defragmenter.forceFlushAndGetOutput();
-            defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
+            defragmentedCalls.stream().sorted(SVCallRecordUtils.getCallComparator(dictionary)).forEachOrdered(clusterEngine::add);
         }
         //Jack and Isaac cluster first and then defragment
         final List<SVCallRecord> clusteredCalls = clusterEngine.forceFlushAndGetOutput();
