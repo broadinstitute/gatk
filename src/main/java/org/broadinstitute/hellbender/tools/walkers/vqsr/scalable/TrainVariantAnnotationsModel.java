@@ -44,6 +44,10 @@ import java.util.stream.Collectors;
 @DocumentedFeature
 public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
+    public static final String MODE_LONG_NAME = "mode";
+    public static final String ANNOTATIONS_HDF5_LONG_NAME = "annotations-hdf5";
+    public static final String UNLABELED_ANNOTATIONS_HDF5_LONG_NAME = "unlabeled-annotations-hdf5";
+
     enum ModelBackendMode {
         PYTHON, BGMM    // TODO put IsolationForest script into resources and use as a default PYTHON backend
     }
@@ -57,12 +61,12 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     private static final String UNLABELED_SCORES_HDF5_SUFFIX = ".unlabeledScores.hdf5";
 
     @Argument(
-            fullName = "annotations-hdf5",
+            fullName = ANNOTATIONS_HDF5_LONG_NAME,
             doc = "HDF5 file containing annotations extracted with ExtractVariantAnnotations.")
     private File inputAnnotationsFile;
 
     @Argument(
-            fullName = "unlabeled-annotations-hdf5",
+            fullName = UNLABELED_ANNOTATIONS_HDF5_LONG_NAME,
             optional = true,
             doc = "HDF5 file containing annotations extracted with ExtractVariantAnnotations.")
     private File inputUnlabeledAnnotationsFile;
@@ -95,7 +99,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     private Double truthSensitivityThreshold;
 
     @Argument(
-            fullName = "mode",
+            fullName = MODE_LONG_NAME,
             doc = "Variant types for which to train models. Duplicate values will be ignored.",
             minElements = 1,
             optional = true)

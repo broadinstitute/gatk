@@ -8,7 +8,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-public class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
+/**
+ * See documentation for {@link ExtractVariantAnnotationsIntegrationTest} for information about how inputs and
+ * expected outputs used there are related to those used here and in {@link TrainVariantAnnotationsModelIntegrationTest}.
+ */
+public final class ScoreVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 
     private static final String PYTHON_SCRIPT = packageMainResourcesDir + "tools/walkers/vqsr/scalable/isolation-forest.py";
 

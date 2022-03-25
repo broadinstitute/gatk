@@ -1,14 +1,135 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
+import com.google.common.collect.Lists;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
-public class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProgramTest {
+/**
+ * See documentation for {@link ExtractVariantAnnotationsIntegrationTest} for information about how inputs and
+ * expected outputs used there are related to those used here and in {@link ScoreVariantAnnotationsIntegrationTest}.
+ */
+public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLineProgramTest {
+
+    // If true, update the expected outputs in tests that assert an exact match vs. prior output,
+    // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=ExtractVariantAnnotationsIntegrationTest"
+    // to update all of the exact-match tests at once. After you do this, you should look at the
+    // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+
+    /**
+     * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on.
+     */
+    @Test
+    public void assertThatExpectedOutputUpdateToggleIsDisabled() {
+        Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled.");
+    }
+
+    private static final File TEST_FILES_DIR = new File(largeFileTestDir,
+            "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/");
+    private static final File EXPECTED_TEST_FILES_DIR = new File(largeFileTestDir,
+            "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/train/expected");
+
+    // We use snippets of the Omni sites for SNP training (chr1:1-5000000) and truth (chr1:5000000-10000000); we don't sweat the 1bp overlap.
+    private static final File SNP_TRAINING_VCF = new File(TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.1-5M.vcf.gz");
+    private static final File SNP_TRUTH_VCF = new File(TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.5M-10M.vcf.gz");
+
+    // We use snippets of the Mills sites for indel training (chr1:1-5000000) and truth (chr1:5000000-10000000); we don't sweat the 1bp overlap.
+    private static final File INDEL_TRAINING_VCF = new File(TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.1-5M.vcf.gz");
+    private static final File INDEL_TRUTH_VCF = new File(TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.5M-10M.vcf.gz");
+
+    private static final int MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = 100;
+
+    // Supplier and functions for creating and adding various arguments to an ArgumentsBuilder.
+    private static final Supplier<ArgumentsBuilder> BASE_ARGS_BUILDER_SUPPLIER = ArgumentsBuilder::new;
+
+    private static final BiFunction<ArgumentsBuilder, File, ArgumentsBuilder> ADD_ANNOTATIONS_HDF5 = (argsBuilder, annotationsHDF5) -> {
+        argsBuilder.add(TrainVariantAnnotationsModel.ANNOTATIONS_HDF5_LONG_NAME, annotationsHDF5);
+        return argsBuilder;
+    };
+    private static final BiFunction<ArgumentsBuilder, File, ArgumentsBuilder> ADD_UNLABELED_ANNOTATIONS_HDF5 = (argsBuilder, unlabeledAnnotationsHDF5) -> {
+        argsBuilder.add(TrainVariantAnnotationsModel.UNLABELED_ANNOTATIONS_HDF5_LONG_NAME, unlabeledAnnotationsHDF5);
+        return argsBuilder;
+    };
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_SNP_MODE = (argsBuilder) -> {
+        argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.SNP);
+        return argsBuilder;
+    };
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_INDEL_MODE = (argsBuilder) -> {
+        argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.INDEL);
+        return argsBuilder;
+    };
+
+    // test 1) SNP-only training with nonAS.both.positive
+    //      2) SNP-only training with nonAS.both.positive and nonAS.both.unlabeled
+    //      3) SNP+INDEL training with nonAS.both.positive
+    //      4) SNP+INDEL training with nonAS.both.positive and nonAS.both.unlabeled
+    // for both BGMM and python
+
+    // test using nonAS.snp.positive for SNP-only training = using nonAS.both.positive for SNP-only training
+
+    // exception test annotation-name validation using AS.snp.positive and nonAS.snp.positiveUnlabeled
+    // exception test no-data validation using nonAS.snp.positive and nonAS.both.positiveUnlabeled for SNP+INDEL training
+    // exception test no-data validation using nonAS.snp.positive for INDEL training
+
+    /**
+     * Exact-match tests for all configurations given by the Cartesian product of the following options:
+     *  1) non-allele-specific vs. allele-specific
+     *  2) SNP vs. indel vs. both
+     *  3) positive vs. positive-unlabeled
+     */
+    @DataProvider(name = "dataValidInputs")
+    public Object[][] dataValidInputs() {
+        final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
+                Arrays.asList(
+                        Pair.of("nonAS", ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS),
+                        Pair.of("AS", ADD_ALLELE_SPECIFIC_ANNOTATIONS)),
+                Arrays.asList(
+                        Pair.of("snp", ADD_SNP_MODE_AND_RESOURCES),
+                        Pair.of("indel", ADD_INDEL_MODE_AND_RESOURCES),
+                        Pair.of("both", ADD_SNP_MODE_AND_RESOURCES.andThen(ADD_INDEL_MODE_AND_RESOURCES))),
+                Arrays.asList(
+                        Pair.of("positive", Function.identity()),
+                        Pair.of("positiveUnlabeled", ADD_MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS)));
+
+        return testConfigurations.stream()
+                .map(tagAndAddFunctionPairs -> new Object[]{
+                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., nonAS.snp.positive
+                        tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
+                                .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
+                                .apply(BASE_ARGS_BUILDER_SUPPLIER.get())})                                               //  appropriate arguments
+                .toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "dataValidInputs")
+    public void testValidInputs(final String tag,
+                                final ArgumentsBuilder argsBuilder) {
+        final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXPECTED_TEST_FILES_DIR : createTempDir("extract");
+        final String outputPrefix = String.format("%s/%s", outputDir, tag);
+        argsBuilder.addOutput(outputPrefix);
+        argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
+        runCommandLine(argsBuilder);
+
+        if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
+            assertOutputs(tag, outputPrefix);
+        }
+    }
 
     private static final String PYTHON_SCRIPT = packageMainResourcesDir + "tools/walkers/vqsr/scalable/isolation-forest.py";
 
