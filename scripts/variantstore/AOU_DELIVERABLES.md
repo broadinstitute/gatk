@@ -6,7 +6,7 @@
 3. Run the workflows outlined in the Quickstart description in the workspace that contains the data by using the "Copy to Another Workspace" function.  In addition to having to pass a GCP project ID and BigQuery dataset to all workflows, you will also need to know the path to a service account JSON file with permissions to AoU-specific projects and data. The first two steps (GvsAssignIds and GvsImportGenomes) can be run multiple times to load all necessary sample sets into one "instance" of GVS (if there are control samples included, they should be assigned IDs of 50 or fewer).  The rest of the steps are only run once, in order, and only after all the samples for the callset are loaded.
     1. GvsAssignIds at the sample set level ("Step 1" in workflow submission)
     2. GvsImportGenomes at the sample set level ("Step 1" in workflow submission)
-    	- Make sure that any samples that have been withdrawn or that have been loaded but should not be in the callset have the is_loaded column set to false.
+    	- Make sure that any samples that have been withdrawn or that have been loaded but should not be in the callset have the withdrawn column set.
     3. GvsCreateAltAllele
     4. GvsCreateFilterSet
         - make note of the "filter_set_name" input used

@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_add_sample_columns
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
@@ -88,6 +89,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_add_sample_columns
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -125,6 +127,7 @@ workflows:
          - master
          - ah_var_store
          - kc_vqsr_magic
+         - rsa_add_sample_columns
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl

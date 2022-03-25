@@ -6,7 +6,6 @@ RUN pip install -r /app/requirements.txt
 RUN apt-get update && apt-get -y upgrade && apt-get -y install bcftools
 
 # Copy the application source code.
-COPY create_cohort_extract_data_table.py /app
 COPY create_variant_annotation_table.py /app
 COPY create_ranges_cohort_extract_data_table.py /app
 COPY extract_subpop.py /app

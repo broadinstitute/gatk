@@ -216,7 +216,6 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
     bq --location=US --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
     "SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM \`~{data_project}\`.~{data_dataset}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like '~{sep="' OR table_name like '" table_patterns}'" > results.txt
 

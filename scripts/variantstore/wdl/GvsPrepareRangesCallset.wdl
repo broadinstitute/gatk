@@ -100,11 +100,11 @@ task PrepareRangesCallsetTask {
           $SERVICE_ACCOUNT_STANZA
   >>>
   output {
-    String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_cohort_extract_data_table.py
+    String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_ranges_cohort_extract_data_table.py
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:kc_ranges_prepare_2022_01_18"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_add_sample_columns_2022_03_25_2"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
