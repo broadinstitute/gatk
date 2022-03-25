@@ -6,6 +6,7 @@ import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -50,7 +51,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     private static final File TEST_FILES_DIR = new File(largeFileTestDir,
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/");
     private static final File EXPECTED_TEST_FILES_DIR = new File(largeFileTestDir,
-            "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/expected/extract");
+            "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/extract/expected");
     private static final File INPUT_VCF = new File(TEST_FILES_DIR, "input/stroke_vqsr_magic_as.chr1.1-10M.vcf.gz");
     private static final File SNP_TRAINING_VCF = new File(TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.1-5M.vcf.gz");
     private static final File SNP_TRUTH_VCF = new File(TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.5M-10M.vcf.gz");
@@ -63,6 +64,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         final Supplier<ArgumentsBuilder> baseArgsBuilderSupplier = () -> {
             final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
             argsBuilder.addVCF(INPUT_VCF);
+            argsBuilder.add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
             return argsBuilder;
         };
 
@@ -131,28 +133,28 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
 
     private static void assertOutputs(final String tag,
                                       final String outputPrefix) {
-
+        runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        runSystemCommand(String.format("diff %s/%s.vcf.gz %s.vcf.gz", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        runSystemCommand(String.format("diff %s/%s.vcf.gz.tbi %s.vcf.gz.tbi", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        if (tag.contains("positiveUnlabeled")) {
+            runSystemCommand(String.format("h5diff %s/%s.unlabeled.annot.hdf5 %s.unlabeled.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        } else {
+            Assert.assertFalse(new File(outputPrefix, ".unlabeled.annot.hdf5").exists());
+        }
     }
 
-//    private static void assertAnnotationFilesEqual(final File annotationsFile1,
-//                                                   final File annotationsFile2) {
-//        try (final HDF5File annotationsHDF5File1 = new HDF5File(annotationsFile1, HDF5File.OpenMode.READ_ONLY);
-//             final HDF5File annotationsHDF5File2 = new HDF5File(annotationsFile2, HDF5File.OpenMode.READ_ONLY)) {
-//            Assert.assertEquals(
-//                    annotationsHDF5File1.readStringArray("/annotations/names"),
-//                    annotationsHDF5File2.readStringArray("/annotations/names"));
-//            for (final String label : Arrays.asList("training", "truth")) {
-//                Assert.assertEquals(
-//                        LabeledVariantAnnotationsData.readChunkedDoubleArray(annotationsHDF5File1, String.format("/labels/%s", label)),
-//                        LabeledVariantAnnotationsData.readChunkedDoubleArray(annotationsHDF5File2, String.format("/labels/%s", label)));
-//            }
-//            Assert.assertEquals(
-//                    HDF5Utils.readChunkedDoubleMatrix(annotationsHDF5File1, "/annotations"),
-//                    HDF5Utils.readChunkedDoubleMatrix(annotationsHDF5File2, "/annotations"));
-//        } catch (final HDF5LibException exception) {
-//            Assert.fail("Exception encountered during reading of annotations:", exception);
-//        }
-//    }
+    private static void runSystemCommand(final String command) {
+        try {
+            final Process process = Runtime.getRuntime().exec(command);
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            while (reader.readLine() != null) {
+                Assert.fail(command);
+            }
+            reader.close();
+        } catch (final IOException e) {
+            Assert.fail(e.getMessage());
+        }
+    }
 
     @Test
     public void test1kgp50ExomesAllUnlabeled() throws IOException {
@@ -173,6 +175,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
                 "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
                 "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--add-output-vcf-command-line", "false",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
@@ -181,19 +184,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         runSystemCommand("h5diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.unlabeled.annot.hdf5 /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.unlabeled.annot.hdf5");
         runSystemCommand("diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.vcf.gz /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.vcf.gz");
         runSystemCommand("diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.vcf.gz.tbi /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.vcf.gz.tbi");
-    }
-
-    private static void runSystemCommand(final String command) {
-        try {
-            final Process process = Runtime.getRuntime().exec(command);
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            while (reader.readLine() != null) {
-                Assert.fail(command);
-            }
-            reader.close();
-        } catch (final IOException e) {
-            e.printStackTrace();
-        }
     }
 
     @Test
