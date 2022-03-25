@@ -2,11 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,14 +16,18 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * TODO
+ * Note that copies of a subset of the expected outputs for the exact-match tests below are used as inputs for
+ * {@link TrainVariantAnnotationsModelIntegrationTest}. Similarly, copies of a subset of the expected outputs for
+ * {@link TrainVariantAnnotationsModelIntegrationTest} are used as inputs for {@link ScoreVariantAnnotationsIntegrationTest}.
+ * These copies are located in the train/input and score/input subdirectories in the test-resources directory for this package.
+ *
+ * We choose to use copies of these files (rather than the original expected files) to encapsulate the tests for each tool.
+ * However, developers updating any of these tests may optionally choose to keep test files for all tools in sync, as appropriate.
  */
 public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 
@@ -52,68 +55,80 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/");
     private static final File EXPECTED_TEST_FILES_DIR = new File(largeFileTestDir,
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/extract/expected");
+
+    // The input VCF should cover a genomic region given by the union of regions in the below training and truth resources
+    // and should also contain a few multiallelics that overlap those resources.
     private static final File INPUT_VCF = new File(TEST_FILES_DIR, "input/stroke_vqsr_magic_as.chr1.1-10M.vcf.gz");
+
+    // We use snippets of the Omni sites for SNP training (chr1:1-5000000) and truth (chr1:5000000-10000000); we don't sweat the 1bp overlap.
     private static final File SNP_TRAINING_VCF = new File(TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.1-5M.vcf.gz");
     private static final File SNP_TRUTH_VCF = new File(TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.5M-10M.vcf.gz");
+
+    // We use snippets of the Mills sites for indel training (chr1:1-5000000) and truth (chr1:5000000-10000000); we don't sweat the 1bp overlap.
     private static final File INDEL_TRAINING_VCF = new File(TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.1-5M.vcf.gz");
     private static final File INDEL_TRUTH_VCF = new File(TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.5M-10M.vcf.gz");
+
     private static final int MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = 100;
 
+    // Supplier and functions for creating and adding various arguments to an ArgumentsBuilder.
+    private static final Supplier<ArgumentsBuilder> BASE_ARGS_BUILDER_SUPPLIER = () -> {
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        argsBuilder.addVCF(INPUT_VCF);
+        argsBuilder.add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+        return argsBuilder;
+    };
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS = (argsBuilder) -> {
+        NON_ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
+        return argsBuilder;
+    };
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_ALLELE_SPECIFIC_ANNOTATIONS = (argsBuilder) -> {
+        argsBuilder.addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME);
+        ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
+        return argsBuilder;
+    };
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_SNP_MODE_AND_RESOURCES = (argsBuilder) -> {
+        argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-training,training=true", SNP_TRAINING_VCF)
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-truth,truth=true", SNP_TRUTH_VCF);
+        return argsBuilder;
+    };
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_INDEL_MODE_AND_RESOURCES = (argsBuilder) -> {
+        argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-training,training=true", INDEL_TRAINING_VCF)
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-truth,truth=true", INDEL_TRUTH_VCF);
+        return argsBuilder;
+    };
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = (argsBuilder) -> {
+        argsBuilder.add(ExtractVariantAnnotations.MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS_LONG_NAME, MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS);
+        return argsBuilder;
+    };
+
+    /**
+     * Exact-match tests for all configurations given by the Cartesian product of the following options:
+     *  1) non-allele-specific vs. allele-specific
+     *  2) SNP vs. indel vs. both
+     *  3) positive vs. positive-unlabeled
+     */
     @DataProvider(name = "dataValidInputs")
     public Object[][] dataValidInputs() {
-        final Supplier<ArgumentsBuilder> baseArgsBuilderSupplier = () -> {
-            final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
-            argsBuilder.addVCF(INPUT_VCF);
-            argsBuilder.add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
-            return argsBuilder;
-        };
-
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addNonAlleleSpecificAnnotations = (argsBuilder) -> {
-            NON_ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
-            return argsBuilder;
-        };
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addAlleleSpecificAnnotations = (argsBuilder) -> {
-            argsBuilder.addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME); // TODO check why removing this line still works
-            ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
-            return argsBuilder;
-        };
-
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addSNPModeAndResources = (argsBuilder) -> {
-            argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
-                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-training,training=true", SNP_TRAINING_VCF)
-                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-truth,truth=true", SNP_TRUTH_VCF);
-            return argsBuilder;
-        };
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addIndelModeAndResources = (argsBuilder) -> {
-            argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "INDEL")
-                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-training,training=true", INDEL_TRAINING_VCF)
-                    .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-truth,truth=true", INDEL_TRUTH_VCF);
-            return argsBuilder;
-        };
-
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addMaximumNumberOfUnlabeledVariants = (argsBuilder) -> {
-            argsBuilder.add(ExtractVariantAnnotations.MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS_LONG_NAME, MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS);
-            return argsBuilder;
-        };
-
         final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
                 Arrays.asList(
-                        Pair.of("nonAS", addNonAlleleSpecificAnnotations),
-                        Pair.of("AS", addAlleleSpecificAnnotations)),
+                        Pair.of("nonAS", ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS),
+                        Pair.of("AS", ADD_ALLELE_SPECIFIC_ANNOTATIONS)),
                 Arrays.asList(
-                        Pair.of("snp", addSNPModeAndResources),
-                        Pair.of("indel", addIndelModeAndResources),
-                        Pair.of("both", addSNPModeAndResources.andThen(addIndelModeAndResources))),
+                        Pair.of("snp", ADD_SNP_MODE_AND_RESOURCES),
+                        Pair.of("indel", ADD_INDEL_MODE_AND_RESOURCES),
+                        Pair.of("both", ADD_SNP_MODE_AND_RESOURCES.andThen(ADD_INDEL_MODE_AND_RESOURCES))),
                 Arrays.asList(
                         Pair.of("positive", Function.identity()),
-                        Pair.of("positiveUnlabeled", addMaximumNumberOfUnlabeledVariants)));
+                        Pair.of("positiveUnlabeled", ADD_MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS)));
 
         return testConfigurations.stream()
                 .map(tagAndAddFunctionPairs -> new Object[]{
                         tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., nonAS.snp.positive
                         tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
                                 .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
-                                .apply(baseArgsBuilderSupplier.get())})                                                  //  appropriate arguments
+                                .apply(BASE_ARGS_BUILDER_SUPPLIER.get())})                                               //  appropriate arguments
                 .toArray(Object[][]::new);
     }
 
@@ -156,211 +171,28 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         }
     }
 
-    @Test
-    public void test1kgp50ExomesAllUnlabeled() throws IOException {
-        final String[] arguments = {
-                "-L", "chr1",
-                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled",
-                "--maximum-number-of-unlabeled-variants", "10000",
-                "-A", "FS",
-                "-A", "ReadPosRankSum",
-                "-A", "MQRankSum",
-                "-A", "QD",
-                "-A", "SOR",
-                "-A", "MQ",
-                "--mode", "SNP",
-                "--mode", "INDEL",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-                "--add-output-vcf-command-line", "false",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-
-        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.annot.hdf5 /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.annot.hdf5");
-        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.unlabeled.annot.hdf5 /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.unlabeled.annot.hdf5");
-        runSystemCommand("diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.vcf.gz /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.vcf.gz");
-        runSystemCommand("diff /home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.vcf.gz.tbi /home/slee/working/vqsr/scalable/extract-test/expected/test.all-unlabeled.vcf.gz.tbi");
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testMissingRequiredLabeledResource() {
+        final File outputDir = createTempDir("extract");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = ADD_ALLELE_SPECIFIC_ANNOTATIONS.apply(BASE_ARGS_BUILDER_SUPPLIER.get());
+        argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-training,training=true", SNP_TRAINING_VCF) // only specify training label
+                .addOutput(outputPrefix);
+        runCommandLine(argsBuilder);
     }
 
-    @Test
-    public void test1kgp50ExomesAll() {
-        final String[] arguments = {
-                "-L", "chr1",
-                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.all",
-                "-A", "FS",
-                "-A", "ReadPosRankSum",
-                "-A", "MQRankSum",
-                "-A", "QD",
-                "-A", "SOR",
-                "-A", "MQ",
-                "--trust-all-polymorphic",
-                "--mode", "SNP",
-                "--mode", "INDEL",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
+    // TODO is this expected behavior? or should the tool fail if we don't specify the flag but an AS_* annotation is specified?
+    @Test(expectedExceptions = AssertionError.class)
+    public void testForgotToSpecifyUseAlleleSpecificAnnotationsFlag() {
+        final File outputDir = createTempDir("extract");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = ADD_SNP_MODE_AND_RESOURCES.apply(BASE_ARGS_BUILDER_SUPPLIER.get());
+        ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
+        argsBuilder.addOutput(outputPrefix);
+        runCommandLine(argsBuilder);
 
-    @Test
-    public void test1kgp50ExomesSNP() {
-        final String[] arguments = {
-                "-L", "chr1",
-                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.snp",
-                "-A", "FS",
-                "-A", "ReadPosRankSum",
-                "-A", "MQRankSum",
-                "-A", "QD",
-                "-A", "SOR",
-                "-A", "MQ",
-                "--trust-all-polymorphic",
-                "--mode", "SNP",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
-
-    @Test
-    public void testSNPAS() {
-        final String[] arguments = {
-                "-L", "chr1",
-                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
-                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.snp.as",
-                "--use-allele-specific-annotations",
-                "-A", "AS_FS",
-                "-A", "AS_ReadPosRankSum",
-                "-A", "AS_MQRankSum",
-                "-A", "AS_QD",
-                "-A", "AS_SOR",
-                "-A", "AS_MQ",
-                "--trust-all-polymorphic",
-                "--mode", "SNP",
-                "--resource:doctored,training=true,truth=true", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
-
-    @Test
-    public void testSNPNonAS() {
-        final String[] arguments = {
-                "-L", "chr1",
-                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
-                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.snp.non-as",
-                "-A", "FS",
-                "-A", "ReadPosRankSum",
-                "-A", "MQRankSum",
-                "-A", "QD",
-                "-A", "SOR",
-                "-A", "MQ",
-                "--trust-all-polymorphic",
-                "--mode", "SNP",
-                "--resource:doctored,training=true,truth=true", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
-
-    @Test
-    public void test1kgp50ExomesIndel() {
-        final String[] arguments = {
-                "-L", "chr1",
-                "-V", "/home/slee/working/vqsr/1kgp-50-exomes/resources/1kgp-50-exomes.sites_only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/extract-test/test.indel",
-                "-A", "FS",
-                "-A", "ReadPosRankSum",
-                "-A", "MQRankSum",
-                "-A", "QD",
-                "-A", "SOR",
-                "-A", "MQ",
-                "--trust-all-polymorphic",
-                "--mode", "INDEL",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
-
-    @Test
-    public void testJbxAll() {
-        final String[] arguments = {
-                "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.extract",
-                "-A", "FS",
-                "-A", "ReadPosRankSum",
-                "-A", "MQRankSum",
-                "-A", "QD",
-                "-A", "SOR",
-                "-A", "MQ",
-                "-A", "COMBINED_TREE_SCORE",
-                "--trust-all-polymorphic",
-                "--mode", "SNP",
-                "--mode", "INDEL",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
-
-    @Test
-    public void testJbxAllUnlabeled() {
-        final String[] arguments = {
-                "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.extract",
-                "--maximum-number-of-unlabeled-variants", "10000000",
-                "-A", "FS",
-                "-A", "ReadPosRankSum",
-                "-A", "MQRankSum",
-                "-A", "QD",
-                "-A", "SOR",
-                "-A", "MQ",
-                "-A", "COMBINED_TREE_SCORE",
-                "--trust-all-polymorphic",
-                "--mode", "SNP",
-                "--mode", "INDEL",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
-    }
-
-    @Test
-    public void testJbxSNP() {
-        final String[] arguments = {
-                "-V", "/home/slee/working/vqsr/scalable/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
-                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract",
-                "-A", "FS",
-                "-A", "ReadPosRankSum",
-                "-A", "MQRankSum",
-                "-A", "QD",
-                "-A", "SOR",
-                "-A", "MQ",
-                "-A", "COMBINED_TREE_SCORE",
-                "--trust-all-polymorphic",
-                "--mode", "SNP",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--verbosity", "INFO"
-        };
-        runCommandLine(arguments);
+        // check that outputs do not match the expected allele-specific outputs, since we forgot to specify the flag
+        assertOutputs("AS.snp.positive", outputPrefix);
     }
 }
