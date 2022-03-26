@@ -25,8 +25,7 @@ workflow GvsCreateFilterSet {
   # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
   Int snps_variant_recalibration_threshold = 20000
 
-#  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rsa_add_sample_columns/gatk-package-4.2.0.0-481-g95b9fc2-SNAPSHOT-local.jar"
-  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_vqsr_magic_20220324/gatk-package-4.2.0.0-478-gd0e381c-SNAPSHOT-local.jar"
+  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rsa_add_sample_columns/gatk-package-4.2.0.0-481-g95b9fc2-SNAPSHOT-local.jar"
 
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
 
@@ -92,6 +91,7 @@ workflow GvsCreateFilterSet {
         output_file               = "${filter_set_name}_${i}.vcf.gz",
         service_account_json_path = service_account_json_path,
         query_project             = project_id,
+        default_dataset_id        = dataset_name
     }
   }
 
@@ -313,6 +313,7 @@ task ExtractFilterTask {
     # Runtime Options:
     File? gatk_override
     String? service_account_json_path
+    String default_dataset_id
     String query_project
   }
 
@@ -341,7 +342,8 @@ task ExtractFilterTask {
       --alt-allele-table ~{fq_alt_allele_table} \
       ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
       -L ~{intervals} \
-      --project-id ~{query_project}
+      --project-id ~{query_project} \
+      --dataset-id ~{default_dataset_id}
   >>>
 
   runtime {
