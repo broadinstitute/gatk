@@ -111,7 +111,7 @@ task PrepareRangesCallsetTask {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_add_sample_columns_2022_03_26"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_add_sample_columns_2022_03_26_2"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

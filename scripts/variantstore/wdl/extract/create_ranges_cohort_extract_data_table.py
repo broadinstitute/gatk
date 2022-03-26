@@ -89,7 +89,9 @@ def get_all_sample_ids(fq_destination_table_samples):
 def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table):
   sql = f"CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (" \
         f"SELECT m.sample_id, m.sample_name, m.is_loaded, m.withdrawn, m.is_control FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) " \
-        f"WHERE m.is_loaded is TRUE AND m.withdrawn IS NULL AND m.is_control is {control_samples})"
+        f"WHERE m.is_loaded is TRUE AND m.withdrawn IS NULL AND m.is_control = {control_samples})"
+
+  print(sql)
 
   results = utils.execute_with_retry(client, "create extract sample table", sql)
   return results
@@ -299,7 +301,7 @@ def make_extract_table(control_samples,
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')
-  parser.add_argument('--control_samples',type=bool, help='true for control samples only, false for participant samples only', default=False)
+  parser.add_argument('--control_samples',type=str, help='true for control samples only, false for participant samples only', default=False)
   parser.add_argument('--fq_ranges_dataset',type=str, help='project.dataset location of ranges/vet data', required=True)
   parser.add_argument('--fq_temp_table_dataset',type=str, help='project.dataset location where results should be stored', required=True)
   parser.add_argument('--fq_destination_dataset',type=str, help='project.dataset location where results should be stored', required=True)
