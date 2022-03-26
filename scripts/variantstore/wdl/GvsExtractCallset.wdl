@@ -117,6 +117,16 @@ workflow GvsExtractCallset {
       service_account_json_path = service_account_json_path
   }
 
+  if (control_samples == false) {
+    call GenerateSampleListFile {
+      input:
+        fq_samples_to_extract_table = fq_samples_to_extract_table,
+        output_gcs_dir = output_gcs_dir,
+        query_project = query_project,
+        service_account_json_path = service_account_json_path
+    }
+  }
+
   output {
     Array[File] output_vcfs = ExtractTask.output_vcf
     Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
@@ -354,6 +364,56 @@ task CreateManifest {
   >>>
   output {
     File manifest = "manifest.txt"
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
+task GenerateSampleListFile {
+  input {
+    String fq_samples_to_extract_table
+    String query_project
+
+    String? output_gcs_dir
+    String? service_account_json_path
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+  command <<<
+    set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{query_project}
+    fi
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    echo "project_id = ~{query_project}" > ~/.bigqueryrc
+
+    OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT sample_name FROM ~{fq_samples_to_extract_table}")
+    SAMPLES=${OUTPUT#"sample_name"}
+    echo $SAMPLES > sample-name-list.txt
+
+    if [ -n "$OUTPUT_GCS_DIR" ]; then
+      if [ ~{has_service_account_file} = 'true' ]; then
+        gsutil cp ~{service_account_json_path} local.service_account.json
+        gcloud auth activate-service-account --key-file=local.service_account.json
+      fi
+      gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/
+    fi
+  >>>
+  output {
+    File sample_name_list = "sample-name-list.txt"
   }
 
   runtime {
