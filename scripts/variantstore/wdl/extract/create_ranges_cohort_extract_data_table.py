@@ -301,7 +301,7 @@ def make_extract_table(control_samples,
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')
-  parser.add_argument('--control_samples',type=str, help='true for control samples only, false for participant samples only', default=False)
+  parser.add_argument('--control_samples',type=str, help='true for control samples only, false for participant samples only', default='false')
   parser.add_argument('--fq_ranges_dataset',type=str, help='project.dataset location of ranges/vet data', required=True)
   parser.add_argument('--fq_temp_table_dataset',type=str, help='project.dataset location where results should be stored', required=True)
   parser.add_argument('--fq_destination_dataset',type=str, help='project.dataset location where results should be stored', required=True)

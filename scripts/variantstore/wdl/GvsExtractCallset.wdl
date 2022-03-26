@@ -400,9 +400,7 @@ task GenerateSampleListFile {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT sample_name FROM ~{fq_samples_to_extract_table}")
-    SAMPLES=${OUTPUT#"sample_name"}
-    echo $SAMPLES > sample-name-list.txt
+    bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT sample_name FROM ~{fq_samples_to_extract_table}" | sed 1d > sample-name-list.txt
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       if [ ~{has_service_account_file} = 'true' ]; then
