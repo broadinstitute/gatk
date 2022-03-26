@@ -86,10 +86,10 @@ def get_all_sample_ids(fq_destination_table_samples):
   sample_ids.sort()
   return sample_ids
 
-def create_extract_samples_table(fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table):
+def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table):
   sql = f"CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (" \
-        f"SELECT m.sample_id, m.sample_name, m.is_loaded, m.withdrawn FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) " \
-        f"WHERE m.is_loaded is TRUE AND m.withdrawn IS NULL)"
+        f"SELECT m.sample_id, m.sample_name, m.is_loaded, m.withdrawn, m.is_control FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) " \
+        f"WHERE m.is_loaded is TRUE AND m.withdrawn IS NULL AND m.is_control is {control_samples})"
 
   results = utils.execute_with_retry(client, "create extract sample table", sql)
   return results
@@ -206,7 +206,8 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 
   return
 
-def make_extract_table(fq_ranges_dataset,
+def make_extract_table(control_samples,
+                       fq_ranges_dataset,
                        max_tables,
                        sample_names_to_extract,
                        fq_cohort_sample_names,
@@ -280,7 +281,7 @@ def make_extract_table(fq_ranges_dataset,
 
     # At this point one way or the other we have a table of sample names in BQ,
     # join it to the sample_info table to drive the extract
-    create_extract_samples_table(fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table)
+    create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table, fq_sample_mapping_table)
 
     # pull the sample ids back down
     sample_ids = get_all_sample_ids(fq_destination_table_samples)
@@ -298,7 +299,7 @@ def make_extract_table(fq_ranges_dataset,
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')
-
+  parser.add_argument('--control_samples',type=bool, help='true for control samples only, false for participant samples only', default=False)
   parser.add_argument('--fq_ranges_dataset',type=str, help='project.dataset location of ranges/vet data', required=True)
   parser.add_argument('--fq_temp_table_dataset',type=str, help='project.dataset location where results should be stored', required=True)
   parser.add_argument('--fq_destination_dataset',type=str, help='project.dataset location where results should be stored', required=True)
@@ -319,7 +320,8 @@ if __name__ == '__main__':
   # Execute the parse_args() method
   args = parser.parse_args()
 
-  make_extract_table(args.fq_ranges_dataset,
+  make_extract_table(args.control_samples,
+                     args.fq_ranges_dataset,
                      args.max_tables,
                      args.sample_names_to_extract,
                      args.fq_cohort_sample_names,
