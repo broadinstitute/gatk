@@ -4,6 +4,7 @@ workflow GvsPrepareCallset {
   input {
     String project_id
     String dataset_name
+    Boolean control_samples = false
     String extract_table_prefix
 
     # inputs with defaults
@@ -17,13 +18,14 @@ workflow GvsPrepareCallset {
     String? service_account_json_path
   }
 
+  String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
   String fq_petvet_dataset = "~{project_id}.~{dataset_name}"
   String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
   call PrepareRangesCallsetTask {
     input:
-      destination_cohort_table_prefix = extract_table_prefix,
+      destination_cohort_table_prefix = full_extract_prefix,
       sample_names_to_extract         = sample_names_to_extract,
       query_project                   = query_project,
       query_labels                    = query_labels,

@@ -7,6 +7,7 @@ workflow GvsExtractCallset {
     String dataset_name
     String project_id
 
+    Boolean control_samples = false
     String extract_table_prefix
     String filter_set_name
     String query_project = project_id
@@ -28,16 +29,17 @@ workflow GvsExtractCallset {
   File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
   File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
+  String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
   File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-split-intervals-odd-02252022/gatk.jar"
-  String fq_cohort_extract_table  = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__DATA"
+  String fq_cohort_extract_table  = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__DATA"
   String fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info"
   String fq_filter_set_site_table = "~{project_id}.~{dataset_name}.filter_set_sites"
   String fq_filter_set_tranches_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
-  String fq_ranges_cohort_ref_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__REF_DATA"
-  String fq_ranges_cohort_vet_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__VET_DATA"
-  String fq_samples_to_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
+  String fq_ranges_cohort_ref_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__REF_DATA"
+  String fq_ranges_cohort_vet_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__VET_DATA"
+  String fq_samples_to_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__SAMPLES"
   String fq_ranges_dataset = "~{project_id}.~{dataset_name}"
-  Array[String] tables_patterns_for_datetime_check = ["~{extract_table_prefix}__%"]
+  Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
 
   call Utils.SplitIntervals {
     input:
