@@ -25,7 +25,7 @@ workflow GvsCreateFilterSet {
   # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
   Int snps_variant_recalibration_threshold = 20000
 
-  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rsa_add_sample_columns/gatk-package-4.2.0.0-477-g55b9ead-SNAPSHOT-local.jar"
+  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rsa_add_sample_columns/gatk-package-4.2.0.0-481-g95b9fc2-SNAPSHOT-local.jar"
 
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
 
@@ -275,7 +275,7 @@ task GetNumSamplesLoaded {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-    'SELECT COUNT(*) as num_rows FROM `~{fq_sample_table}` WHERE is_loaded = true AND widthdrawn IS NULL' > num_rows.csv
+    'SELECT COUNT(*) as num_rows FROM `~{fq_sample_table}` WHERE is_loaded = true AND withdrawn IS NULL' > num_rows.csv
 
     NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
