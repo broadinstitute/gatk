@@ -137,6 +137,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_add_sample_columns
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
