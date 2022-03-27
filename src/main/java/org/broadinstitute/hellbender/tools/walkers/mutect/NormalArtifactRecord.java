@@ -56,7 +56,7 @@ public class NormalArtifactRecord {
     }
 
 
-    //----- The following two public static methods read and write contamination files
+    //----- The following two public static methods read and write normal artifact files
     public static void writeToFile(final List<NormalArtifactRecord> records, final File outputTable) {
         try ( NormalArtifactWriter writer = new NormalArtifactWriter(IOUtils.fileToPath(outputTable)) ) {
             writer.writeAllRecords(records);
@@ -73,7 +73,7 @@ public class NormalArtifactRecord {
         }
     }
 
-    //-------- The following methods are boilerplate for reading and writing contamination tables
+    //-------- The following methods are boilerplate for reading and writing normal artifact tables
     public static class NormalArtifactWriter extends TableWriter<NormalArtifactRecord> {
         public NormalArtifactWriter(final Path output) throws IOException {
             super(output, NormalArtifactColumn.COLUMNS);

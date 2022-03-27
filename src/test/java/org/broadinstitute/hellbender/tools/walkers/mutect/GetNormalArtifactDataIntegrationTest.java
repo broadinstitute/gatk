@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -13,11 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-
-import static org.testng.Assert.*;
 
 public class GetNormalArtifactDataIntegrationTest extends CommandLineProgramTest {
 
@@ -44,6 +38,7 @@ public class GetNormalArtifactDataIntegrationTest extends CommandLineProgramTest
         runCommandLine(args);
 
         final List<NormalArtifactRecord> records = NormalArtifactRecord.readFromFile(output);
+        Assert.assertTrue(!records.isEmpty());
 
         final File gather = createTempFile("gather", ".table");
         final ArgumentsBuilder args2 = new ArgumentsBuilder()

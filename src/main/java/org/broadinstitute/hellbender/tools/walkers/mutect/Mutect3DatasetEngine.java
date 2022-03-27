@@ -78,7 +78,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
 
     // simple method to balance data: for each k-alt-read artifact there are
     // nonArtifactPerArtifact (downsampled) k-alt-read non-artifacts.
-    private final EnumMap<VariantType, ArrayBlockingQueue<Integer>> unmatchedCounts;
+    private final EnumMap<VariantType, ArrayBlockingQueue<Integer>> unmatchedArtifactAltCounts;
 
 
     public Mutect3DatasetEngine(final File datasetFile, final boolean trainingMode, final int maxRefCount, final int maxAltCount, final int nonArtifactPerArtifact, final Set<String> normalSamples) {
@@ -94,9 +94,9 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         this.maxRefCount = maxRefCount;
         this.maxAltCount = maxAltCount;
 
-        unmatchedCounts = new EnumMap<VariantType, ArrayBlockingQueue<Integer>>(VariantType.class);
+        unmatchedArtifactAltCounts = new EnumMap<>(VariantType.class);
         for (final VariantType type : VariantType.values()) {
-            unmatchedCounts.put(type, new ArrayBlockingQueue<Integer>(CAPACITY));
+            unmatchedArtifactAltCounts.put(type, new ArrayBlockingQueue<>(CAPACITY));
         }
     }
 
@@ -132,7 +132,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             final VariantType type = diff == 0 ? VariantType.SNV : ( diff > 0 ? VariantType.INSERTION : VariantType.DELETION);
 
             if (trainingMode) {
-                final ArrayBlockingQueue<Integer> unmatchedQueue = unmatchedCounts.get(type);
+                final ArrayBlockingQueue<Integer> unmatchedQueue = unmatchedArtifactAltCounts.get(type);
                 final boolean likelySeqError = tumorLods[n] < TLOD_THRESHOLD;
                 final boolean likelyGermline = hasNormal && normalAF > 0.2;
 
@@ -176,7 +176,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         final List<List<List<Integer>>> normalReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, normalSamples, likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount);
         final List<List<List<Integer>>> tumorReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, tumorSamples, likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap);
 
-        // ref reads have already been downsampled by the read featurizer
+        // ref and alt reads have already been downsampled by the read featurizer
         final List<List<Integer>> tumorRefReads = tumorReadVectorsByAllele.get(0);
         final List<List<Integer>> normalRefReads = normalReadVectorsByAllele.get(0);
 
