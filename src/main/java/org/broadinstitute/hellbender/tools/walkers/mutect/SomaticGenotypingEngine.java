@@ -33,12 +33,13 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class SomaticGenotypingEngine {
+public class SomaticGenotypingEngine implements AutoCloseable {
 
     private final M2ArgumentCollection MTAC;
     private final Set<String> normalSamples;
     final boolean hasNormal;
     protected VariantAnnotatorEngine annotationEngine;
+    private final Optional<Mutect3DatasetEngine> mutect3DatasetEngine;
 
     // If MTAC.minAF is non-zero we softly cut off allele fractions below minAF with a Beta prior of the form Beta(1+epsilon, 1); that is
     // the prior on allele fraction f is proportional to f^epsilon.  If epsilon is small this prior vanishes as f -> 0
@@ -53,6 +54,11 @@ public class SomaticGenotypingEngine {
         this.normalSamples = normalSamples;
         hasNormal = !normalSamples.isEmpty();
         this.annotationEngine = annotationEngine;
+
+        mutect3DatasetEngine = MTAC.mutect3Dataset == null ? Optional.empty() :
+                Optional.of(new Mutect3DatasetEngine(MTAC.mutect3Dataset, MTAC.mutect3TrainingDataMode, MTAC.maxRefCountForMutect3,
+                        MTAC.maxAltCountForMutect3, MTAC.mutect3NonArtifactRatio, normalSamples));
+        Utils.validateArg(!(MTAC.mutect3Dataset == null && MTAC.mutect3TrainingDataMode), "No dataset file specified for Mutect3 training data mode.");
     }
 
     /**
@@ -195,6 +201,8 @@ public class SomaticGenotypingEngine {
             if(withBamOut) {
                 AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(trimmedCall, trimmedLikelihoods, Fragment::getReads);
             }
+
+            mutect3DatasetEngine.ifPresent(engine -> engine.addData(referenceContext, annotatedCall, trimmedLikelihoodsForAnnotation, logFragmentLikelihoods));
 
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
             returnCalls.add( annotatedCall );
@@ -370,5 +378,14 @@ public class SomaticGenotypingEngine {
         } else {
             return Doubles.toArray(Collections.nCopies(allAlleles.size() - 1, afOfAllelesNotInGermlineResource));
         }
+    }
+
+    /**
+     * This method must be called when the client is done with genotyping.
+     * It closes any open resources.
+     */
+    @Override
+    public void close() {
+        mutect3DatasetEngine.ifPresent(engine -> engine.close());
     }
 }

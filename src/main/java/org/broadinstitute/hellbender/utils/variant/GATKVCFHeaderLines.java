@@ -139,7 +139,8 @@ public class GATKVCFHeaderLines {
         addFormatLine(new VCFFormatHeaderLine(FEATURIZED_READ_SETS_KEY, 1, VCFHeaderLineType.Integer, "Featurized read sets by allele for Mutect3 training"));
         addFormatLine(new VCFFormatHeaderLine(FRAGMENT_ALLELE_DEPTHS, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Count of fragments supporting each allele."));
 
-
+        addFormatLine(new VCFFormatHeaderLine(FEATURIZED_READ_SETS_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Featurized read sets by allele for Mutect3 training"));
+        addFormatLine(new VCFFormatHeaderLine(FEATURIZED_READ_SETS_COUNTS_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Counts by allele of reads contributing to the featurized read sets annotation"));
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed"));
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_FREQUENCY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed"));
         addInfoLine(new VCFInfoHeaderLine(DOWNSAMPLED_KEY, 0, VCFHeaderLineType.Flag, "Were any of the samples downsampled?"));

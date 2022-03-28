@@ -19,8 +19,6 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
-import org.broadinstitute.hellbender.tools.walkers.annotator.AssemblyComplexity;
-import org.broadinstitute.hellbender.tools.walkers.annotator.FeaturizedReadSets;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
@@ -136,10 +134,13 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File filteredVcf = createTempFile("filtered", ".vcf");
         final File f1r2Counts = createTempFile("f1r2", ".tar.gz");
         final File orientationModel = createTempFile("orientation", ".tar.gz");
+        final File dataset = createTempFile("dataset", ".txt");
 
         final List<File> normals = normal.isPresent() ? Collections.singletonList(normal.get()) : Collections.emptyList();
         runMutect2(Collections.singletonList(tumor), normals, unfilteredVcf, CHROMOSOME_20, b37Reference, Optional.of(GNOMAD),
                 args -> args.addMask(mask).add(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts),
+                args -> args.add(M2ArgumentCollection.MUTECT3_DATASET_LONG_NAME, dataset),
+                args -> args.addFlag(M2ArgumentCollection.MUTECT3_TRAINING_MODE_LONG_NAME),
                 args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, 3.0) : args
         );
 
@@ -302,26 +303,16 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(numVariantsPassingFilters < 2);
     }
     
-    // run tumor-only using our mini gnomAD on NA12878, which is not a tumor
     @Test
-    public void testTrainingDataMode() {
+    public void testMutect3Dataset() {
         Utils.resetRandomGenerator();
         final File tumor = new File(NA12878_20_21_WGS_bam);
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File mutect3Dataset = createTempFile("mutect3", ".data");
         
-        final List<String> assemblyComplexityKeys = new AssemblyComplexity().getKeyNames();
-        final List<String> featurizedReadSetKeys = new FeaturizedReadSets().getKeyNames();
-        
-        //runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD));
         runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD),
                    args -> args.addFlag(ReadThreadingAssemblerArgumentCollection.LINKED_DE_BRUIJN_GRAPH_LONG_NAME),
-                   args -> args.addFlag(M2ArgumentCollection.TRAINING_DATA_MODE_LONG_NAME));
-        
-        VariantContextTestUtils.streamVcf(unfilteredVcf).forEach(vc -> {
-            Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.REFERENCE_BASES_KEY));
-            assemblyComplexityKeys.forEach(key -> Assert.assertTrue(vc.hasAttribute(key)));
-            vc.getGenotypes().forEach(gt -> featurizedReadSetKeys.forEach(key -> Assert.assertTrue(gt.hasExtendedAttribute(key))));
-        });
+                   args -> args.add(M2ArgumentCollection.MUTECT3_DATASET_LONG_NAME, mutect3Dataset));
     }
 
     // make sure we can call tumor alts when the normal has a different alt at the same site

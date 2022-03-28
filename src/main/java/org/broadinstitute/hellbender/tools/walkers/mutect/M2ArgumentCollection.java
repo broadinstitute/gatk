@@ -49,8 +49,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String PCR_SNV_QUAL_LONG_NAME = "pcr-snv-qual";
     public static final String PCR_INDEL_QUAL_LONG_NAME = "pcr-indel-qual";
     public static final String F1R2_TAR_GZ_NAME = "f1r2-tar-gz";
-    public static final String TRAINING_DATA_MODE_LONG_NAME = "training-data-mode";
-    public static final String TRAINING_DATA_MODE_REF_DOWNSAMPLE_LONG_NAME = "training-data-mode-ref-downsample";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
     public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
@@ -69,6 +67,19 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MINIMUM_ALLELE_FRACTION_SHORT_NAME = "min-AF";
     public static final String LOD_BAND_LONG_NAME = "gvcf-lod-band";
     public static final String LOD_BAND_SHORT_NAME = "LODB";
+
+    /*
+        Mutect3 parameters
+     */
+    public static final String MUTECT3_TRAINING_MODE_LONG_NAME = "mutect3-training-mode";
+    public static final String MUTECT3_TRAINING_NON_ARTIFACT_RATIO = "mutect3-non-artifact-ratio";
+    public static final String MUTECT3_REF_DOWNSAMPLE_LONG_NAME = "mutect3-ref-downsample";
+    public static final String MUTECT3_ALT_DOWNSAMPLE_LONG_NAME = "mutect3-alt-downsample";
+    public static final String MUTECT3_DATASET_LONG_NAME = "mutect3-dataset";
+
+    public static final int DEFAULT_MUTECT3_REF_DOWNSAMPLE = 10;
+    public static final int DEFAULT_MUTECT3_ALT_DOWNSAMPLE = 20;
+    public static final int DEFAULT_MUTECT3_NON_ARTIFACT_RATIO = 20;
 
     @Override
     protected int getDefaultMaxMnpDistance() { return 1; }
@@ -103,8 +114,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     @Argument(fullName = NORMAL_SAMPLE_LONG_NAME, shortName = NORMAL_SAMPLE_SHORT_NAME, doc = "BAM sample name of normal(s), if any.  May be URL-encoded as output by GetSampleName with -encode argument.", optional = true)
     protected List<String> normalSamples = new ArrayList<>();
-
-    //TODO: END OF HACK ALERT
 
     /***************************************/
     // Reference Metadata inputs
@@ -159,16 +168,34 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public Boolean mitochondria = false;
 
     /**
-     * Training data mode collects data on variant- and artifact-supporting read sets for fitting a deep learning filtering model
+     * If true, collect Mutect3 data for learning; otherwise collect data for generating calls with a pre-trained model
      */
-    @Argument(fullName = TRAINING_DATA_MODE_LONG_NAME, optional = true, doc="Output VCF contains featurized sets of reads for training a deep variant filter.")
-    public Boolean trainingDataMode = false;
+    @Argument(fullName = MUTECT3_TRAINING_MODE_LONG_NAME, optional = true, doc="Collect Mutect3 data for learning.")
+    public Boolean mutect3TrainingDataMode = false;
 
     /**
-     * Downsample ref reads in training data mode
+     * Downsample ref reads for Mutect3 data
      */
-    @Argument(fullName = TRAINING_DATA_MODE_REF_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample ref reads to this count in training data mode.")
-    public int maxRefCountInTrainingData = Integer.MAX_VALUE;
+    @Argument(fullName = MUTECT3_REF_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample ref reads to this count when generating a Mutect3 dataset.")
+    public int maxRefCountForMutect3 = DEFAULT_MUTECT3_REF_DOWNSAMPLE;
+
+    /**
+     * Downsample alt reads for Mutect3 data
+     */
+    @Argument(fullName = MUTECT3_ALT_DOWNSAMPLE_LONG_NAME, optional = true, doc="Downsample alt reads to this count for Mutect3 training datasets.")
+    public int maxAltCountForMutect3 = DEFAULT_MUTECT3_ALT_DOWNSAMPLE;
+
+    /**
+     * Number of non-artifact data per artifact datum in Mutect3 training
+     */
+    @Argument(fullName = MUTECT3_TRAINING_NON_ARTIFACT_RATIO, optional = true, doc="Number of non-artifact data per artifact datum in Mutect3 training.")
+    public int mutect3NonArtifactRatio = DEFAULT_MUTECT3_NON_ARTIFACT_RATIO;
+
+    /**
+     * Destination for Mutect3 data collection
+     */
+    @Argument(fullName = MUTECT3_DATASET_LONG_NAME, optional = true, doc="Destination for Mutect3 data collection")
+    public File mutect3Dataset;
 
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
