@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -53,7 +54,7 @@ public class RecoverReadTags extends GATKTool {
     SAMFileGATKReadWriter writer;
 
     final static String UMI_TAG = "RX";
-    final static List<String> DEFAULT_READ_TAGS = Arrays.asList(UMI_TAG);
+    final static List<String> DEFAULT_READ_TAGS = new ArrayList() {{ add(UMI_TAG); }};
     @Argument(fullName = "read-tags", doc = "read tag names to recover")
     public List<String> readTags = DEFAULT_READ_TAGS;
 

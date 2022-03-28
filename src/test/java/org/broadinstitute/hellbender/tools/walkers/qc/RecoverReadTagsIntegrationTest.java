@@ -25,7 +25,7 @@ import java.util.List;
 public class RecoverReadTagsIntegrationTest extends CommandLineProgramTest {
 
     @Test
-    public void test2() {
+    public void test() {
         final File alignedSAMFile = createTempFile("sam1", ".bam");
         final File unmappedSAMFile = createTempFile("sam2", ".bam");
 
@@ -89,26 +89,4 @@ public class RecoverReadTagsIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(outputRead.getAttributeAsString("RX"), umis.get(i));
         }
     }
-
-    @Test
-    public void test(){
-        final String home = "/Volumes/dsde_working/tsato/hydro.gen/Analysis/874_twist_RNA/add_umi/";
-
-        final File alignedBam = new File(home + "SM-KYN26_SSIV_SM-LQZZ2_transcriptome.grouped.queryname_sorted.bam");
-        final File unmappedSam = new File(home + "SM-KYN26_SSIV_SM-LQZZ2_UMI_extracted.bam");
-        final File out = new File(home + "SM-KYN26_SSIV_SM-LQZZ2_transcriptome_with_UMI.bam");
-
-//        final File alignedBam = new File(home + "SM-LVFDV_15_Min_Low_High_transcriptome.grouped.queryname_sorted.bam");
-//        final File unmappedSam = new File(home + "SM-LVFDV_15_Min_Low_High_UMI_extracted.bam");
-//        final File out = new File(home + "SM-LVFDV_15_Min_Low_High_transcriptome_with_UMI.bam");
-
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .add("I", alignedBam)
-                .add("unmapped-sam", unmappedSam)
-                .add("O", out.getAbsolutePath());
-        runCommandLine(args, RecoverReadTags.class.getSimpleName());
-        int d = 3;
-    }
-
-
 }
