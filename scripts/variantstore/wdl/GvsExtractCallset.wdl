@@ -376,6 +376,11 @@ task CreateManifest {
 }
 
 task GenerateSampleListFile {
+  # should not call cache in case of withdrawn samples
+  meta {
+    volatile: true
+  }
+
   input {
     String fq_samples_to_extract_table
     String query_project
