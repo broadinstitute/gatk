@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,6 +46,8 @@ import java.util.List;
         programGroup = QCProgramGroup.class // sato: change
 )
 public class RecoverReadTags extends GATKTool {
+    final static String UMI_TAG_NAME = "RX";
+
     @Argument(fullName = "unmapped-sam", doc = "query-name sorted unmapped sam file containing the read tag of interest")
     public GATKPath unmappedSamFile;
     ReadsDataSource unmappedSam;
@@ -53,10 +56,8 @@ public class RecoverReadTags extends GATKTool {
     public File outSamFile;
     SAMFileGATKReadWriter writer;
 
-    final static String UMI_TAG = "RX";
-    final static List<String> DEFAULT_READ_TAGS = new ArrayList() {{ add(UMI_TAG); }};
     @Argument(fullName = "read-tags", doc = "read tag names to recover")
-    public List<String> readTags = DEFAULT_READ_TAGS;
+    public List<String> readTags = new ArrayList<>();
 
 
     PeekableIterator<GATKRead> alignedSamIterator;
@@ -67,6 +68,7 @@ public class RecoverReadTags extends GATKTool {
     ReadQueryNameComparator queryNameComparator;
 
     public void onTraversalStart(){
+        Utils.nonEmpty(readTags, "read tags may not be empty");
         queryNameComparator = new ReadQueryNameComparator();
         alignedSamIterator = new PeekableIterator<>(directlyAccessEngineReadsDataSource().iterator());
         SAMFileHeader.SortOrder sortOrder1 = directlyAccessEngineReadsDataSource().getHeader().getSortOrder();
