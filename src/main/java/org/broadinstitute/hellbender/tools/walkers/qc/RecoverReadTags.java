@@ -18,6 +18,8 @@ import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * This tool is designed for a pair of SAM files sharing the same read names (e.g.
@@ -51,6 +53,10 @@ public class RecoverReadTags extends GATKTool {
     SAMFileGATKReadWriter writer;
 
     final static String UMI_TAG = "RX";
+    final static List<String> DEFAULT_READ_TAGS = Arrays.asList(UMI_TAG);
+    @Argument(fullName = "read-tags", doc = "read tag names to recover")
+    public List<String> readTags = DEFAULT_READ_TAGS;
+
 
     PeekableIterator<GATKRead> alignedSamIterator;
     PeekableIterator<GATKRead> unmappedSamIterator;
@@ -92,11 +98,8 @@ public class RecoverReadTags extends GATKTool {
 
             if (diff == 0) {
                 // The query names match.
-                final String umiTag = currentRead2.getAttributeAsString(UMI_TAG);
-                Utils.nonNull(umiTag, "umiTag is empty: read " + currentRead2.getName());
-                currentRead1.setAttribute(UMI_TAG, umiTag);
-                writer.addRead(currentRead1);
-
+                GATKRead udpatedRead = updateReadTags(currentRead1, currentRead2);
+                writer.addRead(udpatedRead);
                 progressMeter.update(currentRead1);
                 continue;
             } else if (diff > 0){
@@ -108,10 +111,8 @@ public class RecoverReadTags extends GATKTool {
                         continue;
                     } else if (diff == 0){
                         // caught up: star moving the aligned reads forward
-                        final String umiTag = currentRead2.getAttributeAsString(UMI_TAG);
-                        Utils.nonNull(umiTag, "umiTag is empty: read " + currentRead2.getName());
-                        currentRead1.setAttribute(UMI_TAG, umiTag);
-                        writer.addRead(currentRead1);
+                        GATKRead udpatedRead = updateReadTags(currentRead1, currentRead2);
+                        writer.addRead(udpatedRead);
                         break;
                     } else {
                         throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read: " +
@@ -123,6 +124,22 @@ public class RecoverReadTags extends GATKTool {
                         "aligned read = " + currentRead1.getName() + ", unmapped read = " + currentRead2.getName());
             }
         }
+    }
+
+    /**
+     *
+     * @param targetRead We use this read as the template
+     * @param originRead The read from which we extract the requested fields
+     * @return A new instance of GATKRead derived from targetRead, updated with the requested fields from originRead
+     */
+    private GATKRead updateReadTags(final GATKRead targetRead, final GATKRead originRead){
+        final GATKRead updatedRead = targetRead.copy();
+        for (String tagName : readTags){
+            final String tagValue = originRead.getAttributeAsString(tagName);
+            Utils.nonNull(tagValue, "The attribute is empty: read " + currentRead2.getName());
+            updatedRead.setAttribute(tagName, tagValue);
+        }
+        return updatedRead;
     }
 
     @Override

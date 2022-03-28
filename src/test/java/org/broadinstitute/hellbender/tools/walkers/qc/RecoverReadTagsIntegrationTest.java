@@ -71,6 +71,7 @@ public class RecoverReadTagsIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("I", alignedSAMFile.getAbsolutePath())
                 .add("unmapped-sam", unmappedSAMFile.getAbsolutePath())
+                .add("read-tags", "RX")
                 .add("O", outputFile.getAbsolutePath());
         runCommandLine(args, RecoverReadTags.class.getSimpleName());
 
