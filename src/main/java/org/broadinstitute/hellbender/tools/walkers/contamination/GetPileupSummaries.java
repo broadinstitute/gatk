@@ -223,14 +223,17 @@ public class GetPileupSummaries extends LocusWalker {
         if (sawVariantsWithoutAlleleFrequency && !sawVariantsWithAlleleFrequency) {
             throw new UserException.BadInput("No variants in population vcf had an allele frequency (AF) field.");
         }
-        final String sampleName = ReadUtils.getSamplesFromHeader(getHeaderForReads()).stream().findFirst().get();
 
+        return "SUCCESS";
+    }
+
+    @Override
+    public void closeTool() {
         try {
             writer.close();
         } catch (IOException ex) {
             throw new UserException(String.format("Encountered an IO exception while closing %s", outputTable));
         }
-        return "SUCCESS";
     }
 
     private boolean alleleFrequencyInRange(final VariantContext vc) {
