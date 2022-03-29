@@ -31,10 +31,10 @@ import java.util.List;
  * while others are written specifically for SAM files.
  *
  * This tools behaves similarly to Picard MergeBamAlignment (MBA). The difference is that whereas
- * MBA merges the alignment information to the unaligned bam, RecoverReadTags uses the aligned bam as the
+ * MBA merges the alignment information to the unaligned bam, TransferReadTags uses the aligned bam as the
  * base and adds the read tags from the unaligned bam to the aligned bam.
  *
- * Currently, the tool is implemented for the specific case of recovering UMI read tags (RX)
+ * Currently, the tool is implemented for the specific case of transfering UMI read tags (RX)
  * from an unaligned bam.
  */
 @CommandLineProgramProperties(
@@ -53,7 +53,7 @@ public class TransferReadTags extends GATKTool {
     public File outSamFile;
     SAMFileGATKReadWriter writer;
 
-    @Argument(fullName = "read-tags", doc = "read tag names to recover")
+    @Argument(fullName = "read-tags", doc = "read tag names to transfer")
     public List<String> readTags = new ArrayList<>();
 
 
