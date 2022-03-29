@@ -131,8 +131,8 @@ public final class AlleleFrequencyCalculator {
      */
     public AFCalculationResult calculate(final VariantContext vc, final int defaultPloidy) {
         Utils.nonNull(vc, "VariantContext cannot be null");
-        Utils.validate(vc.getGenotypes().stream().anyMatch(g -> g.hasLikelihoods() && !g.isHomRef()),
-                "VariantContext  at " + vc.getContig() + ":" + vc.getStart() + "must contain at least one variant " +
+        Utils.validate(vc.getGenotypes().stream().anyMatch(Genotype::hasLikelihoods),
+                "VariantContext  at " + vc.getContig() + ":" + vc.getStart() + "must contain at least one " +
                         "genotype with likelihoods -- did this VC exceed the max number of alt alleles?");
         final int numAlleles = vc.getNAlleles();
         final List<Allele> alleles = vc.getAlleles();
