@@ -116,7 +116,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * genotypers (namely GGVCFs and HC).
      *
      * Completes a variant context with genotype calls and associated annotations given the genotype likelihoods and
-     * the model that need to be applied.  Hom-ref likelihoods can be approximated from GQs, but if not genotype has
+     * the model that need to be applied.  Hom-ref likelihoods can be approximated from GQs, but if no genotype has
      * likelihoods then that variant is either all-ref or contains variants with no likelihoods, and in both cases
      * we want to exit.
      *

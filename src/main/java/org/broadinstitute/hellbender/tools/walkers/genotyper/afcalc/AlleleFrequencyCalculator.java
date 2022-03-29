@@ -124,17 +124,20 @@ public final class AlleleFrequencyCalculator {
      * Compute the probability of the alleles segregating given the genotype likelihoods of the samples in vc
      *
      * @param vc the VariantContext holding the alleles and sample information.  The VariantContext
-     *           must have at least 1 alternative allele. Hom-ref genotype likelihoods can be approximated
-     *           but
+     *           must have at least 1 alternative allele and at least one variant genotype with likelihoods.
+     *           Hom-ref genotype likelihoods can be approximated, but the result will be zero allele counts without
+     *           likelihoods for a non-reference genotype.
      * @return result (for programming convenience)
      */
     public AFCalculationResult calculate(final VariantContext vc, final int defaultPloidy) {
         Utils.nonNull(vc, "VariantContext cannot be null");
-        Utils.validate(vc.getGenotypes().stream().anyMatch(Genotype::hasLikelihoods),
-                "VariantContext must contain at least one genotype with likelihoods");
+        Utils.validate(vc.getGenotypes().stream().anyMatch(g -> g.hasLikelihoods() && !g.isHomRef()),
+                "VariantContext  at " + vc.getContig() + ":" + vc.getStart() + "must contain at least one variant " +
+                        "genotype with likelihoods -- did this VC exceed the max number of alt alleles?");
         final int numAlleles = vc.getNAlleles();
         final List<Allele> alleles = vc.getAlleles();
-        Utils.validateArg( numAlleles > 1, () -> "VariantContext has only a single reference allele, but getLog10PNonRef requires at least one at all " + vc);
+        Utils.validateArg( numAlleles > 1, () -> "VariantContext  at " + vc.getContig() + ":" + vc.getStart() +
+                "has only a single reference allele, but getLog10PNonRef requires at least alternate allele");
 
         final double[] priorPseudocounts = alleles.stream()
                 .mapToDouble(a -> a.isReference() ? refPseudocount : (a.length() == vc.getReference().length() ? snpPseudocount : indelPseudocount)).toArray();
