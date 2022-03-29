@@ -1,14 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.qc;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.util.PeekableIterator;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2TestingUtils;
-import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -17,12 +15,11 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-public class RecoverReadTagsIntegrationTest extends CommandLineProgramTest {
+public class TransferReadTagsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void test() {
@@ -73,7 +70,7 @@ public class RecoverReadTagsIntegrationTest extends CommandLineProgramTest {
                 .add("unmapped-sam", unmappedSAMFile.getAbsolutePath())
                 .add("read-tags", "RX")
                 .add("O", outputFile.getAbsolutePath());
-        runCommandLine(args, RecoverReadTags.class.getSimpleName());
+        runCommandLine(args, TransferReadTags.class.getSimpleName());
 
         final ReadsPathDataSource outputReadSource = new ReadsPathDataSource(outputFile.toPath());
         final Iterator<GATKRead> outputSamIterator = outputReadSource.iterator();

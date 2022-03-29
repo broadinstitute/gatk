@@ -6,7 +6,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
-import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -18,9 +17,7 @@ import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -45,7 +42,7 @@ import java.util.List;
         oneLineSummary = "Incorporate read tags in a SAM file to that of a matching SAM file",
         programGroup = QCProgramGroup.class // sato: change
 )
-public class RecoverReadTags extends GATKTool {
+public class TransferReadTags extends GATKTool {
     final static String UMI_TAG_NAME = "RX";
 
     @Argument(fullName = "unmapped-sam", doc = "query-name sorted unmapped sam file containing the read tag of interest")
