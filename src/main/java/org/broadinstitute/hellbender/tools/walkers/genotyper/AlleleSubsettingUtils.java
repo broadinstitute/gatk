@@ -295,7 +295,8 @@ public final class AlleleSubsettingUtils {
         Utils.nonNull(vc, "vc is null");
         Utils.validateArg(defaultPloidy > 0, () -> "default ploidy must be > 0 but defaultPloidy=" + defaultPloidy);
         Utils.validateArg(numAltAllelesToKeep > 0, () -> "numAltAllelesToKeep must be > 0, but numAltAllelesToKeep=" + numAltAllelesToKeep);
-        Utils.validateArg(vc.getGenotypes().stream().anyMatch(Genotype::hasPL), () -> "Most likely alleles cannot be calculated without likelihoods");
+        //allow PLs or GPs (as for GATK-DRAGEN), but we need some kind of genotype data
+        Utils.validateArg(vc.getGenotypes().stream().anyMatch(g -> g.hasPL() || g.hasExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY)), () -> "Most likely alleles cannot be calculated without likelihoods");
         //NOTE: this is used in the reblocking case when we have a hom-ref GT and real ALTs
         final boolean allHomRefData = vc.getGenotypes().stream().allMatch(g -> g.hasPL() && g.getPL()[0] == 0);  //PL=[0,0,0] is okay, we just don't want confident variants
 
