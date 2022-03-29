@@ -230,7 +230,9 @@ public class GetPileupSummaries extends LocusWalker {
     @Override
     public void closeTool() {
         try {
-            writer.close();
+            if (writer != null) {
+                writer.close();
+            }
         } catch (IOException ex) {
             throw new UserException(String.format("Encountered an IO exception while closing %s", outputTable));
         }
