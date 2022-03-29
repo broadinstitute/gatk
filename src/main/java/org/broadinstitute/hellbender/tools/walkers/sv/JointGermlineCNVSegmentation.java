@@ -682,7 +682,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
     private static void correctGenotypePloidy(final GenotypeBuilder builder, final Genotype g, final int ploidy,
                                               final Allele refAllele) {
-        final ArrayList<Allele> alleles = new ArrayList<>(g.getAlleles());
+        final ArrayList<Allele> alleles = new ArrayList<>(g.getAlleles().stream().filter(a -> !a.isNoCall()).collect(Collectors.toList()));
         Utils.validate(alleles.size() <= ploidy, "Encountered genotype with ploidy " + ploidy + " but " +
                 alleles.size() + " alleles.");
         while (alleles.size() < ploidy) {
