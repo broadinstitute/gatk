@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -185,7 +183,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * @param features FeatureManager
      */
     private void processReadShard(MultiIntervalLocalReadShard shard, ReferenceDataSource reference, FeatureManager features ) {
-        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), assemblyRegionArgs);
+        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), assemblyRegionArgs, shouldTrackPileupsForAssemblyRegions());
 
         // Call into the tool implementation to process each assembly region from this shard.
         while ( assemblyRegionIter.hasNext() ) {
@@ -235,6 +233,12 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      *         The results of this per-locus evaluator are used to determine the bounds of each active and inactive region.
      */
     public abstract AssemblyRegionEvaluator assemblyRegionEvaluator();
+
+    /**
+     * Allows implementing tools to decide whether pileups must be tracked and attached to assembly regions for later processing.
+     * This is configurable for now in order to save on potential increases in memory consumption variant calling machinery.
+     */
+    public abstract boolean shouldTrackPileupsForAssemblyRegions();
 
     /**
      * Process an individual AssemblyRegion. Must be implemented by tool authors.
