@@ -10,6 +10,9 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 
 import java.io.Serializable;
@@ -28,6 +31,10 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String DO_NOT_CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "do-not-correct-overlapping-quality";
     public static final String OUTPUT_BLOCK_LOWER_BOUNDS = "floor-blocks";
     public static final String DRAGEN_GATK_MODE_LONG_NAME = "dragen-mode";
+    public static final String APPLY_BQD_LONG_NAME = "apply-bqd";
+    public static final String APPLY_FRD_LONG_NAME = "apply-frd";
+    public static final String TRANSFORM_DRAGEN_MAPPING_QUALITY_LONG_NAME = "transform-dragen-mapping-quality";
+    public static final String MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME = "mapping-quality-threshold-for-genotyping";
 
 
     @ArgumentCollection
@@ -135,23 +142,23 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = DRAGEN_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).")
     public Boolean dragenMode = false;
     @Advanced
-    @Argument(fullName = "apply-bqd", doc = "If enabled this argument will apply the DRAGEN-GATK BaseQualityDropout model to the genotyping model for filtering sites due to Linked Error mode.", optional = true)
+    @Argument(fullName = APPLY_BQD_LONG_NAME, doc = "If enabled this argument will apply the DRAGEN-GATK BaseQualityDropout model to the genotyping model for filtering sites due to Linked Error mode.", optional = true)
     public boolean applyBQD = false;
     @Advanced
-    @Argument(fullName = "apply-frd", doc = "If enabled this argument will apply the DRAGEN-GATK ForeignReadDetection model to the genotyping model for filtering sites.", optional = true)
+    @Argument(fullName = APPLY_FRD_LONG_NAME, doc = "If enabled this argument will apply the DRAGEN-GATK ForeignReadDetection model to the genotyping model for filtering sites.", optional = true)
     public boolean applyFRD = false;
     @Advanced
     @Argument(fullName = "disable-spanning-event-genotyping", doc = "If enabled this argument will disable inclusion of the '*' spanning event when genotyping events that overlap deletions", optional = true)
     public boolean disableSpanningEventGenotyping = false;
     @Advanced
-    @Argument(fullName = "transform-dragen-mapping-quality", doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
+    @Argument(fullName = TRANSFORM_DRAGEN_MAPPING_QUALITY_LONG_NAME, doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
     public boolean transformDRAGENMapQ = false;
     //TODO NOTE TO THE REVIEWER, THIS ARGUMENT IS INSUFFICIENT BOTH THIS AND --minimum-mapping-quality must be set, unfortunatley
     //TODO they can't be unified since the toolDefaultReadFilters get instantiated before this field gets populated, and we can't
     //TODO pull the threshold from that filter since it might or might not exist by the time we go to filter for threading, really
     //TODO we should unify on the readFilter version of this check i think but perhaps they are seperate for athropological historical reasons and it is thus culturally protected?
     @Advanced
-    @Argument(fullName = "mapping-quality-threshold-for-genotyping", doc = "Control the threshold for discounting reads from the genotyper due to mapping quality after the active region detection and assembly steps but before genotyping. NOTE: this is in contrast to the --"+ ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME+" argument which filters reads from all parts of the HaplotypeCaller. If you would like to call genotypes with a different threshold both arguments must be set.", optional = true)
+    @Argument(fullName = MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME, doc = "Control the threshold for discounting reads from the genotyper due to mapping quality after the active region detection and assembly steps but before genotyping. NOTE: this is in contrast to the --"+ ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME+" argument which filters reads from all parts of the HaplotypeCaller. If you would like to call genotypes with a different threshold both arguments must be set.", optional = true)
     public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
     @Advanced
     @Argument(fullName = "max-effective-depth-adjustment-for-frd", doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)
@@ -203,4 +210,23 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Advanced
     @Argument(fullName= USE_FILTERED_READS_FOR_ANNOTATIONS_LONG_NAME, doc = "Use the contamination-filtered read maps for the purposes of annotating variants", optional=true)
     public boolean useFilteredReadMapForAnnotations = false;
+
+    public String[] getDragenNameValuePairs() {
+        return new String[]{
+                APPLY_BQD_LONG_NAME, "true",
+                APPLY_FRD_LONG_NAME, "true",
+                TRANSFORM_DRAGEN_MAPPING_QUALITY_LONG_NAME, "true",
+                SOFT_CLIP_LOW_QUALITY_ENDS_LONG_NAME, "true",
+                MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME, "1",
+                ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME, "1",
+                ALLELE_EXTENSION_LONG_NAME, "1",
+                LikelihoodEngineArgumentCollection.DISABLE_CAP_BASE_QUALITIES_TO_MAP_QUALITY_LONG_NAME, "true",
+                LikelihoodEngineArgumentCollection.ENABLE_DYNAMIC_READ_DISQUALIFICATION_FOR_GENOTYPING_LONG_NAME, "true",
+                LikelihoodEngineArgumentCollection.EXPECTED_MISMATCH_RATE_FOR_READ_DISQUALIFICATION_LONG_NAME, "0.03",
+                GenotypeCalculationArgumentCollection.GENOTYPE_ASSIGNMENT_METHOD_LONG_NAME, String.valueOf(GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES),
+                AssemblyRegionArgumentCollection.INDEL_PADDING_LONG_NAME, "150",
+                GenotypeCalculationArgumentCollection.CALL_CONFIDENCE_LONG_NAME, "3.0",
+                GenotypeCalculationArgumentCollection.USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME, "true",
+        };
+    }
 }

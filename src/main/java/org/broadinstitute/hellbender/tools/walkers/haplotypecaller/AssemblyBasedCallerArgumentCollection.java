@@ -53,6 +53,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     private static final SWParameters DEFAULT_HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
     /** See documentation at {@link SmithWatermanAlignmentConstants#ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS}. */
     private static final SWParameters DEFAULT_READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS = SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS;
+    public static final String SOFT_CLIP_LOW_QUALITY_ENDS_LONG_NAME = "soft-clip-low-quality-ends";
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = assemblerArgs.makeReadThreadingAssembler();
@@ -161,7 +162,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public boolean forceCallFiltered = false;
 
     @Advanced
-    @Argument(fullName = "soft-clip-low-quality-ends", doc = "If enabled will preserve low-quality read ends as softclips (used for DRAGEN-GATK BQD genotyper model)", optional = true)
+    @Argument(fullName = SOFT_CLIP_LOW_QUALITY_ENDS_LONG_NAME, doc = "If enabled will preserve low-quality read ends as softclips (used for DRAGEN-GATK BQD genotyper model)", optional = true)
     public boolean softClipLowQualityEnds = false;
 
     @Advanced

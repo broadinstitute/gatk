@@ -21,6 +21,9 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     public static final String DRAGSTR_PARAMS_PATH_FULLNAME = "dragstr-params-path";
     public static final String DRAGSTR_HET_HOM_RATIO_FULLNAME = "dragstr-het-hom-ratio";
     public static final String DONT_USE_DRAGSTR_PAIRHMM_FULLNAME = "dont-use-dragstr-pair-hmm-scores";
+    public static final String DISABLE_CAP_BASE_QUALITIES_TO_MAP_QUALITY_LONG_NAME = "disable-cap-base-qualities-to-map-quality";
+    public static final String ENABLE_DYNAMIC_READ_DISQUALIFICATION_FOR_GENOTYPING_LONG_NAME = "enable-dynamic-read-disqualification-for-genotyping";
+    public static final String EXPECTED_MISMATCH_RATE_FOR_READ_DISQUALIFICATION_LONG_NAME = "expected-mismatch-rate-for-read-disqualification";
 
     /**
      * Bases with a quality below this threshold will reduced to the minimum usable qualiy score (6).
@@ -42,7 +45,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     public int gcpHMM = 10;
 
     @Advanced
-    @Argument(fullName="expected-mismatch-rate-for-read-disqualification", doc="Error rate used to set expectation for post HMM read disqualification based on mismatches", optional = true)
+    @Argument(fullName= EXPECTED_MISMATCH_RATE_FOR_READ_DISQUALIFICATION_LONG_NAME, doc="Error rate used to set expectation for post HMM read disqualification based on mismatches", optional = true)
     public double expectedErrorRatePerBase = PairHMMLikelihoodCalculationEngine.DEFAULT_EXPECTED_ERROR_RATE_PER_BASE;
 
     /**
@@ -86,14 +89,14 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     public boolean disableSymmetricallyNormalizeAllelesToReference = false;
 
     @Advanced
-    @Argument(fullName ="disable-cap-base-qualities-to-map-quality", doc= "If false this disables capping of base qualities in the HMM to the mapping quality of the read", optional = true)
+    @Argument(fullName = DISABLE_CAP_BASE_QUALITIES_TO_MAP_QUALITY_LONG_NAME, doc= "If false this disables capping of base qualities in the HMM to the mapping quality of the read", optional = true)
     public boolean disableCapReadQualitiesToMapQ = false;
 
     /**
      * If enabled, rather than disqualifying all reads over a threshold of minimum hmm scores we will instead choose a less strict
      * and less aggressive cap for disqualification based on the read length and base qualities.
      */
-    @Argument(fullName="enable-dynamic-read-disqualification-for-genotyping", doc="Will enable less strict read disqualification low base quality reads")
+    @Argument(fullName= ENABLE_DYNAMIC_READ_DISQUALIFICATION_FOR_GENOTYPING_LONG_NAME, doc="Will enable less strict read disqualification low base quality reads")
     public boolean enableDynamicReadDisqualification = false;
 
     /**
