@@ -82,7 +82,12 @@ public final class GenotypeUtils {
             }
 
             // Genotype::getLikelihoods returns a new array, so modification in-place is safe
-            final double[] normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(g.getLikelihoods().getAsVector());
+            final double[] normalizedLikelihoods;
+            if (g.hasLikelihoods()) {
+                normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(g.getLikelihoods().getAsVector());
+            } else {
+                throw new IllegalStateException("Genotype has no likelihoods: " + g.toString());
+            }
             final double[] biallelicLikelihoods;
 
             //if there are multiple alts, use the biallelic PLs for the best alt
