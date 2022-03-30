@@ -92,15 +92,6 @@ They may have been loaded into neither, in which case they will need to be loade
 `DELETE FROM <DATASET>.sample_load_status WHERE sample_id IN (56238)`
 
 
-### 3.3 Update the is_loaded field
-This is currently a manual step.
-Run
-
-> update `<PROJECT>.<DATASET>.sample_info` set is_loaded = TRUE where cast(sample_id as STRING) in (
-select partition_id from `<PROJECT>.<DATASET>.INFORMATION_SCHEMA.PARTITIONS` where total_logical_bytes > 0 AND table_name like 'vet_%'
-)
-
-
 ## 4. Create Alt Allele Table
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.
 

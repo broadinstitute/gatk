@@ -9,13 +9,14 @@ workflow GvsAssignIds {
     String project_id
 
     Array[String] external_sample_names
+    Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
     String? service_account_json_path
   }
 
   String sample_info_table = "sample_info"
-  String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"}]'
+  String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"},{"name":"is_control","type":"BOOLEAN","mode":"REQUIRED"},{"name":"withdrawn","type":"TIMESTAMP","mode":"NULLABLE"}]'
   String sample_load_status_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
 
 
@@ -49,6 +50,7 @@ workflow GvsAssignIds {
       project_id = project_id,
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
+      samples_are_controls = samples_are_controls,
       table_creation_done = CreateSampleInfoTable.done,
       gatk_override = assign_ids_gatk_override,
       service_account_json_path = service_account_json_path
@@ -75,6 +77,7 @@ task AssignIds {
 
     String sample_info_table
     Array[String] sample_names
+    Boolean samples_are_controls
     String table_creation_done
 
     # runtime
@@ -130,7 +133,7 @@ task AssignIds {
 
     # add sample_name to sample_info_table
     bq --project_id=~{project_id} query --use_legacy_sql=false \
-      'INSERT into `~{dataset_name}.~{sample_info_table}` (sample_name) select sample_name from `~{dataset_name}.sample_id_assignment_lock` m where m.sample_name not in (SELECT sample_name FROM `~{dataset_name}.~{sample_info_table}`)'
+      'INSERT into `~{dataset_name}.~{sample_info_table}` (sample_name, is_control) select sample_name, ~{samples_are_controls} from `~{dataset_name}.sample_id_assignment_lock` m where m.sample_name not in (SELECT sample_name FROM `~{dataset_name}.~{sample_info_table}`)'
 
     # get the current maximum id, or 0 if there are none
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false 'SELECT IFNULL(MAX(sample_id),0) FROM `~{dataset_name}.~{sample_info_table}`' > maxid

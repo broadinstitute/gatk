@@ -4,9 +4,12 @@ workflow GvsPrepareCallset {
   input {
     String project_id
     String dataset_name
+
+    # true for control samples only, false for participant samples only
+    Boolean control_samples = false
+
     String extract_table_prefix
 
-    # inputs with defaults
     String query_project = project_id
     String destination_project = project_id
     String destination_dataset = dataset_name
@@ -17,13 +20,14 @@ workflow GvsPrepareCallset {
     String? service_account_json_path
   }
 
+  String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
   String fq_petvet_dataset = "~{project_id}.~{dataset_name}"
   String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
   call PrepareRangesCallsetTask {
     input:
-      destination_cohort_table_prefix = extract_table_prefix,
+      destination_cohort_table_prefix = full_extract_prefix,
       sample_names_to_extract         = sample_names_to_extract,
       query_project                   = query_project,
       query_labels                    = query_labels,
@@ -32,6 +36,7 @@ workflow GvsPrepareCallset {
       fq_temp_table_dataset           = fq_temp_table_dataset,
       fq_destination_dataset          = fq_destination_dataset,
       temp_table_ttl_in_hours         = 72,
+      control_samples                 = control_samples,
       service_account_json_path       = service_account_json_path,
   }
 
@@ -51,6 +56,7 @@ task PrepareRangesCallsetTask {
     File? sample_names_to_extract
     String query_project
 
+    Boolean control_samples
     String fq_petvet_dataset
     String fq_sample_mapping_table
     String fq_temp_table_dataset
@@ -88,6 +94,7 @@ task PrepareRangesCallsetTask {
       fi
 
       python3 /app/create_ranges_cohort_extract_data_table.py \
+          --control_samples ~{control_samples} \
           --fq_ranges_dataset ~{fq_petvet_dataset} \
           --fq_temp_table_dataset ~{fq_temp_table_dataset} \
           --fq_destination_dataset ~{fq_destination_dataset} \
@@ -100,11 +107,11 @@ task PrepareRangesCallsetTask {
           $SERVICE_ACCOUNT_STANZA
   >>>
   output {
-    String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_cohort_extract_data_table.py
+    String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_ranges_cohort_extract_data_table.py
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:kc_ranges_prepare_2022_01_18"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_add_sample_columns_2022_03_28"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

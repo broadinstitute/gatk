@@ -7,6 +7,7 @@ workflow GvsExtractCallset {
     String dataset_name
     String project_id
 
+    Boolean control_samples = false
     String extract_table_prefix
     String filter_set_name
     String query_project = project_id
@@ -28,16 +29,17 @@ workflow GvsExtractCallset {
   File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
   File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
+  String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
   File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-split-intervals-odd-02252022/gatk.jar"
-  String fq_cohort_extract_table  = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__DATA"
+  String fq_cohort_extract_table  = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__DATA"
   String fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info"
   String fq_filter_set_site_table = "~{project_id}.~{dataset_name}.filter_set_sites"
   String fq_filter_set_tranches_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
-  String fq_ranges_cohort_ref_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__REF_DATA"
-  String fq_ranges_cohort_vet_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__VET_DATA"
-  String fq_samples_to_extract_table = "~{project_id}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
+  String fq_ranges_cohort_ref_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__REF_DATA"
+  String fq_ranges_cohort_vet_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__VET_DATA"
+  String fq_samples_to_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__SAMPLES"
   String fq_ranges_dataset = "~{project_id}.~{dataset_name}"
-  Array[String] tables_patterns_for_datetime_check = ["~{extract_table_prefix}__%"]
+  Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
 
   call Utils.SplitIntervals {
     input:
@@ -113,6 +115,16 @@ workflow GvsExtractCallset {
       manifest_lines = ExtractTask.manifest,
       output_gcs_dir = output_gcs_dir,
       service_account_json_path = service_account_json_path
+  }
+
+  if (control_samples == false) {
+    call GenerateSampleListFile {
+      input:
+        fq_samples_to_extract_table = fq_samples_to_extract_table,
+        output_gcs_dir = output_gcs_dir,
+        query_project = query_project,
+        service_account_json_path = service_account_json_path
+    }
   }
 
   output {
@@ -352,6 +364,55 @@ task CreateManifest {
   >>>
   output {
     File manifest = "manifest.txt"
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
+task GenerateSampleListFile {
+  # should not call cache in case of withdrawn samples
+  meta {
+    volatile: true
+  }
+
+  input {
+    String fq_samples_to_extract_table
+    String query_project
+
+    String? output_gcs_dir
+    String? service_account_json_path
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+  command <<<
+    set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{query_project}
+    fi
+
+    # Drop trailing slash if one exists
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    echo "project_id = ~{query_project}" > ~/.bigqueryrc
+
+    bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT sample_name FROM ~{fq_samples_to_extract_table}" | sed 1d > sample-name-list.txt
+
+    if [ -n "$OUTPUT_GCS_DIR" ]; then
+      gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/
+    fi
+  >>>
+  output {
+    File sample_name_list = "sample-name-list.txt"
   }
 
   runtime {
