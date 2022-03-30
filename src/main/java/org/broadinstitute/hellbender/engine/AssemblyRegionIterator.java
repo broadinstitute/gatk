@@ -89,7 +89,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
         // for uncovered locations. This is critical for reproducing GATK 3.x behavior!
-        this.libs = new LocusIteratorByState(readCachingIterator, DownsamplingMethod.NONE, ReadUtils.getSamplesFromHeader(readHeader), readHeader, true);
+        this.libs = new LocusIteratorByState(readCachingIterator, DownsamplingMethod.NONE, false, ReadUtils.getSamplesFromHeader(readHeader), readHeader, true);
         final IntervalLocusIterator intervalLocusIterator = new IntervalLocusIterator(readShard.getIntervals().iterator());
         this.locusIterator = new IntervalAlignmentContextIterator(libs, intervalLocusIterator, readHeader.getSequenceDictionary());
 
@@ -119,6 +119,8 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         while ( locusIterator.hasNext() && nextRegion == null ) {
             final AlignmentContext pileup = locusIterator.next();
 
+            logger.debug(()->"pileup: " + pileup);
+
             // Pop any new pending regions off of the activity profile. These pending regions will not become ready
             // until we've traversed all the reads that belong in them.
             //
@@ -134,6 +136,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             final FeatureContext pileupFeatureContext = new FeatureContext(features, pileupInterval);
 
             final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, pileupFeatureContext);
+            logger.debug(() -> profile.toString());
             activityProfile.add(profile);
 
             // A pending region only becomes ready once our locus iterator has advanced beyond the end of its extended span
