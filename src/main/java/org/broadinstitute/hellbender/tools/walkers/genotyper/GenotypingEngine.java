@@ -149,7 +149,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
         final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy);
-        final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, givenAlleles);
+        final Set<Allele> forcedAlleles = AssemblyBasedCallerUtils.getAllelesConsistentWithGivenAlleles(givenAlleles, vc);
+        final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, forcedAlleles);
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
@@ -162,7 +163,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic) && !emitAllActiveSites()
-                && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles) && givenAlleles.isEmpty()) {
+                && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles) && forcedAlleles.isEmpty()) {
             return null;
         }
 
@@ -290,17 +291,16 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * Provided the exact mode computations it returns the appropriate subset of alleles that progress to genotyping.
      * @param afCalculationResult the allele fraction calculation result.
      * @param vc the variant context
+     * @param forcedAlleles alleles from the vc input that are consistent with forced alleles in the assembly region {@link AssemblyBasedCallerUtils#getAllelesConsistentWithGivenAlleles}
      * @return information about the alternative allele subsetting {@code null}.
      */
-    private OutputAlleleSubset calculateOutputAlleleSubset(final AFCalculationResult afCalculationResult, final VariantContext vc, final List<VariantContext> givenAlleles) {
+    private OutputAlleleSubset calculateOutputAlleleSubset(final AFCalculationResult afCalculationResult, final VariantContext vc, final Set<Allele> forcedAlleles) {
         final List<Allele> outputAlleles = new ArrayList<>();
         final List<Integer> mleCounts = new ArrayList<>();
         boolean siteIsMonomorphic = true;
         final List<Allele> alleles = afCalculationResult.getAllelesUsedInGenotyping();
         final int alternativeAlleleCount = alleles.size() - 1;
         int referenceAlleleSize = 0;
-
-        final Set<Allele> forcedAlleles = AssemblyBasedCallerUtils.getAllelesConsistentWithGivenAlleles(givenAlleles, vc);
 
         for (final Allele allele : alleles) {
             if (allele.isReference() ) {

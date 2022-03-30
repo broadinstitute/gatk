@@ -672,6 +672,40 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testForceCallingNotProducingNoCalls() throws IOException {
+        Utils.resetRandomGenerator();
+        final String bamPath = NA12878_20_21_WGS_bam;
+        final File forceCallingVcf = new File(TEST_FILES_DIR, "testGenotypeGivenAllelesMode_givenAlleles.vcf");
+        final String intervalString = "20:10000000-10010000";
+        final File expected = new File(TEST_FILES_DIR, "expected.testForceCallingNotProducingNoCalls.gatk4.vcf");
+
+
+        final File output = createTempFile("testGenotypeGivenAllelesMode", ".vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        // Prior to https://github.com/broadinstitute/gatk/pull/7740 the output for this test would be littered with 0/0 reference variants with empty alt alleles. This test is intended to enshrine the new behavior.
+        // For an example of what the output used to look at see the issue https://github.com/broadinstitute/gatk/issues/7741.
+        final String[] args = {
+                "-I", bamPath,
+                "-R", b37Reference,
+                "-L", intervalString,
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+                "--" + AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, forceCallingVcf.getAbsolutePath(),
+                "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2",
+                "--" + GenotypeCalculationArgumentCollection.CALL_CONFIDENCE_LONG_NAME, "1000" // This is intended to be an absurdly high number that forces most alleles to fail to demonstrate a bug that caused calls to be made in the vicinity of forced alleles
+        };
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+
     // regression test for https://github.com/broadinstitute/gatk/issues/6495, where a mistake in assembly region trimming
     // caused variants in one-base or similarly short intervals to cause reads to be trimmed to one base long, yielding
     // no calls.
