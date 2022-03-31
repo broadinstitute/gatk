@@ -28,7 +28,7 @@ public final class JexlExpressionReadTagValueFilter extends ReadFilter {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LogManager.getLogger(JexlExpressionReadTagValueFilter.class);
 
-    @Argument(fullName=ReadFilterArgumentDefinitions.READ_FILTER_EXPRESSION_LONG_NAME, shortName="filter", doc="One or more JEXL expressions used to filter", optional=false)
+    @Argument(fullName=ReadFilterArgumentDefinitions.READ_FILTER_EXPRESSION_LONG_NAME, doc="One or more JEXL expressions used to filter", optional=false)
     public List<String> filterExpressions = new ArrayList<>();
 
     private Lazy<List<Expression>> jexlExprs = new Lazy<>(() -> {
