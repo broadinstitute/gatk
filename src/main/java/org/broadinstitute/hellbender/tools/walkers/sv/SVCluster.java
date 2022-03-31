@@ -325,8 +325,6 @@ public final class SVCluster extends MultiVariantWalker {
     private SAMSequenceDictionary dictionary;
     private ReferenceSequenceFile reference;
     private PloidyTable ploidyTable;
-    private Comparator<SVCallRecord> recordComparator;
-    private SVClusterOutputSortingBuffer outputBuffer;
     private VariantContextWriter writer;
     private SVClusterEngine<SVCallRecord> clusterEngine;
     private Set<String> samples;
@@ -346,7 +344,6 @@ public final class SVCluster extends MultiVariantWalker {
             throw new UserException("Reference sequence dictionary required");
         }
         ploidyTable = new PloidyTable(ploidyTablePath.toPath());
-        recordComparator = SVCallRecordUtils.getCallComparator(dictionary);
         samples = getSamplesForVariants();
 
         if (algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
@@ -363,7 +360,6 @@ public final class SVCluster extends MultiVariantWalker {
             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm.name());
         }
 
-        outputBuffer = new SVClusterOutputSortingBuffer(clusterEngine, dictionary);
         writer = createVCFWriter(outputFile);
         writer.writeHeader(createHeader());
         currentContig = null;
@@ -387,6 +383,9 @@ public final class SVCluster extends MultiVariantWalker {
     public void apply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
         final SVCallRecord call = SVCallRecordUtils.create(variant);
+        if (call.getPositionA() == 64286984) {
+            int x = 0;
+        }
         final SVCallRecord filteredCall;
         if (fastMode) {
             // Strip out non-carrier genotypes to save memory and compute
@@ -413,7 +412,7 @@ public final class SVCluster extends MultiVariantWalker {
     }
 
     private void write(final boolean force) {
-        final List<SVCallRecord> records = force ? outputBuffer.forceFlush() : outputBuffer.flush(currentContig);
+        final List<SVCallRecord> records = force ? clusterEngine.forceFlush() : clusterEngine.flush();
         records.stream().map(this::buildVariantContext).forEachOrdered(writer::add);
     }
 

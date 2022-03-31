@@ -98,7 +98,7 @@ public class BinnedCNVDefragmenterTest {
         temp1.add(SVTestUtils.call1);
         //force new cluster by adding a non-overlapping event
         temp1.add(SVTestUtils.call3);
-        final List<SVCallRecord> output1 = temp1.forceFlushAndGetOutput(); //flushes all clusters
+        final List<SVCallRecord> output1 = temp1.forceFlush(); //flushes all clusters
         Assert.assertEquals(output1.size(), 2);
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call3, output1.get(1));
@@ -108,7 +108,7 @@ public class BinnedCNVDefragmenterTest {
         temp2.add(SVTestUtils.call2);  //should overlap after padding
         //force new cluster by adding a call on another contig
         temp2.add(SVTestUtils.call4_chr10);
-        final List<SVCallRecord> output2 = temp2.forceFlushAndGetOutput();
+        final List<SVCallRecord> output2 = temp2.forceFlush();
         Assert.assertEquals(output2.size(), 2);
         Assert.assertEquals(output2.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
         Assert.assertEquals(output2.get(0).getPositionB(), SVTestUtils.call2.getPositionB());
@@ -118,7 +118,7 @@ public class BinnedCNVDefragmenterTest {
         final SVClusterEngine<SVCallRecord> temp3 = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE, SVTestUtils.hg38Reference, CNVLinkage.DEFAULT_PADDING_FRACTION, CNVLinkage.DEFAULT_SAMPLE_OVERLAP);
         temp3.add(SVTestUtils.call1);
         temp3.add(SVTestUtils.sameBoundsSampleMismatch);
-        final List<SVCallRecord> output3 = temp3.forceFlushAndGetOutput();
+        final List<SVCallRecord> output3 = temp3.forceFlush();
         Assert.assertEquals(output3.size(), 2);
     }
 }

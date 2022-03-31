@@ -45,11 +45,11 @@ public class SVTestUtils {
     }
 
     public static SVClusterEngine<SVCallRecord> getNewDefaultSingleLinkageEngine() {
-        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, defaultCollapser, getNewDefaultLinkage());
+        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, defaultCollapser, getNewDefaultLinkage(), hg38Dict);
     }
 
     public static SVClusterEngine<SVCallRecord> getNewDefaultMaxCliqueEngine() {
-        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, defaultCollapser, getNewDefaultLinkage());
+        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, defaultCollapser, getNewDefaultLinkage(), hg38Dict);
     }
 
     public static final ClusteringParameters defaultDepthOnlyParameters = ClusteringParameters.createDepthParameters(0.8, 0, 0);

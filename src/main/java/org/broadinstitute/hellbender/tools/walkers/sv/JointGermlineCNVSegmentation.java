@@ -98,8 +98,6 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private SAMSequenceDictionary dictionary;
     private SVClusterEngine<SVCallRecord> defragmenter;
     private SVClusterEngine<SVCallRecord> clusterEngine;
-    private SVClusterOutputSortingBuffer defragmenterBuffer;
-    private SVClusterOutputSortingBuffer clusterEngineBuffer;
     private List<GenomeLoc> callIntervals;
     private String currentContig;
     private SampleDB sampleDB;
@@ -217,8 +215,6 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         }
         clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy, altAlleleSummaryStrategy, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN,
                 dictionary, reference, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
-        defragmenterBuffer = new SVClusterOutputSortingBuffer(defragmenter, dictionary);
-        clusterEngineBuffer = new SVClusterOutputSortingBuffer(clusterEngine, dictionary);
 
         vcfWriter = getVCFWriter();
 
@@ -298,10 +294,10 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     }
 
     private void processClusters(final boolean force) {
-        final List<SVCallRecord> defragmentedCalls = force ?  defragmenterBuffer.forceFlush() : defragmenterBuffer.flush(currentContig);
+        final List<SVCallRecord> defragmentedCalls = force ?  defragmenter.forceFlush() : defragmenter.flush();
         defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
         //Jack and Isaac cluster first and then defragment
-        final List<SVCallRecord> clusteredCalls = force ? clusterEngineBuffer.forceFlush() : clusterEngineBuffer.flush(currentContig);
+        final List<SVCallRecord> clusteredCalls = force ? clusterEngine.forceFlush() : clusterEngine.flush();
         write(clusteredCalls);
     }
 

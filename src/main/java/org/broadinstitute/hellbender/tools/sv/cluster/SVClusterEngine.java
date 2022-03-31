@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SVLocatable;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -36,8 +38,9 @@ public class SVClusterEngine<T extends SVLocatable> {
     private final SVClusterLinkage<T> linkage;
     private Map<Integer, Cluster> idToClusterMap; // Active clusters
     private final Map<Integer, T> idToItemMap; // Active items
-    private final List<T> outputBuffer;
     protected final CLUSTERING_TYPE clusteringType;
+    private final ItemSortingBuffer buffer;
+
     private String currentContig;
     private int nextItemId;
     private int nextClusterId;
@@ -51,14 +54,15 @@ public class SVClusterEngine<T extends SVLocatable> {
      */
     public SVClusterEngine(final CLUSTERING_TYPE clusteringType,
                            final SVCollapser<T> collapser,
-                           final SVClusterLinkage<T> linkage) {
+                           final SVClusterLinkage<T> linkage,
+                           final SAMSequenceDictionary dictionary) {
         this.clusteringType = clusteringType;
         this.collapser = Utils.nonNull(collapser);
         this.linkage = Utils.nonNull(linkage);
         idToClusterMap = new HashMap<>();
-        outputBuffer = new ArrayList<>();
         currentContig = null;
         idToItemMap = new HashMap<>();
+        buffer = new ItemSortingBuffer(dictionary);
         nextItemId = 0;
         nextClusterId = 0;
         lastStart = 0;
@@ -72,18 +76,16 @@ public class SVClusterEngine<T extends SVLocatable> {
      * Flushes all active clusters, adding them to the output buffer. Results from the output buffer are then copied out
      * and the buffer is cleared. This should be called between contigs to save memory.
      */
-    public final List<T> forceFlushAndGetOutput() {
+    public final List<T> forceFlush() {
         flushClusters();
-        return getOutput();
+        return buffer.forceFlush();
     }
 
     /**
      * Gets any available finalized clusters.
      */
-    public final List<T> getOutput() {
-        final List<T> output = new ArrayList<>(outputBuffer);
-        outputBuffer.clear();
-        return output;
+    public final List<T> flush() {
+        return buffer.flush();
     }
 
     @VisibleForTesting
@@ -104,7 +106,7 @@ public class SVClusterEngine<T extends SVLocatable> {
      * Returns true if there are any active or finalized clusters.
      */
     public final boolean isEmpty() {
-        return idToClusterMap.isEmpty() && outputBuffer.isEmpty();
+        return idToClusterMap.isEmpty() && buffer.isEmpty();
     }
 
     /**
@@ -263,7 +265,7 @@ public class SVClusterEngine<T extends SVLocatable> {
         final Cluster cluster = getCluster(clusterIndex);
         idToClusterMap.remove(clusterIndex);
         final List<Integer> clusterItemIds = cluster.getItemIds();
-        outputBuffer.add(collapser.collapse(clusterItemIds.stream().map(idToItemMap::get).collect(Collectors.toList())));
+        buffer.add(collapser.collapse(clusterItemIds.stream().map(idToItemMap::get).collect(Collectors.toList())));
         // Clean up item id map
         if (clusterItemIds.size() == 1) {
             // Singletons won't be present in any other clusters
@@ -414,6 +416,48 @@ public class SVClusterEngine<T extends SVLocatable> {
         @Override
         public int hashCode() {
             return Objects.hash(itemIds);
+        }
+    }
+
+    private final class ItemSortingBuffer {
+        private List<T> buffer;
+        private final Comparator<T> recordComparator;
+
+        public ItemSortingBuffer(final SAMSequenceDictionary dictionary) {
+            this.recordComparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
+            this.buffer = new ArrayList<>();
+        }
+
+        public void add(final T record) {
+            buffer.add(record);
+        }
+
+        public List<T> flush() {
+            final Integer minActiveStart = getMinActiveStartingPosition();
+            final int minPos = minActiveStart == null ? Integer.MAX_VALUE : minActiveStart;
+            final List<T> finalizedRecords = new ArrayList(buffer.size());
+            final List<T> transientRecords = new ArrayList<>(buffer.size());
+            for (final T record: buffer) {
+                if (!record.getContigA().equals(currentContig) || record.getPositionA() < minPos) {
+                    finalizedRecords.add(record);
+                } else {
+                    transientRecords.add(record);
+                }
+            }
+            buffer = transientRecords;
+            return finalizedRecords.stream()
+                    .sorted(recordComparator)
+                    .collect(Collectors.toList());
+        }
+
+        public List<T> forceFlush() {
+            final List<T> result = buffer.stream().sorted(recordComparator).collect(Collectors.toList());
+            buffer.clear();
+            return result;
+        }
+
+        public boolean isEmpty() {
+            return buffer.isEmpty();
         }
     }
 }
