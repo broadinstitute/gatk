@@ -74,6 +74,7 @@ task SplitIntervals {
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
   Int disk_size = if (defined(split_intervals_disk_size_override)) then split_intervals_disk_size_override else 10
   Int disk_memory = if (defined(split_intervals_mem_override)) then split_intervals_mem_override else 16
   Int java_memory = disk_memory - 4
@@ -99,26 +100,28 @@ task SplitIntervals {
     set -e
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+    fi
+
     mkdir interval-files
     gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
-    --dont-mix-contigs \
-    -R ~{ref_fasta} \
-    ~{"-L " + intervals} \
-    ~{"--weight-bed-file " + interval_weights_bed} \
-    -scatter ~{scatter_count} \
-    -O interval-files \
-    --interval-file-num-digits 10 \
-    ~{split_intervals_extra_args}
+      --dont-mix-contigs \
+      -R ~{ref_fasta} \
+      ~{"-L " + intervals} \
+      ~{"--weight-bed-file " + interval_weights_bed} \
+      -scatter ~{scatter_count} \
+      -O interval-files \
+      --interval-file-num-digits 10 \
+      ~{split_intervals_extra_args}
     cp interval-files/*.interval_list .
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-      if [ ~{has_service_account_file} = 'true' ]; then
-        gsutil cp ~{service_account_json_path} local.service_account.json
-        gcloud auth activate-service-account --key-file=local.service_account.json
-      fi
       gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
     fi
   }
