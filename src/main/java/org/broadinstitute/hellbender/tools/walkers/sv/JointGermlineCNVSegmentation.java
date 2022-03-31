@@ -98,6 +98,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private SAMSequenceDictionary dictionary;
     private SVClusterEngine<SVCallRecord> defragmenter;
     private SVClusterEngine<SVCallRecord> clusterEngine;
+    private SVClusterOutputSortingBuffer defragmenterBuffer;
+    private SVClusterOutputSortingBuffer clusterEngineBuffer;
     private List<GenomeLoc> callIntervals;
     private String currentContig;
     private SampleDB sampleDB;
@@ -147,7 +149,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
             doc="Cluster events whose endpoints are within this distance of each other", optional=true)
     public int clusterWindow = CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS.getWindow();
 
-    @Argument(fullName = MODEL_CALL_INTERVALS_LONG_NAME, doc = "gCNV model intervals created with the FilterIntervals tool.")
+    @Argument(fullName = MODEL_CALL_INTERVALS_LONG_NAME, doc = "gCNV model intervals created with the FilterIntervals tool.", optional=true)
     private GATKPath modelCallIntervalList = null;
 
     @Argument(fullName = BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME, doc = "Strategy to use for choosing a representative value for a breakpoint cluster.", optional = true)
@@ -204,6 +206,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         //dictionary will not be null because this tool requiresReference()
 
         final GenomeLocParser parser = new GenomeLocParser(this.dictionary);
+
         setIntervals(parser);
 
         final ClusteringParameters clusterArgs = ClusteringParameters.createDepthParameters(clusterIntervalOverlap, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
@@ -214,6 +217,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         }
         clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy, altAlleleSummaryStrategy, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN,
                 dictionary, reference, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
+        defragmenterBuffer = new SVClusterOutputSortingBuffer(defragmenter, dictionary);
+        clusterEngineBuffer = new SVClusterOutputSortingBuffer(clusterEngine, dictionary);
 
         vcfWriter = getVCFWriter();
 
@@ -267,12 +272,13 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
      */
     @Override
     public void apply(final List<VariantContext> variantContexts, final ReferenceContext referenceContext, final List<ReadsContext> readsContexts) {
-        if (currentContig == null) {
-            currentContig = variantContexts.get(0).getContig(); //variantContexts should have identical start, so choose 0th arbitrarily
-        } else if (!variantContexts.get(0).getContig().equals(currentContig)) {
-            processClusters();
-            currentContig = variantContexts.get(0).getContig();
+        //variantContexts should have identical start, so choose 0th arbitrarily
+        final String variantContig = variantContexts.get(0).getContig();
+        if (currentContig != null && !variantContig.equals(currentContig)) {
+            // Since we need to check for variant overlap and reset genotypes, only flush clustering when we hit a new contig
+            processClusters(false);
         }
+        currentContig = variantContig;
         for (final VariantContext vc : variantContexts) {
             final SVCallRecord record = createDepthOnlyFromGCNVWithOriginalGenotypes(vc, minQS, allosomalContigs, refAutosomalCopyNumber, sampleDB);
             if (record != null) {
@@ -287,17 +293,15 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
     @Override
     public Object onTraversalSuccess() {
-        processClusters();
+        processClusters(true);
         return null;
     }
 
-    private void processClusters() {
-        if (!defragmenter.isEmpty()) {
-            final List<SVCallRecord> defragmentedCalls = defragmenter.forceFlushAndGetOutput();
-            defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
-        }
+    private void processClusters(final boolean force) {
+        final List<SVCallRecord> defragmentedCalls = force ?  defragmenterBuffer.forceFlush() : defragmenterBuffer.flush(currentContig);
+        defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
         //Jack and Isaac cluster first and then defragment
-        final List<SVCallRecord> clusteredCalls = clusterEngine.forceFlushAndGetOutput();
+        final List<SVCallRecord> clusteredCalls = force ? clusterEngineBuffer.forceFlush() : clusterEngineBuffer.flush(currentContig);
         write(clusteredCalls);
     }
 
@@ -315,12 +319,10 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     }
 
     private void write(final List<SVCallRecord> calls) {
-        final List<VariantContext> sortedCalls = calls.stream()
-                .sorted(Comparator.comparing(c -> new SimpleInterval(c.getContigA(), c.getPositionA(), c.getPositionB()), //VCs have to be sorted by end as well
-                        IntervalUtils.getDictionaryOrderComparator(dictionary)))
+        final List<VariantContext> sanitizedRecords = calls.stream()
                 .map(this::buildAndSanitizeRecord)
                 .collect(Collectors.toList());
-        final Iterator<VariantContext> it = sortedCalls.iterator();
+        final Iterator<VariantContext> it = sanitizedRecords.iterator();
         ArrayList<VariantContext> overlappingVCs = new ArrayList<>(calls.size());
         if (!it.hasNext()) {
             return;
@@ -682,14 +684,18 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
     private static void correctGenotypePloidy(final GenotypeBuilder builder, final Genotype g, final int ploidy,
                                               final Allele refAllele) {
-        final ArrayList<Allele> alleles = new ArrayList<>(g.getAlleles());
-        Utils.validate(alleles.size() <= ploidy, "Encountered genotype with ploidy " + ploidy + " but " +
-                alleles.size() + " alleles.");
-        while (alleles.size() < ploidy) {
-            alleles.add(refAllele);
+        if (g.getAlleles().size() == 1 && g.getAllele(0).isNoCall()) {
+            builder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
+        } else {
+            final ArrayList<Allele> alleles = new ArrayList<>(g.getAlleles());
+            Utils.validate(alleles.size() <= ploidy, "Encountered genotype with ploidy " + ploidy +
+                    " but " + alleles.size() + " alleles.");
+            while (alleles.size() < ploidy) {
+                alleles.add(refAllele);
+            }
+            alleles.trimToSize();
+            builder.alleles(alleles);
         }
-        alleles.trimToSize();
-        builder.alleles(alleles);
     }
 
     private static void addExpectedCopyNumber(final GenotypeBuilder g, final int ploidy) {
