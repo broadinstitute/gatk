@@ -435,7 +435,7 @@ public class SVClusterEngine<T extends SVLocatable> {
         public List<T> flush() {
             final Integer minActiveStart = getMinActiveStartingPosition();
             final int minPos = minActiveStart == null ? Integer.MAX_VALUE : minActiveStart;
-            final List<T> finalizedRecords = new ArrayList(buffer.size());
+            final List<T> finalizedRecords = new ArrayList<>(buffer.size());
             final List<T> transientRecords = new ArrayList<>(buffer.size());
             for (final T record: buffer) {
                 if (!record.getContigA().equals(currentContig) || record.getPositionA() < minPos) {
