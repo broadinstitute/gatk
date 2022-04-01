@@ -59,7 +59,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
 
     // The input VCF should cover a genomic region given by the union of regions in the below training and truth resources
     // and should also contain a few multiallelics that overlap those resources.
-    private static final File INPUT_VCF = new File(TEST_FILES_DIR, "input/stroke_vqsr_magic_as.chr1.1-10M.vcf.gz");
+    private static final File INPUT_VCF = new File(TEST_FILES_DIR, "input/small_callset_low_threshold.chr1.1-10M.vcf.gz");
 
     // We use snippets of the Omni sites for SNP training (chr1:1-5000000) and truth (chr1:5000000-10000000); we don't sweat the 1bp overlap.
     private static final File SNP_TRAINING_VCF = new File(TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.1-5M.vcf.gz");
