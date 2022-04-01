@@ -10,8 +10,24 @@
 // Script URL: https://script.google.com/home/projects/1UQnN7Y7Ci8bP2QSczLdNerLUKh6vAmh1gCc40xEqiIGiPngfCLYeImbq/edit
 
 function updateSpredsheet() {
-  var dockerImageDownloadCountList = recordDockerImagePullCount();
-  var githubDownloads = recordGitHubReleaseDownloadCount();
+
+  // Set up our variables for this instance of this script:
+
+  // NOTE: THIS ORDER MATTERS!  APPEND!  DO NOT INSERT!
+  const dockerHubImages = ['broadinstitute/gatk', 'broadinstitute/gatk3'];
+  const gitHubUrl = "https://api.github.com/repos/broadinstitute/gatk/releases";
+
+  const GITHUB_AUTH_TOKEN = "";
+
+  // ============================================
+
+  // Update the docker image downloads:
+  var dockerImageDownloadCountList = recordDockerImagePullCount(dockerHubImages);
+
+  // Update our github release downloads:
+  var githubDownloads = recordGitHubReleaseDownloadCount(gitHubUrl, GITHUB_AUTH_TOKEN);
+
+  // ============================================
 
   // Update our summary sheet:
   var spreadsheet = SpreadsheetApp.getActive().getSheetByName("Overall Stats");
@@ -32,14 +48,33 @@ function updateSpredsheet() {
   spreadsheet.appendRow(row);
 }
 
-function recordGitHubReleaseDownloadCount() {
+function cleanGithubUrl(url) {
+  // Convert a regular github url to an API url so that
+  // we can receive JSON results.
+
+  const urlRegex = /http.*?github.com\/(.*)/;
+
+  // Make sure the interpreter knows URL should be a string:
+  url = String(url);
+
+  // Set up a default return value:
+  var newUrl = url;
+
+  if (url.startsWith("https://github.com") || url.startsWith("http://github.com") || url.startsWith("https://www.github.com") || url.startsWith("http://www.github.com")) {
+    const match = url.match(urlRegex);
+    newUrl = "https://api.github.com/repos/" + match[1]
+  }
+
+  return newUrl;
+}
+
+function recordGitHubReleaseDownloadCount(githubUrl, auth_token) {
 
   // Header for GATK Bot to pull down the info on the releases so we don't get rate-limited: 
   // This is OPTIONAL, but HIGHLY RECOMMENDED!
-  var GATK_BOT_AUTH_TOKEN = "";
   var REQUEST_HEADERS = {
     "headers" : {
-      "Authorization" : "token " + GATK_BOT_AUTH_TOKEN
+      "Authorization" : "token " + auth_token
     }
   };
 
@@ -47,7 +82,7 @@ function recordGitHubReleaseDownloadCount() {
   var COUNT_START_COLUMN = 2;
 
   var numResultsPerPage = 100;
-  var gatkGithubUrl = "https://api.github.com/repos/broadinstitute/gatk/releases";
+  var githubUrl = cleanGithubUrl(githubUrl);
 
   var row = [new Date()];
   
@@ -64,11 +99,11 @@ function recordGitHubReleaseDownloadCount() {
   var pageNum = 1;
   while (true) {
     var response = "";
-    if (GATK_BOT_AUTH_TOKEN.length > 0) {
-      response = UrlFetchApp.fetch(gatkGithubUrl + "?per_page=" + numResultsPerPage + "&page=" + pageNum, REQUEST_HEADERS); 
+    if (auth_token.length > 0) {
+      response = UrlFetchApp.fetch(githubUrl + "?per_page=" + numResultsPerPage + "&page=" + pageNum, REQUEST_HEADERS); 
     }
     else {
-      response = UrlFetchApp.fetch(gatkGithubUrl + "?per_page=" + numResultsPerPage + "&page=" + pageNum); 
+      response = UrlFetchApp.fetch(githubUrl + "?per_page=" + numResultsPerPage + "&page=" + pageNum); 
     }
     var githubJsonResponse = JSON.parse(response.getContentText());
 
@@ -103,7 +138,7 @@ function recordGitHubReleaseDownloadCount() {
 
   var lastCol = spreadsheet.getLastColumn();
   var releaseVersions = [];
-  if (lastCol != 1) { 
+  if ((lastCol != 0) && (lastCol != 1)) { 
     releaseVersions = spreadsheet.getRange(1,2,1, lastCol-1).getValues()[0];
   }
 
@@ -167,13 +202,11 @@ function recordGitHubReleaseDownloadCount() {
 
 // ========================================================================
 
-function recordDockerImagePullCount() {
+function recordDockerImagePullCount(images) {
 
   var NUM_FIELDS_PER_IMAGE = 2;
   var COUNT_START_COLUMN = 2;
 
-  // THIS ORDER MATTERS!  APPEND!  DO NOT INSERT!
-  var images = ['broadinstitute/gatk', 'broadinstitute/gatk3'];
   var row = [new Date()];
   
   // Get the spreadsheet with our docker info in it:
