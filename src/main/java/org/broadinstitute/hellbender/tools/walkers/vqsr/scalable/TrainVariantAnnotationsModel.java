@@ -49,6 +49,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     public static final String UNLABELED_ANNOTATIONS_HDF5_LONG_NAME = "unlabeled-annotations-hdf5";
     public static final String PYTHON_SCRIPT_LONG_NAME = "python-script";
     public static final String HYPERPARAMETERS_JSON_LONG_NAME = "hyperparameters-json";
+    public static final String TRUTH_SENSITIVITY_THRESHOLD_LONG_NAME = "truth-sensitivity-threshold";
 
     enum ModelBackendMode {
         PYTHON, BGMM    // TODO put IsolationForest script into resources and use as a default PYTHON backend
@@ -90,7 +91,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     private String outputPrefix;
 
     @Argument(
-            fullName = "truth-sensitivity-threshold",
+            fullName = TRUTH_SENSITIVITY_THRESHOLD_LONG_NAME,
             doc = "Truth-sensitivity threshold that determines which sites will be used for training the negative model. " +
                     "Increasing this will decrease the corresponding positive-model score threshold; sites with scores below this score " +
                     "threshold will be used for training the negative model. Thus, this parameter should typically be chosen to " +

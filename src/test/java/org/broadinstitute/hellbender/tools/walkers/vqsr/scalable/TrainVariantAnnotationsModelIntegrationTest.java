@@ -61,6 +61,10 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         argsBuilder.add(TrainVariantAnnotationsModel.UNLABELED_ANNOTATIONS_HDF5_LONG_NAME, unlabeledAnnotationsHDF5);
         return argsBuilder;
     };
+    private static final BiFunction<ArgumentsBuilder, Double, ArgumentsBuilder> ADD_TRUTH_SENSITIVITY_THRESHOLD = (argsBuilder, truthSensitivityThreshold) -> {
+        argsBuilder.add(TrainVariantAnnotationsModel.TRUTH_SENSITIVITY_THRESHOLD_LONG_NAME, truthSensitivityThreshold);
+        return argsBuilder;
+    };
     private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_SNP_MODE = argsBuilder -> {
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.SNP);
         return argsBuilder;
@@ -88,17 +92,22 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     public Object[][] dataValidInputs() {
         final File positiveAnnotationsHDF5 = new File(TEST_FILES_DIR, "input/extract.nonAS.snpIndel.posUn.annot.hdf5");
         final File unlabeledAnnotationsHDF5 = new File(TEST_FILES_DIR, "input/extract.nonAS.snpIndel.posUn.unlabeled.annot.hdf5");
+        final double truthSensitivityThreshold = 0.9;
+
         final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = argsBuilder ->
                 ADD_ANNOTATIONS_HDF5.apply(argsBuilder, positiveAnnotationsHDF5);
         final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = argsBuilder ->
                 ADD_UNLABELED_ANNOTATIONS_HDF5.apply(argsBuilder, unlabeledAnnotationsHDF5);
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addTruthSensitivityThreshold = argsBuilder ->
+                ADD_TRUTH_SENSITIVITY_THRESHOLD.apply(argsBuilder, truthSensitivityThreshold);
+
         final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
                 Arrays.asList(
                         Pair.of("extract.nonAS.snpIndel.posUn.train.snp", ADD_SNP_MODE),
                         Pair.of("extract.nonAS.snpIndel.posUn.train.snpIndel", ADD_SNP_MODE.andThen(ADD_INDEL_MODE))),
                 Arrays.asList(
                         Pair.of("pos", addPositiveAnnotations),
-                        Pair.of("posNeg", addPositiveAnnotations.andThen(addUnlabeledAnnotations))),
+                        Pair.of("posNeg", addPositiveAnnotations.andThen(addUnlabeledAnnotations).andThen(addTruthSensitivityThreshold))),
                 Arrays.asList(
 //                        Pair.of("BGMM", Function.identity()),
                         Pair.of("IF", ADD_ISOLATION_FOREST_PYTHON_SCRIPT.andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON))));
@@ -131,6 +140,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     // exception test annotation-name validation using AS.snp.positive and nonAS.snp.positiveUnlabeled
     // exception test no-data validation using nonAS.snp.positive and nonAS.both.positiveUnlabeled for SNP+INDEL training
     // exception test no-data validation using nonAS.snp.positive for INDEL training
+    // exception test unlabeled provided and no threshold specified
 
     private static void assertOutputs(final String tag,
                                       final String outputPrefix) {
@@ -150,16 +160,34 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                                                  final String variantType) {
         final String tagAndVariantType = String.format("%s.%s", tag, variantType);
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
+
         runSystemCommand(String.format("h5diff %s/%s.trainingScores.hdf5 %s.trainingScores.hdf5", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
         runSystemCommand(String.format("h5diff %s/%s.truthScores.hdf5 %s.truthScores.hdf5", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
         if (tag.contains("BGMM")) {
             runSystemCommand(String.format("diff %s/%s.scorer.ser %s.scorer.ser", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
             Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.pkl").exists());
         } else if (tag.contains("IF")) {
-            runSystemCommand(String.format("diff %s/%s.scorer.pkl %s.scorer.pkl", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
+            runSystemCommand(String.format("diff %s/%s.scorer.pkl %s.scorer.pkl", EXPECTED_TEST_FILES_DIR, tag, outputPrefixAndVariantType));
             Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.ser").exists());
         } else {
             Assert.fail("Unknown model-backend tag.");
+        }
+
+        if (tag.contains("posNeg")) {
+            runSystemCommand(String.format("h5diff %s/%s.unlabeledScores.hdf5 %s.unlabeledScores.hdf5", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
+            if (tag.contains("BGMM")) {
+                runSystemCommand(String.format("diff %s/%s.negative.scorer.ser %s.negative.scorer.ser", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
+                Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.pkl").exists());
+            } else if (tag.contains("IF")) {
+                runSystemCommand(String.format("diff %s/%s.negative.scorer.pkl %s.negative.scorer.pkl", EXPECTED_TEST_FILES_DIR, tag, outputPrefixAndVariantType));
+                Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.ser").exists());
+            } else {
+                Assert.fail("Unknown model-backend tag.");
+            }
+        } else {
+            Assert.assertFalse(new File(outputPrefixAndVariantType, ".unlabeledScores.hdf5").exists());
+            Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.ser").exists());
+            Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.pkl").exists());
         }
     }
 
@@ -168,8 +196,11 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".trainingScores.hdf5").exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".truthScores.hdf5").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType, ".unlabeledScores.hdf5").exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.ser").exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.pkl").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.ser").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.pkl").exists());
     }
 
     // this method is duplicated in the other integration-test classes in this package
@@ -185,177 +216,4 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
             Assert.fail(e.getMessage());
         }
     }
-
-//    @Test
-//    public void test1kgp50ExomesAll() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/train-test/test.all",
-//                "--python-script", PYTHON_SCRIPT,
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-//                "--mode", "SNP",
-//                "--mode", "INDEL",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void test1kgp50ExomesAllUnlabeled() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.annot.hdf5",
-//                "--unlabeled-annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.unlabeled.annot.hdf5",
-//                "--truth-sensitivity-threshold", "0.95",
-//                "-O", "/home/slee/working/vqsr/scalable/train-test/test.all-unlabeled",
-//                "--python-script", PYTHON_SCRIPT,
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-//                "--mode", "SNP",
-//                "--mode", "INDEL",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//
-//        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.trainingScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.trainingScores.hdf5");
-//        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.truthScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.truthScores.hdf5");
-//        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.unlabeledScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.unlabeledScores.hdf5");
-//        runSystemCommand("diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.scorer.pkl /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.scorer.pkl");
-//        runSystemCommand("diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.snp.negative.scorer.pkl /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.snp.negative.scorer.pkl");
-//        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.trainingScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.trainingScores.hdf5");
-//        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.truthScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.truthScores.hdf5");
-//        runSystemCommand("h5diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.unlabeledScores.hdf5 /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.unlabeledScores.hdf5");
-//        runSystemCommand("diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.scorer.pkl /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.scorer.pkl");
-//        runSystemCommand("diff /home/slee/working/vqsr/scalable/train-test/test.all-unlabeled.indel.negative.scorer.pkl /home/slee/working/vqsr/scalable/train-test/expected/test.all-unlabeled.indel.negative.scorer.pkl");
-//    }
-//
-//    @Test
-//    public void test1kgp50ExomesSNP() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/train-test/test",
-//                "--python-script", PYTHON_SCRIPT,
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-//                "--mode", "SNP",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void test1kgp50ExomesIndel() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.indel.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/train-test/test",
-//                "--python-script", PYTHON_SCRIPT,
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-//                "--mode", "INDEL",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void testSNPAS() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.as.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/train-test/test.snp.as",
-//                "--python-script", PYTHON_SCRIPT,
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/hyperparameters.json",
-//                "--mode", "SNP",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void test1kgp50ExomesBGMMAll() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.all.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/train-test/test.bgmm.all",
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
-//                "--mode", "SNP",
-//                "--mode", "INDEL",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void test1kgp50ExomesBGMMSNP() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.snp.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/train-test/test.bgmm",
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
-//                "--mode", "SNP",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void test1kgp50ExomesBGMMIndel() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/extract-test/test.indel.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/train-test/test.bgmm",
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
-//                "--mode", "INDEL",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void testJbxAll() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.extract.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.train",
-//                "--python-script", PYTHON_SCRIPT,
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/jbx/hyperparameters.json",
-//                "--mode", "SNP",
-//                "--mode", "INDEL",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void testJbxAllUnlabeled() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.extract.annot.hdf5",
-//                "--unlabeled-annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.extract.unlabeled.annot.hdf5",
-//                "--truth-sensitivity-threshold", "0.95",
-//                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.train",
-//                "--python-script", PYTHON_SCRIPT,
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/jbx/hyperparameters.json",
-//                "--mode", "SNP",
-//                "--mode", "INDEL",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void testJbxSNP() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.train",
-//                "--python-script", PYTHON_SCRIPT,
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/jbx/hyperparameters.json",
-//                "--mode", "SNP",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
-//
-//    @Test
-//    public void testJbxBGMMAll() {
-//        final String[] arguments = {
-//                "--annotations-hdf5", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.extract.annot.hdf5",
-//                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.bgmm.all.train",
-//                "--hyperparameters-json", "/home/slee/working/vqsr/scalable/train-test/bgmm-hyperparameters.json",
-//                "--mode", "SNP",
-//                "--mode", "INDEL",
-//                "--verbosity", "INFO"
-//        };
-//        runCommandLine(arguments);
-//    }
 }
