@@ -9,6 +9,11 @@
 //
 // Script URL: https://script.google.com/home/projects/1UQnN7Y7Ci8bP2QSczLdNerLUKh6vAmh1gCc40xEqiIGiPngfCLYeImbq/edit
 
+const OVERALL_STATS_SHEET_NAME = "Overall Stats";
+const DOCKER_STATS_SHEET_NAME = "Docker Repo Pulls";
+const GITHUB_STATS_SHEET_NAME = "Github Stats";
+const REQUIRED_SHEETS = [OVERALL_STATS_SHEET_NAME, DOCKER_STATS_SHEET_NAME, GITHUB_STATS_SHEET_NAME];
+
 function updateSpredsheet() {
 
   // Set up our variables for this instance of this script:
@@ -21,6 +26,11 @@ function updateSpredsheet() {
 
   // ============================================
 
+  // Make sure the spreadsheet is ready:
+  setupSpreadsheetIfNecessary(dockerHubImages);
+
+  // ============================================
+
   // Update the docker image downloads:
   var dockerImageDownloadCountList = recordDockerImagePullCount(dockerHubImages);
 
@@ -30,7 +40,7 @@ function updateSpredsheet() {
   // ============================================
 
   // Update our summary sheet:
-  var spreadsheet = SpreadsheetApp.getActive().getSheetByName("Overall Stats");
+  var spreadsheet = SpreadsheetApp.getActive().getSheetByName(OVERALL_STATS_SHEET_NAME);
   
   var downloadCounts = [];
   downloadCounts = downloadCounts.concat(dockerImageDownloadCountList);
@@ -46,6 +56,86 @@ function updateSpredsheet() {
   row.push(totalDownloads);
 
   spreadsheet.appendRow(row);
+
+  // Now make all the columns auto-fit so we can view them correctly:
+  REQUIRED_SHEETS.forEach(function (sheetName) {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    sheet.autoResizeColumns(1, sheet.getLastColumn());
+  })
+}
+
+function setupSpreadsheetIfNecessary(dockerHubImages) {
+  // Set up the sheets / tabs, headers, etc. required by this script.
+
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Check to see if we have to set up our sheets:
+  var mustInitializeSheets = false;
+  for (let i = 0; i < REQUIRED_SHEETS.length; i++) {
+    // Create the sheet itself:
+    if (spreadsheet.getSheetByName(REQUIRED_SHEETS[i]) == null) { 
+      mustInitializeSheets = true;
+      break;
+    }
+  }
+
+  if (!mustInitializeSheets) {
+    console.log("Sheet already set up for data.");
+    return;
+  }
+  else {
+    console.log("Must initialize sheets!");
+  }
+
+  // Make sure all our required sheets exist:
+  REQUIRED_SHEETS.forEach( function (sheetName) {
+    console.log("Adding sheet: " + sheetName);
+    // Create the sheet itself:
+    if (spreadsheet.getSheetByName(sheetName) == null) { 
+      const newSheet = spreadsheet.insertSheet(sheetName);
+
+      // Set up the top left cell as our date:
+      const dateRange = newSheet.getRange("A1");
+      dateRange.setValue("Date / Time");
+      dateRange.setFontWeight('bold');
+    }
+  })
+
+  // Set up the headers in the overall stats sheet next:
+  const overallStatsSheet = spreadsheet.getSheetByName(OVERALL_STATS_SHEET_NAME);
+
+  // Start with docker image headers:
+  var headerNum = 0;
+  dockerHubImages.forEach(function (dockerImage) {
+    console.log("Setting header for docker image: " + dockerImage);
+    var headerCell = overallStatsSheet.getRange(1, 2 + headerNum, 1, 1);
+
+    headerCell.setValue(dockerImage + " Docker Pulls");
+    headerCell.setFontWeight('bold');
+
+    headerNum += 1;
+  })
+
+  // Now the github header:
+  console.log("Setting header for GitHub releases");
+  var headerCell = overallStatsSheet.getRange(1, 2 + headerNum, 1, 1);
+  headerCell.setValue("Github Repo Pulls");
+  headerCell.setFontWeight('bold');
+  headerNum += 1;
+
+  // Now our total downloads:
+  console.log("Setting header for Total Downloads");
+  headerCell = overallStatsSheet.getRange(1, 2 + headerNum, 1, 1);
+  headerCell.setValue("Total Overall Downloads");
+  headerCell.setFontWeight('bold');
+  headerNum += 1;
+
+  // Clean up the default sheet if it's still there:
+  const defaultSheet = spreadsheet.getSheetByName("Sheet1");
+  if (defaultSheet != null) {
+    console.log("Removing default sheet.");
+    spreadsheet.deleteSheet(defaultSheet);
+  }
 }
 
 function cleanGithubUrl(url) {
@@ -64,6 +154,8 @@ function cleanGithubUrl(url) {
     const match = url.match(urlRegex);
     newUrl = "https://api.github.com/repos/" + match[1]
   }
+
+  if (newUrl)
 
   return newUrl;
 }
@@ -87,7 +179,7 @@ function recordGitHubReleaseDownloadCount(githubUrl, auth_token) {
   var row = [new Date()];
   
   // Get the spreadsheet with our docker info in it:
-  var spreadsheet = SpreadsheetApp.getActive().getSheetByName("Github Stats");
+  var spreadsheet = SpreadsheetApp.getActive().getSheetByName(GITHUB_STATS_SHEET_NAME);
 
   // This is the last row with data in it:
   var lastRow = spreadsheet.getLastRow();
@@ -210,7 +302,7 @@ function recordDockerImagePullCount(images) {
   var row = [new Date()];
   
   // Get the spreadsheet with our docker info in it:
-  var spreadsheet = SpreadsheetApp.getActive().getSheetByName("Docker Repo Pulls");
+  var spreadsheet = SpreadsheetApp.getActive().getSheetByName(DOCKER_STATS_SHEET_NAME);
 
   // This is the last row with data in it:
   var lastRow = spreadsheet.getLastRow();
