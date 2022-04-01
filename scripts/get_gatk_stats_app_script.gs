@@ -70,7 +70,7 @@ function cleanGithubUrl(url) {
 
 function recordGitHubReleaseDownloadCount(githubUrl, auth_token) {
 
-  // Header for GATK Bot to pull down the info on the releases so we don't get rate-limited: 
+  // Header for authorization to pull down the info on the releases so we don't get rate-limited: 
   // This is OPTIONAL, but HIGHLY RECOMMENDED!
   var REQUEST_HEADERS = {
     "headers" : {
