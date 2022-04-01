@@ -52,22 +52,23 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     private static final List<String> ALLELE_SPECIFIC_ANNOTATIONS = Arrays.asList(
             "DP", "AS_FS", "AS_MQ", "AS_MQRankSum", "AS_QD", "AS_ReadPosRankSum", "AS_SOR");
 
-    private static final File TEST_FILES_DIR = new File(largeFileTestDir,
+    private static final File PACKAGE_TEST_FILES_DIR = new File(largeFileTestDir,
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/");
-    private static final File EXPECTED_TEST_FILES_DIR = new File(largeFileTestDir,
-            "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/extract/expected");
+    private static final File TEST_FILES_DIR = new File(largeFileTestDir,
+            "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/extract");
+    private static final File EXPECTED_TEST_FILES_DIR = new File(TEST_FILES_DIR, "expected");
 
     // The input VCF should cover a genomic region given by the union of regions in the below training and truth resources
     // and should also contain a few multiallelics that overlap those resources.
-    private static final File INPUT_VCF = new File(TEST_FILES_DIR, "input/small_callset_low_threshold.sites-only.chr1.1-10M.vcf.gz");
+    private static final File INPUT_VCF = new File(PACKAGE_TEST_FILES_DIR, "input/small_callset_low_threshold.sites-only.chr1.1-10M.vcf.gz");
 
     // We use snippets of the Omni sites for SNP training (chr1:1-5000000) and truth (chr1:5000000-10000000); we don't sweat the 1bp overlap.
-    private static final File SNP_TRAINING_VCF = new File(TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.1-5M.vcf.gz");
-    private static final File SNP_TRUTH_VCF = new File(TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.5M-10M.vcf.gz");
+    private static final File SNP_TRAINING_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.1-5M.vcf.gz");
+    private static final File SNP_TRUTH_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.5M-10M.vcf.gz");
 
     // We use snippets of the Mills sites for indel training (chr1:1-5000000) and truth (chr1:5000000-10000000); we don't sweat the 1bp overlap.
-    private static final File INDEL_TRAINING_VCF = new File(TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.1-5M.vcf.gz");
-    private static final File INDEL_TRUTH_VCF = new File(TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.5M-10M.vcf.gz");
+    private static final File INDEL_TRAINING_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.1-5M.vcf.gz");
+    private static final File INDEL_TRUTH_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.5M-10M.vcf.gz");
 
     private static final int MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = 100;
 
@@ -78,28 +79,28 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         argsBuilder.add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
         return argsBuilder;
     };
-    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS = (argsBuilder) -> {
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS = argsBuilder -> {
         NON_ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
         return argsBuilder;
     };
-    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_ALLELE_SPECIFIC_ANNOTATIONS = (argsBuilder) -> {
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_ALLELE_SPECIFIC_ANNOTATIONS = argsBuilder -> {
         argsBuilder.addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME);
         ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
         return argsBuilder;
     };
-    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_SNP_MODE_AND_RESOURCES = (argsBuilder) -> {
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_SNP_MODE_AND_RESOURCES = argsBuilder -> {
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.SNP)
                 .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-training,training=true", SNP_TRAINING_VCF)
                 .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-truth,truth=true", SNP_TRUTH_VCF);
         return argsBuilder;
     };
-    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_INDEL_MODE_AND_RESOURCES = (argsBuilder) -> {
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_INDEL_MODE_AND_RESOURCES = argsBuilder -> {
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.INDEL)
                 .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-training,training=true", INDEL_TRAINING_VCF)
                 .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-truth,truth=true", INDEL_TRUTH_VCF);
         return argsBuilder;
     };
-    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = (argsBuilder) -> {
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = argsBuilder -> {
         argsBuilder.add(ExtractVariantAnnotations.MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS_LONG_NAME, MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS);
         return argsBuilder;
     };
@@ -114,19 +115,19 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     public Object[][] dataValidInputs() {
         final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
                 Arrays.asList(
-                        Pair.of("nonAS", ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS),
-                        Pair.of("AS", ADD_ALLELE_SPECIFIC_ANNOTATIONS)),
+                        Pair.of("extract.nonAS", ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS),
+                        Pair.of("extract.AS", ADD_ALLELE_SPECIFIC_ANNOTATIONS)),
                 Arrays.asList(
                         Pair.of("snp", ADD_SNP_MODE_AND_RESOURCES),
                         Pair.of("indel", ADD_INDEL_MODE_AND_RESOURCES),
-                        Pair.of("both", ADD_SNP_MODE_AND_RESOURCES.andThen(ADD_INDEL_MODE_AND_RESOURCES))),
+                        Pair.of("snpIndel", ADD_SNP_MODE_AND_RESOURCES.andThen(ADD_INDEL_MODE_AND_RESOURCES))),
                 Arrays.asList(
-                        Pair.of("positive", Function.identity()),
-                        Pair.of("positiveUnlabeled", ADD_MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS)));
+                        Pair.of("pos", Function.identity()),
+                        Pair.of("posUn", ADD_MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS)));
 
         return testConfigurations.stream()
                 .map(tagAndAddFunctionPairs -> new Object[]{
-                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., nonAS.snp.positive
+                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snp.pos
                         tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
                                 .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
                                 .apply(BASE_ARGS_BUILDER_SUPPLIER.get())})                                               //  appropriate arguments
@@ -152,13 +153,14 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         runSystemCommand(String.format("diff %s/%s.vcf.gz %s.vcf.gz", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         runSystemCommand(String.format("diff %s/%s.vcf.gz.tbi %s.vcf.gz.tbi", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        if (tag.contains("positiveUnlabeled")) {
+        if (tag.contains("posUn")) {
             runSystemCommand(String.format("h5diff %s/%s.unlabeled.annot.hdf5 %s.unlabeled.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         } else {
             Assert.assertFalse(new File(outputPrefix, ".unlabeled.annot.hdf5").exists());
         }
     }
 
+    // this method is duplicated in the other integration-test classes in this package
     private static void runSystemCommand(final String command) {
         try {
             final Process process = Runtime.getRuntime().exec(command);

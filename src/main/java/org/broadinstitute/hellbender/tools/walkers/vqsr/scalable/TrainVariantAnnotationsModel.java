@@ -47,6 +47,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     public static final String MODE_LONG_NAME = "mode";
     public static final String ANNOTATIONS_HDF5_LONG_NAME = "annotations-hdf5";
     public static final String UNLABELED_ANNOTATIONS_HDF5_LONG_NAME = "unlabeled-annotations-hdf5";
+    public static final String PYTHON_SCRIPT_LONG_NAME = "python-script";
+    public static final String HYPERPARAMETERS_JSON_LONG_NAME = "hyperparameters-json";
 
     enum ModelBackendMode {
         PYTHON, BGMM    // TODO put IsolationForest script into resources and use as a default PYTHON backend
@@ -72,12 +74,12 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     private File inputUnlabeledAnnotationsFile;
 
     @Argument(
-            fullName = "python-script",
+            fullName = PYTHON_SCRIPT_LONG_NAME,
             optional = true)
     private File pythonScriptFile;
 
     @Argument(
-            fullName = "hyperparameters-json",
+            fullName = HYPERPARAMETERS_JSON_LONG_NAME,
             doc = "JSON file containing hyperparameters.")
     private File hyperparametersJSONFile;
 
