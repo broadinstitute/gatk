@@ -55,6 +55,7 @@ public class RequesterPaysIntegrationTest extends CommandLineProgramTest {
                                                   String intervalBase, boolean requiresRequesterPays) throws IOException {
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final File output = IOUtils.createTempFile("out", ".txt");
+        System.out.println("GCP TEST PROJECT: " + getGCPTestProject());
         args.addReference(referenceBase + "hg19mini.fasta")
                         .addInput(bamBase + "reads_data_source_test1.bam"  )
                         .addVCF(vcfBase + "example_variants_withSequenceDict.vcf")
