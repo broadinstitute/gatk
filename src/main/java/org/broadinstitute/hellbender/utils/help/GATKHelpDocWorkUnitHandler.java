@@ -1,10 +1,17 @@
 package org.broadinstitute.hellbender.utils.help;
 
+import com.sun.javadoc.FieldDoc;
+import htsjdk.samtools.metrics.MetricBase;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DefaultDocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 
 import org.broadinstitute.barclay.help.HelpDoclet;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * The GATK Documentation work unit handler class that is the companion to GATKHelpDoclet.
@@ -18,6 +25,12 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
     private final static String GATK_JAVADOC_TAG_PREFIX = "GATK"; // prefix for custom javadoc tags used by GATK
 
     private final static String GATK_FREEMARKER_TEMPLATE_NAME = "generic.template.html";
+    private final static String PICARD_METRICS_TEMPLATE_NAME = "metrics.template.html";
+
+    private final static String WORK_UNIT_SUMMARY_KEY = "summary";
+    private final static String METRICS_MAP_ENTRY_KEY = "metrics";
+    private final static String METRICS_MAP_NAME_KEY = "name";
+    private final static String METRICS_MAP_SUMMARY_KEY = "summary";
 
     public GATKHelpDocWorkUnitHandler(final HelpDoclet doclet) {
         super(doclet);
@@ -36,7 +49,14 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
      * Javadoc.
      */
     @Override
-    public String getTemplateName(final DocWorkUnit workUnit) { return GATK_FREEMARKER_TEMPLATE_NAME; }
+    public String getTemplateName(final DocWorkUnit workUnit) {
+        Class<?> clazz = workUnit.getClazz();
+        if (MetricBase.class.isAssignableFrom(clazz)) {
+            return PICARD_METRICS_TEMPLATE_NAME;
+        } else {
+            return GATK_FREEMARKER_TEMPLATE_NAME;
+        }
+    }
 
 
     /**
@@ -55,6 +75,19 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
         if (picard.cmdline.CommandLineProgram.class.isAssignableFrom(toolClass)) {
             final CommandLineProgramProperties clpProperties = currentWorkUnit.getCommandLineProperties();
             currentWorkUnit.setProperty("picardsummary", clpProperties.summary());
+        } else if (MetricBase.class.isAssignableFrom(toolClass)) {
+            currentWorkUnit.setProperty(WORK_UNIT_SUMMARY_KEY, currentWorkUnit.getSummary());
+            final List<Map<String, String>> workUnitMetricsList = new ArrayList<>();
+            currentWorkUnit.setProperty(METRICS_MAP_ENTRY_KEY, workUnitMetricsList);
+            final FieldDoc[] fieldDocs = currentWorkUnit.getClassDoc().fields(false);
+            for (final FieldDoc fd : fieldDocs) {
+                if (fd.isPublic()) {
+                    final Map<String, String> metricsFields = new HashMap<>();
+                    metricsFields.put(METRICS_MAP_NAME_KEY, fd.name());
+                    metricsFields.put(METRICS_MAP_SUMMARY_KEY, fd.getRawCommentText());
+                    workUnitMetricsList.add(metricsFields);
+                }
+            }
         }
     }
 
