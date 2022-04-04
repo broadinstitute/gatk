@@ -1,13 +1,16 @@
 package org.broadinstitute.hellbender.metrics;
 
 import htsjdk.samtools.metrics.MetricBase;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import picard.util.help.HelpConstants;
 
 import java.io.Serializable;
 
 /** A set of metrics used to describe the general quality of a BAM file */
+@DocumentedFeature(groupName = HelpConstants.DOC_CAT_METRICS, summary = HelpConstants.DOC_CAT_METRICS_SUMMARY)
 public final class QualityYieldMetrics extends MetricBase implements Serializable {
     private static final long serialVersionUID = 1;
 

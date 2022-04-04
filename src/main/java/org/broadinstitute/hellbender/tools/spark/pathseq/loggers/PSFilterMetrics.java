@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.spark.pathseq.loggers;
 
 import htsjdk.samtools.metrics.MetricBase;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import picard.util.help.HelpConstants;
 
 /**
  * Metrics that are calculated during the PathSeq filter
  */
+@DocumentedFeature(groupName = HelpConstants.DOC_CAT_METRICS, summary = HelpConstants.DOC_CAT_METRICS_SUMMARY)
 public final class PSFilterMetrics extends MetricBase {
 
     /**
