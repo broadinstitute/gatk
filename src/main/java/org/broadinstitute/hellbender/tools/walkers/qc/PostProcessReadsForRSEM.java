@@ -48,6 +48,10 @@ import java.util.stream.Collectors;
  *
  * If requested, this tool also removes duplicate marked reads and MT reads, which can skew gene expression counts.
  *
+ *
+ * Caveat: This tool does not remove duplicate reads; it assumes it's been removed upstream e.g.
+ * MarkDuplicates with R
+ *
  */
 @CommandLineProgramProperties(
         summary = "",
@@ -60,9 +64,6 @@ public class PostProcessReadsForRSEM extends GATKTool {
 
     @Argument(fullName = "keep-MT-reads")
     public boolean keepMTReads = false;
-
-    @Argument(fullName = "keep-duplicates")
-    public boolean keepDuplicates = false;
 
     PeekableIterator<GATKRead> read1Iterator;
     SAMFileGATKReadWriter writer;
@@ -153,20 +154,12 @@ public class PostProcessReadsForRSEM extends GATKTool {
             "ENST00000387439.1", "ENST00000361335.1", "ENST00000361381.2", "ENST00000387441.1", "ENST00000387449.1",
             "ENST00000387456.1", "ENST00000361567.2", "ENST00000361681.2", "ENST00000387459.1", "ENST00000361789.2",
             "ENST00000387460.2", "ENST00000387461.2"
-    ));
+    )); // ENST00000389680.2 overlaps with the twist targets
     private boolean mitochondrialRead(final GATKRead read){
         return MT_TRANSCRIPT_IDs.contains(read.getContig());
     }
 
     private boolean passesAdditionalFilters(final GATKRead r1, final GATKRead r2){
-        if (! keepDuplicates){
-            // If the read pair is duplicate, then return false
-            if (r1.isDuplicate()){
-                duplicates++;
-                return false;
-            }
-        }
-
         if (!keepMTReads){
             // If the read pair is duplicate, then return false
             if (mitochondrialRead(r1) || mitochondrialRead(r2)){
