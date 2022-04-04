@@ -30,7 +30,7 @@ workflow GvsExtractCallset {
   File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
-  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-split-intervals-odd-02252022/gatk.jar"
+  File gatk_override = "gs:////broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_extract_perf_20220404/gatk-package-4.2.0.0-485-g86fd5ac-SNAPSHOT-local.jar"
   String fq_cohort_extract_table  = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__DATA"
   String fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info"
   String fq_filter_set_site_table = "~{project_id}.~{dataset_name}.filter_set_sites"

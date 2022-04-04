@@ -1,11 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
-import com.google.common.collect.Sets;
-import static java.util.stream.Collectors.toList;
 
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -40,8 +37,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
 
 public class ExtractCohortEngine {
@@ -97,8 +92,6 @@ public class ExtractCohortEngine {
 
     private final GQStateEnum inferredReferenceState;
     private final boolean presortedAvroFiles;
-
-    private final ArrayBlockingQueue<FinalizeVariantMessage> finalizeVariantQueue;
 
     public ExtractCohortEngine(final String projectID,
                                final VariantContextWriter vcfWriter,
@@ -183,16 +176,7 @@ public class ExtractCohortEngine {
         this.inferredReferenceState = inferredReferenceState;
 
         this.presortedAvroFiles = presortedAvroFiles;
-
-        this.finalizeVariantQueue = new ArrayBlockingQueue<>(20);
-
-        if (ASYNC_FINALIZE) {
-            Thread t = new Thread(new FinalizeVariantProcessor());
-            t.start();
-        }
     }
-
-    private static final boolean ASYNC_FINALIZE = false;
 
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
     int getTotalNumberOfSites() { return totalNumberOfSites; }
@@ -580,71 +564,9 @@ public class ExtractCohortEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        if (!ASYNC_FINALIZE) {
-            finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
-        } else {
-            // instead, put this on the queue to be written
-        try {
-            finalizeVariantQueue.put(
-                new FinalizeVariantMessage(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap)
-            );
-        } catch (InterruptedException ie) {
-            throw new GATKException("Error putting message for finalize variant", ie);
-        }
-        }
-
-
+        finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
     }
-
-    private class FinalizeVariantProcessor implements Runnable {
-        @Override
-        public void run() {
-            try {
-                while(true) {
-                    FinalizeVariantMessage m = finalizeVariantQueue.take();
-                    finalizeCurrentVariant(m);
-                }
-            } catch (InterruptedException ie) {
-                throw new GATKException("Error processing finalize variant", ie);
-            }
-        }
-    }
-
-    private static class FinalizeVariantMessage {
-        public List<VariantContext> unmergedCalls;
-        public List<ReferenceGenotypeInfo> referenceCalls;
-        public BitSet samplesSeen;
-        public boolean currentPositionHasVariant;
-        public long location;
-        public String contig;
-        public long start;
-        public Allele refAllele;
-        public HashMap<Allele, HashMap<Allele, Double>> vqsLodMap;
-        public HashMap<Allele, HashMap<Allele, String>> yngMap;
-        public boolean noVqslodFilteringRequested;
-        public HashMap<Long, List<String>> siteFilterMap;
-
-        public FinalizeVariantMessage(List<VariantContext> unmergedCalls, List<ReferenceGenotypeInfo> referenceCalls, BitSet samplesSeen, boolean currentPositionHasVariant, long location, String contig, long start, Allele refAllele, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, boolean noVqslodFilteringRequested, HashMap<Long, List<String>> siteFilterMap) {
-            this.unmergedCalls = unmergedCalls;
-            this.referenceCalls = referenceCalls;
-            this.samplesSeen = samplesSeen;
-            this.currentPositionHasVariant = currentPositionHasVariant;
-            this.location = location;
-            this.contig = contig;
-            this.start = start;
-            this.refAllele = refAllele;
-            this.vqsLodMap = vqsLodMap;
-            this.yngMap = yngMap;
-            this.noVqslodFilteringRequested = noVqslodFilteringRequested;
-            this.siteFilterMap = siteFilterMap;
-        }
-    }
-
-    private void finalizeCurrentVariant(FinalizeVariantMessage m) {
-        finalizeCurrentVariant(m.unmergedCalls, m.referenceCalls, m.samplesSeen, m.currentPositionHasVariant, m.location, m.contig, m.start, m.refAllele, m.vqsLodMap, m.yngMap, m.noVqslodFilteringRequested, m.siteFilterMap);
-
-    }
-
+    
     private void finalizeCurrentVariant(final List<VariantContext> unmergedVariantCalls,
                                         final List<ReferenceGenotypeInfo> referenceCalls,
                                         final BitSet samplesSeen,
