@@ -66,19 +66,18 @@ public class CompareSAMFiles extends GATKTool {
         SAMFileHeader.SortOrder so2 = reads2.getHeader().getSortOrder();
         read2Iterator = new PeekableIterator<>(reads2.iterator());
 
-        // Clean this Unhandled Exception mess somehow
-        try {
-            queryNameSetComparison = getQuerynameComparison(mode);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-
         if (outSamFile1 != null){
             Utils.nonNull(outSamFile2, "If out1 is specified, out2 must both be non-null");
             writer1 = createSAMWriter(new GATKPath(outSamFile1.getAbsolutePath()), false);
             writer2 = createSAMWriter(new GATKPath(outSamFile2.getAbsolutePath()), false);
         }
 
+        // Clean this Unhandled Exception mess somehow
+        try {
+            queryNameSetComparison = getQuerynameComparison(mode);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     private QuerynameSetComparison getQuerynameComparison(String mode) throws FileNotFoundException {
@@ -87,8 +86,8 @@ public class CompareSAMFiles extends GATKTool {
         } else if (mode.equals("DUPLICATE")){
             return new CompareDuplicateMarking();
         } else if (mode.equals("DIFF")) {
-            Utils.nonNull(outSamFile1, "out1 must be specified under the DIFF mode");
-            Utils.nonNull(outSamFile2, "out2 must be specified under the DIFF mode");
+            Utils.nonNull(writer1, "out1 must be specified under the DIFF mode");
+            Utils.nonNull(writer2, "out2 must be specified under the DIFF mode");
             return new SamDiff(writer1, writer2);
         } else {
             throw new UserException("Unrecognizable mode " + mode);

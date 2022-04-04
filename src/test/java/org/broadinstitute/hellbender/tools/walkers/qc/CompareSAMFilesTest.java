@@ -23,13 +23,17 @@ public class CompareSAMFilesTest extends CommandLineProgramTest {
     final String ribosomeBamHg19 = rHome + "SM-B1511_Ill_Kapa_2_lane_1.query_sorted.hg19.ribosome_pairs.bam";
     final String ribosomeBamHg38 = rHome + "SM-B1511_Ill_Kapa_2_lane_1.query_sorted.hg38.ribosome_pairs.bam";
 
+    final String home2 = "/Volumes/dsde_working/tsato/hydro.gen/Analysis/874_twist_RNA/samtofastq_drop/";
+    final String ubam = home2 + "18318-103_Tumor_RNA_01_u_0.040433584729761544.bam";
+    final String postFastq = home2 + "ver2_SM-KYN26_Illumina_18318-103_from_fastq.u.bam";
+
     @Test
     public void testDiff(){
         final File out1 = new File(gatkHome + "diff_out1.bam");
         final File out2 = new File(gatkHome + "diff_out2.bam");
         final String dHome = "/Volumes/dsde_working/tsato/hydro.gen/Analysis/874_twist_RNA/sam_diff/";
-        final File sam1 = new File(dHome);
-        final File sam2 = new File(dHome);
+        final File sam1 =  new File(ubam);
+        final File sam2 = new File(postFastq);
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("I", sam1)
                 .add("read2", sam2)
