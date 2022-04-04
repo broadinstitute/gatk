@@ -58,8 +58,11 @@ public class PostProcessReadsForRSEM extends GATKTool {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File outSam;
 
-    @Argument(fullName = "read-length")
-    public int readLength = 146;
+    @Argument(fullName = "keep-MT-reads")
+    public boolean keepMTReads = false;
+
+    @Argument(fullName = "keep-duplicates")
+    public boolean keepDuplicates = false;
 
     PeekableIterator<GATKRead> read1Iterator;
     SAMFileGATKReadWriter writer;
@@ -71,6 +74,8 @@ public class PostProcessReadsForRSEM extends GATKTool {
     int notBothMapped = 0;
     int chimera = 0;
     int unsupportedCigar = 0;
+    int duplicates = 0;
+    int mitochondria = 0;
 
     @Override
     public void onTraversalStart(){
@@ -125,7 +130,7 @@ public class PostProcessReadsForRSEM extends GATKTool {
         final List<CigarElement> cigarElements1 = read1.getCigar().getCigarElements();
         final List<CigarElement> cigarElements2 = read2.getCigar().getCigarElements();
 
-        if (cigarElements1.size() != 1 && cigarElements2.size() != 1){
+        if (cigarElements1.size() != 1 || cigarElements2.size() != 1){
             unsupportedCigar++;
             return false;
         }
@@ -139,6 +144,40 @@ public class PostProcessReadsForRSEM extends GATKTool {
         }
     }
 
+    private final static HashSet<String> MT_TRANSCRIPT_IDs = new HashSet<>(Arrays.asList(
+            "ENST00000387314.1", "ENST00000389680.2", "ENST00000387342.1", "ENST00000387347.2", "ENST00000386347.1",
+            "ENST00000361390.2", "ENST00000387365.1", "ENST00000387372.1", "ENST00000387377.1", "ENST00000361453.3",
+            "ENST00000387382.1", "ENST00000387392.1", "ENST00000387400.1", "ENST00000387405.1", "ENST00000387409.1",
+            "ENST00000361624.2", "ENST00000387416.2", "ENST00000387419.1", "ENST00000361739.1", "ENST00000387421.1",
+            "ENST00000361851.1", "ENST00000361899.2", "ENST00000362079.2", "ENST00000387429.1", "ENST00000361227.2",
+            "ENST00000387439.1", "ENST00000361335.1", "ENST00000361381.2", "ENST00000387441.1", "ENST00000387449.1",
+            "ENST00000387456.1", "ENST00000361567.2", "ENST00000361681.2", "ENST00000387459.1", "ENST00000361789.2",
+            "ENST00000387460.2", "ENST00000387461.2"
+    ));
+    private boolean mitochondrialRead(final GATKRead read){
+        return MT_TRANSCRIPT_IDs.contains(read.getContig());
+    }
+
+    private boolean passesAdditionalFilters(final GATKRead r1, final GATKRead r2){
+        if (! keepDuplicates){
+            // If the read pair is duplicate, then return false
+            if (r1.isDuplicate()){
+                duplicates++;
+                return false;
+            }
+        }
+
+        if (!keepMTReads){
+            // If the read pair is duplicate, then return false
+            if (mitochondrialRead(r1) || mitochondrialRead(r2)){
+                mitochondria++;
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /** Write reads in this order
      *  1. Primary. First of pair, second of pair
      *  2. For each secondary. First of pair, second of pair.
@@ -148,21 +187,22 @@ public class PostProcessReadsForRSEM extends GATKTool {
         final GATKRead firstOfPair = readPair.getFirstOfPair();
         final GATKRead secondOfPair = readPair.getSecondOfPair();
 
-        // Write Primary Reads. If either fails, we discard both, and we don't bother with the secondary alignments
-        // First, check that the read pair passes the RSEM criteria. If not, no need to bother clipping.
-        // The only acceptable cigar are 1) 146M, or 2) 142M4S with (insert size) < (read length)
-        if (passesRSEMFilter(firstOfPair, secondOfPair)){
+        // Write Primary Reads. If either fails, we discard both, and we don't bother with the secondary alignments.
+        if (passesRSEMFilter(firstOfPair, secondOfPair) && passesAdditionalFilters(firstOfPair, secondOfPair)){
             writer.addRead(firstOfPair);
             writer.addRead(secondOfPair);
             totalOutputPair += 1;
 
-            final List<Pair<GATKRead, GATKRead>> mateList = groupSecondaryReads(readPair.getSecondaryAlignments());
-            for (Pair<GATKRead, GATKRead> mates : mateList){
-                // The pair is either both written or both not written
-                if (passesRSEMFilter(mates.getLeft(), mates.getRight())){
-                    writer.addRead(mates.getLeft());
-                    writer.addRead(mates.getRight());
-                    totalOutputPair += 1;
+            // Now handle secondary alignments.
+            final List<Pair<GATKRead, GATKRead>> secondaryAlignmentPairs = groupSecondaryReads(readPair.getSecondaryAlignments());
+            for (Pair<GATKRead, GATKRead> mates : secondaryAlignmentPairs){
+                // The pair is either both written or both not written.
+                if (passesRSEMFilter(mates.getLeft(), mates.getRight()) &&
+                        passesAdditionalFilters(mates.getLeft(), mates.getRight())) {
+                        writer.addRead(mates.getLeft());
+                        writer.addRead(mates.getRight());
+                        totalOutputPair += 1;
+
                 }
             }
 
