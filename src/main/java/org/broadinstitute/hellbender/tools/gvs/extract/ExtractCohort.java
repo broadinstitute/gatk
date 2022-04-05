@@ -244,18 +244,6 @@ public class ExtractCohort extends ExtractTool {
     }
 
     @Override
-    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<Annotation> getDefaultVariantAnnotations() {
-        return  Arrays.asList(
-                new ChromosomeCounts()
-        );
-    }
-
-    @Override
     protected void onStartup() {
         super.onStartup();
 

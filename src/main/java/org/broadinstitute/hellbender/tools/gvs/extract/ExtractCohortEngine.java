@@ -551,9 +551,6 @@ public class ExtractCohortEngine {
                 case "m":   // Missing
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
                     break;
-//                case "u":   // unknown GQ used for array data
-//                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele));
-//                    break;
                 default:
                     throw new GATKException("Unrecognized state: " + sampleRecord.getState());
             }
@@ -566,7 +563,7 @@ public class ExtractCohortEngine {
 
         finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
     }
-    
+
     private void finalizeCurrentVariant(final List<VariantContext> unmergedVariantCalls,
                                         final List<ReferenceGenotypeInfo> referenceCalls,
                                         final BitSet samplesSeen,
@@ -720,10 +717,11 @@ public class ExtractCohortEngine {
         return filteredVC;
     }
 
-    protected VariantContext removeAnnotations(VariantContext vc) {
+    protected static VariantContext removeAnnotations(VariantContext vc) {
 
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
+        List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(
+                GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
                 GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
                 GATKVCFConstants.FISHER_STRAND_KEY));
 
