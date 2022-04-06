@@ -27,7 +27,7 @@ workflow GvsWithdrawSamples {
   output {
     File log_message_file = WithdrawSamples.log_message_file
     File rows_updated_file = WithdrawSamples.rows_updated_file
-    Int num_rows_updated = WithdrawSamples.num_rows_udpated
+    Int num_rows_updated = WithdrawSamples.num_rows_updated
   }
 }
 
