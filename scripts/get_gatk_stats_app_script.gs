@@ -9,12 +9,40 @@
 //
 // Script URL: https://script.google.com/home/projects/1UQnN7Y7Ci8bP2QSczLdNerLUKh6vAmh1gCc40xEqiIGiPngfCLYeImbq/edit
 
+const OVERALL_STATS_SHEET_NAME = "Overall Stats";
+const DOCKER_STATS_SHEET_NAME = "Docker Repo Pulls";
+const GITHUB_STATS_SHEET_NAME = "Github Stats";
+const REQUIRED_SHEETS = [OVERALL_STATS_SHEET_NAME, DOCKER_STATS_SHEET_NAME, GITHUB_STATS_SHEET_NAME];
+
 function updateSpredsheet() {
-  var dockerImageDownloadCountList = recordDockerImagePullCount();
-  var githubDownloads = recordGitHubReleaseDownloadCount();
+
+  // Set up our variables for this instance of this script:
+
+  // NOTE: THIS ORDER MATTERS!  APPEND!  DO NOT INSERT!
+  const dockerHubImages = ['broadinstitute/gatk', 'broadinstitute/gatk3'];
+  const gitHubUrl = "https://api.github.com/repos/broadinstitute/gatk/releases";
+
+  // Auth token to pull down the info on the releases so we don't get rate-limited: 
+  // This is OPTIONAL, but HIGHLY RECOMMENDED!
+  const GITHUB_AUTH_TOKEN = "";
+
+  // ============================================
+
+  // Make sure the spreadsheet is ready:
+  setupSpreadsheetIfNecessary(dockerHubImages);
+
+  // ============================================
+
+  // Update the docker image downloads:
+  var dockerImageDownloadCountList = recordDockerImagePullCount(dockerHubImages);
+
+  // Update our github release downloads:
+  var githubDownloads = recordGitHubReleaseDownloadCount(gitHubUrl, GITHUB_AUTH_TOKEN);
+
+  // ============================================
 
   // Update our summary sheet:
-  var spreadsheet = SpreadsheetApp.getActive().getSheetByName("Overall Stats");
+  var spreadsheet = SpreadsheetApp.getActive().getSheetByName(OVERALL_STATS_SHEET_NAME);
   
   var downloadCounts = [];
   downloadCounts = downloadCounts.concat(dockerImageDownloadCountList);
@@ -30,16 +58,129 @@ function updateSpredsheet() {
   row.push(totalDownloads);
 
   spreadsheet.appendRow(row);
+
+  // Now make all the columns auto-fit so we can view them correctly:
+  REQUIRED_SHEETS.forEach(function (sheetName) {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    sheet.autoResizeColumns(1, sheet.getLastColumn());
+  })
+
+  // Finally set the active sheet to the overall stats page:
+  SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName(OVERALL_STATS_SHEET_NAME)
+  );
 }
 
-function recordGitHubReleaseDownloadCount() {
+function setupSpreadsheetIfNecessary(dockerHubImages) {
+  // Set up the sheets / tabs, headers, etc. required by this script.
 
-  // Header for GATK Bot to pull down the info on the releases so we don't get rate-limited: 
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Check to see if we have to set up our sheets:
+  var mustInitializeSheets = false;
+  for (let i = 0; i < REQUIRED_SHEETS.length; i++) {
+    // Create the sheet itself:
+    if (spreadsheet.getSheetByName(REQUIRED_SHEETS[i]) == null) { 
+      mustInitializeSheets = true;
+      break;
+    }
+  }
+
+  if (!mustInitializeSheets) {
+    console.log("Sheet already set up for data.");
+    return;
+  }
+  else {
+    console.log("Must initialize sheets!");
+  }
+
+  // Make sure all our required sheets exist:
+  REQUIRED_SHEETS.forEach( function (sheetName) {
+    console.log("Adding sheet: " + sheetName);
+    // Create the sheet itself:
+    if (spreadsheet.getSheetByName(sheetName) == null) { 
+      const newSheet = spreadsheet.insertSheet(sheetName);
+
+      // Set up the top left cell as our date:
+      const dateRange = newSheet.getRange("A1");
+      dateRange.setValue("Date / Time");
+      dateRange.setFontWeight('bold');
+    }
+  })
+
+  // Set up the headers in the overall stats sheet next:
+  const overallStatsSheet = spreadsheet.getSheetByName(OVERALL_STATS_SHEET_NAME);
+
+  // Start with docker image headers:
+  var headerNum = 0;
+  dockerHubImages.forEach(function (dockerImage) {
+    console.log("Setting header for docker image: " + dockerImage);
+    var headerCell = overallStatsSheet.getRange(1, 2 + headerNum, 1, 1);
+
+    headerCell.setValue(dockerImage + " Docker Pulls");
+    headerCell.setFontWeight('bold');
+
+    headerNum += 1;
+  })
+
+  // Now the github header:
+  console.log("Setting header for GitHub releases");
+  var headerCell = overallStatsSheet.getRange(1, 2 + headerNum, 1, 1);
+  headerCell.setValue("Github Repo Pulls");
+  headerCell.setFontWeight('bold');
+  headerNum += 1;
+
+  // Now our total downloads:
+  console.log("Setting header for Total Downloads");
+  headerCell = overallStatsSheet.getRange(1, 2 + headerNum, 1, 1);
+  headerCell.setValue("Total Overall Downloads");
+  headerCell.setFontWeight('bold');
+  headerNum += 1;
+
+  // Clean up the default sheet if it's still there:
+  const defaultSheet = spreadsheet.getSheetByName("Sheet1");
+  if (defaultSheet != null) {
+    console.log("Removing default sheet.");
+    spreadsheet.deleteSheet(defaultSheet);
+  }
+}
+
+function cleanGithubUrl(url) {
+  // Convert a regular github url to an API url so that
+  // we can receive JSON results.
+
+  const urlRegex = /http.*?github.com\/(.*)/;
+
+  // Make sure the interpreter knows URL should be a string:
+  url = String(url);
+
+  // Set up a default return value:
+  var newUrl = url;
+
+  if (url.startsWith("https://github.com") || url.startsWith("http://github.com") || url.startsWith("https://www.github.com") || url.startsWith("http://www.github.com")) {
+    const match = url.match(urlRegex);
+    newUrl = "https://api.github.com/repos/" + match[1]
+  }
+
+  if (!newUrl.endsWith("releases") && !newUrl.endsWith("releases/")) {
+    if (newUrl.endsWith("/")) {
+      newUrl = newUrl + "releases"
+    }
+    else{
+      newUrl = newUrl + "/releases"
+    }
+  }
+
+  return newUrl;
+}
+
+function recordGitHubReleaseDownloadCount(githubUrl, authToken) {
+
+  // Header for authorization to pull down the info on the releases so we don't get rate-limited: 
   // This is OPTIONAL, but HIGHLY RECOMMENDED!
-  var GATK_BOT_AUTH_TOKEN = "";
   var REQUEST_HEADERS = {
     "headers" : {
-      "Authorization" : "token " + GATK_BOT_AUTH_TOKEN
+      "Authorization" : "token " + authToken
     }
   };
 
@@ -47,12 +188,12 @@ function recordGitHubReleaseDownloadCount() {
   var COUNT_START_COLUMN = 2;
 
   var numResultsPerPage = 100;
-  var gatkGithubUrl = "https://api.github.com/repos/broadinstitute/gatk/releases";
+  var githubUrl = cleanGithubUrl(githubUrl);
 
   var row = [new Date()];
   
   // Get the spreadsheet with our docker info in it:
-  var spreadsheet = SpreadsheetApp.getActive().getSheetByName("Github Stats");
+  var spreadsheet = SpreadsheetApp.getActive().getSheetByName(GITHUB_STATS_SHEET_NAME);
 
   // This is the last row with data in it:
   var lastRow = spreadsheet.getLastRow();
@@ -64,11 +205,11 @@ function recordGitHubReleaseDownloadCount() {
   var pageNum = 1;
   while (true) {
     var response = "";
-    if (GATK_BOT_AUTH_TOKEN.length > 0) {
-      response = UrlFetchApp.fetch(gatkGithubUrl + "?per_page=" + numResultsPerPage + "&page=" + pageNum, REQUEST_HEADERS); 
+    if (authToken.length > 0) {
+      response = UrlFetchApp.fetch(githubUrl + "?per_page=" + numResultsPerPage + "&page=" + pageNum, REQUEST_HEADERS); 
     }
     else {
-      response = UrlFetchApp.fetch(gatkGithubUrl + "?per_page=" + numResultsPerPage + "&page=" + pageNum); 
+      response = UrlFetchApp.fetch(githubUrl + "?per_page=" + numResultsPerPage + "&page=" + pageNum); 
     }
     var githubJsonResponse = JSON.parse(response.getContentText());
 
@@ -103,7 +244,7 @@ function recordGitHubReleaseDownloadCount() {
 
   var lastCol = spreadsheet.getLastColumn();
   var releaseVersions = [];
-  if (lastCol != 1) { 
+  if ((lastCol != 0) && (lastCol != 1)) { 
     releaseVersions = spreadsheet.getRange(1,2,1, lastCol-1).getValues()[0];
   }
 
@@ -167,17 +308,15 @@ function recordGitHubReleaseDownloadCount() {
 
 // ========================================================================
 
-function recordDockerImagePullCount() {
+function recordDockerImagePullCount(images) {
 
   var NUM_FIELDS_PER_IMAGE = 2;
   var COUNT_START_COLUMN = 2;
 
-  // THIS ORDER MATTERS!  APPEND!  DO NOT INSERT!
-  var images = ['broadinstitute/gatk', 'broadinstitute/gatk3'];
   var row = [new Date()];
   
   // Get the spreadsheet with our docker info in it:
-  var spreadsheet = SpreadsheetApp.getActive().getSheetByName("Docker Repo Pulls");
+  var spreadsheet = SpreadsheetApp.getActive().getSheetByName(DOCKER_STATS_SHEET_NAME);
 
   // This is the last row with data in it:
   var lastRow = spreadsheet.getLastRow();
