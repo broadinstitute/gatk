@@ -31,10 +31,11 @@ def populate_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_
     alt_allele_temp_function = Path('alt_allele_temp_function.sql').read_text()
     alt_allele_positions = Path('alt_allele_positions.sql').read_text()
     fq_vet_table = f"{fq_dataset}.{vet_table_name}"
+    fq_sample_info = f"{fq_dataset}.sample_info"
     query_with = f"""INSERT INTO `{fq_dataset}.alt_allele`
                 WITH 
-                  position1 as (select * from `{fq_vet_table}` WHERE call_GT IN ('0/1', '1/0', '1/1', '0|1', '1|0', '1|1', '0/2', '0|2','2/0', '2|0') AND sample_id NOT IN (SELECT sample_id from {fq_dataset}.sample_info WHERE withdrawn IS NOT NULL)),
-                  position2 as (select * from `{fq_vet_table}` WHERE call_GT IN ('1/2', '1|2', '2/1', '2|1') AND sample_id NOT IN (SELECT sample_id from {fq_dataset}.sample_info WHERE withdrawn IS NOT NULL))"""
+                  position1 AS (SELECT vet.* FROM `{fq_vet_table}` vet JOIN `{fq_sample_info}` info ON vet.sample_id = info.sample_id WHERE info.withdrawn IS NULL AND vet.call_GT IN ('0/1', '1/0', '1/1', '0|1', '1|0', '1|1', '0/2', '0|2','2/0', '2|0')),
+                  position2 AS (SELECT vet.* FROM `{fq_vet_table}` vet JOIN `{fq_sample_info}` info ON vet.sample_id = info.sample_id WHERE info.withdrawn IS NULL AND vet.call_GT IN ('1/2', '1|2', '2/1', '2|1'))"""
 
     sql = alt_allele_temp_function + query_with + alt_allele_positions
     result = utils.execute_with_retry(client, f"into alt allele from {vet_table_name}", sql)
