@@ -1700,6 +1700,7 @@ public final class FuncotatorUtils {
         // Check to make sure all our sequences are accounted for in the given dictionary.
 
         if ( sequenceDictionary == null ) {
+            logger.warn("No sequence dictionary provided in the input VCF file.  Cannot check against B37.");
             return false;
         }
 
@@ -1707,24 +1708,59 @@ public final class FuncotatorUtils {
             B37_SEQUENCE_DICTIONARY = initializeB37SequenceDict();
         }
 
+        // Track the missing / wrong data here for better logging:
+        final List<SAMSequenceRecord> missingSequenceRecords = new ArrayList<>();
+        final Map<SAMSequenceRecord, List<Integer>> incompatibleSequenceLengths = new HashMap<>();
+        final Map<SAMSequenceRecord, List<String>> incompatibleSequenceMd5Sums = new HashMap<>();
+
+        boolean isB37 = true;
         for ( final SAMSequenceRecord b37SequenceRecord : B37_SEQUENCE_DICTIONARY.getSequences() ) {
             // Now we check the Name, Length, and MD5Sum (if present) of all records:
 
             final SAMSequenceRecord inputSequenceRecord = sequenceDictionary.getSequence(b37SequenceRecord.getSequenceName());
             if ( inputSequenceRecord == null ) {
-                return false;
+                missingSequenceRecords.add(b37SequenceRecord);
+                isB37 = false;
             }
 
             if ( inputSequenceRecord.getSequenceLength() != b37SequenceRecord.getSequenceLength() ) {
-                return false;
+                incompatibleSequenceLengths.put(inputSequenceRecord,
+                        Arrays.asList(inputSequenceRecord.getSequenceLength(), b37SequenceRecord.getSequenceLength()));
+                isB37 = false;
             }
 
             if ( (inputSequenceRecord.getMd5() != null) && (!inputSequenceRecord.getMd5().equals(b37SequenceRecord.getMd5())) ) {
-                return false;
+                incompatibleSequenceMd5Sums.put(inputSequenceRecord,
+                        Arrays.asList(inputSequenceRecord.getMd5(), b37SequenceRecord.getMd5()));
+                isB37 = false;
             }
         }
 
-        return true;
+        if (!isB37) {
+            logger.info("Input VCF has been determined to not based on b37:");
+            if (missingSequenceRecords.size() > 0) {
+                logger.info("  The following contigs are present in b37 and missing in the input VCF sequence dictionary:");
+                for (final SAMSequenceRecord record : missingSequenceRecords) {
+                    logger.info("    " + record);
+                }
+            }
+
+            if (incompatibleSequenceLengths.size() > 0) {
+                logger.info("  The following contigs are present in both b37 and the input VCF sequence dictionary, but have conflicting length information:");
+                for (final Map.Entry<SAMSequenceRecord, List<Integer>> e : incompatibleSequenceLengths.entrySet()) {
+                    logger.info("    " + e.getKey() + " VCF Length: " + e.getValue().get(0).toString() + ", b37 Length: " + e.getValue().get(1).toString());
+                }
+            }
+
+            if (incompatibleSequenceMd5Sums.size() > 0) {
+                logger.info("  The following contigs are present in both b37 and the input VCF sequence dictionary, but have conflicting md5sum:");
+                for (final Map.Entry<SAMSequenceRecord, List<String>> e : incompatibleSequenceMd5Sums.entrySet()) {
+                    logger.info("    " + e.getKey() + " VCF md5sum: " + e.getValue().get(0) + ", b37 md5sum: " + e.getValue().get(1));
+                }
+            }
+        }
+
+        return isB37;
     }
 
     /**
