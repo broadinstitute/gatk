@@ -105,7 +105,7 @@ public class TransferReadTags extends GATKTool {
 
             if (diff == 0) {
                 // The query names match.
-                GATKRead updatedRead = updateReadTags(currentTargetRead, currentUnmappedRead);
+                final GATKRead updatedRead = updateReadTags(currentTargetRead, currentUnmappedRead);
                 writer.addRead(updatedRead);
                 progressMeter.update(currentTargetRead);
                 continue;
@@ -118,17 +118,19 @@ public class TransferReadTags extends GATKTool {
                         continue;
                     } else if (diff == 0){
                         // caught up: start moving the aligned reads forward
-                        GATKRead updatedRead = updateReadTags(currentTargetRead, currentUnmappedRead);
+                        final GATKRead updatedRead = updateReadTags(currentTargetRead, currentUnmappedRead);
                         writer.addRead(updatedRead);
                         break;
                     } else {
-                        throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read: " +
-                                "aligned read = " + currentTargetRead.getName() + ", unmapped read = " + currentUnmappedRead.getName());
+                        throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read. This tool assumes " +
+                                "reads in both input files are query-name sorted lexicographically (i.e. by Picard SortSam but not by samtools sort): " +
+                                "aligned read = " + currentTargetRead.getName() + ", unmapped read = " + currentUnmappedRead.getName() + "");
                     }
                 }
             } else {
-                throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read: " +
-                        "aligned read = " + currentTargetRead.getName() + ", unmapped read = " + currentUnmappedRead.getName());
+                throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read. This tool assumes " +
+                        "reads in both input files are query-name sorted lexicographically (i.e. by Picard SortSam but not by samtools sort): " +
+                        "aligned read = " + currentTargetRead.getName() + ", unmapped read = " + currentUnmappedRead.getName() + "");
             }
         }
     }
