@@ -74,13 +74,13 @@ task WithdrawSamples {
     NAMES_FILE=~{write_lines(sample_names)}
 
     echo "Hello!"
-    echo ~{sep='", "' sample_names}
+    echo ~{sep='"\', \'"' sample_names}
     echo "There!"
 
     # perform actual update
     ## TODO - retrieve the number updated and verify that it matches the number of samples?
-    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false --parameter=offset:INTEGER:$offset \
-    'UPDATE `~{dataset_name}.~{sample_info_table}` SET withdrawn = CURRENT_TIMESTAMP() WHERE sample_name IN (~{sep='", "' sample_names})';
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    'UPDATE `~{dataset_name}.~{sample_info_table}` SET withdrawn = CURRENT_TIMESTAMP() WHERE sample_name IN (~{sep='"\', \'"' sample_names})';
 
   >>>
   runtime {
