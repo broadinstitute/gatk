@@ -12,10 +12,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -151,27 +148,13 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
 
     private static void assertOutputs(final String tag,
                                       final String outputPrefix) {
-        runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        runSystemCommand(String.format("diff %s/%s.vcf.gz %s.vcf.gz", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        runSystemCommand(String.format("diff %s/%s.vcf.gz.tbi %s.vcf.gz.tbi", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf.gz %s.vcf.gz", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf.gz.tbi %s.vcf.gz.tbi", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         if (tag.contains("posUn")) {
-            runSystemCommand(String.format("h5diff %s/%s.unlabeled.annot.hdf5 %s.unlabeled.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+            SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.unlabeled.annot.hdf5 %s.unlabeled.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         } else {
             Assert.assertFalse(new File(outputPrefix, ".unlabeled.annot.hdf5").exists());
-        }
-    }
-
-    // this method is duplicated in the other integration-test classes in this package
-    private static void runSystemCommand(final String command) {
-        try {
-            final Process process = Runtime.getRuntime().exec(command);
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            while (reader.readLine() != null) {
-                Assert.fail(command);
-            }
-            reader.close();
-        } catch (final IOException e) {
-            Assert.fail(e.getMessage());
         }
     }
 

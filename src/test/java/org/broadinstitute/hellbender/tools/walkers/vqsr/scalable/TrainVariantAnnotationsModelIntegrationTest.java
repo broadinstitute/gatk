@@ -10,10 +10,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -177,29 +174,16 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         final String tagAndVariantType = String.format("%s.%s", tag, variantType);
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
 
-        runSystemCommand(String.format("h5diff %s/%s.trainingScores.hdf5 %s.trainingScores.hdf5", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
-        runSystemCommand(String.format("h5diff %s/%s.truthScores.hdf5 %s.truthScores.hdf5", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
-        if (tag.contains("BGMM")) {
-            runSystemCommand(String.format("diff %s/%s.scorer.ser %s.scorer.ser", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
-            Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.pkl").exists());
-        } else if (tag.contains("IF")) {
-            runSystemCommand(String.format("diff %s/%s.scorer.pkl %s.scorer.pkl", EXPECTED_TEST_FILES_DIR, tag, outputPrefixAndVariantType));
-            Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.ser").exists());
-        } else {
-            Assert.fail("Unknown model-backend tag.");
-        }
+        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.trainingScores.hdf5 %s.trainingScores.hdf5",
+                EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
+        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.truthScores.hdf5 %s.truthScores.hdf5",
+                EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
+
+        assertScorerOutputs(tagAndVariantType, outputPrefixAndVariantType, false);
 
         if (tag.contains("posNeg")) {
-            runSystemCommand(String.format("h5diff %s/%s.unlabeledScores.hdf5 %s.unlabeledScores.hdf5", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
-            if (tag.contains("BGMM")) {
-                runSystemCommand(String.format("diff %s/%s.negative.scorer.ser %s.negative.scorer.ser", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
-                Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.pkl").exists());
-            } else if (tag.contains("IF")) {
-                runSystemCommand(String.format("diff %s/%s.negative.scorer.pkl %s.negative.scorer.pkl", EXPECTED_TEST_FILES_DIR, tag, outputPrefixAndVariantType));
-                Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.ser").exists());
-            } else {
-                Assert.fail("Unknown model-backend tag.");
-            }
+            SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.unlabeledScores.hdf5 %s.unlabeledScores.hdf5", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
+            assertScorerOutputs(tagAndVariantType, outputPrefixAndVariantType, true);
         } else {
             Assert.assertFalse(new File(outputPrefixAndVariantType, ".unlabeledScores.hdf5").exists());
             Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.ser").exists());
@@ -219,17 +203,20 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.pkl").exists());
     }
 
-    // this method is duplicated in the other integration-test classes in this package
-    private static void runSystemCommand(final String command) {
-        try {
-            final Process process = Runtime.getRuntime().exec(command);
-            final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            while (reader.readLine() != null) {
-                Assert.fail(command);
-            }
-            reader.close();
-        } catch (final IOException e) {
-            Assert.fail(e.getMessage());
+    private static void assertScorerOutputs(final String tagAndVariantType,
+                                            final String outputPrefixAndVariantType,
+                                            final boolean isNegative) {
+        final String positiveOrNegativeTag = isNegative ? ".negative" : "";
+        if (tagAndVariantType.contains("BGMM")) {
+            SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.scorer.ser %s.scorer.ser", EXPECTED_TEST_FILES_DIR,
+                    tagAndVariantType + positiveOrNegativeTag, outputPrefixAndVariantType + positiveOrNegativeTag));
+            Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.pkl").exists());
+        } else if (tagAndVariantType.contains("IF")) {
+            SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.scorer.pkl %s.scorer.pkl", EXPECTED_TEST_FILES_DIR,
+                    tagAndVariantType + positiveOrNegativeTag, outputPrefixAndVariantType + positiveOrNegativeTag));
+            Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.ser").exists());
+        } else {
+            Assert.fail("Unknown model-backend tag.");
         }
     }
 }
