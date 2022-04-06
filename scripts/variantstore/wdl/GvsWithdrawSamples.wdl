@@ -24,10 +24,11 @@ workflow GvsWithdrawSamples {
       service_account_json_path = service_account_json_path
   }
 
-#  output {
-#    Boolean gvs_ids_created = true
-#    File gvs_ids_tsv = WithdrawSamples.gvs_ids_tsv
-#  }
+  output {
+    File log_message_file = WithdrawSamples.log_message_file
+    File rows_updated_file = WithdrawSamples.rows_updated_file
+    Int num_rows_updated = WithdrawSamples.num_rows_udpated
+  }
 }
 
 task WithdrawSamples {
@@ -94,6 +95,8 @@ task WithdrawSamples {
     cpu: 1
   }
   output {
+    File log_message_file = "log_message.txt"
+    File rows_updated_file = "rows_updated.txt"
     Int num_rows_updated = read_int("rows_updated.txt")
   }
 }
