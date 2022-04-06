@@ -43,12 +43,14 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
 
     private static final File TEST_FILES_DIR = new File(largeFileTestDir,
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/train");
+    private static final File INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR = new File(largeFileTestDir,
+            "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/extract/expected");
     private static final File EXPECTED_TEST_FILES_DIR = new File(TEST_FILES_DIR, "expected");
 
     private static final File ISOLATION_FOREST_PYTHON_SCRIPT = new File(packageMainResourcesDir,
             "tools/walkers/vqsr/scalable/isolation-forest.py");
     private static final File ISOLATION_FOREST_HYPERPARAMETERS_JSON = new File(TEST_FILES_DIR,
-            "input/isolation-forest-hyperparameters.json");
+            "isolation-forest-hyperparameters.json");
 
     // Supplier and functions for creating and adding various arguments to an ArgumentsBuilder.
     private static final Supplier<ArgumentsBuilder> BASE_ARGS_BUILDER_SUPPLIER = ArgumentsBuilder::new;
@@ -83,31 +85,28 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     };
 
     /**
-     * Exact-match tests for all configurations given by the Cartesian product of the following options:
-     *  1) SNP-only vs. SNP+INDEL (for both of these options, we use extracted annotations that contain both SNP and INDEL variants as input)
-     *  2) positive (training with nonAS.both.positive.annot.hdf5) vs. positive-unlabeled (training with both nonAS.both.positive.annot.hdf5 and nonAS.both.unlabeled.annot.hdf5)
-     *  3) Java Bayesian Gaussian Mixture Model (BGMM) backend vs. python sklearn IsolationForest backend TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
+     * Exact-match tests for (non-exhaustive) configurations given by the Cartesian product of the following options:
+     *  1) non-allele-specific vs. allele-specific
+     *  2) SNP-only vs. SNP+INDEL (for both of these options, we use extracted annotations that contain both SNP and INDEL variants as input)
+     *  3) positive (training with {TAG}.annot.hdf5) vs. positive-unlabeled (training with {TAG}.annot.hdf5 and {TAG}.unlabeled.annot.hdf5)
+     *  4) Java Bayesian Gaussian Mixture Model (BGMM) backend vs. python sklearn IsolationForest backend
+     *  TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
+     *  TODO warm-start BGMM?
      */
     @DataProvider(name = "dataValidInputs")
     public Object[][] dataValidInputs() {
-        final File positiveAnnotationsHDF5 = new File(TEST_FILES_DIR, "input/extract.nonAS.snpIndel.posUn.annot.hdf5");
-        final File unlabeledAnnotationsHDF5 = new File(TEST_FILES_DIR, "input/extract.nonAS.snpIndel.posUn.unlabeled.annot.hdf5");
-        final double truthSensitivityThreshold = 0.9;
-
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = argsBuilder ->
-                ADD_ANNOTATIONS_HDF5.apply(argsBuilder, positiveAnnotationsHDF5);
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = argsBuilder ->
-                ADD_UNLABELED_ANNOTATIONS_HDF5.apply(argsBuilder, unlabeledAnnotationsHDF5);
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addTruthSensitivityThreshold = argsBuilder ->
-                ADD_TRUTH_SENSITIVITY_THRESHOLD.apply(argsBuilder, truthSensitivityThreshold);
-
         final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
                 Arrays.asList(
-                        Pair.of("extract.nonAS.snpIndel.posUn.train.snp", ADD_SNP_MODE),
-                        Pair.of("extract.nonAS.snpIndel.posUn.train.snpIndel", ADD_SNP_MODE.andThen(ADD_INDEL_MODE))),
+                        Pair.of("extract.nonAS.snpIndel.posUn.train", Function.identity()),
+                        Pair.of("extract.nonAS.snpIndel.posUn.train", Function.identity()),
+                        Pair.of("extract.AS.snpIndel.posUn.train", Function.identity()),
+                        Pair.of("extract.AS.snpIndel.posUn.train", Function.identity())),
                 Arrays.asList(
-                        Pair.of("pos", addPositiveAnnotations),
-                        Pair.of("posNeg", addPositiveAnnotations.andThen(addUnlabeledAnnotations).andThen(addTruthSensitivityThreshold))),
+                        Pair.of("snp", ADD_SNP_MODE),
+                        Pair.of("snpIndel", ADD_SNP_MODE.andThen(ADD_INDEL_MODE))),
+                Arrays.asList(              // we will consume the tag and add appropriate arguments for positive and positive-negative training below
+                        Pair.of("pos", Function.identity()),
+                        Pair.of("posNeg", Function.identity())),
                 Arrays.asList(
 //                        Pair.of("BGMM", Function.identity()),
                         Pair.of("IF", ADD_ISOLATION_FOREST_PYTHON_SCRIPT.andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON))));
@@ -127,6 +126,23 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXPECTED_TEST_FILES_DIR : createTempDir("train");
         final String outputPrefix = String.format("%s/%s", outputDir, tag);
         argsBuilder.addOutput(outputPrefix);
+
+        final String extractTag = tag.split(".train")[0];
+        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR, String.format("%s.annot.hdf5", extractTag));
+        final double truthSensitivityThreshold = 0.9;
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
+                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
+        if (tag.contains("posNeg")) {
+            final File unlabeledAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR, String.format("%s.unlabeled.annot.hdf5", extractTag));
+            final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
+                    ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
+            final Function<ArgumentsBuilder, ArgumentsBuilder> addTruthSensitivityThreshold = ab ->
+                    ADD_TRUTH_SENSITIVITY_THRESHOLD.apply(ab, truthSensitivityThreshold);
+            addPositiveAnnotations.andThen(addUnlabeledAnnotations).andThen(addTruthSensitivityThreshold).apply(argsBuilder);
+        } else {
+            addPositiveAnnotations.apply(argsBuilder);
+        }
+
         argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         runCommandLine(argsBuilder);
 

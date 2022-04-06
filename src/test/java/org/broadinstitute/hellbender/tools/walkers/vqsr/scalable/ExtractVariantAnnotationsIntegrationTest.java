@@ -5,6 +5,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.testng.Assert;
@@ -16,19 +17,17 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * Note that copies of a subset of the expected outputs for the exact-match tests below are used as inputs for
- * {@link TrainVariantAnnotationsModelIntegrationTest}. Similarly, copies of a subset of the expected outputs for
+ * Note that the expected outputs for the exact-match tests below are used as inputs for
+ * {@link TrainVariantAnnotationsModelIntegrationTest}. Similarly, the expected outputs for
  * {@link TrainVariantAnnotationsModelIntegrationTest} are used as inputs for {@link ScoreVariantAnnotationsIntegrationTest}.
- * These copies are located in the train/input and score/input subdirectories in the test-resources directory for this package.
- *
- * We choose to use copies of these files (rather than the original expected files) to encapsulate the tests for each tool.
- * However, developers updating any of these tests may optionally choose to keep test files for all tools in sync, as appropriate.
+ * Thus, developers should keep the expected outputs for all of these integration tests in sync when updating any of them.
  */
 public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 
@@ -106,7 +105,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     };
 
     /**
-     * Exact-match tests for all configurations given by the Cartesian product of the following options:
+     * Exact-match tests for configurations given by the Cartesian product of the following options:
      *  1) non-allele-specific vs. allele-specific
      *  2) SNP vs. indel vs. both
      *  3) positive vs. positive-unlabeled
@@ -114,9 +113,11 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     @DataProvider(name = "dataValidInputs")
     public Object[][] dataValidInputs() {
         final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
+                Collections.singletonList(
+                        Pair.of("extract", Function.identity())),
                 Arrays.asList(
-                        Pair.of("extract.nonAS", ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS),
-                        Pair.of("extract.AS", ADD_ALLELE_SPECIFIC_ANNOTATIONS)),
+                        Pair.of("nonAS", ADD_NON_ALLELE_SPECIFIC_ANNOTATIONS),
+                        Pair.of("AS", ADD_ALLELE_SPECIFIC_ANNOTATIONS)),
                 Arrays.asList(
                         Pair.of("snp", ADD_SNP_MODE_AND_RESOURCES),
                         Pair.of("indel", ADD_INDEL_MODE_AND_RESOURCES),
@@ -196,8 +197,8 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         runCommandLine(argsBuilder);
     }
 
-    // TODO is this expected behavior? or should the tool fail if we don't specify the flag but an AS_* annotation is specified?
-    @Test(expectedExceptions = AssertionError.class)
+    // TODO is this expected behavior?
+    @Test(expectedExceptions = UserException.class)
     public void testForgotToSpecifyUseAlleleSpecificAnnotationsFlag() {
         final File outputDir = createTempDir("extract");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -205,8 +206,5 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
         argsBuilder.addOutput(outputPrefix);
         runCommandLine(argsBuilder);
-
-        // check that outputs do not match the expected allele-specific outputs, since we forgot to specify the flag
-        assertOutputs("AS.snp.positive", outputPrefix);
     }
 }
