@@ -25,8 +25,6 @@ workflow GvsWithdrawSamples {
   }
 
   output {
-    File log_message_file = WithdrawSamples.log_message_file
-    File rows_updated_file = WithdrawSamples.rows_updated_file
     Int num_rows_updated = WithdrawSamples.num_rows_updated
   }
 }
@@ -64,7 +62,6 @@ task WithdrawSamples {
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    ## TODO - do I need to do this.
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
       gcloud auth activate-service-account --key-file=local.service_account.json
@@ -73,9 +70,8 @@ task WithdrawSamples {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # perform actual update
-    ## TODO - retrieve the number updated and verify that it matches the number of samples?
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    'UPDATE `~{dataset_name}.~{sample_info_table}` SET withdrawn = CURRENT_TIMESTAMP() WHERE sample_name IN ("~{sep='\", \"' sample_names}")' > log_message.txt;
+      'UPDATE `~{dataset_name}.~{sample_info_table}` SET withdrawn = CURRENT_TIMESTAMP() WHERE sample_name IN ("~{sep='\", \"' sample_names}")' > log_message.txt;
 
     cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
     typeset -i rows_updated=$(cat rows_updated.txt)
@@ -95,8 +91,6 @@ task WithdrawSamples {
     cpu: 1
   }
   output {
-    File log_message_file = "log_message.txt"
-    File rows_updated_file = "rows_updated.txt"
     Int num_rows_updated = read_int("rows_updated.txt")
   }
 }
