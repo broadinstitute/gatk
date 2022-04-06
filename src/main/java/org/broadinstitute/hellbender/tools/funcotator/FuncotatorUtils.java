@@ -1721,12 +1721,14 @@ public final class FuncotatorUtils {
             if ( inputSequenceRecord == null ) {
                 missingSequenceRecords.add(b37SequenceRecord);
                 isB37 = false;
+                continue;
             }
 
             if ( inputSequenceRecord.getSequenceLength() != b37SequenceRecord.getSequenceLength() ) {
                 incompatibleSequenceLengths.put(inputSequenceRecord,
                         Arrays.asList(inputSequenceRecord.getSequenceLength(), b37SequenceRecord.getSequenceLength()));
                 isB37 = false;
+                continue;
             }
 
             if ( (inputSequenceRecord.getMd5() != null) && (!inputSequenceRecord.getMd5().equals(b37SequenceRecord.getMd5())) ) {
