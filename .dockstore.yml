@@ -143,6 +143,16 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsCreateVATFromAnnotations
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATFromAnnotations.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateVATFromAnnotations.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - rc-vat-clinvar-updates
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
@@ -152,6 +162,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vat-clinvar-updates
    - name: GvsExtractCohortFromSampleNames
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl
