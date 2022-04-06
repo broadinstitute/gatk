@@ -22,6 +22,8 @@ function updateSpredsheet() {
   const dockerHubImages = ['broadinstitute/gatk', 'broadinstitute/gatk3'];
   const gitHubUrl = "https://api.github.com/repos/broadinstitute/gatk/releases";
 
+  // Auth token to pull down the info on the releases so we don't get rate-limited: 
+  // This is OPTIONAL, but HIGHLY RECOMMENDED!
   const GITHUB_AUTH_TOKEN = "";
 
   // ============================================
@@ -62,6 +64,11 @@ function updateSpredsheet() {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
     sheet.autoResizeColumns(1, sheet.getLastColumn());
   })
+
+  // Finally set the active sheet to the overall stats page:
+  SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName(OVERALL_STATS_SHEET_NAME)
+  );
 }
 
 function setupSpreadsheetIfNecessary(dockerHubImages) {
@@ -155,18 +162,25 @@ function cleanGithubUrl(url) {
     newUrl = "https://api.github.com/repos/" + match[1]
   }
 
-  if (newUrl)
+  if (!newUrl.endsWith("releases") && !newUrl.endsWith("releases/")) {
+    if (newUrl.endsWith("/")) {
+      newUrl = newUrl + "releases"
+    }
+    else{
+      newUrl = newUrl + "/releases"
+    }
+  }
 
   return newUrl;
 }
 
-function recordGitHubReleaseDownloadCount(githubUrl, auth_token) {
+function recordGitHubReleaseDownloadCount(githubUrl, authToken) {
 
   // Header for authorization to pull down the info on the releases so we don't get rate-limited: 
   // This is OPTIONAL, but HIGHLY RECOMMENDED!
   var REQUEST_HEADERS = {
     "headers" : {
-      "Authorization" : "token " + auth_token
+      "Authorization" : "token " + authToken
     }
   };
 
@@ -191,7 +205,7 @@ function recordGitHubReleaseDownloadCount(githubUrl, auth_token) {
   var pageNum = 1;
   while (true) {
     var response = "";
-    if (auth_token.length > 0) {
+    if (authToken.length > 0) {
       response = UrlFetchApp.fetch(githubUrl + "?per_page=" + numResultsPerPage + "&page=" + pageNum, REQUEST_HEADERS); 
     }
     else {
