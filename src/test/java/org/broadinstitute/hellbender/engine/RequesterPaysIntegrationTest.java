@@ -21,15 +21,16 @@ public class RequesterPaysIntegrationTest extends CommandLineProgramTest {
     public String getTestedToolName() {
         return ExampleReadWalkerWithVariants.class.getSimpleName();
     }
-
-    //Files here are paid for by the bucket owners
-    private static final String OWNER = getGCPTestInputPath() + "org/broadinstitute/hellbender/engine/RequesterPaysIntegrationTest/";
-
-    //Files here are requester pays
-    private static final String REQUESTER = getGCPRequesterPaysBucket() + "test/resources/nio/";
-
+    
     @DataProvider
-    public Object[][] getRequesterPaysPaths(){
+    public Object[][] getRequesterPaysPaths() {
+
+        //Files here are paid for by the bucket owners
+        final String OWNER = getGCPTestInputPath() + "org/broadinstitute/hellbender/engine/RequesterPaysIntegrationTest/";
+
+        //Files here are requester pays
+        final String REQUESTER = getGCPRequesterPaysBucket() + "test/resources/nio/";
+
         return new Object[][]{
                 {OWNER, OWNER, OWNER, OWNER, false},
                 {OWNER, OWNER, OWNER, REQUESTER, true},
