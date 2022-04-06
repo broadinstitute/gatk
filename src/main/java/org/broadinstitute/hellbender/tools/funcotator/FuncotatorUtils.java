@@ -1743,21 +1743,23 @@ public final class FuncotatorUtils {
             if (missingSequenceRecords.size() > 0) {
                 logger.info("  The following contigs are present in b37 and missing in the input VCF sequence dictionary:");
                 for (final SAMSequenceRecord record : missingSequenceRecords) {
-                    logger.info("    " + record);
+                    logger.info("    " + record.getSequenceName() + " (len=" + record.getSequenceLength() + ",assembly=" + record.getAssembly() + ")");
                 }
             }
 
             if (incompatibleSequenceLengths.size() > 0) {
                 logger.info("  The following contigs are present in both b37 and the input VCF sequence dictionary, but have conflicting length information:");
                 for (final Map.Entry<SAMSequenceRecord, List<Integer>> e : incompatibleSequenceLengths.entrySet()) {
-                    logger.info("    " + e.getKey() + " VCF Length: " + e.getValue().get(0).toString() + ", b37 Length: " + e.getValue().get(1).toString());
+                    final SAMSequenceRecord record = e.getKey();
+                    logger.info("    " + record.getSequenceName() + " (len=" + record.getSequenceLength() + ",assembly=" + record.getAssembly() + "):" + " VCF Length: " + e.getValue().get(0).toString() + ", b37 Length: " + e.getValue().get(1).toString());
                 }
             }
 
             if (incompatibleSequenceMd5Sums.size() > 0) {
                 logger.info("  The following contigs are present in both b37 and the input VCF sequence dictionary, but have conflicting md5sum:");
                 for (final Map.Entry<SAMSequenceRecord, List<String>> e : incompatibleSequenceMd5Sums.entrySet()) {
-                    logger.info("    " + e.getKey() + " VCF md5sum: " + e.getValue().get(0) + ", b37 md5sum: " + e.getValue().get(1));
+                    final SAMSequenceRecord record = e.getKey();
+                    logger.info("    " + record.getSequenceName() + " (len=" + record.getSequenceLength() + ",assembly=" + record.getAssembly() + "):" + " VCF md5sum: " + e.getValue().get(0) + ", b37 md5sum: " + e.getValue().get(1));
                 }
             }
         }
