@@ -105,6 +105,14 @@ workflow GvsValidateVat {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
+    call ClinvarSignificance {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
     output {
         Array[Map[String, String]] validation_results = [
             EnsureVatTableHasVariants.result,
@@ -117,7 +125,8 @@ workflow GvsValidateVat {
             SchemaNonzeroAcAn.result,
             SubpopulationMax.result,
             SubpopulationAlleleCount.result,
-            SubpopulationAlleleNumber.result
+            SubpopulationAlleleNumber.result,
+            ClinvarSignificance.result
         ]
     }
 }
@@ -638,7 +647,7 @@ task SchemaNullTranscriptsExist {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
 
-        # if the result of the query has any rows, that means there were null transcripts
+        # if the result of the query has any rows, that means there were null transcripts as expected
         if [[ $NUMRESULTS != "0" ]]; then
            echo "PASS: The VAT table ~{fq_vat_table} has at least one null transcript" > validation_results.txt
         else
@@ -694,10 +703,13 @@ task SubpopulationMax {
             gvs_max_af < gvs_eur_af OR
             gvs_max_af < gvs_mid_af OR
             gvs_max_af < gvs_oth_af OR
-            gvs_max_af < gvs_sas_af'
+            gvs_max_af < gvs_sas_af' > bq_query_output.csv
+
+        # get number of lines in bq query output
+        NUMRESULTS=$(awk 'END{print NR}' bq_query_output.csv)
 
         # if the result of the query has any rows, that means gvs_max_af is not in fact the max af
-        if [[ $NUMRESULTS != "0" ]]; then
+        if [[ $NUMRESULTS = "0" ]]; then
           echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for subpopulation" > validation_results.txt
         else
           echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect calculation for subpopulation" > validation_results.txt
@@ -746,10 +758,13 @@ task SubpopulationAlleleCount {
         FROM
             ~{fq_vat_table}
         WHERE
-            gvs_all_ac != gvs_afr_ac + gvs_amr_ac + gvs_eas_ac + gvs_eur_ac + gvs_mid_ac + gvs_oth_ac + gvs_sas_ac'
+            gvs_all_ac != gvs_afr_ac + gvs_amr_ac + gvs_eas_ac + gvs_eur_ac + gvs_mid_ac + gvs_oth_ac + gvs_sas_ac'  > bq_query_output.csv
 
-        # if the result of the query has any rows, that means gvs_all_ac has not been calulated correctly/
-        if [[ $NUMRESULTS != "0" ]]; then
+        # get number of lines in bq query output
+        NUMRESULTS=$(awk 'END{print NR}' bq_query_output.csv)
+
+        # if the result of the query has any rows, that means gvs_all_ac has not been calculated correctly
+        if [[ $NUMRESULTS = "0" ]]; then
             echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for AC and the AC of subpopulations" > validation_results.txt
             else
             echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect calculation for AC and the AC of subpopulations" > validation_results.txt
@@ -785,9 +800,9 @@ task SubpopulationAlleleNumber {
         set -e
 
         if [ ~{has_service_account_file} = 'true' ]; then
-        gsutil cp ~{service_account_json_path} local.service_account.json
-        gcloud auth activate-service-account --key-file=local.service_account.json
-        gcloud config set project ~{query_project_id}
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
+          gcloud config set project ~{query_project_id}
         fi
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
@@ -798,10 +813,13 @@ task SubpopulationAlleleNumber {
         FROM
         ~{fq_vat_table}
         WHERE
-        gvs_all_an != gvs_afr_an + gvs_amr_an + gvs_eas_an + gvs_eur_an + gvs_mid_an + gvs_oth_an + gvs_sas_an'
+        gvs_all_an != gvs_afr_an + gvs_amr_an + gvs_eas_an + gvs_eur_an + gvs_mid_an + gvs_oth_an + gvs_sas_an' > bq_an_output.csv
+
+        # get number of lines in bq query output
+        NUMRESULTS=$(awk 'END{print NR}' bq_an_output.csv)
 
         # if the result of the query has any rows, that means gvs_all_an has not been calculated correctly
-        if [[ $NUMRESULTS != "0" ]]; then
+        if [[ $NUMRESULTS = "0" ]]; then
           echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for AN and the AN of subpopulations" > validation_results.txt
         else
           echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect calculation for AN and the AN of subpopulations" > validation_results.txt
@@ -822,3 +840,79 @@ task SubpopulationAlleleNumber {
         Map[String, String] result = {"SubpopulationAlleleNumber": read_string('validation_results.txt')}
     }
 }
+
+task ClinvarSignificance {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+    # check that all clinvar values are accounted for
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    command <<<
+        set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+          gsutil cp ~{service_account_json_path} local.service_account.json
+          gcloud auth activate-service-account --key-file=local.service_account.json
+          gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        # clinvar significance values:  ["benign",
+        #                                 "likely benign",
+        #                                 "uncertain significance",
+        #                                 "likely pathogenic",
+        #                                 "pathogenic",
+        #                                 "drug response",
+        #                                 "association",
+        #                                 "risk factor",
+        #                                 "protective",
+        #                                 "affects",
+        #                                 "conflicting data from submitters",
+        #                                 "other",
+        #                                 "not provided"]
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+          distinct(unnested_clinvar_classification)
+          FROM
+        ~{fq_vat_table}, UNNEST(clinvar_classification) AS unnested_clinvar_classification' > bq_clinvar_classes.csv
+
+        INCLUVALUES=$(awk -v RS='^$' 'END{print  !(index($0,"benign") && \
+         index($0,"likely benign") && index($0,"uncertain significance") && \
+         index($0,"likely pathogenic") && index($0,"pathogenic") && \
+         index($0,"drug response") && index($0,"association") && \
+         index($0,"risk factor") && index($0,"protective") && \
+         index($0,"affects") && index($0,"conflicting data from submitters") && \
+         index($0,"other") && \
+         index($0,"not provided"))}'  bq_clinvar_classes.csv)
+
+        NUMRESULTS=$( wc -l bq_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 13+
+
+        # if the result of the query has any rows, that means gvs_all_an has not been calculated correctly
+        if [[ $NUMRESULTS -ge 13 && $INCLUVALUES = "0" ]]; then
+          echo "PASS: The VAT table ~{fq_vat_table} has the correct values for clinvar classification" > validation_results.txt
+        else
+          echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect values for clinvar classification" > validation_results.txt
+        fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
+    output {
+        Map[String, String] result = {"ClinvarSignificance": read_string('validation_results.txt')}
+    }
+}
+
+
+## TODO It would be great to spot check a few well known variants / genes
