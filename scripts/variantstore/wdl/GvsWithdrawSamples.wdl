@@ -71,16 +71,20 @@ task WithdrawSamples {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    NAMES_FILE=~{write_lines(sample_names)}
-
-    echo "Hello!"
-    echo "~{sep='\", \"' sample_names}"
-    echo "There!"
-
     # perform actual update
     ## TODO - retrieve the number updated and verify that it matches the number of samples?
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-    'UPDATE `~{dataset_name}.~{sample_info_table}` SET withdrawn = CURRENT_TIMESTAMP() WHERE sample_name IN ("~{sep='\", \"' sample_names}")';
+    'UPDATE `~{dataset_name}.~{sample_info_table}` SET withdrawn = CURRENT_TIMESTAMP() WHERE sample_name IN ("~{sep='\", \"' sample_names}")' > log_message.txt;
+
+    cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
+    typeset -i rows_updated=$(cat rows_updated.txt)
+
+    echo "did not update $num_samples rows - only updated $rows_updated"
+
+    if [ $num_samples -ne $rows_updated ]; then
+      echo "did not update $num_samples rows - only updated $rows_updated !"
+      exit 1
+    fi
 
   >>>
   runtime {
@@ -89,9 +93,8 @@ task WithdrawSamples {
     disks: "local-disk " + 10 + " HDD"
     cpu: 1
   }
-#  output {
-#    File gvs_ids_tsv = "gvs_ids.tsv"
-#    Int max_table_id = read_int("max_table_id")
-#  }
+  output {
+    Int num_rows_updated = read_int("rows_updated.txt")
+  }
 }
 
