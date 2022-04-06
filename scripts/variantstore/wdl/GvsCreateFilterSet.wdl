@@ -14,6 +14,8 @@ workflow GvsCreateFilterSet {
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220406/gatk-package-4.2.0.0-480-gb62026a-SNAPSHOT-local.jar"
+
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
     String? service_account_json_path
@@ -25,7 +27,6 @@ workflow GvsCreateFilterSet {
   # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
   Int snps_variant_recalibration_threshold = 20000
 
-  File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rsa_add_sample_columns/gatk-package-4.2.0.0-481-g95b9fc2-SNAPSHOT-local.jar"
 
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
 
