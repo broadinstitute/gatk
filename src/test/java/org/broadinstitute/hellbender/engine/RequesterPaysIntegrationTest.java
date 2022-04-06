@@ -50,7 +50,8 @@ public class RequesterPaysIntegrationTest extends CommandLineProgramTest {
         };
     }
 
-    @Test(dataProvider = "getRequesterPaysPaths", groups="cloud")
+    // Disabled due to https://github.com/broadinstitute/gatk/issues/7763
+    @Test(dataProvider = "getRequesterPaysPaths", groups="cloud", enabled = false)
     public void testMixedNormalAndRequesterPays(String referenceBase, String bamBase, String vcfBase,
                                                   String intervalBase, boolean requiresRequesterPays) throws IOException {
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -65,7 +66,8 @@ public class RequesterPaysIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(output, new File(packageRootTestDir+"engine/RequesterPaysIntegrationTest/expected_ExampleReadWalkerWithVariantsIntegrationTest_output.txt"));
     }
 
-    @Test(dataProvider = "getRequesterPaysPaths", groups="cloud")
+    // Disabled due to https://github.com/broadinstitute/gatk/issues/7763
+    @Test(dataProvider = "getRequesterPaysPaths", groups="cloud", enabled = false)
     public void testWithoutRequesterPaysArgument(String referenceBase, String bamBase, String vcfBase,
                                                   String intervalBase, boolean requiresRequesterPays) {
         final ArgumentsBuilder args = new ArgumentsBuilder();
