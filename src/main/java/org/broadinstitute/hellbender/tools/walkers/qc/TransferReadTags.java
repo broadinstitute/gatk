@@ -4,8 +4,9 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.PeekableIterator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ExperimentalFeature;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -15,22 +16,23 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This tool is designed for a pair of SAM files sharing the same read names (e.g.
- * SAM files before and after alignment), where one SAM lacks some read tags that are
- * present in the other.
+ * This tool takes a pair of SAM files sharing the same read names (e.g.
+ * SAM files before and after alignment) and transfer read tags from one SAM
+ * to the other.
  *
  * This situation may happen if for instance an unaligned bam is converted to fastq files,
  * and some read tags get lost during this conversion. The converting to fastq is sometimes unavoidable,
  * due to the fact that some tools, such as the adapter clipping tools, are written for fastq only,
  * while others are written specifically for SAM files.
  *
- * This tools behaves similarly to Picard MergeBamAlignment (MBA). The difference is that whereas
+ * This tools behaves similarly to Picard {@link picard.sam.MergeBamAlignment} (MBA). The difference is that whereas
  * MBA merges the alignment information to the unaligned bam, TransferReadTags uses the aligned bam as the
  * base and adds the read tags from the unaligned bam to the aligned bam.
  *
@@ -40,11 +42,11 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Incorporate read tags in a SAM file to that of a matching SAM file",
         oneLineSummary = "Incorporate read tags in a SAM file to that of a matching SAM file",
-        programGroup = QCProgramGroup.class // sato: change
+        programGroup = ReadDataManipulationProgramGroup.class
 )
+@ExperimentalFeature
+@DocumentedFeature
 public class TransferReadTags extends GATKTool {
-    final static String UMI_TAG_NAME = "RX";
-
     @Argument(fullName = "unmapped-sam", doc = "query-name sorted unmapped sam file containing the read tag of interest")
     public GATKPath unmappedSamFile;
     ReadsDataSource unmappedSam;
@@ -53,23 +55,23 @@ public class TransferReadTags extends GATKTool {
     public File outSamFile;
     SAMFileGATKReadWriter writer;
 
-    @Argument(fullName = "read-tags", doc = "read tag names to transfer")
+    @Argument(fullName = "read-tags", doc = "read tag names to transfer, must be present in every read in the unmapped sam")
     public List<String> readTags = new ArrayList<>();
 
 
-    PeekableIterator<GATKRead> alignedSamIterator;
-    PeekableIterator<GATKRead> unmappedSamIterator;
+    private PeekableIterator<GATKRead> alignedSamIterator;
+    private PeekableIterator<GATKRead> unmappedSamIterator;
 
-    GATKRead currentRead1;
-    GATKRead currentRead2;
-    ReadQueryNameComparator queryNameComparator;
+    private GATKRead currentTargetRead;
+    private GATKRead currentUnmappedRead;
+    private ReadQueryNameComparator queryNameComparator;
 
     public void onTraversalStart(){
         Utils.nonEmpty(readTags, "read tags may not be empty");
         queryNameComparator = new ReadQueryNameComparator();
         alignedSamIterator = new PeekableIterator<>(directlyAccessEngineReadsDataSource().iterator());
-        SAMFileHeader.SortOrder sortOrder1 = directlyAccessEngineReadsDataSource().getHeader().getSortOrder();
-        Utils.validate(sortOrder1 == SAMFileHeader.SortOrder.queryname, "aligned sam must be sorted by queryname");
+        final SAMFileHeader.SortOrder sortOrderAlignedReads = directlyAccessEngineReadsDataSource().getHeader().getSortOrder();
+        Utils.validate(sortOrderAlignedReads == SAMFileHeader.SortOrder.queryname, "aligned sam must be sorted by queryname");
 
         unmappedSam = new ReadsPathDataSource(unmappedSamFile.toPath());
 
@@ -79,49 +81,54 @@ public class TransferReadTags extends GATKTool {
         // error when it is not.
         unmappedSamIterator = new PeekableIterator<>(unmappedSam.iterator());
 
-        // Initialize Read2. Read1 will be initialized in traverse()
+        // Initialize the current unmapped read. The counterpart for the aligned read will be initialized in traverse()
         if (unmappedSamIterator.hasNext()){
-            currentRead2 = unmappedSamIterator.next();
+            currentUnmappedRead = unmappedSamIterator.next();
         } else {
-            throw new UserException("unaligned sam iterator is empty.");
+            throw new UserException("unmapped sam iterator is empty.");
         }
 
         writer = createSAMWriter(new GATKPath(outSamFile.getAbsolutePath()), false);
     }
 
+    /**
+     * The traversal assumes that the aligned (target) reads is a subset of
+     * the unmapped reads. The tool exists when there exists a read in the
+     * aligned read that is not present in the unmapped read.
+     */
     @Override
     public void traverse() {
         // will need to use this later
         while (alignedSamIterator.hasNext()){
-            currentRead1 = alignedSamIterator.next();
-            int diff = queryNameComparator.compareReadNames(currentRead1, currentRead2);
+            currentTargetRead = alignedSamIterator.next();
+            int diff = queryNameComparator.compareReadNames(currentTargetRead, currentUnmappedRead);
 
             if (diff == 0) {
                 // The query names match.
-                GATKRead udpatedRead = updateReadTags(currentRead1, currentRead2);
-                writer.addRead(udpatedRead);
-                progressMeter.update(currentRead1);
+                GATKRead updatedRead = updateReadTags(currentTargetRead, currentUnmappedRead);
+                writer.addRead(updatedRead);
+                progressMeter.update(currentTargetRead);
                 continue;
             } else if (diff > 0){
-                // Read1 is ahead. Play unmapped reads foward until it catches up.
+                // target read is ahead; play unmapped reads forward until it catches up.
                 while (unmappedSamIterator.hasNext()){
-                    currentRead2 = unmappedSamIterator.next();
-                    diff = queryNameComparator.compareReadNames(currentRead1, currentRead2);
+                    currentUnmappedRead = unmappedSamIterator.next();
+                    diff = queryNameComparator.compareReadNames(currentTargetRead, currentUnmappedRead);
                     if (diff > 0){
                         continue;
                     } else if (diff == 0){
-                        // caught up: star moving the aligned reads forward
-                        GATKRead udpatedRead = updateReadTags(currentRead1, currentRead2);
-                        writer.addRead(udpatedRead);
+                        // caught up: start moving the aligned reads forward
+                        GATKRead updatedRead = updateReadTags(currentTargetRead, currentUnmappedRead);
+                        writer.addRead(updatedRead);
                         break;
                     } else {
                         throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read: " +
-                                "aligned read = " + currentRead1.getName() + ", unmapped read = " + currentRead2.getName());
+                                "aligned read = " + currentTargetRead.getName() + ", unmapped read = " + currentUnmappedRead.getName());
                     }
                 }
             } else {
                 throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read: " +
-                        "aligned read = " + currentRead1.getName() + ", unmapped read = " + currentRead2.getName());
+                        "aligned read = " + currentTargetRead.getName() + ", unmapped read = " + currentUnmappedRead.getName());
             }
         }
     }
@@ -136,7 +143,7 @@ public class TransferReadTags extends GATKTool {
         final GATKRead updatedRead = targetRead.copy();
         for (String tagName : readTags){
             final String tagValue = originRead.getAttributeAsString(tagName);
-            Utils.nonNull(tagValue, "The attribute is empty: read " + currentRead2.getName());
+            Utils.nonNull(tagValue, "The attribute is empty: read " + currentUnmappedRead.getName());
             updatedRead.setAttribute(tagName, tagValue);
         }
         return updatedRead;

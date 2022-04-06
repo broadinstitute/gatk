@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -20,11 +21,11 @@ import java.util.Iterator;
 import java.util.List;
 
 public class TransferReadTagsIntegrationTest extends CommandLineProgramTest {
-
-    @Test
-    public void test() {
+    @DataProvider(name = "testSAMPairs")
+    public Object[][] getTestSAMPairs(){
         final File alignedSAMFile = createTempFile("sam1", ".bam");
-        final File unmappedSAMFile = createTempFile("sam2", ".bam");
+        final File alignedSAMWithExistingTagFile = createTempFile("sam2", ".bam");
+        final File unmappedSAMFile = createTempFile("sam3", ".bam");
 
         final SAMFileHeader samHeader = M2TestingUtils.createSamHeader("sample");
         samHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
@@ -39,6 +40,7 @@ public class TransferReadTagsIntegrationTest extends CommandLineProgramTest {
         Arrays.fill(quals, (byte)30);
 
         try (final SAMFileGATKReadWriter alignedSAMWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(alignedSAMFile, null, samHeader, true, false, false));
+             final SAMFileGATKReadWriter alignedSAMWithExisingTagWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(alignedSAMWithExistingTagFile, null, samHeader, true, false, false));
              final SAMFileGATKReadWriter unmappedWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(unmappedSAMFile, null, unalignedHeader, true, false, false))) {
 
             for (int i = 0; i < umis.size(); i++) {
@@ -52,18 +54,29 @@ public class TransferReadTagsIntegrationTest extends CommandLineProgramTest {
                 final GATKRead alignedRead = ArtificialReadUtils.createArtificialRead(samHeader, bases, quals, "30M");
                 alignedRead.setName("read" + i);
 
-                // Simulated the case where an aligner drops a read
+                // Simulate the case where an aligner drops a read
                 if (i == 1) {
                     continue;
                 }
 
                 alignedSAMWriter.addRead(alignedRead);
+
+                // When there the same tag exists in the aligned bam, it should be overwritten.
+                final GATKRead alignedReadWithExistingTag = alignedRead.copy();
+                alignedReadWithExistingTag.setAttribute("RX", "ZZZ-ZZZ");
+                alignedSAMWithExisingTagWriter.addRead(alignedReadWithExistingTag);
             }
 
         } catch (RuntimeIOException e){
             throw new UserException("Failed to open SAM writers", e);
         }
+        return new Object[][]{{alignedSAMFile, unmappedSAMFile, umis },
+                {alignedSAMWithExistingTagFile, unmappedSAMFile, umis }
+        };
+    }
 
+    @Test(dataProvider = "testSAMPairs")
+    public void test(final File alignedSAMFile, final File unmappedSAMFile, List<String> umis ) {
         final File outputFile = createTempFile("output", ".bam");
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("I", alignedSAMFile.getAbsolutePath())
