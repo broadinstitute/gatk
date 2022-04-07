@@ -171,6 +171,13 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsWithdrawSamples
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

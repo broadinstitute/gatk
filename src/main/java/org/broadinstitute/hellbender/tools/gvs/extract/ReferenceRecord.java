@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.gvs.extract;
 
 import htsjdk.samtools.util.Locatable;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.util.Utf8;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
@@ -9,8 +10,8 @@ import java.util.Objects;
 
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
-    private final Long location;
-    private final Long sampleId;
+    private final long location;
+    private final long sampleId;
     private final String contig;
     private final Integer start;
     private final Integer end;
@@ -18,15 +19,16 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
     private final String state;
 
-
     public ReferenceRecord(GenericRecord genericRecord) {
-        this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-        this.sampleId = Long.parseLong(genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME).toString());
+        this.location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
+        this.sampleId = (Long) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
         this.contig = SchemaUtils.decodeContig(location);
         this.start = SchemaUtils.decodePosition(location);
-        this.end = this.start + Integer.parseInt(genericRecord.get("length").toString()) - 1;
-        this.endLocation = this.location + + Integer.parseInt(genericRecord.get("length").toString()) - 1;
-        this.state = Objects.toString(genericRecord.get(SchemaUtils.STATE_FIELD_NAME));
+
+        int length = Math.toIntExact((Long) genericRecord.get("length"));
+        this.end = this.start + length - 1;
+        this.endLocation = this.location + + length - 1;
+        this.state = ((Utf8) genericRecord.get(SchemaUtils.STATE_FIELD_NAME)).toString();
     }
 
     public ReferenceRecord(long location, long sampleId, int length, String state) {
@@ -53,7 +55,7 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     public long getLocation() { return this.location; }
     public long getEndLocation() { return this.endLocation; }
 
-    public Long getSampleId() { return this.sampleId; }
+    public long getSampleId() { return this.sampleId; }
 
     public String getState() { return this.state; }
 
