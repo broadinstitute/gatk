@@ -56,7 +56,7 @@ public class ReadPair {
         }
 
         if (isPrimaryAlignment(read) && read.isFirstOfPair()) {
-            Utils.validate(this.firstOfPair != null,
+            Utils.validate(this.firstOfPair == null,
                     "The primary firstOfPair is already set. Added read = " + read.getName());
             this.firstOfPair = read;
         } else if (isPrimaryAlignment(read) && read.isSecondOfPair()) {

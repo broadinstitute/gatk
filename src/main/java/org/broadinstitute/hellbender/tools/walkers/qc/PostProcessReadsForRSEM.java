@@ -221,7 +221,8 @@ public class PostProcessReadsForRSEM extends GATKTool {
         final List<Pair<GATKRead, GATKRead>> result = new ArrayList<>(read1Reads.size());
         for (GATKRead read1 : read1Reads){
             final List<GATKRead> read2s = read2Reads.stream()
-                    .filter(r -> r.getStart() == read1.getMateStart()
+                    .filter(r -> r.contigsMatch(read1)
+                            && r.getStart() == read1.getMateStart()
                             && r.getMateStart() == read1.getStart())
                     .collect(Collectors.toList());
             if (read2s.size() == 1){
