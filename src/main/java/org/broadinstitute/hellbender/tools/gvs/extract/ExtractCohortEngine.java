@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
-import com.google.common.collect.Sets;
-import static java.util.stream.Collectors.toList;
 
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -66,6 +65,9 @@ public class ExtractCohortEngine {
 
     /** List of sample names seen in the variant data from BigQuery. */
     private final Set<String> sampleNames;
+    private final SortedSet<Long> sampleIdsToExtract;
+    private final BitSet sampleIdsToExtractBitSet;
+
     private final Map<Long, String> sampleIdToName;
 
     private final ReferenceConfidenceVariantContextMerger variantContextMerger;
@@ -129,6 +131,21 @@ public class ExtractCohortEngine {
         this.refSource = refSource;
         this.sampleIdToName = sampleIdToName;
         this.sampleNames = new HashSet<>(sampleIdToName.values());
+        this.sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
+
+        long maxSampleId = sampleIdsToExtract.last();
+
+        // Constraint due to easily available BitSet implementations, could
+        // be extended in future work
+        if (maxSampleId > Integer.MAX_VALUE) {
+            throw new GATKException("Sample Ids > " + Integer.MAX_VALUE + " are not supported");
+        }
+
+        this.sampleIdsToExtractBitSet = new BitSet((int) maxSampleId + 1);
+        for(Long id : sampleIdsToExtract) {
+            sampleIdsToExtractBitSet.set(id.intValue());
+        }
+
         this.mode = mode;
         this.emitPLs = emitPLs;
 
@@ -435,7 +452,11 @@ public class ExtractCohortEngine {
                                                  final ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
 
         final List<VariantContext> unmergedCalls = new ArrayList<>();
-        final Set<String> currentPositionSamplesSeen = new HashSet<>();
+        final List<ReferenceGenotypeInfo> refCalls = new ArrayList<>();
+
+        int maxSampleIdToExtract = sampleIdsToExtract.last().intValue();
+        final BitSet samplesSeen = new BitSet(maxSampleIdToExtract + 1);
+
         boolean currentPositionHasVariant = false;
         final int currentPosition = SchemaUtils.decodePosition(location);
         final String contig = SchemaUtils.decodeContig(location);
@@ -464,7 +485,10 @@ public class ExtractCohortEngine {
             if (sampleName == null) {
                 throw new GATKException("Unable to translate sample id " + sampleRecord.getSampleId() + " to sample name");
             }
-            currentPositionSamplesSeen.add(sampleName);
+
+            // PERF: BOTTLENECK (~13%)
+            // Note: we've already confirmed that max sample id is an int
+            samplesSeen.set(sampleRecord.getSampleId().intValue());
             ++numRecordsAtPosition;
 
             if ( printDebugInformation ) {
@@ -484,30 +508,27 @@ public class ExtractCohortEngine {
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
                     break;
                 case "1":  // Non Variant Block with 10 <=  GQ < 20
-                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 10));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 10));
                     break;
                 case "2":  // Non Variant Block with 20 <= GQ < 30
-                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 20));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 20));
                     break;
                 case "3":  // Non Variant Block with 30 <= GQ < 40
-                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 30));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 30));
                     break;
                 case "4":  // Non Variant Block with 40 <= GQ < 50
-                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 40));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 40));
                     break;
                 case "5":  // Non Variant Block with 50 <= GQ < 60
-                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 50));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 50));
                     break;
                 case "6":  // Non Variant Block with 60 <= GQ (usually omitted from tables)
-                    unmergedCalls.add(createRefSiteVariantContextWithGQ(sampleName, contig, currentPosition, refAllele, 60));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 60));
                     break;
                 case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
                     break;
                 case "m":   // Missing
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
-                    break;
-                case "u":   // unknown GQ used for array data
-                    unmergedCalls.add(createRefSiteVariantContext(sampleName, contig, currentPosition, refAllele));
                     break;
                 default:
                     throw new GATKException("Unrecognized state: " + sampleRecord.getState());
@@ -519,11 +540,12 @@ public class ExtractCohortEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        finalizeCurrentVariant(unmergedCalls, currentPositionSamplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
+        finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
     }
 
-    private void finalizeCurrentVariant(final List<VariantContext> unmergedCalls,
-                                        final Set<String> currentVariantSamplesSeen,
+    private void finalizeCurrentVariant(final List<VariantContext> unmergedVariantCalls,
+                                        final List<ReferenceGenotypeInfo> referenceCalls,
+                                        final BitSet samplesSeen,
                                         final boolean currentPositionHasVariant,
                                         final long location,
                                         final String contig,
@@ -538,19 +560,51 @@ public class ExtractCohortEngine {
             return;
         }
 
-        // Find samples for dropped state and synthesize. If not arrays use GQ 60
-        final Set<String> samplesNotEncountered = Sets.difference(sampleNames, currentVariantSamplesSeen);
-        for ( final String missingSample : samplesNotEncountered ) {
-            unmergedCalls.add(createRefSiteVariantContextWithGQ(missingSample, contig, start, refAllele, inferredReferenceState.getReferenceGQ()));
-        }
-
-        final VariantContext mergedVC = variantContextMerger.merge(
-                unmergedCalls,
+        VariantContext mergedVC = variantContextMerger.merge(
+                unmergedVariantCalls,
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
                 true,
                 false,
                 true);
+
+
+        // Reference Sites -- first create a single VC Builder
+        final VariantContextBuilder vcWithRef = new VariantContextBuilder(mergedVC);
+
+        // create alleles (same for all genotypes)
+        List<Allele> gtAlleles = Arrays.asList(mergedVC.getReference(), mergedVC.getReference());
+
+        final GenotypesContext genotypes = GenotypesContext.copy(vcWithRef.getGenotypes());
+        GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
+
+        // add known ref genotypes
+        for ( final ReferenceGenotypeInfo info : referenceCalls ) {
+            genotypeBuilder.reset(false);
+            genotypeBuilder.name(info.getSampleName());
+            genotypeBuilder.alleles(gtAlleles);
+            genotypeBuilder.GQ(info.getGQ());
+            genotypes.add(genotypeBuilder.make());
+        }
+
+        // Find samples for inferred state and synthesize
+
+        // mutates in place, so rename to be clear.
+        // we don't use this again as "samplesSeen" so we don't need a full copy
+        BitSet samplesNotEncountered = samplesSeen;
+        samplesNotEncountered.xor(sampleIdsToExtractBitSet);
+
+        // Iterate through the samples not encountered
+        for (int sampleId = samplesNotEncountered.nextSetBit(0); sampleId >= 0; sampleId = samplesNotEncountered.nextSetBit(sampleId+1)) {
+            genotypeBuilder.reset(false);
+            genotypeBuilder.name(sampleIdToName.get(Long.valueOf(sampleId)));
+            genotypeBuilder.alleles(gtAlleles);
+            genotypeBuilder.GQ(inferredReferenceState.getReferenceGQ());
+            genotypes.add(genotypeBuilder.make());
+        }
+
+        vcWithRef.genotypes(genotypes);
+        mergedVC = vcWithRef.make();
 
         ReferenceContext referenceContext = new ReferenceContext(refSource, new SimpleInterval(mergedVC));
 
@@ -642,12 +696,13 @@ public class ExtractCohortEngine {
         return filteredVC;
     }
 
-    protected VariantContext removeAnnotations(VariantContext vc) {
+    protected static VariantContext removeAnnotations(VariantContext vc) {
 
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
-                                                                      GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
-                                                                      GATKVCFConstants.FISHER_STRAND_KEY));
+        List<String> rmAnnotationList = new ArrayList<>(Arrays.asList(
+                GATKVCFConstants.STRAND_ODDS_RATIO_KEY,
+                GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,
+                GATKVCFConstants.FISHER_STRAND_KEY));
 
         builder.rmAttributes(rmAnnotationList);
         return builder.make();
@@ -806,21 +861,6 @@ public class ExtractCohortEngine {
         builder.genotypes(genotypeBuilder.make());
 
         return builder.make();
-    }
-
-    private VariantContext createRefSiteVariantContextWithGQ(final String sample, final String contig, final long start, final Allele refAllele, final Integer gq) {
-        final VariantContextBuilder builder = new VariantContextBuilder("", contig, start, start, new ArrayList<>(Arrays.asList(refAllele, Allele.NON_REF_ALLELE)));
-        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sample, new ArrayList<>(Arrays.asList(refAllele, refAllele)));
-
-        builder.attribute(VCFConstants.END_KEY, Long.toString(start));
-        if (gq != null) {
-            genotypeBuilder.GQ(gq);
-        }
-        builder.genotypes(genotypeBuilder.make());
-        return builder.make();
-    }
-    private VariantContext createRefSiteVariantContext(final String sample, final String contig, final long start, final Allele refAllele) {
-        return createRefSiteVariantContextWithGQ(sample, contig, start, refAllele, null);
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromBigQuery(final String projectID,
@@ -1122,11 +1162,8 @@ public class ExtractCohortEngine {
                 lastSample = null;
             }
 
-            if (lastSample == null) {
-                processReferenceData(currentPositionRecords, sortedReferenceRangeIterator, referenceCache, variantLocation, minSampleId, variantSample - 1, sampleIdsToExtract);
-            } else {
-                processReferenceData(currentPositionRecords, sortedReferenceRangeIterator, referenceCache, variantLocation, lastSample + 1, variantSample - 1, sampleIdsToExtract);
-            }
+            long startingSample = (lastSample == null) ? minSampleId : lastSample + 1;
+            processReferenceData(currentPositionRecords, sortedReferenceRangeIterator, referenceCache, variantLocation, startingSample, variantSample - 1, sampleIdsToExtract);
 
             // handle the actual variant record
             currentPositionRecords.merge(variantSample, vetRow, this::mergeSampleRecord);
@@ -1194,6 +1231,7 @@ public class ExtractCohortEngine {
 
     private String processReferenceDataFromCache(Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
 
+        // PERF: bottleneck (iterator and remove) 6%
         Iterator<ReferenceRecord> iter = referenceCache.get(sampleId).iterator();
         while (iter.hasNext()) {
             ReferenceRecord row = iter.next();

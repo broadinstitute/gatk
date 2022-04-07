@@ -9,11 +9,11 @@ import java.util.Objects;
 
 public class ExtractCohortRecord implements Locatable {
 
-    private final Long location;
-    private final Long sampleId;
+    private final long location;
+    private final long sampleId;
     private final String contig;
-    private final Integer start;
-    private final Integer end;
+    private final int start;
+    private final int end;
 
     private final String state;
     private final String refAllele;
@@ -40,10 +40,11 @@ public class ExtractCohortRecord implements Locatable {
 //            SchemaUtils.CALL_PL);//, AS_VarDP);
 
     public ExtractCohortRecord(GenericRecord genericRecord) {
-        this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
-        this.sampleId = Long.parseLong(genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME).toString());
+        this.location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
+        this.sampleId = (Long) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
         this.contig = SchemaUtils.decodeContig(location);
         this.start = SchemaUtils.decodePosition(location);
+
         this.end = start;
 
         // if this record is being constructed from the VET data, we won't have a state so we default it to 'v'
