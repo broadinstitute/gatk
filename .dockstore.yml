@@ -176,7 +176,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-361_AddGvsWithdrawSamples
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
