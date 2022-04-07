@@ -11,13 +11,10 @@ workflow GvsWithdrawSamples {
     String? service_account_json_path
   }
 
-  String sample_info_table = "sample_info"
-
   call WithdrawSamples {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      sample_info_table = sample_info_table,
       sample_names = sample_names,
       service_account_json_path = service_account_json_path
   }
@@ -32,7 +29,6 @@ task WithdrawSamples {
     String project_id
     String dataset_name
 
-    String sample_info_table
     Array[String] sample_names
 
     String? service_account_json_path
@@ -65,7 +61,7 @@ task WithdrawSamples {
 
     # perform actual update
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
-      'UPDATE `~{dataset_name}.~{sample_info_table}` SET withdrawn = CURRENT_TIMESTAMP() WHERE sample_name IN ("~{sep='\", \"' sample_names}")' > log_message.txt;
+      'UPDATE `~{dataset_name}.sample_info` SET withdrawn = CURRENT_TIMESTAMP() WHERE sample_name IN ("~{sep='\", \"' sample_names}")' > log_message.txt;
 
     cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
     typeset -i rows_updated=$(cat rows_updated.txt)
@@ -77,9 +73,9 @@ task WithdrawSamples {
 
   >>>
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
+    docker: "us.gcr.io/broad-gatk/gatk:4.2.5.0"
     memory: "3.75 GB"
-    disks: "local-disk " + 10 + " HDD"
+    disks: "local-disk 10 HDD"
     cpu: 1
   }
   output {
