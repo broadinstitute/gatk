@@ -637,7 +637,7 @@ public class ExtractCohortEngine {
             if (finalVC.isNotFiltered() || !excludeFilteredSites) {
                 vcfWriter.add(finalVC);
             }
-            progressMeter.update(filteredVC);
+            progressMeter.update(finalVC);
         }
     }
 
