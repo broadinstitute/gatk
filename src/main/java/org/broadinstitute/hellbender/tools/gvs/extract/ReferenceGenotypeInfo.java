@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
 public class ReferenceGenotypeInfo {
-    private String sampleName;
-    private int GQ;
+    private final String sampleName;
+    private final int GQ;
 
     public ReferenceGenotypeInfo(String sampleName, int GQ) {
         this.sampleName = sampleName;

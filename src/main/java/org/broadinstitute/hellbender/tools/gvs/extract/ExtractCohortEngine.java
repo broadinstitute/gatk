@@ -141,7 +141,7 @@ public class ExtractCohortEngine {
             throw new GATKException("Sample Ids > " + Integer.MAX_VALUE + " are not supported");
         }
 
-        this.sampleIdsToExtractBitSet = new BitSet(sampleIdsToExtract.last().intValue());
+        this.sampleIdsToExtractBitSet = new BitSet((int) maxSampleId);
         for(Long id : sampleIdsToExtract) {
             sampleIdsToExtractBitSet.set(id.intValue());
         }
