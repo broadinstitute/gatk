@@ -38,6 +38,15 @@ import java.util.List;
  *
  * Currently, the tool is implemented for the specific case of transfering UMI read tags (RX)
  * from an unaligned bam.
+ *
+ * Example Usage:
+ *
+ * gatk CollectAllelicCounts \
+ * --input aligned.bam \
+ * --unmapped-sam unmapped.bam \
+ * --output aligned_with_RX.bam \
+ * --read-tags RX
+ *
  */
 @CommandLineProgramProperties(
         summary = "Incorporate read tags in a SAM file to that of a matching SAM file",
@@ -122,13 +131,13 @@ public class TransferReadTags extends GATKTool {
                         writer.addRead(updatedRead);
                         break;
                     } else {
-                        throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read. This tool assumes " +
+                        throw new IllegalStateException("A read found in the aligned bam is not found in the unmapped bam. This tool assumes " +
                                 "reads in both input files are query-name sorted lexicographically (i.e. by Picard SortSam but not by samtools sort): " +
                                 "aligned read = " + currentTargetRead.getName() + ", unmapped read = " + currentUnmappedRead.getName() + "");
                     }
                 }
             } else {
-                throw new IllegalStateException("Aligned read is lexicographically smaller than the unmapped read. This tool assumes " +
+                throw new IllegalStateException("A read found in the aligned bam is not found in the unmapped bam. This tool assumes " +
                         "reads in both input files are query-name sorted lexicographically (i.e. by Picard SortSam but not by samtools sort): " +
                         "aligned read = " + currentTargetRead.getName() + ", unmapped read = " + currentUnmappedRead.getName() + "");
             }
