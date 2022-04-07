@@ -1,36 +1,40 @@
 package org.broadinstitute.hellbender.tools.walkers.qc;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Data structure that contains the set of reads sharing the same queryname, including
+ * the primary, secondary (i.e. multi-mapping), and supplementary (e.g. chimeric) alignments.
+ *
+ */
 public class ReadPair {
     private GATKRead firstOfPair;
     private GATKRead secondOfPair;
-    private List<GATKRead> secondaryAlignments = new ArrayList<>(10);
-    private List<GATKRead> supplementaryAlignments = new ArrayList<>(10); // Finally understand the difference
-    private String queryName = null;
-
-
-    public ReadPair() { }
+    private final List<GATKRead> secondaryAlignments = new ArrayList<>();
+    private final List<GATKRead> supplementaryAlignments = new ArrayList<>();
+    private final String queryName;
 
     public ReadPair(final GATKRead read) {
         this.queryName = read.getName();
         add(read);
     }
 
-    public int size(){
-        int size = 0;
-        size = firstOfPair != null ? size + 1 : size;
-        size = secondOfPair != null ? size + 1 : size;
-        size += secondaryAlignments.size();
-        return size += supplementaryAlignments.size(); // what should we do with the supplementary alignments?
+    public int numberOfAlignments(){
+        int num = 0;
+        num = firstOfPair != null ? num + 1 : num;
+        num = secondOfPair != null ? num + 1 : num;
+        num += secondaryAlignments.size();
+        num += supplementaryAlignments.size();
+        return num;
     }
 
-    public String getQueryName() {
+    public String getName() {
         return queryName;
     }
 
@@ -47,15 +51,13 @@ public class ReadPair {
     }
 
     public void add(final GATKRead read) {
-        if (this.queryName == null){
-            this.queryName = read.getName();
-        }
-
         if (! this.queryName.equals(read.getName())){
             throw new UserException("Read names do not match: " + this.queryName + " vs " + read.getName());
         }
 
         if (isPrimaryAlignment(read) && read.isFirstOfPair()) {
+            Utils.validate(this.firstOfPair != null,
+                    "The primary firstOfPair is already set. Added read = " + read.getName());
             this.firstOfPair = read;
         } else if (isPrimaryAlignment(read) && read.isSecondOfPair()) {
             this.secondOfPair = read;
@@ -64,7 +66,7 @@ public class ReadPair {
         } else if (read.isSupplementaryAlignment()) {
             this.supplementaryAlignments.add(read);
         } else {
-            throw new UserException("Unknown read type");
+            throw new UserException("Unknown read type: " + read.getContig());
         }
     }
 
@@ -73,7 +75,6 @@ public class ReadPair {
     }
 
     public boolean isDuplicateMarked() {
-        // Doing some investigation
         if (firstOfPair.isDuplicate()) {
             // Make sure the rest is duplicate-marked
             if (!secondOfPair.isDuplicate() || secondaryAlignments.stream().anyMatch(r -> !r.isDuplicate())) {
@@ -85,6 +86,7 @@ public class ReadPair {
                 throw new UserException("First of pair a not duplicate but the rest is " + secondOfPair.getName());
             }
         }
+
         return firstOfPair.isDuplicate();
     }
 

@@ -16,13 +16,12 @@ public class PostProcessReadsForRSEMIntegrationTest extends CommandLineProgramTe
     @Test
     public void test(){
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        // To be replaced
-        // final String testSam = "/Volumes/dsde_working/tsato/hydro.gen/Analysis/874_twist_RNA/rsem/gatk_test/transcriptome_query_sorted_abbr_header.bam";
         final String testTranscriptomeSam = publicTestDir + "transcriptome_query_sorted_abbr_header.bam";
         final File output = createTempFile("output", "bam");
 
         args.addInput(testTranscriptomeSam);
         args.addOutput(output.getAbsolutePath());
+        args.add("XL", publicTestDir + "gencode_v19_MT_transcriptome_abbr_header.interval_list");
         runCommandLine(args, PostProcessReadsForRSEM.class.getSimpleName());
 
         final ReadsPathDataSource outputReadSource = new ReadsPathDataSource(output.toPath());
