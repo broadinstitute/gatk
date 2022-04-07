@@ -8,7 +8,6 @@ workflow GvsWithdrawSamples {
 
     Array[String] sample_names
 
-    File? withdraw_samples_gatk_override
     String? service_account_json_path
   }
 
@@ -20,7 +19,6 @@ workflow GvsWithdrawSamples {
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
       sample_names = sample_names,
-      gatk_override = withdraw_samples_gatk_override,
       service_account_json_path = service_account_json_path
   }
 
@@ -37,8 +35,6 @@ task WithdrawSamples {
     String sample_info_table
     Array[String] sample_names
 
-    # runtime
-    File? gatk_override
     String? service_account_json_path
   }
 
@@ -60,8 +56,6 @@ task WithdrawSamples {
       exit 0
     fi
 
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
       gcloud auth activate-service-account --key-file=local.service_account.json
@@ -76,10 +70,8 @@ task WithdrawSamples {
     cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
     typeset -i rows_updated=$(cat rows_updated.txt)
 
-    echo "did not update $num_samples rows - only updated $rows_updated"
-
     if [ $num_samples -ne $rows_updated ]; then
-      echo "did not update $num_samples rows - only updated $rows_updated !"
+      echo "Error: Expected to update $num_samples rows - but only updated $rows_updated."
       exit 1
     fi
 
