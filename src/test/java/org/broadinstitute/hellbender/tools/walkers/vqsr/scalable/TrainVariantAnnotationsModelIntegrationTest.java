@@ -85,7 +85,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
      * Exact-match tests for (non-exhaustive) configurations given by the Cartesian product of the following options:
      *  1) non-allele-specific vs. allele-specific
      *  2) SNP-only vs. SNP+INDEL (for both of these options, we use extracted annotations that contain both SNP and INDEL variants as input)
-     *  3) positive (training with {TAG}.annot.hdf5) vs. positive-unlabeled (training with {TAG}.annot.hdf5 and {TAG}.unlabeled.annot.hdf5)
+     *  3) positive (training with {extract-tag}.annot.hdf5) vs. positive-unlabeled (training with {extract-tag}.annot.hdf5 and {extract-tag}.unlabeled.annot.hdf5)
      *  4) Java Bayesian Gaussian Mixture Model (BGMM) backend vs. python sklearn IsolationForest backend
      *  TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
      *  TODO warm-start BGMM?
@@ -124,7 +124,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         final String outputPrefix = String.format("%s/%s", outputDir, tag);
         argsBuilder.addOutput(outputPrefix);
 
-        final String extractTag = tag.split(".train")[0];
+        // add arguments for positive/unlabeled annotations based on tag
+        final String extractTag = tag.split(".train")[0]; // extract tag gives the basename for the annotation files
         final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR, String.format("%s.annot.hdf5", extractTag));
         final double truthSensitivityThreshold = 0.9;
         final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
@@ -159,7 +160,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                                       final String outputPrefix) {
         if (tag.contains("train.snp")) {
             assertVariantTypeOutputs(tag, outputPrefix, "snp");
-            assertNotVariantTypeOutputs(outputPrefix, "indel");
+            assertVariantTypeOutputsDoNotExist(outputPrefix, "indel");
         } else if (tag.contains("train.snpIndel")) {
             assertVariantTypeOutputs(tag, outputPrefix, "snp");
             assertVariantTypeOutputs(tag, outputPrefix, "indel");
@@ -182,7 +183,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         assertScorerOutputs(tagAndVariantType, outputPrefixAndVariantType, false);
 
         if (tag.contains("posNeg")) {
-            SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.unlabeledScores.hdf5 %s.unlabeledScores.hdf5", EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
+            SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.unlabeledScores.hdf5 %s.unlabeledScores.hdf5",
+                    EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
             assertScorerOutputs(tagAndVariantType, outputPrefixAndVariantType, true);
         } else {
             Assert.assertFalse(new File(outputPrefixAndVariantType, ".unlabeledScores.hdf5").exists());
@@ -191,8 +193,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         }
     }
 
-    private static void assertNotVariantTypeOutputs(final String outputPrefix,
-                                                    final String variantType) {
+    private static void assertVariantTypeOutputsDoNotExist(final String outputPrefix,
+                                                           final String variantType) {
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".trainingScores.hdf5").exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".truthScores.hdf5").exists());

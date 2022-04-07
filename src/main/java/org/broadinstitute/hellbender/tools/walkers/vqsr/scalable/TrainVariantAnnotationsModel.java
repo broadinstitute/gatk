@@ -225,7 +225,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                     final File labeledTruthAndVariantTypeScoresFile = new File(outputPrefix + outputPrefixTag + TRUTH_SCORES_HDF5_SUFFIX); // produced by doModelingAndScoringWork TODO output a copy of these?
                     final double[] labeledTruthAndVariantTypeScores = VariantAnnotationsScorer.readScores(labeledTruthAndVariantTypeScoresFile);
                     final double scoreThreshold = truthSensitivityThreshold == 1. // Percentile requires quantile > 0, so we treat this as a special case
-                            ? Doubles.min(truthSensitivityThreshold)
+                            ? Doubles.min(labeledTruthAndVariantTypeScores)
                             : new Percentile(100. * (1. - truthSensitivityThreshold)).evaluate(labeledTruthAndVariantTypeScores);
                     logger.info(String.format("Using %s score threshold of %.4f corresponding to specified truth-sensitivity threshold of %.4f ...",
                             logMessageTag, scoreThreshold, truthSensitivityThreshold));

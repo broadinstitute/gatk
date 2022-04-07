@@ -26,7 +26,7 @@ public final class SystemCommandUtilsTest extends GATKBaseTest {
             final BufferedReader stdInReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String stdInLine;
             while ((stdInLine = stdInReader.readLine()) != null) {
-                Assert.fail(stdInLine);
+                Assert.fail(String.format("The command \"%s\" resulted in: %s", command, stdInLine));
             }
             stdInReader.close();
 
