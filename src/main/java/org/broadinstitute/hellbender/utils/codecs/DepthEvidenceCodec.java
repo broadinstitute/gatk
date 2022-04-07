@@ -9,11 +9,14 @@ import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.sv.DepthEvidence;
+import org.broadinstitute.hellbender.tools.sv.DepthEvidenceSortMerger;
+import org.broadinstitute.hellbender.tools.sv.SVFeaturesHeader;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/** Codec to handle DepthEvidence in tab-delimited text files */
 public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence>
         implements FeatureOutputCodec<DepthEvidence, FeatureOutputStream<DepthEvidence>> {
 
@@ -65,7 +68,7 @@ public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence>
             throw new UserException.BadInput("Depth evidence file did not have a header line");
         }
         final List<String> headerCols = splitter.splitToList(reader.next());
-        return new FeaturesHeader(DepthEvidence.class.getSimpleName(), "unknown", null,
+        return new SVFeaturesHeader(DepthEvidence.class.getSimpleName(), "unknown", null,
                                 headerCols.subList(3, headerCols.size()));
     }
 
@@ -91,6 +94,14 @@ public class DepthEvidenceCodec extends AsciiFeatureCodec<DepthEvidence>
     @Override
     public void encode( final DepthEvidence ev, final FeatureOutputStream<DepthEvidence> os ) {
         os.write(ev);
+    }
+
+    @Override
+    public FeatureSink<DepthEvidence> makeSortMerger( final GATKPath path,
+                                                              final SAMSequenceDictionary dict,
+                                                              final List<String> sampleNames,
+                                                              final int compressionLevel ) {
+        return new DepthEvidenceSortMerger(dict, makeSink(path, dict, sampleNames, compressionLevel));
     }
 
     public static String encode(final DepthEvidence ev) {

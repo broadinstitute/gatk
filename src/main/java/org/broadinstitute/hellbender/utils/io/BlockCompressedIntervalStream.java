@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.codecs.FeatureSink;
-import org.broadinstitute.hellbender.utils.codecs.FeaturesHeader;
+import org.broadinstitute.hellbender.tools.sv.SVFeaturesHeader;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -97,8 +97,7 @@ public class BlockCompressedIntervalStream {
     //   to allow you to reconstitute the object when you read it back in later
     public static class Writer <F extends Feature> implements FeatureSink<F> {
         final String path;
-        final SAMSequenceDictionary dict;
-        final Map<String, Integer> sampleMap;
+        final SVFeaturesHeader header;
         final WriteFunc<F> writeFunc;
         final OutputStream os;
         final BlockCompressedOutputStream bcos;
@@ -114,18 +113,17 @@ public class BlockCompressedIntervalStream {
         public final static int DEFAULT_COMPRESSION_LEVEL = 6;
 
         public Writer( final GATKPath path,
-                       final FeaturesHeader header,
+                       final SVFeaturesHeader header,
                        final WriteFunc<F> writeFunc ) {
             this(path, header, writeFunc, DEFAULT_COMPRESSION_LEVEL);
         }
 
         public Writer( final GATKPath path,
-                       final FeaturesHeader header,
+                       final SVFeaturesHeader header,
                        final WriteFunc<F> writeFunc,
                        final int compressionLevel ) {
             this.path = path.toString();
-            this.dict = header.getDictionary();
-            this.sampleMap = createSampleMap(header.getSampleNames());
+            this.header = header;
             this.writeFunc = writeFunc;
             this.os = path.getOutputStream();
             this.bcos = new BlockCompressedOutputStream(os, (Path)null, compressionLevel);
@@ -133,17 +131,16 @@ public class BlockCompressedIntervalStream {
             this.lastInterval = null;
             this.indexEntries = new ArrayList<>();
             this.firstBlockMember = true;
-            writeHeader(header);
+            writeHeader();
         }
 
         @VisibleForTesting
         public Writer( final String streamSource,
                 final OutputStream os,
-                final FeaturesHeader header,
+                final SVFeaturesHeader header,
                 final WriteFunc<F> writeFunc ) {
             this.path = streamSource;
-            this.dict = header.getDictionary();
-            this.sampleMap = createSampleMap(header.getSampleNames());
+            this.header = header;
             this.writeFunc = writeFunc;
             this.os = os;
             this.bcos = new BlockCompressedOutputStream(os, (Path)null, DEFAULT_COMPRESSION_LEVEL);
@@ -151,18 +148,10 @@ public class BlockCompressedIntervalStream {
             this.lastInterval = null;
             this.indexEntries = new ArrayList<>();
             this.firstBlockMember = true;
-            writeHeader(header);
+            writeHeader();
         }
 
-        private Map<String, Integer> createSampleMap( final List<String> sampleNames ) {
-            final Map<String, Integer> sampleMap = new HashMap<>(sampleNames.size() * 3 / 2);
-            for ( final String sampleName : sampleNames ) {
-                sampleMap.put(sampleName, sampleMap.size());
-            }
-            return sampleMap;
-        }
-
-        private void writeHeader( final FeaturesHeader header ) {
+        private void writeHeader() {
             try {
                 writeClassAndVersion(header.getClassName(), header.getVersion());
                 writeSamples(header.getSampleNames());
@@ -179,8 +168,13 @@ public class BlockCompressedIntervalStream {
             dos.writeUTF(version);
         }
 
-        private void writeSamples( final List<String> sampleNames ) throws IOException {
-            dos.writeInt(sampleNames.size());
+        private void writeSamples( final Collection<String> sampleNames ) throws IOException {
+            final int nSampleNames = sampleNames.size();
+            if ( nSampleNames == 0 ) {
+                throw new UserException("Attempting to create " + path +
+                        " with an empty list of sample names.  It won't go well.");
+            }
+            dos.writeInt(nSampleNames);
             for ( final String sampleName : sampleNames ) {
                 dos.writeUTF(sampleName);
             }
@@ -197,17 +191,19 @@ public class BlockCompressedIntervalStream {
         public DataOutputStream getStream() { return dos; }
 
         public int getSampleIndex( final String sampleName ) {
-            final Integer sampleIndex = sampleMap.get(sampleName);
+            final Integer sampleIndex = header.getSampleIndex(sampleName);
             if ( sampleIndex == null ) {
-                throw new IllegalArgumentException("can't find index for sampleName " + sampleName);
+                throw new UserException("Can't find index for sampleName " + sampleName +
+                        ".  Supply a complete list of sample names.");
             }
             return sampleIndex;
         }
 
         public int getContigIndex( final String contigName ) {
-            final SAMSequenceRecord contig = dict.getSequence(contigName);
+            final SAMSequenceRecord contig = header.getDictionary().getSequence(contigName);
             if ( contig == null ) {
-                throw new UserException("can't find contig name " + contigName);
+                throw new UserException("can't find contig name " + contigName +
+                        ".  Please check your dictionaries for completeness and consistency.");
             }
             return contig.getSequenceIndex();
         }
@@ -285,7 +281,7 @@ public class BlockCompressedIntervalStream {
         private void startBlock( final long filePosition, final Feature interval ) {
             blockFilePosition = filePosition;
             lastInterval = interval;
-            blockContig = dict.getSequenceIndex(interval.getContig());
+            blockContig = header.getDictionary().getSequenceIndex(interval.getContig());
             blockStart = interval.getStart();
             blockEnd = interval.getEnd();
             firstBlockMember = false;
@@ -306,7 +302,7 @@ public class BlockCompressedIntervalStream {
         final long indexFilePointer;
         final BlockCompressedInputStream bcis;
         final DataInputStream dis;
-        final FeaturesHeader header;
+        final SVFeaturesHeader header;
         final long dataFilePointer;
         SVIntervalTree<Long> index;
         boolean usedByIterator;
@@ -466,13 +462,13 @@ public class BlockCompressedIntervalStream {
             return indexFilePointer;
         }
 
-        private FeaturesHeader readHeader() {
+        private SVFeaturesHeader readHeader() {
             try {
                 final String className = dis.readUTF();
                 final String version = dis.readUTF();
                 final List<String> sampleNames = readSampleNames(dis);
                 final SAMSequenceDictionary dictionary = readDictionary(dis);
-                return new FeaturesHeader(className, version, dictionary, sampleNames);
+                return new SVFeaturesHeader(className, version, dictionary, sampleNames);
             } catch ( final IOException ioe ) {
                 throw new UserException("can't read header from " + path, ioe);
             }

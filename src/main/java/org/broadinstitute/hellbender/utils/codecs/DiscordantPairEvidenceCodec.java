@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import java.util.Arrays;
 import java.util.List;
 
+/** Codec to handle DiscordantPairEvidence in tab-delimited text files */
 public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPairEvidence>
         implements FeatureOutputCodec<DiscordantPairEvidence, FeatureOutputStream<DiscordantPairEvidence>> {
 
@@ -75,6 +76,14 @@ public class DiscordantPairEvidenceCodec extends AsciiFeatureCodec<DiscordantPai
     public void encode( final DiscordantPairEvidence ev,
                         final FeatureOutputStream<DiscordantPairEvidence> os ) {
         os.write(ev);
+    }
+
+    @Override
+    public FeatureSink<DiscordantPairEvidence> makeSortMerger( final GATKPath path,
+                                                               final SAMSequenceDictionary dict,
+                                                               final List<String> sampleNames,
+                                                               final int compressionLevel ) {
+        return makeSink(path, dict, sampleNames, compressionLevel);
     }
 
     public static String encode(final DiscordantPairEvidence ev) {

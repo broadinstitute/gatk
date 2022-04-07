@@ -8,11 +8,13 @@ import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
+import org.broadinstitute.hellbender.tools.sv.SplitReadEvidenceSortMerger;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 
 import java.util.Arrays;
 import java.util.List;
 
+/** Codec to handle SplitReadEvidence in tab-delimited text files */
 public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence>
         implements FeatureOutputCodec<SplitReadEvidence, FeatureOutputStream<SplitReadEvidence>> {
 
@@ -76,6 +78,14 @@ public class SplitReadEvidenceCodec extends AsciiFeatureCodec<SplitReadEvidence>
     public void encode( final SplitReadEvidence ev,
                         final FeatureOutputStream<SplitReadEvidence> os ) {
         os.write(ev);
+    }
+
+    @Override
+    public FeatureSink<SplitReadEvidence> makeSortMerger( final GATKPath path,
+                                                          final SAMSequenceDictionary dict,
+                                                          final List<String> sampleNames,
+                                                          final int compressionLevel ) {
+        return new SplitReadEvidenceSortMerger(dict, makeSink(path, dict, sampleNames, compressionLevel));
     }
 
     public static String encode(final SplitReadEvidence ev) {

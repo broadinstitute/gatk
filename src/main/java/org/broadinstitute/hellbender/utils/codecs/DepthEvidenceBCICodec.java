@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.codecs;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.sv.DepthEvidence;
+import org.broadinstitute.hellbender.tools.sv.*;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Reader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Writer;
 
@@ -12,6 +12,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+/** Codec to handle DepthEvidence in BlockCompressedInterval files */
 public class DepthEvidenceBCICodec extends AbstractBCICodec<DepthEvidence> {
     private boolean versionChecked = false;
     private static final String RD_BCI_FILE_EXTENSION = ".rd.bci";
@@ -52,7 +53,7 @@ public class DepthEvidenceBCICodec extends AbstractBCICodec<DepthEvidence> {
                                            final int compressionLevel ) {
         final String className = DepthEvidence.class.getSimpleName();
         return new Writer<>(path,
-                            new FeaturesHeader(className, DepthEvidence.BCI_VERSION, dict, sampleNames),
+                            new SVFeaturesHeader(className, DepthEvidence.BCI_VERSION, dict, sampleNames),
                             this::encode,
                             compressionLevel);
     }
@@ -69,5 +70,13 @@ public class DepthEvidenceBCICodec extends AbstractBCICodec<DepthEvidence> {
         for ( final int count : counts ) {
             dos.writeInt(count);
         }
+    }
+
+    @Override
+    public FeatureSink<DepthEvidence> makeSortMerger( final GATKPath path,
+                                                      final SAMSequenceDictionary dict,
+                                                      final List<String> sampleNames,
+                                                      final int compressionLevel ) {
+        return new DepthEvidenceSortMerger(dict, makeSink(path, dict, sampleNames, compressionLevel));
     }
 }

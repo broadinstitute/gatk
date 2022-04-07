@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
+import org.broadinstitute.hellbender.tools.sv.SVFeaturesHeader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Reader;
 import org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.Writer;
 
@@ -12,6 +13,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+/** Codec to handle DiscordantPairEvidence in BlockCompressedInterval files */
 public class DiscordantPairEvidenceBCICodec extends AbstractBCICodec<DiscordantPairEvidence> {
     private boolean versionChecked = false;
 
@@ -54,8 +56,8 @@ public class DiscordantPairEvidenceBCICodec extends AbstractBCICodec<DiscordantP
                                                     final List<String> sampleNames,
                                                     final int compressionLevel ) {
         final String className = DiscordantPairEvidence.class.getSimpleName();
-        final FeaturesHeader header =
-                new FeaturesHeader(className, DiscordantPairEvidence.BCI_VERSION, dict, sampleNames);
+        final SVFeaturesHeader header =
+                new SVFeaturesHeader(className, DiscordantPairEvidence.BCI_VERSION, dict, sampleNames);
         return new Writer<>(path, header, this::encode, compressionLevel);
     }
 
@@ -70,5 +72,13 @@ public class DiscordantPairEvidenceBCICodec extends AbstractBCICodec<DiscordantP
         dos.writeInt(writer.getContigIndex(peEvidence.getEndContig()));
         dos.writeInt(peEvidence.getEndPosition());
         dos.writeBoolean(peEvidence.getEndStrand());
+    }
+
+    @Override
+    public FeatureSink<DiscordantPairEvidence> makeSortMerger( final GATKPath path,
+                                                               final SAMSequenceDictionary dict,
+                                                               final List<String> sampleNames,
+                                                               final int compressionLevel) {
+        return makeSink(path, dict, sampleNames, compressionLevel);
     }
 }

@@ -1,12 +1,13 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 
-import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Objects;
+import java.util.Set;
 
-public final class DiscordantPairEvidence implements Feature {
+/** Documents evidence of a too-close or too-far-apart read pair. */
+public final class DiscordantPairEvidence implements SVFeature {
 
     final String sample;
     final String startContig;
@@ -18,7 +19,8 @@ public final class DiscordantPairEvidence implements Feature {
 
     public final static String BCI_VERSION = "1.0";
 
-    public DiscordantPairEvidence(final String sample, final String startContig, final int start, final boolean startStrand,
+    public DiscordantPairEvidence(final String sample,
+                                  final String startContig, final int start, final boolean startStrand,
                                   final String endContig, final int end, final boolean endStrand) {
         Utils.nonNull(sample);
         Utils.nonNull(startContig);
@@ -73,6 +75,12 @@ public final class DiscordantPairEvidence implements Feature {
     }
 
     @Override
+    public DiscordantPairEvidence extractSamples( final Set<String> sampleNames,
+                                                  final Object header ) {
+        return sampleNames.contains(sample) ? this : null;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof DiscordantPairEvidence)) return false;
@@ -89,5 +97,10 @@ public final class DiscordantPairEvidence implements Feature {
     @Override
     public int hashCode() {
         return Objects.hash(sample, startContig, endContig, start, end, startStrand, endStrand);
+    }
+
+    @Override public String toString() {
+        return startContig + "\t" + start + "\t" + end + "\t" + sample + "\t" + endContig + "\t" +
+                startStrand + "\t" + endStrand;
     }
 }
