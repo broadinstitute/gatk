@@ -173,7 +173,7 @@ def get_subpopulation_calculations(subpop_annotations):
     max_af = None
     max_sc = None
     max_subpop = ""
-    for gvs_subpop in gvs_subpopulations:
+    for gvs_subpop in gvs_subpopulations: # note these will break if a subpopulation is missing
       subpop_ac_val = subpop_annotations.get("_".join(["AC", gvs_subpop]))
       subpop_an_val = subpop_annotations.get("_".join(["AN", gvs_subpop]))
       subpop_af_val = subpop_annotations.get("_".join(["AF", gvs_subpop]))
@@ -248,11 +248,13 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
           phenotypes.extend(clinvar_RCV_line.get("phenotypes"))
       # We want to collect all the significance values and order them by the significance_ordering list
       # So I will loop through the significance_ordering values and check for matching values in the significance_values list and put them in a new list
+      # And then anything that did not match will get added at the end of the list (sorted alpha)
       ordered_significance_values = []
       for value in significance_ordering:
         if value in significance_values:
           ordered_significance_values.append(value) # this adds the id to the end of the list
-      values_not_accounted_for = list(set(ordered_significance_values).difference(significance_values))
+      values_not_accounted_for = list(set(significance_values).difference(ordered_significance_values))
+      values_not_accounted_for.sort()
       ordered_significance_values.extend(values_not_accounted_for) # add any values that aren't in significance_ordering to the end
       row["clinvar_id"] = clinvar_ids # array
       row["clinvar_classification"] = ordered_significance_values # special sorted array
