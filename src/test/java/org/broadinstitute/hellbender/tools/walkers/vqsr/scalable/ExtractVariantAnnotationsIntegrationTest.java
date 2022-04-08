@@ -69,7 +69,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     private static final int MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = 100;
 
     // Supplier and functions for creating and adding various arguments to an ArgumentsBuilder.
-    private static final Supplier<ArgumentsBuilder> BASE_ARGS_BUILDER_SUPPLIER = () -> {
+    private static final Supplier<ArgumentsBuilder> BASE_ARGUMENTS_BUILDER_SUPPLIER = () -> {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addVCF(INPUT_VCF);
         argsBuilder.add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
@@ -128,7 +128,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                         tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snp.pos
                         tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
                                 .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
-                                .apply(BASE_ARGS_BUILDER_SUPPLIER.get())})                                               //  appropriate arguments
+                                .apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get())})                                               //  appropriate arguments
                 .toArray(Object[][]::new);
     }
 
@@ -162,7 +162,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     public void testMissingTrainingResource() {
         final File outputDir = createTempDir("extract");
         final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = ADD_ALLELE_SPECIFIC_ANNOTATIONS.apply(BASE_ARGS_BUILDER_SUPPLIER.get());
+        final ArgumentsBuilder argsBuilder = ADD_ALLELE_SPECIFIC_ANNOTATIONS.apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get());
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
                 .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-training,training=true", SNP_TRAINING_VCF) // only specify training label
                 .addOutput(outputPrefix);
@@ -173,7 +173,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     public void testMissingCalibrationResource() {
         final File outputDir = createTempDir("extract");
         final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = ADD_ALLELE_SPECIFIC_ANNOTATIONS.apply(BASE_ARGS_BUILDER_SUPPLIER.get());
+        final ArgumentsBuilder argsBuilder = ADD_ALLELE_SPECIFIC_ANNOTATIONS.apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get());
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
                 .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-calibration,calibration=true", SNP_CALIBRATION_VCF) // only specify calibration label
                 .addOutput(outputPrefix);
@@ -185,7 +185,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     public void testForgotToSpecifyUseAlleleSpecificAnnotationsFlag() {
         final File outputDir = createTempDir("extract");
         final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = ADD_SNP_MODE_AND_RESOURCES.apply(BASE_ARGS_BUILDER_SUPPLIER.get());
+        final ArgumentsBuilder argsBuilder = ADD_SNP_MODE_AND_RESOURCES.apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get());
         ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
         argsBuilder.addOutput(outputPrefix);
         runCommandLine(argsBuilder);

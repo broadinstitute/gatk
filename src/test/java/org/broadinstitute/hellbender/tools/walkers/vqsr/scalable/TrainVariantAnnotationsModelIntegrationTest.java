@@ -53,7 +53,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
             "isolation-forest-hyperparameters.json");
 
     // Supplier and functions for creating and adding various arguments to an ArgumentsBuilder.
-    private static final Supplier<ArgumentsBuilder> BASE_ARGS_BUILDER_SUPPLIER = ArgumentsBuilder::new;
+    private static final Supplier<ArgumentsBuilder> BASE_ARGUMENTS_BUILDER_SUPPLIER = ArgumentsBuilder::new;
 
     private static final BiFunction<ArgumentsBuilder, File, ArgumentsBuilder> ADD_ANNOTATIONS_HDF5 = (argsBuilder, annotationsHDF5) -> {
         argsBuilder.add(TrainVariantAnnotationsModel.ANNOTATIONS_HDF5_LONG_NAME, annotationsHDF5);
@@ -115,7 +115,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                         tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snpIndel.posUn.train.snp.posOnly.IF
                         tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
                                 .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
-                                .apply(BASE_ARGS_BUILDER_SUPPLIER.get())})                                               //  appropriate arguments
+                                .apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get())})                                               //  appropriate arguments
                 .toArray(Object[][]::new);
     }
 
@@ -221,13 +221,51 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         }
     }
 
-    // test using nonAS.snp.positive for SNP-only training = using nonAS.both.positive for SNP-only training
+    @Test
+    public void testSNPOnlyModelsFromSNPOnlyAndSNPPlusIndelAnnotationsAreIdentical() {
+        final File outputDir = createTempDir("train");
+
+        final String outputPrefixSNPOnly = String.format("%s/test-snp", outputDir);
+        final ArgumentsBuilder argsBuilderSNPOnly = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
+        argsBuilderSNPOnly.addOutput(outputPrefixSNPOnly);
+        final File positiveAnnotationsHDF5SNPOnly = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                "extract.nonAS.snp.pos.annot.hdf5");
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotationsSNPOnly = ab ->
+                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5SNPOnly);
+        ADD_ISOLATION_FOREST_PYTHON_SCRIPT
+                .andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
+                .andThen(addPositiveAnnotationsSNPOnly)
+                .andThen(ADD_SNP_MODE)
+                .apply(argsBuilderSNPOnly);
+        runCommandLine(argsBuilderSNPOnly);
+
+        final String outputPrefixSNPPlusIndel = String.format("%s/test-snpIndel", outputDir);
+        final ArgumentsBuilder argsBuilderSNPPlusIndel = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
+        argsBuilderSNPPlusIndel.addOutput(outputPrefixSNPPlusIndel);
+        final File positiveAnnotationsHDF5SNPPlusIndel = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                "extract.nonAS.snpIndel.pos.annot.hdf5");
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotationsSNPPlusIndel = ab ->
+                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5SNPPlusIndel);
+        ADD_ISOLATION_FOREST_PYTHON_SCRIPT
+                .andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
+                .andThen(addPositiveAnnotationsSNPPlusIndel)
+                .andThen(ADD_SNP_MODE)
+                .apply(argsBuilderSNPPlusIndel);
+        runCommandLine(argsBuilderSNPPlusIndel);
+
+        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s.snp.trainingScores.hdf5 %s.snp.trainingScores.hdf5",
+                outputPrefixSNPOnly, outputPrefixSNPPlusIndel));
+        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s.snp.calibrationScores.hdf5 %s.snp.calibrationScores.hdf5",
+                outputPrefixSNPOnly, outputPrefixSNPPlusIndel));
+        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s.snp.scorer.pkl %s.snp.scorer.pkl",
+                outputPrefixSNPOnly, outputPrefixSNPPlusIndel));
+    }
 
     @Test(expectedExceptions = CommandLineException.class)
     public void testUnlabeledAnnotationsSpecifiedWithoutCalibrationSensitivityThreshold() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        final ArgumentsBuilder argsBuilder = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
         argsBuilder.addOutput(outputPrefix);
         final String extractTag = "extract.nonAS.snpIndel.posUn";
         final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
@@ -250,7 +288,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     public void testCalibrationSensitivityThresholdSpecifiedWithoutUnlabeledAnnotations() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        final ArgumentsBuilder argsBuilder = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
         argsBuilder.addOutput(outputPrefix);
         final String extractTag = "extract.nonAS.snpIndel.posUn";
         final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
@@ -272,7 +310,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     public void testPositiveAndUnlabeledAnnotationNamesAreNotIdentical() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        final ArgumentsBuilder argsBuilder = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
         argsBuilder.addOutput(outputPrefix);
         final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
                 "extract.nonAS.snpIndel.posUn.annot.hdf5");         // non-allele-specific
@@ -298,7 +336,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     public void testPositiveAnnotationsOfSpecifiedVariantTypesNotPresent() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        final ArgumentsBuilder argsBuilder = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
         argsBuilder.addOutput(outputPrefix);
         final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
                 "extract.nonAS.snp.posUn.annot.hdf5");     // contains only SNPs, but SNP+INDEL is specified
@@ -316,7 +354,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     public void testUnlabeledAnnotationsOfSpecifiedVariantTypesNotPresent() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        final ArgumentsBuilder argsBuilder = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
         argsBuilder.addOutput(outputPrefix);
         final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
                 "extract.nonAS.snpIndel.posUn.annot.hdf5");
