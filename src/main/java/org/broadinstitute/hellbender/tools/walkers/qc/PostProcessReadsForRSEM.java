@@ -52,13 +52,18 @@ import java.util.stream.Collectors;
  * MarkDuplicates with REMOVE_DUPLICATES=true
  *
  *
+ * Usage Example:
+ *
+ * gatk PostProcessReadsForRSEM \
+ * -I input.bam \
+ * -O output.bam
  */
 @CommandLineProgramProperties(
         summary = "Reorder reads before running RSEM",
         oneLineSummary = "Reorder reads before running RSEM",
         programGroup = ReadDataManipulationProgramGroup.class
 )
-@Experimental
+
 @BetaFeature
 @DocumentedFeature
 public class PostProcessReadsForRSEM extends GATKTool {
@@ -86,8 +91,6 @@ public class PostProcessReadsForRSEM extends GATKTool {
         }
 
         writer = createSAMWriter(outSam, true);
-
-
     }
 
     @Override

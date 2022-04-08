@@ -57,9 +57,11 @@ public class ReadPair {
 
         if (isPrimaryAlignment(read) && read.isFirstOfPair()) {
             Utils.validate(this.firstOfPair == null,
-                    "The primary firstOfPair is already set. Added read = " + read.getName());
+                    "The primary firstOfPair is already set. Read = " + read.getName());
             this.firstOfPair = read;
         } else if (isPrimaryAlignment(read) && read.isSecondOfPair()) {
+            Utils.validate(this.secondOfPair == null,
+                    "The primary secondOfPair is already set. Read = " + read.getName());
             this.secondOfPair = read;
         } else if (read.isSecondaryAlignment()) {
             this.secondaryAlignments.add(read);
