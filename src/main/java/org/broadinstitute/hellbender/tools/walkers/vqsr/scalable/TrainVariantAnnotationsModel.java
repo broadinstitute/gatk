@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.Python
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonSklearnVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsScorer;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
@@ -114,16 +115,43 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     @Override
     protected Object doWork() {
 
+        validateArgumentsAndSetModes();
+
+        logger.info("Starting training...");
+
+        for (final VariantType variantType : VariantType.values()) { // enforces order in which models are trained
+            if (variantTypes.contains(variantType)) {
+                doModelingWorkForVariantType(variantType);
+            }
+        }
+
+        logger.info(String.format("%s complete.", getClass().getSimpleName()));
+
+        return null;
+    }
+
+    private void validateArgumentsAndSetModes() {
         IOUtils.canReadFile(inputAnnotationsFile);
         IOUtils.canReadFile(hyperparametersJSONFile);
 
+        Utils.validateArg((inputUnlabeledAnnotationsFile == null) == (calibrationSensitivityThreshold == null),
+                "Unlabeled annotations and calibration-sensitivity threshold must both be unspecified (for positive-only model training) " +
+                        "or specified (for positive-negative model training).");
+
+        availableLabelsMode = inputUnlabeledAnnotationsFile != null && calibrationSensitivityThreshold != null
+                ? AvailableLabelsMode.POSITIVE_UNLABELED
+                : AvailableLabelsMode.POSITIVE_ONLY;
+
         if (inputUnlabeledAnnotationsFile != null) {
             IOUtils.canReadFile(inputUnlabeledAnnotationsFile);
+            final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputAnnotationsFile);
+            final List<String> unlabeledAnnotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputUnlabeledAnnotationsFile);
+            Utils.validateArg(annotationNames.equals(unlabeledAnnotationNames), "Annotation names must be identical for positive and unlabeled annotations.");
         }
 
         // TODO test output and fail early
-        // TODO FAIL if annotations that are all NaN
-        // TODO WARN if annotations that have zero variance
+        // TODO FAIL if annotations that are all NaN?
+        // TODO WARN if annotations that have zero variance?
 
         if (pythonScriptFile != null) {
             logger.info("Python script was provided, running in PYTHON mode...");
@@ -139,23 +167,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             logger.info("Python script was not provided, running in BGMM mode...");
             modelBackendMode = ModelBackendMode.BGMM;
         }
-
-        // TODO more detailed validation
-        availableLabelsMode = inputUnlabeledAnnotationsFile != null && calibrationSensitivityThreshold != null
-                ? AvailableLabelsMode.POSITIVE_UNLABELED
-                : AvailableLabelsMode.POSITIVE_ONLY;
-
-        logger.info("Starting training...");
-
-        for (final VariantType variantType : VariantType.values()) { // enforces order in which models are trained
-            if (variantTypes.contains(variantType)) {
-                doModelingWorkForVariantType(variantType);
-            }
-        }
-
-        logger.info(String.format("%s complete.", getClass().getSimpleName()));
-
-        return null;
     }
 
     private void doModelingWorkForVariantType(final VariantType variantType) {
@@ -181,22 +192,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             trainAndSerializeModel(labeledTrainingAndVariantTypeAnnotationsFile, outputPrefixTag);
             logger.info(String.format("%s model trained and serialized with output prefix \"%s\".", logMessageTag, outputPrefix + outputPrefixTag));
 
-            // TODO if BGMM, preprocess annotations and write to HDF5
-            // TODO clean this up
             if (modelBackendMode == ModelBackendMode.BGMM) {
-                final double[][] rawAnnotations = LabeledVariantAnnotationsData.readAnnotations(labeledTrainingAndVariantTypeAnnotationsFile);
-                final BGMMVariantAnnotationsScorer scorer = BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX));
-                final double[][] preprocessedAnnotations = scorer.preprocess(rawAnnotations);
-                final File outputPreprocessedAnnotationsFile = new File(outputPrefix + outputPrefixTag + ".annot.pre.hdf5");
-                try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) {
-                    IOUtils.canReadFile(hdf5File.getFile());
-                    hdf5File.makeStringArray("/data/annotation_names", annotationNames.toArray(new String[0]));
-                    HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedAnnotations, HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / 16);
-                } catch (final HDF5LibException exception) {
-                    throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
-                            exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
-                }
-                logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
+                preprocessAnnotationsWithBGMMAndWriteHDF5(annotationNames, outputPrefixTag, labeledTrainingAndVariantTypeAnnotationsFile);
             }
 
             logger.info(String.format("Scoring %d %s training sites...", numTrainingAndVariantType, logMessageTag));
@@ -214,7 +211,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
             // negative model
             if (availableLabelsMode == AvailableLabelsMode.POSITIVE_UNLABELED) {
-                final List<String> unlabeledAnnotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputUnlabeledAnnotationsFile); // TODO validate
+                final List<String> unlabeledAnnotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputUnlabeledAnnotationsFile);
                 final double[][] unlabeledAnnotations = LabeledVariantAnnotationsData.readAnnotations(inputUnlabeledAnnotationsFile);
                 final List<Boolean> unlabeledIsSNP = LabeledVariantAnnotationsData.readLabel(inputUnlabeledAnnotationsFile, "snp");
                 final List<Boolean> isUnlabeledVariantType = variantType == VariantType.SNP ? unlabeledIsSNP : unlabeledIsSNP.stream().map(x -> !x).collect(Collectors.toList());
@@ -286,6 +283,25 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
     private static int numPassingFilter(List<Boolean> isPassing) {
         return isPassing.stream().mapToInt(x -> x ? 1 : 0).sum();
+    }
+
+    // TODO clean this up
+    private void preprocessAnnotationsWithBGMMAndWriteHDF5(final List<String> annotationNames,
+                                                           final String outputPrefixTag,
+                                                           final File labeledTrainingAndVariantTypeAnnotationsFile) {
+        final double[][] rawAnnotations = LabeledVariantAnnotationsData.readAnnotations(labeledTrainingAndVariantTypeAnnotationsFile);
+        final BGMMVariantAnnotationsScorer scorer = BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX));
+        final double[][] preprocessedAnnotations = scorer.preprocess(rawAnnotations);
+        final File outputPreprocessedAnnotationsFile = new File(outputPrefix + outputPrefixTag + ".annot.pre.hdf5");
+        try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) {
+            IOUtils.canReadFile(hdf5File.getFile());
+            hdf5File.makeStringArray("/data/annotation_names", annotationNames.toArray(new String[0]));
+            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedAnnotations, HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / 16);
+        } catch (final HDF5LibException exception) {
+            throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
+                    exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
+        }
+        logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
     }
 
     private void trainAndSerializeModel(final File trainingAnnotationsFile,

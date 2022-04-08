@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.testng.Assert;
@@ -12,6 +14,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -104,13 +107,12 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 Arrays.asList(              // we will consume the tag and add appropriate arguments for positive and positive-negative training below
                         Pair.of("posOnly", Function.identity()),
                         Pair.of("posNeg", Function.identity())),
-                Arrays.asList(
-//                        Pair.of("BGMM", Function.identity()),
+                Collections.singletonList(
                         Pair.of("IF", ADD_ISOLATION_FOREST_PYTHON_SCRIPT.andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON))));
 
         return testConfigurations.stream()
                 .map(tagAndAddFunctionPairs -> new Object[]{
-                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snpIndel.posUn.train.snp.pos.IF
+                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snpIndel.posUn.train.snp.posOnly.IF
                         tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
                                 .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
                                 .apply(BASE_ARGS_BUILDER_SUPPLIER.get())})                                               //  appropriate arguments
@@ -124,16 +126,20 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         final String outputPrefix = String.format("%s/%s", outputDir, tag);
         argsBuilder.addOutput(outputPrefix);
 
-        // add arguments for positive/unlabeled annotations based on tag
-        final String extractTag = tag.split(".train")[0]; // extract tag gives the basename for the annotation files
-        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR, String.format("%s.annot.hdf5", extractTag));
-        final double calibrationSensitivityThreshold = 0.9;
+        // add arguments for positive/unlabeled annotations based on the
+        // extract tag (the portion of the tag preceding ".train", e.g., extract.nonAS.snpIndel.posUn),
+        // which gives the basename for the annotation files
+        final String extractTag = tag.split(".train")[0];
+        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                String.format("%s.annot.hdf5", extractTag));
         final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
                 ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
         if (tag.contains("posNeg")) {
-            final File unlabeledAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR, String.format("%s.unlabeled.annot.hdf5", extractTag));
+            final File unlabeledAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                    String.format("%s.unlabeled.annot.hdf5", extractTag));
             final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
                     ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
+            final double calibrationSensitivityThreshold = 0.9;
             final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
                     ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
             addPositiveAnnotations.andThen(addUnlabeledAnnotations).andThen(addCalibrationSensitivityThreshold).apply(argsBuilder);
@@ -145,33 +151,26 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         runCommandLine(argsBuilder);
 
         if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
-            assertOutputs(tag, outputPrefix);
+            assertExpectedOutputs(tag, outputPrefix);
         }
     }
 
-    // test using nonAS.snp.positive for SNP-only training = using nonAS.both.positive for SNP-only training
-
-    // exception test annotation-name validation using AS.snp.positive and nonAS.snp.positiveUnlabeled
-    // exception test no-data validation using nonAS.snp.positive and nonAS.both.positiveUnlabeled for SNP+INDEL training
-    // exception test no-data validation using nonAS.snp.positive for INDEL training
-    // exception test unlabeled provided and no threshold specified
-
-    private static void assertOutputs(final String tag,
-                                      final String outputPrefix) {
+    private static void assertExpectedOutputs(final String tag,
+                                              final String outputPrefix) {
         if (tag.contains("train.snp")) {
-            assertVariantTypeOutputs(tag, outputPrefix, "snp");
-            assertVariantTypeOutputsDoNotExist(outputPrefix, "indel");
+            assertExpectedOutputsForVariantType(tag, outputPrefix, "snp");
+            assertOutputsForVariantTypeDoNotExist(outputPrefix, "indel");
         } else if (tag.contains("train.snpIndel")) {
-            assertVariantTypeOutputs(tag, outputPrefix, "snp");
-            assertVariantTypeOutputs(tag, outputPrefix, "indel");
+            assertExpectedOutputsForVariantType(tag, outputPrefix, "snp");
+            assertExpectedOutputsForVariantType(tag, outputPrefix, "indel");
         } else {
             Assert.fail("Unknown variant-type tag.");
         }
     }
 
-    private static void assertVariantTypeOutputs(final String tag,
-                                                 final String outputPrefix,
-                                                 final String variantType) {
+    private static void assertExpectedOutputsForVariantType(final String tag,
+                                                            final String outputPrefix,
+                                                            final String variantType) {
         final String tagAndVariantType = String.format("%s.%s", tag, variantType);
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
 
@@ -180,12 +179,12 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.calibrationScores.hdf5 %s.calibrationScores.hdf5",
                 EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
 
-        assertScorerOutputs(tagAndVariantType, outputPrefixAndVariantType, false);
+        assertScorerExpectedOutputs(tagAndVariantType, outputPrefixAndVariantType, false);
 
         if (tag.contains("posNeg")) {
             SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.unlabeledScores.hdf5 %s.unlabeledScores.hdf5",
                     EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
-            assertScorerOutputs(tagAndVariantType, outputPrefixAndVariantType, true);
+            assertScorerExpectedOutputs(tagAndVariantType, outputPrefixAndVariantType, true);
         } else {
             Assert.assertFalse(new File(outputPrefixAndVariantType, ".unlabeledScores.hdf5").exists());
             Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.ser").exists());
@@ -193,8 +192,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         }
     }
 
-    private static void assertVariantTypeOutputsDoNotExist(final String outputPrefix,
-                                                           final String variantType) {
+    private static void assertOutputsForVariantTypeDoNotExist(final String outputPrefix,
+                                                              final String variantType) {
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".trainingScores.hdf5").exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".calibrationScores.hdf5").exists());
@@ -205,20 +204,138 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.pkl").exists());
     }
 
-    private static void assertScorerOutputs(final String tagAndVariantType,
-                                            final String outputPrefixAndVariantType,
-                                            final boolean isNegative) {
+    private static void assertScorerExpectedOutputs(final String tagAndVariantType,
+                                                    final String outputPrefixAndVariantType,
+                                                    final boolean isNegative) {
         final String positiveOrNegativeTag = isNegative ? ".negative" : "";
         if (tagAndVariantType.contains("BGMM")) {
-            SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.scorer.ser %s.scorer.ser", EXPECTED_TEST_FILES_DIR,
-                    tagAndVariantType + positiveOrNegativeTag, outputPrefixAndVariantType + positiveOrNegativeTag));
+            SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.scorer.ser %s.scorer.ser",
+                    EXPECTED_TEST_FILES_DIR, tagAndVariantType + positiveOrNegativeTag, outputPrefixAndVariantType + positiveOrNegativeTag));
             Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.pkl").exists());
         } else if (tagAndVariantType.contains("IF")) {
-            SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.scorer.pkl %s.scorer.pkl", EXPECTED_TEST_FILES_DIR,
-                    tagAndVariantType + positiveOrNegativeTag, outputPrefixAndVariantType + positiveOrNegativeTag));
+            SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.scorer.pkl %s.scorer.pkl",
+                    EXPECTED_TEST_FILES_DIR, tagAndVariantType + positiveOrNegativeTag, outputPrefixAndVariantType + positiveOrNegativeTag));
             Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.ser").exists());
         } else {
             Assert.fail("Unknown model-backend tag.");
         }
+    }
+
+    // test using nonAS.snp.positive for SNP-only training = using nonAS.both.positive for SNP-only training
+
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testUnlabeledAnnotationsSpecifiedWithoutCalibrationSensitivityThreshold() {
+        final File outputDir = createTempDir("train");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        argsBuilder.addOutput(outputPrefix);
+        final String extractTag = "extract.nonAS.snpIndel.posUn";
+        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                String.format("%s.annot.hdf5", extractTag));
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
+                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
+        final File unlabeledAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                String.format("%s.unlabeled.annot.hdf5", extractTag));
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
+                ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
+        ADD_ISOLATION_FOREST_PYTHON_SCRIPT
+                .andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
+                .andThen(addPositiveAnnotations)
+                .andThen(addUnlabeledAnnotations)
+                .apply(argsBuilder);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testCalibrationSensitivityThresholdSpecifiedWithoutUnlabeledAnnotations() {
+        final File outputDir = createTempDir("train");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        argsBuilder.addOutput(outputPrefix);
+        final String extractTag = "extract.nonAS.snpIndel.posUn";
+        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                String.format("%s.annot.hdf5", extractTag));
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
+                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
+        final double calibrationSensitivityThreshold = 0.9;
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
+                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
+        ADD_ISOLATION_FOREST_PYTHON_SCRIPT
+                .andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
+                .andThen(addPositiveAnnotations)
+                .andThen(addCalibrationSensitivityThreshold)
+                .apply(argsBuilder);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testPositiveAndUnlabeledAnnotationNamesAreNotIdentical() {
+        final File outputDir = createTempDir("train");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        argsBuilder.addOutput(outputPrefix);
+        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                "extract.nonAS.snpIndel.posUn.annot.hdf5");         // non-allele-specific
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
+                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
+        final File unlabeledAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                "extract.AS.snpIndel.posUn.unlabeled.annot.hdf5");  // allele-specific
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
+                ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
+        final double calibrationSensitivityThreshold = 0.9;
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
+                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
+        ADD_ISOLATION_FOREST_PYTHON_SCRIPT
+                .andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
+                .andThen(addPositiveAnnotations)
+                .andThen(addUnlabeledAnnotations)
+                .andThen(addCalibrationSensitivityThreshold)
+                .apply(argsBuilder);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testPositiveAnnotationsOfSpecifiedVariantTypesNotPresent() {
+        final File outputDir = createTempDir("train");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        argsBuilder.addOutput(outputPrefix);
+        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                "extract.nonAS.snp.posUn.annot.hdf5");     // contains only SNPs, but SNP+INDEL is specified
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
+                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
+        ADD_SNP_MODE.andThen(ADD_INDEL_MODE)
+                .andThen(ADD_ISOLATION_FOREST_PYTHON_SCRIPT)
+                .andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
+                .andThen(addPositiveAnnotations)
+                .apply(argsBuilder);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testUnlabeledAnnotationsOfSpecifiedVariantTypesNotPresent() {
+        final File outputDir = createTempDir("train");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = BASE_ARGS_BUILDER_SUPPLIER.get();
+        argsBuilder.addOutput(outputPrefix);
+        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                "extract.nonAS.snpIndel.posUn.annot.hdf5");
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
+                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
+        final File unlabeledAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
+                "extract.nonAS.snp.posUn.unlabeled.annot.hdf5");    // contains only SNPs, but SNP+INDEL is specified
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
+                ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
+        final double calibrationSensitivityThreshold = 0.9;
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
+                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
+        ADD_SNP_MODE.andThen(ADD_INDEL_MODE)
+                .andThen(ADD_ISOLATION_FOREST_PYTHON_SCRIPT)
+                .andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
+                .andThen(addPositiveAnnotations)
+                .andThen(addUnlabeledAnnotations)
+                .andThen(addCalibrationSensitivityThreshold)
+                .apply(argsBuilder);
+        runCommandLine(argsBuilder);
     }
 }
