@@ -322,7 +322,6 @@ public class ExtractCohort extends ExtractTool {
                 annotationEngine,
                 reference,
                 sampleIdToName,
-                mode,
                 cohortTable,
                 cohortAvroFileName,
                 vetRangesFQDataSet,

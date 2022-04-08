@@ -46,7 +46,6 @@ public class ExtractCohortEngine {
 
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
-    private final TableReference cohortTableRef;
     private final List<SimpleInterval> traversalIntervals;
     private final Long minLocation;
     private final Long maxLocation;
@@ -60,7 +59,6 @@ public class ExtractCohortEngine {
 
     private final ProgressMeter progressMeter;
     private final String projectID;
-    private final CommonCode.ModeEnum mode;
     private final boolean emitPLs;
 
     /** List of sample names seen in the variant data from BigQuery. */
@@ -99,7 +97,6 @@ public class ExtractCohortEngine {
                                final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
                                final Map<Long, String> sampleIdToName,
-                               final CommonCode.ModeEnum mode,
                                final String cohortTableName,
                                final GATKPath cohortAvroFileName,
                                final String vetRangesFQDataSet,
@@ -146,11 +143,7 @@ public class ExtractCohortEngine {
             sampleIdsToExtractBitSet.set(id.intValue());
         }
 
-        this.mode = mode;
         this.emitPLs = emitPLs;
-
-        this.cohortTableRef = cohortTableName == null || "".equals(cohortTableName) ? null :
-                new TableReference(cohortTableName, emitPLs ? SchemaUtils.COHORT_FIELDS : SchemaUtils.COHORT_FIELDS_NO_PL);
 
         this.vetRangesFQDataSet = vetRangesFQDataSet;
         this.fqRangesExtractVetTable = fqRangesExtractVetTable;
@@ -252,30 +245,19 @@ public class ExtractCohortEngine {
         }
         logger.debug("Initializing Reader");
 
-        if (this.mode == CommonCode.ModeEnum.RANGES) {
-            if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
-                throw new GATKException("Can not process cross-contig boundaries for Ranges implementation");
-            }
-
-            SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
-            if (fqRangesExtractVetTable != null) {
-                createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
-            } else if (vetRangesFQDataSet != null) {
-                createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
-            } else {
-                createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested, presortedAvroFiles);
-            }
-        } else {
-            if (cohortTableRef != null) {
-                try (StorageAPIAvroReader storageAPIAvroReader = new StorageAPIAvroReader(cohortTableRef, rowRestriction, projectID)) {
-                    createVariantsFromUnsortedResult(storageAPIAvroReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
-                    processBytesScanned(storageAPIAvroReader);
-                }
-            } else {
-                final AvroFileReader avroFileReader = new AvroFileReader(cohortAvroFileName);
-                createVariantsFromUnsortedResult(avroFileReader, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
-            }
+        if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
+            throw new GATKException("Can not process cross-contig boundaries for Ranges implementation");
         }
+
+        SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
+        if (fqRangesExtractVetTable != null) {
+            createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+        } else if (vetRangesFQDataSet != null) {
+            createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+        } else {
+            createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested, presortedAvroFiles);
+        }
+
         logger.debug("Finished Initializing Reader");
 
         logger.info("Processed " + totalRangeRecords + " range records and rejected " + totalIrrelevantRangeRecords + " irrelevant ones ");
@@ -365,63 +347,6 @@ public class ExtractCohortEngine {
 
         sortingCollection.printTempFileStats();
         return sortingCollection;
-    }
-
-
-    private void createVariantsFromUnsortedResult(final GATKAvroReader avroReader,
-                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
-                                                  final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
-                                                  final HashMap<Long, List<String>> siteFilterMap,
-                                                  final boolean noVqslodFilteringRequested) {
-
-        final org.apache.avro.Schema schema = avroReader.getSchema();
-
-        SortingCollection<GenericRecord> sortingCollection =  getAvroSortingCollection(schema, localSortMaxRecordsInRam);
-
-        int recordsProcessed = 0;
-        long startTime = System.currentTimeMillis();
-
-        for ( final GenericRecord queryRow : avroReader ) {
-
-            sortingCollection.add(queryRow);
-            if (recordsProcessed++ % 1000000 == 0) {
-                long endTime = System.currentTimeMillis();
-                logger.info("Processed " + recordsProcessed + " from BigQuery Read API in " + (endTime-startTime) + " ms");
-                startTime = endTime;
-            }
-        }
-
-        sortingCollection.printTempFileStats();
-
-        final Map<Long, ExtractCohortRecord> currentPositionRecords = new HashMap<>(sampleIdToName.size() * 2);
-
-        long currentLocation = -1;
-
-        // NOTE: if OverlapDetector takes too long, try using RegionChecker from tws_sv_local_assembler
-        final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
-
-        for ( final GenericRecord sortedRow : sortingCollection ) {
-            final ExtractCohortRecord cohortRow = new ExtractCohortRecord( sortedRow );
-
-            if ( intervalsOverlapDetector.overlapsAny(cohortRow) ) {
-                final long location = cohortRow.getLocation();
-
-                if (location != currentLocation && currentLocation != -1) {
-                    ++totalNumberOfSites;
-                    processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
-
-                    currentPositionRecords.clear();
-                }
-
-                currentPositionRecords.merge(cohortRow.getSampleId(), cohortRow, this::mergeSampleRecord);
-                currentLocation = location;
-            }
-        }
-
-        if ( ! currentPositionRecords.isEmpty() ) {
-            ++totalNumberOfSites;
-            processSampleRecordsForLocation(currentLocation, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
-        }
     }
 
     private ExtractCohortRecord mergeSampleRecord(ExtractCohortRecord r1, ExtractCohortRecord r2) {
