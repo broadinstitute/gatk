@@ -102,7 +102,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                         Pair.of("snp", ADD_SNP_MODE),
                         Pair.of("snpIndel", ADD_SNP_MODE.andThen(ADD_INDEL_MODE))),
                 Arrays.asList(              // we will consume the tag and add appropriate arguments for positive and positive-negative training below
-                        Pair.of("pos", Function.identity()),
+                        Pair.of("posOnly", Function.identity()),
                         Pair.of("posNeg", Function.identity())),
                 Arrays.asList(
 //                        Pair.of("BGMM", Function.identity()),
