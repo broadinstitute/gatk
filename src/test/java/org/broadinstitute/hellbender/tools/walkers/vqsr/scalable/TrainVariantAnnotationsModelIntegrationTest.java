@@ -60,8 +60,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         argsBuilder.add(TrainVariantAnnotationsModel.UNLABELED_ANNOTATIONS_HDF5_LONG_NAME, unlabeledAnnotationsHDF5);
         return argsBuilder;
     };
-    private static final BiFunction<ArgumentsBuilder, Double, ArgumentsBuilder> ADD_TRUTH_SENSITIVITY_THRESHOLD = (argsBuilder, truthSensitivityThreshold) -> {
-        argsBuilder.add(TrainVariantAnnotationsModel.TRUTH_SENSITIVITY_THRESHOLD_LONG_NAME, truthSensitivityThreshold);
+    private static final BiFunction<ArgumentsBuilder, Double, ArgumentsBuilder> ADD_CALIBRATION_SENSITIVITY_THRESHOLD = (argsBuilder, calibrationSensitivityThreshold) -> {
+        argsBuilder.add(TrainVariantAnnotationsModel.CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME, calibrationSensitivityThreshold);
         return argsBuilder;
     };
     private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_SNP_MODE = argsBuilder -> {
@@ -127,16 +127,16 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         // add arguments for positive/unlabeled annotations based on tag
         final String extractTag = tag.split(".train")[0]; // extract tag gives the basename for the annotation files
         final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR, String.format("%s.annot.hdf5", extractTag));
-        final double truthSensitivityThreshold = 0.9;
+        final double calibrationSensitivityThreshold = 0.9;
         final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
                 ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
         if (tag.contains("posNeg")) {
             final File unlabeledAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR, String.format("%s.unlabeled.annot.hdf5", extractTag));
             final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
                     ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
-            final Function<ArgumentsBuilder, ArgumentsBuilder> addTruthSensitivityThreshold = ab ->
-                    ADD_TRUTH_SENSITIVITY_THRESHOLD.apply(ab, truthSensitivityThreshold);
-            addPositiveAnnotations.andThen(addUnlabeledAnnotations).andThen(addTruthSensitivityThreshold).apply(argsBuilder);
+            final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
+                    ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
+            addPositiveAnnotations.andThen(addUnlabeledAnnotations).andThen(addCalibrationSensitivityThreshold).apply(argsBuilder);
         } else {
             addPositiveAnnotations.apply(argsBuilder);
         }
@@ -177,7 +177,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
 
         SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.trainingScores.hdf5 %s.trainingScores.hdf5",
                 EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
-        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.truthScores.hdf5 %s.truthScores.hdf5",
+        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.calibrationScores.hdf5 %s.calibrationScores.hdf5",
                 EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
 
         assertScorerOutputs(tagAndVariantType, outputPrefixAndVariantType, false);
@@ -197,7 +197,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                                                            final String variantType) {
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".trainingScores.hdf5").exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType, ".truthScores.hdf5").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType, ".calibrationScores.hdf5").exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".unlabeledScores.hdf5").exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.ser").exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.pkl").exists());

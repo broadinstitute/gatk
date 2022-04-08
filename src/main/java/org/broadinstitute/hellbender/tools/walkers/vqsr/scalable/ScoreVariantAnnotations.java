@@ -56,8 +56,8 @@ import java.util.stream.IntStream;
 public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
-    private static final String TRUTH_SENSITIVITY_KEY = "TRUTH_SENSITIVITY";
-    private static final String SCORE_AND_TRUTH_SENSITIVITY_FORMAT = "%.4f";
+    private static final String CALIBRATION_SENSITIVITY_KEY = "CALIBRATION_SENSITIVITY";
+    private static final String SCORE_AND_CALIBRATION_SENSITIVITY_FORMAT = "%.4f";
 
     private static final String SCORES_HDF5_SUFFIX = ".scores.hdf5";
 
@@ -77,8 +77,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     private VariantAnnotationsScorer snpScorer;
     private VariantAnnotationsScorer indelScorer;
 
-    private Function<Double, Double> snpTruthSensitivityConverter;
-    private Function<Double, Double> indelTruthSensitivityConverter;
+    private Function<Double, Double> snpCalibrationSensitivityConverter;
+    private Function<Double, Double> indelCalibrationSensitivityConverter;
 
     @Override
     protected int numberOfPasses() {
@@ -149,13 +149,13 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         }
 
         // TODO extract method and constants
-        final File snpTruthScores = new File(modelPrefix + ".snp.truthScores.hdf5");
-        snpTruthSensitivityConverter = snpTruthScores.canRead()
-                ? VariantAnnotationsScorer.createScoreToTruthSensitivityConverter(VariantAnnotationsScorer.readScores(snpTruthScores))
+        final File snpCalibrationScores = new File(modelPrefix + ".snp.calibrationScores.hdf5");
+        snpCalibrationSensitivityConverter = snpCalibrationScores.canRead()
+                ? VariantAnnotationsScorer.createScoreToCalibrationSensitivityConverter(VariantAnnotationsScorer.readScores(snpCalibrationScores))
                 : null;
-        final File indelTruthScores = new File(modelPrefix + ".indel.truthScores.hdf5");
-        indelTruthSensitivityConverter = indelTruthScores.canRead()
-                ? VariantAnnotationsScorer.createScoreToTruthSensitivityConverter(VariantAnnotationsScorer.readScores(indelTruthScores))
+        final File indelCalibrationScores = new File(modelPrefix + ".indel.calibrationScores.hdf5");
+        indelCalibrationSensitivityConverter = indelCalibrationScores.canRead()
+                ? VariantAnnotationsScorer.createScoreToCalibrationSensitivityConverter(VariantAnnotationsScorer.readScores(indelCalibrationScores))
                 : null;
 
         outputScoresFile = new File(outputPrefix + SCORES_HDF5_SUFFIX);
@@ -276,17 +276,17 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         final boolean isSNPMax = isSNP.get(scoreIndex);
         builder.attribute("snp", isSNPMax);
 
-        final Function<Double, Double> truthSensitivityConverter = isSNPMax ? snpTruthSensitivityConverter : indelTruthSensitivityConverter;
-        if (truthSensitivityConverter != null) {
-            final double truthSensitivity = truthSensitivityConverter.apply(score);
-            builder.attribute(TRUTH_SENSITIVITY_KEY, formatDouble(truthSensitivity));
+        final Function<Double, Double> calibrationSensitivityConverter = isSNPMax ? snpCalibrationSensitivityConverter : indelCalibrationSensitivityConverter;
+        if (calibrationSensitivityConverter != null) {
+            final double calibrationSensitivity = calibrationSensitivityConverter.apply(score);
+            builder.attribute(CALIBRATION_SENSITIVITY_KEY, formatDouble(calibrationSensitivity));
         }
 
         vcfWriter.add(builder.make());
     }
 
     private static String formatDouble(final double x) {
-        return String.format(SCORE_AND_TRUTH_SENSITIVITY_FORMAT, x);
+        return String.format(SCORE_AND_CALIBRATION_SENSITIVITY_FORMAT, x);
     }
 
     /**
@@ -299,8 +299,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
         final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);
         hInfo.add(GATKVCFHeaderLines.getInfoLine(SCORE_KEY));
-        hInfo.add(new VCFInfoHeaderLine(TRUTH_SENSITIVITY_KEY, 1, VCFHeaderLineType.Float,
-                String.format("Truth sensitivity corresponding to the value of %s", SCORE_KEY)));
+        hInfo.add(new VCFInfoHeaderLine(CALIBRATION_SENSITIVITY_KEY, 1, VCFHeaderLineType.Float,
+                String.format("Calibration sensitivity corresponding to the value of %s", SCORE_KEY)));
 
         hInfo.addAll(getDefaultToolVCFHeaderLines());
         // TODO extract

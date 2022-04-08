@@ -84,7 +84,7 @@ import java.util.stream.Collectors;
  * This results in the following output:
  *
  *   - an HDF5 file, as above
- *   - a VCF file, containing the input variants, with labels and scores appended for those passing variant-type checks TODO + truth-sensitivity scores + filters applied?
+ *   - a VCF file, containing the input variants, with labels and scores appended for those passing variant-type checks TODO + calibration-sensitivity scores + filters applied?
  */
 @CommandLineProgramProperties(
         // TODO
@@ -205,13 +205,13 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
             throw new CommandLineException(
                     "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
-                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
+                            "For example, --resource:hapmap,training=true,calibration=true hapmapFile.vcf");
         }
 
-        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRUTH_LABEL)) {
+        if (!resourceLabels.contains(LabeledVariantAnnotationsData.CALIBRATION_LABEL)) {
             throw new CommandLineException(
-                    "No truth set found! Please provide sets of known polymorphic loci marked with the truth=true feature input tag. " +
-                            "For example, --resource:hapmap,training=true,truth=true hapmapFile.vcf");
+                    "No calibration set found! Please provide sets of known polymorphic loci marked with the calibration=true feature input tag. " +
+                            "For example, --resource:hapmap,training=true,calibration=true hapmapFile.vcf");
         }
 
         data = new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations);

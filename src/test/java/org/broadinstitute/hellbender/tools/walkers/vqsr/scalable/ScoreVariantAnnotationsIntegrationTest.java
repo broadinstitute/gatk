@@ -33,10 +33,10 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                 "--trust-all-polymorphic",
                 "--mode", "SNP",
                 "--mode", "INDEL",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--resource:hapmap,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,calibration=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--resource:mills,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
@@ -60,10 +60,10 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                 "--mode", "SNP",
                 "--mode", "INDEL",
                 "--resource:extracted,extracted=true", "/home/slee/working/vqsr/scalable/extract-test/test.all-unlabeled.vcf.gz",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--resource:hapmap,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,calibration=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--resource:mills,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
@@ -106,9 +106,9 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                 "-A", "MQ",
                 "--trust-all-polymorphic",
                 "--mode", "SNP",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--resource:hapmap,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,calibration=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
@@ -130,7 +130,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                 "-A", "MQ",
                 "--trust-all-polymorphic",
                 "--mode", "INDEL",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--resource:mills,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
@@ -151,9 +151,9 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                 "-A", "MQ",
                 "--trust-all-polymorphic",
                 "-mode", "SNP",
-                "--resource:extracted-training,training=true,truth=false", "/home/slee/working/vqsr/scalable/extract-exact-match/test.snp.vcf",
-                "--resource:hapmap,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=false,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:extracted-training,training=true,calibration=false", "/home/slee/working/vqsr/scalable/extract-exact-match/test.snp.vcf",
+                "--resource:hapmap,training=false,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=false,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
@@ -179,10 +179,10 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                 "--mode", "SNP",
                 "--mode", "INDEL",
                 "--resource:extracted,extracted=true", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.extract.vcf",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--resource:hapmap,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,calibration=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--resource:mills,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
@@ -209,10 +209,10 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                 "--mode", "SNP",
                 "--mode", "INDEL",
                 "--resource:extracted,extracted=true", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.extract.vcf.gz",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--resource:hapmap,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,calibration=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--resource:mills,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);
@@ -239,10 +239,10 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                     "--mode", "SNP",
                     "--mode", "INDEL",
                     "--resource:extracted,extracted=true", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all-unlabeled.extract.vcf.gz",
-                    "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                    "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                    "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                    "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                    "--resource:hapmap,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                    "--resource:omni,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                    "--resource:1000G,training=true,calibration=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                    "--resource:mills,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
                     "--verbosity", "INFO"
             };
             runCommandLine(arguments);
@@ -267,9 +267,9 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                 "--trust-all-polymorphic",
                 "--mode", "SNP",
                 "--resource:extracted,extracted=true", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.extract.vcf.gz",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--resource:hapmap,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,calibration=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
                 "--verbosity", "DEBUG"
         };
         runCommandLine(arguments);
@@ -294,10 +294,10 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                 "--mode", "SNP",
                 "--mode", "INDEL",
                 "--resource:extracted,extracted=true", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.all.extract.vcf",
-                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
-                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
-                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-                "--resource:mills,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+                "--resource:hapmap,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,calibration=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--resource:mills,training=true,calibration=true", "/mnt/4AB658D7B658C4DB/working/ref/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
                 "--verbosity", "INFO"
         };
         runCommandLine(arguments);

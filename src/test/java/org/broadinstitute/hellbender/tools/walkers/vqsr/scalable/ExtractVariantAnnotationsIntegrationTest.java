@@ -54,17 +54,17 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/extract");
     private static final File EXPECTED_TEST_FILES_DIR = new File(TEST_FILES_DIR, "expected");
 
-    // The input VCF should cover a genomic region given by the union of regions in the below training and truth resources
+    // The input VCF should cover a genomic region given by the union of regions in the below training and calibration resources
     // and should also contain a few multiallelics that overlap those resources.
     private static final File INPUT_VCF = new File(PACKAGE_TEST_FILES_DIR, "input/small_callset_low_threshold.sites-only.chr1.1-10M.vcf.gz");
 
-    // We use snippets of the Omni sites for SNP training (chr1:1-5000000) and truth (chr1:5000000-10000000); we don't sweat the 1bp overlap.
+    // We use snippets of the Omni sites for SNP training (chr1:1-5000000) and calibration (chr1:5000000-10000000); we don't sweat the 1bp overlap.
     private static final File SNP_TRAINING_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.1-5M.vcf.gz");
-    private static final File SNP_TRUTH_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.5M-10M.vcf.gz");
+    private static final File SNP_CALIBRATION_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.5M-10M.vcf.gz");
 
-    // We use snippets of the Mills sites for indel training (chr1:1-5000000) and truth (chr1:5000000-10000000); we don't sweat the 1bp overlap.
+    // We use snippets of the Mills sites for indel training (chr1:1-5000000) and calibration (chr1:5000000-10000000); we don't sweat the 1bp overlap.
     private static final File INDEL_TRAINING_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.1-5M.vcf.gz");
-    private static final File INDEL_TRUTH_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.5M-10M.vcf.gz");
+    private static final File INDEL_CALIBRATION_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/Mills_and_1000G_gold_standard.indels.hg38.chr1.5M-10M.vcf.gz");
 
     private static final int MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = 100;
 
@@ -87,13 +87,13 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_SNP_MODE_AND_RESOURCES = argsBuilder -> {
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.SNP)
                 .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-training,training=true", SNP_TRAINING_VCF)
-                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-truth,truth=true", SNP_TRUTH_VCF);
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-calibration,calibration=true", SNP_CALIBRATION_VCF);
         return argsBuilder;
     };
     private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_INDEL_MODE_AND_RESOURCES = argsBuilder -> {
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.INDEL)
                 .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-training,training=true", INDEL_TRAINING_VCF)
-                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-truth,truth=true", INDEL_TRUTH_VCF);
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":mills-calibration,calibration=true", INDEL_CALIBRATION_VCF);
         return argsBuilder;
     };
     private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS = argsBuilder -> {
@@ -170,12 +170,12 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     }
 
     @Test(expectedExceptions = CommandLineException.class)
-    public void testMissingTruthResource() {
+    public void testMissingCalibrationResource() {
         final File outputDir = createTempDir("extract");
         final String outputPrefix = String.format("%s/test", outputDir);
         final ArgumentsBuilder argsBuilder = ADD_ALLELE_SPECIFIC_ANNOTATIONS.apply(BASE_ARGS_BUILDER_SUPPLIER.get());
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, "SNP")
-                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-truth,truth=true", SNP_TRUTH_VCF) // only specify truth label
+                .add(StandardArgumentDefinitions.RESOURCE_LONG_NAME + ":omni-calibration,calibration=true", SNP_CALIBRATION_VCF) // only specify calibration label
                 .addOutput(outputPrefix);
         runCommandLine(argsBuilder);
     }

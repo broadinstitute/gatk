@@ -49,7 +49,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     public static final String UNLABELED_ANNOTATIONS_HDF5_LONG_NAME = "unlabeled-annotations-hdf5";
     public static final String PYTHON_SCRIPT_LONG_NAME = "python-script";
     public static final String HYPERPARAMETERS_JSON_LONG_NAME = "hyperparameters-json";
-    public static final String TRUTH_SENSITIVITY_THRESHOLD_LONG_NAME = "truth-sensitivity-threshold";
+    public static final String CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME = "calibration-sensitivity-threshold";
 
     enum ModelBackendMode {
         PYTHON, BGMM    // TODO put IsolationForest script into resources and use as a default PYTHON backend
@@ -60,7 +60,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     }
 
     private static final String TRAINING_SCORES_HDF5_SUFFIX = ".trainingScores.hdf5";
-    private static final String TRUTH_SCORES_HDF5_SUFFIX = ".truthScores.hdf5";
+    private static final String CALIBRATION_SCORES_HDF5_SUFFIX = ".calibrationScores.hdf5";
     private static final String UNLABELED_SCORES_HDF5_SUFFIX = ".unlabeledScores.hdf5";
 
     @Argument(
@@ -91,15 +91,15 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     private String outputPrefix;
 
     @Argument(
-            fullName = TRUTH_SENSITIVITY_THRESHOLD_LONG_NAME,
-            doc = "Truth-sensitivity threshold that determines which sites will be used for training the negative model. " +
+            fullName = CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME,
+            doc = "Calibration-sensitivity threshold that determines which sites will be used for training the negative model. " +
                     "Increasing this will decrease the corresponding positive-model score threshold; sites with scores below this score " +
                     "threshold will be used for training the negative model. Thus, this parameter should typically be chosen to " +
                     "be close to 1, so that sites that score highly according to the positive model will not be used to train the negative model.",
             optional = true,
             minValue = 0.,
             maxValue = 1.)
-    private Double truthSensitivityThreshold;
+    private Double calibrationSensitivityThreshold;
 
     @Argument(
             fullName = MODE_LONG_NAME,
@@ -141,7 +141,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         }
 
         // TODO more detailed validation
-        availableLabelsMode = inputUnlabeledAnnotationsFile != null && truthSensitivityThreshold != null
+        availableLabelsMode = inputUnlabeledAnnotationsFile != null && calibrationSensitivityThreshold != null
                 ? AvailableLabelsMode.POSITIVE_UNLABELED
                 : AvailableLabelsMode.POSITIVE_ONLY;
 
@@ -164,7 +164,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         final double[][] annotations = LabeledVariantAnnotationsData.readAnnotations(inputAnnotationsFile);
 
         final List<Boolean> isTraining = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRAINING_LABEL);
-        final List<Boolean> isTruth = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.TRUTH_LABEL);
+        final List<Boolean> isCalibration = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, LabeledVariantAnnotationsData.CALIBRATION_LABEL);
         final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(inputAnnotationsFile, "snp");
         final List<Boolean> isVariantType = variantType == VariantType.SNP ? isSNP : isSNP.stream().map(x -> !x).collect(Collectors.toList());
 
@@ -203,13 +203,13 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             final File labeledTrainingAndVariantTypeScoresFile = score(labeledTrainingAndVariantTypeAnnotationsFile, outputPrefixTag, TRAINING_SCORES_HDF5_SUFFIX);
             logger.info(String.format("%s training scores written to %s.", logMessageTag, labeledTrainingAndVariantTypeScoresFile.getAbsolutePath()));
 
-            final List<Boolean> isLabeledTruthAndVariantType = Streams.zip(isTruth.stream(), isVariantType.stream(), (a, b) -> a && b).collect(Collectors.toList());
-            final int numLabeledTruthAndVariantType = numPassingFilter(isLabeledTruthAndVariantType);
-            if (numLabeledTruthAndVariantType > 0) {
-                logger.info(String.format("Scoring %d %s truth sites...", numLabeledTruthAndVariantType, logMessageTag));
-                final File labeledTruthAndVariantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, annotations, isLabeledTruthAndVariantType);
-                final File labeledTruthAndVariantTypeScoresFile = score(labeledTruthAndVariantTypeAnnotationsFile, outputPrefixTag, TRUTH_SCORES_HDF5_SUFFIX);
-                logger.info(String.format("%s truth scores written to %s.", logMessageTag, labeledTruthAndVariantTypeScoresFile.getAbsolutePath()));
+            final List<Boolean> isLabeledCalibrationAndVariantType = Streams.zip(isCalibration.stream(), isVariantType.stream(), (a, b) -> a && b).collect(Collectors.toList());
+            final int numLabeledCalibrationAndVariantType = numPassingFilter(isLabeledCalibrationAndVariantType);
+            if (numLabeledCalibrationAndVariantType > 0) {
+                logger.info(String.format("Scoring %d %s calibration sites...", numLabeledCalibrationAndVariantType, logMessageTag));
+                final File labeledCalibrationAndVariantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, annotations, isLabeledCalibrationAndVariantType);
+                final File labeledCalibrationAndVariantTypeScoresFile = score(labeledCalibrationAndVariantTypeAnnotationsFile, outputPrefixTag, CALIBRATION_SCORES_HDF5_SUFFIX);
+                logger.info(String.format("%s calibration scores written to %s.", logMessageTag, labeledCalibrationAndVariantTypeScoresFile.getAbsolutePath()));
             }
 
             // negative model
@@ -222,13 +222,13 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 final int numUnlabeledVariantType = numPassingFilter(isUnlabeledVariantType);
 
                 if (numUnlabeledVariantType > 0) {
-                    final File labeledTruthAndVariantTypeScoresFile = new File(outputPrefix + outputPrefixTag + TRUTH_SCORES_HDF5_SUFFIX); // produced by doModelingAndScoringWork TODO output a copy of these?
-                    final double[] labeledTruthAndVariantTypeScores = VariantAnnotationsScorer.readScores(labeledTruthAndVariantTypeScoresFile);
-                    final double scoreThreshold = truthSensitivityThreshold == 1. // Percentile requires quantile > 0, so we treat this as a special case
-                            ? Doubles.min(labeledTruthAndVariantTypeScores)
-                            : new Percentile(100. * (1. - truthSensitivityThreshold)).evaluate(labeledTruthAndVariantTypeScores);
-                    logger.info(String.format("Using %s score threshold of %.4f corresponding to specified truth-sensitivity threshold of %.4f ...",
-                            logMessageTag, scoreThreshold, truthSensitivityThreshold));
+                    final File labeledCalibrationAndVariantTypeScoresFile = new File(outputPrefix + outputPrefixTag + CALIBRATION_SCORES_HDF5_SUFFIX); // produced by doModelingAndScoringWork TODO output a copy of these?
+                    final double[] labeledCalibrationAndVariantTypeScores = VariantAnnotationsScorer.readScores(labeledCalibrationAndVariantTypeScoresFile);
+                    final double scoreThreshold = calibrationSensitivityThreshold == 1. // Percentile requires quantile > 0, so we treat this as a special case
+                            ? Doubles.min(labeledCalibrationAndVariantTypeScores)
+                            : new Percentile(100. * (1. - calibrationSensitivityThreshold)).evaluate(labeledCalibrationAndVariantTypeScores);
+                    logger.info(String.format("Using %s score threshold of %.4f corresponding to specified calibration-sensitivity threshold of %.4f ...",
+                            logMessageTag, scoreThreshold, calibrationSensitivityThreshold));
 
                     final double[] labeledTrainingAndVariantTypeScores = VariantAnnotationsScorer.readScores(labeledTrainingAndVariantTypeScoresFile);
                     final List<Boolean> isNegativeTrainingFromLabeledTrainingAndVariantType = Arrays.stream(labeledTrainingAndVariantTypeScores).boxed().map(s -> s < scoreThreshold).collect(Collectors.toList());
@@ -267,11 +267,11 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                     trainAndSerializeModel(negativeTrainingAnnotationsFile, outputPrefixTag + ".negative");
                     logger.info(String.format("%s negative model trained and serialized with output prefix \"%s\".", logMessageTag, outputPrefix + outputPrefixTag + ".negative"));
 
-                    if (numLabeledTruthAndVariantType > 0) {
-                        logger.info(String.format("Re-scoring %d %s truth sites...", numLabeledTruthAndVariantType, logMessageTag));
-                        final File labeledTruthAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, annotations, isLabeledTruthAndVariantType);
-                        final File labeledTruthScoresFile = positiveNegativeScore(labeledTruthAnnotationsFile, outputPrefixTag, TRUTH_SCORES_HDF5_SUFFIX);
-                        logger.info(String.format("Truth scores written to %s.", labeledTruthScoresFile.getAbsolutePath()));
+                    if (numLabeledCalibrationAndVariantType > 0) {
+                        logger.info(String.format("Re-scoring %d %s calibration sites...", numLabeledCalibrationAndVariantType, logMessageTag));
+                        final File labeledCalibrationAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, annotations, isLabeledCalibrationAndVariantType);
+                        final File labeledCalibrationScoresFile = positiveNegativeScore(labeledCalibrationAnnotationsFile, outputPrefixTag, CALIBRATION_SCORES_HDF5_SUFFIX);
+                        logger.info(String.format("Calibration scores written to %s.", labeledCalibrationScoresFile.getAbsolutePath()));
                     }
                 } else {
                     throw new UserException.BadInput(String.format("Attempted to train %s negative model, " +

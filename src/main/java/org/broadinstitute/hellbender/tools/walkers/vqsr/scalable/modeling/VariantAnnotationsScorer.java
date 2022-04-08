@@ -36,10 +36,10 @@ public interface VariantAnnotationsScorer {
                final File outputScoresFile);
 
     // TODO document that this is 1 - ECDF
-    static Function<Double, Double> createScoreToTruthSensitivityConverter(final double[] truthScores) {
+    static Function<Double, Double> createScoreToCalibrationSensitivityConverter(final double[] calibrationScores) {
         // TODO validate
         final EmpiricalDistribution empiricalDistribution = new EmpiricalDistribution();
-        empiricalDistribution.load(truthScores);
+        empiricalDistribution.load(calibrationScores);
         return score -> 1. - empiricalDistribution.cumulativeProbability(score);
     }
 

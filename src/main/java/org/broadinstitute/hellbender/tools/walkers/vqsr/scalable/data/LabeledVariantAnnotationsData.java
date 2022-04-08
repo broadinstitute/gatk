@@ -42,7 +42,7 @@ public final class LabeledVariantAnnotationsData {
 
     // TODO make labels enum?
     public static final String TRAINING_LABEL = "training";
-    public static final String TRUTH_LABEL = "truth";
+    public static final String CALIBRATION_LABEL = "calibration";
 
     private final List<String> sortedAnnotationNames;
     final List<String> sortedLabels;
@@ -159,7 +159,7 @@ public final class LabeledVariantAnnotationsData {
      *   │   └── transposed_index_start_end
      *   └── labels
      *       ├── snp
-     *       ├── ... (e.g., training, truth, etc.)
+     *       ├── ... (e.g., training, calibration, etc.)
      *       └── ...
      *
      * TODO extract constants for paths here and in methods below
