@@ -98,7 +98,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_alt_allele_withdrawn
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
