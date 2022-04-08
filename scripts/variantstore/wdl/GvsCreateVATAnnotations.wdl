@@ -5,7 +5,7 @@ workflow GvsCreateVATAnnotations {
         File input_vcf_index
         String input_vcf_name
         File ancestry_mapping_list
-        File? nirvana_data_directory
+        File nirvana_data_directory
         String output_path
 
         String? service_account_json_path
