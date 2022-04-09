@@ -128,25 +128,33 @@ task AssignIds {
 
     NAMES_FILE=~{write_lines(sample_names)}
 
-    # In a bash shell in the us.gcr.io/broad-gatk/gatk:4.1.7.0 Docker image
+    # Make a file with a large number of lines of random 32-character strings to test sorting speed in the
+    # us.gcr.io/broad-gatk/gatk:4.1.7.0 Docker image.
     #
-    # Make a file with 200K lines of random 32-character strings to test sorting speed.
+    # Steps in the line generation process:
+    # * Time the command that follows.
+    # * Take input from the /dev/urandom device, an infinite stream of random bytes.
+    # * Delete any bytes that are not alphanumeric characters.
+    # * Take 1000000 * 32 of these random alphanumeric characters.
+    # * Break this giant string into 32 character chunks, yielding 1 million lines.
     #
     # root@eb0d1b5fa72b:/gatk# \
-    #   time                      `# Time the command that follows.` \
-    #   < /dev/urandom            `# Take input from the /dev/urandom device, a source of infinite random bytes.` \
-    #   tr -dc "[:alnum:]"        `# Delete any bytes that do not correspond to alphanumeric characters.` | \
-    #   head -c $((200000 * 32))  `# Take 200000 * 32 of these random alphanumeric characters.` | \
-    #   fold -w 32 > out          `# Break this giant string into 32 character chunks, yielding 200K lines.`
+    #   time \
+    #   < /dev/urandom \
+    #   tr -dc "[:alnum:]" | \
+    #   head -c $((1000000 * 32)) | \
+    #   fold -w 32 > out
     #
-    # real	0m0.460s
-    # user	0m0.117s
-    # sys	0m0.457s
+    # real	0m1.126s
+    # user	0m0.545s
+    # sys	0m1.002s
+    #
+    # Sorting is a lot more straightforward.
     # root@eb0d1b5fa72b:/gatk# time sort out > out.sorted
     #
-    # real	0m0.166s
-    # user	0m0.068s
-    # sys	0m0.124s
+    # real	0m0.564s
+    # user	0m0.718s
+    # sys	0m0.390s
     # root@eb0d1b5fa72b:/gatk#
 
     # Sort sample names for reproducibility.
