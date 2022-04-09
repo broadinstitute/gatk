@@ -130,7 +130,14 @@ task AssignIds {
 
     # In a bash shell in the us.gcr.io/broad-gatk/gatk:4.1.7.0 Docker image
     #
-    # root@eb0d1b5fa72b:/gatk# time < /dev/urandom tr -dc "[:alnum:]" | head -c $((200000 * 32)) | fold -w 32 > out
+    # Make a file with 200K lines of random 32-character strings to test sorting speed.
+    #
+    # root@eb0d1b5fa72b:/gatk# \
+    #   time                      `# Time the command that follows.` \
+    #   < /dev/urandom            `# Take input from the /dev/urandom device, a source of infinite random bytes.` \
+    #   tr -dc "[:alnum:]"        `# Delete any bytes that do not correspond to alphanumeric characters.` | \
+    #   head -c $((200000 * 32))  `# Take 200000 * 32 of these random alphanumeric characters.` | \
+    #   fold -w 32 > out          `# Break this giant string into 32 character chunks, yielding 200K lines.`
     #
     # real	0m0.460s
     # user	0m0.117s
