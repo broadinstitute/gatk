@@ -128,8 +128,26 @@ task AssignIds {
 
     NAMES_FILE=~{write_lines(sample_names)}
 
+    # In a bash shell in the us.gcr.io/broad-gatk/gatk:4.1.7.0 Docker image
+    #
+    # root@eb0d1b5fa72b:/gatk# time < /dev/urandom tr -dc "[:alnum:]" | head -c $((200000 * 32)) | fold -w 32 > out
+    #
+    # real	0m0.460s
+    # user	0m0.117s
+    # sys	0m0.457s
+    # root@eb0d1b5fa72b:/gatk# time sort out > out.sorted
+    #
+    # real	0m0.166s
+    # user	0m0.068s
+    # sys	0m0.124s
+    # root@eb0d1b5fa72b:/gatk#
+
+    # Sort sample names for reproducibility.
+    SORTED_NAMES_FILE="${NAMES_FILE}.sorted"
+    sort "${NAMES_FILE}" > "${SORTED_NAMES_FILE}"
+
     # first load name into the lock table - will check for dupes when adding to sample_info table
-    bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
+    bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock "${SORTED_NAMES_FILE}" "sample_name:STRING"
 
     # add sample_name to sample_info_table
     bq --project_id=~{project_id} query --use_legacy_sql=false \
