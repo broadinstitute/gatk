@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
-import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
@@ -14,15 +13,13 @@ import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.bigquery.PendingBQWriter;
-import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 
 public final class RefCreator {
@@ -30,65 +27,27 @@ public final class RefCreator {
 
     private CommonCode.OutputType outputType;
 
-    private SimpleXSVWriter petTsvWriter = null;
-    private PetTsvWriter petTsv2Writer = null;
-    private PetOrcWriter petOrcWriter = null;
-    private PetAvroWriter petAvroWriter = null;
-    private PetParquetWriter petParquetWriter = null;
-    private PendingBQWriter petBQJsonWriter = null;
-
     private RefRangesWriter refRangesWriter = null;
 
-    private boolean writePetData;
     private boolean writeReferenceRanges;
     private final String sampleId;
     private SimpleInterval previousInterval;
     private final SAMSequenceDictionary seqDictionary;
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<GQStateEnum>();
     private GenomeLocSortedSet coverageLocSortedSet;
-    private static final String PET_FILETYPE_PREFIX = "pet_";
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
-
-
 
 
     public RefCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
         this.sampleId = sampleId;
         this.seqDictionary = seqDictionary;
         this.outputType = outputType;
-        this.writePetData = writePetData;
         this.writeReferenceRanges = writeReferenceRanges;
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
         try {
-            final File petOutputFile = new File(outputDirectory, PET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + "." + outputType.toString().toLowerCase());
-            switch (outputType) {
-                case BQ:
-                    if (projectId == null || datasetName == null) {
-                        throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
-                    }
-                    petBQJsonWriter = new PendingBQWriter(projectId, datasetName,PET_FILETYPE_PREFIX + tableNumber);
-                    break;
-                case TSV:
-                    List<String> petHeader = RefCreator.getHeaders();
-                    petTsvWriter = new SimpleXSVWriter(petOutputFile.toPath(), IngestConstants.SEPARATOR);
-                    petTsvWriter.setHeaderLine(petHeader);
-                    break;
-                case TSV2:
-                    petTsv2Writer = new PetTsvWriter(petOutputFile.getCanonicalPath());
-                    break;
-                case ORC:
-                    petOrcWriter = new PetOrcWriter(petOutputFile.getCanonicalPath());
-                    break;
-                case AVRO:
-                    petAvroWriter = new PetAvroWriter(petOutputFile.getCanonicalPath());
-                    break;
-                case PARQUET:
-                    petParquetWriter = new PetParquetWriter(petOutputFile.getCanonicalPath());
-            }
-
             if (writeReferenceRanges) {
                 final File refOutputFile = new File(outputDirectory, REF_RANGES_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + "." + outputType.toString().toLowerCase());
                 switch (outputType) {
@@ -106,9 +65,8 @@ public final class RefCreator {
                         break;
                 }
             }
-
         } catch (final IOException ioex) {
-            throw new UserException("Could not create pet outputs", ioex);
+            throw new UserException("Could not create reference range outputs", ioex);
         }
 
         this.gqStatesToIgnore.add(gqStateToIgnore);
@@ -117,17 +75,7 @@ public final class RefCreator {
         }
     }
 
-    /**
-     * Expected headers for the Position Table (PET)
-     */
-    public enum PetFieldEnum {
-        location,
-        sample,
-        state,
-    }
-
     public void apply(VariantContext variant, List<GenomeLoc> intervalsToWrite) throws IOException {
-        boolean firstInterval = true;
         final String variantChr = variant.getContig();
 
         for (GenomeLoc genomeLoc : intervalsToWrite) {
@@ -143,7 +91,7 @@ public final class RefCreator {
                 setCoveredInterval(variantChr, start, end);
             }
 
-            // create PET output if the reference block's GQ is not the one to discard or its a variant
+            // Create output if the reference block's GQ is not the one to discard, or it's a variant.
             if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(RefCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
 
                 // add interval to "covered" intervals
@@ -164,7 +112,7 @@ public final class RefCreator {
                             localStart = localStart + length ;
                         }
 
-                    // write out no-calls as a single-base GQ0 reference (to match PET behavior)
+                    // Write out no-calls as a single-base GQ0 reference.
                     } else if (CreateVariantIngestFiles.isNoCall(variant)) {
                         refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, start),
                                 Long.parseLong(sampleId),
@@ -173,62 +121,7 @@ public final class RefCreator {
                         );
                     }
                 }
-
-                if (writePetData) {
-                    List<List<String>> TSVLinesToCreatePet;
-                    // handle deletions that span across multiple intervals
-                    if (!firstInterval && !variant.isReferenceBlock()) {
-                        TSVLinesToCreatePet = createSpanDelRows(
-                                SchemaUtils.encodeLocation(variantChr, start),
-                                SchemaUtils.encodeLocation(variantChr, end),
-                                variant,
-                                sampleId
-                        );
-                    } else {
-                        TSVLinesToCreatePet = createRows(
-                                SchemaUtils.encodeLocation(variantChr, start),
-                                SchemaUtils.encodeLocation(variantChr, end),
-                                variant,
-                                sampleId
-                        );
-
-                    }
-
-
-                    // write the position to the XSV
-                    for (List<String> TSVLineToCreatePet : TSVLinesToCreatePet) {
-                        long location = Long.parseLong(TSVLineToCreatePet.get(0));
-                        long sampleId = Long.parseLong(TSVLineToCreatePet.get(1));
-                        String state = TSVLineToCreatePet.get(2);
-
-                        switch (outputType) {
-                            case BQ:
-                                try {
-                                    petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
-                                } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
-                                    throw new IOException("BQ exception", ex);
-                                }
-                                break;
-                            case TSV:
-                                petTsvWriter.getNewLineBuilder().setRow(TSVLineToCreatePet).write();
-                                break;
-                            case TSV2:
-                                petTsv2Writer.addRow(location, sampleId, state);
-                                break;
-                            case ORC:
-                                petOrcWriter.addRow(location, sampleId, state);
-                                break;
-                            case AVRO:
-                                petAvroWriter.addRow(location, sampleId, state);
-                                break;
-                            case PARQUET:
-                                petParquetWriter.addRow(location, sampleId, state);
-                                break;
-                        }
-                    }
-                }
             }
-            firstInterval = false;
         }
 
     }
@@ -240,7 +133,7 @@ public final class RefCreator {
         // for each block of uncovered locations
         for (GenomeLoc genomeLoc : uncoveredIntervals) {
             final String contig = genomeLoc.getContig();
-            // write all positions in this block to the pet output
+            // write all positions in this block
             writeMissingPositions(
                     SchemaUtils.encodeLocation(contig, genomeLoc.getStart()),
                     SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()),
@@ -270,7 +163,7 @@ public final class RefCreator {
 
         List<List<String>> rows = new ArrayList<>();
 
-        // if the variant is no call, set the PET "state" to GQ ZERO
+        // if the variant is no call, set the "state" to GQ ZERO
         if (CreateVariantIngestFiles.isNoCall(variant)) {
             List<String> row = new ArrayList<>();
             row.add(String.valueOf(start));
@@ -309,34 +202,6 @@ public final class RefCreator {
         return rows;
     }
 
-    private JSONObject createJsonRow(long location, long sampleId, String state) {
-        JSONObject record = new JSONObject();
-        record.put(SchemaUtils.LOCATION_FIELD_NAME, location);
-        record.put(SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
-        record.put(SchemaUtils.STATE_FIELD_NAME, state);
-        return record;
-    }
-
-
-    public List<List<String>> createSpanDelRows(final long start, final long end, final VariantContext variant, final String sampleName) {
-        if (variant.isReferenceBlock()){
-            throw new IllegalStateException("Cannot create span deletion rows for a reference block");
-        }
-
-        List<List<String>> rows = new ArrayList<>();
-
-        for (long position = start; position <= end; position++){ // break up ref blocks
-            List<String> row = new ArrayList<>();
-
-            row.add(String.valueOf(position));
-            row.add(sampleName);
-            row.add(GQStateEnum.STAR.getValue());
-            rows.add(row);
-        }
-
-        return rows;
-    }
-
     public void writeMissingPositions(long start, long end, String sampleName) throws IOException {
         if (writeReferenceRanges) {
             // break up missing blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
@@ -349,46 +214,6 @@ public final class RefCreator {
                         GQStateEnum.MISSING.getValue()
                 );
                 localStart = localStart + length ;
-            }
-        }
-
-        if (writePetData) {
-            writeMissingPetPositions(start, end, sampleName);
-        }
-    }
-
-     public void writeMissingPetPositions(long start, long end, String sampleName) throws IOException {
-        for (long position = start; position <= end; position++){
-            List<String> row = new ArrayList<>();
-            row.add(String.valueOf(position));
-            row.add(sampleName);
-            row.add(GQStateEnum.MISSING.getValue());
-
-            // TODO refactor - this only needs to be done for non-TSV outputTypes
-            long location = Long.parseLong(row.get(0));
-            long sampleId = Long.parseLong(row.get(1));
-            String state = row.get(2);
-
-            switch (outputType) {
-                case TSV:
-                    petTsvWriter.getNewLineBuilder().setRow(row).write();
-                    break;
-                case BQ:
-                    try {
-                        petBQJsonWriter.addJsonRow(createJsonRow(location, sampleId, state));
-                    } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
-                        throw new IOException("BQ exception", ex);
-                    }
-                    break;
-                case ORC:
-                    petOrcWriter.addRow(location, sampleId, state);
-                    break;
-                case AVRO:
-                    petAvroWriter.addRow(location, sampleId, state);
-                    break;
-                case PARQUET:
-                    petParquetWriter.addRow(location, sampleId, state);
-                    break;
             }
         }
     }
@@ -409,7 +234,6 @@ public final class RefCreator {
         } else {
             return GQStateEnum.SIXTY;
         }
-
     }
 
     // this is ugly.... I think we need to rework the enum to better handle the new use cases
@@ -456,16 +280,8 @@ public final class RefCreator {
         return ret;
     }
 
-    public static List<String> getHeaders() {
-        return Arrays.stream(PetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
-    }
-
     public void commitData() {
         if (outputType == CommonCode.OutputType.BQ) {
-            if (writePetData && petBQJsonWriter != null) {
-                petBQJsonWriter.flushBuffer();
-                petBQJsonWriter.commitWriteStreams();
-            }
             if (writeReferenceRanges && refRangesWriter != null) {
                 refRangesWriter.commitData();
             }
@@ -474,28 +290,9 @@ public final class RefCreator {
 
     public void closeTool() {
         try {
-            switch (outputType) {
-                case BQ:
-                    if (petBQJsonWriter != null) petBQJsonWriter.close();
-                    break;
-                case TSV:
-                    if (petTsvWriter != null) petTsvWriter.close();
-                    break;
-                case ORC:
-                    if (petOrcWriter != null) petOrcWriter.close();
-                    break;
-                case AVRO:
-                    if (petAvroWriter != null) petAvroWriter.close();
-                    break;
-                case PARQUET:
-                    if (petParquetWriter != null) petParquetWriter.close();
-                    break;
-            }
-
             if (refRangesWriter != null) refRangesWriter.close();
-
         } catch (final Exception e) {
-            throw new IllegalArgumentException("Couldn't close PET writer", e);
+            throw new IllegalArgumentException("Couldn't close referene ranges writer", e);
         }
     }
 }
