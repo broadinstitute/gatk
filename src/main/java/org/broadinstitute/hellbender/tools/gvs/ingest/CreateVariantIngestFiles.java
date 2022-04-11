@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
-import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.StandardTableDefinition;
-import com.google.cloud.bigquery.Table;
-import com.google.cloud.bigquery.TableId;
+
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
@@ -54,8 +51,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private List<SimpleInterval> userIntervals;
 
     // Inside the parent directory, a directory for each chromosome will be created, with a vet directory in each one.
-    // Each vet directory will hold all of the vet tsvs for each sample
-    // A sample_info directory will be created, with a sample_info tsv for each sample
+    // Each vet directory will hold all the vet tsvs for each sample.
+    // A sample_info directory will be created, with a sample_info tsv for each sample.
 
     @Argument(fullName = "ref-block-gq-to-ignore",
             shortName = "IG",
