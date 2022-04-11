@@ -136,7 +136,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-227-no-temp
+         - vs_314_clean_up_localizefile
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
