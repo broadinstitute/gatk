@@ -4,7 +4,7 @@
   "CNVSomaticPairWorkflow.intervals": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/ice_targets_sample-chr20.interval_list",
   "CNVSomaticPairWorkflow.is_run_funcotator": "true",
   "CNVSomaticPairWorkflow.funcotator_is_removing_untared_datasources": "true",
-  "CNVSomaticPairWorkflow.funcotator_data_sources_tar_gz": "/home/runner/work/gatk/gatk/build/broadinstitute/ds.tar.gz",
+  "CNVSomaticPairWorkflow.funcotator_data_sources_tar_gz": "/home/runner/work/gatk/gatk/ds.tar.gz",
   "CNVSomaticPairWorkflow.normal_bam": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74NEG-v1-chr20-downsampled.deduplicated.cram",
   "CNVSomaticPairWorkflow.normal_bam_idx": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74NEG-v1-chr20-downsampled.deduplicated.cram.crai",
   "CNVSomaticPairWorkflow.read_count_pon": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/wes-do-gc.pon.hdf5",

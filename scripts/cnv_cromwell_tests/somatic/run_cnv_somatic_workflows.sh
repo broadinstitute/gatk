@@ -68,7 +68,7 @@ java -jar ${CROMWELL_JAR} run $WORKING_DIR/gatk/scripts/cnv_wdl/somatic/cnv_soma
 echo "Preparing small gencode-only datasource dir for funcotator test..."
 pushd .
 cd $WORKING_DIR/gatk/src/test/resources/org/broadinstitute/hellbender/tools/funcotator/
-tar zcvf $WORKING_DIR/gatk/build/broadinstitute/ds.tar.gz small_cntn4_ds/gencode_cntn4/
+tar zcvf $WORKING_DIR/gatk/ds.tar.gz small_cntn4_ds/gencode_cntn4/
 popd
 
 # Pair WES with funcotator
