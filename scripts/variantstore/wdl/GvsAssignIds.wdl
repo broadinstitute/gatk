@@ -128,45 +128,12 @@ task AssignIds {
 
     NAMES_FILE=~{write_lines(sample_names)}
 
-    # Make a file with a large number of lines of random 32-character strings to test sorting speed in the
-    # us.gcr.io/broad-gatk/gatk:4.1.7.0 Docker image.
-    #
-    # Steps in the line generation process:
-    # * Time the command that follows.
-    # * Take input from the /dev/urandom device, an infinite stream of random bytes.
-    # * Delete any bytes that are not alphanumeric characters.
-    # * Take 1000000 * 32 of these random alphanumeric characters.
-    # * Break this giant string into 32 character chunks, yielding 1 million lines.
-    #
-    # root@eb0d1b5fa72b:/gatk# \
-    #   time \
-    #   < /dev/urandom \
-    #   tr -dc "[:alnum:]" | \
-    #   head -c $((1000000 * 32)) | \
-    #   fold -w 32 > out
-    #
-    # real	0m1.126s
-    # user	0m0.545s
-    # sys	0m1.002s
-    #
-    # Sorting is a lot more straightforward.
-    # root@eb0d1b5fa72b:/gatk# time sort out > out.sorted
-    #
-    # real	0m0.564s
-    # user	0m0.718s
-    # sys	0m0.390s
-    # root@eb0d1b5fa72b:/gatk#
-
-    # Sort sample names for reproducibility.
-    SORTED_NAMES_FILE="${NAMES_FILE}.sorted"
-    sort "${NAMES_FILE}" > "${SORTED_NAMES_FILE}"
-
     # first load name into the lock table - will check for dupes when adding to sample_info table
-    bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock "${SORTED_NAMES_FILE}" "sample_name:STRING"
+    bq load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock "${NAMES_FILE}" "sample_name:STRING"
 
     # add sample_name to sample_info_table
     bq --project_id=~{project_id} query --use_legacy_sql=false \
-      'INSERT into `~{dataset_name}.~{sample_info_table}` (sample_name, is_control) select sample_name, ~{samples_are_controls} from `~{dataset_name}.sample_id_assignment_lock` m where m.sample_name not in (SELECT sample_name FROM `~{dataset_name}.~{sample_info_table}`)'
+      'INSERT into `~{dataset_name}.~{sample_info_table}` (sample_name, is_control) select sample_name, ~{samples_are_controls} from `~{dataset_name}.sample_id_assignment_lock` m where m.sample_name not in (SELECT sample_name FROM `~{dataset_name}.~{sample_info_table}`) order by m.sample_name'
 
     # get the current maximum id, or 0 if there are none
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false 'SELECT IFNULL(MAX(sample_id),0) FROM `~{dataset_name}.~{sample_info_table}`' > maxid
