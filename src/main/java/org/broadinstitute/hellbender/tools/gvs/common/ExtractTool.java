@@ -78,13 +78,6 @@ public abstract class ExtractTool extends GATKTool {
     protected int localSortMaxRecordsInRam = DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM;
 
     @Argument(
-            fullName = "mode",
-            doc = "Reference representation mode.  Valid values are PET or RANGES",
-            optional = false
-    )
-    protected CommonCode.ModeEnum mode = CommonCode.ModeEnum.PET;
-
-    @Argument(
             fullName = "ref-version",
             doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38",
             optional = true

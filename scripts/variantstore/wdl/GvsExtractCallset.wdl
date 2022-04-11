@@ -88,7 +88,6 @@ workflow GvsExtractCallset {
         fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
         fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
         read_project_id                    = query_project,
-        mode                               = "RANGES-PREPARED",
         do_not_filter_override             = false,
         fq_ranges_dataset                  = fq_ranges_dataset,
         fq_filter_set_info_table           = fq_filter_set_info_table,
@@ -201,8 +200,6 @@ task ExtractTask {
     String output_file
     String? output_gcs_dir
 
-    String mode
-
     Boolean do_not_filter_override
     String fq_ranges_dataset
     String fq_filter_set_info_table
@@ -247,17 +244,10 @@ task ExtractTask {
           --filter-set-name ~{filter_set_name}'
     fi
 
-    if [ ~{mode} = "RANGES-RAW" ]; then
-      MODE_ARGS="--mode RANGES --vet-ranges-fq-dataset ~{fq_ranges_dataset} "
-    elif [ ~{mode} = "RANGES-PREPARED" ]; then
-      MODE_ARGS="--mode RANGES --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} "
-    else
-      MODE_ARGS="--mode PET --cohort-extract-table ~{fq_cohort_extract_table} "
-    fi
-
     gatk --java-options "-Xmx9g" \
       ExtractCohort \
-        ${MODE_ARGS} \
+        --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
+        --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
         -R ~{reference} \
         -O ~{output_file} \

@@ -138,11 +138,6 @@ public class CommonCode {
         return headerLines;
     }
 
-    public enum ModeEnum {
-        PET,
-        RANGES
-    }
-
     public enum OutputType {
         TSV,
         ORC,
