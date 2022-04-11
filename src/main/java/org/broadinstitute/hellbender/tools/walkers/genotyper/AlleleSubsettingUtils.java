@@ -287,18 +287,15 @@ public final class AlleleSubsettingUtils {
      *
      * @param vc target variant context.
      * @param numAltAllelesToKeep number of alt alleles to keep.
+     * @param ensureReturnContainsAlt make sure the alleles returned include an alternate, even if it's not in the most likely genotype
      * @return the list of alleles to keep, including the reference and {@link Allele#NON_REF_ALLELE} if present
      *
      */
     public static List<Allele> calculateMostLikelyAlleles(final VariantContext vc, final int defaultPloidy,
-                                                          final int numAltAllelesToKeep) {
+                                                          final int numAltAllelesToKeep, boolean ensureReturnContainsAlt) {
         Utils.nonNull(vc, "vc is null");
         Utils.validateArg(defaultPloidy > 0, () -> "default ploidy must be > 0 but defaultPloidy=" + defaultPloidy);
         Utils.validateArg(numAltAllelesToKeep > 0, () -> "numAltAllelesToKeep must be > 0, but numAltAllelesToKeep=" + numAltAllelesToKeep);
-        //allow PLs or GPs (as for GATK-DRAGEN), but we need some kind of genotype data
-        Utils.validateArg(vc.getGenotypes().stream().anyMatch(g -> g.hasPL() || g.hasExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY)), () -> "Most likely alleles cannot be calculated without likelihoods");
-        //NOTE: this is used in the reblocking case when we have a hom-ref GT and real ALTs
-        final boolean allHomRefData = vc.getGenotypes().stream().allMatch(g -> g.hasPL() && g.getPL()[0] == 0);  //PL=[0,0,0] is okay, we just don't want confident variants
 
         final boolean hasSymbolicNonRef = vc.hasAllele(Allele.NON_REF_ALLELE);
         final int numberOfAllelesThatArentProperAlts = hasSymbolicNonRef ? 2 : 1; 
@@ -308,7 +305,7 @@ public final class AlleleSubsettingUtils {
             return vc.getAlleles();
         }
 
-        final double[] likelihoodSums = calculateLikelihoodSums(vc, defaultPloidy, allHomRefData);
+        final double[] likelihoodSums = calculateLikelihoodSums(vc, defaultPloidy, ensureReturnContainsAlt);
         return filterToMaxNumberOfAltAllelesBasedOnScores(numAltAllelesToKeep, vc.getAlleles(), likelihoodSums);
     }
 
@@ -338,9 +335,12 @@ public final class AlleleSubsettingUtils {
      *
      * Since GLs are log likelihoods, this quantity is thus
      * SUM_{samples whose likeliest genotype contains this alt allele} log(likelihood alt / likelihood hom ref)
+     * @param vc
+     * @param defaultPloidy
+     * @param countAllelesWithoutHomRef true if we know the input is hom-ref, but we still want to know the most likely ALT
      */
     @VisibleForTesting
-    static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy, final boolean allHomRefData) {
+    static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy, final boolean countAllelesWithoutHomRef) {
         final double[] likelihoodSums = new double[vc.getNAlleles()];
         for ( final Genotype genotype : vc.getGenotypes().iterateInSampleNameOrder() ) {
             final GenotypeLikelihoods gls = genotype.getLikelihoods();
@@ -348,7 +348,7 @@ public final class AlleleSubsettingUtils {
                 continue;
             }
             final double[] glsVector = gls.getAsVector();
-            final int indexOfMostLikelyVariantGenotype = MathUtils.maxElementIndex(glsVector, allHomRefData ? 1 : 0, glsVector.length);
+            final int indexOfMostLikelyVariantGenotype = MathUtils.maxElementIndex(glsVector, countAllelesWithoutHomRef ? 1 : 0, glsVector.length);
             final double GLDiffBetweenRefAndBestVariantGenotype = Math.abs(glsVector[indexOfMostLikelyVariantGenotype] - glsVector[PL_INDEX_OF_HOM_REF]);
             final int ploidy = genotype.getPloidy() > 0 ? genotype.getPloidy() : defaultPloidy;
 

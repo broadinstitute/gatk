@@ -505,7 +505,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
             if (posteriorsKey != null && genotype.hasExtendedAttribute(posteriorsKey)) {
                 subsetHomRefPosteriorsToRefVersusNonRef(lowQualVariant, gb);
             } else {
-                final List<Allele> bestAlleles = AlleleSubsettingUtils.calculateMostLikelyAlleles(lowQualVariant, genotype.getPloidy(), 1);
+                //find best ALT so we can use its likelihood for NON_REF
+                final List<Allele> bestAlleles = AlleleSubsettingUtils.calculateMostLikelyAlleles(lowQualVariant, genotype.getPloidy(), 1, true);
                 final Allele bestAlt = bestAlleles.stream().filter(a -> !a.isReference()).findFirst().orElse(Allele.NON_REF_ALLELE);  //allow span dels
                 //we care about the best alt even though it's getting removed because NON_REF should get the best likelihoods
                 //it shouldn't matter that we're passing in different alt alleles since the GenotypesContext only knows
@@ -928,7 +929,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
     private void subsetHomRefPosteriorsToRefVersusNonRef(final VariantContext result, final GenotypeBuilder gb) {
         //TODO: bestAlleles needs to be modified for posteriors
         final Genotype genotype = result.getGenotype(0);
-        final List<Allele> bestAlleles = AlleleSubsettingUtils.calculateMostLikelyAlleles(result, genotype.getPloidy(), 1);
+        final List<Allele> bestAlleles = AlleleSubsettingUtils.calculateMostLikelyAlleles(result, genotype.getPloidy(), 1, false);
         final Allele bestAlt = bestAlleles.stream().filter(a -> !a.isReference()).findFirst().orElse(Allele.NON_REF_ALLELE);  //allow span dels
         final int[] idxVector = result.getGLIndicesOfAlternateAllele(bestAlt);
         final int[] multiallelicPLs = getGenotypePosteriorsOtherwiseLikelihoods(genotype, posteriorsKey);
