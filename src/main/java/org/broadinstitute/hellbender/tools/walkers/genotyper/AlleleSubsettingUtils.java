@@ -309,10 +309,6 @@ public final class AlleleSubsettingUtils {
         }
 
         final double[] likelihoodSums = calculateLikelihoodSums(vc, defaultPloidy, allHomRefData);
-        if (MathUtils.sum(likelihoodSums) == 0.0 && !allHomRefData) {
-            throw new IllegalStateException("No likelihood sum exceeded zero -- method was called for variant data " +
-                    "with no variant information.");
-        }
         return filterToMaxNumberOfAltAllelesBasedOnScores(numAltAllelesToKeep, vc.getAlleles(), likelihoodSums);
     }
 
