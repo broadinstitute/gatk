@@ -76,7 +76,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
      * Exact-match tests for (non-exhaustive) configurations given by the Cartesian product of the following options:
      * 1) non-allele-specific vs. allele-specific
      * 2) Java Bayesian Gaussian Mixture Model (BGMM) backend vs. python sklearn IsolationForest backend
-     * 3) SNP-only vs. SNP+INDEL (for both of these options, we use extracted annotations that contain both SNP and INDEL variants as input)
+     * 3) SNP-only vs. SNP+INDEL (for both of these options, we use a trained model that contains both SNP and INDEL scorers)
      *  TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
      *  TODO warm-start BGMM?
      */
