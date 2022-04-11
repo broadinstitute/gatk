@@ -24,6 +24,14 @@ public final class BafEvidence implements SVFeature {
         this.value = value;
     }
 
+    // value-altering constructor
+    public BafEvidence( final BafEvidence that, final double value ) {
+        this.sample = that.sample;
+        this.contig = that.contig;
+        this.position = that.position;
+        this.value = value;
+    }
+
     public String getSample() {
         return sample;
     }

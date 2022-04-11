@@ -5,6 +5,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -694,14 +695,16 @@ public class CollectSVEvidence extends ReadWalker {
                 return false;
             }
             VariantContext snp = snpSourceItr.next();
-            while ( !snp.isSNP() ) {
+            while ( !snp.isSNP() || !snp.isBiallelic() ) {
                 if ( !snpSourceItr.hasNext() ) {
                     return false;
                 }
                 snp = snpSourceItr.next();
             }
-            final byte[] refSeq = snp.getReference().getBases();
-            final LocusDepth locusDepth = new LocusDepth(snp, sampleName, refSeq[0]);
+            final List<Allele> alleles = snp.getAlleles();
+            final int refIndex = Nucleotide.decode(alleles.get(0).getBases()[0]).ordinal();
+            final int altIndex = Nucleotide.decode(alleles.get(1).getBases()[0]).ordinal();
+            final LocusDepth locusDepth = new LocusDepth(snp, sampleName, refIndex, altIndex);
             locusDepthQueue.add(locusDepth);
             return true;
         }

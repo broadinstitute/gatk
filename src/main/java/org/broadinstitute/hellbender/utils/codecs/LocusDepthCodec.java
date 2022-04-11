@@ -36,11 +36,12 @@ public class LocusDepthCodec extends AsciiFeatureCodec<LocusDepth>
         return new LocusDepth(tokens.get(0),
                 Integer.parseUnsignedInt(tokens.get(1)) + 1,
                 tokens.get(2),
-                (byte)tokens.get(3).charAt(0),
+                Integer.parseUnsignedInt(tokens.get(3)),
                 Integer.parseUnsignedInt(tokens.get(4)),
                 Integer.parseUnsignedInt(tokens.get(5)),
                 Integer.parseUnsignedInt(tokens.get(6)),
-                Integer.parseUnsignedInt(tokens.get(7)));
+                Integer.parseUnsignedInt(tokens.get(7)),
+                Integer.parseUnsignedInt(tokens.get(8)));
     }
 
     @Override public Object readActualHeader( LineIterator reader ) { return null; }
@@ -86,8 +87,8 @@ public class LocusDepthCodec extends AsciiFeatureCodec<LocusDepth>
 
     public static String encode( final LocusDepth locusDepth ) {
         return locusDepth.getContig() + "\t" + (locusDepth.getStart() - 1) + "\t" +
-                locusDepth.getSample() + "\t" + locusDepth.getRefCall() + "\t" +
-                locusDepth.getADepth() + "\t" + locusDepth.getCDepth() + "\t" +
-                locusDepth.getGDepth() + "\t" + locusDepth.getTDepth();
+                locusDepth.getSample() + "\t" + locusDepth.getRefIndex() + "\t" +
+                locusDepth.getAltIndex() + "\t" + locusDepth.getDepth(0) + "\t" + locusDepth.getDepth(1) + "\t" +
+                locusDepth.getDepth(2) + "\t" + locusDepth.getDepth(3);
     }
 }
