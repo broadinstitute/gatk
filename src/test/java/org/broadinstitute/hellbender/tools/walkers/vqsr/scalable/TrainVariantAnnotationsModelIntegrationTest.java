@@ -54,7 +54,6 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
 
     // Supplier and functions for creating and adding various arguments to an ArgumentsBuilder.
     private static final Supplier<ArgumentsBuilder> BASE_ARGUMENTS_BUILDER_SUPPLIER = ArgumentsBuilder::new;
-
     private static final BiFunction<ArgumentsBuilder, File, ArgumentsBuilder> ADD_ANNOTATIONS_HDF5 = (argsBuilder, annotationsHDF5) -> {
         argsBuilder.add(TrainVariantAnnotationsModel.ANNOTATIONS_HDF5_LONG_NAME, annotationsHDF5);
         return argsBuilder;
@@ -98,8 +97,6 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
                 Arrays.asList(
                         Pair.of("extract.nonAS.snpIndel.posUn.train", Function.identity()),
-                        Pair.of("extract.nonAS.snpIndel.posUn.train", Function.identity()),
-                        Pair.of("extract.AS.snpIndel.posUn.train", Function.identity()),
                         Pair.of("extract.AS.snpIndel.posUn.train", Function.identity())),
                 Arrays.asList(
                         Pair.of("snp", ADD_SNP_MODE),
@@ -115,7 +112,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                         tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snpIndel.posUn.train.snp.posOnly.IF
                         tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
                                 .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
-                                .apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get())})                                               //  appropriate arguments
+                                .apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get())})                                          //  appropriate arguments
                 .toArray(Object[][]::new);
     }
 
@@ -261,7 +258,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 outputPrefixSNPOnly, outputPrefixSNPPlusIndel));
     }
 
-    @Test(expectedExceptions = CommandLineException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testUnlabeledAnnotationsSpecifiedWithoutCalibrationSensitivityThreshold() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -284,7 +281,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = CommandLineException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCalibrationSensitivityThresholdSpecifiedWithoutUnlabeledAnnotations() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);

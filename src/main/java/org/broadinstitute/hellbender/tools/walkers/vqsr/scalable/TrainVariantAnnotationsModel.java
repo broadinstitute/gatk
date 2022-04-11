@@ -193,7 +193,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             logger.info(String.format("%s model trained and serialized with output prefix \"%s\".", logMessageTag, outputPrefix + outputPrefixTag));
 
             if (modelBackendMode == ModelBackendMode.BGMM) {
-                preprocessAnnotationsWithBGMMAndWriteHDF5(annotationNames, outputPrefixTag, labeledTrainingAndVariantTypeAnnotationsFile);
+                BGMMVariantAnnotationsScorer.preprocessAnnotationsWithBGMMAndWriteHDF5(
+                        annotationNames, outputPrefix + outputPrefixTag, labeledTrainingAndVariantTypeAnnotationsFile, logger);
             }
 
             logger.info(String.format("Scoring %d %s training sites...", numTrainingAndVariantType, logMessageTag));
@@ -285,25 +286,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         return isPassing.stream().mapToInt(x -> x ? 1 : 0).sum();
     }
 
-    // TODO clean this up
-    private void preprocessAnnotationsWithBGMMAndWriteHDF5(final List<String> annotationNames,
-                                                           final String outputPrefixTag,
-                                                           final File labeledTrainingAndVariantTypeAnnotationsFile) {
-        final double[][] rawAnnotations = LabeledVariantAnnotationsData.readAnnotations(labeledTrainingAndVariantTypeAnnotationsFile);
-        final BGMMVariantAnnotationsScorer scorer = BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX));
-        final double[][] preprocessedAnnotations = scorer.preprocess(rawAnnotations);
-        final File outputPreprocessedAnnotationsFile = new File(outputPrefix + outputPrefixTag + ".annot.pre.hdf5");
-        try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) {
-            IOUtils.canReadFile(hdf5File.getFile());
-            hdf5File.makeStringArray("/data/annotation_names", annotationNames.toArray(new String[0]));
-            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedAnnotations, HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / 16);
-        } catch (final HDF5LibException exception) {
-            throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
-                    exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
-        }
-        logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
-    }
-
     private void trainAndSerializeModel(final File trainingAnnotationsFile,
                                         final String outputPrefixTag) {
         final VariantAnnotationsModel model;
@@ -329,7 +311,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 scorer = new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, new File(outputPrefix + outputPrefixTag + ".scorer.pkl"));
                 break;
             case BGMM:
-                scorer = BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX));
+                scorer = BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX));
                 break;
             default:
                 throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
@@ -351,8 +333,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 break;
             case BGMM:
                 scorer = VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
-                        BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX)),
-                        BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + ".negative" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX)));
+                        BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX)),
+                        BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + ".negative" + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX)));
                 break;
             default:
                 throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");

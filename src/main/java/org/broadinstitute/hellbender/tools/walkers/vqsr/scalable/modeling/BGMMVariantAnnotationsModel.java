@@ -7,8 +7,6 @@ import java.io.Serializable;
 
 public final class BGMMVariantAnnotationsModel implements VariantAnnotationsModel {
 
-    public static final String BGMM_SCORER_SER_SUFFIX = ".bgmmScorer.ser";
-
     public BGMMVariantAnnotationsModel(final File hyperparametersJSONFile) {
         throw new NotImplementedException("BGMM module implemented in separate PR.");
     }

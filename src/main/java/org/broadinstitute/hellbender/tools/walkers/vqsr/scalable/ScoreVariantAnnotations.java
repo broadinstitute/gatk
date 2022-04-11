@@ -4,6 +4,7 @@ import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLineType;
@@ -18,7 +19,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonSklearnVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsScorer;
@@ -55,20 +55,35 @@ import java.util.stream.IntStream;
 @DocumentedFeature
 public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
+    public static final String MODEL_PREFIX_LONG_NAME = "model-prefix";
+    public static final String PYTHON_SCRIPT_LONG_NAME = "python-script";
+    public static final String CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME = "calibration-sensitivity-threshold";
+
+    // TODO expose all of these?
     private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
     private static final String CALIBRATION_SENSITIVITY_KEY = "CALIBRATION_SENSITIVITY";
+    protected static final String LOW_SCORE_FILTER_NAME = String.format("LOW_%s", SCORE_KEY);
     private static final String SCORE_AND_CALIBRATION_SENSITIVITY_FORMAT = "%.4f";
 
     private static final String SCORES_HDF5_SUFFIX = ".scores.hdf5";
 
     @Argument(
-            fullName = "python-script",
+            fullName = PYTHON_SCRIPT_LONG_NAME,
             optional = true)
     private File pythonScriptFile;
 
     @Argument(
-            fullName = "model-prefix")
+            fullName = MODEL_PREFIX_LONG_NAME)
     private String modelPrefix;
+
+    // TODO should we allow separate SNP and INDEL thresholds? alternatively, users could apply this tool twice, once for each variant type.
+    @Argument(
+            fullName = CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME,
+            doc = "If specified, sites with scores corresponding to a calibration sensitivity that is greater than or equal to this threshold will be hard filtered.",
+            optional = true,
+            minValue = 0.,
+            maxValue = 1.)
+    private Double calibrationSensitivityThreshold;
 
     private File outputScoresFile;
     private Iterator<Double> scoresIterator;
@@ -123,8 +138,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             // TODO validate BGMM model inputs
 
             // TODO extract method and constants
-            final File snpScorerSerFile = new File(modelPrefix + ".snp" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
-            final File snpNegativeScorerSerFile = new File(modelPrefix + ".snp.negative" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
+            final File snpScorerSerFile = new File(modelPrefix + ".snp" + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX);
+            final File snpNegativeScorerSerFile = new File(modelPrefix + ".snp.negative" + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX);
             snpScorer = snpScorerSerFile.canRead()
                     ? snpNegativeScorerSerFile.canRead()
                         ? VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
@@ -132,8 +147,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                                 BGMMVariantAnnotationsScorer.deserialize(snpNegativeScorerSerFile))
                         : BGMMVariantAnnotationsScorer.deserialize(snpScorerSerFile)
                     : null;
-            final File indelScorerSerFile = new File(modelPrefix + ".indel" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
-            final File indelNegativeScorerSerFile = new File(modelPrefix + ".indel.negative" + BGMMVariantAnnotationsModel.BGMM_SCORER_SER_SUFFIX);
+            final File indelScorerSerFile = new File(modelPrefix + ".indel" + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX);
+            final File indelNegativeScorerSerFile = new File(modelPrefix + ".indel.negative" + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX);
             indelScorer = indelScorerSerFile.canRead()
                     ? indelNegativeScorerSerFile.canRead()
                         ? VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
@@ -191,23 +206,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     @Override
     protected void afterNthPass(final int n) {
         if (n == 0) {
-            // TODO if BGMM, preprocess annotations and write to HDF5
-//            // write preprocessed annotations
-//            // TODO clean this up
-//            final List<String> annotationNames = this.dataBatch.getSortedAnnotationKeys();
-//
-//            final File outputPreprocessedAnnotationsFile = new File(outputPrefix + ".annot.pre.hdf5");
-//            try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) { // TODO allow appending
-//                IOUtils.canReadFile(hdf5File.getFile());
-//
-//                hdf5File.makeStringArray("/data/annotation_names", annotationNames.toArray(new String[0]));
-//                HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedData, maximumChunkSize);
-//                hdf5File.makeDoubleArray("/data/is_training", this.dataBatch.getFlattenedData().stream().mapToDouble(x -> x.labels.contains("training") ? 1 : 0).toArray());
-//            } catch (final HDF5LibException exception) {
-//                throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
-//                        exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
-//            }
-//            logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
+            // TODO if BGMM, preprocess annotations and write to HDF5 with BGMMVariantAnnotationsScorer.preprocessAnnotationsWithBGMMAndWriteHDF5
             writeAnnotationsToHDF5AndClearData();
             readAnnotationsAndWriteScoresToHDF5();
             scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
@@ -280,6 +279,9 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         if (calibrationSensitivityConverter != null) {
             final double calibrationSensitivity = calibrationSensitivityConverter.apply(score);
             builder.attribute(CALIBRATION_SENSITIVITY_KEY, formatDouble(calibrationSensitivity));
+            if (calibrationSensitivityThreshold != null && calibrationSensitivity >= calibrationSensitivityThreshold) {
+                builder.filter(LOW_SCORE_FILTER_NAME); // TODO does this sufficiently cover the desired behavior when dealing with previously filtered sites, etc.?
+            }
         }
 
         vcfWriter.add(builder.make());
@@ -301,6 +303,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         hInfo.add(GATKVCFHeaderLines.getInfoLine(SCORE_KEY));
         hInfo.add(new VCFInfoHeaderLine(CALIBRATION_SENSITIVITY_KEY, 1, VCFHeaderLineType.Float,
                 String.format("Calibration sensitivity corresponding to the value of %s", SCORE_KEY)));
+        hInfo.add(new VCFFilterHeaderLine(LOW_SCORE_FILTER_NAME, "Low score (corresponding to high calibration sensitivity)"));
 
         hInfo.addAll(getDefaultToolVCFHeaderLines());
         // TODO extract
