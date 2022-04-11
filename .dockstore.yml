@@ -125,6 +125,17 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_wdl_gatk_override
+         - gg_VS-360_QuietLog4J
+   - name: GvsPrepareCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsPrepareCallset.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl

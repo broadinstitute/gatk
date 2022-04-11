@@ -14,7 +14,7 @@ workflow GvsImportGenomes {
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220415/gatk-package-4.2.0.0-492-g1387d47-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_UpdateBuidDotGradle_20220426/gatk-package-4.2.0.0-504-g14b1fb3-SNAPSHOT-local.jar"
     String? service_account_json_path
   }
 
@@ -279,7 +279,7 @@ task LoadData {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
+    docker: "us.gcr.io/broad-gatk/gatk:4.2.6.0"
     maxRetries: select_first([load_data_maxretries_override, 3])
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"

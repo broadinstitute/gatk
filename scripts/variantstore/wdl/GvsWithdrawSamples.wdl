@@ -73,7 +73,7 @@ task WithdrawSamples {
 
   >>>
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.2.5.0"
+    docker: "us.gcr.io/broad-gatk/gatk:4.2.6.0"
     memory: "3.75 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

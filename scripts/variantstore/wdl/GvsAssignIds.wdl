@@ -158,7 +158,7 @@ task AssignIds {
     bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
   >>>
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
+    docker: "us.gcr.io/broad-gatk/gatk:4.2.6.0"
     memory: "3.75 GB"
     disks: "local-disk " + 10 + " HDD"
     cpu: 1
