@@ -53,15 +53,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private String sampleId;
     private List<SimpleInterval> userIntervals;
 
-    // Inside the parent directory, a directory for each chromosome will be created, with a pet directory and vet directory in each one.
-    // Each pet and vet directory will hold all of the pet and vet tsvs for each sample
+    // Inside the parent directory, a directory for each chromosome will be created, with a vet directory in each one.
+    // Each vet directory will hold all of the vet tsvs for each sample
     // A sample_info directory will be created, with a sample_info tsv for each sample
-
-//    @Argument(fullName = "output-path",
-//            shortName = "VPO",
-//            doc = "Path to the directory where the variants TSVs and positions expanded TSVs should be written")
-//    public GATKPathSpecifier parentOutputDirectory = null;
-//    public Path parentDirectory = null;
 
     @Argument(fullName = "ref-block-gq-to-ignore",
             shortName = "IG",
@@ -86,12 +80,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             doc = "write vet data",
             optional = true)
     public boolean enableVet = true;
-
-    @Argument(fullName = "enable-pet",
-            shortName = "ep",
-            doc = "write pet data",
-            optional = true)
-    public boolean enablePet = true;
 
     @Argument(fullName = "sample-name-mapping",
             shortName = "SNM",
@@ -136,14 +124,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Argument(
             fullName = "project-id",
-            doc = "ID of the Google Cloud project where the dataset for pet and vet tables exist",
+            doc = "ID of the Google Cloud project where the dataset for vet tables exists",
             optional = true
     )
     protected String projectID = null;
 
     @Argument(
             fullName = "dataset-name",
-            doc = "Name of the dataset to update pet and vet tables",
+            doc = "Name of the dataset to update vet tables",
             optional = true
     )
     protected String datasetName = null;
@@ -214,8 +202,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
 
-        if (enablePet || enableReferenceRanges) {
-            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enablePet, enableReferenceRanges, projectID, datasetName);
+        if (enableReferenceRanges) {
+            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName);
         }
 
         if (enableVet) {
@@ -238,9 +226,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             } else if (state == LoadStatus.LoadState.PARTIAL) {
                 throw new GATKException("The loading for sample id " + sampleId + " into the _" + tableNumber + " table(s) was interrupted before it was able to complete successfully.");
             }
-
         }
-
     }
 
     @Override
@@ -279,7 +265,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 refCreator.apply(variant, intervalsToWrite);
             }
         } catch (IOException ioe) {
-            throw new GATKException("Error writing PET", ioe);
+            throw new GATKException("Error writing reference ranges", ioe);
         }
 
     }
