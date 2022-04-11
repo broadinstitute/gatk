@@ -30,15 +30,16 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Upload to codecov
-      run: bash <(curl -s https://raw.githubusercontent.com/broadinstitute/codecov-bash-uploader/main/codecov-verified.bash)
-      shell: bash
     - name: Upload test results
       if: always()
       uses: actions/upload-artifact@v2
       with:
         name: test-results-${{ matrix.Java }}-${{ matrix.testType }}
         path: build/reports/tests
+
+    - name: Upload to codecov
+      run: bash <(curl -s https://raw.githubusercontent.com/broadinstitute/codecov-bash-uploader/main/codecov-verified.bash)
+      shell: bash
 
     - name: Upload Reports
       id: uploadreports
