@@ -120,7 +120,7 @@ jobs:
           jdk-version: ${{ matrix.Java }}
           test-type: ${{ matrix.testType }}
           job-matrix-id: ${{ github.run_id }}.${{ strategy.job-index }}
-          repo-path: ${{ github.ref_name }}_${{ github.run_id }}.${{ strategy.job-index }}
+          repo-path: ${{ github.ref_name }}_${{ github.run_id }}.1${{ strategy.job-index }}
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
           identifier: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
 
