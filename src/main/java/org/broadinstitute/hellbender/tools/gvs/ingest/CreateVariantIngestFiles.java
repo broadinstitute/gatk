@@ -158,8 +158,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         return pathParts[pathParts.length - 1];
     }
 
-
-
     @Override
     public void onTraversalStart() {
         //set up output directory
@@ -264,9 +262,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         } catch (IOException ioe) {
             throw new GATKException("Error writing reference ranges", ioe);
         }
-
     }
-
 
     @Override
     public Object onTraversalSuccess() {
@@ -305,5 +301,4 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             vetCreator.closeTool();;
         }
     }
-
 }
