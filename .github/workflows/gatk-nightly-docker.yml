@@ -28,14 +28,14 @@ jobs:
       - name: Export tags to env
         run: |
           DATE=$(date +%Y-%m-%d);
-          echo "DOCKER_NIGHTLY_TAG=broadinstitute/gatk-nightly:${DATE}-$(git describe)-NIGHTLY-SNAPSHOT" >> $GITHUB_ENV
-          echo "DOCKER_NIGHTLY_TAG_LATEST=broadinstitute/gatk-nightly:latest" >> $GITHUB_ENV
+          echo "DOCKER_NIGHTLY_TAG=${DATE}-$(git describe)-NIGHTLY-SNAPSHOT" >> $GITHUB_ENV
+          echo "DOCKER_NIGHTLY_TAG_LATEST=latest" >> $GITHUB_ENV
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: broadinstitute/gatk-nightly
           tags: |
             type=raw,value=${{env.DOCKER_NIGHTLY_TAG}},${{env.DOCKER_NIGHTLY_TAG_LATEST}}
 
