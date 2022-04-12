@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
  * {@link TrainVariantAnnotationsModelIntegrationTest}. Similarly, the expected outputs for
  * {@link TrainVariantAnnotationsModelIntegrationTest} are used as inputs for {@link ScoreVariantAnnotationsIntegrationTest}.
  * Thus, developers should keep the expected outputs for all of these integration tests in sync when updating any of them.
+ * This can easily be done by setting the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS flags for all tools to be true and then running
+ * the tests in order.
  */
 public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineProgramTest {
 
@@ -56,7 +58,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
 
     // The input VCF should cover a genomic region given by the union of regions in the below training and calibration resources
     // and should also contain a few multiallelics that overlap those resources.
-    private static final File INPUT_VCF = new File(PACKAGE_TEST_FILES_DIR, "input/small_callset_low_threshold.sites-only.chr1.1-10M.vcf.gz");
+    private static final File INPUT_VCF = new File(PACKAGE_TEST_FILES_DIR, "input/small_callset_low_threshold.sites-only.chr1.1-10M.vcf");
 
     // We use snippets of the Omni sites for SNP training (chr1:1-5000000) and calibration (chr1:5000000-10000000); we don't sweat the 1bp overlap.
     private static final File SNP_TRAINING_VCF = new File(PACKAGE_TEST_FILES_DIR, "resources/1000G_omni2.5.hg38.chr1.1-5M.vcf.gz");
@@ -72,6 +74,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
     private static final Supplier<ArgumentsBuilder> BASE_ARGUMENTS_BUILDER_SUPPLIER = () -> {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.addVCF(INPUT_VCF);
+        argsBuilder.addFlag(LabeledVariantAnnotationsWalker.DO_NOT_GZIP_VCF_OUTPUT_LONG_NAME);
         argsBuilder.add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
         return argsBuilder;
     };
@@ -132,7 +135,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
                 .toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "dataValidInputs")
+    @Test(dataProvider = "dataValidInputs", groups = {"python"}) // python environment is required to use h5diff for exact-match comparisons
     public void testValidInputs(final String tag,
                                 final ArgumentsBuilder argsBuilder) {
         final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXPECTED_TEST_FILES_DIR : createTempDir("extract");
@@ -148,11 +151,15 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
 
     private static void assertOutputs(final String tag,
                                       final String outputPrefix) {
-        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf.gz %s.vcf.gz", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf.gz.tbi %s.vcf.gz.tbi", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5",
+                EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf %s.vcf",
+                EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+//        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf.idx %s.vcf.idx",
+//                EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         if (tag.contains("posUn")) {
-            SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.unlabeled.annot.hdf5 %s.unlabeled.annot.hdf5", EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
+            SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.unlabeled.annot.hdf5 %s.unlabeled.annot.hdf5",
+                    EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         } else {
             Assert.assertFalse(new File(outputPrefix, ".unlabeled.annot.hdf5").exists());
         }

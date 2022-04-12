@@ -116,7 +116,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 .toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "dataValidInputs")
+    @Test(dataProvider = "dataValidInputs", groups = {"python"}) // python environment is required to run tool and to use h5diff for exact-match comparisons
     public void testValidInputs(final String tag,
                                 final ArgumentsBuilder argsBuilder) {
         final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXPECTED_TEST_FILES_DIR : createTempDir("train");

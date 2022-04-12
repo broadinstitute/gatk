@@ -35,15 +35,15 @@ public final class SystemCommandUtilsTest extends GATKBaseTest {
         }
     }
 
-    @Test
+    @Test(groups = {"python"}) // python environment is required to use h5diff
     public void testRunSystemCommand() {
         runSystemCommand(String.format("h5diff %s/extract.AS.indel.pos.annot.hdf5 %s/extract.AS.indel.pos.annot.hdf5",
                 EXPECTED_TEST_FILES_DIR, EXPECTED_TEST_FILES_DIR));
-        runSystemCommand(String.format("diff %s/extract.AS.indel.pos.vcf.gz %s/extract.AS.indel.pos.vcf.gz",
+        runSystemCommand(String.format("diff %s/extract.AS.indel.pos.vcf %s/extract.AS.indel.pos.vcf",
                 EXPECTED_TEST_FILES_DIR, EXPECTED_TEST_FILES_DIR));
     }
 
-    @Test(expectedExceptions = AssertionError.class)
+    @Test(expectedExceptions = AssertionError.class, groups = {"python"}) // python environment is required to use h5diff
     public void testRunSystemCommandH5diffException() {
         runSystemCommand(String.format("h5diff %s/extract.AS.indel.pos.annot.hdf5 %s/extract.AS.snp.pos.annot.hdf5",
                 EXPECTED_TEST_FILES_DIR, EXPECTED_TEST_FILES_DIR));
@@ -51,13 +51,13 @@ public final class SystemCommandUtilsTest extends GATKBaseTest {
 
     @Test(expectedExceptions = AssertionError.class)
     public void testRunSystemCommandDiffException() {
-        runSystemCommand(String.format("diff %s/extract.AS.indel.pos.vcf.gz %s/extract.AS.snp.pos.vcf.gz",
+        runSystemCommand(String.format("diff %s/extract.AS.indel.pos.vcf %s/extract.AS.snp.pos.vcf",
                 EXPECTED_TEST_FILES_DIR, EXPECTED_TEST_FILES_DIR));
     }
 
     @Test(expectedExceptions = AssertionError.class)
     public void testRunSystemCommandDiffNoSuchFileException() {
-        runSystemCommand(String.format("diff %s/blahblah %s/extract.AS.snp.pos.vcf.gz",
+        runSystemCommand(String.format("diff %s/blahblah %s/extract.AS.snp.pos.vcf",
                 EXPECTED_TEST_FILES_DIR, EXPECTED_TEST_FILES_DIR));
     }
 }

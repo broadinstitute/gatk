@@ -101,9 +101,9 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     public static final String IGNORE_ALL_FILTERS_LONG_NAME = "ignore-all-filters";
     public static final String DO_NOT_TRUST_ALL_POLYMORPHIC_LONG_NAME = "do-not-trust-all-polymorphic";
     public static final String OMIT_ALLELES_IN_HDF5_LONG_NAME = "omit-alleles-in-hdf5";
+    public static final String DO_NOT_GZIP_VCF_OUTPUT_LONG_NAME = "do-not-gzip-vcf-output";
 
     static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
-    private static final String VCF_SUFFIX = ".vcf.gz";
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -160,6 +160,13 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     )
     boolean omitAllelesInHDF5 = false;
 
+    @Argument(
+            fullName = DO_NOT_GZIP_VCF_OUTPUT_LONG_NAME,
+            doc = "If specified, VCF output will not be compressed.",
+            optional = true
+    )
+    boolean doNotGZIPVCFOutput = false;
+
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     Set<VariantType> variantTypesToExtract;
     TreeSet<String> resourceLabels = new TreeSet<>();
@@ -180,7 +187,8 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         variantTypesToExtract = EnumSet.copyOf(variantTypesToExtractList);
 
         outputAnnotationsFile = new File(outputPrefix + ANNOTATIONS_HDF5_SUFFIX);
-        final File outputVCFFile = new File(outputPrefix + VCF_SUFFIX);
+        final String vcfSuffix = doNotGZIPVCFOutput ? ".vcf" : ".vcf.gz";
+        final File outputVCFFile = new File(outputPrefix + vcfSuffix);
 
         for (final File outputFile : Arrays.asList(outputAnnotationsFile, outputVCFFile)) {
             if ((outputFile.exists() && !outputFile.canWrite()) ||
