@@ -1,8 +1,5 @@
 name: Build and Upload GATK Nightly Docker Image
 on:
-  push:
-    branches:
-      - "je_gatkNightliesWithGithubActions"
   schedule:
     # trigger the job the image at 1am est every night (UTC 20:00)
     # NOTE: by default schedule:cron jobs pull from the repo default branch which makes this the master branch of gatk
