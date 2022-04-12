@@ -218,7 +218,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         }
     }
 
-    @Test
+    @Test(groups = {"python"}) // python environment is required to run tool and to use h5diff for exact-match comparisons
     public void testSNPOnlyModelsFromSNPOnlyAndSNPPlusIndelAnnotationsAreIdentical() {
         final File outputDir = createTempDir("train");
 
@@ -258,7 +258,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 outputPrefixSNPOnly, outputPrefixSNPPlusIndel));
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class, groups = {"python"}) // python environment is required to run tool
     public void testUnlabeledAnnotationsSpecifiedWithoutCalibrationSensitivityThreshold() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -281,7 +281,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class, groups = {"python"}) // python environment is required to run tool
     public void testCalibrationSensitivityThresholdSpecifiedWithoutUnlabeledAnnotations() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -303,7 +303,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class, groups = {"python"}) // python environment is required to run tool
     public void testPositiveAndUnlabeledAnnotationNamesAreNotIdentical() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -329,7 +329,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = UserException.BadInput.class)
+    @Test(expectedExceptions = UserException.BadInput.class, groups = {"python"}) // python environment is required to run tool
     public void testPositiveAnnotationsOfSpecifiedVariantTypesNotPresent() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -347,7 +347,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = UserException.BadInput.class)
+    @Test(expectedExceptions = UserException.BadInput.class, groups = {"python"}) // python environment is required to run tool
     public void testUnlabeledAnnotationsOfSpecifiedVariantTypesNotPresent() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
