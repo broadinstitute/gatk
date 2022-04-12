@@ -245,7 +245,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         try {
-        // write to VET if NOT reference block and NOT a no call
+            // write to VET if NOT reference block and NOT a no call
             if (!variant.isReferenceBlock() && !isNoCall(variant)) {
                 if (enableVet) vetCreator.apply(variant, readsContext, referenceContext, featureContext);
             }
