@@ -126,6 +126,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - mc_createvariantingestfiles_pet_cruft
    - name: GvsPrepareCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
