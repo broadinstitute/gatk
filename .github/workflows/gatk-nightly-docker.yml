@@ -28,7 +28,7 @@ jobs:
       - name: Export tags to env
         run: |
           DATE=$(date +%Y-%m-%d);
-          echo" DOCKER_NIGHTLY_TAG=broadinstitute/gatk-nightly:$DATE-$(git describe)-NIGHTLY-SNAPSHOT" >> $GITHUB_ENV
+          echo "DOCKER_NIGHTLY_TAG=broadinstitute/gatk-nightly:${DATE}-$(git describe)-NIGHTLY-SNAPSHOT" >> $GITHUB_ENV
           echo "DOCKER_NIGHTLY_TAG_LATEST=broadinstitute/gatk-nightly:latest" >> $GITHUB_ENV
 
       - name: Extract metadata (tags, labels) for Docker
