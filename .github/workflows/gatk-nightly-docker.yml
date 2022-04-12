@@ -37,7 +37,8 @@ jobs:
         with:
           images: broadinstitute/gatk-nightly
           tags: |
-            type=raw,value=${{env.DOCKER_NIGHTLY_TAG}},${{env.DOCKER_NIGHTLY_TAG_LATEST}}
+            type=raw,value=${{env.DOCKER_NIGHTLY_TAG}},
+            type=raw,value=${{env.DOCKER_NIGHTLY_TAG_LATEST}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
