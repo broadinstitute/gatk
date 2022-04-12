@@ -30,7 +30,7 @@ public class LocusDepthCodec extends AsciiFeatureCodec<LocusDepth>
 
     @Override public LocusDepth decode( final String line ) {
         final List<String> tokens = splitter.splitToList(line);
-        if ( tokens.size() != 8 ) {
+        if ( tokens.size() != 9 ) {
             throw new IllegalArgumentException("Invalid number of columns: " + tokens.size());
         }
         return new LocusDepth(tokens.get(0),

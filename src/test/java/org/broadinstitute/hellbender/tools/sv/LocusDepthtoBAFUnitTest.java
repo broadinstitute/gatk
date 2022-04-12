@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

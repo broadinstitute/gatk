@@ -8,10 +8,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.engine.MultiFeatureWalker;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils.RunningAverage;
 import org.broadinstitute.hellbender.utils.codecs.FeatureOutputCodec;
@@ -72,7 +69,7 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
             doc = "Locus depth files to process",
             fullName = LOCUS_DEPTH_FILE_NAME,
             shortName = StandardArgumentDefinitions.FEATURE_SHORT_NAME )
-    private List<GATKPath> locusDepthFiles;
+    private List<FeatureInput<LocusDepth>> locusDepthFiles;
 
     @Argument(fullName = SAMPLE_NAMES_NAME, doc = "Sample names", optional = true)
     private List<String> sampleNames;
@@ -141,6 +138,9 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
     @Override
     public Object onTraversalSuccess() {
         super.onTraversalSuccess();
+        if ( !sameLocusBuffer.isEmpty() ) {
+            processBuffer();
+        }
         writer.close();
         return null;
     }
