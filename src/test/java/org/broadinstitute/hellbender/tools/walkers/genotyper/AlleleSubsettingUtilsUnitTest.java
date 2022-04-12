@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -288,7 +287,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
     public void testCalculateMostLikelyAllelesTieDoesntRemoveAllTiedAlleles(){
         VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(Aref, C, G))
                 .genotypes(Arrays.asList(new GenotypeBuilder("sample1", Arrays.asList(C,G)).PL( new double[]{5, 5, 5, 5, 0, 5}).make())).make();
-        Assert.assertEquals(AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 1), Arrays.asList(Aref,C)) ;
+        Assert.assertEquals(AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 1, false), Arrays.asList(Aref,C)) ;
     }
 
     @DataProvider
@@ -315,9 +314,9 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testCalculateMostLikelyAllelesPreconditions(){
         VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(Aref, C, G)).make();
-        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(null, 2, 2));
-        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 0, 2));
-        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 0));
+        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(null, 2, 2, false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 0, 2, false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 0, false));
     }
 
     @Test

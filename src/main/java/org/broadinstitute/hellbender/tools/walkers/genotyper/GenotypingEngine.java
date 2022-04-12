@@ -134,7 +134,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         VariantContext reducedVC = vc;
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
-            final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles);
+            final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles, false);
             final GenotypesContext reducedGenotypes = allelesToKeep.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
                     AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc,
                             GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL);  //with no PLs in some reblocked GVCFs, no-calls are just going to cause problems, so keep 0/0 genotypes as such without trying to recall

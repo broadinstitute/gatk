@@ -1404,7 +1404,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final Map<SimpleInterval, List<Allele>> expectedSubsettedAllelesByLocus = new HashMap<>();
         for ( final VariantContext vc : callsNoMaxAlternateAlleles ) {
             if ( getNumAltAllelesExcludingNonRef(vc) > maxAlternateAlleles ) {
-                final List<Allele> mostLikelyAlleles = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, HomoSapiensConstants.DEFAULT_PLOIDY, maxAlternateAlleles);
+                final List<Allele> mostLikelyAlleles = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, HomoSapiensConstants.DEFAULT_PLOIDY, maxAlternateAlleles, false);
                 expectedSubsettedAllelesByLocus.put(new SimpleInterval(vc), mostLikelyAlleles);
             }
         }

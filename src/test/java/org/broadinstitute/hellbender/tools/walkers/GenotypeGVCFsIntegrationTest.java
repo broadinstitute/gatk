@@ -159,6 +159,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                         b37_reference_20_21},
 
                 //23 highly multi-allelic sites across 54 1000G exomes to test allele subsetting and QUAL calculation
+                //plus one 10-allele WGS variant that's all hom-ref with one GT that has unnormalized PLs from some sort of GenomicsDB corner case
                 {getTestFile("multiallelicQualRegression.vcf "),
                         getTestFile("multiallelicQualRegression.expected.vcf"),
                         NO_EXTRA_ARGS, hg38Reference}
