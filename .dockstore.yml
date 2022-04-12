@@ -65,7 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_371_assignids_deterministic
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
