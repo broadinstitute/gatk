@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
-
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -60,6 +59,7 @@ public class ExtractCohortEngine {
     private final ProgressMeter progressMeter;
     private final String projectID;
     private final boolean emitPLs;
+    private final boolean emitADs;
 
     /** List of sample names seen in the variant data from BigQuery. */
     private final Set<String> sampleNames;
@@ -116,6 +116,7 @@ public class ExtractCohortEngine {
                                final ProgressMeter progressMeter,
                                final String filterSetName,
                                final boolean emitPLs,
+                               final boolean emitADs,
                                final ExtractCohort.VQSLODFilteringType VQSLODFilteringType,
                                final boolean excludeFilteredSites,
                                final GQStateEnum inferredReferenceState,
@@ -144,6 +145,7 @@ public class ExtractCohortEngine {
         }
 
         this.emitPLs = emitPLs;
+        this.emitADs = emitADs;
 
         this.vetRangesFQDataSet = vetRangesFQDataSet;
         this.fqRangesExtractVetTable = fqRangesExtractVetTable;
@@ -777,6 +779,11 @@ public class ExtractCohortEngine {
         final String callPL = sampleRecord.getCallPL();
         if ( this.emitPLs && callPL != null ) {
             genotypeBuilder.PL(Arrays.stream(callPL.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
+        }
+
+        final String callAD = sampleRecord.getCallAD();
+        if ( this.emitADs && callAD != null ) {
+            genotypeBuilder.AD(Arrays.stream(callAD.split(SchemaUtils.MULTIVALUE_FIELD_DELIMITER)).mapToInt(Integer::parseInt).toArray());
         }
 
         final String callRGQ = sampleRecord.getCallRGQ();

@@ -26,7 +26,7 @@ FINAL_TABLE_TTL = ""
 output_table_prefix = str(uuid.uuid4()).split("-")[0]
 print(f"running with prefix {output_table_prefix}")
 
-PET_VET_TABLE_COUNT = -1
+REF_VET_TABLE_COUNT = -1
 client = None
 
 EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
@@ -45,7 +45,7 @@ def dump_job_stats():
   print(" Total GBs billed ", total/(1024 * 1024 * 1024), " GBs")
 
 def get_partition_range(i):
-  if i < 1 or i > PET_VET_TABLE_COUNT:
+  if i < 1 or i > REF_VET_TABLE_COUNT:
     raise ValueError(f"out of partition range")
 
   return { 'start': (i-1)*SAMPLES_PER_PARTITION + 1, 'end': i*SAMPLES_PER_PARTITION }
@@ -115,6 +115,7 @@ def create_final_extract_vet_table(fq_destination_table_vet_data):
               alt           STRING,
               call_GT       STRING,
               call_GQ       INT64,
+              call_AD       STRING,
               AS_QUALapprox STRING,
               QUALapprox    STRING,
               call_PL       STRING	
@@ -151,7 +152,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
           f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza})), "
     return sql
 
-  for i in range(1, PET_VET_TABLE_COUNT+1):
+  for i in range(1, REF_VET_TABLE_COUNT+1):
     partition_samples = get_samples_for_partition(sample_ids, i)  #sample ids for the partition
 
     if len(partition_samples) > 0:
@@ -180,16 +181,16 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids):
   def get_ref_subselect(fq_vet_table, samples, id):
     sample_stanza = ','.join([str(s) for s in samples])
-    sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, AS_QUALapprox, QUALapprox, CALL_PL FROM \n" \
+    sql = f"    q_{id} AS (SELECT location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL FROM \n" \
           f" `{fq_vet_table}` WHERE sample_id IN ({sample_stanza})), "
     return sql
 
-  for i in range(1, PET_VET_TABLE_COUNT+1):
+  for i in range(1, REF_VET_TABLE_COUNT+1):
     partition_samples = get_samples_for_partition(sample_ids, i)  #sample ids for the partition
 
     if len(partition_samples) > 0:
       subs = {}
-      insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, AS_QUALapprox, QUALapprox, CALL_PL) \n WITH \n"
+      insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, ref, alt, call_GT, call_GQ, call_AD, AS_QUALapprox, QUALapprox, CALL_PL) \n WITH \n"
       fq_vet_table = f"{fq_ranges_dataset}.{VET_TABLE_PREFIX}{i:03}"
       j = 1
 
@@ -264,8 +265,8 @@ def make_extract_table(control_samples,
 
     ## TODO -- provide a cmdline arg to override this (so we can simulate smaller datasets)
 
-    global PET_VET_TABLE_COUNT
-    PET_VET_TABLE_COUNT = max_tables
+    global REF_VET_TABLE_COUNT ## TODO why are we using PET here?
+    REF_VET_TABLE_COUNT = max_tables
 
     global TEMP_TABLE_TTL_HOURS
     TEMP_TABLE_TTL_HOURS = temp_table_ttl_hours
@@ -273,7 +274,7 @@ def make_extract_table(control_samples,
     global TEMP_TABLE_TTL
     TEMP_TABLE_TTL = f" OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL {TEMP_TABLE_TTL_HOURS} HOUR)) "
 
-    print(f"Using {PET_VET_TABLE_COUNT} tables in {fq_ranges_dataset}...")
+    print(f"Using {REF_VET_TABLE_COUNT} tables in {fq_ranges_dataset}...")
 
     # if we have a file of sample names, load it into a temporary table
     if (sample_names_to_extract):
@@ -289,7 +290,7 @@ def make_extract_table(control_samples,
     sample_ids = get_all_sample_ids(fq_destination_table_samples)
     print(f"Discovered {len(sample_ids)} samples in {fq_destination_table_samples}...")
 
-    # create the tables for exract data
+    # create the tables for extract data
     create_final_extract_ref_table(fq_destination_table_ref_data)
     create_final_extract_vet_table(fq_destination_table_vet_data)
 

@@ -139,6 +139,13 @@ public class ExtractCohort extends ExtractTool {
     )
     private boolean emitPLs = false;
 
+    @Argument(
+            fullName = "emit-ads",
+            doc = "Should allele depths be emitted in output VCF",
+            optional = true
+    )
+    private boolean emitADs = false;
+
     // what if this was a flag input only?
 
     @Argument(
@@ -283,6 +290,12 @@ public class ExtractCohort extends ExtractTool {
             );
         }
 
+        if (emitADs) {
+            VCFStandardHeaderLines.addStandardFormatLines(extraHeaderLines, true,
+                    VCFConstants.GENOTYPE_ALLELE_DEPTHS
+            );
+        }
+
         SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
         Map<Long, String> sampleIdToName = sampleList.getMap();
 
@@ -341,6 +354,7 @@ public class ExtractCohort extends ExtractTool {
                 progressMeter,
                 filterSetName,
                 emitPLs,
+                emitADs,
                 vqslodfilteringType,
                 excludeFilteredSites,
                 inferredReferenceState,

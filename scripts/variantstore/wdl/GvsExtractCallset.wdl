@@ -15,7 +15,7 @@ workflow GvsExtractCallset {
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
-    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_extract_perf_20220404/gatk-package-4.2.0.0-485-g86fd5ac-SNAPSHOT-local.jar"
+    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-add-AD-04112022/gatk-package-4.2.0.0-498-g1f53709-SNAPSHOT-local.jar"
 
     String output_file_base_name = filter_set_name
 
@@ -41,6 +41,9 @@ workflow GvsExtractCallset {
   String fq_samples_to_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__SAMPLES"
   String fq_ranges_dataset = "~{project_id}.~{dataset_name}"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
+
+  Boolean emit_pls = false
+  Boolean emit_ads = true
 
   call Utils.SplitIntervals {
     input:
@@ -102,6 +105,8 @@ workflow GvsExtractCallset {
         max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
         extract_preemptible_override       = extract_preemptible_override,
         extract_maxretries_override        = extract_maxretries_override,
+        emit_pls                           = emit_pls,
+        emit_ads                           = emit_ads,
     }
   }
 
@@ -200,6 +205,9 @@ task ExtractTask {
     String output_file
     String? output_gcs_dir
 
+    Boolean emit_pls
+    Boolean emit_ads
+
     Boolean do_not_filter_override
     String fq_ranges_dataset
     String fq_filter_set_info_table
@@ -256,6 +264,8 @@ task ExtractTask {
         ~{"--inferred-reference-state " + drop_state} \
         -L ~{intervals} \
         --project-id ~{read_project_id} \
+        ~{true='--emit-pls' false='' emit_pls} \
+        ~{true='--emit-ads' false='' emit_ads} \
         ${FILTERING_ARGS}
 
     # Drop trailing slash if one exists

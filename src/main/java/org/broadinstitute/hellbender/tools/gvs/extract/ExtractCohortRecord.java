@@ -19,6 +19,7 @@ public class ExtractCohortRecord implements Locatable {
     private final String refAllele;
     private final String altAllele;
     private final String callGT;
+    private final String callAD;
     private final String callGQ;
     private final String callRGQ;
     private final String qualapprox;
@@ -54,6 +55,7 @@ public class ExtractCohortRecord implements Locatable {
         this.refAllele = Objects.toString(genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME), null);
         this.altAllele = Objects.toString(genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME), null);
         this.callGT = Objects.toString(genericRecord.get(SchemaUtils.CALL_GT), null);
+        this.callAD = Objects.toString(genericRecord.get(SchemaUtils.CALL_AD), null);
         this.callGQ = Objects.toString(genericRecord.get(SchemaUtils.CALL_GQ), null);
         this.qualapprox = Objects.toString(genericRecord.get(SchemaUtils.QUALapprox), null);
         this.asQualapprox = Objects.toString(genericRecord.get(SchemaUtils.AS_QUALapprox), null);
@@ -84,6 +86,7 @@ public class ExtractCohortRecord implements Locatable {
         this.refAllele = null;
         this.altAllele = null;
         this.callGT = null;
+        this.callAD = null;
         this.callGQ = null;
         this.callRGQ = null;
         this.qualapprox = null;
@@ -111,6 +114,8 @@ public class ExtractCohortRecord implements Locatable {
     public String getAltAllele() { return this.altAllele; }
 
     public String getCallGT() { return this.callGT; }
+
+    public String getCallAD() { return this.callAD; }
 
     public String getCallGQ() { return this.callGQ; }
 

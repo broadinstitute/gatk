@@ -79,6 +79,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-225-add-AD
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
@@ -116,7 +117,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_wdl_gatk_override
+         - rc-vs-225-add-AD
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -145,6 +146,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-225-add-AD
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
