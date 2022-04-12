@@ -33,7 +33,7 @@ import java.util.List;
  */
 @CommandLineProgramProperties(
         summary = "Exome and Genome Ingest tool for the Joint Genotyping in Big Query project",
-        oneLineSummary = "Ingest tool for BQJG",
+        oneLineSummary = "Ingest tool for GVS",
         programGroup = ShortVariantDiscoveryProgramGroup.class,
         omitFromCommandLine = true
 )
@@ -46,12 +46,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
-    private String sampleName;
     private String sampleId;
-    private List<SimpleInterval> userIntervals;
 
     // Inside the parent directory, a directory for each chromosome will be created, with a vet directory in each one.
-    // Each vet directory will hold all the vet tsvs for each sample.
+    // Each vet directory will hold all the vet TSVs for each sample.
     // A sample_info directory will be created, with a sample_info tsv for each sample.
 
     @Argument(fullName = "ref-block-gq-to-ignore",
@@ -111,27 +109,27 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             fullName = "ref-version",
             doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38",
             optional = true)
-    private String refVersion = "37";
+    public String refVersion = "37";
 
     @Argument(
             fullName = "output-directory",
             doc = "directory for output tsv files",
             optional = true)
-    private File outputDir = new File(".");
+    public File outputDir = new File(".");
 
     @Argument(
             fullName = "project-id",
             doc = "ID of the Google Cloud project where the dataset for vet tables exists",
             optional = true
     )
-    protected String projectID = null;
+    public String projectID = null;
 
     @Argument(
             fullName = "dataset-name",
             doc = "Name of the dataset to update vet tables",
             optional = true
     )
-    protected String datasetName = null;
+    public String datasetName = null;
 
 
     @Argument(
@@ -139,7 +137,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             doc = "Even if there are allele-specific (AS) annotations, use backwards compatibility mode",
             optional = true
     )
-    protected boolean forceLoadingFromNonAlleleSpecific = false;
+    public boolean forceLoadingFromNonAlleleSpecific = false;
 
     // getGenotypes() returns list of lists for all samples at variant
     // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
@@ -172,7 +170,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // TODO if you change here, also change in CreateArrayIngestFiles
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
-        sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
+        String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
             throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
         }
@@ -192,12 +190,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // To set up the missing positions
         SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
-        userIntervals = intervalArgumentCollection.getIntervals(seqDictionary);
 
-        final GenomeLocSortedSet genomeLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
-        intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocSortedSet.getGenomeLocParser(), IntervalUtils.genomeLocsFromLocatables(genomeLocSortedSet.getGenomeLocParser(), intervalArgumentCollection.getIntervals(seqDictionary)));
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(seqDictionary);
+        intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
 
         if (enableReferenceRanges) {
+            //noinspection ConstantConditions
             refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName);
         }
 
@@ -235,7 +233,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             throw new IllegalStateException("There are no intervals being covered by this variant, something went wrong with interval parsing");
         }
 
-        // take the first interval(assuming this is returned in order) and make sure if its a variant, that it starts at/after the interval start
+        // take the first interval(assuming this is returned in order) and make sure if it's a variant, that it starts at/after the interval start
         // we are going to ignore any deletions that start before an interval.
         if (!variant.isReferenceBlock() && intervalsToWrite.get(0).getStart() > variant.getStart()){
             return;
@@ -298,7 +296,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             refCreator.closeTool();
         }
         if (vetCreator != null) {
-            vetCreator.closeTool();;
+            vetCreator.closeTool();
         }
     }
 }
