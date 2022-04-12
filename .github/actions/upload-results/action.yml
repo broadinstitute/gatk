@@ -4,12 +4,8 @@ inputs:
   warnPR:
     description: 'Update the failure logs on the PR for this job'
     required: true
-    default: 'false'
-  repo-token:
-    description: 'The GITHUB_TOKEN secret'
-    required: false
   test-type:
-    description: 'Type to lable this test as'
+    description: 'Type to label this test as'
     required: true
   jdk-version:
     description: 'jdk used for this test'
@@ -23,8 +19,12 @@ inputs:
   identifier:
     description: 'Identifier to use for finding the unique name for jobs in order to determine html logs location'
     required: true
+## Secrets and token inputs
+  repo-token:
+    description: 'The GITHUB_TOKEN secret used for querying the github api to locate the logs for this run'
+    required: false
   bot-comment-key:
-    description: 'Key to be used for commenting failed jobs on github PRs'
+    description: 'Key corresponding to the user account to be used for making altert comments on github'
     required: false
 
 runs:

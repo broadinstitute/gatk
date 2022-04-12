@@ -112,7 +112,7 @@ jobs:
         run: |
           ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} test jacocoTestReport
 
-      - uses: /broadinstitute/gatk/.github/actions/upload-results@lb_github_actions
+      - uses: /broadinstitute/gatk/.github/actions/upload-results
         if: always()
         with:
           warnPR: ${{ github.event_name == 'pull_request' && steps.jacoco-tests.outcome != 'success' }}
@@ -204,7 +204,7 @@ jobs:
            && cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test \
            && rm -r build/reports/tests/testOnPackagedReleaseJar;
 
-      - uses: /broadinstitute/gatk/.github/actions/upload-results@lb_github_actions
+      - uses: /broadinstitute/gatk/.github/actions/upload-results
         if: always()
         with:
           warnPR: ${{ github.event_name == 'pull_request' && steps.docker-jacocco-tests.outcome != 'success' }}
@@ -230,7 +230,7 @@ jobs:
           java-version: '8'
           distribution: 'adopt'
           cache: gradle
-      - uses: /broadinstitute/gatk/.github/actions/install-cromwell@lb_github_actions
+      - uses: /broadinstitute/gatk/.github/actions/install-cromwell
         with:
           CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
 
@@ -259,7 +259,7 @@ jobs:
           java-version: '8'
           distribution: 'adopt'
           cache: gradle
-      - uses: /broadinstitute/gatk/.github/actions/install-cromwell@lb_github_actions
+      - uses: /broadinstitute/gatk/.github/actions/install-cromwell
         with:
           CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
 
