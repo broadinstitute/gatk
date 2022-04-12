@@ -25,23 +25,21 @@ import java.util.Set;
 public final class RefCreator {
     private static final Logger logger = LogManager.getLogger(RefCreator.class);
 
-    private CommonCode.OutputType outputType;
+    private final CommonCode.OutputType outputType;
 
     private RefRangesWriter refRangesWriter = null;
 
-    private boolean writeReferenceRanges;
+    private final boolean writeReferenceRanges;
     private final String sampleId;
     private SimpleInterval previousInterval;
-    private final SAMSequenceDictionary seqDictionary;
-    private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<GQStateEnum>();
-    private GenomeLocSortedSet coverageLocSortedSet;
+    private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
+    private final GenomeLocSortedSet coverageLocSortedSet;
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
 
     public RefCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
         this.sampleId = sampleId;
-        this.seqDictionary = seqDictionary;
         this.outputType = outputType;
         this.writeReferenceRanges = writeReferenceRanges;
 
@@ -123,7 +121,6 @@ public final class RefCreator {
                 }
             }
         }
-
     }
 
     public void writeMissingIntervals(GenomeLocSortedSet intervalArgumentGenomeLocSortedSet) throws IOException {
@@ -136,9 +133,7 @@ public final class RefCreator {
             // write all positions in this block
             writeMissingPositions(
                     SchemaUtils.encodeLocation(contig, genomeLoc.getStart()),
-                    SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()),
-                    sampleId
-            );
+                    SchemaUtils.encodeLocation(contig, genomeLoc.getEnd()));
         }
     }
 
@@ -149,10 +144,10 @@ public final class RefCreator {
         // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
         // small as possible while still containing the same bases.
         final SimpleInterval variantInterval = new SimpleInterval(variantChr, start, end);
-        final int intervalStart = (previousInterval != null && previousInterval.overlapsWithMargin(variantInterval, 1)) ?
-                previousInterval.getStart() : variantInterval.getStart();
-        final int intervalEnd = (previousInterval != null && previousInterval.overlapsWithMargin(variantInterval, 1)) ?
-                Math.max(previousInterval.getEnd(), variantInterval.getEnd()) : variantInterval.getEnd();
+
+        boolean overlapping = (previousInterval != null && previousInterval.overlapsWithMargin(variantInterval, 1));
+        final int intervalStart = overlapping ? previousInterval.getStart() : variantInterval.getStart();
+        final int intervalEnd = overlapping ? Math.max(previousInterval.getEnd(), variantInterval.getEnd()) : variantInterval.getEnd();
 
         final GenomeLoc possiblyMergedGenomeLoc = coverageLocSortedSet.getGenomeLocParser().createGenomeLoc(variantInterval.getContig(), intervalStart, intervalEnd);
         coverageLocSortedSet.add(possiblyMergedGenomeLoc, true);
@@ -202,7 +197,7 @@ public final class RefCreator {
         return rows;
     }
 
-    public void writeMissingPositions(long start, long end, String sampleName) throws IOException {
+    public void writeMissingPositions(long start, long end) throws IOException {
         if (writeReferenceRanges) {
             // break up missing blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
             long localStart = start;
@@ -239,7 +234,7 @@ public final class RefCreator {
     // this is ugly.... I think we need to rework the enum to better handle the new use cases
     // but just getting this going.
     public static Set<GQStateEnum> getGQStateEnumGreaterThan(GQStateEnum s){
-        Set<GQStateEnum> ret = new HashSet<GQStateEnum>();
+        Set<GQStateEnum> ret = new HashSet<>();
 
         switch (s) {
             case ZERO:
@@ -292,7 +287,7 @@ public final class RefCreator {
         try {
             if (refRangesWriter != null) refRangesWriter.close();
         } catch (final Exception e) {
-            throw new IllegalArgumentException("Couldn't close referene ranges writer", e);
+            throw new IllegalArgumentException("Couldn't close reference ranges writer", e);
         }
     }
 }
