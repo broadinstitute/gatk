@@ -140,7 +140,8 @@ public class ExtractFeaturesEngine {
                 datasetID,
                 userDefinedFunctions,
                 useBatchQueries,
-                cleanQueryLabels);
+                cleanQueryLabels,
+                "extract_features");
 
         createVQSRInputFromTableResult(storageAPIAvroReader);
     }
