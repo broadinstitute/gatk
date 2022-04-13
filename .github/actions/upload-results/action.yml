@@ -31,7 +31,8 @@ runs:
       if: always()
       uses: actions/upload-artifact@v2
       with:
-        name: test-results-${{VAR:-gdocker-}}${{ matrix.Java }}-${{ matrix.testType }}
+        # ternary expression syntax is workaround found here https://github.com/actions/runner/issues/409
+        name: test-results-${{ inputs.is-docker == 'true' && 'docker-' ||  '' }}${{ matrix.Java }}-${{ matrix.testType }}
         path: build/reports/tests
 
     - name: Upload to codecov
