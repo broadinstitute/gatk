@@ -61,9 +61,7 @@ runs:
         GITHUB_BASEURL=https://api.github.com
         REPO_ID=$(curl --get -Ss -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/${{ github.repository }} | jq -r .id)
         GITHUB_API="/repositories/${REPO_ID}/actions/runs/${{ github.run_id }}/jobs"
-        echo "${{ inputs.identifier }}"
-        #curl --get -Ss -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${GITHUB_BASEURL}${GITHUB_API}?per_page=${INPUT_PER_PAGE:-H30}"
-        eval "$(curl --get -Ss -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${GITHUB_BASEURL}${GITHUB_API}?per_page=${INPUT_PER_PAGE:-H30}" \
+        eval "$(curl --get -Ss -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${GITHUB_BASEURL}${GITHUB_API}?per_page=30" \
         | jq -r --arg job_name "${{ inputs.identifier }}" '.jobs | map(select(.name == $job_name)) | .[0] | @sh "job_id=\(.id) html_url=\(.html_url)"')"
 
         echo ::set-output name=job_id::"${job_id}"
@@ -76,12 +74,12 @@ runs:
       if: ${{ inputs.warnPR == 'true' }}
       env:
         GITHUB_TOKEN: ${{ inputs.bot-comment-key }}
-        TEST_TYPE: ${{ inputs.test-type }}
+        TEST_TYPE: ${{ matrix.testType }}
         GITHUB_EVENT_NUMBER: ${{ github.event.number }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         JOB_MATRIX_ID: ${{ inputs.job-matrix-id }}
         GITHUB_RUN_ID: ${{ github.run_id }}
-        JDK_VERSION: ${{ inputs.jdk-version }}
+        JDK_VERSION: ${{ matrix.Java }}
         ACTIONS_JOB_WEB_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
         GITHUB_LOGS_URL: ${{ steps.loghtml.outputs.html_url }}
       run: |
