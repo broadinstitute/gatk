@@ -32,7 +32,7 @@ import java.util.List;
  * Ingest variant walker
  */
 @CommandLineProgramProperties(
-        summary = "Exome and Genome Ingest tool for the Genomic Variant Store in Big Query project",
+        summary = "Exome and Genome Ingest tool for the Genomic Variant Store",
         oneLineSummary = "Ingest tool for GVS",
         programGroup = ShortVariantDiscoveryProgramGroup.class,
         omitFromCommandLine = true
@@ -68,7 +68,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             shortName = "rr",
             doc = "write reference ranges data",
             optional = true)
-    public boolean enableReferenceRanges = false;
+    public boolean enableReferenceRanges = true;
 
     @Argument(fullName = "enable-vet",
             shortName = "ev",
@@ -255,7 +255,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         try {
             if (refCreator != null) {
-                refCreator.apply(variant, intervalsToWrite);
+                if (enableReferenceRanges) refCreator.apply(variant, intervalsToWrite);
             }
         } catch (IOException ioe) {
             throw new GATKException("Error writing reference ranges", ioe);
