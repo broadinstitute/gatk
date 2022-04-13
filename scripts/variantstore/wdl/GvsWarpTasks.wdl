@@ -172,7 +172,6 @@ task IndelsVariantRecalibrator {
         -V ~{sites_only_variant_filtered_vcf} \
         -O ~{recalibration_filename} \
         --output-model indels.model \
-        --rscript-file indels.Rscript \
         --tranches-file ~{tranches_filename} \
         --trust-all-polymorphic \
         -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
@@ -199,7 +198,6 @@ task IndelsVariantRecalibrator {
         File recalibration_index = "~{recalibration_filename}.idx"
         File tranches = "~{tranches_filename}"
         File model = "indels.model"
-        File rscript = "indels.Rscript"
     }
 }
 
@@ -252,7 +250,6 @@ task SNPsVariantRecalibrator {
         -V ~{sites_only_variant_filtered_vcf} \
         -O ~{recalibration_filename} \
         --output-model snps.model \
-        --rscript-file snps.Rscript \
         --tranches-file ~{tranches_filename} \
         --trust-all-polymorphic \
         -tranche ~{sep=' -tranche ' recalibration_tranche_values} \
@@ -281,6 +278,5 @@ task SNPsVariantRecalibrator {
         File recalibration_index = "~{recalibration_filename}.idx"
         File tranches = "~{tranches_filename}"
         File model = "snps.model"
-        File rscript = "snps.Rscript"
     }
 }
