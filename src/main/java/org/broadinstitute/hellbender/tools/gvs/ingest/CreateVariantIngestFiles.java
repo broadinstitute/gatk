@@ -32,7 +32,7 @@ import java.util.List;
  * Ingest variant walker
  */
 @CommandLineProgramProperties(
-        summary = "Exome and Genome Ingest tool for the Joint Genotyping in Big Query project",
+        summary = "Exome and Genome Ingest tool for the Genomic Variant Store in Big Query project",
         oneLineSummary = "Ingest tool for GVS",
         programGroup = ShortVariantDiscoveryProgramGroup.class,
         omitFromCommandLine = true
@@ -247,7 +247,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         try {
             // write to VET if NOT reference block and NOT a no call
             if (!variant.isReferenceBlock() && !isNoCall(variant)) {
-                if (enableVet) vetCreator.apply(variant, readsContext, referenceContext, featureContext);
+                if (enableVet) vetCreator.apply(variant);
             }
         } catch (IOException ioe) {
             throw new GATKException("Error writing VET", ioe);
