@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.bigquery;
 import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
+import jersey.repackaged.com.google.common.collect.Lists;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
@@ -140,6 +141,25 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
         Map<String, String> labels = null;
         final TableResult result = BigQueryUtils.executeQuery(query, labels);
+
+        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+    }
+
+    @Test(groups = {"cloud"})
+    public void testQueryWithNullWorkflow_Name() { // THIS IS THE TEST IM WRITING
+        // this build a docker
+        final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
+        final List<> fieldsToRetrieve = Lists.asList("");
+        Map<String, String> labels = null;
+        final StorageAPIAvroReader reader = BigQueryUtils.executeQueryWithStorageAPI(
+                query,
+                fieldsToRetrieve,
+                "projectID",
+                "datasetID",
+                "userDefinedFunctions",
+                false,
+                labels
+        );
 
         checkQueryResults(result, getAllExpectedNamesAndAges(), query);
     }
