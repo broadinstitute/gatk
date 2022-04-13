@@ -115,7 +115,7 @@ jobs:
         run: |
           ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} test jacocoTestReport
 
-      - uses: ./.github/actions/upload-results
+      - uses: ./.github/actions/upload-gatk-test-results
         if: always()
         with:
           warnPR: ${{ github.event_name == 'pull_request' && steps.jacoco-tests.outcome != 'success' }}
@@ -205,7 +205,7 @@ jobs:
            && cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test \
            && rm -r build/reports/tests/testOnPackagedReleaseJar;
 
-      - uses: ./.github/actions/upload-results
+      - uses: ./.github/actions/upload-gatk-test-results
         if: always()
         with:
           warnPR: ${{ github.event_name == 'pull_request' && steps.docker-jacocco-tests.outcome != 'success' }}
