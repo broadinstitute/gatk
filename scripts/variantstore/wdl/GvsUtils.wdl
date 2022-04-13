@@ -65,6 +65,7 @@ task SplitIntervals {
     File ref_dict
     Int scatter_count
     File? interval_weights_bed
+    String? intervals_file_extension
     String? split_intervals_extra_args
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
@@ -108,6 +109,7 @@ task SplitIntervals {
       ~{"--weight-bed-file " + interval_weights_bed} \
       -scatter ~{scatter_count} \
       -O interval-files \
+      ~{"--extension " + intervals_file_extension} \
       --interval-file-num-digits 10 \
       ~{split_intervals_extra_args}
     cp interval-files/*.interval_list .

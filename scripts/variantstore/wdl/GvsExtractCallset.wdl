@@ -12,6 +12,7 @@ workflow GvsExtractCallset {
     String filter_set_name
     String query_project = project_id
     Int scatter_count
+    Boolean zero_pad_output_vcf_filenames = true
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
@@ -45,6 +46,8 @@ workflow GvsExtractCallset {
   Boolean emit_pls = false
   Boolean emit_ads = true
 
+  String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.vcf.gz.interval_list' else '-scattered.interval_list'
+
   call Utils.SplitIntervals {
     input:
       intervals = interval_list,
@@ -52,6 +55,7 @@ workflow GvsExtractCallset {
       ref_fai = reference_index,
       ref_dict = reference_dict,
       interval_weights_bed = interval_weights_bed,
+      intervals_file_extension = intervals_file_extension,
       scatter_count = scatter_count,
       output_gcs_dir = output_gcs_dir,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
@@ -78,6 +82,9 @@ workflow GvsExtractCallset {
   }
 
   scatter(i in range(length(SplitIntervals.interval_files))) {
+    String interval_filename = basename(SplitIntervals.interval_files[i])
+    String vcf_filename = if (zero_pad_output_vcf_filenames) then sub(interval_filename, ".interval_list", "") else "~{output_file_base_name}_${i}.vcf.gz"
+
     call ExtractTask {
       input:
         gatk_override                      = gatk_override,
@@ -100,7 +107,7 @@ workflow GvsExtractCallset {
         filter_set_name_verified           = ValidateFilterSetName.done,
         service_account_json_path          = service_account_json_path,
         drop_state                         = "FORTY",
-        output_file                        = "${output_file_base_name}_${i}.vcf.gz",
+        output_file                        = vcf_filename,
         output_gcs_dir                     = output_gcs_dir,
         max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
         extract_preemptible_override       = extract_preemptible_override,

@@ -96,7 +96,7 @@ public class WeightedSplitIntervals extends GATKTool {
         }
         final float targetWeightPerScatter = totalWeight / (float) scatterCount;
 
-        logger.info("Total Weight:"+totalWeight + " scatterCount: " + scatterCount + " target:" + targetWeightPerScatter);
+        logger.info("Total Weight: " + totalWeight + " scatterCount: " + scatterCount + " target: " + targetWeightPerScatter);
 
         final int maxNumberOfPlaces = Math.max((int)Math.floor(Math.log10(scatterCount-1))+1, numDigits);
         final String formatString = "%0" + maxNumberOfPlaces + "d";
