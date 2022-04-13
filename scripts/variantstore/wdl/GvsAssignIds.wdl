@@ -141,7 +141,7 @@ task AssignIds {
 
     # perform actual id assignment
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false --parameter=offset:INTEGER:$offset \
-      'UPDATE `~{dataset_name}.~{sample_info_table}` m SET m.sample_id = id_assign.id FROM (SELECT sample_name, @offset + ROW_NUMBER() OVER() as id FROM `~{dataset_name}.~{sample_info_table}` WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;'
+      'UPDATE `~{dataset_name}.~{sample_info_table}` m SET m.sample_id = id_assign.id FROM (SELECT sample_name, @offset + ROW_NUMBER() OVER(order by sample_name) as id FROM `~{dataset_name}.~{sample_info_table}` WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;'
 
     # retrieve the list of assigned ids and samples to update the datamodel
     echo "entity:sample_id,gvs_id" > update.tsv
