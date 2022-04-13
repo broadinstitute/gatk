@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.protobuf.Descriptors;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
@@ -104,7 +105,7 @@ public class VetCreator {
                 jsonObject.put(fieldEnum.toString(), Integer.valueOf(fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific)));
             } else {
                 String strVal = fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific);
-                jsonObject.put(fieldEnum.toString(), "".equals(strVal) ? null : strVal);
+                jsonObject.put(fieldEnum.toString(), StringUtils.isEmpty(strVal) ? null : strVal);
             }
         }
         return jsonObject;
