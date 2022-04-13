@@ -2,17 +2,13 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.protobuf.Descriptors;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
+import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.bigquery.PendingBQWriter;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,20 +18,13 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import org.json.JSONObject;
-
 public class VetCreator {
-
-    static final Logger logger = LogManager.getLogger(VetCreator.class);
-
-    private CommonCode.OutputType outputType;
+    private final CommonCode.OutputType outputType;
 
     private SimpleXSVWriter vetWriter = null;
     private final String sampleId;
-    private static String VET_FILETYPE_PREFIX = "vet_";
-    private static String PREFIX_SEPARATOR = "_";
     private PendingBQWriter vetBQJsonWriter = null;
-    private boolean forceLoadingFromNonAlleleSpecific;
+    private final boolean forceLoadingFromNonAlleleSpecific;
 
     public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific) {
         this.sampleId = sampleId;
@@ -43,12 +32,14 @@ public class VetCreator {
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
 
         try {
+            String PREFIX_SEPARATOR = "_";
+            String VET_FILETYPE_PREFIX = "vet_";
             switch (outputType) {
                 case BQ:
                     if (projectId == null || datasetName == null) {
                         throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                     }
-                    vetBQJsonWriter = new PendingBQWriter(projectId, datasetName,VET_FILETYPE_PREFIX + tableNumber);
+                    vetBQJsonWriter = new PendingBQWriter(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber);
 
                     break;
                 case TSV:
@@ -62,7 +53,7 @@ public class VetCreator {
         }
     }
 
-    public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) throws IOException {
+    public void apply(VariantContext variant) throws IOException {
         int start = variant.getStart();
         long location = SchemaUtils.encodeLocation(variant.getContig(), start);
         List<String> row = createRow(
@@ -113,7 +104,7 @@ public class VetCreator {
                 jsonObject.put(fieldEnum.toString(), Integer.valueOf(fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific)));
             } else {
                 String strVal = fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific);
-                jsonObject.put(fieldEnum.toString(), strVal == "" ? null : strVal);
+                jsonObject.put(fieldEnum.toString(), "".equals(strVal) ? null : strVal);
             }
         }
         return jsonObject;

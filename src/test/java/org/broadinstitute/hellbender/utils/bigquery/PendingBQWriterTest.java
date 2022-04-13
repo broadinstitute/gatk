@@ -4,7 +4,6 @@ import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.protobuf.Descriptors;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.eclipse.jetty.util.ajax.JSON;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
@@ -12,19 +11,14 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 public class PendingBQWriterTest extends GATKBaseTest {
-
     private static final String BIGQUERY_TEST_PROJECT = "broad-dsde-dev";
     private static final String BIGQUERY_TEST_DATASET = "gatk_bigquery_test_dataset";
-    private static final String BIGQUERY_TEST_TABLE = "gatk_bigquery_test_table1";
-    private static final String BIGQUERY_FULLY_QUALIFIED_TABLE = String.format("%s.%s.%s",
-            BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, BIGQUERY_TEST_TABLE);
 
     private static final String uuid =  UUID.randomUUID().toString().replace('-', '_');
     private static final String TEMP_TABLE_NAME = "PendingTestTable_" + uuid;
@@ -84,5 +78,4 @@ public class PendingBQWriterTest extends GATKBaseTest {
             Assert.assertEquals(sample_name, expectedValues.getString(SAMPLE_NAME_KEY));
         }
     }
-
 }

@@ -15,7 +15,7 @@ public class PendingBQWriter extends CommittedBQWriter {
     public void flushBuffer() {
         try {
             if (jsonArr.length() > 0) {
-                writeJsonArray(0);
+                writeJsonArray();
             }
         } catch (Exception ex) {
             throw new GATKException("Caught exception writing last records on close of " + writeStream.getName(), ex);
@@ -35,7 +35,7 @@ public class PendingBQWriter extends CommittedBQWriter {
         BatchCommitWriteStreamsResponse commitResponse =
                 bqWriteClient.batchCommitWriteStreams(commitRequest);
         // If the response does not have a commit time, it means the commit operation failed.
-        if (commitResponse.hasCommitTime() == false) {
+        if (!commitResponse.hasCommitTime()) {
             for (StorageError err : commitResponse.getStreamErrorsList()) {
                 logger.error(err.getErrorMessage());
             }
@@ -43,7 +43,6 @@ public class PendingBQWriter extends CommittedBQWriter {
         }
         logger.info("Appended and committed records successfully.");
     }
-
 
     public void close() {
         super.close();
