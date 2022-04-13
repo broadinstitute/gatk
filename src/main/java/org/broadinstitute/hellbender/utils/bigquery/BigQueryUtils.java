@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -410,8 +411,10 @@ public final class BigQueryUtils {
                                                                   final String datasetID,
                                                                   final String userDefinedFunctions,
                                                                   final boolean runQueryInBatchMode,
-                                                                  Map<String, String> labels) {
-        final String tempTableName = String.format("%s_%s", "temp_table_extract_features", UUID.randomUUID().toString().replace('-', '_'));
+                                                                  Map<String, String> labels,
+                                                                  final String workflow_name) {
+        final String workflow = Optional.ofNullable(workflow_name).orElse("defaultValue");
+        final String tempTableName = String.format("%s_%s_%s", "temp_table", workflow, UUID.randomUUID().toString().replace('-', '_'));
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, datasetID, tempTableName);
 
         final String queryStringWithUDFs = userDefinedFunctions == null ? queryString : userDefinedFunctions + queryString;
