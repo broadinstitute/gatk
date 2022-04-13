@@ -438,7 +438,6 @@ tasks.withType(ShadowJar) {
     mergeServiceFiles()
     relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
     zip64 true
-    exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
     exclude '**/*.SF' // these are Manifest signature files and
     exclude '**/*.RSA' // keys which may accidentally be imported from other signed projects and then fail at runtime
 
