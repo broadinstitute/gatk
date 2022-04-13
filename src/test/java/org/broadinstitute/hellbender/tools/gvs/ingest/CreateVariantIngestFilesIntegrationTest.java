@@ -25,7 +25,10 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         final String interval_list_file = "wgs_calling_regions.hg38.chr20.100k.interval_list";
         final String sample_map_file = "test_sample_map.tsv";
         final File outputDir = createTempDir("output_dir");
-        final List<String> expectedOutputFiles = Collections.singletonList(getToolTestDataDir() + "expected.vet_001_NA12878.tsv");
+        final List<String> expectedOutputFiles = Arrays.asList(
+                getToolTestDataDir() + "expected.ref_ranges_001_NA12878.tsv",
+                getToolTestDataDir() + "expected.vet_001_NA12878.tsv"
+        );
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args
@@ -34,6 +37,7 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
                 .add("interval-set-rule", "INTERSECTION")
                 .add("output-type", "TSV")
                 .add("SNM", getToolTestDataDir() + sample_map_file)
+                .add("enable-reference-ranges", true)
                 .add("ref-version", "38")
                 .add("output-directory", outputDir)
         ;
@@ -44,8 +48,10 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         );
         Collections.sort(allOutputFiles);
 
-        final List<File> expectedFileNames = Collections.singletonList(
-                new File(outputDir + "/vet_001_" + input_vcf_file + ".tsv"));
+        final List<File> expectedFileNames = Arrays.asList(
+                new File(outputDir + "/ref_ranges_001_" + input_vcf_file + ".tsv"),
+                new File(outputDir + "/vet_001_" + input_vcf_file + ".tsv")
+        );
 
         // test contents of files match
         IntegrationTestSpec.assertMatchingFiles(allOutputFiles, expectedOutputFiles, false, STRICT);
