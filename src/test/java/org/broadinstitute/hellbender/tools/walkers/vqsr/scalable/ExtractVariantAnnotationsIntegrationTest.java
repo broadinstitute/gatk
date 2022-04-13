@@ -161,7 +161,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
             SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.unlabeled.annot.hdf5 %s.unlabeled.annot.hdf5",
                     EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         } else {
-            Assert.assertFalse(new File(outputPrefix, ".unlabeled.annot.hdf5").exists());
+            Assert.assertFalse(new File(outputPrefix + ".unlabeled.annot.hdf5").exists());
         }
     }
 

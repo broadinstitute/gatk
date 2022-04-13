@@ -154,10 +154,10 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
 
     private static void assertExpectedOutputs(final String tag,
                                               final String outputPrefix) {
-        if (tag.contains("train.snp")) {
+        if (tag.contains("train.snp.")) {
             assertExpectedOutputsForVariantType(tag, outputPrefix, "snp");
             assertOutputsForVariantTypeDoNotExist(outputPrefix, "indel");
-        } else if (tag.contains("train.snpIndel")) {
+        } else if (tag.contains("train.snpIndel.")) {
             assertExpectedOutputsForVariantType(tag, outputPrefix, "snp");
             assertExpectedOutputsForVariantType(tag, outputPrefix, "indel");
         } else {
@@ -183,36 +183,40 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                     EXPECTED_TEST_FILES_DIR, tagAndVariantType, outputPrefixAndVariantType));
             assertScorerExpectedOutputs(tagAndVariantType, outputPrefixAndVariantType, true);
         } else {
-            Assert.assertFalse(new File(outputPrefixAndVariantType, ".unlabeledScores.hdf5").exists());
-            Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.ser").exists());
-            Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.pkl").exists());
+            Assert.assertFalse(new File(outputPrefixAndVariantType + ".unlabeledScores.hdf5").exists());
+            Assert.assertFalse(new File(outputPrefixAndVariantType + ".negative.scorer.ser").exists());
+            Assert.assertFalse(new File(outputPrefixAndVariantType + ".negative.scorer.pkl").exists());
         }
     }
 
     private static void assertOutputsForVariantTypeDoNotExist(final String outputPrefix,
                                                               final String variantType) {
         final String outputPrefixAndVariantType = String.format("%s.%s", outputPrefix, variantType);
-        Assert.assertFalse(new File(outputPrefixAndVariantType, ".trainingScores.hdf5").exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType, ".calibrationScores.hdf5").exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType, ".unlabeledScores.hdf5").exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.ser").exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.pkl").exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.ser").exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType, ".negative.scorer.pkl").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType + ".trainingScores.hdf5").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType + ".calibrationScores.hdf5").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType + ".unlabeledScores.hdf5").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType + ".scorer.ser").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType + ".scorer.pkl").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType + ".negative.scorer.ser").exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType + ".negative.scorer.pkl").exists());
     }
 
+    /**
+     * Binary serialized scorers may not be diff equivalent, so we just check for their existence.
+     * We assume that checking elsewhere for equivalence of the scores that the scorers generate provides sufficient
+     * coverage.
+     */
     private static void assertScorerExpectedOutputs(final String tagAndVariantType,
                                                     final String outputPrefixAndVariantType,
                                                     final boolean isNegative) {
         final String positiveOrNegativeTag = isNegative ? ".negative" : "";
+        final String scorerTag = outputPrefixAndVariantType + positiveOrNegativeTag;
         if (tagAndVariantType.contains("BGMM")) {
-            SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.scorer.ser %s.scorer.ser",
-                    EXPECTED_TEST_FILES_DIR, tagAndVariantType + positiveOrNegativeTag, outputPrefixAndVariantType + positiveOrNegativeTag));
-            Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.pkl").exists());
+            Assert.assertTrue(new File(scorerTag + ".scorer.ser").exists());
+            Assert.assertFalse(new File(scorerTag + ".scorer.pkl").exists());
         } else if (tagAndVariantType.contains("IF")) {
-            SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.scorer.pkl %s.scorer.pkl",
-                    EXPECTED_TEST_FILES_DIR, tagAndVariantType + positiveOrNegativeTag, outputPrefixAndVariantType + positiveOrNegativeTag));
-            Assert.assertFalse(new File(outputPrefixAndVariantType, ".scorer.ser").exists());
+            Assert.assertTrue(new File(scorerTag + ".scorer.pkl").exists());
+            Assert.assertFalse(new File(scorerTag + ".scorer.ser").exists());
         } else {
             Assert.fail("Unknown model-backend tag.");
         }
