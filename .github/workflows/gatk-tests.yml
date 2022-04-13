@@ -91,7 +91,7 @@ jobs:
           ./gradlew compileJava ; ./gradlew installDist
 
       #Google Cloud stuff
-      - id: 'auth'
+      - id: 'gcloud-auth'
         uses: google-github-actions/auth@v0
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
@@ -156,7 +156,7 @@ jobs:
           cache: gradle
 
       #Google Cloud stuff
-      - id: 'auth'
+      - id: 'gcloud-auth'
         uses: google-github-actions/auth@v0
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
@@ -237,9 +237,6 @@ jobs:
         with:
           CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
       - name: Run WDL Generation Test
         run: ./gradlew gatkWDLGenValidation
 
@@ -274,12 +271,12 @@ jobs:
           fi
           echo "CI_COMMIT=${{ github.sha }}" >> $GITHUB_ENV
 
-      - name: "Installing GATK for tests"
-        run: |
-          ./gradlew assemble;
-          ./gradlew installDist;
-          echo "building a shadow jar for the wdl";
-          ./gradlew shadowJar;
+#      - name: "Installing GATK for tests"
+#        run: |
+#          ./gradlew assemble;
+#          ./gradlew installDist;
+#          echo "building a shadow jar for the wdl";
+#          ./gradlew shadowJar;
 
       - name: "CNV_GERMLINE_COHORT_WDL_TEST"
         if: ${{ matrix.wdlTest  == 'RUN_CNV_GERMLINE_COHORT_WDL' }}
