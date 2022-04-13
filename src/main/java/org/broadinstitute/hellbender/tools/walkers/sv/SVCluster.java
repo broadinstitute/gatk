@@ -383,9 +383,6 @@ public final class SVCluster extends MultiVariantWalker {
     public void apply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
         final SVCallRecord call = SVCallRecordUtils.create(variant);
-        if (call.getPositionA() == 64286984) {
-            int x = 0;
-        }
         final SVCallRecord filteredCall;
         if (fastMode) {
             // Strip out non-carrier genotypes to save memory and compute
