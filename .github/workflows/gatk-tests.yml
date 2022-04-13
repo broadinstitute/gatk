@@ -120,9 +120,7 @@ jobs:
         with:
           warnPR: ${{ github.event_name == 'pull_request' && steps.jacoco-tests.outcome != 'success' }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          jdk-version: ${{ matrix.Java }}
-          test-type: ${{ matrix.testType }}
-          job-matrix-id: ${{ github.run_id }}.${{ strategy.job-index }}
+          job-matrix-id: ${{ github.run_id }}.1${{ strategy.job-index }}
           repo-path: ${{ github.ref_name }}_${{ github.run_id }}.1${{ strategy.job-index }}
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
           identifier: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
@@ -211,9 +209,8 @@ jobs:
         if: always()
         with:
           warnPR: ${{ github.event_name == 'pull_request' && steps.docker-jacocco-tests.outcome != 'success' }}
+          is-docker: true
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          jdk-version: ${{ matrix.Java }}
-          test-type: docker ${{ matrix.testType }}
           job-matrix-id: ${{ github.run_id }}.${{ strategy.job-index }}
           repo-path: ${{ github.ref_name }}_${{ github.run_id }}.${{ strategy.job-index }}
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
@@ -270,13 +267,6 @@ jobs:
             echo "CI_PULL_REQUEST=${{ github.event.number }}" >> $GITHUB_ENV 
           fi
           echo "CI_COMMIT=${{ github.sha }}" >> $GITHUB_ENV
-
-#      - name: "Installing GATK for tests"
-#        run: |
-#          ./gradlew assemble;
-#          ./gradlew installDist;
-#          echo "building a shadow jar for the wdl";
-#          ./gradlew shadowJar;
 
       - name: "CNV_GERMLINE_COHORT_WDL_TEST"
         if: ${{ matrix.wdlTest  == 'RUN_CNV_GERMLINE_COHORT_WDL' }}

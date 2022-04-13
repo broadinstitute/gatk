@@ -2,13 +2,7 @@ name: 'upload-results'
 description: 'uploads our codeCov and jococo test results'
 inputs:
   warnPR:
-    description: 'Update the failure logs on the PR for this job'
-    required: true
-  test-type:
-    description: 'Type to label this test as'
-    required: true
-  jdk-version:
-    description: 'jdk used for this test'
+    description: 'If true this will add a comment about the jococo tests to the PR with a link to the failed test'
     required: true
   job-matrix-id:
     description: 'The job-unique identifier for which test was run'
@@ -16,8 +10,11 @@ inputs:
   repo-path:
     description: 'The job-unique identifier to use for uploading the results of this run into a google bucket'
     required: true
+  is-docker:
+    description: 'Whether to label the uplaod artifact as coming from a docker test'
+    required: false
   identifier:
-    description: 'Identifier to use for finding the unique name for jobs in order to determine html logs location'
+    description: 'Identifier to use for finding the unique name for jobs in order to determine html logs location (eg. "Java 8 build and test integration")'
     required: true
 ## Secrets and token inputs
   repo-token:
@@ -34,7 +31,7 @@ runs:
       if: always()
       uses: actions/upload-artifact@v2
       with:
-        name: test-results-${{ matrix.Java }}-${{ matrix.testType }}
+        name: test-results-${{VAR:docker-}}${{ matrix.Java }}-${{ matrix.testType }}
         path: build/reports/tests
 
     - name: Upload to codecov
