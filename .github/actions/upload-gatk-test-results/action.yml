@@ -1,11 +1,11 @@
-name: 'upload-results'
-description: 'uploads our codeCov and jococo test results'
+name: 'upload-gatk-test-results'
+description: 'Uploads the results for matrix runs of gatk-tests.yml and maybe comments on failing runs on the PR associated with the test'
 inputs:
   warnPR:
     description: 'If true this will add a comment about the jococo tests to the PR with a link to the failed test'
     required: true
   job-matrix-id:
-    description: 'The job-unique identifier for which test was run'
+    description: 'The job-unique identifier for which test was run (numbered by matrix run)'
     required: true
   repo-path:
     description: 'The job-unique identifier to use for uploading the results of this run into a google bucket'
