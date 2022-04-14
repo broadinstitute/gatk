@@ -93,7 +93,7 @@ jobs:
 
       #Google Cloud stuff
       - id: 'gcloud-auth'
-        if: ${{ has_secrets == 'true' }}
+        if: ${{ env.has_secrets == 'true' }}
         uses: google-github-actions/auth@v0
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
@@ -101,11 +101,11 @@ jobs:
           create_credentials_file: true
 
       - name: "export the credentials for GATK tests"
-        if: ${{ has_secrets == 'true' }}
+        if: ${{ env.has_secrets == 'true' }}
         run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
       - name: 'Set up Cloud SDK'
-        if: ${{ has_secrets == 'true' }}
+        if: ${{ env.has_secrets == 'true' }}
         uses: google-github-actions/setup-gcloud@v0
 
       - name: pull lfs files
@@ -115,7 +115,7 @@ jobs:
         run: ./gradlew compileTestJava
 
       - name: run-tests
-        if: ${{ has_secrets == 'true' || matrix.testType != 'cloud'}}
+        if: ${{ env.has_secrets == 'true' || matrix.testType != 'cloud'}}
         id: jacoco-tests
         run: |
           ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} test jacocoTestReport
@@ -164,18 +164,18 @@ jobs:
       #Google Cloud stuff
       - id: 'gcloud-auth'
         uses: google-github-actions/auth@v0
-        if: ${{ has_secrets == 'true' }}
+        if: ${{ env.has_secrets == 'true' }}
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
           project_id: ${{ env.HELLBENDER_TEST_PROJECT }}
           create_credentials_file: true
 
       - name: "export the credentials for GATK tests"
-        if: ${{ has_secrets == 'true' }}
+        if: ${{ env.has_secrets == 'true' }}
         run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
       - name: 'Set up Cloud SDK'
-        if: ${{ has_secrets == 'true' }}
+        if: ${{ env.has_secrets == 'true' }}
         uses: google-github-actions/setup-gcloud@v0
 
       - name: build test jars
