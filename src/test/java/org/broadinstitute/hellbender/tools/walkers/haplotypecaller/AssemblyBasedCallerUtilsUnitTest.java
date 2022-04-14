@@ -2,11 +2,12 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.collect.Maps;
 import htsjdk.samtools.*;
-import htsjdk.variant.variantcontext.*;
-
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.*;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -18,12 +19,6 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.apache.commons.lang3.StringUtils;
-
-import java.util.*;
-import java.util.stream.Collectors;
-
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -31,11 +26,14 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.*;
+import java.util.stream.Collectors;
+
 import static org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils.*;
 
 public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
     private static final SWParameters HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
-    
+
     final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
     final SAMLineParser parser = new SAMLineParser(header);
 
@@ -73,7 +71,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         SampleList sampleList = SampleList.singletonSampleList("tumor");
         Byte minbq = 9;
         // NOTE: this test MUST be run with correctOverlappingBaseQualities enabled otherwise this test can succeed even with unsafe code
-        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, true, false);
+        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, true, false, false);
 
         // make sure that the original reads are not changed due to finalizeRegion()
         Assert.assertTrue(reads.get(0).convertToSAMRecord(header).equals(orgRead0));
@@ -1382,5 +1380,97 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                 aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS, assemblyResultSet);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "AA" + new String(insertedBases) + "AACCCCGGGGTTTT");
+    }
+
+
+    @DataProvider(name = "filterPileupHaplotypesDataProvider")
+    public Object[][] filterPileupHaplotypesDataProvider() {
+        final Haplotype hapA = new Haplotype("ACCTGTA".getBytes());
+        final Haplotype hapB = new Haplotype("ATCTGTA".getBytes());
+        final Haplotype hapC = new Haplotype("ATCTGAA".getBytes());
+        final Haplotype hapD = new Haplotype("ACCTGAA".getBytes());
+        final Haplotype hapF = new Haplotype("GAAGAAG".getBytes()); // testing repeated kmers
+
+        Map<Kmer, Integer> flatSupportAllKmers = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L; {
+            put(new Kmer("ACC"), 1);
+            put(new Kmer("CCT"), 1);
+            put(new Kmer("CTG"), 1);
+            put(new Kmer("TGT"), 1);
+            put(new Kmer("GTA"), 1);
+            put(new Kmer("ATC"), 1);
+            put(new Kmer("TCT"), 1);
+            put(new Kmer("TGA"), 1);
+            put(new Kmer("GAA"), 1);
+            put(new Kmer("AGA"), 1);
+            put(new Kmer("AAG"), 1);
+        }};
+
+        Map<Kmer, Integer> hapDKmersHighSupport = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L;{
+            put(new Kmer("ACC"), 10);
+            put(new Kmer("CCT"), 10);
+            put(new Kmer("CTG"), 10);
+            put(new Kmer("TGT"), 1);
+            put(new Kmer("GTA"), 1);
+            put(new Kmer("ATC"), 1);
+            put(new Kmer("TCT"), 1);
+            put(new Kmer("TGA"), 10);
+            put(new Kmer("GAA"), 10);
+            put(new Kmer("AGA"), 1);
+            put(new Kmer("AAG"), 1);
+        }};
+
+        Map<Kmer, Integer> hapDKmers = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L; {
+            put(new Kmer("ACC"), 10);
+            put(new Kmer("CCT"), 10);
+            put(new Kmer("CTG"), 10);
+            put(new Kmer("TGA"), 10);
+            put(new Kmer("GAA"), 10);
+        }};
+
+        Map<Kmer, Integer> hapFRepeatedKmers = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L; {
+            put(new Kmer("GAA"), 1);
+        }};
+
+
+        Object[][] tests = new Object[][] {
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,5,3,Arrays.asList(hapA,hapB,hapC,hapD)}, //returns all when no filtering required
+                // These haplotypes are all equivalent, these test stability of the filtering
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,1,3,Arrays.asList(hapA)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,2,3,Arrays.asList(hapA,hapB)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,3,3,Arrays.asList(hapA,hapB,hapC)},
+
+                // Repetitive kmers in hapF don't get double counted
+                new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,2,3,Arrays.asList(hapF,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,1,3,Arrays.asList(hapD)}, //currently repeated kmers only count as singular evidence
+
+                // These tests demonstrate that the weights in the map don't matter
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,1,3,Arrays.asList(hapA)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,2,3,Arrays.asList(hapA,hapB)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,3,3,Arrays.asList(hapA,hapB,hapC)}, // Despite hapD having good support it is not weighted higher
+
+                // Test of the output when only one hap has support
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,1,3,Arrays.asList(hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,2,3,Arrays.asList(hapD,hapA)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,3,3,Arrays.asList(hapD,hapA,hapC)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,4,3,Arrays.asList(hapD,hapA,hapC,hapB)},
+        };
+
+        return tests;
+    }
+
+    // This test is intended to record the current behavior of the filtering code. This may be revised in the future.
+    @Test (dataProvider = "filterPileupHaplotypesDataProvider")
+    public void testFilterPileupHaplotypes(final List<Haplotype> inputHaplotypes,
+                                           final Map<Kmer, Integer> kmerReadCounts,
+                                           final int numPileupHaplotypes,
+                                           final int kmerSize,
+                                           final List<Haplotype> expected) {
+        Set<Haplotype> actual = AssemblyBasedCallerUtils.filterPileupHaplotypes(inputHaplotypes, kmerReadCounts, numPileupHaplotypes, kmerSize);
+
+        Assert.assertEquals(actual, new HashSet<>(expected));
     }
 }

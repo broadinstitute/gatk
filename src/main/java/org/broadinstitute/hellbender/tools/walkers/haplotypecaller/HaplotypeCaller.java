@@ -207,6 +207,11 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     @Override
+    public boolean shouldTrackPileupsForAssemblyRegions() {
+        return hcArgs.pileupDetectionArgs.usePileupDetection;
+    }
+
+    @Override
     public void onTraversalStart() {
         if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF && hcArgs.maxMnpDistance > 0) {
             logger.warn("*************************************************************************");

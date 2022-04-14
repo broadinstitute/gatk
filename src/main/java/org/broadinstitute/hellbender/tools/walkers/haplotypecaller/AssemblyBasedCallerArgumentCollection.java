@@ -34,6 +34,8 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String EMIT_REF_CONFIDENCE_SHORT_NAME = "ERC";
     public static final String ALLELE_EXTENSION_LONG_NAME = "allele-informative-reads-overlap-margin";
 
+    public static final String PILEUP_DETECTION_LONG_NAME = "pileup-detection";
+
     public static final String SMITH_WATERMAN_DANGLING_END_MATCH_VALUE_LONG_NAME = "smith-waterman-dangling-end-match-value";
     public static final String SMITH_WATERMAN_DANGLING_END_MISMATCH_PENALTY_LONG_NAME = "smith-waterman-dangling-end-mismatch-penalty";
     public static final String SMITH_WATERMAN_DANGLING_END_GAP_OPEN_PENALTY_LONG_NAME = "smith-waterman-dangling-end-gap-open-penalty";
@@ -47,11 +49,17 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_OPEN_PENALTY_LONG_NAME = "smith-waterman-read-to-haplotype-gap-open-penalty";
     public static final String SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_EXTEND_PENALTY_LONG_NAME = "smith-waterman-read-to-haplotype-gap-extend-penalty";
 
-    /** See documentation at {@link SmithWatermanAlignmentConstants#STANDARD_NGS}. */
+    /**
+     * See documentation at {@link SmithWatermanAlignmentConstants#STANDARD_NGS}.
+     */
     private static final SWParameters DEFAULT_DANGLING_END_SMITH_WATERMAN_PARAMETERS = SmithWatermanAlignmentConstants.STANDARD_NGS;
-    /** See documentation at {@link SmithWatermanAlignmentConstants#NEW_SW_PARAMETERS}. */
+    /**
+     * See documentation at {@link SmithWatermanAlignmentConstants#NEW_SW_PARAMETERS}.
+     */
     private static final SWParameters DEFAULT_HAPLOTYPE_TO_REFERENCE_SMITH_WATERMAN_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
-    /** See documentation at {@link SmithWatermanAlignmentConstants#ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS}. */
+    /**
+     * See documentation at {@link SmithWatermanAlignmentConstants#ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS}.
+     */
     private static final SWParameters DEFAULT_READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS = SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS;
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
@@ -70,38 +78,40 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     @ArgumentCollection
     public LikelihoodEngineArgumentCollection likelihoodArgs = new LikelihoodEngineArgumentCollection();
 
+    @ArgumentCollection
+    public PileupDetectionArgumentCollection pileupDetectionArgs = new PileupDetectionArgumentCollection();
+
     /**
      * The assembled haplotypes and locally realigned reads will be written as BAM to this file if requested.  Really
      * for debugging purposes only. Note that the output here does not include uninformative reads so that not every
      * input read is emitted to the bam.
-     *
+     * <p>
      * Turning on this mode may result in serious performance cost for the caller.  It's really only appropriate to
      * use in specific areas where you want to better understand why the caller is making specific calls.
-     *
+     * <p>
      * The reads are written out containing an "HC" tag (integer) that encodes which haplotype each read best matches
      * according to the haplotype caller's likelihood calculation.  The use of this tag is primarily intended
      * to allow good coloring of reads in IGV.  Simply go to "Color Alignments By > Tag" and enter "HC" to more
      * easily see which reads go with these haplotype.
-     *
+     * <p>
      * Note that the haplotypes (called or all, depending on mode) are emitted as single reads covering the entire
      * active region, coming from sample "HC" and a special read group called "ArtificialHaplotype". This will increase the
      * pileup depth compared to what would be expected from the reads only, especially in complex regions.
-     *
+     * <p>
      * Note also that only reads that are actually informative about the haplotypes are emitted.  By informative we mean
      * that there's a meaningful difference in the likelihood of the read coming from one haplotype compared to
      * its next best haplotype.
-     *
+     * <p>
      * If multiple BAMs are passed as input to the tool (as is common for M2), then they will be combined in the bamout
      * output and tagged with the appropriate sample names.
-     *
+     * <p>
      * The best way to visualize the output of this mode is with IGV.  Tell IGV to color the alignments by tag,
      * and give it the "HC" tag, so you can see which reads support each haplotype.  Finally, you can tell IGV
      * to group by sample, which will separate the potential haplotypes from the reads.  All of this can be seen in
      * <a href="https://www.dropbox.com/s/xvy7sbxpf13x5bp/haplotypecaller%20bamout%20for%20docs.png">this screenshot</a>
-     *
      */
     @Advanced
-    @Argument(fullName= BAM_OUTPUT_LONG_NAME, shortName= BAM_OUTPUT_SHORT_NAME, doc="File to which assembled haplotypes should be written", optional = true)
+    @Argument(fullName = BAM_OUTPUT_LONG_NAME, shortName = BAM_OUTPUT_SHORT_NAME, doc = "File to which assembled haplotypes should be written", optional = true)
     public String bamOutputPath = null;
 
     /**
@@ -109,7 +119,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
      * considered (top 128 max) or just the ones that were selected as alleles and assigned to samples.
      */
     @Advanced
-    @Argument(fullName= BAM_WRITER_TYPE_LONG_NAME, doc="Which haplotypes should be written to the BAM", optional = true)
+    @Argument(fullName = BAM_WRITER_TYPE_LONG_NAME, doc = "Which haplotypes should be written to the BAM", optional = true)
     public HaplotypeBAMWriter.WriterType bamWriterType = HaplotypeBAMWriter.WriterType.CALLED_HAPLOTYPES;
 
     // -----------------------------------------------------------------------------------------------
@@ -140,7 +150,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
      * For Mutect2, this is a BETA feature that functions similarly to the HaplotypeCaller reference confidence/GVCF mode.
      */
     @Advanced
-    @Argument(fullName= EMIT_REF_CONFIDENCE_LONG_NAME, shortName= EMIT_REF_CONFIDENCE_SHORT_NAME, doc="Mode for emitting reference confidence scores (For Mutect2, this is a BETA feature)", optional = true)
+    @Argument(fullName = EMIT_REF_CONFIDENCE_LONG_NAME, shortName = EMIT_REF_CONFIDENCE_SHORT_NAME, doc = "Mode for emitting reference confidence scores (For Mutect2, this is a BETA feature)", optional = true)
     public ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
 
     protected abstract int getDefaultMaxMnpDistance();
@@ -153,7 +163,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
             doc = "Two or more phased substitutions separated by this distance or less are merged into MNPs.", optional = true)
     public int maxMnpDistance = getDefaultMaxMnpDistance();
 
-    @Argument(fullName= FORCE_CALL_ALLELES_LONG_NAME, doc="The set of alleles to force-call regardless of evidence", optional=true)
+    @Argument(fullName = FORCE_CALL_ALLELES_LONG_NAME, doc = "The set of alleles to force-call regardless of evidence", optional = true)
     public FeatureInput<VariantContext> alleles;
 
     @Advanced
