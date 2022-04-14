@@ -74,7 +74,7 @@ jobs:
     env:
       TEST_TYPE: ${{ matrix.testType }}
       SCALA_VERSION: ${{ matrix.scalaVersion }}
-      has_secrets: ${{ secrets.DOCKER_NIGHTLY_SERVICE_LOGIN == "" && 'false' || 'true' }} ## check that secrets are present
+      has_secrets: ${{ secrets.DOCKER_NIGHTLY_SERVICE_LOGIN == '' && 'false' || 'true' }} ## check that secrets are present
     name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
     steps:
       - uses: actions/checkout@v2
@@ -146,7 +146,7 @@ jobs:
     env:
       TEST_TYPE: ${{ matrix.testType }}
       SCALA_VERSION: ${{ matrix.scalaVersion }}
-      has_secrets: ${{ secrets.DOCKER_NIGHTLY_SERVICE_LOGIN == "" && 'false' || 'true' }} ## check that secrets are present
+      has_secrets: ${{ secrets.DOCKER_NIGHTLY_SERVICE_LOGIN == '' && 'false' || 'true' }} ## check that secrets are present
 
     name: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
     steps:
