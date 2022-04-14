@@ -60,7 +60,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     public static final String CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME = "calibration-sensitivity-threshold";
 
     // TODO expose all of these?
-    private static final String SCORE_KEY = GATKVCFConstants.VQS_LOD_KEY;
+    private static final String SCORE_KEY = "SCORE";
     private static final String CALIBRATION_SENSITIVITY_KEY = "CALIBRATION_SENSITIVITY";
     protected static final String LOW_SCORE_FILTER_NAME = String.format("LOW_%s", SCORE_KEY);
     private static final String SCORE_AND_CALIBRATION_SENSITIVITY_FORMAT = "%.4f";
