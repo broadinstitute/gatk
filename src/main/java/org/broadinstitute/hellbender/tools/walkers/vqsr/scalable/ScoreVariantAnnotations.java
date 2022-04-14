@@ -300,7 +300,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
         final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);
-        hInfo.add(GATKVCFHeaderLines.getInfoLine(SCORE_KEY));
+        hInfo.add(new VCFInfoHeaderLine(SCORE_KEY, 1, VCFHeaderLineType.Float,
+                "Score according to the model applied by ScoreVariantAnnotations"));
         hInfo.add(new VCFInfoHeaderLine(CALIBRATION_SENSITIVITY_KEY, 1, VCFHeaderLineType.Float,
                 String.format("Calibration sensitivity corresponding to the value of %s", SCORE_KEY)));
         hInfo.add(new VCFFilterHeaderLine(LOW_SCORE_FILTER_NAME, "Low score (corresponding to high calibration sensitivity)"));
