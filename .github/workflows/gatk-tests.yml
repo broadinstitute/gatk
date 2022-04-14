@@ -74,6 +74,7 @@ jobs:
     env:
       TEST_TYPE: ${{ matrix.testType }}
       SCALA_VERSION: ${{ matrix.scalaVersion }}
+      has_secrets: ${{ secrets.DOCKER_NIGHTLY_SERVICE_LOGIN == "" && 'false' || 'true' }} ## check that secrets are present
     name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
     steps:
       - uses: actions/checkout@v2
@@ -92,6 +93,7 @@ jobs:
 
       #Google Cloud stuff
       - id: 'gcloud-auth'
+        if: ${{ has_secrets == 'true' }}
         uses: google-github-actions/auth@v0
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
@@ -99,9 +101,11 @@ jobs:
           create_credentials_file: true
 
       - name: "export the credentials for GATK tests"
+        if: ${{ has_secrets == 'true' }}
         run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
       - name: 'Set up Cloud SDK'
+        if: ${{ has_secrets == 'true' }}
         uses: google-github-actions/setup-gcloud@v0
 
       - name: pull lfs files
@@ -111,6 +115,7 @@ jobs:
         run: ./gradlew compileTestJava
 
       - name: run-tests
+        if: ${{ has_secrets == 'true' || matrix.testType != 'cloud'}}
         id: jacoco-tests
         run: |
           ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} test jacocoTestReport
@@ -125,6 +130,8 @@ jobs:
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
           identifier: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
 
+
+  #Run our docker tests
   testOnDocker:
     needs: buildDocker
     runs-on: ubuntu-latest
@@ -139,6 +146,7 @@ jobs:
     env:
       TEST_TYPE: ${{ matrix.testType }}
       SCALA_VERSION: ${{ matrix.scalaVersion }}
+      has_secrets: ${{ secrets.DOCKER_NIGHTLY_SERVICE_LOGIN == "" && 'false' || 'true' }} ## check that secrets are present
 
     name: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
     steps:
@@ -156,15 +164,18 @@ jobs:
       #Google Cloud stuff
       - id: 'gcloud-auth'
         uses: google-github-actions/auth@v0
+        if: ${{ has_secrets == 'true' }}
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
           project_id: ${{ env.HELLBENDER_TEST_PROJECT }}
           create_credentials_file: true
 
       - name: "export the credentials for GATK tests"
+        if: ${{ has_secrets == 'true' }}
         run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
       - name: 'Set up Cloud SDK'
+        if: ${{ has_secrets == 'true' }}
         uses: google-github-actions/setup-gcloud@v0
 
       - name: build test jars
@@ -224,6 +235,7 @@ jobs:
           identifier: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
 
 
+  #test wdl auto generation
   wdlGen:
     runs-on: ubuntu-latest
     name: Test WDL Generation
@@ -244,6 +256,8 @@ jobs:
       - name: Run WDL Generation Test
         run: ./gradlew gatkWDLGenValidation
 
+
+  #Run our various targeted medium scale wdl wiring tests
   wdlTests:
     runs-on: ubuntu-latest
     strategy:
