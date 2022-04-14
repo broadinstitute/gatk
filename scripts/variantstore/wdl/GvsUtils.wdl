@@ -102,7 +102,6 @@ task SplitIntervals {
 
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
       gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
