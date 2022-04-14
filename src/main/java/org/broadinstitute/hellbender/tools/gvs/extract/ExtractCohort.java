@@ -213,15 +213,13 @@ public class ExtractCohort extends ExtractTool {
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NAY_FROM_YNG));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_HET_KEY));
-        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_ALLELES));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NO_HQ_GENOTYPES));
 
         // Info fields
         VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
                 VCFConstants.ALLELE_COUNT_KEY,
                 VCFConstants.ALLELE_FREQUENCY_KEY,
-                VCFConstants.ALLELE_NUMBER_KEY,
-                VCFConstants.END_KEY
+                VCFConstants.ALLELE_NUMBER_KEY
         );
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_QUAL_APPROX_KEY));
@@ -231,7 +229,6 @@ public class ExtractCohort extends ExtractTool {
                 VCFConstants.GENOTYPE_QUALITY_KEY
         );
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
