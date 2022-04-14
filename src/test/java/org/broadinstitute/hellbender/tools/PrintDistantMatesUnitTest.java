@@ -23,5 +23,6 @@ public class PrintDistantMatesUnitTest {
         Assert.assertEquals(leftDistantMate.getAssignedStart(), rightRead.getStart());
         Assert.assertTrue(PrintDistantMates.isDistantMate(leftDistantMate));
         Assert.assertEquals(leftRead, PrintDistantMates.undoDistantMateAlterations(leftDistantMate));
+		Assert.fail();
     }
 }
