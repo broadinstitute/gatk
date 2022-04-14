@@ -13,7 +13,7 @@ workflow GvsPrepareCallset {
     String query_project = project_id
     String destination_project = project_id
     String destination_dataset = dataset_name
-    String fq_temp_table_dataset = "~{destination_project}.temp_tables"
+    String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}" # This only gets used if we have a file of sample names
 
     Array[String]? query_labels
     File? sample_names_to_extract

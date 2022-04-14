@@ -117,7 +117,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-225-add-AD
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -128,15 +127,6 @@ workflows:
          - master
          - ah_var_store
          - kc_wdl_gatk_override
-   - name: GvsPrepareCallset
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareCallset.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/GvsPrepareCallset.example.inputs.json
-     filters:
-       branches:
-         - master
-         - ah_var_store
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -146,7 +136,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-225-add-AD
+         - rc-vs-227-no-temp
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
