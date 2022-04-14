@@ -1,14 +1,11 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
-import com.google.cloud.bigquery.storage.v1beta2.AppendRowsResponse;
-import com.google.cloud.bigquery.storage.v1beta2.JsonStreamWriter;
-import com.google.cloud.bigquery.storage.v1beta2.TableFieldSchema;
-import com.google.cloud.bigquery.storage.v1beta2.TableName;
-import com.google.cloud.bigquery.storage.v1beta2.TableSchema;
-import com.google.protobuf.Descriptors;
+import com.google.cloud.bigquery.storage.v1beta2.*;
+import io.grpc.StatusRuntimeException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -18,14 +15,14 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.util.concurrent.ExecutionException;
+
+import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.handleCausalStatusRuntimeException;
 
 public class LoadStatus {
     static final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.tools.gvs.ingest.LoadStatus.class);
 
-    private enum LoadStatusValues { STARTED, FINISHED };
-    public enum LoadState { NONE, PARTIAL, COMPLETE };
+    private enum LoadStatusValues { STARTED, FINISHED }
+    public enum LoadState { NONE, PARTIAL, COMPLETE }
 
     private final String projectID;
     private final String datasetName;
@@ -93,29 +90,63 @@ public class LoadStatus {
     }
 
     protected void writeLoadStatus(LoadStatusValues status, long sampleId) {
+        final ExponentialBackOff backoff = new ExponentialBackOff.Builder().
+                setInitialIntervalMillis(2000).
+                setMaxIntervalMillis(30000).
+                setMultiplier(2).
+                setRandomizationFactor(0.5).
+                build();
+        int retryCount = 0;
+        int maxRetries = 3;
 
-        // This uses the _default stream since it (a) commits immediately and (b) doesn't count
-        // towards the CreateStreamWriter quota
-        try (JsonStreamWriter writer =
-                     JsonStreamWriter.newBuilder(loadStatusTable.toString(), getLoadStatusTableSchema()).build()) {
+        while (true) {
+            // This uses the _default stream since it (a) commits immediately and (b) doesn't count
+            // towards the CreateStreamWriter quota
+            try (JsonStreamWriter writer =
+                         JsonStreamWriter.newBuilder(loadStatusTable.toString(), getLoadStatusTableSchema()).build()) {
 
-            // Create a JSON object that is compatible with the table schema.
-            JSONArray jsonArr = new JSONArray();
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("sample_id", sampleId);
-            jsonObject.put("status", status.toString());
-            jsonObject.put("event_timestamp", System.currentTimeMillis() * 1000L); // google wants this in microseconds since epoch...
-            jsonArr.put(jsonObject);
+                // Create a JSON object that is compatible with the table schema.
+                JSONArray jsonArr = new JSONArray();
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("sample_id", sampleId);
+                jsonObject.put("status", status.toString());
+                jsonObject.put("event_timestamp", System.currentTimeMillis() * 1000L); // google wants this in microseconds since epoch...
+                jsonArr.put(jsonObject);
 
-            ApiFuture<AppendRowsResponse> future = writer.append(jsonArr);
-            AppendRowsResponse response = future.get();
+                ApiFuture<AppendRowsResponse> future = writer.append(jsonArr);
+                future.get();
 
-            logger.info("Load status " + status + " appended successfully");
-        } catch (ExecutionException | InterruptedException | Descriptors.DescriptorValidationException | IOException e) {
-            // If the wrapped exception is a StatusRuntimeException, check the state of the operation.
-            // If the state is INTERNAL, CANCELLED, or ABORTED, you can retry. For more information, see:
-            // https://grpc.github.io/grpc-java/javadoc/io/grpc/StatusRuntimeException.html
-            throw new GATKException(e.getMessage());
+                logger.info("Load status " + status + " appended successfully");
+                break;
+            } catch (Exception e) {
+                @SuppressWarnings("ThrowableNotThrown")
+                StatusRuntimeException se = handleCausalStatusRuntimeException(e);
+
+                if (retryCount >= maxRetries) {
+                    throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", e);
+                }
+
+                switch (se.getStatus().getCode()) {
+                    case ALREADY_EXISTS:
+                        // This is okay, no need to retry
+                        break;
+                    case INVALID_ARGUMENT:
+                    case NOT_FOUND:
+                    case OUT_OF_RANGE:
+                    case PERMISSION_DENIED:
+                        throw new GATKException("Caught non-retryable StatusRuntimeException based exception", e);
+                    default:
+                        try {
+                            logger.warn("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", e);
+                            long backOffMillis = backoff.nextBackOffMillis();
+                            //noinspection BusyWait
+                            Thread.sleep(backOffMillis);
+                            retryCount++;
+                        } catch (final IOException | InterruptedException ie) {
+                            throw new GATKException("Error attempting to sleep between retry attempts", ie);
+                        }
+                }
+            }
         }
     }
 }

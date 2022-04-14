@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.cloud.bigquery.*;
+import io.grpc.StatusRuntimeException;
 import org.apache.ivy.util.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -457,5 +461,26 @@ public final class BigQueryUtils {
         }
         throw new GATKException(String.format("No rows returned from count of `%s.%s.%s` for sample id %s",
                 projectID, datasetName, tableName, sampleId));
+    }
+
+    private static StatusRuntimeException handleCausalStatusRuntimeException(Throwable original, Throwable current) {
+        if (current == null) {
+            throw new GATKException("No causal StatusRuntimeException found", original);
+        }
+        if (current instanceof StatusRuntimeException) {
+            StatusRuntimeException se = (StatusRuntimeException) current;
+            if (se.getStatus() == null) {
+                throw new GATKException("StatusRuntimeException has null status", original);
+            }
+            if (se.getStatus().getCode() == null) {
+                throw new GATKException("StatusRuntimeException status has null code", original);
+            }
+            return (StatusRuntimeException) current;
+        }
+        return handleCausalStatusRuntimeException(original, current.getCause());
+    }
+
+    public static StatusRuntimeException handleCausalStatusRuntimeException(Throwable t) throws GATKException {
+        return handleCausalStatusRuntimeException(t, t);
     }
 }

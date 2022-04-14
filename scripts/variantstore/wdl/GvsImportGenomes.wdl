@@ -83,6 +83,7 @@ workflow GvsImportGenomes {
 
   output {
     Boolean done = true
+    Array[File] load_data_stderrs = LoadData.stderr
   }
 }
 
@@ -288,6 +289,7 @@ task LoadData {
   }
   output {
     Boolean done = true
+    File stderr = stderr()
   }
 }
 

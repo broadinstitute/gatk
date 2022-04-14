@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsUnified.wdl" as GvsUnified
+import "GvsUtils.wdl" as GvsUtils
 
 workflow GvsQuickstartIntegration {
 
@@ -48,17 +49,18 @@ workflow GvsQuickstartIntegration {
                                         ]
     }
 
-    call Setup {
+    call GvsUtils.BuildGATKJarAndCreateDataset {
         input:
-            branch_name = branch_name
+            branch_name = branch_name,
+            dataset_prefix = "quickit"
     }
 
     call GvsUnified.GvsUnified {
         input:
-            dataset_name = Setup.dataset_name,
+            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             project_id = "spec-ops-aou",
             external_sample_names = external_sample_names,
-            gatk_override = Setup.jar,
+            gatk_override = BuildGATKJarAndCreateDataset.jar,
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
@@ -85,63 +87,6 @@ workflow GvsQuickstartIntegration {
     }
 }
 
-task Setup {
-    input {
-        String branch_name
-    }
-
-    command <<<
-        # Much of this could/should be put into a Docker image which would be useful not only for integration test runs
-        # but also for building nightly GATK jars. This wouldn't be that valuable for this current increment of work as
-        # using a Docker image would save maybe 10 minutes from what is currently a ~4 hour workflow, but a Docker image
-        # could become more compelling if a scaled down version of this test that could run more frequently was created,
-        # in addition to the nightly build use case mentioned above.
-        set -o errexit -o nounset -o pipefail
-
-        # git and git-lfs
-        apt-get -qq update
-        apt-get -qq install git git-lfs
-
-        # Java
-        apt-get -qq install wget apt-transport-https gnupg
-        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
-        echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
-        apt-get -qq update
-        apt -qq install -y temurin-11-jdk
-
-        # GATK
-        git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
-        cd gatk
-        ./gradlew shadowJar
-
-        branch=$(git symbolic-ref HEAD 2>/dev/null)
-        branch=${branch#refs/heads/}
-
-        hash=$(git rev-parse --short HEAD)
-
-        # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
-        mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
-
-        # Build a dataset name based on the branch name and the git hash of the most recent commit on this branch.
-        # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete
-        # any remaining characters that are not alphanumeric or underscores.
-        dataset="$(echo quickit_${branch}_${hash} | tr '-' '_' | tr -c -d '[:alnum:]_')"
-
-        bq mk --project_id="spec-ops-aou" "$dataset"
-
-        echo -n "$dataset" > dataset.txt
-    >>>
-
-    output {
-        File jar = glob("gatk/build/libs/*-SNAPSHOT-local.jar")[0]
-        String dataset_name = read_string("gatk/dataset.txt")
-    }
-
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
-        disks: "local-disk 500 HDD"
-    }
-}
 
 task AssertIdenticalOutputs {
     input {
