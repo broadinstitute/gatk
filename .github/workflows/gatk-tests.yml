@@ -25,7 +25,7 @@ jobs:
   check-secrets:
     name: check if the environment has privileges
     outputs:
-      google-credentials: ${{ google-credentials.outputs.defined }}
+      google-credentials: ${{ steps.google-credentials.outputs.defined }}
     runs-on: ubuntu-latest
     steps:
       - id: google-credentials
