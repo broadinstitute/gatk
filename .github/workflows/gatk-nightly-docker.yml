@@ -1,10 +1,9 @@
 name: Build and Upload GATK Nightly Docker Image
 on:
   schedule:
-    # trigger the job the image at 1am est every night (UTC 20:00)
-    # NOTE: by default schedule:cron jobs pull from the repo default branch which makes this the master branch of gatk
-    - cron: '0 20 * * *'
+    - cron: '17 05 * * *' # trigger the job to build the image at 12:17am EST every night (UTC 05:17)
 
+# NOTE: by default schedule:cron jobs pull from the repo default branch which makes this the master branch of gatk
 jobs:
   buildDocker:
     name: build docker images
