@@ -125,6 +125,11 @@ workflows:
        branches:
          - master
          - ah_var_store
+<<<<<<< HEAD
+=======
+         - vs_357_integration
+         - vs_261_ingest_errors
+>>>>>>> 3f40d5f59 (hacking up unified wdl for testing)
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -134,6 +139,11 @@ workflows:
        branches:
          - master
          - ah_var_store
+<<<<<<< HEAD
+=======
+         - vs_357_integration
+         - vs_261_ingest_errors
+>>>>>>> 3f40d5f59 (hacking up unified wdl for testing)
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
@@ -170,6 +180,11 @@ workflows:
        branches:
          - master
          - ah_var_store
+<<<<<<< HEAD
+=======
+         - vs_357_integration
+         - vs_261_ingest_errors
+>>>>>>> 3f40d5f59 (hacking up unified wdl for testing)
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
@@ -184,6 +199,11 @@ workflows:
        branches:
          - master
          - ah_var_store
+<<<<<<< HEAD
+=======
+         - vs_357_integration
+         - vs_261_ingest_errors
+>>>>>>> 3f40d5f59 (hacking up unified wdl for testing)
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
