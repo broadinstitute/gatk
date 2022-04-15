@@ -25,10 +25,10 @@ jobs:
   check-secrets:
     name: check if we are in a privileged environemnt and a variable
     outputs:
-      my-key: ${{ my-key.outputs.defined }}
+      my-key: ${{ google-credentials.outputs.defined }}
     runs-on: ubuntu-latest
     steps:
-      - id: google_credentials
+      - id: google-credentials
         env:
           MY_KEY: ${{ secrets.GCP_CREDENTIALS }}
         if: "${{ env.MY_KEY != '' }}"
