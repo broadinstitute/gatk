@@ -76,7 +76,7 @@ runs:
       shell: bash
 
     - name: Updating the PR with failed results
-      if: ${{ inputs.warnPR == 'true' && ${{ inputs.only-artifact != 'true' }} }}
+      if: ${{ inputs.warnPR == 'true' && inputs.only-artifact != 'true' }}
       env:
         GITHUB_TOKEN: ${{ inputs.bot-comment-key }}
         TEST_TYPE: ${{ matrix.testType }}
