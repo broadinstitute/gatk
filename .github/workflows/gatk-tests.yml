@@ -91,7 +91,6 @@ jobs:
     env:
       TEST_TYPE: ${{ matrix.testType }}
       SCALA_VERSION: ${{ matrix.scalaVersion }}
-      has_secrets: ${{ secrets.DOCKER_NIGHTLY_SERVICE_LOGIN == '' && 'false' || 'true' }} ## check that secrets are present
     name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
     steps:
       - uses: actions/checkout@v2
@@ -146,7 +145,7 @@ jobs:
           repo-path: ${{ github.ref_name }}_${{ github.run_id }}.1${{ strategy.job-index }}
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
           identifier: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
-          only-artifact: ${{ needs.check-secrets.outputs.google-credentials == 'true' }}
+          only-artifact: ${{ needs.check-secrets.outputs.google-credentials != 'true' }}
 
 
   #Run our docker tests
@@ -164,7 +163,6 @@ jobs:
     env:
       TEST_TYPE: ${{ matrix.testType }}
       SCALA_VERSION: ${{ matrix.scalaVersion }}
-      has_secrets: ${{ secrets.DOCKER_NIGHTLY_SERVICE_LOGIN == '' && 'false' || 'true' }} ## check that secrets are present
 
     name: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
     steps:
@@ -251,7 +249,7 @@ jobs:
           repo-path: ${{ github.ref_name }}_${{ github.run_id }}.${{ strategy.job-index }}
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
           identifier: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
-          only-artifact: ${{ needs.check-secrets.outputs.google-credentials == 'true' }}
+          only-artifact: ${{ needs.check-secrets.outputs.google-credentials != 'true' }}
 
 
   #test wdl auto generation
