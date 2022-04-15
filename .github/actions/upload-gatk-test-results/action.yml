@@ -40,6 +40,7 @@ runs:
       shell: bash
 
     - name: Upload Reports
+      if: ${{ inputs.repo-token != '' }}
       id: uploadreports
       run: |
         gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/;
@@ -52,6 +53,7 @@ runs:
 # which corresponds to the unique identifier for an individual workflow execution but it doesn't expose the job_id.id which is necessary
 # to extract the logs for failing jobs. The best workaround seems to be this approach (querying the API and parsing the json output).
     - name: Extract Log Location
+      if: ${{ inputs.repo-token != '' }}
       id: loghtml
       env:
         GITHUB_TOKEN: ${{ inputs.repo-token }}
@@ -69,7 +71,7 @@ runs:
       shell: bash
 
     - name: Updating the PR with failed results
-      if: ${{ inputs.warnPR == 'true' }}
+      if: ${{ inputs.warnPR == 'true' && inputs.repo-token != '' }}
       env:
         GITHUB_TOKEN: ${{ inputs.bot-comment-key }}
         TEST_TYPE: ${{ matrix.testType }}
