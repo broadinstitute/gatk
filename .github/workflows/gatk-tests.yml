@@ -23,7 +23,7 @@ jobs:
   ## if a run was privileged and had secrets. Since the GCP credentials are necessary for all tests in order to upload their,
   ## results that makes them a reasonable proxy for testing the credentials of this entire execution. https://github.com/actions/runner/issues/520
   check-secrets:
-    name: check if we are in a privileged environemnt and a variable
+    name: check if the environment has privileges
     outputs:
       my-key: ${{ google-credentials.outputs.defined }}
     runs-on: ubuntu-latest
