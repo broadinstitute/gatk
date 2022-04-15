@@ -117,6 +117,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-317-remove-excess-headers
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
