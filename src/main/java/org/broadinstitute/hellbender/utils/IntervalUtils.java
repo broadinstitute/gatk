@@ -1570,7 +1570,7 @@ public final class IntervalUtils {
      * </p>
      *
      * @param input input collection of lacatables, may contain duplicates.
-     * @param dictionary the referene dictionary.
+     * @param dictionary the reference dictionary.
      * @param <L> the locatable type.
      * @throws IllegalArgumentException if input is {@code null}.
      * @return never {@code null}, but perhaps an empty map. It is guarantee that no value in the map is an empty list upon return.

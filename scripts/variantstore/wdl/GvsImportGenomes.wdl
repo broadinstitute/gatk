@@ -123,7 +123,7 @@ task CheckForDuplicateData {
     # check the INFORMATION_SCHEMA.PARTITIONS table to see if any of input sample names/ids have data loaded into their partitions
     # this returns the list of sample names that do already have data loaded
     echo "WITH items as (SELECT s.sample_id, s.sample_name, s.is_loaded, s.withdrawn FROM \`${TEMP_TABLE}\` t left outer join \`${SAMPLE_INFO_TABLE}\` s on (s.sample_name = t.sample_name)) " >> query.sql
-    echo "SELECT i.sample_name FROM \`${INFO_SCHEMA_TABLE}\` p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%' OR table_name like 'pet_%')" >> query.sql
+    echo "SELECT i.sample_name FROM \`${INFO_SCHEMA_TABLE}\` p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%')" >> query.sql
     echo "UNION DISTINCT "  >> query.sql
     echo "SELECT i.sample_name FROM items i WHERE i.is_loaded = True AND i.withdrawn IS NULL "  >> query.sql
     echo "UNION DISTINCT "  >> query.sql
@@ -208,7 +208,6 @@ task LoadData {
   }
 
   Boolean load_ref_ranges = true
-  Boolean load_pet = false
   Boolean load_vet = true
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -269,7 +268,6 @@ task LoadData {
         --dataset-name ~{dataset_name} \
         --output-type BQ \
         --enable-reference-ranges ~{load_ref_ranges} \
-        --enable-pet ~{load_pet} \
         --enable-vet ~{load_vet} \
         -SN ${sample_name} \
         -SNM ~{sample_map} \

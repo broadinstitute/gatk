@@ -89,17 +89,11 @@ public class SchemaUtils {
     public static final List<String> YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, VQSLOD, YNG_STATUS);
     public static final List<String> TRANCHE_FIELDS = Arrays.asList(TARGET_TRUTH_SENSITIVITY, MIN_VQSLOD, TRANCHE_FILTER_NAME, TRANCHE_MODEL);
 
-
-    public static final List<String> PET_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, STATE_FIELD_NAME); // TODO do we still need?
-    public static final List<String> VET_FIELDS = Arrays.asList(SAMPLE_ID_FIELD_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, AS_RAW_MQ,
-            AS_RAW_MQRankSum, QUALapprox, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, CALL_GT, CALL_AD, CALL_GQ, CALL_PGT, CALL_PID, CALL_PL);
     public static final List<String> ALT_ALLELE_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, REF_ALLELE_FIELD_NAME, "allele", ALT_ALLELE_FIELD_NAME, "allele_pos", CALL_GT, AS_RAW_MQ, RAW_MQ, AS_RAW_MQRankSum, "raw_mqranksum_x_10", AS_QUALapprox, "qual", AS_RAW_ReadPosRankSum, "raw_readposranksum_x_10", AS_SB_TABLE, "SB_REF_PLUS","SB_REF_MINUS","SB_ALT_PLUS","SB_ALT_MINUS", CALL_AD, "ref_ad", "ad");
     public static final List<String> FEATURE_EXTRACT_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, "allele", RAW_QUAL, "ref_ad", AS_MQRankSum, "AS_MQRankSum_ft", AS_ReadPosRankSum, "AS_ReadPosRankSum_ft", RAW_MQ, SUM_AD, RAW_AD, "RAW_AD_GT_1", "SB_REF_PLUS","SB_REF_MINUS","SB_ALT_PLUS","SB_ALT_MINUS","num_het_samples","num_homvar_samples","distinct_alleles","hq_genotype_samples", "sum_qualapprox", "num_snp_alleles");
 
     public static final String LOAD_STATUS_FIELD_NAME = "status";
     public static final String LOAD_STATUS_EVENT_TIMESTAMP_NAME = "event_timestamp";
-    public static final List<String> LOAD_STATUS_TABLE_REF_FIELDS = Arrays.asList(SAMPLE_ID_FIELD_NAME, LOAD_STATUS_FIELD_NAME, LOAD_STATUS_EVENT_TIMESTAMP_NAME);
-
 
     public static final long chromAdjustment = 1000000000000L;
 
