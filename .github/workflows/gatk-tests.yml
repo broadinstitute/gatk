@@ -146,7 +146,7 @@ jobs:
           repo-path: ${{ github.ref_name }}_${{ github.run_id }}.1${{ strategy.job-index }}
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
           identifier: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
-          only-artifact: needs.check-secrets.outputs.google-credentials == 'true'
+          only-artifact: ${{ needs.check-secrets.outputs.google-credentials == 'true' }}
 
 
   #Run our docker tests
@@ -251,7 +251,7 @@ jobs:
           repo-path: ${{ github.ref_name }}_${{ github.run_id }}.${{ strategy.job-index }}
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
           identifier: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
-          only-artifact: needs.check-secrets.outputs.google-credentials == 'true'
+          only-artifact: ${{ needs.check-secrets.outputs.google-credentials == 'true' }}
 
 
   #test wdl auto generation
