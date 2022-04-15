@@ -25,13 +25,13 @@ jobs:
   check-secrets:
     name: check if the environment has privileges
     outputs:
-      my-key: ${{ google-credentials.outputs.defined }}
+      google-credentials: ${{ google-credentials.outputs.defined }}
     runs-on: ubuntu-latest
     steps:
       - id: google-credentials
         env:
-          MY_KEY: ${{ secrets.GCP_CREDENTIALS }}
-        if: "${{ env.MY_KEY != '' }}"
+          GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+        if: "${{ env.GCP_CREDENTIALS != '' }}"
         run: echo "::set-output name=defined::true"
 
 
@@ -110,7 +110,7 @@ jobs:
 
       #Google Cloud stuff
       - id: 'gcloud-auth'
-        if: needs.check-secrets.outputs.google_credentials == 'true'
+        if: needs.check-secrets.outputs.google-credentials == 'true'
         uses: google-github-actions/auth@v0
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
@@ -118,11 +118,11 @@ jobs:
           create_credentials_file: true
 
       - name: "export the credentials for GATK tests"
-        if: needs.check-secrets.outputs.google_credentials == 'true'
+        if: needs.check-secrets.outputs.google-credentials == 'true'
         run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
       - name: 'Set up Cloud SDK'
-        if: needs.check-secrets.outputs.google_credentials == 'true'
+        if: needs.check-secrets.outputs.google-credentials == 'true'
         uses: google-github-actions/setup-gcloud@v0
 
       - name: pull lfs files
@@ -132,7 +132,7 @@ jobs:
         run: ./gradlew compileTestJava
 
       - name: run-tests
-        if: ${{ needs.check-secrets.outputs.google_credentials == 'true' || matrix.testType != 'cloud'}}
+        if: ${{ needs.check-secrets.outputs.google-credentials == 'true' || matrix.testType != 'cloud'}}
         id: jacoco-tests
         run: |
           ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} test jacocoTestReport
@@ -146,7 +146,7 @@ jobs:
           repo-path: ${{ github.ref_name }}_${{ github.run_id }}.1${{ strategy.job-index }}
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
           identifier: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
-          only-artifact: needs.check-secrets.outputs.google_credentials == 'true'
+          only-artifact: needs.check-secrets.outputs.google-credentials == 'true'
 
 
   #Run our docker tests
@@ -182,18 +182,18 @@ jobs:
       #Google Cloud stuff
       - id: 'gcloud-auth'
         uses: google-github-actions/auth@v0
-        if: needs.check-secrets.outputs.google_credentials == 'true'
+        if: needs.check-secrets.outputs.google-credentials == 'true'
         with:
           credentials_json: ${{ secrets.GCP_CREDENTIALS }}
           project_id: ${{ env.HELLBENDER_TEST_PROJECT }}
           create_credentials_file: true
 
       - name: "export the credentials for GATK tests"
-        if: needs.check-secrets.outputs.google_credentials == 'true'
+        if: needs.check-secrets.outputs.google-credentials == 'true'
         run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
       - name: 'Set up Cloud SDK'
-        if: needs.check-secrets.outputs.google_credentials == 'true'
+        if: needs.check-secrets.outputs.google-credentials == 'true'
         uses: google-github-actions/setup-gcloud@v0
 
       - name: build test jars
@@ -251,7 +251,7 @@ jobs:
           repo-path: ${{ github.ref_name }}_${{ github.run_id }}.${{ strategy.job-index }}
           bot-comment-key: ${{ secrets.GATK_BOT_COMMENT_KEY }}
           identifier: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
-          only-artifact: needs.check-secrets.outputs.google_credentials == 'true'
+          only-artifact: needs.check-secrets.outputs.google-credentials == 'true'
 
 
   #test wdl auto generation
