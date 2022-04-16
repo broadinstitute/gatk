@@ -26,6 +26,7 @@ workflow GvsUnified {
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
         Int? load_data_preemptible_override
+        Int? load_data_maxretries_override
         # End GvsImportGenomes
 
         # Begin GvsCreateFilterSet
@@ -87,6 +88,7 @@ workflow GvsUnified {
             input_vcf_indexes = input_vcf_indexes,
             interval_list = interval_list,
             load_data_preemptible_override = load_data_preemptible_override,
+            load_data_maxretries_override = load_data_maxretries_override,
             load_data_gatk_override = gatk_override,
             service_account_json_path = service_account_json_path
     }
