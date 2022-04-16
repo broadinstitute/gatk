@@ -72,26 +72,6 @@ public class CommittedBQWriter implements AutoCloseable {
         writeJsonArray(0);
     }
 
-    private AppendRowsResponse handleStatusRuntimeException(StatusRuntimeException ex, int retryCount) throws Descriptors.DescriptorValidationException, IOException, InterruptedException, ExecutionException {
-        Code code = ex.getStatus().getCode();
-        if (ImmutableSet.of(ABORTED, CANCELLED, INTERNAL, UNAVAILABLE).contains(code)) {
-            if (retryCount >= maxRetries) {
-                throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", ex);
-            }
-
-            String message = "Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.";
-            System.err.println(message);
-            // .error during validation as I am suspicious about not seeing output
-            logger.error(message, ex);
-            long backOffMillis = backoff.nextBackOffMillis();
-            Thread.sleep(backOffMillis);
-            createStream();
-            return writeJsonArray(retryCount + 1);
-        } else {
-            throw ex;
-        }
-    }
-
     private StatusRuntimeException findCausalStatusRuntimeException(Exception e) {
         StatusRuntimeException se = null;
         Throwable t = e;
@@ -118,7 +98,22 @@ public class CommittedBQWriter implements AutoCloseable {
             if (se == null) {
                 throw e;
             }
-            return handleStatusRuntimeException(se, retryCount);
+
+            Code code = se.getStatus().getCode();
+            if (ImmutableSet.of(ABORTED, CANCELLED, INTERNAL, UNAVAILABLE).contains(code)) {
+                if (retryCount >= maxRetries) {
+                    throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", se);
+                }
+
+                // .error during validation as I am suspicious about not seeing output
+                logger.error("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", se);
+                long backOffMillis = backoff.nextBackOffMillis();
+                Thread.sleep(backOffMillis);
+                createStream();
+                return writeJsonArray(retryCount + 1);
+            } else {
+                throw se;
+            }
         }
     }
 
