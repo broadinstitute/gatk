@@ -30,41 +30,41 @@ workflow GvsUnified {
         # End GvsImportGenomes
 
         # Begin GvsCreateFilterSet
-        String filter_set_name
-        Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
-        Int create_filter_set_scatter_count
-        Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
-
-        Int? INDEL_VQSR_max_gaussians_override = 4
-        Int? INDEL_VQSR_mem_gb_override
-        Int? SNP_VQSR_max_gaussians_override = 6
-        Int? SNP_VQSR_mem_gb_override
-        # End GvsCreateFilterSet
-
-        # Begin GvsPrepareRangesCallset
-        String extract_table_prefix
-
-        String query_project = project_id
-        String destination_project = project_id
-        String destination_dataset = dataset_name
-        String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
-
-        Array[String]? query_labels
-        File? sample_names_to_extract
-        # End GvsPrepareRangesCallset
-
-        # Begin GvsExtractCallset
-        Int extract_scatter_count
-
-        File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
-
-        String extract_output_file_base_name = filter_set_name
-
-        Int? extract_maxretries_override
-        Int? extract_preemptible_override
-        String? extract_output_gcs_dir
-        Int? split_intervals_disk_size_override
-        Int? split_intervals_mem_override
+        # String filter_set_name
+        # Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
+        # Int create_filter_set_scatter_count
+        # Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
+#
+        # Int? INDEL_VQSR_max_gaussians_override = 4
+        # Int? INDEL_VQSR_mem_gb_override
+        # Int? SNP_VQSR_max_gaussians_override = 6
+        # Int? SNP_VQSR_mem_gb_override
+        # # End GvsCreateFilterSet
+#
+        # # Begin GvsPrepareRangesCallset
+        # String extract_table_prefix
+#
+        # String query_project = project_id
+        # String destination_project = project_id
+        # String destination_dataset = dataset_name
+        # String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
+#
+        # Array[String]? query_labels
+        # File? sample_names_to_extract
+        # # End GvsPrepareRangesCallset
+#
+        # # Begin GvsExtractCallset
+        # Int extract_scatter_count
+#
+        # File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+#
+        # String extract_output_file_base_name = filter_set_name
+#
+        # Int? extract_maxretries_override
+        # Int? extract_preemptible_override
+        # String? extract_output_gcs_dir
+        # Int? split_intervals_disk_size_override
+        # Int? split_intervals_mem_override
         # End GvsExtractCallset
     }
 
