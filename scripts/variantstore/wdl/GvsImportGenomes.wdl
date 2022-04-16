@@ -12,6 +12,7 @@ workflow GvsImportGenomes {
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? load_data_preemptible_override
+    Int? load_data_maxretries_override
     File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220406/gatk-package-4.2.0.0-480-gb62026a-SNAPSHOT-local.jar"
     String? service_account_json_path
   }
@@ -64,6 +65,7 @@ workflow GvsImportGenomes {
         interval_list = interval_list,
         gatk_override = load_data_gatk_override,
         load_data_preemptible_override = load_data_preemptible_override,
+        load_data_maxretries_override = load_data_maxretries_override,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetSampleIds.sample_map,
         service_account_json_path = service_account_json_path,
@@ -204,6 +206,7 @@ task LoadData {
 
     File? gatk_override
     Int? load_data_preemptible_override
+    Int? load_data_maxretries_override
     String? service_account_json_path
   }
 
@@ -276,7 +279,7 @@ task LoadData {
   >>>
   runtime {
     docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
-    maxRetries: 1
+    maxRetries: select_first([load_data_maxretries_override, 1])
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
     preemptible: select_first([load_data_preemptible_override, 5])
