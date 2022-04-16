@@ -346,7 +346,7 @@ task TruncateTables {
     # 'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` GROUP BY 1 HAVING COUNT(1) = 2)'
 
     for table in ref_ranges_001 sample_load_status vet_001; do
-      bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false "truncate table vs_261_ingest_errors.$table"
+      bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false "truncate table ~{dataset_name}.$table"
     done
   >>>
   runtime {
