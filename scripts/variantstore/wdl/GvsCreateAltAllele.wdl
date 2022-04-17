@@ -2,7 +2,6 @@ version 1.0
 
 workflow GvsCreateAltAllele {
   input {
-    Boolean go = true
     String dataset_name
     String project_id
 
@@ -36,7 +35,6 @@ workflow GvsCreateAltAllele {
 
   output {
     Array[String] vet_tables_loaded = PopulateAltAlleleTable.done
-    Boolean done = true
   }
 }
 

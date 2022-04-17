@@ -4,7 +4,6 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallset {
   input {
-    Boolean go = true
     String dataset_name
     String project_id
 
@@ -146,7 +145,6 @@ workflow GvsExtractCallset {
     Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
     Float total_vcfs_size_mb = SumBytes.total_mb
     File manifest = CreateManifest.manifest
-    Boolean done = true
   }
 }
 
