@@ -110,7 +110,7 @@ public class WeightedSplitIntervals extends GATKTool {
             WeightedInterval wi = (WeightedInterval) iter.next();
 
             // if we're not mixing contigs, but we switched contigs, emit the list
-            if (dontMixContigs && lastContig != null && !lastContig.equals(wi.getContig()) ) {
+            if (dontMixContigs && lastContig != null && !lastContig.equals(wi.getContig())) {
                 // write out the current list (uniqued and sorted) and start a new one
                 writeIntervalList(formatString, scatterPiece++, currentList);
                 currentList = new IntervalList(sequenceDictionary);
@@ -121,24 +121,29 @@ public class WeightedSplitIntervals extends GATKTool {
             lastContig = wi.getContig();
 
             // if the interval fits completely, just add it
-            if (cumulativeWeight + wi.getWeight() <= targetWeightPerScatter ) {
+            if (cumulativeWeight + wi.getWeight() <= targetWeightPerScatter) {
                 cumulativeWeight += wi.getWeight();
                 currentList.add(wi);
 
             // if it would push us over the edge
             } else {
-                // add a piece of it
+                // try to add a piece of it
                 float remainingSpace = targetWeightPerScatter - cumulativeWeight;
 
                 // how many bases can we take?
-                int basesToTake = (int) Math.floor(remainingSpace /  wi.getWeightPerBase());
+                int basesToTake = (int) Math.floor(remainingSpace / wi.getWeightPerBase());
 
-                // split and add the first part into this list
-                WeightedInterval[] pair = wi.split(basesToTake);
-                currentList.add(pair[0]);
+                if (basesToTake == 0) {
+                    // We can't add any more bases to the current interval list so put this interval back.
+                    iter.pushback(wi);
+                } else {
+                    // split and add the first part into this list
+                    WeightedInterval[] pair = wi.split(basesToTake);
+                    currentList.add(pair[0]);
 
-                // push the remainder back onto the iterator
-                iter.pushback(pair[1]);
+                    // push the remainder back onto the iterator
+                    iter.pushback(pair[1]);
+                }
 
                 // add uniqued, sorted output list and reset
                 writeIntervalList(formatString, scatterPiece++, currentList);
