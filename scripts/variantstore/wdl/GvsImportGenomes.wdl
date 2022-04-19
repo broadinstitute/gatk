@@ -279,7 +279,7 @@ task LoadData {
   >>>
   runtime {
     docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
-    maxRetries: select_first([load_data_maxretries_override, 1])
+    maxRetries: select_first([load_data_maxretries_override, 3])
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
     preemptible: select_first([load_data_preemptible_override, 5])
