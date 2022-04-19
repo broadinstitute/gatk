@@ -41,7 +41,6 @@ import static org.broadinstitute.hellbender.tools.walkers.SplitIntervals.*;
         programGroup = IntervalsManipulationProgramGroup.class
 )
 @DocumentedFeature
-@ExperimentalFeature
 public class WeightedSplitIntervals extends GATKTool {
     public static final String INTERVAL_NUMBER_OF_DIGITS_FULL_NAME = "interval-file-num-digits";
     public static final String WEIGHTS_BED_FILE_FULL_NAME = "weight-bed-file";
