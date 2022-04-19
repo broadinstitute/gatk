@@ -100,12 +100,6 @@ task SplitIntervals {
     set -e
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
-
     mkdir interval-files
     gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
       --dont-mix-contigs \
@@ -120,6 +114,11 @@ task SplitIntervals {
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+    fi
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
