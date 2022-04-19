@@ -61,7 +61,7 @@ public class WeightedInterval extends Interval {
                 this.getStart(),
                 this.getStart() + basesInFirstInterval - 1,
                 this.isNegativeStrand(),
-                this.getName() + "-1", // ensure names are unique
+                this.getName() == null ? null : this.getName() + "-1", // ensure non-null names are unique
                 this.getWeightPerBase() * basesInFirstInterval);
 
         WeightedInterval right = new WeightedInterval(
@@ -69,7 +69,7 @@ public class WeightedInterval extends Interval {
                 this.getStart() + basesInFirstInterval,
                 this.getEnd(),
                 this.isNegativeStrand(),
-                this.getName() + "-2", // ensure names are unique
+                this.getName() == null ? null : this.getName() + "-2", // ensure non-null names are unique
                 this.getWeight() - left.getWeight()); // give remainder to right
 
         return new WeightedInterval[]{left, right};
