@@ -21,7 +21,7 @@ inputs:
     description: 'The GITHUB_TOKEN secret used for querying the github api to locate the logs for this run'
     required: false
   bot-comment-key:
-    description: 'Key corresponding to the user account to be used for making altert comments on github'
+    description: 'Key corresponding to the user account to be used for making comments on github about test failures'
     required: false
 ## option to skip all but the artifact uplaod
   only-artifact:
