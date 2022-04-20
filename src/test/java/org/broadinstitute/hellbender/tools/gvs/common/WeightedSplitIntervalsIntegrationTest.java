@@ -13,6 +13,8 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 
+// Suppresses the "expression might be null" warnings which would be genuine concerns in production code but which
+// are fine in tests (unexpected and dereferenced nulls should crash the test which will appropriately signal failure).
 @SuppressWarnings("ConstantConditions")
 public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTest {
 
