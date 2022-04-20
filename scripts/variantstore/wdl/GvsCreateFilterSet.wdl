@@ -14,7 +14,7 @@ workflow GvsCreateFilterSet {
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220406/gatk-package-4.2.0.0-480-gb62026a-SNAPSHOT-local.jar"
+    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220415/gatk-package-4.2.0.0-492-g1387d47-SNAPSHOT-local.jar"
 
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
