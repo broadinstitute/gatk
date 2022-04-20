@@ -1,29 +1,19 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
-import htsjdk.samtools.util.OverlapDetector;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.SplitIntervals;
-import org.broadinstitute.hellbender.tools.walkers.SplitIntervalsIntegrationTest;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-import static java.util.Arrays.asList;
 
-
+@SuppressWarnings("ConstantConditions")
 public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTest {
 
     @Test
@@ -62,7 +52,6 @@ public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTes
 
         final int scatterCount = 100;
         final File outputDir = createTempDir("output");
-        final Interval interval = new Interval("chr20", 1000000, 2000000);
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addInterval(wgsIntervalList.getAbsolutePath())
@@ -86,6 +75,41 @@ public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTes
         // ensure they are the same
         Assert.assertEquals(0, IntervalList.difference(original, outList).size());
 
+    }
+
+    @Test
+    public void testHandleZeroBasesToTake() {
+        final File weights = new File(publicTestDir + "example_weights_chr20_chr21.bed.gz");
+        final File wgsIntervalList = new File(publicTestDir + "hg38.handcurated.noCentromeres.noTelomeres.chr20_chr21.interval_list");
+
+        // This value of scatter width exercises the `WeightedSplitIntervals` zero `basesToTake` condition of VS-384.
+        // While the zero `basesToTake` condition is known to be exercised by other scatter widths (18, 40, 59, and 77),
+        // this test uses 94 as that's the closest to the "natural" choice of scatter width 100 in the
+        // `testNoLossRealisticWgs` test from which this test descended.
+        final int scatterCount = 94;
+        final File outputDir = createTempDir("output");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInterval(wgsIntervalList.getAbsolutePath())
+                .addReference(b38_reference_20_21)
+                .add(SplitIntervals.SCATTER_COUNT_SHORT_NAME, scatterCount)
+                .add(WeightedSplitIntervals.WEIGHTS_BED_FILE_FULL_NAME, weights)
+                .addOutput(outputDir);
+
+        runCommandLine(args);
+
+        // verify we haven't lost any bases
+        IntervalList original = IntervalList.fromFile(wgsIntervalList).uniqued().sorted();
+        IntervalList outList = IntervalList.fromFiles(Arrays.stream(outputDir.listFiles()).collect(Collectors.toList())).uniqued().sorted();
+
+        // total size is the same
+        Assert.assertEquals(outList.getBaseCount(),original.getBaseCount());
+
+        // and the number of intervals are the same
+        Assert.assertEquals(outList.getIntervals().size(), original.getIntervals().size());
+
+        // ensure they are the same
+        Assert.assertEquals(0, IntervalList.difference(original, outList).size());
     }
 
     @Test
