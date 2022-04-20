@@ -132,70 +132,6 @@ dependencies:
  - pyvcf=0.6.8=py36h9f0ad1d_1002
  - pyyaml=5.4.1=py36h8f6f2f9_1
  - qt=5.9.7=h0c104cb_3
- - r-assertthat=0.2.1=r36h6115d3f_2
- - r-backports=1.1.10=r36hcdcec82_0
- - r-base=3.6.2=h7ed4ef7_1
- - r-bitops=1.0_7=r36hcfec24a_0
- - r-brio=1.1.2=r36hcfec24a_0
- - r-callr=3.7.0=r36hc72bb7e_0
- - r-catools=1.18.2=r36h03ef668_0
- - r-cli=2.5.0=r36hc72bb7e_0
- - r-colorspace=2.0_1=r36hcfec24a_0
- - r-crayon=1.4.1=r36hc72bb7e_0
- - r-data.table=1.12.8=r36hcdcec82_1
- - r-desc=1.3.0=r36hc72bb7e_0
- - r-diffobj=0.3.4=r36hcfec24a_0
- - r-digest=0.6.27=r36h03ef668_0
- - r-dplyr=0.8.5=r36h0357c0b_1
- - r-ellipsis=0.3.2=r36hcfec24a_0
- - r-evaluate=0.14=r36h6115d3f_2
- - r-fansi=0.4.2=r36hcfec24a_0
- - r-farver=2.1.0=r36h03ef668_0
- - r-gdata=2.18.0=r36h6115d3f_1003
- - r-getopt=1.20.3=r36_2
- - r-ggplot2=3.3.0=r36h6115d3f_1
- - r-glue=1.4.2=r36hcfec24a_0
- - r-gplots=3.0.3=r36h6115d3f_1
- - r-gsalib=2.1=r36_1002
- - r-gtable=0.3.0=r36h6115d3f_3
- - r-gtools=3.8.2=r36hcdcec82_1
- - r-isoband=0.2.4=r36h03ef668_0
- - r-jsonlite=1.7.2=r36hcfec24a_0
- - r-kernsmooth=2.23_18=r36h7679c2e_0
- - r-labeling=0.4.2=r36h142f84f_0
- - r-lattice=0.20_44=r36hcfec24a_0
- - r-lifecycle=1.0.0=r36hc72bb7e_0
- - r-magrittr=2.0.1=r36hcfec24a_1
- - r-mass=7.3_54=r36hcfec24a_0
- - r-matrix=1.3_3=r36he454529_0
- - r-mgcv=1.8_35=r36he454529_0
- - r-munsell=0.5.0=r36h6115d3f_1003
- - r-nlme=3.1_150=r36h31ca83e_0
- - r-optparse=1.6.4=r36h6115d3f_0
- - r-pillar=1.6.1=r36hc72bb7e_0
- - r-pkgconfig=2.0.3=r36h6115d3f_1
- - r-pkgload=1.2.1=r36h03ef668_0
- - r-plogr=0.2.0=r36h6115d3f_1003
- - r-praise=1.0.0=r36h6115d3f_1004
- - r-processx=3.5.2=r36hcfec24a_0
- - r-ps=1.6.0=r36hcfec24a_0
- - r-purrr=0.3.4=r36hcfec24a_1
- - r-r6=2.5.0=r36hc72bb7e_0
- - r-rcolorbrewer=1.1_2=r36h6115d3f_1003
- - r-rcpp=1.0.6=r36h03ef668_0
- - r-rematch2=2.1.2=r36h6115d3f_1
- - r-rlang=0.4.11=r36hcfec24a_0
- - r-rprojroot=2.0.2=r36hc72bb7e_0
- - r-rstudioapi=0.13=r36hc72bb7e_0
- - r-scales=1.1.1=r36h6115d3f_0
- - r-testthat=3.0.2=r36h03ef668_0
- - r-tibble=3.1.2=r36hcfec24a_0
- - r-tidyselect=1.1.1=r36hc72bb7e_0
- - r-utf8=1.2.1=r36hcfec24a_0
- - r-vctrs=0.3.8=r36hcfec24a_1
- - r-viridislite=0.4.0=r36hc72bb7e_0
- - r-waldo=0.2.5=r36hc72bb7e_0
- - r-withr=2.4.2=r36hc72bb7e_0
  - readline=8.1=h46c0cb4_0
  - scikit-learn=0.23.1=py36h0e1014b_0
  - scipy=1.0.0=py36_blas_openblas_201
@@ -249,9 +185,9 @@ dependencies:
 - r-backports=1.1.10
 
 # other python dependencies; these should be removed after functionality is moved into Java code
-- biopython=1.76
-- pyvcf=0.6.8
-- bioconda::pysam=0.15.3            # using older conda-installed versions may result in libcrypto / openssl bugs
+#- biopython=1.76
+#- pyvcf=0.6.8
+#- bioconda::pysam=0.15.3            # using older conda-installed versions may result in libcrypto / openssl bugs
 
 # pip installs should be avoided, as pip may not respect the dependencies found by the conda solver
 - pip:
