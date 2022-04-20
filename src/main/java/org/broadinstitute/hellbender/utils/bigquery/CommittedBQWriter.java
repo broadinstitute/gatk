@@ -99,9 +99,9 @@ public class CommittedBQWriter implements AutoCloseable {
                 throw e;
             }
 
+            Code code = se.getStatus().getCode();
             // Google BigQuery write API error handling
             // https://cloud.google.com/bigquery/docs/write-api#error_handling
-            Code code = se.getStatus().getCode();
             // The comments in this if/else are nearly all quotations from the reference documentation linked above.
             if (ALREADY_EXISTS == code) {
                 // ALREADY_EXISTS: The row was already written. This error can happen when you provide stream offsets.
@@ -127,6 +127,9 @@ public class CommittedBQWriter implements AutoCloseable {
                 if (retryCount >= maxRetries) {
                     throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", e);
                 }
+                logger.warn("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", e);
+                long backOffMillis = backoff.nextBackOffMillis();
+                Thread.sleep(backOffMillis);
 
                 //noinspection StatementWithEmptyBody
                 if (ImmutableSet.of(INTERNAL, CANCELLED, ABORTED).contains(code)) {
@@ -137,10 +140,6 @@ public class CommittedBQWriter implements AutoCloseable {
                     writer.close();
                     createStream();
                 }
-
-                logger.warn("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", e);
-                long backOffMillis = backoff.nextBackOffMillis();
-                Thread.sleep(backOffMillis);
                 return writeJsonArray(retryCount + 1);
             }
         }
