@@ -12,35 +12,230 @@
 #
 name: $condaEnvName
 channels:
-# if channels other than conda-forge are added and the channel order is changed (note that conda channel_priority is currently set to flexible),
-# verify that key dependencies are installed from the correct channel and compiled against MKL
-- conda-forge
-- defaults
+ - bioconda
+ - conda-forge
+ - defaults
 dependencies:
-
-# core python dependencies
-- conda-forge::python=3.6.10        # do not update
-- pip=20.0.2                        # specifying channel may cause a warning to be emitted by conda
-- conda-forge::mkl=2019.5           # MKL typically provides dramatic performance increases for theano, tensorflow, and other key dependencies
-- conda-forge::mkl-service=2.3.0
-- conda-forge::numpy=1.17.5         # do not update, this will break scipy=1.0.0
-                                    #   verify that numpy is compiled against MKL (e.g., by checking *_mkl_info using numpy.show_config())
-                                    #   and that it is used in tensorflow, theano, and other key dependencies
-- conda-forge::theano=1.0.4         # it is unlikely that new versions of theano will be released
-                                    #   verify that this is using numpy compiled against MKL (e.g., by the presence of -lmkl_rt in theano.config.blas.ldflags)
-- defaults::tensorflow=1.15.0       # update only if absolutely necessary, as this may cause conflicts with other core dependencies
-                                    #   verify that this is using numpy compiled against MKL (e.g., by checking tensorflow.pywrap_tensorflow.IsMklEnabled())
-- conda-forge::scipy=1.0.0          # do not update, this will break a scipy.misc.logsumexp import (deprecated in scipy=1.0.0) in pymc3=3.1
-- conda-forge::pymc3=3.1            # do not update, this will break gcnvkernel
-- conda-forge::h5py=2.10.0          # required by keras 2.2.4
-- conda-forge::keras=2.2.4          # updated from pip-installed 2.2.0, which caused various conflicts/clobbers of conda-installed packages
-                                    #   conda-installed 2.2.4 appears to be the most recent version with a consistent API and without conflicts/clobbers
-                                    #   if you wish to update, note that versions of conda-forge::keras after 2.2.5
-                                    #   undesirably set the environment variable KERAS_BACKEND = theano by default
-- defaults::intel-openmp=2019.4
-- conda-forge::scikit-learn=0.23.1
-- conda-forge::matplotlib=3.2.1
-- conda-forge::pandas=1.0.3
+- _libgcc_mutex=0.1=conda_forge
+ - _openmp_mutex=4.5=1_llvm
+ - _r-mutex=1.0.1=anacondar_1
+ - _tflow_select=2.3.0=mkl
+ - absl-py=0.15.0=pyhd8ed1ab_0
+ - astor=0.8.1=pyh9f0ad1d_0
+ - binutils_impl_linux-64=2.36.1=h193b22a_2
+ - binutils_linux-64=2.36=hf3e587d_33
+ - biopython=1.76=py36h516909a_0
+ - blas=1.1=openblas
+ - bwidget=1.9.14=ha770c72_1
+ - bzip2=1.0.8=h7f98852_4
+ - c-ares=1.18.1=h7f98852_0
+ - ca-certificates=2021.10.8=ha878542_0
+ - cairo=1.16.0=hcf35c78_1003
+ - colorama=0.4.4=pyh9f0ad1d_0
+ - curl=7.68.0=hf8cf82a_0
+ - cycler=0.11.0=pyhd8ed1ab_0
+ - dbus=1.13.6=hfdff14a_1
+ - expat=2.4.8=h27087fc_0
+ - fontconfig=2.14.0=h8e229c2_0
+ - freetype=2.10.4=h0708190_1
+ - fribidi=1.0.10=h36c2ea0_0
+ - gast=0.2.2=py_0
+ - gcc_impl_linux-64=7.5.0=habd7529_20
+ - gcc_linux-64=7.5.0=h47867f9_33
+ - gettext=0.19.8.1=hf34092f_1004
+ - gfortran_impl_linux-64=7.5.0=h56cb351_20
+ - gfortran_linux-64=7.5.0=h78c8a43_33
+ - glib=2.66.3=h58526e2_0
+ - google-pasta=0.2.0=pyh8c360ce_0
+ - graphite2=1.3.13=h58526e2_1001
+ - grpcio=1.38.1=py36h8e87921_0
+ - gsl=2.6=he838d99_2
+ - gst-plugins-base=1.14.5=h0935bb2_2
+ - gstreamer=1.14.5=h36ae1b5_2
+ - gxx_impl_linux-64=7.5.0=hd0bb8aa_20
+ - gxx_linux-64=7.5.0=h555fc39_33
+ - h5py=2.10.0=nompi_py36h4510012_106
+ - harfbuzz=2.4.0=h9f30f68_3
+ - hdf5=1.10.6=nompi_h3c11f04_101
+ - icu=64.2=he1b5a44_1
+ - importlib-metadata=4.8.1=py36h5fab9bb_0
+ - intel-openmp=2019.4=243
+ - joblib=1.1.0=pyhd8ed1ab_0
+ - jpeg=9e=h7f98852_0
+ - keras=2.2.4=py36_1
+ - keras-applications=1.0.8=py_1
+ - keras-preprocessing=1.1.2=pyhd8ed1ab_0
+ - kernel-headers_linux-64=2.6.32=he073ed8_15
+ - kiwisolver=1.3.1=py36h605e78d_1
+ - krb5=1.16.4=h2fd8d38_0
+ - ld_impl_linux-64=2.36.1=hea4e1c9_2
+ - libblas=3.9.0=13_linux64_openblas
+ - libcblas=3.9.0=13_linux64_openblas
+ - libcurl=7.68.0=hda55be3_0
+ - libdeflate=1.3=h516909a_0
+ - libedit=3.1.20191231=he28a2e2_2
+ - libffi=3.2.1=he1b5a44_1007
+ - libgcc-devel_linux-64=7.5.0=hda03d7c_20
+ - libgcc-ng=11.2.0=h1d223b6_15
+ - libgfortran=3.0.0=1
+ - libgfortran-ng=7.5.0=h14aa051_20
+ - libgfortran4=7.5.0=h14aa051_20
+ - libglib=2.66.3=hbe7bbb4_0
+ - libgomp=11.2.0=h1d223b6_15
+ - libgpuarray=0.7.6=h7f98852_1003
+ - libiconv=1.16=h516909a_0
+ - liblapack=3.9.0=13_linux64_openblas
+ - libopenblas=0.3.18=hf726d26_0
+ - libpng=1.6.37=h21135ba_2
+ - libprotobuf=3.18.0=h780b84a_1
+ - libssh2=1.10.0=ha56f1ee_2
+ - libstdcxx-devel_linux-64=7.5.0=hb016644_20
+ - libstdcxx-ng=11.2.0=he4da1e4_15
+ - libtiff=4.2.0=hf544144_3
+ - libuuid=2.32.1=h7f98852_1000
+ - libwebp-base=1.2.2=h7f98852_1
+ - libxcb=1.13=h7f98852_1004
+ - libxml2=2.9.10=hee79883_0
+ - libzlib=1.2.11=h166bdaf_1014
+ - llvm-openmp=13.0.1=he0ac6c6_1
+ - lz4-c=1.9.3=h9c3ff4c_1
+ - make=4.3=hd18ef5c_1
+ - mako=1.2.0=pyhd8ed1ab_1
+ - markdown=3.3.6=pyhd8ed1ab_0
+ - markupsafe=2.0.1=py36h8f6f2f9_0
+ - matplotlib=3.2.1=0
+ - matplotlib-base=3.2.1=py36hb8e4980_0
+ - mkl=2019.5=281
+ - mkl-service=2.3.0=py36h516909a_0
+ - ncurses=6.3=h27087fc_1
+ - numpy=1.17.5=py36h2aa4a07_1
+ - openblas=0.2.20=8
+ - openssl=1.1.1n=h166bdaf_0
+ - opt_einsum=3.3.0=pyhd8ed1ab_1
+ - pandas=1.0.3=py36h830a2c2_1
+ - pango=1.42.4=h7062337_4
+ - patsy=0.5.2=pyhd8ed1ab_0
+ - pcre=8.45=h9c3ff4c_0
+ - pip=20.0.2=py_2
+ - pixman=0.38.0=h516909a_1003
+ - protobuf=3.18.0=py36hc4f0c31_0
+ - pthread-stubs=0.4=h36c2ea0_1001
+ - pygpu=0.7.6=py36h92226af_1002
+ - pymc3=3.1=py36_0
+ - pyparsing=3.0.8=pyhd8ed1ab_0
+ - pyqt=5.9.2=py36hcca6a23_4
+ - pysam=0.15.3=py36hbcae180_3
+ - python=3.6.10=h8356626_1011_cpython
+ - python-dateutil=2.8.2=pyhd8ed1ab_0
+ - python_abi=3.6=2_cp36m
+ - pytz=2022.1=pyhd8ed1ab_0
+ - pyvcf=0.6.8=py36h9f0ad1d_1002
+ - pyyaml=5.4.1=py36h8f6f2f9_1
+ - qt=5.9.7=h0c104cb_3
+ - r-assertthat=0.2.1=r36h6115d3f_2
+ - r-backports=1.1.10=r36hcdcec82_0
+ - r-base=3.6.2=h7ed4ef7_1
+ - r-bitops=1.0_7=r36hcfec24a_0
+ - r-brio=1.1.2=r36hcfec24a_0
+ - r-callr=3.7.0=r36hc72bb7e_0
+ - r-catools=1.18.2=r36h03ef668_0
+ - r-cli=2.5.0=r36hc72bb7e_0
+ - r-colorspace=2.0_1=r36hcfec24a_0
+ - r-crayon=1.4.1=r36hc72bb7e_0
+ - r-data.table=1.12.8=r36hcdcec82_1
+ - r-desc=1.3.0=r36hc72bb7e_0
+ - r-diffobj=0.3.4=r36hcfec24a_0
+ - r-digest=0.6.27=r36h03ef668_0
+ - r-dplyr=0.8.5=r36h0357c0b_1
+ - r-ellipsis=0.3.2=r36hcfec24a_0
+ - r-evaluate=0.14=r36h6115d3f_2
+ - r-fansi=0.4.2=r36hcfec24a_0
+ - r-farver=2.1.0=r36h03ef668_0
+ - r-gdata=2.18.0=r36h6115d3f_1003
+ - r-getopt=1.20.3=r36_2
+ - r-ggplot2=3.3.0=r36h6115d3f_1
+ - r-glue=1.4.2=r36hcfec24a_0
+ - r-gplots=3.0.3=r36h6115d3f_1
+ - r-gsalib=2.1=r36_1002
+ - r-gtable=0.3.0=r36h6115d3f_3
+ - r-gtools=3.8.2=r36hcdcec82_1
+ - r-isoband=0.2.4=r36h03ef668_0
+ - r-jsonlite=1.7.2=r36hcfec24a_0
+ - r-kernsmooth=2.23_18=r36h7679c2e_0
+ - r-labeling=0.4.2=r36h142f84f_0
+ - r-lattice=0.20_44=r36hcfec24a_0
+ - r-lifecycle=1.0.0=r36hc72bb7e_0
+ - r-magrittr=2.0.1=r36hcfec24a_1
+ - r-mass=7.3_54=r36hcfec24a_0
+ - r-matrix=1.3_3=r36he454529_0
+ - r-mgcv=1.8_35=r36he454529_0
+ - r-munsell=0.5.0=r36h6115d3f_1003
+ - r-nlme=3.1_150=r36h31ca83e_0
+ - r-optparse=1.6.4=r36h6115d3f_0
+ - r-pillar=1.6.1=r36hc72bb7e_0
+ - r-pkgconfig=2.0.3=r36h6115d3f_1
+ - r-pkgload=1.2.1=r36h03ef668_0
+ - r-plogr=0.2.0=r36h6115d3f_1003
+ - r-praise=1.0.0=r36h6115d3f_1004
+ - r-processx=3.5.2=r36hcfec24a_0
+ - r-ps=1.6.0=r36hcfec24a_0
+ - r-purrr=0.3.4=r36hcfec24a_1
+ - r-r6=2.5.0=r36hc72bb7e_0
+ - r-rcolorbrewer=1.1_2=r36h6115d3f_1003
+ - r-rcpp=1.0.6=r36h03ef668_0
+ - r-rematch2=2.1.2=r36h6115d3f_1
+ - r-rlang=0.4.11=r36hcfec24a_0
+ - r-rprojroot=2.0.2=r36hc72bb7e_0
+ - r-rstudioapi=0.13=r36hc72bb7e_0
+ - r-scales=1.1.1=r36h6115d3f_0
+ - r-testthat=3.0.2=r36h03ef668_0
+ - r-tibble=3.1.2=r36hcfec24a_0
+ - r-tidyselect=1.1.1=r36hc72bb7e_0
+ - r-utf8=1.2.1=r36hcfec24a_0
+ - r-vctrs=0.3.8=r36hcfec24a_1
+ - r-viridislite=0.4.0=r36hc72bb7e_0
+ - r-waldo=0.2.5=r36hc72bb7e_0
+ - r-withr=2.4.2=r36hc72bb7e_0
+ - readline=8.1=h46c0cb4_0
+ - scikit-learn=0.23.1=py36h0e1014b_0
+ - scipy=1.0.0=py36_blas_openblas_201
+ - sed=4.8=he412f7d_0
+ - setuptools=58.0.4=py36h5fab9bb_2
+ - sip=4.19.8=py36hf484d3e_1000
+ - six=1.16.0=pyh6c4a22f_0
+ - sqlite=3.38.2=h4ff8645_0
+ - sysroot_linux-64=2.12=he073ed8_15
+ - tensorboard=1.15.0=py36_0
+ - tensorflow=1.15.0=mkl_py36h4920b83_0
+ - tensorflow-base=1.15.0=mkl_py36he1670d9_0
+ - tensorflow-estimator=1.15.1=pyh2649769_0
+ - termcolor=1.1.0=py_2
+ - theano=1.0.4=py36h831f99a_1002
+ - threadpoolctl=3.1.0=pyh8a188c0_0
+ - tk=8.6.12=h27826a3_0
+ - tktable=2.10=hb7b940f_3
+ - tornado=6.1=py36h8f6f2f9_1
+ - tqdm=4.64.0=pyhd8ed1ab_0
+ - typing_extensions=4.1.1=pyha770c72_0
+ - werkzeug=0.16.1=py_0
+ - wheel=0.37.1=pyhd8ed1ab_0
+ - wrapt=1.13.1=py36h8f6f2f9_0
+ - xorg-kbproto=1.0.7=h7f98852_1002
+ - xorg-libice=1.0.10=h7f98852_0
+ - xorg-libsm=1.2.3=hd9c2040_1000
+ - xorg-libx11=1.7.2=h7f98852_0
+ - xorg-libxau=1.0.9=h7f98852_0
+ - xorg-libxdmcp=1.1.3=h7f98852_0
+ - xorg-libxext=1.3.4=h7f98852_1
+ - xorg-libxrender=0.9.10=h7f98852_1003
+ - xorg-renderproto=0.11.1=h7f98852_1002
+ - xorg-xextproto=7.3.0=h7f98852_1002
+ - xorg-xproto=7.0.31=h7f98852_1007
+ - xz=5.2.5=h516909a_1
+ - yaml=0.2.5=h7f98852_2
+ - zipp=3.6.0=pyhd8ed1ab_0
+ - zlib=1.2.11=h166bdaf_1014
+ - zstd=1.5.2=ha95c52a_0
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=3.6.2
