@@ -99,23 +99,53 @@ public class CommittedBQWriter implements AutoCloseable {
                 throw e;
             }
 
+            // Google BigQuery write API error handling
+            // https://cloud.google.com/bigquery/docs/write-api#error_handling
             Code code = se.getStatus().getCode();
-            if (ImmutableSet.of(ABORTED, CANCELLED, INTERNAL, UNAVAILABLE).contains(code)) {
+            // The comments in this if/else are nearly all quotations from the reference documentation linked above.
+            if (ALREADY_EXISTS == code) {
+                // ALREADY_EXISTS: The row was already written. This error can happen when you provide stream offsets.
+                // It indicates that a duplicate record was detected. You can safely ignore this error.
+
+                // We don't expect to see this, but to "ignore" we should not retry sending the same `jsonArr`.
+                jsonArr = new JSONArray();
+                return null;
+            } else if (ImmutableSet.of(INVALID_ARGUMENT, NOT_FOUND, OUT_OF_RANGE, PERMISSION_DENIED).contains(code)) {
+                // These are all not retryable:
+                //
+                // INVALID_ARGUMENT: Invalid argument. This error is an application error.
+                //
+                // NOT_FOUND: The stream or table was not found.
+                //
+                // OUT_OF_RANGE. The offset is beyond the current write offset. This error can happen if you provide
+                // stream offsets and a previous write operation failed. In that case, you can retry from the last
+                // successful write. This error can also happen if the application sets the wrong offset value.
+                //
+                // PERMISSION_DENIED. The application does not have permission to write to this table.
+                throw e;
+            } else {
                 if (retryCount >= maxRetries) {
-                    throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", se);
+                    throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", e);
                 }
 
-                // .error during validation as I am suspicious about not seeing output
-                logger.error("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", se);
+                //noinspection StatementWithEmptyBody
+                if (ImmutableSet.of(INTERNAL, CANCELLED, ABORTED).contains(code)) {
+                    // INTERNAL, CANCELLED, or ABORTED: The operation could not be completed. You can safely retry the operation.
+                } else {
+                    // If you receive an error that's not listed above, then try to open a new connection by closing the
+                    // writer object and creating a new instance.
+                    writer.close();
+                    createStream();
+                }
+
+                logger.warn("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", e);
                 long backOffMillis = backoff.nextBackOffMillis();
                 Thread.sleep(backOffMillis);
-                createStream();
                 return writeJsonArray(retryCount + 1);
-            } else {
-                throw se;
             }
         }
     }
+
 
     public void close() {
         if (writer != null) {
