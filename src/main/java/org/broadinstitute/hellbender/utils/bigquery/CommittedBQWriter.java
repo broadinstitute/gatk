@@ -26,8 +26,8 @@ public class CommittedBQWriter implements AutoCloseable {
     protected WriteStream writeStream;
     protected JsonStreamWriter writer;
     protected TableName parentTable;
-    protected WriteStream.Type streamType;
     protected int maxRetries = 3;
+    protected WriteStream.Type streamType;
     protected int batchSize = 10000;
     protected JSONArray jsonArr = new JSONArray();
 
@@ -72,18 +72,12 @@ public class CommittedBQWriter implements AutoCloseable {
         writeJsonArray(0);
     }
 
-    private StatusRuntimeException findCausalStatusRuntimeException(Exception e) {
-        StatusRuntimeException se = null;
-        Throwable t = e;
-        while (true) {
-            if (t == null) break;
-            if (t instanceof StatusRuntimeException) {
-                se = (StatusRuntimeException) t;
-                break;
-            }
-            t = t.getCause();
+    private StatusRuntimeException findCausalStatusRuntimeException(Throwable t) {
+        if (t == null) return null;
+        if (t instanceof StatusRuntimeException) {
+            return (StatusRuntimeException) t;
         }
-        return se;
+        return findCausalStatusRuntimeException(t.getCause());
     }
 
     protected AppendRowsResponse writeJsonArray(int retryCount) throws Descriptors.DescriptorValidationException, ExecutionException, InterruptedException, IOException {
