@@ -84,7 +84,7 @@ task Prepare {
         set -o errexit -o nounset -o pipefail
 
         apt-get -qq update
-        apt-get -qq install git
+        apt-get -qq install git git-lfs
 
         git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
         cd gatk
@@ -110,7 +110,7 @@ task Prepare {
     }
 
     runtime {
-        docker: "ubuntu:latest"
+        docker: "eclipse-temurin:11"
         disks: "local-disk 500 HDD"
     }
 }
