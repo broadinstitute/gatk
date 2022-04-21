@@ -1,0 +1,19 @@
+name: 'install-cromwell'
+description: 'installs cromwell and womtool locally for jobs that require it (and sets their paths as environment variables)'
+inputs:
+  CROMWELL_VERSION:  # id of input
+    description: 'Cromwell Version to download'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Set Cromwell env variables
+      run: |
+        echo "CROMWELL_JAR=${HOME}/cromwell-${{ inputs.CROMWELL_VERSION }}.jar" >> $GITHUB_ENV;
+        echo "WOMTOOL_JAR=${HOME}/womtool-${{ inputs.CROMWELL_VERSION }}.jar" >> $GITHUB_ENV;
+      shell: bash
+    - name: Download Cromwell and Womtools
+      run: |
+        wget -q -O $CROMWELL_JAR https://github.com/broadinstitute/cromwell/releases/download/${{ inputs.CROMWELL_VERSION }}/cromwell-${{ inputs.CROMWELL_VERSION }}.jar;
+        wget -q -O $WOMTOOL_JAR https://github.com/broadinstitute/cromwell/releases/download/${{ inputs.CROMWELL_VERSION }}/womtool-${{ inputs.CROMWELL_VERSION }}.jar;
+      shell: bash
