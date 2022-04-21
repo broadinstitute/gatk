@@ -5,6 +5,7 @@ import "GvsCreateTables.wdl" as GvsCreateTables
 workflow GvsAssignIds {
 
   input {
+    Boolean go = true
     String dataset_name
     String project_id
 
@@ -65,7 +66,7 @@ workflow GvsAssignIds {
   }
 
   output {
-    Boolean gvs_ids_created = true
+    Boolean done = true
     File gvs_ids_tsv = AssignIds.gvs_ids_tsv
   }
 }

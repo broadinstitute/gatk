@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateFilterSet {
   input {
+    Boolean go = true
     String dataset_name
     String project_id
 
@@ -252,6 +253,7 @@ workflow GvsCreateFilterSet {
   output {
     File output_vcf = MergeVCFs.output_vcf
     File output_vcf_idx = MergeVCFs.output_vcf_index
+    Boolean done = true
   }
 }
 

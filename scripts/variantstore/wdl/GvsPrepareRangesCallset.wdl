@@ -2,6 +2,7 @@ version 1.0
 
 workflow GvsPrepareCallset {
   input {
+    Boolean go = true
     String project_id
     String dataset_name
 
@@ -42,6 +43,7 @@ workflow GvsPrepareCallset {
 
   output {
     String fq_cohort_extract_table_prefix = PrepareRangesCallsetTask.fq_cohort_extract_table_prefix
+    Boolean done = true
   }
 }
 

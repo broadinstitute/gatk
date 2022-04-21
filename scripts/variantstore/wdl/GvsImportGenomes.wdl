@@ -3,6 +3,7 @@ version 1.0
 workflow GvsImportGenomes {
 
   input {
+    Boolean go = true
     String dataset_name
     String project_id
 
@@ -81,7 +82,7 @@ workflow GvsImportGenomes {
   }
 
   output {
-    Boolean loaded_in_gvs = true
+    Boolean done = true
   }
 }
 
@@ -286,7 +287,7 @@ task LoadData {
     cpu: 1
   }
   output {
-    String done = "true"
+    Boolean done = true
   }
 }
 
