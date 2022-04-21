@@ -83,6 +83,9 @@ task Prepare {
     command <<<
         set -o errexit -o nounset -o pipefail
 
+        apt-get -qq update
+        apt-get -qq install git
+
         git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
         cd gatk
         ./gradlew shadowJar
