@@ -41,7 +41,7 @@ dependencies:
 - conda-forge::scikit-learn=0.23.1
 - conda-forge::matplotlib=3.2.1
 - conda-forge::pandas=1.0.3
-- conda-forge::typing_extensions=4.1.1
+- conda-forge::typing_extensions=4.1.1   # see https://github.com/broadinstitute/gatk/issues/7800 and linked PRs
 
 # core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=3.6.2
