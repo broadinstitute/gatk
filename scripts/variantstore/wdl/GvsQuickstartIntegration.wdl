@@ -57,13 +57,21 @@ workflow GvsQuickstartIntegration {
             dataset_name = Prepare.dataset_name,
             project_id = "spec-ops-aou",
             external_sample_names = external_sample_names,
-            gatk_override_jar = Prepare.jar,
+            gatk_override = Prepare.jar,
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
             create_filter_set_scatter_count = 20,
             extract_table_prefix = "quickit",
             extract_scatter_count = 100
+    }
+
+    output {
+        Array[File] output_vcfs = GvsUnified.output_vcfs
+        Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
+        Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
+        File manifest = GvsUnified.manifest
+        Boolean done = true
     }
 }
 

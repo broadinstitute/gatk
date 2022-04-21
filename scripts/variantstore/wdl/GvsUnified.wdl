@@ -156,4 +156,12 @@ workflow GvsUnified {
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override
     }
+
+    output {
+        Array[File] output_vcfs = GvsExtractCallset.output_vcfs
+        Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
+        Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
+        File manifest = GvsExtractCallset.manifest
+        Boolean done = true
+    }
 }
