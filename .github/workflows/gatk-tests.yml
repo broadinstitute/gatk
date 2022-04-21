@@ -135,9 +135,7 @@ jobs:
         id: jacoco-tests
         run: |
           ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} test jacocoTestReport
-          cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test \
-          && rm -r build/reports/tests/testOnPackagedReleaseJar;
-
+          
       - uses: ./.github/actions/upload-gatk-test-results
         if: always()
         with:
