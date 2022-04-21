@@ -723,50 +723,12 @@ public class ExtractCohortEngine {
                             .map(Integer::parseInt)
                             .map(alleleIndex -> alleles.get(alleleIndex))
                             .collect(Collectors.toList());
+            genotypeBuilder.alleles(genotypeAlleles);
 
             if (VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.GENOTYPE)) {
-                final List<Allele> nonRefAlleles =
-                        genotypeAlleles.stream()
-                                .filter(a -> a.isNonReference())
-                                .distinct()
-                                .collect(Collectors.toList());
-
-                final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, vqsLodMap, Double.NaN);
-                final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, yngMap, VCFConstants.EMPTY_INFO_FIELD);
-
-                // see https://github.com/broadinstitute/dsp-spec-ops/issues/291 for rationale
-                // take "worst" outcome for yng/vqslod, evaluate each allele separately
-                // if any allele is "N"ay, the genotype is filtered
-                // if any allele is "Y"ay and the rest are "G"rey, the genotype is passed
-                // if all alleles are "G"ray, the VQSLod is evaluated
-                boolean anyNays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "N".equals(v));
-                boolean anyYays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "Y".equals(v));
-
-                // if there are any "N"s, the genotype is filtered
-                if (anyNays) {
-                    genotypeBuilder.filter(GATKVCFConstants.NAY_FROM_YNG);
-                } else if (anyYays) {
-                    // the genotype is passed, nothing to do here as non-filtered is the default
-                } else {
-                    // get the max (best) vqslod for all SNP non-Yay sites, and apply the filter
-                    Optional<Double> snpMax =
-                            nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
-
-                    if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
-                        genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
-                    }
-
-                    // get the max (best) vqslod for all INDEL non-Yay sites
-                    Optional<Double> indelMax =
-                            nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
-
-                    if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
-                        genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
-                    }
-
-                }
+                String filter = getVQSRFilter(ref, genotypeAlleles, contig, startPosition, vqsLodMap, yngMap);
+                if (filter != null) genotypeBuilder.filter(filter);
             }
-            genotypeBuilder.alleles(genotypeAlleles);
         }
 
         final String callGQ = sampleRecord.getCallGQ();
@@ -786,6 +748,53 @@ public class ExtractCohortEngine {
         builder.genotypes(genotypeBuilder.make());
 
         return builder.make();
+    }
+
+    private String getVQSRFilter(Allele ref, List<Allele> genotypeAlleles, String contig, long startPosition, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap) {
+        String filter = null;
+
+        final List<Allele> nonRefAlleles =
+                genotypeAlleles.stream()
+                        .filter(a -> a.isNonReference())
+                        .distinct()
+                        .collect(Collectors.toList());
+
+        final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, vqsLodMap, Double.NaN);
+        final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, yngMap, VCFConstants.EMPTY_INFO_FIELD);
+
+        // see https://github.com/broadinstitute/dsp-spec-ops/issues/291 for rationale
+        // take "worst" outcome for yng/vqslod, evaluate each allele separately
+        // if any allele is "N"ay, the genotype is filtered
+        // if any allele is "Y"ay and the rest are "G"rey, the genotype is passed
+        // if all alleles are "G"ray, the VQSLod is evaluated
+        boolean anyNays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "N".equals(v));
+        boolean anyYays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "Y".equals(v));
+
+        // if there are any "N"s, the genotype is filtered
+        if (anyNays) {
+            filter = GATKVCFConstants.NAY_FROM_YNG;
+        } else if (anyYays) {
+            // the genotype is passed, nothing to do here as non-filtered is the default
+        } else {
+            // get the max (best) vqslod for all SNP non-Yay sites, and apply the filter
+            Optional<Double> snpMax =
+                    nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
+
+            if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
+                filter = GATKVCFConstants.VQSR_FAILURE_SNP;
+            }
+
+            // get the max (best) vqslod for all INDEL non-Yay sites
+            Optional<Double> indelMax =
+                    nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
+
+            if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
+                filter = GATKVCFConstants.VQSR_FAILURE_INDEL;
+            }
+
+        }
+
+        return filter;
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromBigQuery(final String projectID,
