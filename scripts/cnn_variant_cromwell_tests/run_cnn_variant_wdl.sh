@@ -4,7 +4,7 @@ set -e
 script_path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
 cd "$script_path"
 
-WORKING_DIR=/home/travis/build/broadinstitute
+WORKING_DIR=/home/runner/work/gatk
 
 set -e
 echo "Building docker image for CNN WDL tests (skipping unit tests)..."
@@ -14,12 +14,12 @@ echo "Building docker without running unit tests... ========="
 cd $WORKING_DIR/gatk
 
 # IMPORTANT: This code is duplicated in the cnv and M2 WDL test.
-if [ ${TRAVIS_PULL_REQUEST} != false ]; then
+if [ ! -z "$CI_PULL_REQUEST" ]; then
   HASH_TO_USE=FETCH_HEAD
-  sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/ -t ${TRAVIS_PULL_REQUEST};
+  sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/ -t ${CI_PULL_REQUEST};
   echo "using fetch head:"$HASH_TO_USE
 else
-  HASH_TO_USE=${TRAVIS_COMMIT}
+  HASH_TO_USE=${CI_COMMIT}
   sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/;
   echo "using travis commit:"$HASH_TO_USE
 fi

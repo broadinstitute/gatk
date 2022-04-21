@@ -1,0 +1,1 @@
+These scripts are intended to be run on github-actions CI and may not run correctly outside of that environment.
