@@ -94,6 +94,7 @@ task Prepare {
         apt-get -qq update
         apt -qq install -y temurin-11-jdk
 
+        # GATK
         git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
         cd gatk
         ./gradlew shadowJar
@@ -105,8 +106,8 @@ task Prepare {
 
         mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
 
-        # Datasets names must be alphanumeric or underscores only. Convert any dashes to underscores, delete anything
-        # that's left that isn't alphanumeric or an underscore.
+        # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete
+        # any remaining characters that are not alphanumeric or underscores.
         dataset="$(echo quickit_${branch}_${hash} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
         bq mk --project_id="spec-ops-aou" "$dataset"
@@ -115,7 +116,7 @@ task Prepare {
     >>>
 
     output {
-        File jar = glob("build/libs/*-SNAPSHOT-local.jar")
+        File jar = glob("gatk/build/libs/*-SNAPSHOT-local.jar")
         String dataset_name = read_string("dataset.txt")
     }
 
