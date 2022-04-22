@@ -125,3 +125,49 @@ task Prepare {
     }
 }
 
+task AssertIdenticalOutputs {
+    input {
+        Array[File] actual_vcfs
+        Array[File] actual_vcf_indexes
+    }
+    parameter_meta {
+        actual_vcfs:
+        {
+            localization_optional: true
+        }
+        actual_vcf_indexes:
+        {
+            localization_optional: true
+        }
+    }
+
+    command <<<
+
+        fails=()
+
+        for file in ~{sep=' ' actual_vcfs} ~{sep=' ' actual_vcf_indexes}; do
+          cmp <(gsutil hash -c $file | head -n +2) \
+              <(gsutil hash -c "gs://broad-spec-ops-aou/quickstart_integration/2022-04-22/$(basename(file))")} | head -n + 2)
+          if [[ $? -ne 0 ]]; then
+            fails+=( $file )
+          fi
+        done
+
+        if [[ ${#arr[@]} -ne 0 ]]; then
+          echo "Error: the checksums for the following files do not match:"
+          for fail in ${fails[@]}; do
+            echo $fail
+          done
+          exit 1
+        fi
+
+        echo "All vcf and index files compared and matched!"
+
+    >>>
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
+        disks: "local-disk 500 HDD"
+    }
+}
+
