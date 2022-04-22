@@ -173,6 +173,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsCalculatePrecisionAndSensitivity
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - gg_AddPrecisionAndSensitivityWdl
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
