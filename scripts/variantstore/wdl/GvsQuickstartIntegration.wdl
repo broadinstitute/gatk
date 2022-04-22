@@ -384,7 +384,7 @@ task AssertIdenticalOutputs {
 
         for file in ~{sep=' ' actual_vcfs} ~{sep=' ' actual_vcf_indexes}; do
           cmp <(gsutil hash -c $file | head -n +2) \
-              <(gsutil hash -c "gs://broad-dsp-spec-ops/quickstart_integration/2022-04-22/$(basename file)" | head -n + 2)
+              <(gsutil hash -c "gs://broad-dsp-spec-ops/quickstart_integration/2022-04-22/$(basename file)" | head -n +2)
           if [[ $? -ne 0 ]]; then
             fails+=( $file )
           fi
