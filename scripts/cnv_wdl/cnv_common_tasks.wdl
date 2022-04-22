@@ -307,6 +307,7 @@ task CollectAllelicCounts {
       File ref_fasta
       File ref_fasta_fai
       File ref_fasta_dict
+      File? intervals
       Int? minimum_base_quality
       File? gatk4_jar_override
       String? gcs_project_for_requester_pays
@@ -343,6 +344,8 @@ task CollectAllelicCounts {
 
         gatk --java-options "-Xmx~{command_mem_mb}m" CollectAllelicCounts \
             -L ~{common_sites} \
+            ~{"-L " + intervals} \
+            -isr INTERSECTION \
             --input ~{bam} \
             --read-index ~{bam_idx} \
             --reference ~{ref_fasta} \
