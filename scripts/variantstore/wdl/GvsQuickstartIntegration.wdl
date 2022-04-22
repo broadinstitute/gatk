@@ -117,7 +117,7 @@ task Prepare {
 
     output {
         File jar = glob("gatk/build/libs/*-SNAPSHOT-local.jar")
-        String dataset_name = read_string("dataset.txt")
+        String dataset_name = read_string("gatk/dataset.txt")
     }
 
     runtime {
