@@ -83,8 +83,16 @@ task Prepare {
     command <<<
         set -o errexit -o nounset -o pipefail
 
+        # git and git-lfs
         apt-get -qq update
         apt-get -qq install git git-lfs
+
+        # Java
+        apt-get -qq install wget apt-transport-https gnupg
+        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
+        echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+        apt-get -qq update
+        apt -qq install -y temurin-11-jdk
 
         git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
         cd gatk
@@ -110,7 +118,7 @@ task Prepare {
     }
 
     runtime {
-        docker: "eclipse-temurin:11"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
         disks: "local-disk 500 HDD"
     }
 }
