@@ -80,41 +80,6 @@ public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testHandleZeroBasesToTake() {
-        final File weights = new File(publicTestDir + "example_weights_chr20_chr21.bed.gz");
-        final File wgsIntervalList = new File(publicTestDir + "hg38.handcurated.noCentromeres.noTelomeres.chr20_chr21.interval_list");
-
-        // This value of scatter width exercises the `WeightedSplitIntervals` zero `basesToTake` condition of VS-384.
-        // While the zero `basesToTake` condition is known to be exercised by other scatter widths (18, 40, 59, and 77),
-        // this test uses 94 as that's the closest to the "natural" choice of scatter width 100 in the
-        // `testNoLossRealisticWgs` test from which this test descended.
-        final int scatterCount = 94;
-        final File outputDir = createTempDir("output");
-
-        final ArgumentsBuilder args = new ArgumentsBuilder()
-                .addInterval(wgsIntervalList.getAbsolutePath())
-                .addReference(b38_reference_20_21)
-                .add(SplitIntervals.SCATTER_COUNT_SHORT_NAME, scatterCount)
-                .add(WeightedSplitIntervals.WEIGHTS_BED_FILE_FULL_NAME, weights)
-                .addOutput(outputDir);
-
-        runCommandLine(args);
-
-        // verify we haven't lost any bases
-        IntervalList original = IntervalList.fromFile(wgsIntervalList).uniqued().sorted();
-        IntervalList outList = IntervalList.fromFiles(Arrays.stream(outputDir.listFiles()).collect(Collectors.toList())).uniqued().sorted();
-
-        // total size is the same
-        Assert.assertEquals(outList.getBaseCount(),original.getBaseCount());
-
-        // and the number of intervals are the same
-        Assert.assertEquals(outList.getIntervals().size(), original.getIntervals().size());
-
-        // ensure they are the same
-        Assert.assertEquals(0, IntervalList.difference(original, outList).size());
-    }
-
-    @Test
     public void testHandleNotOneMoreBase() {
         // Sometimes, the remaining space in a scatter interval is non-zero, yet can't take
         // even a single base of the next interval.
