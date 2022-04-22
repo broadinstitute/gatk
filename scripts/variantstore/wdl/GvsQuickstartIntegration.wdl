@@ -105,7 +105,9 @@ task Prepare {
 
         mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
 
-        dataset="quickit-${branch}-${hash}"
+        # Datasets names must be alphanumeric or underscores only. Convert any dashes to underscores, delete anything
+        # that's left that isn't alphanumeric or an underscore.
+        dataset="$(echo quickit_${branch}_${hash} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
         bq mk --project_id="spec-ops-aou" "$dataset"
 
