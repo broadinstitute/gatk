@@ -154,9 +154,13 @@ task AssertIdenticalOutputs {
     command <<<
         fails=()
 
+        expected_prefix="~{expected_output_prefix}"
+        # Remove a trailing slash if there is one
+        expected_prefix=${expected_prefix%/}
+
         for file in ~{sep=' ' actual_vcfs} ~{sep=' ' actual_vcf_indexes}; do
           cmp <(gsutil hash -c $file | tail -n +2) \
-              <(gsutil hash -c "~{expected_output_prefix}/$(basename $file)" | tail -n +2)
+              <(gsutil hash -c "${expected_prefix}/$(basename $file)" | tail -n +2)
           if [[ $? -ne 0 ]]; then
             fails+=( $file )
           fi
