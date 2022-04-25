@@ -76,7 +76,8 @@ workflow GvsCreateFilterSet {
       ref_fasta = reference,
       ref_fai = reference_index,
       ref_dict = reference_dict,
-      scatter_count = scatter_count
+      scatter_count = scatter_count,
+      gatk_override = gatk_override
   }
 
   scatter(i in range(length(SplitIntervals.interval_files))) {
