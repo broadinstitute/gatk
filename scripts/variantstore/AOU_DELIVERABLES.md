@@ -24,7 +24,7 @@
     4. the `extract_table_prefix` input from `GvsExtractCallset` step
     5. the `filter_set_name` input from `GvsCreateFilterSet` step
 
-## Deliverables
+## Deliverables (via email once the above steps are complete)
 1. location of the VCF and interval_list files (`output_gcs_dir` input from GvsExtractCallset)
 2. fully qualified name of the BigQuery dataset (input `dataset_name` in the workflows)
 3. [callset statistics](callset_QC/README.md) CSV
