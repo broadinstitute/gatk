@@ -70,8 +70,7 @@ workflow GvsQuickstartIntegration {
     call AssertIdenticalOutputs {
         input:
             expected_output_prefix = expected_output_prefix,
-            actual_vcfs = GvsUnified.output_vcfs,
-            actual_vcf_indexes = GvsUnified.output_vcf_indexes
+            actual_vcfs = GvsUnified.output_vcfs
     }
 
     output {
@@ -138,17 +137,6 @@ task AssertIdenticalOutputs {
     input {
         String expected_output_prefix
         Array[File] actual_vcfs
-        Array[File] actual_vcf_indexes
-    }
-    parameter_meta {
-        actual_vcfs:
-        {
-            localization_optional: true
-        }
-        actual_vcf_indexes:
-        {
-            localization_optional: true
-        }
     }
 
     command <<<
@@ -158,29 +146,61 @@ task AssertIdenticalOutputs {
         # Remove a trailing slash if there is one
         expected_prefix=${expected_prefix%/}
 
-        for file in ~{sep=' ' actual_vcfs} ~{sep=' ' actual_vcf_indexes}; do
-          cmp <(gsutil hash -c $file | tail -n +2) \
-              <(gsutil hash -c "${expected_prefix}/$(basename $file)" | tail -n +2)
+        # Download all the expected data
+        mkdir expected
+        cd expected
+        for file in ~{sep= ' ' actual_vcfs}; do
+            echo "$expected_prefix/$(basename $file)" >> expected_fofn.txt
+        done
+        cat expected_fofn.txt | gsutil -m -I cp .
+        gzip -d *
+        cd ..
+
+        gzip -d ~{sep= ' ' actual_vcfs}
+
+        # headers first, these can yield more helpful diagnostics
+
+        for file in ~{sep=' ' actual_vcfs}; do
+          expected="expected/$(basename $file)"
+          cmp <(grep '^#' $file) <(grep '^#' $expected)
           if [[ $? -ne 0 ]]; then
             fails+=( $file )
           fi
         done
 
         if [[ ${#fails[@]} -ne 0 ]]; then
-          echo "Error: the checksums for the following files do not match:"
+          echo "Error: headers for the following files do not match:"
+          expected="expected/$(basename $file)"
           for fail in ${fails[@]}; do
-            echo $fail
+            echo $(basename $fail)
+            diff $file $expected
           done
           exit 1
         fi
 
-        echo "All vcf and index files compared and matched!"
+        fail=0
+        for file in ~{sep=' ' actual_vcfs}; do
+          cmp $file "expected/$(basename $file)"
+          if [[ $? -ne 0 ]]; then
+            echo "Error: file contents of expected and actual do not match: $(basename $file)"
+            fail=1
+          fi
+        done
 
+        if [[ $fail -ne 0 ]]; then
+          exit 1
+        fi
+
+        echo "All vcfs compared and matched!"
     >>>
 
     runtime {
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
         disks: "local-disk 500 HDD"
+    }
+
+    output {
+        Boolean done = true
     }
 }
 
