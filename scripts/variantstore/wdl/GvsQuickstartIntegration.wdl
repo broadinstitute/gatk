@@ -64,7 +64,8 @@ workflow GvsQuickstartIntegration {
             filter_set_name = "quickit",
             create_filter_set_scatter_count = 20,
             extract_table_prefix = "quickit",
-            extract_scatter_count = 100
+            extract_scatter_count = 100,
+            extract_do_not_filter_override = true
     }
 
     call AssertIdenticalOutputs {
