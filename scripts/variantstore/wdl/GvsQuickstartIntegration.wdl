@@ -141,7 +141,9 @@ task AssertIdenticalOutputs {
     }
 
     command <<<
-        fails=()
+        set -o xtrace
+
+        failures=()
 
         expected_prefix="~{expected_output_prefix}"
         # Remove a trailing slash if there is one
@@ -153,7 +155,7 @@ task AssertIdenticalOutputs {
         for file in ~{sep= ' ' actual_vcfs}; do
             echo "$expected_prefix/$(basename $file)" >> expected_fofn.txt
         done
-        cat expected_fofn.txt | gsutil -m -I cp .
+        cat expected_fofn.txt | gsutil -m cp -I .
         gzip -d *
         cd ..
 
@@ -165,23 +167,24 @@ task AssertIdenticalOutputs {
           expected="expected/$(basename $file)"
           cmp <(grep '^#' $file) <(grep '^#' $expected)
           if [[ $? -ne 0 ]]; then
-            fails+=( $file )
+            failures+=( $file )
           fi
         done
 
-        if [[ ${#fails[@]} -ne 0 ]]; then
+        if [[ ${#failures[@]} -ne 0 ]]; then
           echo "Error: headers for the following files do not match:"
-          expected="expected/$(basename $file)"
-          for fail in ${fails[@]}; do
-            echo $(basename $fail)
-            diff $file $expected
+          for failure in ${failures[@]}; do
+            echo $(basename $failure)
+            expected="expected/$(basename $failure)"
+            diff $failure $expected
           done
           exit 1
         fi
 
         fail=0
         for file in ~{sep=' ' actual_vcfs}; do
-          cmp $file "expected/$(basename $file)"
+          expected="expected/$(basename $file)"
+          cmp $file $expected
           if [[ $? -ne 0 ]]; then
             echo "Error: file contents of expected and actual do not match: $(basename $file)"
             fail=1
@@ -201,6 +204,7 @@ task AssertIdenticalOutputs {
     }
 
     output {
+        File fofn = "expected/expected_fofn.txt"
         Boolean done = true
     }
 }
