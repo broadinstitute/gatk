@@ -4,7 +4,7 @@ import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.bigquery.storage.v1beta2.*;
 import com.google.protobuf.Descriptors;
-import io.grpc.Status.Code;
+import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +14,8 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
+
+import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.handleCausalStatusRuntimeException;
 
 
 public class CommittedBQWriter implements AutoCloseable {
@@ -69,13 +71,6 @@ public class CommittedBQWriter implements AutoCloseable {
         writeJsonArray(0);
     }
 
-    private StatusRuntimeException findCausalStatusRuntimeException(Throwable t) {
-        if (t == null || t instanceof StatusRuntimeException) {
-            return (StatusRuntimeException) t;
-        }
-        return findCausalStatusRuntimeException(t.getCause());
-    }
-
     protected AppendRowsResponse writeJsonArray(int retryCount) throws Descriptors.DescriptorValidationException, ExecutionException, InterruptedException, IOException {
         AppendRowsResponse response;
         try {
@@ -84,15 +79,11 @@ public class CommittedBQWriter implements AutoCloseable {
             jsonArr = new JSONArray();
             return response;
         } catch (Exception e) {
-            StatusRuntimeException se = findCausalStatusRuntimeException(e);
-            if (se == null) {
-                throw e;
-            }
-
-            Code code = se.getStatus().getCode();
+            StatusRuntimeException se = handleCausalStatusRuntimeException(e);
             // Google BigQuery write API error handling
             // https://cloud.google.com/bigquery/docs/write-api#error_handling
             // The comments in the case matching below are nearly all quotations from the documentation linked above.
+            Status.Code code = se.getStatus().getCode();
             switch (code) {
                 case ALREADY_EXISTS:
                     // ALREADY_EXISTS: The row was already written. This error can happen when you provide stream offsets.

@@ -1,21 +1,13 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.cloud.bigquery.*;
-import com.google.cloud.bigquery.storage.v1.*;
-import com.google.cloud.bigquery.storage.v1beta2.TableName;
-import com.google.common.base.Preconditions;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.BinaryDecoder;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.DecoderFactory;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import org.apache.ivy.util.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -453,5 +445,26 @@ public final class BigQueryUtils {
         TableReference tr = new TableReference(tempTableFullyQualified, fieldsToRetrieve);
 
         return new StorageAPIAvroReader(tr);
+    }
+
+    private static StatusRuntimeException handleCausalStatusRuntimeException(Throwable original, Throwable current) {
+        if (current == null) {
+            throw new GATKException("No causal StatusRuntimeException found", original);
+        }
+        if (current instanceof StatusRuntimeException) {
+            StatusRuntimeException se = (StatusRuntimeException) current;
+            if (se.getStatus() == null) {
+                throw new GATKException("StatusRuntimeException has null status", original);
+            }
+            if (se.getStatus().getCode() == null) {
+                throw new GATKException("StatusRuntimeException status has null code", original);
+            }
+            return (StatusRuntimeException) current;
+        }
+        return handleCausalStatusRuntimeException(original, current.getCause());
+    }
+
+    public static StatusRuntimeException handleCausalStatusRuntimeException(Throwable t) throws GATKException {
+        return handleCausalStatusRuntimeException(t, t);
     }
 }
