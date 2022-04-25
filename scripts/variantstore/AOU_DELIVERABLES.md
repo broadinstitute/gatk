@@ -31,8 +31,10 @@
 4. [precision and sensitivity results](tieout/AoU_PRECISION_SENSITIVITY.md) TSV
 
 ## Running the VAT pipeline
-The VAT pipeline is a set of WDLs
-- GvsSitesOnlyVCF.wdl
-- GvsValidateVAT.wdl
+To create a BigQuery table of variant annotations, you may follow the instructions here:
+[process to create variant annotations table](variant_annotations_table/README.md)
 
-The pipeline takes in a jointVCF and outputs a table in BigQuery.
+The pipeline takes in a jointVCF and outputs a variant annotations table in BigQuery.
+
+
+
