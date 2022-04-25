@@ -7,7 +7,7 @@
     2. CPUs: 64,000
     3. In-use IP addresses: 5,000 (this is the most challenging one and will probably require contacting your GCP account team to facilitate)
     4. VM instances: 64,000
-- Make a note of the Google project id (` aou-genomics-curation-prod`), dataset name (`aou_wgs `), and up-to-date service account JSON path, as these will be inputs to all the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
+- Make a note of the Google project id (`aou-genomics-curation-prod`), dataset name (`aou_wgs`), and up-to-date service account JSON path, as these will be inputs to all the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
 
 ## Workflows
 1. `GvsAssignIds` at the `sample set` level ("Step 1" in workflow submission) with a sample set of all the new samples to be included in the callset (if new controls are being added, they need to be done in a separate run, with the `samples_are_controls` input set to "true")
@@ -15,7 +15,7 @@
 3. `GvsWithdrawSamples` if there are any samples to withdraw from the last callset.
 4. GvsCreateAltAllele
 5. GvsCreateFilterSet (see [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to name the filter set, which you will need to keep track of for the `GvsExtractCallset` WDL).
-6. GvsPrepareRangesCallset needs to be run twice, once with `control_samples` set to "true" (see [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix`  or cohort prefix, which you will need to keep track of for the `GvsExtractCallset` WDL).
+6. GvsPrepareRangesCallset needs to be run twice, once with `control_samples` set to "true" (see [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the `GvsExtractCallset` WDL).
 7. GvsExtractCallset needs to be run twice, once with `control_samples` set to "true", and with the `filter_set_name` and `extract_table_prefix` from step 5 & 6.  Include a valid (and secure) "output_gcs_dir" parameter, which is where the VCF and interval list files  will go.
 8. Run [process to create callset statistics](callset_QC/README.md), for which you need
     1. permission to query table `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites`
