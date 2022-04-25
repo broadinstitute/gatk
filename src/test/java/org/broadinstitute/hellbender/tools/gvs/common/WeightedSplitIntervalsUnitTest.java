@@ -101,6 +101,22 @@ public class WeightedSplitIntervalsUnitTest {
         WeightedInterval w = new WeightedInterval("chr1", 1, 1000, -1);
     }
 
+    @Test
+    public void testNonNullNameSplit() {
+        WeightedInterval w = new WeightedInterval("chr1", 1, 1000, false, "definitely not null", 1.0f);
+        WeightedInterval[] split = w.split(100);
+        Assert.assertEquals(split[0].getName(), "definitely not null-1");
+        Assert.assertEquals(split[1].getName(), "definitely not null-2");
+    }
+
+    @Test
+    public void testNullNameSplit() {
+        WeightedInterval w = new WeightedInterval("chr1", 1, 1000, false, null, 1.0f);
+        WeightedInterval[] split = w.split(100);
+        Assert.assertEquals(split[0].getName(), null);
+        Assert.assertEquals(split[1].getName(), null);
+    }
+
     private void assertWeight(WeightedInterval w, String contig, int start, int end, long weight) {
         Assert.assertEquals(w.getContig(), contig);
         Assert.assertEquals(w.getStart(), start);
