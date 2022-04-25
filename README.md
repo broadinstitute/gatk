@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/broadinstitute/gatk.svg?branch=master)](https://travis-ci.com/broadinstitute/gatk)
+[![Build Status](https://github.com/broadinstitute/gatk/actions/workflows/gatk-tests.yml/badge.svg?branch=master)](https://github.com/broadinstitute/gatk/actions/workflows/gatk-tests.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/org.broadinstitute/gatk.svg)](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -423,12 +423,13 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
 * To run tests and compute coverage reports, run **`./gradlew jacocoTestReport`**. The report is then in `build/reports/jacoco/test/html/index.html`.
   (IntelliJ has a good coverage tool that is preferable for development).
 
-* We use [Travis-CI](https://travis-ci.org/broadinstitute/gatk) as our continuous integration provider.
+* We use [Github Actions](https://github.com/broadinstitute/gatk/actions/workflows/gatk-tests.yml) as our continuous integration provider.
 
-    * Before merging any branch make sure that all required tests pass on travis.
-    * Every travis build will upload the test results to our GATK Google Cloud Storage bucket.
-      A link to the uploaded report will appear at the very bottom of the travis log.
+    * Before merging any branch make sure that all required tests pass on Github.
+    * Every Actions build will upload the test results to our GATK Google Cloud Storage bucket and a zipped artifact upload.
+      A link to the uploaded report will appear at the very bottom of the github actions log.
       Look for the line that says `See the test report at`.
+      Test github actions test artifacts will not show up on the webpage until the entire test has concluded.
       If TestNG itself crashes there will be no report generated.
 
 * We use [Broad Jenkins](https://gatk-jenkins.broadinstitute.org/view/Performance/) for our long-running tests and performance tests.
@@ -568,7 +569,7 @@ be found in the `build/docs/wdlGen` folder.
 * To generate WDL Wrappers and validate the resulting outputs, run `./gradlew gatkWDLGenValidation`.
 Running this task requires a local [cromwell](https://github.com/broadinstitute/cromwell) installation, and environment
 variables `CROMWELL_JAR` and `WOMTOOL_JAR` to be set to the full pathnames of the `cromwell` and `womtool` jar files.
-If no local install is available, this task will run automatically on travis in a separate job whenever a PR is submitted.
+If no local install is available, this task will run automatically on github actions in a separate job whenever a PR is submitted.
 
 * WDL wrappers for each GATK release are published to the [gatk-tool-wdls](https://github.com/broadinstitute/gatk-tool-wdls) repository.
 Only tools that have been annotated for WDL generation will show up there. 
