@@ -4,7 +4,7 @@
 - If this is the first time running the GVS pipeline in a particular Google billing project, use your GCP account team to create a support ticket for the BigQuery team that includes "enabling cluster metadata pruning support for the BQ Read API." This enables a pre-GA feature that dramatically reduces the amount of data scanned reducing both cost and runtime.
 - This list assumes you are starting off with a Terra workspace that contains the re-blocked (version 2) gVCFs for your callset as "sample sets" in the "Data" tab.  You will also want to increase the Google quotas for the workspace project to these levels (all in region `us-central1`):
     1. Persistent Disk Standard (GB): 1,000,000 GB (1 PB)
-    2. CPUs: 6,4000
+    2. CPUs: 64,000
     3. In-use IP addresses: 5,000 (this is the most challenging one and will probably require contacting your GCP account team to facilitate)
     4. VM instances: 64,000
 - Make a note of the Google project id (` aou-genomics-curation-prod`), dataset name (`aou_wgs `), and up-to-date service account JSON path, as these will be inputs to all the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
