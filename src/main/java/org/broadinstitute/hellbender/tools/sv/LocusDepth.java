@@ -12,36 +12,26 @@ public final class LocusDepth implements SVFeature {
     private final String contig;
     private final int position;
     private final String sample;
-    // next three fields index "ACGT"
-    private final int refIndex;
-    private final int altIndex;
-    private final int[] depths;
+    private final int[] depths; // four slots for each call, ACGT
 
     public final static String BCI_VERSION = "1.0";
 
-    public LocusDepth( final Locatable loc, final String sample, final int refIndex, final int altIndex ) {
-        Utils.validateArg(refIndex >= 0 && refIndex <= 3, "refIndex must be between 0 and 3");
-        Utils.validateArg(altIndex >= 0 && altIndex <= 3, "altIndex must be between 0 and 3");
-        Utils.validateArg(refIndex != altIndex, "refIndex and altIndex must be different");
-        this.contig = loc.getContig();
-        this.position = loc.getStart();
-        this.sample = sample;
-        this.refIndex = refIndex;
-        this.altIndex = altIndex;
-        this.depths = new int[4];
+    public LocusDepth( final Locatable loc, final String sample ) {
+        this(loc.getContig(), loc.getStart(), sample, 0, 0, 0, 0);
     }
 
-    public LocusDepth( final String contig, final int position,
-                       final String sample, final int refIndex, final int altIndex,
+    public LocusDepth( final String contig, final int position, final String sample,
                        final int aDepth, final int cDepth, final int gDepth, final int tDepth ) {
-        Utils.validateArg(refIndex >= 0 && refIndex <= 3, "refIndex must be between 0 and 3");
-        Utils.validateArg(altIndex >= 0 && altIndex <= 3, "altIndex must be between 0 and 3");
-        Utils.validateArg(refIndex != altIndex, "refIndex and altIndex must be different");
+        Utils.nonNull(contig, "contig may not be null");
+        Utils.validateArg(position > 0, "starting position must be positive");
+        Utils.nonNull(sample, "sample must not be null");
+        Utils.validateArg(aDepth >= 0, "depth must be non-negative");
+        Utils.validateArg(cDepth >= 0, "depth must be non-negative");
+        Utils.validateArg(gDepth >= 0, "depth must be non-negative");
+        Utils.validateArg(tDepth >= 0, "depth must be non-negative");
         this.contig = contig;
         this.position = position;
         this.sample = sample;
-        this.refIndex = refIndex;
-        this.altIndex = altIndex;
         this.depths = new int[4];
         depths[0] = aDepth;
         depths[1] = cDepth;
@@ -69,19 +59,11 @@ public final class LocusDepth implements SVFeature {
     }
 
     public String getSample() { return sample; }
-    // index into "ACGT"
-    public int getRefIndex() {
-        return refIndex;
-    }
-    // index into "ACGT"
-    public int getAltIndex() {
-        return altIndex;
-    }
+
     public int getTotalDepth() { return depths[0] + depths[1] + depths[2] + depths[3]; }
+
     // idx is index into "ACGT"
     public int getDepth( final int idx ) { return depths[idx]; }
-    public int getRefDepth() { return depths[refIndex]; }
-    public int getAltDepth() { return depths[altIndex]; }
 
     @Override
     public LocusDepth extractSamples( final Set<String> sampleNames, final Object header ) {
@@ -95,7 +77,7 @@ public final class LocusDepth implements SVFeature {
     }
 
     public boolean equals( final LocusDepth that ) {
-        return this.position == that.position && this.refIndex == that.refIndex &&
+        return this.position == that.position &&
                 this.depths[0] == that.depths[0] && this.depths[1] == that.depths[1] &&
                 this.depths[2] == that.depths[2] && this.depths[3] == that.depths[3] &&
                 Objects.equals(this.contig, that.contig) &&
@@ -104,12 +86,12 @@ public final class LocusDepth implements SVFeature {
 
     @Override
     public int hashCode() {
-        return Objects.hash(contig, position, sample, refIndex, Arrays.hashCode(depths));
+        return Objects.hash(contig, position, sample, Arrays.hashCode(depths));
     }
 
     @Override
     public String toString() {
-        return contig + "\t" + position + "\t" + sample + "\t" + (char)refIndex + "\t" +
-                depths[0] + "\t" + depths[1] + "\t" + depths[2] + "\t" + depths[3];
+        return sample + "@" + contig + ":" + position +
+                "[" + depths[0] + "," + depths[1] + "," + depths[2] + "," + depths[3] + "]";
     }
 }

@@ -161,8 +161,8 @@ public class PrintSVEvidenceIntegrationTest extends CommandLineProgramTest {
     public void testLocusDepthViolateUniquenessCriterion() {
         final DummyFeatureSink<LocusDepth> sink = new DummyFeatureSink<>();
         final LocusDepthSortMerger sortMerger = new LocusDepthSortMerger(dict, sink);
-        sortMerger.write(new LocusDepth("chr1", 1, "sample", 0, 1, 1, 0, 0, 0));
-        sortMerger.write(new LocusDepth("chr1", 1, "sample", 0, 1, 0, 1, 0, 0));
+        sortMerger.write(new LocusDepth("chr1", 1, "sample", 1, 0, 0, 0));
+        sortMerger.write(new LocusDepth("chr1", 1, "sample", 0, 1, 0, 0));
         sortMerger.close();
         Assert.assertEquals(sink.nRecsWritten, 0);
     }
@@ -171,8 +171,8 @@ public class PrintSVEvidenceIntegrationTest extends CommandLineProgramTest {
     public void testLocusDepthUniquenessCriterion() {
         final DummyFeatureSink<LocusDepth> sink = new DummyFeatureSink<>();
         final LocusDepthSortMerger sortMerger = new LocusDepthSortMerger(dict, sink);
-        sortMerger.write(new LocusDepth("chr1", 1, "sample1", 0, 1, 1, 0, 0, 0));
-        sortMerger.write(new LocusDepth("chr1", 1, "sample2", 0, 1, 0, 1, 0, 0));
+        sortMerger.write(new LocusDepth("chr1", 1, "sample1", 1, 0, 0, 0));
+        sortMerger.write(new LocusDepth("chr1", 1, "sample2", 0, 1, 0, 0));
         sortMerger.close();
         Assert.assertEquals(sink.nRecsWritten, 2);
     }

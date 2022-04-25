@@ -13,12 +13,12 @@ public class LocusDepthtoBAFUnitTest {
         final int altIndex = 1;
         final String smpl = "s";
         // too shallow
-        Assert.assertEquals(instance.calcBAF(new LocusDepth(tig, pos, smpl, refIndex, altIndex, 4, 4, 0, 0)), 0.);
+        Assert.assertEquals(instance.calcBAF(new LocusDepth(tig, pos, smpl, 4, 4, 0, 0), refIndex, altIndex), BafEvidence.MISSING_VALUE);
         // just deep enough
-        Assert.assertEquals(instance.calcBAF(new LocusDepth(tig, pos, smpl, refIndex, altIndex, 5, 5, 0, 0)), .5);
+        Assert.assertEquals(instance.calcBAF(new LocusDepth(tig, pos, smpl, 5, 5, 0, 0), refIndex, altIndex), .5);
         // too unequal
-        Assert.assertEquals(instance.calcBAF(new LocusDepth(tig, pos, smpl, refIndex, altIndex, 7, 3, 0, 0)), 0.);
+        Assert.assertEquals(instance.calcBAF(new LocusDepth(tig, pos, smpl, 7, 3, 0, 0), refIndex, altIndex), BafEvidence.MISSING_VALUE);
         // sufficiently equal
-        Assert.assertEquals(instance.calcBAF(new LocusDepth(tig, pos, smpl, refIndex, altIndex, 6, 4, 0, 0)), .4);
+        Assert.assertEquals(instance.calcBAF(new LocusDepth(tig, pos, smpl, 6, 4, 0, 0), refIndex, altIndex), .4);
     }
 }

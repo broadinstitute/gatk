@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -11,17 +15,25 @@ import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDisc
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils.RunningAverage;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.codecs.FeatureOutputCodec;
 import org.broadinstitute.hellbender.utils.codecs.FeatureOutputCodecFinder;
 import org.broadinstitute.hellbender.utils.codecs.FeatureSink;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 /**
- * <p>Merges locus-sorted LocusDepth evidence files, and calculates the bi-allelic frequency for each
- * sample and site, and writes these values as a BafEvidence output file.</p>
+ * <p>Merges locus-sorted LocusDepth evidence files, and calculates the bi-allelic frequency (baf)
+ * for each sample and site, and writes these values as a BafEvidence output file.</p>
+ * <p>Samples at sites that have too few depth counts (controlled by --min-total-depth), and samples
+ * failing a Pearson's chi square test for goodness of fit to a bi-allelic model are excluded. (I.e.,
+ * only samples that are judged to be heterozygous at a site are included.)</p>
+ * <p>Across all evaluable samples, sites where the samples have bafs with too much variance
+ * (controlled by --max-std) are excluded.  The median baf value at each site is adjusted to be
+ * exactly 0.5.</p>
  *
  * <h3>Inputs</h3>
  *
@@ -57,11 +69,13 @@ import java.util.List;
 @ExperimentalFeature
 public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
     public static final String LOCUS_DEPTH_FILE_NAME = "locus-depth";
+    public static final String BAF_SITES_VCF_LONG_NAME = "baf-sites-vcf";
     public static final String SAMPLE_NAMES_NAME = "sample-names";
     public static final String BAF_EVIDENCE_FILE_NAME = "baf-evidence-output";
+    public static final String BIALLELIC_ONLY_NAME = "biallelic-only";
     public static final String MIN_TOTAL_DEPTH_NAME = "min-total-depth";
     public static final String MAX_STD_NAME = "max-std";
-    public static final String MIN_HET_LIKELIHOOD = "min-het-likelihood";
+    public static final String MIN_HET_PROBABILITY = "min-het-probability";
     public static final String COMPRESSION_LEVEL_NAME = "compression-level";
     public static ChiSquaredDistribution chiSqDist = new ChiSquaredDistribution(null, 1.);
 
@@ -71,7 +85,12 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
             shortName = StandardArgumentDefinitions.FEATURE_SHORT_NAME )
     private List<FeatureInput<LocusDepth>> locusDepthFiles;
 
-    @Argument(fullName = SAMPLE_NAMES_NAME, doc = "Sample names", optional = true)
+    @Argument(fullName = BAF_SITES_VCF_LONG_NAME,
+            doc = "Input VCF of SNPs marking loci for allele counts")
+    public GATKPath bafSitesFile;
+
+    @Argument(fullName = SAMPLE_NAMES_NAME,
+            doc = "Sample names. Necessary only when writing a *.baf.bci output file.", optional = true)
     private List<String> sampleNames;
 
     @Argument(
@@ -79,6 +98,11 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
             fullName = BAF_EVIDENCE_FILE_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME )
     private GATKPath bafOutputFile;
+
+    @Argument(
+            doc = "Process only bi-allelic SNP sites",
+            fullName = BIALLELIC_ONLY_NAME, optional = true )
+    private boolean biAllelicOnly = true;
 
     @Argument(
             doc = "Maximum standard deviation across bafs at a locus (otherwise locus will be ignored)",
@@ -91,9 +115,9 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
     private int minTotalDepth = 10;
 
     @Argument(
-            doc = "Minimum likelihood of site being biallelic and heterozygous",
-            fullName = MIN_HET_LIKELIHOOD, optional = true )
-    private double minHetLikelihood = .5;
+            doc = "Minimum probability of site being biallelic and heterozygous",
+            fullName = MIN_HET_PROBABILITY, optional = true )
+    private double minHetProbability = .5;
 
     @Argument(
             doc = "Output compression level",
@@ -101,13 +125,19 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
             minValue = 0, maxValue = 9, optional = true )
     private int compressionLevel = 4;
 
+    private FeatureDataSource<VariantContext> bafSitesSource;
+    private Iterator<VariantContext> bafSitesIterator;
     private FeatureSink<BafEvidence> writer;
-    private final List<BafEvidence> sameLocusBuffer = new ArrayList<>();
+    private final List<LocusDepth> sameLocusBuffer = new ArrayList<>();
 
     @Override
     @SuppressWarnings("unchecked")
     public void onTraversalStart() {
         super.onTraversalStart();
+        bafSitesSource = new FeatureDataSource<>(bafSitesFile.toPath().toString());
+        bafSitesIterator = bafSitesSource.iterator();
+        final SAMSequenceDictionary dict = getDictionary();
+        dict.assertSameDictionary(bafSitesSource.getSequenceDictionary());
         final FeatureOutputCodec<? extends Feature, ? extends FeatureSink<? extends Feature>> codec =
                 FeatureOutputCodecFinder.find(bafOutputFile);
         if ( !codec.getFeatureType().isAssignableFrom(BafEvidence.class) ) {
@@ -115,24 +145,17 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
                     "associated with the output file expects features of type " +
                     codec.getFeatureType().getSimpleName());
         }
-        writer = (FeatureSink<BafEvidence>)codec.makeSink(bafOutputFile,
-                                    getBestAvailableSequenceDictionary(),
-                                    sampleNames, compressionLevel);
+        writer = (FeatureSink<BafEvidence>)codec.makeSink(bafOutputFile, dict, sampleNames,
+                                                            compressionLevel);
     }
 
     @Override
     public void apply( LocusDepth locusDepth, Object header,
-                       ReadsContext readsContext, ReferenceContext referenceContext ) {
-        final double baf = calcBAF(locusDepth);
-        if ( baf > 0. ) {
-            final BafEvidence bafEvidence =
-                    new BafEvidence(locusDepth.getSample(), locusDepth.getContig(),
-                                    locusDepth.getStart(), baf);
-            if ( !sameLocus(bafEvidence) ) {
-                processBuffer();
-            }
-            sameLocusBuffer.add(bafEvidence);
+                       ReadsContext reads, ReferenceContext ref ) {
+        if ( !sameLocus(locusDepth) ) {
+            processBuffer();
         }
+        sameLocusBuffer.add(locusDepth);
     }
 
     @Override
@@ -141,60 +164,107 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
         if ( !sameLocusBuffer.isEmpty() ) {
             processBuffer();
         }
+        bafSitesSource.close();
         writer.close();
         return null;
     }
 
-    @VisibleForTesting double calcBAF( final LocusDepth locusDepth ) {
+    /** Performs a Pearson's chi square test for goodness of fit to a biallelic model to determine
+     * heterozygosity.  If this fails, BafEvidence.MISSING_VALUE is returned.  If the test succeeds,
+     * the depth of the alt call as a fraction of the total depth is returned.
+     */
+    @VisibleForTesting double calcBAF( final LocusDepth locusDepth,
+                                       final int refIndex, final int altIndex ) {
         final int totalDepth = locusDepth.getTotalDepth();
         if ( totalDepth < minTotalDepth ) {
-            return 0.;
+            return BafEvidence.MISSING_VALUE;
         }
         double expectRefAlt = totalDepth / 2.;
-        final double refDiff = locusDepth.getRefDepth() - expectRefAlt;
-        final double altDiff = locusDepth.getAltDepth() - expectRefAlt;
+        final double altDepth = locusDepth.getDepth(altIndex);
+        final double refDiff = locusDepth.getDepth(refIndex) - expectRefAlt;
+        final double altDiff = altDepth - expectRefAlt;
         double chiSq = (refDiff * refDiff + altDiff * altDiff) / expectRefAlt;
         double fitProb = 1. - chiSqDist.cumulativeProbability(chiSq);
-        if ( fitProb < minHetLikelihood ) {
-            return 0.;
+        if ( fitProb < minHetProbability ) {
+            return BafEvidence.MISSING_VALUE;
         }
-        return (double)locusDepth.getAltDepth() / totalDepth;
+        return altDepth / totalDepth;
     }
 
-    private boolean sameLocus( final BafEvidence bafEvidence ) {
+    private boolean sameLocus( final Locatable locus ) {
         if ( sameLocusBuffer.isEmpty() ) {
             return true;
         }
-        final BafEvidence curLocus = sameLocusBuffer.get(0);
-        return curLocus.getContig().equals(bafEvidence.getContig()) &&
-                curLocus.getStart() == bafEvidence.getStart();
+        final LocusDepth curLocus = sameLocusBuffer.get(0);
+        return curLocus.getContig().equals(locus.getContig()) &&
+                curLocus.getStart() == locus.getStart();
     }
 
     private void processBuffer() {
-        int nBafs = sameLocusBuffer.size();
+        final VariantContext vc = nextSite();
+        if ( !sameLocus(vc) ) {
+            final Locatable loc = sameLocusBuffer.get(0);
+            throw new UserException("expecting locus " + loc.getContig() + ":" + loc.getStart() +
+                    ", but found locus " + vc.getContig() + ":" + vc.getStart() + " in baf sites vcf");
+        }
+        final List<Allele> alleles = vc.getAlleles();
+        final int refIndex = Nucleotide.decode(alleles.get(0).getBases()[0]).ordinal();
+        if ( refIndex > 3 ) {
+            throw new UserException("ref call is not [ACGT] in vcf at " + vc.getContig() + ":" + vc.getStart());
+        }
+        final int nAlleles = alleles.size();
+        final int[] altIndices = new int[nAlleles - 1];
+        for ( int alleleIndex = 1; alleleIndex < nAlleles; ++alleleIndex ) {
+            final int altIndex = Nucleotide.decode(alleles.get(1).getBases()[0]).ordinal();
+            if ( altIndex > 3 ) {
+                throw new UserException("alt call is not [ACGT] in vcf at " + vc.getContig() + ":" + vc.getStart());
+            }
+            altIndices[alleleIndex - 1] = altIndex;
+        }
+        final List<BafEvidence> beList = new ArrayList<>(sameLocusBuffer.size());
+        for ( final LocusDepth ld : sameLocusBuffer ) {
+            for ( final int altIndex : altIndices ) {
+                double baf = calcBAF(ld, refIndex, altIndex);
+                if ( baf != BafEvidence.MISSING_VALUE ) {
+                    beList.add(new BafEvidence(ld.getSample(), ld.getContig(), ld.getStart(), baf));
+                    break;
+                }
+            }
+        }
+        int nBafs = beList.size();
         if ( nBafs == 1 ) {
-            writer.write(new BafEvidence(sameLocusBuffer.get(0), .5));
+            writer.write(new BafEvidence(beList.get(0), .5));
         } else {
             final RunningAverage ra = new RunningAverage();
-            for ( final BafEvidence bafEvidence : sameLocusBuffer ) {
+            for ( final BafEvidence bafEvidence : beList ) {
                 ra.add(bafEvidence.getValue());
             }
             final double stddev = ra.stddev();
             if ( stddev <= maxStdDev ) {
                 final double[] vals = new double[nBafs];
                 for ( int idx = 0; idx != nBafs; ++idx ) {
-                    vals[idx] = sameLocusBuffer.get(idx).getValue();
+                    vals[idx] = beList.get(idx).getValue();
                 }
                 Arrays.sort(vals);
                 int midIdx = nBafs / 2;
                 double median =
                         (nBafs & 1) != 0 ? vals[midIdx] : (vals[midIdx] + vals[midIdx - 1])/2.;
                 final double adj = .5 - median;
-                for ( final BafEvidence bafEvidence : sameLocusBuffer ) {
+                for ( final BafEvidence bafEvidence : beList ) {
                     writer.write(new BafEvidence(bafEvidence, bafEvidence.getValue()+adj));
                 }
             }
         }
         sameLocusBuffer.clear();
+    }
+
+    private VariantContext nextSite() {
+        while ( bafSitesIterator.hasNext() ) {
+            final VariantContext vc = bafSitesIterator.next();
+            if ( vc.isSNP() && (!biAllelicOnly || vc.isBiallelic()) ) {
+                return vc;
+            }
+        }
+        throw new UserException("baf sites vcf exhausted before locus depth data");
     }
 }

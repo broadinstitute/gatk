@@ -5,7 +5,6 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -97,6 +96,7 @@ public class CollectSVEvidence extends ReadWalker {
     public static final String ALLELE_COUNT_OUTPUT_ARGUMENT_LONG_NAME = "allele-count-file";
     public static final String ALLELE_COUNT_INPUT_ARGUMENT_SHORT_NAME = "F";
     public static final String ALLELE_COUNT_INPUT_ARGUMENT_LONG_NAME = "allele-count-vcf";
+    public static final String BIALLELIC_ONLY_NAME = "biallelic-only";
     public static final String SAMPLE_NAME_ARGUMENT_LONG_NAME = "sample-name";
     public static final String COMPRESSION_LEVEL_ARGUMENT_LONG_NAME = "compression-level";
 
@@ -121,6 +121,12 @@ public class CollectSVEvidence extends ReadWalker {
             doc = "Input VCF of SNPs marking loci for allele counts",
             optional = true)
     public GATKPath alleleCountInputFilename;
+
+
+    @Argument(
+            doc = "Process only bi-allelic SNP sites for locus depth",
+            fullName = BIALLELIC_ONLY_NAME, optional = true )
+    private boolean biAllelicOnly = true;
 
     @Argument(fullName = "allele-count-min-mapq",
             doc = "minimum mapping quality for read to be allele-counted",
@@ -166,7 +172,7 @@ public class CollectSVEvidence extends ReadWalker {
         if ( alleleCountInputFilename != null && alleleCountOutputFilename != null ) {
             alleleCounter = new AlleleCounter(sequenceDictionary, sampleName, compressionLevel,
                                                 alleleCountInputFilename, alleleCountOutputFilename,
-                                                minMapQ, minQ);
+                                                biAllelicOnly, minMapQ, minQ);
         } else if ( alleleCountInputFilename != null ) {
             throw new UserException("Having specified an allele-count-vcf input, " +
                     "you must also supply an allele-count-file for output.");
@@ -558,6 +564,7 @@ public class CollectSVEvidence extends ReadWalker {
         private final SAMSequenceDictionary dict;
         private final String sampleName;
         private final FeatureSink<LocusDepth> writer;
+        private final boolean biAllelicOnly;
         private final int minMapQ;
         private final int minQ;
         private final Iterator<VariantContext> snpSourceItr;
@@ -568,6 +575,7 @@ public class CollectSVEvidence extends ReadWalker {
                               final int compressionLevel,
                               final GATKPath inputPath,
                               final GATKPath outputPath,
+                              final boolean biAllelicOnly,
                               final int minMapQ,
                               final int minQ ) {
             this.dict = dict;
@@ -586,6 +594,7 @@ public class CollectSVEvidence extends ReadWalker {
                 }
                 this.writer = codec.makeSink(outputPath, dict, sampleNames, compressionLevel);
             }
+            this.biAllelicOnly = biAllelicOnly;
             this.minMapQ = minMapQ;
             this.minQ = minQ;
             final FeatureDataSource<VariantContext> snpSource =
@@ -695,16 +704,13 @@ public class CollectSVEvidence extends ReadWalker {
                 return false;
             }
             VariantContext snp = snpSourceItr.next();
-            while ( !snp.isSNP() || !snp.isBiallelic() ) {
+            while ( !snp.isSNP() || (biAllelicOnly && !snp.isBiallelic()) ) {
                 if ( !snpSourceItr.hasNext() ) {
                     return false;
                 }
                 snp = snpSourceItr.next();
             }
-            final List<Allele> alleles = snp.getAlleles();
-            final int refIndex = Nucleotide.decode(alleles.get(0).getBases()[0]).ordinal();
-            final int altIndex = Nucleotide.decode(alleles.get(1).getBases()[0]).ordinal();
-            final LocusDepth locusDepth = new LocusDepth(snp, sampleName, refIndex, altIndex);
+            final LocusDepth locusDepth = new LocusDepth(snp, sampleName);
             locusDepthQueue.add(locusDepth);
             return true;
         }

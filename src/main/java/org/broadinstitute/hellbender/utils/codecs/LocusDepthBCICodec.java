@@ -30,9 +30,7 @@ public class LocusDepthBCICodec extends AbstractBCICodec<LocusDepth> {
         }
         final DataInputStream dis = reader.getStream();
         return new LocusDepth(reader.getDictionary().getSequence(dis.readInt()).getSequenceName(),
-                                dis.readInt(),
-                                reader.getSampleNames().get(dis.readInt()),
-                                dis.readByte(), dis.readByte(),
+                                dis.readInt(), reader.getSampleNames().get(dis.readInt()),
                                 dis.readInt(), dis.readInt(), dis.readInt(), dis.readInt());
     }
 
@@ -68,8 +66,6 @@ public class LocusDepthBCICodec extends AbstractBCICodec<LocusDepth> {
         dos.writeInt(writer.getContigIndex(locusDepth.getContig()));
         dos.writeInt(locusDepth.getStart());
         dos.writeInt(writer.getSampleIndex(locusDepth.getSample()));
-        dos.writeByte(locusDepth.getRefIndex());
-        dos.writeByte(locusDepth.getAltIndex());
         dos.writeInt(locusDepth.getDepth(0));
         dos.writeInt(locusDepth.getDepth(1));
         dos.writeInt(locusDepth.getDepth(2));

@@ -73,4 +73,15 @@ public class BafEvidenceUnitTest {
         }
         Assert.assertEquals(recoveredBafs, bafs);
     }
+
+    @Test
+    public void testValueAlteringConstructor() {
+        final BafEvidence bafEvidence = new BafEvidence("sample", "contig", 1234, .4);
+        final BafEvidence newValue = new BafEvidence(bafEvidence, .5);
+        Assert.assertEquals(newValue.getSample(), bafEvidence.getSample());
+        Assert.assertEquals(newValue.getContig(), bafEvidence.getContig());
+        Assert.assertEquals(newValue.getStart(), bafEvidence.getStart());
+        Assert.assertEquals(bafEvidence.getValue(), .4);
+        Assert.assertEquals(newValue.getValue(), .5);
+    }
 }
