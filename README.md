@@ -1,4 +1,4 @@
-![Build Status](https://github.com/broadinstitute/gatk/actions/workflows/gatk-tests.yml/badge.svg?branch=master)
+[![Build Status](https://github.com/broadinstitute/gatk/actions/workflows/gatk-tests.yml/badge.svg?branch=master)](https://github.com/broadinstitute/gatk/actions/workflows/gatk-tests.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/org.broadinstitute/gatk.svg)](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
