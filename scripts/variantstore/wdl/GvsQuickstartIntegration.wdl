@@ -89,6 +89,11 @@ task Prepare {
     }
 
     command <<<
+        # Much of this could/should be put into a Docker image which would be useful not only for integration test runs
+        # but also for building nightly GATK jars. This isn't really that valuable for this current increment of work as
+        # using a Docker image would save maybe 10 minutes from what is currently a ~4 hour workflow, but a Docker image
+        # could become more compelling if a scaled down version of this test that could run more frequently was created,
+        # in addition to the nightly build use case mentioned above.
         set -o errexit -o nounset -o pipefail
 
         # git and git-lfs
@@ -112,8 +117,10 @@ task Prepare {
 
         hash=$(git rev-parse --short HEAD)
 
+        # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
         mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
 
+        # Build a dataset name based on the branch name and the git hash of the most recent commit on this branch.
         # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete
         # any remaining characters that are not alphanumeric or underscores.
         dataset="$(echo quickit_${branch}_${hash} | tr '-' '_' | tr -c -d '[:alnum:]_')"
@@ -141,10 +148,9 @@ task AssertIdenticalOutputs {
     }
 
     command <<<
-        set -o xtrace
-
         failures=()
 
+        # Where the current set of expected results lives in the cloud
         expected_prefix="~{expected_output_prefix}"
         # Remove a trailing slash if there is one
         expected_prefix=${expected_prefix%/}
@@ -152,22 +158,25 @@ task AssertIdenticalOutputs {
         # Download all the expected data
         mkdir expected
         cd expected
+        # Make a FOFN for more efficient downloading
         for file in ~{sep= ' ' actual_vcfs}; do
             echo "$expected_prefix/$(basename $file)" >> expected_fofn.txt
         done
+        # Download and unzip all the expected data
         cat expected_fofn.txt | gsutil -m cp -I .
         gzip -d *
         cd ..
 
+        # Also unzip actual result data
         gzip -d ~{sep= ' ' actual_vcfs}
 
-        # headers first, these can yield more helpful diagnostics
-
+        # Headers first, these can yield useful diagnostics when there are mismatches.
         for file in ~{sep=' ' actual_vcfs}; do
           unzipped=${file%.gz}
           expected="expected/$(basename $unzipped)"
           cmp <(grep '^#' $unzipped) <(grep '^#' $expected)
           if [[ $? -ne 0 ]]; then
+            # If there is a mismatch add it to a list of failures but keep on looking for mismatches.
             failures+=( $unzipped )
           fi
         done
@@ -182,6 +191,7 @@ task AssertIdenticalOutputs {
           exit 1
         fi
 
+        # If the headers all matched look for any mismatches in overall file content.
         fail=0
         for file in ~{sep=' ' actual_vcfs}; do
           unzipped=${file%.gz}
@@ -210,4 +220,3 @@ task AssertIdenticalOutputs {
         Boolean done = true
     }
 }
-
