@@ -241,13 +241,11 @@ task BigQueryLoadJson {
        BQ_SHOW_RC=$?
        set -e
 
-       if [ $BQ_SHOW_RC -ne 0 ]; then
-         echo "Creating the vat table ~{dataset_name}.~{vat_table}"
-         bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
-       else
+       if [ $BQ_SHOW_RC -eq 0 ]; then
          bq rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table}
-         bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
        fi
+       echo "Creating the vat table ~{dataset_name}.~{vat_table}"
+       bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
        echo "And putting data into it"
 
        # Now we run a giant query in BQ to get this all in the right table and join the genes properly
