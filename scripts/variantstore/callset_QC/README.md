@@ -4,23 +4,13 @@ The generation of GVS callset stats is performed after a callset has been extrac
 
 **NOTE:** You will need permission to query table `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites`.
 
-## Create a `vet_all` view
-We need to create a view that contains all the vet data. Run
+## Use the prepared VET_DATA table
+We need a table that contains all the vet data. Use:
 
-	bq mk --project_id=<project> --use_legacy_sql=false --view <query> <dataset>.<prefix>_vet_all
+	<dataset>.<prefix>__VET_DATA
 
-where `<query>` is of the form:
-
-	"SELECT *
-     FROM (
-        SELECT * FROM <dataset>.vet_001 UNION ALL
-        SELECT * FROM <dataset>.vet_002 UNION ALL
-        SELECT * FROM <dataset>.vet_003) unioned_vets
-     WHERE
-        unioned_vets.sample_id IN
-        (SELECT sample_id FROM <dataset>.<prefix>__SAMPLES)"
-
-and `prefix` is the "cohort_extract_table_prefix" from `GvsExtractCallset` and there is a `SELECT * FROM <dataset>.vet_` in the `<query>` for every `vet_` table from the sample set.
+and `prefix` is the "cohort_extract_table_prefix" from `GvsExtractCallset` 
+Note that this table is partitioned by position / location
 
 ## Create the sample_metrics table
 
