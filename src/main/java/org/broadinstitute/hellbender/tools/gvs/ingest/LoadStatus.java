@@ -5,7 +5,6 @@ import com.google.api.core.ApiFuture;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.bigquery.storage.v1beta2.*;
-import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
