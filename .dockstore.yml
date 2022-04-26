@@ -65,7 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
@@ -90,7 +89,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -100,7 +98,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -110,7 +107,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -120,7 +116,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -130,7 +125,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -140,7 +134,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
@@ -177,7 +170,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
@@ -192,7 +184,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
