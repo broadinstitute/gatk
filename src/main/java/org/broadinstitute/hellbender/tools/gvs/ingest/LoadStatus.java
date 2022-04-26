@@ -128,7 +128,6 @@ public class LoadStatus {
                     throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", e);
                 }
 
-                logger.warn("Caught exception writing load status", e);
                 switch (se.getStatus().getCode()) {
                     case ALREADY_EXISTS:
                         // This is okay, no need to retry
@@ -140,8 +139,10 @@ public class LoadStatus {
                         throw new GATKException("Caught non-retryable StatusRuntimeException based exception", e);
                     default:
                         try {
+                            logger.warn("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", e);
+                            long backOffMillis = backoff.nextBackOffMillis();
                             //noinspection BusyWait
-                            Thread.sleep(backoff.nextBackOffMillis());
+                            Thread.sleep(backOffMillis);
                             retryCount++;
                         } catch (final IOException | InterruptedException ie) {
                             throw new GATKException("Error attempting to sleep between retry attempts", ie);
