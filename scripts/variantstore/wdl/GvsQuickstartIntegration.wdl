@@ -164,10 +164,11 @@ task AssertIdenticalOutputs {
         # headers first, these can yield more helpful diagnostics
 
         for file in ~{sep=' ' actual_vcfs}; do
-          expected="expected/$(basename $file)"
-          cmp <(grep '^#' $file) <(grep '^#' $expected)
+          unzipped=${file%.gz}
+          expected="expected/$(basename $unzipped)"
+          cmp <(grep '^#' $unzipped) <(grep '^#' $expected)
           if [[ $? -ne 0 ]]; then
-            failures+=( $file )
+            failures+=( $unzipped )
           fi
         done
 
@@ -183,10 +184,11 @@ task AssertIdenticalOutputs {
 
         fail=0
         for file in ~{sep=' ' actual_vcfs}; do
-          expected="expected/$(basename $file)"
-          cmp $file $expected
+          unzipped=${file%.gz}
+          expected="expected/$(basename $unzipped)"
+          cmp $unzipped $expected
           if [[ $? -ne 0 ]]; then
-            echo "Error: file contents of expected and actual do not match: $(basename $file)"
+            echo "Error: file contents of expected and actual do not match: $(basename $unzipped)"
             fail=1
           fi
         done
