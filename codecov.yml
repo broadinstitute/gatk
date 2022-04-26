@@ -12,15 +12,18 @@ coverage:
         target: auto
         threshold: null
         branches: null
+        informational: true
 
     patch:
       default:
         target: auto
         branches: null
+        informational: true
 
     changes:
       default:
         branches: null
+        informational: true
 
 
 comment:
