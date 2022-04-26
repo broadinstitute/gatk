@@ -1,7 +1,5 @@
 codecov:
   branch: master
-  notify:
-    wait_for_ci: true
 
 coverage:
   precision: 3
@@ -32,3 +30,4 @@ comment:
   layout: "header, diff, changes, sunburst, uncovered, tree"
   branches: null
   behavior: default
+  wait_for_ci: true # wait for the entire github actions test suite to finish before posting the coverage comment
