@@ -65,6 +65,8 @@ workflow GvsQuickstartIntegration {
             create_filter_set_scatter_count = 20,
             extract_table_prefix = "quickit",
             extract_scatter_count = 100,
+            # Force filtering off as it is not deterministic and the initial version of this integration test does not
+            # allow for inexact matching of actual and expected results.
             extract_do_not_filter_override = true
     }
 
@@ -90,7 +92,7 @@ task Prepare {
 
     command <<<
         # Much of this could/should be put into a Docker image which would be useful not only for integration test runs
-        # but also for building nightly GATK jars. This isn't really that valuable for this current increment of work as
+        # but also for building nightly GATK jars. This wouldn't be that valuable for this current increment of work as
         # using a Docker image would save maybe 10 minutes from what is currently a ~4 hour workflow, but a Docker image
         # could become more compelling if a scaled down version of this test that could run more frequently was created,
         # in addition to the nightly build use case mentioned above.
