@@ -30,3 +30,4 @@ comment:
   layout: "header, diff, changes, sunburst, uncovered, tree"
   branches: null
   behavior: default
+  after_n_builds: 8
