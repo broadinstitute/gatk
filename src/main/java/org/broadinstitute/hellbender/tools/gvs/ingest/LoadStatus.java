@@ -128,6 +128,7 @@ public class LoadStatus {
                     throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", e);
                 }
 
+                logger.warn("Caught exception writing load status", e);
                 switch (se.getStatus().getCode()) {
                     case ALREADY_EXISTS:
                         // This is okay, no need to retry
