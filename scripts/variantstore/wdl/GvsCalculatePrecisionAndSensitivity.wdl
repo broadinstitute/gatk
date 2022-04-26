@@ -176,9 +176,7 @@ task GatherVcfs {
     done
     echo $CHR_VCFS_ARG
 
-    # --ignore-safety-checks makes a big performance difference so we include it in our invocation.
-    # This argument disables expensive checks that the file headers contain the same set of
-    # genotyped samples and that files are in order by position of first record.
+    # --REORDER_INPUT_BY_FIRST_VARIANT means that the vcfs supplied here need not be ordered by location.
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       GatherVcfs \
         --REORDER_INPUT_BY_FIRST_VARIANT \
@@ -341,7 +339,7 @@ task EvaluateVcf {
       -c ~{input_vcf} \
       -o ~{output_basename}
 
-    # Touch a file with the name of the sample in that directory, so that it's identifiable among globbed outputs.
+    # Touch a file with the name of the sample in that directory, so that it's identifiable among the globbed outputs.
     touch ~{output_basename}/~{output_basename}
 
     touch report.txt
