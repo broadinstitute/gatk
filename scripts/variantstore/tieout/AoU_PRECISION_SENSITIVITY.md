@@ -23,7 +23,7 @@ The wdl takes several inputs:
 
 **chromosome** - The chromosome on which to run the analysis of Precision and Sensitivity. The default value for this is `chr20`. If it is set to `all` then the analysis will be run across *all* chromosomes.
 
-**sample_names** - A list of the sample names that are controls and that will be sued for the analysis. For every element on the list of sample names there must be a corresponding element on the list of `truth_vcfs`, `truth_vcf_indices`, and `truth_beds`.
+**sample_names** - A list of the sample names that are controls and that will be used for the analysis. For every element on the list of sample names there must be a corresponding element on the list of `truth_vcfs`, `truth_vcf_indices`, and `truth_beds`.
 
 ```
 [ "NA12878", \
