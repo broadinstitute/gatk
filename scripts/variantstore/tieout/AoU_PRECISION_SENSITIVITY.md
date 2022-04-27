@@ -42,7 +42,7 @@ The wdl takes several inputs:
   "gs://broad-gotc-test-storage/gvs/truth/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz.tbi"
 ```
 
-**truth_beds** - A list of the bed files for the truth data used for analyzin the samples in `sample_names`.
+**truth_beds** - A list of the bed files for the truth data used for analyzing the samples in `sample_names`.
 
 ```
 [ "gs://broad-gotc-test-storage/gvs/truth/HG001.gvs.evaluation.bed", \
