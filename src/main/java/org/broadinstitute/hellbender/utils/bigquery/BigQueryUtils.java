@@ -1,21 +1,12 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.cloud.bigquery.*;
-import com.google.cloud.bigquery.storage.v1.*;
-import com.google.cloud.bigquery.storage.v1beta2.TableName;
-import com.google.common.base.Preconditions;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.BinaryDecoder;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.DecoderFactory;
 import org.apache.ivy.util.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -453,5 +444,18 @@ public final class BigQueryUtils {
         TableReference tr = new TableReference(tempTableFullyQualified, fieldsToRetrieve);
 
         return new StorageAPIAvroReader(tr);
+    }
+
+    public static boolean doRowsExistFor(String projectID, String datasetName, String tableName, String sampleId) {
+        String template = "SELECT COUNT(*) FROM `%s.%s.%s` WHERE %s = %s";
+        String query = String.format(template, projectID, datasetName, tableName, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
+
+        TableResult result = BigQueryUtils.executeQuery(projectID, query, true, null);
+        for (final FieldValueList row : result.iterateAll()) {
+            final long count = row.get(0).getLongValue();
+            return count != 0;
+        }
+        throw new GATKException(String.format("No rows returned from count of `%s.%s.%s` for sample id %s",
+                projectID, datasetName, tableName, sampleId));
     }
 }

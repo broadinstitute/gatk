@@ -13,10 +13,10 @@ import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +37,10 @@ public final class RefCreator {
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
+    public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, String sampleId) {
+        if (outputType != CommonCode.OutputType.BQ) return false;
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, sampleId);
+    }
 
     public RefCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
         this.sampleId = sampleId;
@@ -152,49 +156,6 @@ public final class RefCreator {
         final GenomeLoc possiblyMergedGenomeLoc = coverageLocSortedSet.getGenomeLocParser().createGenomeLoc(variantInterval.getContig(), intervalStart, intervalEnd);
         coverageLocSortedSet.add(possiblyMergedGenomeLoc, true);
         previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
-    }
-
-    public List<List<String>> createRows(final long start, final long end, final VariantContext variant, final String sampleId) {
-
-        List<List<String>> rows = new ArrayList<>();
-
-        // if the variant is no call, set the "state" to GQ ZERO
-        if (CreateVariantIngestFiles.isNoCall(variant)) {
-            List<String> row = new ArrayList<>();
-            row.add(String.valueOf(start));
-            row.add(sampleId);
-            row.add(GQStateEnum.ZERO.getValue());
-            rows.add(row);
-        } else if (!variant.isReferenceBlock()) {
-            List<String> row = new ArrayList<>();
-            row.add(String.valueOf(start));
-            row.add(sampleId);
-            row.add(GQStateEnum.VARIANT.getValue());
-            rows.add(row);
-
-            //if variant is variant and has additional positions--must be a deletion: add `*` state
-            for (long i = start + 1 ; i <= end; i++){
-                row = new ArrayList<>();
-                row.add(String.valueOf(i));
-                row.add(sampleId);
-                row.add(GQStateEnum.STAR.getValue());
-                rows.add(row);
-            }
-        } else {
-            // TODO check in the tool to make sure it's only one sample
-            GQStateEnum state = getGQStateEnum(variant.getGenotype(0).getGQ());
-
-            for (long position = start; position <= end; position++){ // break up ref blocks
-                List<String> row = new ArrayList<>();
-
-                row.add(String.valueOf(position));
-                row.add(sampleId);
-                row.add(state.getValue());
-                rows.add(row);
-            }
-        }
-
-        return rows;
     }
 
     public void writeMissingPositions(long start, long end) throws IOException {

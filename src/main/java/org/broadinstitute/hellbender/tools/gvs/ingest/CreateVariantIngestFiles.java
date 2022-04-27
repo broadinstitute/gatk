@@ -16,12 +16,11 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum;
-import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.tools.gvs.common.*;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 
 import java.io.File;
@@ -139,6 +138,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean forceLoadingFromNonAlleleSpecific = false;
 
+    private boolean shouldWriteLoadStatusStarted = true;
+
     // getGenotypes() returns list of lists for all samples at variant
     // assuming one sample per gvcf, getGenotype(0) retrieves GT for sample at index 0
     public static boolean isNoCall(VariantContext variant) {
@@ -188,22 +189,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
         String tableNumber = String.format("%03d", sampleTableNumber);
 
-        // To set up the missing positions
-        SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
-
-        final GenomeLocParser genomeLocParser = new GenomeLocParser(seqDictionary);
-        intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
-
-        if (enableReferenceRanges) {
-            //noinspection ConstantConditions
-            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName);
-        }
-
-        if (enableVet) {
-            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific);
-        }
-
-        // check the load status table to see if this sample has already been loaded...
+        boolean refRangesRowsExist = false;
+        boolean vetRowsExist = false;
+        // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
 
@@ -217,8 +205,50 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
                 System.exit(0);
             } else if (state == LoadStatus.LoadState.PARTIAL) {
-                throw new GATKException("The loading for sample id " + sampleId + " into the _" + tableNumber + " table(s) was interrupted before it was able to complete successfully.");
+                if (enableReferenceRanges) {
+                    refRangesRowsExist = RefCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
+                    if (refRangesRowsExist) {
+                        logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ref_ranges rows found, skipping ref_ranges writes.",
+                                sampleId, sampleName);
+                    }
+                }
+
+                if (enableVet) {
+                    vetRowsExist = VetCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
+                    if (vetRowsExist) {
+                        logger.warn("Vet enabled for sample id = {}, name = {} but preexisting vet rows found, skipping vet writes.",
+                                sampleId, sampleName);
+                    }
+                }
+
+                if ((refRangesRowsExist || !enableReferenceRanges) && (vetRowsExist || !enableVet)) {
+                    // Write the status finished row and exit 0.
+                    logger.warn("Found load status started row with vet and ref written as needed, writing load status finished row for sample name = {}, id = {}",
+                            sampleName, sampleId);
+                    loadStatus.writeLoadStatusFinished(Long.parseLong(sampleId));
+                    System.exit(0);
+                }
+
+                // Log that we're going to write the vet and/or ref_ranges rows as appropriate.
+                logger.warn("Found load status started row but not load status finished row for sample id = {}, name = {}; writing tables: vet = {}, ref_ranges = {}",
+                        sampleId, sampleName, !vetRowsExist && enableVet, !refRangesRowsExist && enableReferenceRanges);
+                // Do not write the started status as that has already been written.
+                shouldWriteLoadStatusStarted = false;
             }
+        }
+
+        // To set up the missing positions
+        SAMSequenceDictionary seqDictionary = getBestAvailableSequenceDictionary();
+
+        final GenomeLocParser genomeLocParser = new GenomeLocParser(seqDictionary);
+        intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
+
+        if (enableReferenceRanges && !refRangesRowsExist) {
+            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName);
+        }
+
+        if (enableVet && !vetRowsExist) {
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific);
         }
     }
 
@@ -247,7 +277,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         try {
             // write to VET if NOT reference block and NOT a no call
             if (!variant.isReferenceBlock() && !isNoCall(variant)) {
-                if (enableVet) vetCreator.apply(variant);
+                if (vetCreator != null) {
+                    vetCreator.apply(variant);
+                }
             }
         } catch (IOException ioe) {
             throw new GATKException("Error writing VET", ioe);
@@ -255,7 +287,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         try {
             if (refCreator != null) {
-                if (enableReferenceRanges) refCreator.apply(variant, intervalsToWrite);
+                refCreator.apply(variant, intervalsToWrite);
             }
         } catch (IOException ioe) {
             throw new GATKException("Error writing reference ranges", ioe);
@@ -264,7 +296,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        if (outputType == CommonCode.OutputType.BQ) {
+        if (outputType == CommonCode.OutputType.BQ && shouldWriteLoadStatusStarted) {
             loadStatus.writeLoadStatusStarted(Long.parseLong(sampleId));
         }
 
@@ -278,7 +310,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             refCreator.commitData();
         }
 
-        if (vetCreator != null && enableVet) {
+        if (vetCreator != null) {
             vetCreator.commitData();
         }
 
