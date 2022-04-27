@@ -1,0 +1,11 @@
+{
+  "GvsValidateVatTable.inputFileofFileNames": "FILE",
+  "GvsValidateVatTable.project_id": "PROJECT_ID",
+  "GvsValidateVatTable.dataset_name": "DATASET",
+  "GvsValidateVatTable.vat_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json",
+  "GvsValidateVatTable.variant_transcript_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json",
+  "GvsValidateVatTable.genes_schema_json_file": "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json",
+  "GvsValidateVatTable.output_path": "PATH",
+  "GvsValidateVatTable.table_suffix": "v1",
+  "GvsValidateVatTable.service_account_json_path": "SERVICE_ACCOUNT"
+}
