@@ -285,8 +285,8 @@ function recordGitHubReleaseDownloadCount(githubUrl, authToken) {
       newReleaseDownloadDiffCountHeaderCell.setValue(tagName + " New Downloads");
       newReleaseDownloadDiffCountHeaderCell.setFontWeight('bold');
 
-      // No old downloads here:
-      row.push(0);
+      // no old data so use today's downloads
+      row.push(downloadCount);
     }
     else {
       // We've seen this release before.  Let's get some diff numbers:
