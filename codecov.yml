@@ -1,5 +1,7 @@
 codecov:
   branch: master
+  notify:
+    wait_for_ci: true
 
 coverage:
   precision: 3
