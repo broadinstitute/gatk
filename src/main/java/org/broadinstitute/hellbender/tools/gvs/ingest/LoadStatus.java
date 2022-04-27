@@ -69,7 +69,6 @@ public class LoadStatus {
             } else if (LoadStatusValues.FINISHED.toString().equals(status)) {
                 finishedCount++;
             }
-
         }
 
         // if fully loaded, exit successfully!
