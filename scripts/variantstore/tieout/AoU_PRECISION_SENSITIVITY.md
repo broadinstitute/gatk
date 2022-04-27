@@ -3,7 +3,7 @@
 ## Prerequisites
 Complete (at least) through the training step (`GvsCreateFilterSet`) of the [GVS pipeline](../AOU_DELIVERABLES.md) with all the samples (control and non-control).  Then run the callset extract step with a view of the sample-mapping table that's controls-only but with the training (i.e. "filter_set") from all the samples.
 
-1. Use the GvsCalculatePrecisionAndSenitiviy wdl to calculate the precision and sensitivity..
+1. Use the GvsCalculatePrecisionAndSensitivity wdl to calculate the precision and sensitivity.
 
 The wdl takes several inputs:
 
