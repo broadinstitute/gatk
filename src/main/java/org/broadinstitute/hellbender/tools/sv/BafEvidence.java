@@ -13,14 +13,26 @@ public final class BafEvidence implements SVFeature {
     private final double value;
 
     public final static String BCI_VERSION = "1.0";
+    public final static double MISSING_VALUE = -1.;
 
     public BafEvidence( final String sample, final String contig,
                         final int position, final double value ) {
         Utils.nonNull(sample);
         Utils.nonNull(contig);
+        Utils.validateArg(position > 0, "starting position must be positive");
+        Utils.validateArg(value >= 0. || value == MISSING_VALUE,
+                "value must be non-negative or missing");
         this.sample = sample;
         this.contig = contig;
         this.position = position;
+        this.value = value;
+    }
+
+    // value-altering constructor
+    public BafEvidence( final BafEvidence that, final double value ) {
+        this.sample = that.sample;
+        this.contig = that.contig;
+        this.position = that.position;
         this.value = value;
     }
 

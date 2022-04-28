@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 
@@ -11,25 +12,26 @@ public final class LocusDepth implements SVFeature {
     private final String contig;
     private final int position;
     private final String sample;
-    private final byte refCall; // index into nucleotideValues
-    private final int[] depths;
+    private final int[] depths; // four slots for each call, ACGT
+
     public final static String BCI_VERSION = "1.0";
 
-    public LocusDepth( final Locatable loc, final String sample, final byte refCall ) {
-        this.contig = loc.getContig();
-        this.position = loc.getStart();
-        this.sample = sample;
-        this.refCall = refCall;
-        this.depths = new int[4];
+    public LocusDepth( final Locatable loc, final String sample ) {
+        this(loc.getContig(), loc.getStart(), sample, 0, 0, 0, 0);
     }
 
-    public LocusDepth( final String contig, final int position,
-                       final String sample, final byte refCall,
+    public LocusDepth( final String contig, final int position, final String sample,
                        final int aDepth, final int cDepth, final int gDepth, final int tDepth ) {
+        Utils.nonNull(contig, "contig may not be null");
+        Utils.validateArg(position > 0, "starting position must be positive");
+        Utils.nonNull(sample, "sample must not be null");
+        Utils.validateArg(aDepth >= 0, "depth must be non-negative");
+        Utils.validateArg(cDepth >= 0, "depth must be non-negative");
+        Utils.validateArg(gDepth >= 0, "depth must be non-negative");
+        Utils.validateArg(tDepth >= 0, "depth must be non-negative");
         this.contig = contig;
         this.position = position;
         this.sample = sample;
-        this.refCall = refCall;
         this.depths = new int[4];
         depths[0] = aDepth;
         depths[1] = cDepth;
@@ -57,13 +59,11 @@ public final class LocusDepth implements SVFeature {
     }
 
     public String getSample() { return sample; }
-    public char getRefCall() {
-        return (char)refCall;
-    }
-    public int getADepth() { return depths[0]; }
-    public int getCDepth() { return depths[1]; }
-    public int getGDepth() { return depths[2]; }
-    public int getTDepth() { return depths[3]; }
+
+    public int getTotalDepth() { return depths[0] + depths[1] + depths[2] + depths[3]; }
+
+    // idx is index into "ACGT"
+    public int getDepth( final int idx ) { return depths[idx]; }
 
     @Override
     public LocusDepth extractSamples( final Set<String> sampleNames, final Object header ) {
@@ -77,7 +77,7 @@ public final class LocusDepth implements SVFeature {
     }
 
     public boolean equals( final LocusDepth that ) {
-        return this.position == that.position && this.refCall == that.refCall &&
+        return this.position == that.position &&
                 this.depths[0] == that.depths[0] && this.depths[1] == that.depths[1] &&
                 this.depths[2] == that.depths[2] && this.depths[3] == that.depths[3] &&
                 Objects.equals(this.contig, that.contig) &&
@@ -86,12 +86,12 @@ public final class LocusDepth implements SVFeature {
 
     @Override
     public int hashCode() {
-        return Objects.hash(contig, position, sample, refCall, Arrays.hashCode(depths));
+        return Objects.hash(contig, position, sample, Arrays.hashCode(depths));
     }
 
     @Override
     public String toString() {
-        return contig + "\t" + position + "\t" + sample + "\t" + (char)refCall + "\t" +
-                depths[0] + "\t" + depths[1] + "\t" + depths[2] + "\t" + depths[3];
+        return sample + "@" + contig + ":" + position +
+                "[" + depths[0] + "," + depths[1] + "," + depths[2] + "," + depths[3] + "]";
     }
 }

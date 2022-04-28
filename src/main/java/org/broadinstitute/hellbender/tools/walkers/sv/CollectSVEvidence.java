@@ -121,6 +121,7 @@ public class CollectSVEvidence extends ReadWalker {
             optional = true)
     public GATKPath alleleCountInputFilename;
 
+
     @Argument(fullName = "allele-count-min-mapq",
             doc = "minimum mapping quality for read to be allele-counted",
             optional = true)
@@ -323,7 +324,7 @@ public class CollectSVEvidence extends ReadWalker {
                                   final FeatureSink<SplitReadEvidence> srWriter) {
 
         while (splitCounts.size() > 0 && flushablePosition.test(splitCounts.peek())) {
-            SplitPos pos = splitCounts.poll();
+            final SplitPos pos = splitCounts.poll();
             int countAtPos = 1;
             while (splitCounts.size() > 0 && splitCounts.peek().equals(pos)) {
                 countAtPos++;
@@ -334,7 +335,7 @@ public class CollectSVEvidence extends ReadWalker {
         }
     }
 
-    private SplitPos getSplitPosition(GATKRead read) {
+    private SplitPos getSplitPosition( final GATKRead read ) {
         if (read.getCigar().getFirstCigarElement().getOperator() == CigarOperator.M) {
             final int matchLength = read.getCigar().getCigarElements().stream().filter(e -> e.getOperator().consumesReferenceBases()).mapToInt(CigarElement::getLength).sum();
             return new SplitPos(read.getStart() + matchLength, POSITION.RIGHT);
@@ -345,7 +346,7 @@ public class CollectSVEvidence extends ReadWalker {
         return new SplitPos(-1, POSITION.MIDDLE);
     }
 
-    private boolean isSoftClipped(final GATKRead read) {
+    private boolean isSoftClipped( final GATKRead read ) {
         final CigarOperator firstOperator = read.getCigar().getFirstCigarElement().getOperator();
         final CigarOperator lastOperator = read.getCigar().getLastCigarElement().getOperator();
         return (firstOperator == CigarOperator.SOFT_CLIP && lastOperator != CigarOperator.SOFT_CLIP) ||
@@ -694,14 +695,13 @@ public class CollectSVEvidence extends ReadWalker {
                 return false;
             }
             VariantContext snp = snpSourceItr.next();
-            while ( !snp.isSNP() ) {
+            while ( !snp.isSNP() || !snp.isBiallelic() ) {
                 if ( !snpSourceItr.hasNext() ) {
                     return false;
                 }
                 snp = snpSourceItr.next();
             }
-            final byte[] refSeq = snp.getReference().getBases();
-            final LocusDepth locusDepth = new LocusDepth(snp, sampleName, refSeq[0]);
+            final LocusDepth locusDepth = new LocusDepth(snp, sampleName);
             locusDepthQueue.add(locusDepth);
             return true;
         }
