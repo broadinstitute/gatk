@@ -94,6 +94,9 @@ public class LoadStatus {
         final ExponentialBackOff backoff = new ExponentialBackOff.Builder().
                 setInitialIntervalMillis(2000).
                 setMaxIntervalMillis(30000).
+                // The default value is 900000 millis or 900 seconds or 15 minutes which is not long enough given how this
+                // backoff is being used. The retry in this code is limited by number of attempts and not total time.
+                setMaxElapsedTimeMillis(Integer.MAX_VALUE).
                 setMultiplier(2).
                 setRandomizationFactor(0.5).
                 build();
