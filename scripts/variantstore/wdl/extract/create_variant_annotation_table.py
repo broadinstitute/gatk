@@ -143,6 +143,7 @@ def get_gnomad_subpop(gnomad_obj):
     max_an = None
     max_af = None
     max_subpop = ""
+    ## TODO will there ever be unexpected values in gnomad_subpop (values not in gnomad_ordering) ?
     for gnomad_subpop in gnomad_ordering: # since we cycle through this in order, if there is a tie, we just ignore it because we wouldn't chose it anyway based on order
       subpop_af_key = "".join([gnomad_subpop, "Af"])
       subpop_ac_key = "".join([gnomad_subpop, "Ac"])
@@ -234,33 +235,37 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
       row.update(gnomad_row)
 
     if variant_line.get("clinvar") != None:
-      clinvar_lines = variant_line["clinvar"]
+      clinvar_objs = variant_line["clinvar"]
+      var_ref = variant_line["refAllele"]
+      var_alt = variant_line["altAllele"]
       significance_values = [] # ordered by Benign, Likely Benign, Uncertain significance, Likely pathogenic, Pathogenic # https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/
       updated_dates = [] # grab the most recent
       phenotypes = [] # ordered alphabetically
       clinvar_ids = [] # For easy validation downstream
-      for clinvar_RCV_line in clinvar_lines:
-        # get the clinvar lines with the id that starts with RCV
-        if clinvar_RCV_line.get("id")[:3] == "RCV":
-          clinvar_ids.append(clinvar_RCV_line.get("id"))
-          significance_values.extend([x.lower() for x in clinvar_RCV_line.get("significance")])
-          updated_dates.append(clinvar_RCV_line.get("lastUpdatedDate"))
-          phenotypes.extend(clinvar_RCV_line.get("phenotypes"))
-      # We want to collect all the significance values and order them by the significance_ordering list
-      # So I will loop through the significance_ordering values and check for matching values in the significance_values list and put them in a new list
-      # And then anything that did not match will get added at the end of the list (sorted alpha)
-      ordered_significance_values = []
-      for value in significance_ordering:
-        if value in significance_values:
-          ordered_significance_values.append(value) # this adds the id to the end of the list
-      values_not_accounted_for = list(set(significance_values).difference(ordered_significance_values))
-      values_not_accounted_for.sort()
-      ordered_significance_values.extend(values_not_accounted_for) # add any values that aren't in significance_ordering to the end
-      row["clinvar_id"] = clinvar_ids # array
-      row["clinvar_classification"] = ordered_significance_values # special sorted array
-      updated_dates.sort(key=lambda date: datetime.strptime(date, "%Y-%m-%d")) # note: method is in-place, and returns None
-      row["clinvar_last_updated"] = updated_dates[-1] # most recent date
-      row["clinvar_phenotype"] = sorted(phenotypes) # union of all phenotypes
+      # Note that inside the clinvar array, are multiple objects that may or may not be the one we are looking for. We check by making sure the ref and alt are the same
+      for clinvar_obj in clinvar_objs:
+         # get only the clinvar objs with right variant and the id that starts with RCV
+         if (clinvar_obj.get("refAllele") == var_ref) & (clinvar_obj.get("altAllele") == var_alt) & (clinvar_obj.get("id")[:3] == "RCV"):
+           clinvar_ids.append(clinvar_obj.get("id"))
+           significance_values.extend([x.lower() for x in clinvar_obj.get("significance")])
+           updated_dates.append(clinvar_obj.get("lastUpdatedDate"))
+           phenotypes.extend(clinvar_obj.get("phenotypes"))
+      if len(clinvar_ids) > 0:
+        ordered_significance_values = []
+        # We want to collect all the significance values and order them by the significance_ordering list
+        # So I will loop through the significance_ordering values and check for matching values in the significance_values list and put them in a new list
+        # And then anything that did not match will get added at the end of the list (sorted alpha)
+        for value in significance_ordering:
+          if value in significance_values:
+            ordered_significance_values.append(value) # this adds the id to the end of the list
+        values_not_accounted_for = list(set(significance_values).difference(ordered_significance_values))
+        values_not_accounted_for.sort() # alphabetize this so it is deterministic
+        ordered_significance_values.extend(values_not_accounted_for) # add any values that aren't in significance_ordering to the end
+        row["clinvar_id"] = clinvar_ids # array
+        row["clinvar_classification"] = ordered_significance_values # special sorted array
+        updated_dates.sort(key=lambda date: datetime.strptime(date, "%Y-%m-%d")) # note: method is in-place, and returns None
+        row["clinvar_last_updated"] = updated_dates[-1] # most recent date
+        row["clinvar_phenotype"] = sorted(phenotypes) # union of all phenotypes
 
     if variant_line.get("revel") != None:
       row["revel"] = variant_line.get("revel").get("score")
