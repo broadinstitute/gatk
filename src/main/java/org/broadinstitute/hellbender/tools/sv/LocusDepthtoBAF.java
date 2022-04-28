@@ -72,7 +72,6 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
     public static final String BAF_SITES_VCF_LONG_NAME = "baf-sites-vcf";
     public static final String SAMPLE_NAMES_NAME = "sample-names";
     public static final String BAF_EVIDENCE_FILE_NAME = "baf-evidence-output";
-    public static final String BIALLELIC_ONLY_NAME = "biallelic-only";
     public static final String MIN_TOTAL_DEPTH_NAME = "min-total-depth";
     public static final String MAX_STD_NAME = "max-std";
     public static final String MIN_HET_PROBABILITY = "min-het-probability";
@@ -98,11 +97,6 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
             fullName = BAF_EVIDENCE_FILE_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME )
     private GATKPath bafOutputFile;
-
-    @Argument(
-            doc = "Process only bi-allelic SNP sites",
-            fullName = BIALLELIC_ONLY_NAME, optional = true )
-    private boolean biAllelicOnly = true;
 
     @Argument(
             doc = "Maximum standard deviation across bafs at a locus (otherwise locus will be ignored)",
@@ -150,8 +144,8 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
     }
 
     @Override
-    public void apply( LocusDepth locusDepth, Object header,
-                       ReadsContext reads, ReferenceContext ref ) {
+    public void apply( final LocusDepth locusDepth, final Object header,
+                       final ReadsContext reads, final ReferenceContext ref ) {
         if ( !sameLocus(locusDepth) ) {
             processBuffer();
         }
@@ -179,12 +173,12 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
         if ( totalDepth < minTotalDepth ) {
             return BafEvidence.MISSING_VALUE;
         }
-        double expectRefAlt = totalDepth / 2.;
+        final double expectRefAlt = totalDepth / 2.;
         final double altDepth = locusDepth.getDepth(altIndex);
         final double refDiff = locusDepth.getDepth(refIndex) - expectRefAlt;
         final double altDiff = altDepth - expectRefAlt;
-        double chiSq = (refDiff * refDiff + altDiff * altDiff) / expectRefAlt;
-        double fitProb = 1. - chiSqDist.cumulativeProbability(chiSq);
+        final double chiSq = (refDiff * refDiff + altDiff * altDiff) / expectRefAlt;
+        final double fitProb = 1. - chiSqDist.cumulativeProbability(chiSq);
         if ( fitProb < minHetProbability ) {
             return BafEvidence.MISSING_VALUE;
         }
@@ -212,26 +206,18 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
         if ( refIndex > 3 ) {
             throw new UserException("ref call is not [ACGT] in vcf at " + vc.getContig() + ":" + vc.getStart());
         }
-        final int nAlleles = alleles.size();
-        final int[] altIndices = new int[nAlleles - 1];
-        for ( int alleleIndex = 1; alleleIndex < nAlleles; ++alleleIndex ) {
-            final int altIndex = Nucleotide.decode(alleles.get(1).getBases()[0]).ordinal();
-            if ( altIndex > 3 ) {
-                throw new UserException("alt call is not [ACGT] in vcf at " + vc.getContig() + ":" + vc.getStart());
-            }
-            altIndices[alleleIndex - 1] = altIndex;
+        final int altIndex = Nucleotide.decode(alleles.get(1).getBases()[0]).ordinal();
+        if ( altIndex > 3 ) {
+            throw new UserException("alt call is not [ACGT] in vcf at " + vc.getContig() + ":" + vc.getStart());
         }
         final List<BafEvidence> beList = new ArrayList<>(sameLocusBuffer.size());
         for ( final LocusDepth ld : sameLocusBuffer ) {
-            for ( final int altIndex : altIndices ) {
-                double baf = calcBAF(ld, refIndex, altIndex);
-                if ( baf != BafEvidence.MISSING_VALUE ) {
-                    beList.add(new BafEvidence(ld.getSample(), ld.getContig(), ld.getStart(), baf));
-                    break;
-                }
+            final double baf = calcBAF(ld, refIndex, altIndex);
+            if ( baf != BafEvidence.MISSING_VALUE ) {
+                beList.add(new BafEvidence(ld.getSample(), ld.getContig(), ld.getStart(), baf));
             }
         }
-        int nBafs = beList.size();
+        final int nBafs = beList.size();
         if ( nBafs == 1 ) {
             writer.write(new BafEvidence(beList.get(0), .5));
         } else {
@@ -246,8 +232,8 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
                     vals[idx] = beList.get(idx).getValue();
                 }
                 Arrays.sort(vals);
-                int midIdx = nBafs / 2;
-                double median =
+                final int midIdx = nBafs / 2;
+                final double median =
                         (nBafs & 1) != 0 ? vals[midIdx] : (vals[midIdx] + vals[midIdx - 1])/2.;
                 final double adj = .5 - median;
                 for ( final BafEvidence bafEvidence : beList ) {
@@ -261,7 +247,7 @@ public class LocusDepthtoBAF extends MultiFeatureWalker<LocusDepth> {
     private VariantContext nextSite() {
         while ( bafSitesIterator.hasNext() ) {
             final VariantContext vc = bafSitesIterator.next();
-            if ( vc.isSNP() && (!biAllelicOnly || vc.isBiallelic()) ) {
+            if ( vc.isSNP() && vc.isBiallelic() ) {
                 return vc;
             }
         }

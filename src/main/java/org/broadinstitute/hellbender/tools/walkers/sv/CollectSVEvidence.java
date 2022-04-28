@@ -96,7 +96,6 @@ public class CollectSVEvidence extends ReadWalker {
     public static final String ALLELE_COUNT_OUTPUT_ARGUMENT_LONG_NAME = "allele-count-file";
     public static final String ALLELE_COUNT_INPUT_ARGUMENT_SHORT_NAME = "F";
     public static final String ALLELE_COUNT_INPUT_ARGUMENT_LONG_NAME = "allele-count-vcf";
-    public static final String BIALLELIC_ONLY_NAME = "biallelic-only";
     public static final String SAMPLE_NAME_ARGUMENT_LONG_NAME = "sample-name";
     public static final String COMPRESSION_LEVEL_ARGUMENT_LONG_NAME = "compression-level";
 
@@ -122,11 +121,6 @@ public class CollectSVEvidence extends ReadWalker {
             optional = true)
     public GATKPath alleleCountInputFilename;
 
-
-    @Argument(
-            doc = "Process only bi-allelic SNP sites for locus depth",
-            fullName = BIALLELIC_ONLY_NAME, optional = true )
-    private boolean biAllelicOnly = true;
 
     @Argument(fullName = "allele-count-min-mapq",
             doc = "minimum mapping quality for read to be allele-counted",
@@ -172,7 +166,7 @@ public class CollectSVEvidence extends ReadWalker {
         if ( alleleCountInputFilename != null && alleleCountOutputFilename != null ) {
             alleleCounter = new AlleleCounter(sequenceDictionary, sampleName, compressionLevel,
                                                 alleleCountInputFilename, alleleCountOutputFilename,
-                                                biAllelicOnly, minMapQ, minQ);
+                                                minMapQ, minQ);
         } else if ( alleleCountInputFilename != null ) {
             throw new UserException("Having specified an allele-count-vcf input, " +
                     "you must also supply an allele-count-file for output.");
@@ -330,7 +324,7 @@ public class CollectSVEvidence extends ReadWalker {
                                   final FeatureSink<SplitReadEvidence> srWriter) {
 
         while (splitCounts.size() > 0 && flushablePosition.test(splitCounts.peek())) {
-            SplitPos pos = splitCounts.poll();
+            final SplitPos pos = splitCounts.poll();
             int countAtPos = 1;
             while (splitCounts.size() > 0 && splitCounts.peek().equals(pos)) {
                 countAtPos++;
@@ -341,7 +335,7 @@ public class CollectSVEvidence extends ReadWalker {
         }
     }
 
-    private SplitPos getSplitPosition(GATKRead read) {
+    private SplitPos getSplitPosition( final GATKRead read ) {
         if (read.getCigar().getFirstCigarElement().getOperator() == CigarOperator.M) {
             final int matchLength = read.getCigar().getCigarElements().stream().filter(e -> e.getOperator().consumesReferenceBases()).mapToInt(CigarElement::getLength).sum();
             return new SplitPos(read.getStart() + matchLength, POSITION.RIGHT);
@@ -352,7 +346,7 @@ public class CollectSVEvidence extends ReadWalker {
         return new SplitPos(-1, POSITION.MIDDLE);
     }
 
-    private boolean isSoftClipped(final GATKRead read) {
+    private boolean isSoftClipped( final GATKRead read ) {
         final CigarOperator firstOperator = read.getCigar().getFirstCigarElement().getOperator();
         final CigarOperator lastOperator = read.getCigar().getLastCigarElement().getOperator();
         return (firstOperator == CigarOperator.SOFT_CLIP && lastOperator != CigarOperator.SOFT_CLIP) ||
@@ -564,7 +558,6 @@ public class CollectSVEvidence extends ReadWalker {
         private final SAMSequenceDictionary dict;
         private final String sampleName;
         private final FeatureSink<LocusDepth> writer;
-        private final boolean biAllelicOnly;
         private final int minMapQ;
         private final int minQ;
         private final Iterator<VariantContext> snpSourceItr;
@@ -575,7 +568,6 @@ public class CollectSVEvidence extends ReadWalker {
                               final int compressionLevel,
                               final GATKPath inputPath,
                               final GATKPath outputPath,
-                              final boolean biAllelicOnly,
                               final int minMapQ,
                               final int minQ ) {
             this.dict = dict;
@@ -594,7 +586,6 @@ public class CollectSVEvidence extends ReadWalker {
                 }
                 this.writer = codec.makeSink(outputPath, dict, sampleNames, compressionLevel);
             }
-            this.biAllelicOnly = biAllelicOnly;
             this.minMapQ = minMapQ;
             this.minQ = minQ;
             final FeatureDataSource<VariantContext> snpSource =
@@ -704,7 +695,7 @@ public class CollectSVEvidence extends ReadWalker {
                 return false;
             }
             VariantContext snp = snpSourceItr.next();
-            while ( !snp.isSNP() || (biAllelicOnly && !snp.isBiallelic()) ) {
+            while ( !snp.isSNP() || !snp.isBiallelic() ) {
                 if ( !snpSourceItr.hasNext() ) {
                     return false;
                 }
