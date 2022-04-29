@@ -1,0 +1,21 @@
+
+# This workflow validates all pipeline WDL files (those found in the pipelines/ projects/ and beta-pipelines directories) using the 'womtool' tool.
+name: WomtoolCheck
+
+on:
+  push:
+    branches: [ ah_var_store ]
+  pull_request:
+    branches: [ ah_var_store ]
+
+jobs:
+  validate_wdl_job:
+    runs-on: ubuntu-latest
+    name: Validate all wdl using womtool
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: broadinstitute/gatk
+      - name: Run womtools
+        run: |
+          ./scripts/validate_wdls.sh
