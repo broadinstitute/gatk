@@ -3,88 +3,100 @@ version 1.0
 import "GvsCreateVATAnnotations.wdl" as Annotations
 
 workflow GvsCreateVAT {
-   input {
-        File inputFileofFileNames
-        File inputFileofIndexFileNames
-        String project_id
-        String dataset_name
-        File? vat_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json"
-        File? variant_transcript_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json"
-        File? genes_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json"
-        String output_path
-        String table_suffix
+  input {
+    File inputFileofFileNames
+    File inputFileofIndexFileNames
+    String project_id
+    String dataset_name
+    File? vat_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json"
+    File? variant_transcript_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json"
+    File? genes_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json"
+    String output_path
+    String table_suffix
 
-        String? service_account_json_path
-        File ancestry_file
-    }
-
-    Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
-    File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-    File nirvana_data_directory = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz"
-    File AnAcAf_annotations_template = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/vat/custom_annotations_template.tsv"
-
-    call MakeSubpopulationFiles {
-        input:
-            input_ancestry_file = ancestry_file,
-            service_account_json_path = service_account_json_path,
-            inputFileofFileNames = inputFileofFileNames,
-            inputFileofIndexFileNames = inputFileofIndexFileNames
-    }
-
-    ## Scatter across the shards from the GVS jointVCF
-    scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
-        ## Create a sites-only VCF from the original GVS jointVCF
-        ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
-        call Annotations.GvsCreateVATAnnotations {
-            input:
-              input_vcf = MakeSubpopulationFiles.input_vcfs[i],
-              input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
-              input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz"),
-              ancestry_mapping_list = MakeSubpopulationFiles.ancestry_mapping_list,
-              nirvana_data_directory = nirvana_data_directory,
-              output_path = output_path,
-              service_account_json_path = service_account_json_path,
-              custom_annotations_template = AnAcAf_annotations_template,
-              ref = reference
-        }
-    }
-
-    call BigQueryLoadJson {
-       input:
-         nirvana_schema = vat_schema_json_file,
-         vt_schema = variant_transcript_schema_json_file,
-         genes_schema = genes_schema_json_file,
-         project_id = project_id,
-         dataset_name = dataset_name,
-         output_path = output_path,
-         table_suffix = table_suffix,
-         service_account_json_path = service_account_json_path,
-         prep_jsons_done = GvsCreateVATAnnotations.done
+    String? service_account_json_path
+    File ancestry_file
   }
 
-    call BigQuerySmokeTest {
-       input:
-         project_id = project_id,
-         dataset_name = dataset_name,
-         counts_variants = GvsCreateVATAnnotations.count_variants,
-         track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
-         table_suffix = table_suffix,
-         service_account_json_path = service_account_json_path,
-         load_jsons_done = BigQueryLoadJson.done
-    }
+  Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
+  File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+  File nirvana_data_directory = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz"
+  File AnAcAf_annotations_template = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/vat/custom_annotations_template.tsv"
 
-    scatter(i in range(length(contig_array)) ) {
-      call BigQueryExportVat {
-        input:
-            contig = contig_array[i],
-            project_id = project_id,
-            dataset_name = dataset_name,
-            output_path = output_path,
-            table_suffix = table_suffix,
-            service_account_json_path = service_account_json_path,
-            validate_jsons_done = BigQuerySmokeTest.done
-      }
+  call MakeSubpopulationFiles {
+    input:
+      input_ancestry_file = ancestry_file,
+      service_account_json_path = service_account_json_path,
+      inputFileofFileNames = inputFileofFileNames,
+      inputFileofIndexFileNames = inputFileofIndexFileNames
+  }
+
+  ## Scatter across the shards from the GVS jointVCF
+  scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
+    ## Create a sites-only VCF from the original GVS jointVCF
+    ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
+    call Annotations.GvsCreateVATAnnotations {
+      input:
+        input_vcf = MakeSubpopulationFiles.input_vcfs[i],
+        input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
+        input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz"),
+        ancestry_mapping_list = MakeSubpopulationFiles.ancestry_mapping_list,
+        nirvana_data_directory = nirvana_data_directory,
+        output_path = output_path,
+        service_account_json_path = service_account_json_path,
+        custom_annotations_template = AnAcAf_annotations_template,
+        ref = reference
     }
+  }
+
+  call BigQueryLoadJson {
+    input:
+      nirvana_schema = vat_schema_json_file,
+      vt_schema = variant_transcript_schema_json_file,
+      genes_schema = genes_schema_json_file,
+      project_id = project_id,
+      dataset_name = dataset_name,
+      output_path = output_path,
+      table_suffix = table_suffix,
+      service_account_json_path = service_account_json_path,
+      prep_jsons_done = GvsCreateVATAnnotations.done
+}
+
+  call BigQuerySmokeTest {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      counts_variants = GvsCreateVATAnnotations.count_variants,
+      track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
+      table_suffix = table_suffix,
+      service_account_json_path = service_account_json_path,
+      load_jsons_done = BigQueryLoadJson.done
+  }
+
+  scatter(i in range(length(contig_array)) ) {
+    call BigQueryExportVat {
+      input:
+        contig = contig_array[i],
+        project_id = project_id,
+        dataset_name = dataset_name,
+        output_path = output_path,
+        table_suffix = table_suffix,
+        service_account_json_path = service_account_json_path,
+        validate_jsons_done = BigQuerySmokeTest.done
+    }
+  }
+
+  call MergeTSVs {
+    input:
+      contig_array = contig_array,
+      output_path = output_path,
+      path_to_tsv_files = output_path + "export/",
+      service_account_json_path = service_account_json_path,
+  }
+
+  output {
+    File vat_export = MergeTSVs.vat_export
+  }
 }
 
 ################################################################################
@@ -599,7 +611,44 @@ task BigQueryExportVat {
     # ------------------------------------------------
     # Outputs:
     output {
-        Boolean done = true
+        Boolean tsv_file = export_path
     }
+}
+
+task MergeTSVs {
+  input {
+    Array[String] contig_array
+    String output_path
+    String path_to_tsv_files
+    String? service_account_json_path
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  # gs://aou-genomics-curation-prod-processing/vat/beta_99k_VAT_v3/export/chr1/*.tsv.gz
+  command <<<
+    set -e
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+    fi
+    CONTIGS_ARRAY=(~{sep=" " contig_array})
+
+    for i in "${!CONTIGS_ARRAY[@]}"; do
+
+
+    gsutil -m cp ~{path_to_tsv_files}/*/*.tsv.gz .
+  >>>
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_04_25"
+    memory: "1 GB"
+    preemptible: 3
+    cpu: "1"
+    disks: "local-disk 250 HDD"
+  }
+
+  output {
+    File vat_export = "vat.bgz"
+  }
 }
 
