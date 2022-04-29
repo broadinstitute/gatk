@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsCalculatePrecisionAndSensitivity {
   input {
     Array[File] input_vcfs
@@ -38,7 +40,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
   String? contig = if (chromosome == "all") then none else chromosome
 
   if ((length(sample_names) != length(truth_vcfs)) || (length(sample_names) != length(truth_vcf_indices)) || (length(sample_names) != length(truth_beds))) {
-    call ErrorWithMessage {
+    call Utils.FailWithMessage {
       input:
         message = "The inputs 'sample_names', 'truth_vcfs', 'truth_vcf_indices', and 'truth_beds' must all contain the same number of elements"
     }
@@ -407,20 +409,5 @@ task CollateReports {
   }
   output {
     File report = stdout()
-  }
-}
-
-# Print given message to stderr and return an error
-task ErrorWithMessage{
-  input {
-    String message
-  }
-  command <<<
-    >&2 echo "Error: ~{message}"
-    exit 1
-  >>>
-
-  runtime {
-    docker: "ubuntu:20.04"
   }
 }

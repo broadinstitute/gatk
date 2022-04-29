@@ -1,5 +1,6 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 import "GvsCreateAltAllele.wdl" as CreateAltAllele
@@ -66,6 +67,15 @@ workflow GvsUnified {
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
         # End GvsExtractCallset
+    }
+
+    # return an error if the lengths are not equal
+    # Also done in GvsImportGenomes.wdl
+    if ((length(external_sample_names) != length(input_vcfs)) || (length(external_sample_names) != length(input_vcf_indexes))) {
+        call Utils.FailWithMessage {
+            input:
+                message = "The inputs 'external_sample_names', 'input_vcfs', and 'input_vcf_indexes' must all contain the same number of elements"
+        }
     }
 
     call AssignIds.GvsAssignIds as AssignIds {

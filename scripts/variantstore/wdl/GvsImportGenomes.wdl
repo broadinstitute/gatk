@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsImportGenomes {
 
   input {
@@ -19,12 +21,10 @@ workflow GvsImportGenomes {
   }
 
   # return an error if the lengths are not equal
-  Int input_length = length(input_vcfs)
-  Int input_indexes_length = length(input_vcf_indexes)
-  if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
-    call TerminateWorkflow {
+  if ((length(external_sample_names) != length(input_vcfs)) || (length(external_sample_names) != length(input_vcf_indexes))) {
+    call Utils.FailWithMessage {
       input:
-        message = "The number of external_sample_names, sample input_vcfs and sample input_vcf_indexes are not the same."
+        message = "The inputs 'external_sample_names', 'input_vcfs', and 'input_vcf_indexes' must all contain the same number of elements"
     }
   }
 
