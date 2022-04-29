@@ -1,9 +1,5 @@
 {
   "alt_allele": "C",
-  "clinvar_classification": ["pathogenic"],
-  "clinvar_id": ["RCV000792154.1"],
-  "clinvar_last_updated": "2019-11-02",
-  "clinvar_phenotype": ["not provided"],
   "contig": "chr11",
   "dbsnp_rsid": null,
   "genomic_location": "NC_000011.10:g.5226567A>C",
