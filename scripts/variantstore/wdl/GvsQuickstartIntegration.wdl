@@ -48,17 +48,17 @@ workflow GvsQuickstartIntegration {
                                         ]
     }
 
-    call Prepare {
+    call Setup {
         input:
             branch_name = branch_name
     }
 
     call GvsUnified.GvsUnified {
         input:
-            dataset_name = Prepare.dataset_name,
+            dataset_name = Setup.dataset_name,
             project_id = "spec-ops-aou",
             external_sample_names = external_sample_names,
-            gatk_override = Prepare.jar,
+            gatk_override = Setup.jar,
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
@@ -85,7 +85,7 @@ workflow GvsQuickstartIntegration {
     }
 }
 
-task Prepare {
+task Setup {
     input {
         String branch_name
     }
