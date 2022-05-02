@@ -113,21 +113,76 @@ workflow GvsValidateVat {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
+    call SchemaAAChangeAndExonNumberConsistent {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
+    call SpotCheckForAAChangeAndExonNumberConsistency {
+         input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            service_account_json_path = service_account_json_path,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
+    call GenerateFinalReport {
+        input:
+            pf_flags = [
+                       EnsureVatTableHasVariants.pass,
+                       SpotCheckForExpectedTranscripts.pass,
+                       SchemaOnlyOneRowPerNullTranscript.pass,
+                       SchemaNullTranscriptsExist.pass,
+                       SchemaNoNullRequiredFields.pass,
+                       SchemaPrimaryKey.pass,
+                       SchemaEnsemblTranscripts.pass,
+                       SchemaNonzeroAcAn.pass,
+                       SubpopulationMax.pass,
+                       SubpopulationAlleleCount.pass,
+                       SubpopulationAlleleNumber.pass,
+                       ClinvarSignificance.pass,
+                       SchemaAAChangeAndExonNumberConsistent.pass,
+                       SpotCheckForAAChangeAndExonNumberConsistency.pass
+                       ],
+            validation_names = [
+                               EnsureVatTableHasVariants.name,
+                               SpotCheckForExpectedTranscripts.name,
+                               SchemaOnlyOneRowPerNullTranscript.name,
+                               SchemaNullTranscriptsExist.name,
+                               SchemaNoNullRequiredFields.name,
+                               SchemaPrimaryKey.name,
+                               SchemaEnsemblTranscripts.name,
+                               SchemaNonzeroAcAn.name,
+                               SubpopulationMax.name,
+                               SubpopulationAlleleCount.name,
+                               SubpopulationAlleleNumber.name,
+                               ClinvarSignificance.name,
+                               SchemaAAChangeAndExonNumberConsistent.name,
+                               SpotCheckForAAChangeAndExonNumberConsistency.name
+                               ],
+            validation_results = [
+                                 EnsureVatTableHasVariants.result,
+                                 SpotCheckForExpectedTranscripts.result,
+                                 SchemaOnlyOneRowPerNullTranscript.result,
+                                 SchemaNullTranscriptsExist.result,
+                                 SchemaNoNullRequiredFields.result,
+                                 SchemaPrimaryKey.result,
+                                 SchemaEnsemblTranscripts.result,
+                                 SchemaNonzeroAcAn.result,
+                                 SubpopulationMax.result,
+                                 SubpopulationAlleleCount.result,
+                                 SubpopulationAlleleNumber.result,
+                                 ClinvarSignificance.result,
+                                 SchemaAAChangeAndExonNumberConsistent.result,
+                                 SpotCheckForAAChangeAndExonNumberConsistency.result
+                                 ]
+    }
+
     output {
-        Array[Map[String, String]] validation_results = [
-            EnsureVatTableHasVariants.result,
-            SpotCheckForExpectedTranscripts.result,
-            SchemaOnlyOneRowPerNullTranscript.result,
-            SchemaNullTranscriptsExist.result,
-            SchemaNoNullRequiredFields.result,
-            SchemaPrimaryKey.result,
-            SchemaEnsemblTranscripts.result,
-            SchemaNonzeroAcAn.result,
-            SubpopulationMax.result,
-            SubpopulationAlleleCount.result,
-            SubpopulationAlleleNumber.result,
-            ClinvarSignificance.result
-        ]
+        String validation_results = GenerateFinalReport.results
     }
 }
 
@@ -194,6 +249,9 @@ task EnsureVatTableHasVariants {
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
     command <<<
         set -e
         if [ ~{has_service_account_file} = 'true' ]; then
@@ -207,16 +265,19 @@ task EnsureVatTableHasVariants {
 
         NUMVARS=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
+        echo "false" > ~{pf_file}
         # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
         if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
             if [[ $NUMVARS = "0" ]]; then
-                echo "FAIL: The VAT table ~{fq_vat_table} has no variants in it." > validation_results.txt
+                echo "The VAT table ~{fq_vat_table} has NO variants in it." > ~{results_file}
             else
-                echo "PASS: The VAT table ~{fq_vat_table} has $NUMVARS variants in it." > validation_results.txt
+                echo "The VAT table ~{fq_vat_table} has $NUMVARS variants in it." > ~{results_file}
+                echo "true" > ~{pf_file}
             fi
         # otherwise, something is off, so return the output from the bq query call
         else
-            echo "Something went wrong. The attempt to count the variants returned: " $(cat bq_variant_count.csv) > validation_results.txt
+            echo "Something went wrong. The attempt to count the variants returned: " $(cat bq_variant_count.csv) >&2
+            exit 1
         fi
     >>>
     # ------------------------------------------------
@@ -228,10 +289,10 @@ task EnsureVatTableHasVariants {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"EnsureVatTableHasVariants": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "EnsureVatTableHasVariants"
+        String result = read_string(results_file)
     }
 }
 
@@ -245,6 +306,9 @@ task SpotCheckForExpectedTranscripts {
     }
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         set -e
@@ -275,13 +339,15 @@ task SpotCheckForExpectedTranscripts {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_query_output.csv)
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means there were unexpected transcripts at the
         # specified location, so report those back in the output
         if [[ $NUMRESULTS = "0" ]]; then
-            echo "PASS: The VAT table ~{fq_vat_table} only has the expected transcripts at the tested location ('IGFLR1' and 'AD000671.2' in chromosome 19, between positions 35,740,407 - 35,740,469)." > validation_results.txt
+            echo "The VAT table ~{fq_vat_table} only has the expected transcripts at the tested location ('IGFLR1' and 'AD000671.2' in chromosome 19, between positions 35,740,407 - 35,740,469)." > ~{results_file}
+            echo "true" > ~{pf_file}
         else
-           echo "FAIL: The VAT table ~{fq_vat_table} had unexpected transcripts at the tested location: [csv output follows] " > validation_results.txt
-            cat bq_query_output.csv >> validation_results.txt
+            echo "The VAT table ~{fq_vat_table} had unexpected transcripts at the tested location: [csv output follows] " > ~{results_file}
+            cat bq_query_output.csv >> ~{results_file}
         fi
     >>>
 
@@ -296,8 +362,9 @@ task SpotCheckForExpectedTranscripts {
     }
 
     output {
-        Map[String, String] result = {"SpotCheckForExpectedTranscripts": read_string('validation_results.txt')}
-
+        Boolean pass = read_boolean(pf_file)
+        String name = "SpotCheckForExpectedTranscripts"
+        String result = read_string(results_file)
     }
 }
 
@@ -311,6 +378,9 @@ task SchemaNoNullRequiredFields {
     # No non-nullable fields contain null values
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         if [ ~{has_service_account_file} = 'true' ]; then
@@ -357,12 +427,14 @@ task SchemaNoNullRequiredFields {
             # get number of lines in bq query output
             NUMRESULTS=$(awk 'END{print NR}' bq_null_required_output.csv)
 
+            echo "false" > ~{pf_file}
             # if the result of the query has any rows, that means there were unexpected null values in required fields, so report those back in the output
             if [[ $NUMRESULTS = "0" ]]; then
-                echo "PASS: The VAT table ~{fq_vat_table} has no null values in required fields"  > validation_results.txt
+                echo "The VAT table ~{fq_vat_table} has no null values in required fields" > ~{results_file}
+                echo "true" > ~{pf_file}
             else
-                echo "FAIL: The VAT table ~{fq_vat_table} had null values in required fields: [csv output follows] " > validation_results.txt
-                cat bq_null_required_output.csv >> validation_results.txt
+                echo "The VAT table ~{fq_vat_table} had null values in required fields: [csv output follows] " > ~{results_file}
+                cat bq_null_required_output.csv >> ~{results_file}
             fi
     >>>
     # ------------------------------------------------
@@ -374,10 +446,10 @@ task SchemaNoNullRequiredFields {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SchemaNoNullRequiredFields": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "SchemaNoNullRequiredFields"
+        String result = read_string(results_file)
     }
 }
 
@@ -390,6 +462,9 @@ task SchemaOnlyOneRowPerNullTranscript {
     }
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         set -e
@@ -415,13 +490,15 @@ task SchemaOnlyOneRowPerNullTranscript {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means there were vids with null transcripts and multiple
         # rows in the VAT, which should not be the case
         if [[ $NUMRESULTS = "0" ]]; then
-            echo "PASS: The VAT table ~{fq_vat_table} only has 1 row per vid with a null transcript" > validation_results.txt
+            echo "The VAT table ~{fq_vat_table} only has 1 row per vid with a null transcript" > ~{results_file}
+            echo "true" > ~{pf_file}
         else
-            echo "FAIL: The VAT table ~{fq_vat_table} had at least one vid with a null transcript and more than one row: [csv output follows] " > validation_results.txt
-            cat bq_variant_count.csv >> validation_results.txt
+            echo "The VAT table ~{fq_vat_table} had at least one vid with a null transcript and more than one row: [csv output follows] " > ~{results_file}
+            cat bq_variant_count.csv >> ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -433,10 +510,10 @@ task SchemaOnlyOneRowPerNullTranscript {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SchemaOnlyOneRowPerNullTranscript": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "SchemaOnlyOneRowPerNullTranscript"
+        String result = read_string(results_file)
     }
 }
 
@@ -450,6 +527,9 @@ task SchemaPrimaryKey {
     # Each key combination (vid+transcript) is unique--confirms that primary key is enforced.
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         if [ ~{has_service_account_file} = 'true' ]; then
@@ -473,12 +553,14 @@ task SchemaPrimaryKey {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_primary_key.csv)
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means not all key combinations (vid+transcript) are unique, so report those back in the output
         if [[ $NUMRESULTS = "0" ]]; then
-          echo "PASS: The VAT table ~{fq_vat_table} has all unique key combinations (vid+transcript)"  > validation_results.txt
+          echo "The VAT table ~{fq_vat_table} has all unique key combinations (vid+transcript)" > ~{results_file}
+          echo "true" > ~{pf_file}
         else
-          echo "FAIL: The VAT table ~{fq_vat_table} had repeating key combinations (vid+transcript): [csv output follows] " > validation_results.txt
-        cat bq_primary_key.csv >> validation_results.txt
+          echo "The VAT table ~{fq_vat_table} had repeating key combinations (vid+transcript): [csv output follows] " > ~{results_file}
+          cat bq_primary_key.csv >> ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -490,10 +572,10 @@ task SchemaPrimaryKey {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SchemaPrimaryKey": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "SchemaPrimaryKey"
+        String result = read_string(results_file)
     }
 }
 
@@ -507,6 +589,9 @@ task SchemaEnsemblTranscripts {
     # Every transcript_source is Ensembl or null
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         if [ ~{has_service_account_file} = 'true' ]; then
@@ -531,12 +616,14 @@ task SchemaEnsemblTranscripts {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_transcript_output.csv)
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means there were unexpected transcripts (not from Ensembl), so report those back in the output
         if [[ $NUMRESULTS = "0" ]]; then
-            echo "PASS: The VAT table ~{fq_vat_table} only has the expected Ensembl transcripts"  > validation_results.txt
+            echo "The VAT table ~{fq_vat_table} only has the expected Ensembl transcripts"  > ~{results_file}
+            echo "true" > ~{pf_file}
         else
-            echo "FAIL: The VAT table ~{fq_vat_table} had unexpected transcripts (not from Ensembl): [csv output follows] " > validation_results.txt
-            cat bq_transcript_output.csv >> validation_results.txt
+            echo "The VAT table ~{fq_vat_table} had unexpected transcripts (not from Ensembl): [csv output follows] " > ~{results_file}
+            cat bq_transcript_output.csv >> ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -548,10 +635,10 @@ task SchemaEnsemblTranscripts {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SchemaEnsemblTranscripts": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "SchemaEnsemblTranscripts"
+        String result = read_string(results_file)
     }
 }
 
@@ -565,6 +652,9 @@ task SchemaNonzeroAcAn {
     # No row has AC of zero or AN of zero.
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         if [ ~{has_service_account_file} = 'true' ]; then
@@ -592,12 +682,14 @@ task SchemaNonzeroAcAn {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_ac_an_output.csv)
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means there were unexpected rows with either an AC of zero or AN of zero, so report those back in the output
         if [[ $NUMRESULTS = "0" ]]; then
-            echo "PASS: The VAT table ~{fq_vat_table} only has no rows with AC of zero or AN of zero"  > validation_results.txt
+            echo "The VAT table ~{fq_vat_table} only has no rows with AC of zero or AN of zero" > ~{results_file}
+            echo "true" > ~{pf_file}
         else
-            echo "FAIL: The VAT table ~{fq_vat_table} had unexpected rows with AC of zero or AN of zero: [csv output follows] " > validation_results.txt
-            cat bq_ac_an_output.csv >> validation_results.txt
+            echo "The VAT table ~{fq_vat_table} had unexpected rows with AC of zero or AN of zero: [csv output follows] " > ~{results_file}
+            cat bq_ac_an_output.csv >> ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -609,10 +701,10 @@ task SchemaNonzeroAcAn {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SchemaNonzeroAcAn": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "SchemaNonzeroAcAn"
+        String result = read_string(results_file)
     }
 }
 
@@ -625,6 +717,9 @@ task SchemaNullTranscriptsExist {
     }
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         set -e
@@ -647,11 +742,13 @@ task SchemaNullTranscriptsExist {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_variant_count.csv)
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means there were null transcripts as expected
         if [[ $NUMRESULTS != "0" ]]; then
-           echo "PASS: The VAT table ~{fq_vat_table} has at least one null transcript" > validation_results.txt
+           echo "The VAT table ~{fq_vat_table} has at least one null transcript" > ~{results_file}
+           echo "true" > ~{pf_file}
         else
-           echo "FAIL: The VAT table ~{fq_vat_table} has no null transcripts" > validation_results.txt
+           echo "The VAT table ~{fq_vat_table} has no null transcripts" > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -663,10 +760,10 @@ task SchemaNullTranscriptsExist {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SchemaNullTranscriptsExist": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "SchemaNullTranscriptsExist"
+        String result = read_string(results_file)
     }
 }
 
@@ -679,6 +776,9 @@ task SubpopulationMax {
     }
     # gvs_max_af is actually the max
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         set -e
@@ -708,11 +808,13 @@ task SubpopulationMax {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_query_output.csv)
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means gvs_max_af is not in fact the max af
         if [[ $NUMRESULTS = "0" ]]; then
-          echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for subpopulation" > validation_results.txt
+          echo "The VAT table ~{fq_vat_table} has a correct calculation for subpopulation" > ~{results_file}
+          echo "true" > ~{pf_file}
         else
-          echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect calculation for subpopulation" > validation_results.txt
+          echo "The VAT table ~{fq_vat_table} has an incorrect calculation for subpopulation" > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -724,10 +826,10 @@ task SubpopulationMax {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SubpopulationMax": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "SubpopulationMax"
+        String result = read_string(results_file)
     }
 }
 
@@ -740,6 +842,9 @@ task SubpopulationAlleleCount {
     }
     # sum of subpop ACs equal the gvs_all ACs
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         set -e
@@ -763,11 +868,13 @@ task SubpopulationAlleleCount {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_query_output.csv)
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means gvs_all_ac has not been calculated correctly
         if [[ $NUMRESULTS = "0" ]]; then
-            echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for AC and the AC of subpopulations" > validation_results.txt
-            else
-            echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect calculation for AC and the AC of subpopulations" > validation_results.txt
+            echo "The VAT table ~{fq_vat_table} has a correct calculation for AC and the AC of subpopulations" > ~{results_file}
+            echo "true" > ~{pf_file}
+        else
+            echo "The VAT table ~{fq_vat_table} has an incorrect calculation for AC and the AC of subpopulations" > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -779,10 +886,10 @@ task SubpopulationAlleleCount {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SubpopulationAlleleCount": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "SubpopulationAlleleCount"
+        String result = read_string(results_file)
     }
 }
 
@@ -795,6 +902,9 @@ task SubpopulationAlleleNumber {
     }
     # sum of subpop ACs equal the gvs_all ACs
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         set -e
@@ -818,11 +928,13 @@ task SubpopulationAlleleNumber {
         # get number of lines in bq query output
         NUMRESULTS=$(awk 'END{print NR}' bq_an_output.csv)
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means gvs_all_an has not been calculated correctly
         if [[ $NUMRESULTS = "0" ]]; then
-          echo "PASS: The VAT table ~{fq_vat_table} has a correct calculation for AN and the AN of subpopulations" > validation_results.txt
+          echo "The VAT table ~{fq_vat_table} has a correct calculation for AN and the AN of subpopulations" > ~{results_file}
+          echo "true" > ~{pf_file}
         else
-          echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect calculation for AN and the AN of subpopulations" > validation_results.txt
+          echo "The VAT table ~{fq_vat_table} has an incorrect calculation for AN and the AN of subpopulations" > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -834,10 +946,10 @@ task SubpopulationAlleleNumber {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"SubpopulationAlleleNumber": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "SubpopulationAlleleNumber"
+        String result = read_string(results_file)
     }
 }
 
@@ -850,6 +962,9 @@ task ClinvarSignificance {
     }
     # check that all clinvar values are accounted for
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
 
     command <<<
         set -e
@@ -891,11 +1006,13 @@ task ClinvarSignificance {
 
         NUMRESULTS=$( wc -l bq_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 13+
 
+        echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means gvs_all_an has not been calculated correctly
         if [[ $NUMRESULTS -ge 13 && $INCLUVALUES = "0" ]]; then
-          echo "PASS: The VAT table ~{fq_vat_table} has the correct values for clinvar classification" > validation_results.txt
+          echo "The VAT table ~{fq_vat_table} has the correct values for clinvar classification" > ~{results_file}
+          echo "true" > ~{pf_file}
         else
-          echo "FAIL: The VAT table ~{fq_vat_table} has an incorrect values for clinvar classification" > validation_results.txt
+          echo "The VAT table ~{fq_vat_table} has incorrect values for clinvar classification" > ~{results_file}
         fi
     >>>
     # ------------------------------------------------
@@ -907,10 +1024,285 @@ task ClinvarSignificance {
         cpu: "1"
         disks: "local-disk 100 HDD"
     }
-    # ------------------------------------------------
-    # Output: {"Name of validation rule": "PASS/FAIL plus additional validation results"}
     output {
-        Map[String, String] result = {"ClinvarSignificance": read_string('validation_results.txt')}
+        Boolean pass = read_boolean(pf_file)
+        String name = "ClinvarSignificance"
+        String result = read_string(results_file)
+    }
+}
+
+task SchemaAAChangeAndExonNumberConsistent {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+    # Check that cases where (aa_change non-null AND exon_number null) OR (aa_change null AND exon_number non-null)
+    # are all accounted for.
+    # There are edge cases where aa_change is non-null AND exon_number is null AND intron_variant has a conseqence.
+    # These cases are caught in this test, but too broadly, so we have an additional test:
+    # SpotCheckForAAChangeAndExonNumberConsistency whose purpose is to spot check some of these edge cases AND normal cases
+    # to validate our understanding (and that this doesn't change in future updates).
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    command <<<
+        set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        COUNT (DISTINCT vid) AS count FROM
+        (
+            SELECT vid
+            FROM ~{fq_vat_table}
+            WHERE exon_number IS NULL
+            AND aa_change IS NOT NULL
+            AND NOT (("intron_variant" IN UNNEST(consequence) AND (variant_type IN ("insertion", "deletion"))))
+            AND "splice_region_variant" NOT IN UNNEST(consequence)
+            AND "splice_acceptor_variant" NOT IN UNNEST(consequence)
+            AND "splice_donor_variant" NOT IN UNNEST(consequence)
+            AND "NMD_transcript_variant" NOT IN UNNEST(consequence)
+            AND "coding_sequence_variant" NOT IN UNNEST(consequence)
+        UNION DISTINCT
+            SELECT vid
+            FROM ~{fq_vat_table}
+            WHERE exon_number IS NOT NULL
+            AND aa_change IS NULL
+            AND "non_coding_transcript_exon_variant" NOT IN UNNEST(consequence)
+            AND "3_prime_UTR_variant" NOT IN UNNEST(consequence)
+            AND "5_prime_UTR_variant" NOT IN UNNEST(consequence)
+            AND "splice_donor_variant" NOT IN UNNEST(consequence)
+            AND "splice_acceptor_variant" NOT IN UNNEST(consequence)
+            AND "splice_region_variant" NOT IN UNNEST(consequence)
+            AND ("stop_gained" NOT IN UNNEST(consequence) AND "frameshift_variant" NOT IN UNNEST(consequence))
+            AND ("stop_lost" NOT IN UNNEST(consequence) AND "frameshift_variant" NOT IN UNNEST(consequence))
+            AND ("stop_lost" NOT IN UNNEST(consequence) AND "inframe_deletion" NOT IN UNNEST(consequence))
+            AND "NMD_transcript_variant" NOT IN UNNEST(consequence)
+            AND "stop_retained_variant" NOT IN UNNEST(consequence)
+            AND "incomplete_terminal_codon_variant" NOT IN UNNEST(consequence)
+            AND "transcript_variant" NOT IN UNNEST(consequence)
+            AND "coding_sequence_variant" NOT IN UNNEST(consequence)
+            AND "inframe_insertion" NOT IN UNNEST(consequence)
+            AND "inframe_deletion" NOT IN UNNEST(consequence)
+            AND "frameshift_variant" NOT IN UNNEST(consequence)
+            AND "mature_miRNA_variant" NOT IN UNNEST(consequence)
+        )' > bq_aachange_exonnumber.csv
+
+        NUMVARS=$(python3 -c "csvObj=open('bq_aachange_exonnumber.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+
+        echo "false" > ~{pf_file}
+        # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
+        if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
+            if [[ $NUMVARS = "0" ]]; then
+                echo "The VAT table ~{fq_vat_table} has consistency across all aa_change and exon_number values in it." > ~{results_file}
+                echo "true" > ~{pf_file}
+            else
+                echo "The VAT table ~{fq_vat_table} has $NUMVARS variants for which aa_change and exon_number are inconsistent." > ~{results_file}
+            fi
+        # otherwise, something is off, so return the output from the bq query call
+        else
+            echo "Something went wrong. The attempt to count the variants returned: " $(cat bq_aachange_exonnumber.csv) >&2
+            exit 1
+        fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "SchemaAAChangeAndExonNumberConsistent"
+        String result = read_string(results_file)
+    }
+}
+
+task SpotCheckForAAChangeAndExonNumberConsistency {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String? service_account_json_path
+        String last_modified_timestamp
+    }
+
+    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    # This test runs a spot check on the VAT table to verify that cases where (aa_change non-null AND exon_number null)
+    # are understood.
+    # The first four cases are cases where aa_change is non-null and exon_number is null
+    # There are (currenly) 857 cases where this is allowed in our testing - these cases have a consequence of
+    # intron_variant AND they are insertions or deletions. The test task SchemaAAChangeAndExonNumberConsistent (above)
+    # allows these to pass.
+    # BUT, since this is a fairly broad case we also spot-check that the normal case is still seen.
+    # That is the purpose of the other four cases.
+    # These cases test that for the 'normal' case (both aa_change is null AND exon_number is null)
+    # we find cases which have a consequence of intron_variant AND they are insertions or deletionss
+
+    command <<<
+        set -e
+
+        if [ ~{has_service_account_file} = 'true' ]; then
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{query_project_id}
+        fi
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        COUNT (DISTINCT vid) FROM
+        (
+            SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
+            FROM ~{fq_vat_table}
+            WHERE vid = "12-42446055-C-CGACCCTGCA" AND transcript = "ENST00000610488.4" AND exon_number IS NULL
+            AND aa_change = "ENSP00000479913.1:p.(Ser375_Ala376insThrLeuGln)" AND "intron_variant" IN UNNEST(consequence) AND variant_type = "insertion"
+            -- Another insertion
+        UNION ALL
+            SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
+            FROM ~{fq_vat_table}
+            WHERE vid = "16-29810099-G-GGCGGCGGCAGCGGCA" AND transcript = "ENST00000566906.6" AND exon_number IS NULL
+            AND aa_change = "ENSP00000461174.1:p.(Gly95_Ser99dup)" AND "intron_variant" IN UNNEST(consequence) AND variant_type = "insertion"
+        UNION ALL
+            SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
+            FROM ~{fq_vat_table}
+            WHERE vid = "7-114631524-CCAG-C" AND transcript = "ENST00000393495.7" AND exon_number IS NULL
+            AND aa_change = "ENSP00000377133.3:p.(Gln63del)" AND "intron_variant" IN UNNEST(consequence) AND variant_type = "deletion"
+            --another
+        UNION ALL
+            SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
+            FROM ~{fq_vat_table}
+            WHERE vid = "7-23198205-CTTTTTTT-C" and transcript = "ENST00000548367.2" AND exon_number IS NULL
+            AND aa_change = "ENSP00000482736.1:p.(Phe25Ter)" AND "intron_variant" IN UNNEST(consequence) AND variant_type = "deletion"
+        UNION ALL
+            SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
+            FROM ~{fq_vat_table}
+            WHERE vid = "1-40060064-T-TA" AND transcript = "ENST00000449311.5"
+            AND exon_number IS NULL AND aa_change IS NULL
+            AND "intron_variant" IN UNNEST(consequence) AND variant_type = "insertion"
+        UNION ALL
+            SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
+            FROM ~{fq_vat_table}
+            WHERE vid = "17-1483061-T-TG" AND transcript = "ENST00000574790.5"
+            AND exon_number IS NULL AND aa_change IS NULL
+            AND "intron_variant" IN UNNEST(consequence) AND variant_type = "insertion"
+        UNION ALL
+            SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
+            FROM ~{fq_vat_table}
+            WHERE vid = "1-46560284-TG-T" AND transcript = "ENST00000371945.8"
+            AND exon_number IS NULL AND aa_change IS NULL
+            AND "intron_variant" IN UNNEST(consequence) AND variant_type = "deletion"
+        UNION ALL
+            SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
+            FROM ~{fq_vat_table}
+            WHERE vid = "6-111741100-CA-C" AND transcript = "ENST00000518295.5"
+            AND exon_number IS NULL AND aa_change IS NULL
+            AND "intron_variant" IN UNNEST(consequence) AND variant_type = "deletion"
+        )' > output.csv
+
+        NUMVARS=$(python3 -c "csvObj=open('output.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+
+        echo "false" > ~{pf_file}
+        # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
+        if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
+            if [[ $NUMVARS = "8" ]]; then
+                echo "true" > ~{pf_file}
+                echo "The VAT table ~{fq_vat_table} has been spot checked for aa_change and exon_number consistency." > ~{results_file}
+            else
+                echo "The VAT table ~{fq_vat_table} has failed the spot check for aa_change and exon_number consistency." > ~{results_file}
+        fi
+        # otherwise, something is off, so return the output from the bq query call
+        else
+            echo "Something went wrong. The attempt to count the spot checked entries returned: " $(cat output.csv.csv) >&2
+            exit 1
+        fi
+    >>>
+
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "SpotCheckForAAChangeAndExonNumberConsistency"
+        String result = read_string(results_file)
+    }
+}
+
+task GenerateFinalReport {
+    input {
+        Array[Boolean] pf_flags
+        Array[String] validation_names
+        Array[String] validation_results
+    }
+
+    String report_file = "report.txt"
+
+    command <<<
+        set -e
+
+        declare -a PFS=(~{sep=' ' pf_flags})
+        declare -a VNS=(~{sep=' ' validation_names})
+
+        # the strings in validation_results may contain spaces, so we cannot directly sep it (by space) into an array
+        # So, first convert it into a string with constituent strings sep'd by the '&' (chosen as it is unlikely to be used in results)
+        # And then convert the string into a bash array using read with IFS set to '&'
+        declare -a VRS_STRING="~{sep='&' validation_results}"
+        IFS='&' read -r -a VRS <<< "$VRS_STRING"
+
+        exit_code=0
+
+        echo "VAT Table Validation Results" > ~{report_file}
+        echo "" >> ~{report_file}
+        echo "P/F   Name    Results" >> ~{report_file}
+        for i in ${!PFS[@]};
+        do
+            if [ "${PFS[$i]}" = "true" ]; then
+                echo "PASS  ${VNS[$i]}  ${VRS[$i]}" >> ~{report_file}
+            else
+                echo "FAIL  ${VNS[$i]}  ${VRS[$i]}" >> ~{report_file}
+                exit_code=1
+            fi
+        done
+
+        if [ $exit_code -ne 0 ]; then
+            # cat the report to stderr as this task is a fail
+            cat ~{report_file} >&2
+        fi
+
+        exit $exit_code
+    >>>
+
+    output {
+        File results = report_file
+    }
+    runtime {
+        docker: "python:3.8-slim-buster"
+        memory: "1 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
     }
 }
 
