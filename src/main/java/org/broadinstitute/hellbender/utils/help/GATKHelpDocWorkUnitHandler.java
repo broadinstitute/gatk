@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.help;
 
-import com.sun.javadoc.FieldDoc;
 import htsjdk.samtools.metrics.MetricBase;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DefaultDocWorkUnitHandler;
@@ -79,8 +78,8 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
             currentWorkUnit.setProperty(WORK_UNIT_SUMMARY_KEY, currentWorkUnit.getSummary());
             final List<Map<String, String>> workUnitMetricsList = new ArrayList<>();
             currentWorkUnit.setProperty(METRICS_MAP_ENTRY_KEY, workUnitMetricsList);
-            final FieldDoc[] fieldDocs = currentWorkUnit.getClassDoc().fields(false);
-            for (final FieldDoc fd : fieldDocs) {
+            final com.sun.javadoc.FieldDoc[] fieldDocs = currentWorkUnit.getClassDoc().fields(false);
+            for (final com.sun.javadoc.FieldDoc fd : fieldDocs) {
                 if (fd.isPublic()) {
                     final Map<String, String> metricsFields = new HashMap<>();
                     metricsFields.put(METRICS_MAP_NAME_KEY, fd.name());
