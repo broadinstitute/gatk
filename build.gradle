@@ -865,6 +865,16 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
 
 }
 
+// disable anything that requires custom doclets on java 11
+gatkDoc.configure {
+    onlyIf { JavaVersion.current().isJava8() }
+}
+gatkWDLGen.configure {
+    onlyIf { JavaVersion.current().isJava8() }
+}
+gatkTabComplete.configure {
+    onlyIf { JavaVersion.current().isJava8() }
+}
 
 /**
  *This specifies what artifacts will be built and uploaded when performing a maven upload.
