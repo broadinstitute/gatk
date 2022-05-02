@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  CROMWELL_VERSION: 51
+  CROMWELL_VERSION: 59
   TERM: dumb
   GRADLE_OPTS: "-Xmx2048m -Dorg.gradle.daemon=false"
   HELLBENDER_TEST_INPUTS: gs://hellbender/test/resources/
