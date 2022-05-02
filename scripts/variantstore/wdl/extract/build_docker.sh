@@ -5,7 +5,7 @@ if [ $# -lt 1 ]; then
 fi
 
 # Test that the VAT python code has not been broken
-python -m unittest create_variant_annotation_table_test.py  > /dev/null
+python -m unittest test_create_variant_annotation_table.py  > /dev/null
 VAT_TEST_RESULTS=$?
 if [ $VAT_TEST_RESULTS -ne 0 ]; then
     echo "TestMakeAnnotatedJsonRow python test has failed"
