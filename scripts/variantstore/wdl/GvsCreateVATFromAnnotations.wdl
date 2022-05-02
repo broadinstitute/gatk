@@ -24,14 +24,14 @@ workflow GvsCreateVATFromAnnotations {
 
     ## Scatter across the shards from the GVS jointVCF
     scatter(i in range(length(GetAnnotations.input_jsons)) ) {
-            ## Parse the annotations
-            call PrepAnnotationJson {
-              input:
-                annotation_json = GetAnnotations.input_jsons[i],
-                output_file_suffix = basename(GetAnnotations.input_jsons[i], "_annotated.json.gz") + ".json.gz",
-                output_path = output_path,
-                service_account_json_path = service_account_json_path
-            }
+        ## Parse the annotations
+        call PrepAnnotationJson {
+          input:
+            annotation_json = GetAnnotations.input_jsons[i],
+            output_file_suffix = basename(GetAnnotations.input_jsons[i], "_annotated.json.gz") + ".json.gz",
+            output_path = output_path,
+            service_account_json_path = service_account_json_path
+       }
     }
 
     call BigQueryLoadJson {
