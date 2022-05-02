@@ -16,6 +16,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           repository: broadinstitute/gatk
-      - name: Run womtools
+      - name: Run womtool validate
         run: |
           ./scripts/validate_wdls.sh
