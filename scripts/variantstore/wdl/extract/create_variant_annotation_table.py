@@ -143,7 +143,7 @@ def get_gnomad_subpop(gnomad_obj):
     max_an = None
     max_af = None
     max_subpop = ""
-    ## TODO will there ever be unexpected values in gnomad_subpop (values not in gnomad_ordering) ?
+    ## TODO defend against possible unexpected values appearing in gnomad_subpop (values not in gnomad_ordering)
     for gnomad_subpop in gnomad_ordering: # since we cycle through this in order, if there is a tie, we just ignore it because we wouldn't chose it anyway based on order
       subpop_af_key = "".join([gnomad_subpop, "Af"])
       subpop_ac_key = "".join([gnomad_subpop, "Ac"])
@@ -245,7 +245,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
       # Note that inside the clinvar array, are multiple objects that may or may not be the one we are looking for. We check by making sure the ref and alt are the same
       for clinvar_obj in clinvar_objs:
          # get only the clinvar objs with right variant and the id that starts with RCV
-         if (clinvar_obj.get("refAllele") == var_ref) & (clinvar_obj.get("altAllele") == var_alt) & (clinvar_obj.get("id")[:3] == "RCV"):
+         if (clinvar_obj.get("refAllele") == var_ref) and (clinvar_obj.get("altAllele") == var_alt) and (clinvar_obj.get("id")[:3] == "RCV"):
            clinvar_ids.append(clinvar_obj.get("id"))
            significance_values.extend([x.lower() for x in clinvar_obj.get("significance")])
            updated_dates.append(clinvar_obj.get("lastUpdatedDate"))
@@ -271,7 +271,6 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
       row["revel"] = variant_line.get("revel").get("score")
 
     gvs_annotations = variant_line["gvsAnnotations"]
-
     for vat_gvs_alleles_fieldname in vat_nirvana_gvs_alleles_dictionary.keys():  # like "gvs_all_ac"
       nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
       gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
