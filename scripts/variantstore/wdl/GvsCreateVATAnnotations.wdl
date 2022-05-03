@@ -1,6 +1,7 @@
 version 1.0
+
 workflow GvsCreateVATAnnotations {
-   input {
+    input {
         File input_vcf
         File input_vcf_index
         String input_vcf_name
@@ -13,10 +14,10 @@ workflow GvsCreateVATAnnotations {
         File ref
     }
 
-      ## Create a sites-only VCF from the original GVS jointVCF
-      ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
-        call ExtractAnAcAfFromVCF {
-          input:
+    ## Create a sites-only VCF from the original GVS jointVCF
+    ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
+    call ExtractAnAcAfFromVCF {
+        input:
             input_vcf = input_vcf,
             input_vcf_index = input_vcf_index,
             service_account_json_path = service_account_json_path,
@@ -24,34 +25,34 @@ workflow GvsCreateVATAnnotations {
             custom_annotations_template = custom_annotations_template,
             ref = ref,
             output_path = output_path
-        }
+    }
 
 
-      ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
-        call AnnotateVCF {
-          input:
+    ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
+    call AnnotateVCF {
+        input:
             input_vcf = ExtractAnAcAfFromVCF.output_vcf,
             input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
-        }
+    }
 
-        call PrepAnnotationJson {
-          input:
+    call PrepAnnotationJson {
+        input:
             annotation_json = AnnotateVCF.annotation_json,
             output_file_suffix = "${input_vcf_name}.json.gz",
             output_path = output_path,
             service_account_json_path = service_account_json_path
-        }
+    }
 
-        # ------------------------------------------------
-        # Outputs:
-        output {
-            Int count_variants = ExtractAnAcAfFromVCF.count_variants
-            File track_dropped = ExtractAnAcAfFromVCF.track_dropped
-            Boolean done = true
-        }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        Int count_variants = ExtractAnAcAfFromVCF.count_variants
+        File track_dropped = ExtractAnAcAfFromVCF.track_dropped
+        Boolean done = true
+    }
 }
 
 ################################################################################
@@ -67,11 +68,13 @@ task ExtractAnAcAfFromVCF {
         String output_path
     }
     parameter_meta {
-        input_vcf: {
-          localization_optional: true
+        input_vcf:
+        {
+            localization_optional: true
         }
-        input_vcf_index: {
-          localization_optional: true
+        input_vcf_index:
+        {
+            localization_optional: true
         }
     }
 
@@ -91,10 +94,9 @@ task ExtractAnAcAfFromVCF {
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
 
         if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json_path} local.service_account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-          gcloud auth activate-service-account --key-file=local.service_account.json
-
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
         fi
 
         echo_date "VAT: Custom localization of inputs"
@@ -238,21 +240,21 @@ task AnnotateVCF {
         # Add AC/AN/AF as custom annotations
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
         dotnet ~{custom_creation_location} customvar \
-             -r $DATA_SOURCES_FOLDER~{path_reference} \
-             -i ~{custom_annotations_file} \
-             -o $CUSTOM_ANNOTATIONS_FOLDER
+            -r $DATA_SOURCES_FOLDER~{path_reference} \
+            -i ~{custom_annotations_file} \
+            -o $CUSTOM_ANNOTATIONS_FOLDER
 
         # =======================================
         # Create Nirvana annotations:
 
 
         dotnet ~{nirvana_location} \
-             -c $DATA_SOURCES_FOLDER~{path} \
-             --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
-             --sd $CUSTOM_ANNOTATIONS_FOLDER \
-             -r $DATA_SOURCES_FOLDER~{path_reference} \
-             -i ~{input_vcf} \
-             -o ~{output_annotated_file_name}
+            -c $DATA_SOURCES_FOLDER~{path} \
+            --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
+            --sd $CUSTOM_ANNOTATIONS_FOLDER \
+            -r $DATA_SOURCES_FOLDER~{path_reference} \
+            -i ~{input_vcf} \
+            -o ~{output_annotated_file_name}
 
     >>>
     # ------------------------------------------------
@@ -304,14 +306,14 @@ task PrepAnnotationJson {
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_variant_annotation_table.py \
-          --annotated_json ~{annotation_json} \
-          --output_vt_json ~{output_vt_json} \
-          --output_genes_json ~{output_genes_json}
+            --annotated_json ~{annotation_json} \
+            --output_vt_json ~{output_vt_json} \
+            --output_genes_json ~{output_genes_json}
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
-     >>>
+    >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {

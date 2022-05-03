@@ -3,7 +3,7 @@ version 1.0
 import "GvsCreateVATAnnotations.wdl" as Annotations
 
 workflow GvsCreateVAT {
-   input {
+    input {
         File inputFileofFileNames
         File inputFileofIndexFileNames
         String project_id
@@ -37,53 +37,53 @@ workflow GvsCreateVAT {
         ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
         call Annotations.GvsCreateVATAnnotations {
             input:
-              input_vcf = MakeSubpopulationFiles.input_vcfs[i],
-              input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
-              input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz"),
-              ancestry_mapping_list = MakeSubpopulationFiles.ancestry_mapping_list,
-              nirvana_data_directory = nirvana_data_directory,
-              output_path = output_path,
-              service_account_json_path = service_account_json_path,
-              custom_annotations_template = AnAcAf_annotations_template,
-              ref = reference
+                input_vcf = MakeSubpopulationFiles.input_vcfs[i],
+                input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
+                input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz"),
+                ancestry_mapping_list = MakeSubpopulationFiles.ancestry_mapping_list,
+                nirvana_data_directory = nirvana_data_directory,
+                output_path = output_path,
+                service_account_json_path = service_account_json_path,
+                custom_annotations_template = AnAcAf_annotations_template,
+                ref = reference
         }
     }
 
     call BigQueryLoadJson {
-       input:
-         nirvana_schema = vat_schema_json_file,
-         vt_schema = variant_transcript_schema_json_file,
-         genes_schema = genes_schema_json_file,
-         project_id = project_id,
-         dataset_name = dataset_name,
-         output_path = output_path,
-         table_suffix = table_suffix,
-         service_account_json_path = service_account_json_path,
-         prep_jsons_done = GvsCreateVATAnnotations.done
-  }
-
-    call BigQuerySmokeTest {
-       input:
-         project_id = project_id,
-         dataset_name = dataset_name,
-         counts_variants = GvsCreateVATAnnotations.count_variants,
-         track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
-         table_suffix = table_suffix,
-         service_account_json_path = service_account_json_path,
-         load_jsons_done = BigQueryLoadJson.done
-    }
-
-    scatter(i in range(length(contig_array)) ) {
-      call BigQueryExportVat {
         input:
-            contig = contig_array[i],
+            nirvana_schema = vat_schema_json_file,
+            vt_schema = variant_transcript_schema_json_file,
+            genes_schema = genes_schema_json_file,
             project_id = project_id,
             dataset_name = dataset_name,
             output_path = output_path,
             table_suffix = table_suffix,
             service_account_json_path = service_account_json_path,
-            validate_jsons_done = BigQuerySmokeTest.done
-      }
+            prep_jsons_done = GvsCreateVATAnnotations.done
+    }
+
+    call BigQuerySmokeTest {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            counts_variants = GvsCreateVATAnnotations.count_variants,
+            track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
+            table_suffix = table_suffix,
+            service_account_json_path = service_account_json_path,
+            load_jsons_done = BigQueryLoadJson.done
+    }
+
+    scatter(i in range(length(contig_array)) ) {
+        call BigQueryExportVat {
+            input:
+                contig = contig_array[i],
+                project_id = project_id,
+                dataset_name = dataset_name,
+                output_path = output_path,
+                table_suffix = table_suffix,
+                service_account_json_path = service_account_json_path,
+                validate_jsons_done = BigQuerySmokeTest.done
+        }
     }
 }
 
@@ -97,14 +97,17 @@ task MakeSubpopulationFiles {
         File inputFileofIndexFileNames
     }
     parameter_meta {
-        input_ancestry_file: {
-          localization_optional: true
+        input_ancestry_file:
+        {
+            localization_optional: true
         }
-        inputFileofFileNames: {
-          localization_optional: true
+        inputFileofFileNames:
+        {
+            localization_optional: true
         }
-        inputFileofIndexFileNames: {
-          localization_optional: true
+        inputFileofIndexFileNames:
+        {
+            localization_optional: true
         }
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
@@ -117,20 +120,19 @@ task MakeSubpopulationFiles {
         set -e
 
         if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json_path} local.service_account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-          gcloud auth activate-service-account --key-file=local.service_account.json
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
 
-          gsutil cp ~{input_ancestry_file} .
-          gsutil cp ~{inputFileofFileNames} .
-          gsutil cp ~{inputFileofIndexFileNames} .
+            gsutil cp ~{input_ancestry_file} .
+            gsutil cp ~{inputFileofFileNames} .
+            gsutil cp ~{inputFileofIndexFileNames} .
        fi
 
         ## the ancestry file is processed down to a simple mapping from sample to subpopulation
         python3 /app/extract_subpop.py \
-          --input_path ~{updated_input_ancestry_file} \
-          --output_path ~{output_ancestry_filename}
-
+            --input_path ~{updated_input_ancestry_file} \
+            --output_path ~{output_ancestry_filename}
     >>>
 
     # ------------------------------------------------
@@ -152,7 +154,8 @@ task MakeSubpopulationFiles {
 }
 
 task BigQueryLoadJson {
-    meta { # since the WDL will not see the updated data (its getting put in a gcp bucket)
+    meta {
+        # since the WDL will not see the updated data (its getting put in a gcp bucket)
         volatile: true
     }
 
@@ -180,181 +183,178 @@ task BigQueryLoadJson {
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-       echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        DATE=86400 ## 24 hours in seconds
 
-       DATE=86400 ## 24 hours in seconds
+        if [ ~{has_service_account_file} = 'true' ]; then
+             gsutil cp ~{service_account_json_path} local.service_account.json
+             export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+             gcloud auth activate-service-account --key-file=local.service_account.json
+             gcloud config set project ~{project_id}
+        fi
 
+        set +e
+        bq show --project_id ~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
+        BQ_SHOW_RC=$?
+        set -e
 
-       if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{project_id}
-       fi
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Creating a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+            bq --location=US mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{vt_schema}
+        fi
 
-       set +e
-       bq show --project_id ~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
-       BQ_SHOW_RC=$?
-       set -e
+        echo "Loading data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        echo ~{vt_path}
+        echo ~{genes_path}
+        bq --location=US load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
 
-       if [ $BQ_SHOW_RC -ne 0 ]; then
-         echo "Creating a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
-         bq --location=US mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{vt_schema}
-       fi
+        set +e
+        bq show --project_id ~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
+        BQ_SHOW_RC=$?
+        set -e
 
-       echo "Loading data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
-       echo ~{vt_path}
-       echo ~{genes_path}
-       bq --location=US load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Creating a pre-vat table ~{dataset_name}.~{genes_table}"
+            bq --location=US mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{genes_table} ~{genes_schema}
+        fi
 
-       set +e
-       bq show --project_id ~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
-       BQ_SHOW_RC=$?
-       set -e
+        echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
+        bq --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
 
-       if [ $BQ_SHOW_RC -ne 0 ]; then
-         echo "Creating a pre-vat table ~{dataset_name}.~{genes_table}"
-         bq --location=US mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{genes_table} ~{genes_schema}
-       fi
+        set +e
+        bq show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
+        BQ_SHOW_RC=$?
+        set -e
 
-       echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
-       bq --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Creating the vat table ~{dataset_name}.~{vat_table}"
+            bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+        else
+            bq rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table}
+            bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+        fi
+        echo "And putting data into it"
 
-       set +e
-       bq show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
-       BQ_SHOW_RC=$?
-       set -e
+        # Now we run a giant query in BQ to get this all in the right table and join the genes properly
+        # Note the genes table join includes the group by to avoid the duplicates that get created from genes that span shards
+        # Commented out columns in the query are to be added in the next release
+        # We want the vat creation query to overwrite the destination table because if new data has been put into the pre-vat tables
+        # and this workflow has been run an additional time, we dont want duplicates being appended from the original run
 
-       if [ $BQ_SHOW_RC -ne 0 ]; then
-         echo "Creating the vat table ~{dataset_name}.~{vat_table}"
-         bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
-       else
-         bq rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table}
-         bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
-       fi
-       echo "And putting data into it"
-
-       # Now we run a giant query in BQ to get this all in the right table and join the genes properly
-       # Note the genes table join includes the group by to avoid the duplicates that get created from genes that span shards
-       # Commented out columns in the query are to be added in the next release
-       # We want the vat creation query to overwrite the destination table because if new data has been put into the pre-vat tables
-       # and this workflow has been run an additional time, we dont want duplicates being appended from the original run
-
-       bq query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --replace --project_id=~{project_id} \
+        bq query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --replace --project_id=~{project_id} \
         'SELECT
-              v.vid,
-              v.transcript,
-              v.contig,
-              v.position,
-              v.ref_allele,
-              v.alt_allele,
-              v.gvs_all_ac,
-              v.gvs_all_an,
-              v.gvs_all_af,
-              v.gvs_all_sc,
-              v.gvs_max_af,
-              v.gvs_max_ac,
-              v.gvs_max_an,
-              v.gvs_max_sc,
-              v.gvs_max_subpop,
-              v.gvs_afr_ac,
-              v.gvs_afr_an,
-              v.gvs_afr_af,
-              v.gvs_afr_sc,
-              v.gvs_amr_ac,
-              v.gvs_amr_an,
-              v.gvs_amr_af,
-              v.gvs_amr_sc,
-              v.gvs_eas_ac,
-              v.gvs_eas_an,
-              v.gvs_eas_af,
-              v.gvs_eas_sc,
-              v.gvs_eur_ac,
-              v.gvs_eur_an,
-              v.gvs_eur_af,
-              v.gvs_eur_sc,
-              v.gvs_mid_ac,
-              v.gvs_mid_an,
-              v.gvs_mid_af,
-              v.gvs_mid_sc,
-              v.gvs_oth_ac,
-              v.gvs_oth_an,
-              v.gvs_oth_af,
-              v.gvs_oth_sc,
-              v.gvs_sas_ac,
-              v.gvs_sas_an,
-              v.gvs_sas_af,
-              v.gvs_sas_sc,
-              v.gene_symbol,
-              v.transcript_source,
-              v.aa_change,
-              v.consequence,
-              v.dna_change_in_transcript,
-              v.variant_type,
-              v.exon_number,
-              v.intron_number,
-              v.genomic_location,
-              # v.hgvsc AS splice_distance
-              v.dbsnp_rsid,
-              v.gene_id,
-              # v.entrez_gene_id,
-              # g.hgnc_gene_id,
-              g.gene_omim_id,
-              CASE WHEN ( v.transcript is not null and v.is_canonical_transcript is not True)
-                THEN False WHEN ( v.transcript is not null and v.is_canonical_transcript is True) THEN True END AS is_canonical_transcript,
-              v.gnomad_all_af,
-              v.gnomad_all_ac,
-              v.gnomad_all_an,
-              v.gnomad_failed_filter,
-              v.gnomad_max_af,
-              v.gnomad_max_ac,
-              v.gnomad_max_an,
-              v.gnomad_max_subpop,
-              v.gnomad_afr_ac,
-              v.gnomad_afr_an,
-              v.gnomad_afr_af,
-              v.gnomad_amr_ac,
-              v.gnomad_amr_an,
-              v.gnomad_amr_af,
-              v.gnomad_asj_ac,
-              v.gnomad_asj_an,
-              v.gnomad_asj_af,
-              v.gnomad_eas_ac,
-              v.gnomad_eas_an,
-              v.gnomad_eas_af,
-              v.gnomad_fin_ac,
-              v.gnomad_fin_an,
-              v.gnomad_fin_af,
-              v.gnomad_nfr_ac,
-              v.gnomad_nfr_an,
-              v.gnomad_nfr_af,
-              v.gnomad_sas_ac,
-              v.gnomad_sas_an,
-              v.gnomad_sas_af,
-              v.gnomad_oth_ac,
-              v.gnomad_oth_an,
-              v.gnomad_oth_af,
-              v.revel,
-              v.splice_ai_acceptor_gain_score,
-              v.splice_ai_acceptor_gain_distance,
-              v.splice_ai_acceptor_loss_score,
-              v.splice_ai_acceptor_loss_distance,
-              v.splice_ai_donor_gain_score,
-              v.splice_ai_donor_gain_distance,
-              v.splice_ai_donor_loss_score,
-              v.splice_ai_donor_loss_distance,
-              g.omim_phenotypes_id,
-              g.omim_phenotypes_name,
-              v.clinvar_classification,
-              v.clinvar_last_updated,
-              v.clinvar_phenotype,
-              FROM `~{dataset_name}.~{variant_transcript_table}` as v
-              left join
-              (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
-              on v.gene_symbol = g.gene_symbol'
-
-  >>>
+            v.vid,
+            v.transcript,
+            v.contig,
+            v.position,
+            v.ref_allele,
+            v.alt_allele,
+            v.gvs_all_ac,
+            v.gvs_all_an,
+            v.gvs_all_af,
+            v.gvs_all_sc,
+            v.gvs_max_af,
+            v.gvs_max_ac,
+            v.gvs_max_an,
+            v.gvs_max_sc,
+            v.gvs_max_subpop,
+            v.gvs_afr_ac,
+            v.gvs_afr_an,
+            v.gvs_afr_af,
+            v.gvs_afr_sc,
+            v.gvs_amr_ac,
+            v.gvs_amr_an,
+            v.gvs_amr_af,
+            v.gvs_amr_sc,
+            v.gvs_eas_ac,
+            v.gvs_eas_an,
+            v.gvs_eas_af,
+            v.gvs_eas_sc,
+            v.gvs_eur_ac,
+            v.gvs_eur_an,
+            v.gvs_eur_af,
+            v.gvs_eur_sc,
+            v.gvs_mid_ac,
+            v.gvs_mid_an,
+            v.gvs_mid_af,
+            v.gvs_mid_sc,
+            v.gvs_oth_ac,
+            v.gvs_oth_an,
+            v.gvs_oth_af,
+            v.gvs_oth_sc,
+            v.gvs_sas_ac,
+            v.gvs_sas_an,
+            v.gvs_sas_af,
+            v.gvs_sas_sc,
+            v.gene_symbol,
+            v.transcript_source,
+            v.aa_change,
+            v.consequence,
+            v.dna_change_in_transcript,
+            v.variant_type,
+            v.exon_number,
+            v.intron_number,
+            v.genomic_location,
+            # v.hgvsc AS splice_distance
+            v.dbsnp_rsid,
+            v.gene_id,
+            # v.entrez_gene_id,
+            # g.hgnc_gene_id,
+            g.gene_omim_id,
+            CASE WHEN ( v.transcript is not null and v.is_canonical_transcript is not True)
+            THEN False WHEN ( v.transcript is not null and v.is_canonical_transcript is True) THEN True END AS is_canonical_transcript,
+            v.gnomad_all_af,
+            v.gnomad_all_ac,
+            v.gnomad_all_an,
+            v.gnomad_failed_filter,
+            v.gnomad_max_af,
+            v.gnomad_max_ac,
+            v.gnomad_max_an,
+            v.gnomad_max_subpop,
+            v.gnomad_afr_ac,
+            v.gnomad_afr_an,
+            v.gnomad_afr_af,
+            v.gnomad_amr_ac,
+            v.gnomad_amr_an,
+            v.gnomad_amr_af,
+            v.gnomad_asj_ac,
+            v.gnomad_asj_an,
+            v.gnomad_asj_af,
+            v.gnomad_eas_ac,
+            v.gnomad_eas_an,
+            v.gnomad_eas_af,
+            v.gnomad_fin_ac,
+            v.gnomad_fin_an,
+            v.gnomad_fin_af,
+            v.gnomad_nfr_ac,
+            v.gnomad_nfr_an,
+            v.gnomad_nfr_af,
+            v.gnomad_sas_ac,
+            v.gnomad_sas_an,
+            v.gnomad_sas_af,
+            v.gnomad_oth_ac,
+            v.gnomad_oth_an,
+            v.gnomad_oth_af,
+            v.revel,
+            v.splice_ai_acceptor_gain_score,
+            v.splice_ai_acceptor_gain_distance,
+            v.splice_ai_acceptor_loss_score,
+            v.splice_ai_acceptor_loss_distance,
+            v.splice_ai_donor_gain_score,
+            v.splice_ai_donor_gain_distance,
+            v.splice_ai_donor_loss_score,
+            v.splice_ai_donor_loss_distance,
+            g.omim_phenotypes_id,
+            g.omim_phenotypes_name,
+            v.clinvar_classification,
+            v.clinvar_last_updated,
+            v.clinvar_phenotype,
+        FROM `~{dataset_name}.~{variant_transcript_table}` as v
+            left join
+        (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
+        on v.gene_symbol = g.gene_symbol'
+    >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
@@ -459,14 +459,13 @@ task BigQueryExportVat {
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
-
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json_path} local.service_account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-          gcloud auth activate-service-account --key-file=local.service_account.json
-          gcloud config set project ~{project_id}
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{project_id}
         fi
 
         # note: tab delimiter and compression creates tsv.gz files
@@ -585,7 +584,6 @@ task BigQueryExportVat {
         WHERE contig="~{contig}"
         ORDER BY position
         '
-
     >>>
     # ------------------------------------------------
     # Runtime settings:
