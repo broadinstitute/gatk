@@ -861,19 +861,6 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
         }
     }
 
-//    def execWDLValidation = { validateWDL ->
-//        println "Executing: $validateWDL"
-//        try {
-//            def retCode = validateWDL.execute().waitFor()
-//            if (retCode.intValue() != 0) {
-//                throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
-//            }
-//            return retCode
-//        } catch (IOException e) {
-//            throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
-//        }
-//    }
-
     doLast {
         // first, run the womtool validator
         final File wdlGenFolder = new File("$docBuildDir/wdlGen")
@@ -912,19 +899,6 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
         }
     }
 
-}
-
-def execWDLValidation = { validateWDL ->
-    println "Executing: $validateWDL"
-    try {
-        def retCode = validateWDL.execute().waitFor()
-        if (retCode.intValue() != 0) {
-            throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
-        }
-        return retCode
-    } catch (IOException e) {
-        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
-    }
 }
 
 /**
