@@ -15,4 +15,3 @@ COPY alt_allele_temp_function.sql /app
 COPY utils.py /app
 
 WORKDIR /app
-ENTRYPOINT ["/bin/bash"]
