@@ -251,6 +251,14 @@ jobs:
           identifier: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
           only-artifact: ${{ needs.check-secrets.outputs.google-credentials != 'true' }}
 
+  validate_wdl_job:
+    runs-on: ubuntu-latest
+    name: Validate all wdl using womtool
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run womtool validate
+        run: |
+          ./scripts/validate_wdls.sh
 
   #test wdl auto generation
   wdlGen:
@@ -272,7 +280,6 @@ jobs:
 
       - name: Run WDL Generation Test
         run: ./gradlew gatkWDLGenValidation
-
 
   #Run our various targeted medium scale wdl wiring tests
   wdlTests:
