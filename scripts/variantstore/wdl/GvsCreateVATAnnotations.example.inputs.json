@@ -1,0 +1,12 @@
+{
+  "GvsCreateVATAnnotations.input_vcf_name": "String",
+  "GvsCreateVATAnnotations.output_path": "String",
+  "GvsCreateVATAnnotations.custom_annotations_template": "File",
+  "GvsCreateVATAnnotations.nirvana_data_directory": "File",
+  "GvsCreateVATAnnotations.input_vcf": "File",
+  "GvsCreateVATAnnotations.ancestry_mapping_list": "File",
+  "GvsCreateVATAnnotations.input_vcf_index": "File",
+  "GvsCreateVATAnnotations.service_account_json_path": "String? (optional)",
+  "GvsCreateVATAnnotations.ref": "File"
+}
+
