@@ -245,7 +245,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
       # Note that inside the clinvar array, are multiple objects that may or may not be the one we are looking for. We check by making sure the ref and alt are the same
       for clinvar_obj in clinvar_objs:
          # get only the clinvar objs with right variant and the id that starts with RCV
-         if (clinvar_obj.get("refAllele") == var_ref) & (clinvar_obj.get("altAllele") == var_alt) & (clinvar_obj.get("id")[:3] == "RCV"):
+         if (clinvar_obj.get("refAllele") == var_ref) and (clinvar_obj.get("altAllele") == var_alt) and (clinvar_obj.get("id")[:3] == "RCV"):
            clinvar_ids.append(clinvar_obj.get("id"))
            significance_values.extend([x.lower() for x in clinvar_obj.get("significance")])
            updated_dates.append(clinvar_obj.get("lastUpdatedDate"))
