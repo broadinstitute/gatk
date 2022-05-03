@@ -79,7 +79,6 @@ task ExtractAnAcAfFromVCF {
     String custom_annotations_file_name = "ac_an_af.tsv"
     String local_input_vcf = basename(input_vcf)
     String local_input_vcf_index = basename(input_vcf_index)
-    String normalized_vcf = "normalized.vcf"
     String normalized_vcf_compressed = "normalized.vcf.gz"
     String normalized_vcf_indexed = "normalized.vcf.gz.tbi"
 
@@ -116,41 +115,51 @@ task ExtractAnAcAfFromVCF {
         # "sas"
         #]
 
+        echo_date "VAT: Convert input to BCF format"
+        time bcftools convert --threads 4 -O b -o original.bcf ~{local_input_vcf}
+        rm ~{local_input_vcf}
+
         echo_date "VAT: Calculating number of +50 alt alleles on N sites"
 
         ## track the dropped variants with +50 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
-        bcftools view -i 'N_ALT>50 || REF~"N"' ~{local_input_vcf} | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+        bcftools view --threads 4 -i 'N_ALT>50 || REF~"N"' -O u original.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
         wc -l track_dropped.tsv
 
         echo_date "VAT: filter out sites with too many alt alleles"
-        bcftools view -e 'N_ALT>50 || REF~"N"' --no-update ~{local_input_vcf} -Ou | \
+        bcftools view --threads 4 -e 'N_ALT>50 || REF~"N"' --no-update original.bcf -O u | \
         ## filter out the non-passing sites
-        bcftools view  -f 'PASS,.' --no-update -Oz -o filtered.vcf.gz
+        bcftools view --threads 4 -f 'PASS,.' --no-update -O b -o filtered.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
-        bcftools norm -m- --check-ref w -f Homo_sapiens_assembly38.fasta filtered.vcf.gz -Oz -o normalized.vcf.gz
-        rm ~{local_input_vcf}
+        bcftools norm --threads 4 -m- --check-ref w -f Homo_sapiens_assembly38.fasta filtered.bcf -O b -o normalized.bcf
+        rm filtered.bcf
 
         echo_date "VAT: filter out spanning deletions and variants with an AC of 0, respect the FT flag"
-        bcftools view -e 'ALT[0]="*" || AC=0' --no-update normalized.vcf.gz -Ou | \
+        bcftools view --threads 4 -e 'ALT[0]="*" || AC=0' --no-update normalized.bcf -O u | \
         ## ensure that we respect the FT tag
-        bcftools filter -i "FORMAT/FT='PASS,.'" --set-GTs . -Oz -o ~{normalized_vcf}
+        bcftools filter --threads 4 -i "FORMAT/FT='PASS,.'" --set-GTs . -O b -o normalized.filtered.bcf
 
         ## clean up unneeded file
-        rm normalized.vcf.gz
+        rm normalized.bcf
 
         echo_date "VAT: detecting and removing duplicate rows"
 
         ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
         ## to locate the duplicates, we first make a file of just the first 5 columns
-        bcftools query ~{normalized_vcf} -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > check_duplicates.tsv
-        ## check it for duplicates and put them in a new file
-        sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5  > duplicates.tsv
-        rm check_duplicates.tsv ## clean up
-        ## remove those rows (that match up to the first 5 cols)
-        zgrep -v -wFf duplicates.tsv ~{normalized_vcf} > deduplicated.vcf.gz
-        rm ~{normalized_vcf} ## clean up
+        # KCIBUL - this runs VERY fast now but there were no duplicates!  Make sure this works when there are duplicates.. find a good test case and compare
+        bcftools query normalized.filtered.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5 > duplicates.tsv
+
+        # KCIBUL - related to above... find a good test case and compare
+        # If there ARE dups to remove
+        if [ -s duplicates.tsv ]; then
+            ## remove those rows (that match up to the first 5 cols)
+            bcftools view --threads 4 normalized.filtered.bcf | grep -v -wFf duplicates.tsv | bcftools view --threads 4 -O b -o deduplicated.bcf
+        else
+            # There are no duplicates to remove
+            cp normalized.filtered.bcf deduplicated.bcf
+        fi
+        rm normalized.filtered.bcf
 
         ## add duplicates to the file that's tracking dropped variants
         cat duplicates.tsv >> track_dropped.tsv
@@ -158,7 +167,7 @@ task ExtractAnAcAfFromVCF {
 
         echo_date "VAT: calculate annotations for all subpopulations"
         ## AC_het,AC_hom and AC_Hemi are used to calculate the participant count
-        bcftools plugin fill-tags  -- deduplicated.vcf.gz -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom,AC_Hemi | bcftools query -f \
+        bcftools plugin fill-tags --threads 4 -- deduplicated.bcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom,AC_Hemi | bcftools query -f \
         '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_Hemi\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_Hemi_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_Hemi_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_Hemi_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_Hemi_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_Hemi_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_Hemi_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\t%AC_Hemi_sas\n' \
         >> ~{custom_annotations_file_name}
 
@@ -168,9 +177,9 @@ task ExtractAnAcAfFromVCF {
         echo_date "VAT: produce sites-only VCf"
 
         ## compress the vcf and index it, make it sites-only for the next step
-        bcftools view --no-update --drop-genotypes deduplicated.vcf.gz -Oz -o ~{normalized_vcf_compressed}
+        bcftools view --threads 4 --no-update --drop-genotypes deduplicated.bcf -O z -o ~{normalized_vcf_compressed}
         ## if we can spare the IO and want to pass a smaller file we can also drop the info field w bcftools annotate -x INFO
-        bcftools index --tbi  ~{normalized_vcf_compressed}
+        bcftools index --tbi ~{normalized_vcf_compressed}
 
         echo_date "VAT: finished"
     >>>
@@ -182,7 +191,7 @@ task ExtractAnAcAfFromVCF {
         memory: "32 GB"
         preemptible: 3
         cpu: "4"
-        disks: "local-disk 250 HDD"
+        disks: "local-disk 500 HDD"
     }
     # ------------------------------------------------
     # Outputs:

@@ -153,6 +153,7 @@ workflows:
          - master
          - ah_var_store
          - vat_speed
+         - vat_speed_kctest
    - name: GvsCreateVATFromAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATFromAnnotations.wdl
