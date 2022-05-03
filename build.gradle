@@ -816,25 +816,25 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
     options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath())
 }
 
+def execWDLValidation = { validateWDL ->
+    println "Executing: $validateWDL"
+    try {
+        def retCode = validateWDL.execute().waitFor()
+        if (retCode.intValue() != 0) {
+            throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
+        }
+        return retCode
+    } catch (IOException e) {
+        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+    }
+}
+
 task gatkWDLValidation() {
     doFirst {
         // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
         // WOMTOOL_JAR set to the jar locations
         if (System.getenv('WOMTOOL_JAR') == null) {
             throw new GradleException("Running this task requires the WOMTOOL_JAR environment variables to be set")
-        }
-    }
-
-    def execWDLValidation = { validateWDL ->
-        println "Executing: $validateWDL"
-        try {
-            def retCode = validateWDL.execute().waitFor()
-            if (retCode.intValue() != 0) {
-                throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
-            }
-            return retCode
-        } catch (IOException e) {
-            throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
         }
     }
 
@@ -861,18 +861,18 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
         }
     }
 
-    def execWDLValidation = { validateWDL ->
-        println "Executing: $validateWDL"
-        try {
-            def retCode = validateWDL.execute().waitFor()
-            if (retCode.intValue() != 0) {
-                throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
-            }
-            return retCode
-        } catch (IOException e) {
-            throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
-        }
-    }
+//    def execWDLValidation = { validateWDL ->
+//        println "Executing: $validateWDL"
+//        try {
+//            def retCode = validateWDL.execute().waitFor()
+//            if (retCode.intValue() != 0) {
+//                throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
+//            }
+//            return retCode
+//        } catch (IOException e) {
+//            throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+//        }
+//    }
 
     doLast {
         // first, run the womtool validator
@@ -914,6 +914,18 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
 
 }
 
+def execWDLValidation = { validateWDL ->
+    println "Executing: $validateWDL"
+    try {
+        def retCode = validateWDL.execute().waitFor()
+        if (retCode.intValue() != 0) {
+            throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
+        }
+        return retCode
+    } catch (IOException e) {
+        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+    }
+}
 
 /**
  *This specifies what artifacts will be built and uploaded when performing a maven upload.
