@@ -16,4 +16,3 @@ COPY utils.py /app
 COPY add_max_as_vqslod.py /app
 
 WORKDIR /app
-ENTRYPOINT ["/bin/bash"]

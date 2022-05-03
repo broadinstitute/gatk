@@ -1,0 +1,162 @@
+{
+  "vid": "11-5226567-A-C",
+  "chromosome": "chr11",
+  "begin": 5226567,
+  "end": 5226567,
+  "refAllele": "A",
+  "altAllele": "C",
+  "variantType": "SNV",
+  "hgvsg": "NC_000011.10:g.5226567A>C",
+  "phylopScore": -1.4,
+  "clinvar": [
+    {
+      "id": "RCV000792154.1",
+      "variationId": 639377,
+      "reviewStatus": "criteria provided, single submitter",
+      "alleleOrigins": [
+        "germline"
+      ],
+      "refAllele": "TAGACTCACCCTGAAGTTCTCAGGATCCACGTGCAGCTTGTCACAGTGCAGCTCACTCAGTGTGGCAAAGGTGCCCTTGAGGTTGTCCAGGTGAGCCAGGCCATCACTAAAGGCACCGAGCACTTTCTTGCCATGAGCCTTCACCTTAGGGTTGCCCATAACAGCATCAGGAGTGGACAGATCCCCAAAGGACTCAAAGAACCTCTGGGTCCAAGGGTAGACCACCAGCAGCCTAAGGGTGGGAAAATAGACCAATAGGCAGAGAGAGTCAGTGCCTATCAGAAACCCAAGAGTCTTCTCTGTCTCCACATGCCCAGTTTCTATTGGTCTCCTTAAACCTGTCTTGTAACCTTGATACCAACCTGCCCAGGGCCTCACCACCAACTTCATCCACGTTCACCTTGCCCCACAGGGCAGTAACGGCAGACTTCTCCTCAGGAGTCAGATGCACCATGGTGTCTGTTTGAGGTTGCTAGTGAACACAGTTGTGTCAGAAGCAAATGTAAGCAATAGATGGCTCTGCCCTGACTTTTATGCCCAGCCCTGGCTCCTGCCCTCCCTGCTCCTGGGAGTAGATTGGCCAACCCTAGGGTGTGGCTCCACAGGGTGAGGTCTAAGTGATGACAGCCGTACCTGTCCTTGGCTCTTCTGGCACTGGCTTAGGAGTTGGACTTCAAACCCTCAGCCCTCCCTCTAAGATATATCTCTTGGCCCCATACCATCAGTA",
+      "altAllele": "-",
+      "phenotypes": [
+        "not provided"
+      ],
+      "medGenIds": [
+        "CN517202"
+      ],
+      "significance": [
+        "pathogenic"
+      ],
+      "lastUpdatedDate": "2019-11-02",
+      "pubMedIds": [
+        "28492532"
+      ]
+    },
+    {
+      "id": "VCV000639377.1",
+      "reviewStatus": "criteria provided, single submitter",
+      "significance": [
+        "pathogenic"
+      ],
+      "refAllele": "ATAGACTCACCCTGAAGTTCTCAGGATCCACGTGCAGCTTGTCACAGTGCAGCTCACTCAGTGTGGCAAAGGTGCCCTTGAGGTTGTCCAGGTGAGCCAGGCCATCACTAAAGGCACCGAGCACTTTCTTGCCATGAGCCTTCACCTTAGGGTTGCCCATAACAGCATCAGGAGTGGACAGATCCCCAAAGGACTCAAAGAACCTCTGGGTCCAAGGGTAGACCACCAGCAGCCTAAGGGTGGGAAAATAGACCAATAGGCAGAGAGAGTCAGTGCCTATCAGAAACCCAAGAGTCTTCTCTGTCTCCACATGCCCAGTTTCTATTGGTCTCCTTAAACCTGTCTTGTAACCTTGATACCAACCTGCCCAGGGCCTCACCACCAACTTCATCCACGTTCACCTTGCCCCACAGGGCAGTAACGGCAGACTTCTCCTCAGGAGTCAGATGCACCATGGTGTCTGTTTGAGGTTGCTAGTGAACACAGTTGTGTCAGAAGCAAATGTAAGCAATAGATGGCTCTGCCCTGACTTTTATGCCCAGCCCTGGCTCCTGCCCTCCCTGCTCCTGGGAGTAGATTGGCCAACCCTAGGGTGTGGCTCCACAGGGTGAGGTCTAAGTGATGACAGCCGTACCTGTCCTTGGCTCTTCTGGCACTGGCTTAGGAGTTGGACTTCAAACCCTCAGCCCTCCCTCTAAGATATATCTCTTGGCCCCATACCATCAGTA",
+      "altAllele": "-",
+      "lastUpdatedDate": "2019-10-27"
+    }
+  ],
+  "spliceAI": [
+    {
+      "hgnc": "HBB",
+      "acceptorGainScore": 0,
+      "acceptorGainDistance": -1,
+      "acceptorLossScore": 0,
+      "acceptorLossDistance": 36,
+      "donorGainScore": 0,
+      "donorGainDistance": 0,
+      "donorLossScore": 0,
+      "donorLossDistance": 6
+    }
+  ],
+  "transcripts": [
+    {
+      "transcript": "ENST00000408104.1",
+      "source": "Ensembl",
+      "bioType": "ribozyme",
+      "geneId": "ENSG00000221031",
+      "hgnc": "CoTC_ribozyme",
+      "consequence": [
+        "upstream_gene_variant"
+      ],
+      "isCanonical": true
+    },
+    {
+      "transcript": "ENST00000335295.4",
+      "source": "Ensembl",
+      "bioType": "protein_coding",
+      "introns": "2/2",
+      "geneId": "ENSG00000244734",
+      "hgnc": "HBB",
+      "consequence": [
+        "intron_variant"
+      ],
+      "hgvsc": "ENST00000335295.4:c.315+10T>G",
+      "isCanonical": true,
+      "proteinId": "ENSP00000333994.3"
+    },
+    {
+      "transcript": "NM_000518.4",
+      "source": "RefSeq",
+      "bioType": "protein_coding",
+      "introns": "2/2",
+      "geneId": "3043",
+      "hgnc": "HBB",
+      "consequence": [
+        "intron_variant"
+      ],
+      "hgvsc": "NM_000518.4:c.315+10T>G",
+      "isCanonical": true,
+      "proteinId": "NP_000509.1"
+    },
+    {
+      "transcript": "ENST00000633227.1",
+      "source": "Ensembl",
+      "bioType": "nonsense_mediated_decay",
+      "introns": "2/2",
+      "geneId": "ENSG00000244734",
+      "hgnc": "HBB",
+      "consequence": [
+        "intron_variant",
+        "NMD_transcript_variant"
+      ],
+      "hgvsc": "ENST00000633227.1:c.*131+10T>G",
+      "proteinId": "ENSP00000488004.1"
+    },
+    {
+      "transcript": "ENST00000475226.1",
+      "source": "Ensembl",
+      "bioType": "retained_intron",
+      "introns": "1/1",
+      "geneId": "ENSG00000244734",
+      "hgnc": "HBB",
+      "consequence": [
+        "intron_variant",
+        "non_coding_transcript_variant"
+      ],
+      "hgvsc": "ENST00000475226.1:n.247+10T>G"
+    },
+    {
+      "transcript": "ENST00000485743.1",
+      "source": "Ensembl",
+      "bioType": "retained_intron",
+      "cdnaPos": "376",
+      "exons": "2/2",
+      "geneId": "ENSG00000244734",
+      "hgnc": "HBB",
+      "consequence": [
+        "non_coding_transcript_exon_variant"
+      ],
+      "hgvsc": "ENST00000485743.1:n.376T>G"
+    },
+    {
+      "transcript": "ENST00000380315.2",
+      "source": "Ensembl",
+      "bioType": "protein_coding",
+      "geneId": "ENSG00000244734",
+      "hgnc": "HBB",
+      "consequence": [
+        "downstream_gene_variant"
+      ],
+      "proteinId": "ENSP00000369671.2"
+    }
+  ],
+  "gvsAnnotations":{
+    "AC": 200, "AN": 100, "AF": 2,
+    "AC_Hom": 100, "AC_Het": 100, "AC_Hemi": 0,
+    "AC_afr":10, "AN_afr": 10, "AF_afr": 10, "AC_Hom_afr": 10, "AC_Het_afr": 10, "AC_Hemi_afr":10,
+    "AC_amr":10, "AN_amr": 10, "AF_amr": 10, "AC_Hom_amr": 10, "AC_Het_amr": 10, "AC_Hemi_amr":10,
+    "AC_eas":10, "AN_eas": 10, "AF_eas": 10, "AC_Hom_eas": 10, "AC_Het_eas": 10, "AC_Hemi_eas":10,
+    "AC_eur":10, "AN_eur": 10, "AF_eur": 10, "AC_Hom_eur": 10, "AC_Het_eur": 10, "AC_Hemi_eur":10,
+    "AC_mid":10, "AN_mid": 10, "AF_mid": 10, "AC_Hom_mid": 10, "AC_Het_mid": 10, "AC_Hemi_mid":10,
+    "AC_oth":10, "AN_oth": 10, "AF_oth": 10, "AC_Hom_oth": 10, "AC_Het_oth": 10, "AC_Hemi_oth":10,
+    "AC_sas":10, "AN_sas": 10, "AF_sas": 10, "AC_Hom_sas": 10, "AC_Het_sas": 10, "AC_Hemi_sas":10
+  }
+}
