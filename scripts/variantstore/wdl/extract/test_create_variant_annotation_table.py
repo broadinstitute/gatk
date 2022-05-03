@@ -8,6 +8,7 @@ import json
 import gzip
 import argparse
 import unittest
+import copy
 
 from create_variant_annotation_table import make_annotated_json_row
 
@@ -33,6 +34,7 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
         self.maxDiff=None
         self.assertEqual(actual, expected)
 
+
     def test_clinvar_success(self):
         actual = make_annotated_json_row(
             row_position=5226567,
@@ -46,3 +48,65 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
         self.assertIsNone(actual.get('clinvar_phenotype')) # No Clinvar values with matching alleles
         self.assertIsNone(actual.get('clinvar_classification')) # No Clinvar values with matching alleles
         self.assertEqual(actual, expected)
+
+
+    def test_clinvar_ordering(self):
+        clinvar_swap = [{ 'id': 'RCV01', \
+                      'significance': [ 'sleater', 'kinney', 'guitar', 'solo', 'pathogenic'], \
+                      'refAllele': 'TCT', \
+                      'altAllele': '-', \
+                      'phenotypes': ['brunette'],
+                      'lastUpdatedDate': '2020-03-01'}, \
+                      { 'id': 'RCV02', \
+                      'significance': [ 'pathogenic', 'LikELy paTHoGenIc', 'conflicting data from submitters'], \
+                      'refAllele': 'TCT', \
+                      'altAllele': '-', \
+                      'phenotypes': ['blonde'],
+                      'lastUpdatedDate': '2020-03-02'}]
+        clinvarOrderingNirvanaOutput = copy.deepcopy(cysticFibrosisNirvanaOutput)
+        clinvarOrderingNirvanaOutput["clinvar"] = clinvar_swap
+        actual = make_annotated_json_row(
+            row_position=117559590,
+            row_ref="ATCT",
+            row_alt="A",
+            variant_line=clinvarOrderingNirvanaOutput,
+            transcript_line=None)
+        self.maxDiff=None
+        self.assertEqual(actual.get('clinvar_classification'), ['likely pathogenic', 'pathogenic', 'conflicting data from submitters', 'guitar', 'kinney', 'sleater', 'solo'])
+        self.assertEqual(actual.get('clinvar_id'), ['RCV01', 'RCV02'])
+        self.assertEqual(actual.get('clinvar_phenotype'), ['blonde', 'brunette'])
+        self.assertEqual(actual.get('clinvar_last_updated'), '2020-03-02')
+
+
+    def test_clinvar_inclusion(self):
+        clinvar_swap = [{ 'id': 'RCV01', \
+                      'significance': [], \
+                      'refAllele': 'TCT', \
+                      'altAllele': '-', \
+                      'phenotypes': [], \
+                      'lastUpdatedDate': '2020-03-01'}, \
+                      { 'id': 'nope', \
+                       'significance': [ 'carrie'], \
+                      'refAllele': 'TCT', \
+                      'altAllele': '-', \
+                      'phenotypes': ['did this go through?'], \
+                      'lastUpdatedDate': '2020-03-02'}, \
+                      { 'id': 'RCV02', \
+                      'refAllele': 'T', \
+                      'altAllele': '-'}, \
+                      { 'id': 'RCV03', \
+                      'refAllele': 'TCT', \
+                      'altAllele': 'G'}]
+        clinvarInclusionNirvanaOutput = copy.deepcopy(cysticFibrosisNirvanaOutput)
+        clinvarInclusionNirvanaOutput["clinvar"] = clinvar_swap
+        actual = make_annotated_json_row(
+            row_position=117559590,
+            row_ref="ATCT",
+            row_alt="A",
+            variant_line=clinvarInclusionNirvanaOutput,
+            transcript_line=None)
+        self.maxDiff=None
+        self.assertEqual(len(actual.get('clinvar_id')), 1)
+        self.assertFalse(actual.get('clinvar_phenotype')) # Empty lists are false in python
+        self.assertFalse(actual.get('clinvar_classification')) # Empty lists are false in python
+        self.assertEqual(actual.get('clinvar_last_updated'), '2020-03-01')
