@@ -260,6 +260,20 @@ jobs:
         run: |
           ./scripts/validate_wdls.sh
 
+  #test wdl validation
+  wdlValidation:
+    runs-on: ubuntu-latest
+    name: Validate all wdls using womtools
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch: 0
+      - uses: ./.github/actions/install-cromwell
+        with:
+          CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
+      - name: Run WDL Validation Test
+        run: ./gradlew gatkWDLValidation
+
   #test wdl auto generation
   wdlGen:
     runs-on: ubuntu-latest
