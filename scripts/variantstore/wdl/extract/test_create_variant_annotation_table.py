@@ -13,8 +13,8 @@ from create_variant_annotation_table import make_annotated_json_row
 
 class TestMakeAnnotatedJsonRow(unittest.TestCase):
     def test_make_annotated_json_row_success(self):
-        dir='variant_annotation_table_test_files/'
-        with open(dir + 'vat_expected_pathogenic.json') as vat_expected_pathogenic, open(dir + 'vat_test_pathogenic.json') as vat_test_pathogenic:
+      dir='variant_annotation_table_test_files/'
+      with open(dir + 'vat_expected_pathogenic.json') as vat_expected_pathogenic, open(dir + 'vat_test_pathogenic.json') as vat_test_pathogenic:
         cysticFibrosisExpectedVAT = json.load(vat_expected_pathogenic)
         cysticFibrosisNirvanaOutput = json.load(vat_test_pathogenic)
         actual = make_annotated_json_row(
@@ -23,21 +23,14 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
           row_alt="A",
           variant_line=cysticFibrosisNirvanaOutput,
           transcript_line=None)
-        ## This is dumb....I do this because json and python dicts aren't playing nice
-        cysticFibrosisExpectedVAT["gnomad_nfr_ac"] = None
-        cysticFibrosisExpectedVAT["gnomad_nfr_an"] = None
-        cysticFibrosisExpectedVAT["gnomad_nfr_af"] = None
-        cysticFibrosisExpectedVAT["gnomad_failed_filter"] = None
         expected = cysticFibrosisExpectedVAT
-        vat_expected_pathogenic.close()
-        vat_test_pathogenic.close()
         self.maxDiff=None
         self.assertEqual(actual, expected)
 
 
     def test_clinvar_success(self):
-        vat_expected_likely_benign = open('variant_annotation_table_test_files/vat_expected_likely_benign.json')
-        vat_test_likely_benign = open('variant_annotation_table_test_files/vat_test_likely_benign.json')
+      dir='variant_annotation_table_test_files/'
+      with open(dir + 'vat_expected_likely_benign.json') as vat_expected_likely_benign, open(dir + 'vat_test_likely_benign.json') as vat_test_likely_benign:
         likelyBenignExpectedVAT = json.load(vat_expected_likely_benign)
         likelyBenignNirvanaOutput = json.load(vat_test_likely_benign)
         actual = make_annotated_json_row(
@@ -46,10 +39,7 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
           row_alt="C",
           variant_line=likelyBenignNirvanaOutput,
           transcript_line=None)
-        likelyBenignExpectedVAT["dbsnp_rsid"] = None
         expected = likelyBenignExpectedVAT
-        vat_expected_likely_benign.close()
-        vat_test_likely_benign.close()
         self.maxDiff=None
         self.assertEqual(actual, expected)
 
