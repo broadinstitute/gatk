@@ -5,7 +5,7 @@
   "clinvar_last_updated": "2019-11-02",
   "clinvar_phenotype": ["not provided"],
   "contig": "chr11",
-  "dbsnp_rsid": "None",
+  "dbsnp_rsid": null,
   "genomic_location": "NC_000011.10:g.5226567A>C",
   "gvs_afr_ac": 10,
   "gvs_afr_af": 10,
