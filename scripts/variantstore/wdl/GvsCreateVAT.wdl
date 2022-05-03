@@ -8,11 +8,12 @@ workflow GvsCreateVAT {
         File inputFileofIndexFileNames
         String project_id
         String dataset_name
+        String filter_set_name
+        String? vat_version
         File? vat_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json"
         File? variant_transcript_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json"
         File? genes_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json"
         String output_path
-        String table_suffix
 
         String? service_account_json_path
         File ancestry_file
@@ -57,7 +58,8 @@ workflow GvsCreateVAT {
             project_id = project_id,
             dataset_name = dataset_name,
             output_path = output_path,
-            table_suffix = table_suffix,
+            filter_set_name = filter_set_name,
+            vat_version = vat_version,
             service_account_json_path = service_account_json_path,
             prep_jsons_done = GvsCreateVATAnnotations.done
     }
@@ -68,7 +70,7 @@ workflow GvsCreateVAT {
             dataset_name = dataset_name,
             counts_variants = GvsCreateVATAnnotations.count_variants,
             track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
-            table_suffix = table_suffix,
+            vat_table = BigQueryLoadJson.vat_table_name,
             service_account_json_path = service_account_json_path,
             load_jsons_done = BigQueryLoadJson.done
     }
@@ -80,7 +82,7 @@ workflow GvsCreateVAT {
                 project_id = project_id,
                 dataset_name = dataset_name,
                 output_path = output_path,
-                table_suffix = table_suffix,
+                vat_table = BigQueryLoadJson.vat_table_name,
                 service_account_json_path = service_account_json_path,
                 validate_jsons_done = BigQuerySmokeTest.done
         }
@@ -112,9 +114,9 @@ task MakeSubpopulationFiles {
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String updated_input_ancestry_file = if (defined(service_account_json_path)) then basename(input_ancestry_file) else input_ancestry_file
-    String updated_input_vcfs_file = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
-    String updated_input_indices_file = if (defined(service_account_json_path)) then basename(inputFileofIndexFileNames) else inputFileofIndexFileNames
+    String updated_input_ancestry_file = basename(input_ancestry_file)
+    String updated_input_vcfs_file = basename(inputFileofFileNames)
+    String updated_input_indices_file = basename(inputFileofIndexFileNames)
 
     command <<<
         set -e
@@ -123,11 +125,11 @@ task MakeSubpopulationFiles {
             gsutil cp ~{service_account_json_path} local.service_account.json
             export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
             gcloud auth activate-service-account --key-file=local.service_account.json
+        fi
 
-            gsutil cp ~{input_ancestry_file} .
-            gsutil cp ~{inputFileofFileNames} .
-            gsutil cp ~{inputFileofIndexFileNames} .
-       fi
+        gsutil cp ~{input_ancestry_file} .
+        gsutil cp ~{inputFileofFileNames} .
+        gsutil cp ~{inputFileofIndexFileNames} .
 
         ## the ancestry file is processed down to a simple mapping from sample to subpopulation
         python3 /app/extract_subpop.py \
@@ -160,22 +162,25 @@ task BigQueryLoadJson {
     }
 
     input {
+        String filter_set_name
+        String? vat_version
         File? nirvana_schema
         File? vt_schema
         File? genes_schema
         String project_id
         String dataset_name
         String output_path
-        String table_suffix
         String? service_account_json_path
         Array[String] prep_jsons_done
     }
 
-    # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
+    # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
+    String effective_vat_version = if (defined(vat_version) && vat_version != "v1") then "_" + vat_version else ""
 
-    String vat_table = "vat_" + table_suffix
-    String variant_transcript_table = "vat_vt_"  + table_suffix
-    String genes_table = "vat_genes_" + table_suffix
+    # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
+    String vat_table = filter_set_name + "_vat" + effective_vat_version
+    String variant_transcript_table = filter_set_name + "_vat_vt" + effective_vat_version
+    String genes_table = filter_set_name + "_vat_genes" + effective_vat_version
 
     String vt_path = output_path + 'vt/*'
     String genes_path = output_path + 'genes/*'
@@ -367,6 +372,7 @@ task BigQueryLoadJson {
     # ------------------------------------------------
     # Outputs:
     output {
+        String vat_table_name = vat_table
         Boolean done = true
     }
 }
@@ -375,9 +381,9 @@ task BigQuerySmokeTest {
     input {
         String project_id
         String dataset_name
+        String vat_table
         Array[Int] counts_variants
         Array[File] track_dropped_variants
-        String table_suffix
         String? service_account_json_path
         Boolean load_jsons_done
     }
@@ -385,8 +391,6 @@ task BigQuerySmokeTest {
     # Compare the number of variants we expect from the input with the size of the output / VAT
     # The number of passing variants in GVS matches the number of variants in the VAT.
     # Please note that we are counting the number of variants in GVS, not the number of sites, which may add a difficulty to this task.
-
-    String vat_table = "vat_" + table_suffix
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -447,13 +451,12 @@ task BigQueryExportVat {
         String contig
         String project_id
         String dataset_name
+        String vat_table
         String output_path
-        String table_suffix
         String? service_account_json_path
         Boolean validate_jsons_done
     }
 
-    String vat_table = "vat_" + table_suffix
     String export_path = output_path + "export/" + contig + "/*.tsv.gz"
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
