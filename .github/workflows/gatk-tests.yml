@@ -251,11 +251,24 @@ jobs:
           identifier: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
           only-artifact: ${{ needs.check-secrets.outputs.google-credentials != 'true' }}
 
-
-  #test wdl auto generation
-  wdlGen:
+  #run wdl validation on WDLs in the scripts directory
+  scriptsWdlValidation:
     runs-on: ubuntu-latest
-    name: Test WDL Generation
+    name: Validate script WDLs using womtools
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch: 0
+      - uses: ./.github/actions/install-cromwell
+        with:
+          CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
+      - name: Run Scripts WDL Validation Test
+        run: ./gradlew gatkValidateScriptsWdl
+
+  #run wdl validation on generated WDLs
+  generatedWdlValidation:
+    runs-on: ubuntu-latest
+    name: Validate generated WDLs using womtools
     steps:
       - uses: actions/checkout@v2
         with:
@@ -270,9 +283,8 @@ jobs:
         with:
           CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
 
-      - name: Run WDL Generation Test
-        run: ./gradlew gatkWDLGenValidation
-
+      - name: Run Generated WDL Validation Test
+        run: ./gradlew gatkValidateGeneratedWdl
 
   #Run our various targeted medium scale wdl wiring tests
   wdlTests:
