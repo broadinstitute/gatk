@@ -13,8 +13,8 @@ from create_variant_annotation_table import make_annotated_json_row
 
 class TestMakeAnnotatedJsonRow(unittest.TestCase):
     def test_make_annotated_json_row_success(self):
-        vat_expected_pathogenic = open('variant_annotation_table_test_files/vat_expected_pathogenic.json')
-        vat_test_pathogenic = open('variant_annotation_table_test_files/vat_test_pathogenic.json')
+        dir='variant_annotation_table_test_files/'
+        with open(dir + 'vat_expected_pathogenic.json') as vat_expected_pathogenic, open(dir + 'vat_test_pathogenic.json') as vat_test_pathogenic:
         cysticFibrosisExpectedVAT = json.load(vat_expected_pathogenic)
         cysticFibrosisNirvanaOutput = json.load(vat_test_pathogenic)
         actual = make_annotated_json_row(
