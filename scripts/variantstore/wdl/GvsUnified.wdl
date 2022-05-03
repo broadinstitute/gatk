@@ -65,6 +65,7 @@ workflow GvsUnified {
         String? extract_output_gcs_dir
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
+        Boolean extract_do_not_filter_override = false
         # End GvsExtractCallset
     }
 
@@ -154,6 +155,15 @@ workflow GvsUnified {
             output_gcs_dir = extract_output_gcs_dir,
             service_account_json_path = service_account_json_path,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
-            split_intervals_mem_override = split_intervals_mem_override
+            split_intervals_mem_override = split_intervals_mem_override,
+            do_not_filter_override = extract_do_not_filter_override
+    }
+
+    output {
+        Array[File] output_vcfs = GvsExtractCallset.output_vcfs
+        Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
+        Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
+        File manifest = GvsExtractCallset.manifest
+        Boolean done = true
     }
 }

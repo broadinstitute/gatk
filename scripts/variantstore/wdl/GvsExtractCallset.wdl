@@ -8,6 +8,7 @@ workflow GvsExtractCallset {
     String dataset_name
     String project_id
 
+    Boolean do_not_filter_override = false
     Boolean control_samples = false
     String extract_table_prefix
     String filter_set_name
@@ -100,7 +101,7 @@ workflow GvsExtractCallset {
         fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
         fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
         read_project_id                    = query_project,
-        do_not_filter_override             = false,
+        do_not_filter_override             = do_not_filter_override,
         fq_ranges_dataset                  = fq_ranges_dataset,
         fq_filter_set_info_table           = fq_filter_set_info_table,
         fq_filter_set_site_table           = fq_filter_set_site_table,
