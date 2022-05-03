@@ -40,5 +40,7 @@ class TestMakeAnnotatedJsonRow(unittest.TestCase):
                 transcript_line=None)
             expected = likelyBenignExpectedVAT
             self.maxDiff=None
+            self.assertIsNone(actual.get('clinvar_id')) # This should not exist---there are no Clinvar values with matching alleles
+            self.assertIsNone(actual.get('clinvar_phenotype')) # No Clinvar values with matching alleles
+            self.assertIsNone(actual.get('clinvar_classification')) # No Clinvar values with matching alleles
             self.assertEqual(actual, expected)
-
