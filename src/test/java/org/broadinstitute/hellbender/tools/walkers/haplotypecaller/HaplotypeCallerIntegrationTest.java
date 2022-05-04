@@ -1979,6 +1979,37 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
 
+    @Test()
+    public void testThing() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.pileupCallerDRAGEN.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                        "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
+                        "-I","gs://fc-971fd540-210c-4e5a-87ce-d3f8c91c7557/cd116232-e71c-42c4-94ac-58270049a825/WholeGenomeGermlineSingleSample/109ec11c-fe19-44ce-930d-46d70e279729/call-UnmappedBamToAlignedBam/UnmappedBamToAlignedBam/04128a24-d032-4f42-afc7-71be3addd01b/call-GatherBamFiles/HG002_challenge.bam",
+                        "-L","chr1:11,577,280-11,577,519","--ip","200",
+                        "-O",outputPath,
+                        "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling",
+                        "-contamination","0.0 ",
+                        "-G","StandardAnnotation","-G","StandardHCAnnotation",
+                        "--dragen-mode",
+                        "--disable-spanning-event-genotyping",
+                        "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/PILEUPPDHMMWORK/challengeBamRuns/gatkPlayground/HG002_challenge.bam.dragstr",
+                        "-GQB","10","-GQB","20","-GQB","30","-GQB","40","-GQB","50","-GQB","60","-GQB","70","-GQB","80","-GQB","90",
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
     @DataProvider(name="PairHMMResultsModes")
     public Object[][] PairHMMResultsModes() {
         return new Object[][] {
