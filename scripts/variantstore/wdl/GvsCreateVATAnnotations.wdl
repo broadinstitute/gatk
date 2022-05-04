@@ -116,7 +116,7 @@ task ExtractAnAcAfFromVCF {
         #]
 
         echo_date "VAT: Convert input to BCF format"
-        time bcftools convert --threads 4 -O b -o original.bcf ~{local_input_vcf}
+        bcftools convert --threads 4 -O b -o original.bcf ~{local_input_vcf}
         rm ~{local_input_vcf}
 
         echo_date "VAT: Calculating number of +50 alt alleles on N sites"
@@ -147,10 +147,8 @@ task ExtractAnAcAfFromVCF {
 
         ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
         ## to locate the duplicates, we first make a file of just the first 5 columns
-        # KCIBUL - this runs VERY fast now but there were no duplicates!  Make sure this works when there are duplicates.. find a good test case and compare
         bcftools query normalized.filtered.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5 > duplicates.tsv
 
-        # KCIBUL - related to above... find a good test case and compare
         # If there ARE dups to remove
         if [ -s duplicates.tsv ]; then
             ## remove those rows (that match up to the first 5 cols)
