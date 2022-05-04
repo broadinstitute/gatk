@@ -188,9 +188,9 @@ task ExtractAnAcAfFromVCF {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211101"
         maxRetries: 3
-        memory: "7 GB"
+        memory: "16 GB"
         preemptible: 3
-        cpu: "2"
+        cpu: "4"
         disks: "local-disk 500 HDD"
     }
     # ------------------------------------------------
