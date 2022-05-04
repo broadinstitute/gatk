@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.utils.pileup;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -51,6 +50,7 @@ public final class PileupBasedAlleles {
             final byte refBase = referenceContext.getBase();
 
             Map<String, Integer> insertionCounts = new HashMap<>();
+            Map<Integer, Integer> deletionCounts = new HashMap<>();
 
             Map<Byte, Integer> altCounts = new HashMap<>();
 
@@ -75,10 +75,15 @@ public final class PileupBasedAlleles {
                     // now look for indels
                     if (element.isBeforeInsertion()) {
                         incrementInsertionCount(element.getBasesOfImmediatelyFollowingInsertion(), insertionCounts);
+                        totalAltReads++;
+                    }
+
+                    if (element.isBeforeDeletionStart()) {
+                        incrementDeletionCount(element.getLengthOfImmediatelyFollowingIndel(), deletionCounts);
+                        totalAltReads++;
                     }
 
                     //TODO this is possibly double dipping if there are snps adjacent to indels?
-                    totalAltReads++;
                     // Handle the "badness"
                     if (evaluateBadRead(element.getRead(), referenceContext, args, headerForReads)) {
                         totalAltBadReads++;
@@ -99,7 +104,7 @@ public final class PileupBasedAlleles {
                 pileupVariantList.add(pileupSNP.make());
             }
 
-            // Evaluate the detected INDEL alleles for this site
+            // Evaluate the detected Insertions alleles for this site
             if (args.detectIndels) {
                 final List<Allele> indelAlleles = new ArrayList<>();
                 indelAlleles.add(Allele.create(referenceContext.getBase(), true));
@@ -109,6 +114,25 @@ public final class PileupBasedAlleles {
 
                     indelAlleles.add(Allele.create((char)referenceContext.getBase() + maxIns.get().getKey()));
                     final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), indelAlleles);
+                    pileupVariantList.add(pileupInsertion.make());
+                }
+            }
+
+            // Evaluate the detected Deletions alleles for this site
+            if (args.detectIndels) {
+                final List<Allele> indelAlleles = new ArrayList<>();
+                indelAlleles.add(Allele.create(referenceContext.getBase(), false));
+
+                final Optional<Map.Entry<Integer, Integer>> maxDel = deletionCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
+                if (maxDel.isPresent()
+                        && passesFilters(args, true, numOfBases, totalAltBadReads, totalAltReads, maxDel.get())) {
+
+                    indelAlleles.add(Allele.create(referenceContext.getBases(
+                            new SimpleInterval(referenceContext.getContig(),
+                                    alignmentContext.getStart(),
+                                    alignmentContext.getEnd() + maxDel.get().getKey())),
+                            true));
+                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd() + maxDel.get().getKey(), indelAlleles);
                     pileupVariantList.add(pileupInsertion.make());
                 }
             }
@@ -167,7 +191,9 @@ public final class PileupBasedAlleles {
             } else {
                 nmScore = read.getAttributeAsInteger("NM");
             }
-            if (nmScore > (read.getLength() * args.badReadEditDistance)) {
+            // We adjust the NM score by any indels in the read
+            int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
+            if (adjustedNMScore > (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() * args.badReadEditDistance)) {
                 return true;
             }
         }
@@ -189,8 +215,49 @@ public final class PileupBasedAlleles {
                 insertionCounts.getOrDefault(insertion,0) + 1);
     }
 
+    private static void incrementDeletionCount(Integer deletion, Map<Integer, Integer> insertionCounts){
+        insertionCounts.put(deletion,
+                insertionCounts.getOrDefault(deletion,0) + 1);
+    }
+
     private static void incrementAltCount(byte base, Map<Byte, Integer> altCounts){
         altCounts.put(base,
                 altCounts.getOrDefault(base,0) + 1);
     }
+
+
+    // TODO get rid of this sam record conversion and rewrite the cigar munging code
+//    /**
+//     * Copy of {@link AlignmentUtils.countMismatches}
+//     * @param read
+//     * @param referenceBases
+//     * @param referenceOffset
+//     * @param bisulfiteSequence
+//     * @param matchAmbiguousRef
+//     * @return
+//     */
+//    public static int countMismatches(final GATKRead read, final byte[] referenceBases, final int referenceOffset,
+//                                      final boolean bisulfiteSequence, final boolean matchAmbiguousRef) {
+//        try {
+//            int mismatches = 0;
+//
+//            final byte[] readBases = read.getBasesNoCopy();
+//
+//            for (final AlignmentBlock block : read.get()) {
+//                final int readBlockStart = block.getReadStart() - 1;
+//                final int referenceBlockStart = block.getReferenceStart() - 1 - referenceOffset;
+//                final int length = block.getLength();
+//
+//                for (int i = 0; i < length; ++i) {
+//                    if (!basesMatch(readBases[readBlockStart + i], referenceBases[referenceBlockStart + i],
+//                            read.getReadNegativeStrandFlag(), bisulfiteSequence, matchAmbiguousRef)) {
+//                        ++mismatches;
+//                    }
+//                }
+//            }
+//            return mismatches;
+//        } catch (final Exception e) {
+//            throw new SAMException("Exception counting mismatches for read " + read, e);
+//        }
+//    }
 }
