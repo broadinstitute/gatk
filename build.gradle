@@ -822,13 +822,13 @@ def execWDLValidation = { validateWDL ->
     try {
         def retCode = validateWDL.execute().waitFor()
         if (retCode.intValue() != 0) {
+            println "gave the following error: "
+            println "[ERROR] ${validateWDL.getErrorStream()}"
             throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
         }
         return retCode
     } catch (IOException e) {
         throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
-    } catch (Exception anothere) {
-        throw new GradleException("Another exception " + anothere.toString())
     }
 }
 
