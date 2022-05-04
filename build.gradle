@@ -48,6 +48,7 @@ task downloadGsaLibFile(type: Download) {
 repositories {
     mavenCentral()
 
+    jcenter()
     maven {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
@@ -370,7 +371,7 @@ dependencies {
 
     // Required for COSMIC Funcotator data source:
     implementation 'org.xerial:sqlite-jdbc:3.20.1'
-    
+
     // Required for SV Discovery machine learning
     implementation group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
 
