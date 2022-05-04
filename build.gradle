@@ -820,10 +820,10 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
 def execWDLValidation = { validateWDL ->
     println "Executing: $validateWDL"
     try {
-        def retCode = validateWDL.execute().waitFor()
+        def proc = validateWDL.execute()
+        def retCode = proc.waitFor()
         if (retCode.intValue() != 0) {
-            println "gave the following error: "
-            println "[ERROR] ${validateWDL.getErrorStream()}"
+            println "[ERROR] ${proc.getErrorStream()}"
             throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
         }
         return retCode
