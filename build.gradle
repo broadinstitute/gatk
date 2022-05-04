@@ -827,6 +827,8 @@ def execWDLValidation = { validateWDL ->
         return retCode
     } catch (IOException e) {
         throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+    } catch (Exception anothere) {
+        throw new GradleException("Another exception " + anothere.toString())
     }
 }
 
