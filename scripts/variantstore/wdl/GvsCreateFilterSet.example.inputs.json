@@ -1,6 +1,0 @@
-{
-  "GvsCreateFilterSet.dataset_name": "DATASET",
-  "GvsCreateFilterSet.filter_set_name": "FILTER_SET_NAME",
-  "GvsCreateFilterSet.project_id": "PROJECT_ID",
-  "GvsCreateFilterSet.scatter_count": 20
-}

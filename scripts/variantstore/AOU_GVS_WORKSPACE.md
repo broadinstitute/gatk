@@ -153,4 +153,4 @@ TODO:
 
 ## 5. Your VCF is ready!!
 
-The sharded VCF outut files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`
+The sharded VCF output files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`
