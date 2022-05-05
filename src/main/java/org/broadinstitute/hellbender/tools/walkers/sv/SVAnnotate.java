@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -164,6 +165,7 @@ import java.util.*;
         oneLineSummary = "Adds gene overlap and variant consequence annotations to SV VCF from GATK-SV pipeline",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
+@DocumentedFeature
 public final class SVAnnotate extends VariantWalker {
     public static final String PROTEIN_CODING_GTF_NAME = "protein-coding-gtf";
     public static final String PROMOTER_WINDOW_NAME = "promoter-window-length";
