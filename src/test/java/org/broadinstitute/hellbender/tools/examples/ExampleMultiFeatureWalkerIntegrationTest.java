@@ -129,7 +129,7 @@ public class ExampleMultiFeatureWalkerIntegrationTest extends CommandLineProgram
         final ExampleMultiFeatureWalker example = new ExampleMultiFeatureWalker();
         example.instanceMain(argsBuilder.getArgsArray());
 
-        Assert.assertEquals(example.features.size(), 9);
+        Assert.assertEquals(example.features.size(), 11);
         int lastStart = -1;
         for ( final Feature feature : example.features ) {
             Assert.assertTrue(feature.getStart() >= lastStart );
