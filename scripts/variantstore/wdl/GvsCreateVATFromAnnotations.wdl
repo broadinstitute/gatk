@@ -31,7 +31,7 @@ workflow GvsCreateVATFromAnnotations {
             output_file_suffix = basename(GetAnnotations.input_jsons[i], "_annotated.json.gz") + ".json.gz",
             output_path = output_path,
             service_account_json_path = service_account_json_path
-        }
+       }
     }
 
     call BigQueryLoadJson {
@@ -151,7 +151,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_04_25"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_02"
         memory: "8 GB"
         preemptible: 5
         cpu: "1"
@@ -246,6 +246,7 @@ task BigQueryLoadJson {
        fi
        echo "Creating the vat table ~{dataset_name}.~{vat_table}"
        bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+
        echo "And putting data into it"
 
        # Now we run a giant query in BQ to get this all in the right table and join the genes properly

@@ -13,6 +13,6 @@ COPY populate_alt_allele_table.py /app
 COPY alt_allele_positions.sql /app
 COPY alt_allele_temp_function.sql /app
 COPY utils.py /app
+COPY add_max_as_vqslod.py /app
 
 WORKDIR /app
-ENTRYPOINT ["/bin/bash"]

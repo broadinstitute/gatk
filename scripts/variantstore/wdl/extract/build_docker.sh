@@ -10,6 +10,19 @@ REPO_WITH_TAG="${BASE_REPO}:${INFO}"
 GCR_TAG="us.gcr.io/${REPO_WITH_TAG}"
 
 docker build . -t ${REPO_WITH_TAG}
+
+echo ${REPO_WITH_TAG}
+
+# Test that the VAT python code has not been broken
+docker run -v $PWD:/in  -t ${REPO_WITH_TAG} bash -c "cd /in; python3 -m unittest test_create_variant_annotation_table.py"
+
+VAT_TEST_RESULTS=$?
+if [ $VAT_TEST_RESULTS -ne 0 ]; then
+    echo "TestMakeAnnotatedJsonRow python test has failed"
+    exit 1
+fi
+
+
 docker tag ${REPO_WITH_TAG} ${GCR_TAG}
 docker push ${GCR_TAG}
 

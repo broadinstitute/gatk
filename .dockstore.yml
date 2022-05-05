@@ -143,6 +143,17 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsCreateVATAnnotations
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateVATAnnotations.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vat_speed
+         - vat_speed_kctest
    - name: GvsCreateVATFromAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATFromAnnotations.wdl
@@ -184,6 +195,22 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsCalculatePrecisionAndSensitivity
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - gg_AddPrecisionAndSensitivityWdl
+   - name: GvsQuickstartIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_357_quickstart_integration
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
