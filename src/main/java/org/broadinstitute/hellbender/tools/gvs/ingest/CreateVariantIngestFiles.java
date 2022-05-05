@@ -26,6 +26,7 @@ import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Ingest variant walker
@@ -290,8 +291,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        int mod = new Random().nextInt(10);
+
         if (outputType == CommonCode.OutputType.BQ && shouldWriteLoadStatusStarted) {
             loadStatus.writeLoadStatusStarted(Long.parseLong(sampleId));
+            if (mod == 0) {
+                throw new GATKException("VS-262 Robustitude exception for sample id " + sampleId + " after sample load status started");
+            }
         }
 
         if (enableReferenceRanges && refCreator != null) {
@@ -302,10 +308,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             // Wait until all data has been submitted and in pending state to commit
             refCreator.commitData();
+            if (mod == 1) {
+                throw new GATKException("VS-262 Robustitude exception for sample id " + sampleId + " after ref range write");
+            }
         }
 
         if (enableVet && vetCreator != null) {
             vetCreator.commitData();
+            if (mod == 2) {
+                throw new GATKException("VS-262 Robustitude exception for sample id " + sampleId + " after vet write");
+            }
         }
 
         // upload the load status table
