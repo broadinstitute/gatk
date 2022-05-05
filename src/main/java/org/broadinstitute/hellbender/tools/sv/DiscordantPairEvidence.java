@@ -57,13 +57,13 @@ public final class DiscordantPairEvidence implements SVFeature {
         return endContig;
     }
 
+    /**
+     * Used for sorting/checking evidence file order, where end coordinates should not be compared.
+     * @return start position
+     */
     @Override
     public int getEnd() {
-        if (startContig.equals(endContig)) {
-            return end;
-        } else {
-            return start;
-        }
+        return start;
     }
 
     public int getEndPosition() {
