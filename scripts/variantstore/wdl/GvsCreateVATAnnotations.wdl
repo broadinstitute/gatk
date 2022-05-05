@@ -124,13 +124,12 @@ task ExtractAnAcAfFromVCF {
         ## track the dropped variants with +50 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
         bcftools view --threads 4 -i 'N_ALT>50 || REF~"N"' -O u original.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
-        echo_date "VAT: filter out sites with too many alt alleles"
+        echo_date "VAT: filter out sites with too many alt alleles and trim extraneous INFO and FORMAT fields"
         bcftools view --threads 4 -e 'N_ALT>50 || REF~"N"' --no-update original.bcf -O u | \
         ## filter out the non-passing sites
         bcftools view --threads 4 -f 'PASS,.' --no-update -O u | \
         ## remove extraneous INFO and FORMAT fields
-
-        bcftools annotate -x ^FORMAT/FT,FORMAT/GT -O b -o filtered.bcf ##  ^INFO/AC,INFO/AF,INFO/AN,
+        bcftools annotate -x ^INFO/AC,INFO/AF,INFO/AN,^FORMAT/FT,FORMAT/GT -O b -o filtered.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
         bcftools norm --threads 4 -m- --check-ref w -f Homo_sapiens_assembly38.fasta filtered.bcf -O b -o normalized.bcf
@@ -177,7 +176,6 @@ task ExtractAnAcAfFromVCF {
 
         ## compress the vcf and index it, make it sites-only for the next step
         bcftools view --threads 4 --no-update --drop-genotypes deduplicated.bcf -O z -o ~{normalized_vcf_compressed}
-        ## if we can spare the IO and want to pass a smaller file we can also drop the info field w bcftools annotate -x INFO
         bcftools index --tbi ~{normalized_vcf_compressed}
 
         echo_date "VAT: finished"
