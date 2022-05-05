@@ -73,29 +73,14 @@ workflow GvsCreateVAT {
       load_jsons_done = BigQueryLoadJson.done
   }
 
-  scatter(i in range(length(contig_array)) ) {
-    call BigQueryExportVat {
-      input:
-        contig = contig_array[i],
-        project_id = project_id,
-        dataset_name = dataset_name,
-        output_path = output_path,
-        table_suffix = table_suffix,
-        service_account_json_path = service_account_json_path,
-        validate_jsons_done = BigQuerySmokeTest.done
-    }
-  }
-
-  call MergeTSVs {
+  call BigQueryExportVat {
     input:
-      contig_array = contig_array,
+      project_id = project_id,
+      dataset_name = dataset_name,
       output_path = output_path,
-      path_to_tsv_files = output_path + "export/",
+      table_suffix = table_suffix,
       service_account_json_path = service_account_json_path,
-  }
-
-  output {
-    File vat_export = MergeTSVs.vat_export
+      validate_jsons_done = BigQuerySmokeTest.done
   }
 }
 
@@ -456,7 +441,6 @@ task BigQuerySmokeTest {
 
 task BigQueryExportVat {
     input {
-        String contig
         String project_id
         String dataset_name
         String output_path
@@ -466,29 +450,28 @@ task BigQueryExportVat {
     }
 
     String vat_table = "vat_" + table_suffix
-    String export_path = output_path + "export/" + contig + "/*.tsv.gz"
+    String intermediate = output_path + "intermediate/*.tsv.gz"
 
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
+      echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+      if [ ~{has_service_account_file} = 'true' ]; then
+        gsutil cp ~{service_account_json_path} local.service_account.json
+        export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+        gcloud auth activate-service-account --key-file=local.service_account.json
+        gcloud config set project ~{project_id}
+      fi
 
-        if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json_path} local.service_account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-          gcloud auth activate-service-account --key-file=local.service_account.json
-          gcloud config set project ~{project_id}
-        fi
-
-        # note: tab delimiter and compression creates tsv.gz files
-        bq query --nouse_legacy_sql --project_id=~{project_id} \
+      # note: tab delimiter and compression creates tsv.gz files
+      bq query --nouse_legacy_sql --project_id=~{project_id} \
         'EXPORT DATA OPTIONS(
-        uri="~{export_path}",
+        uri="~{intermediate}",
         format="CSV",
         compression="GZIP",
         overwrite=true,
-        header=true,
+        header=false,
         field_delimiter=" ") AS
         SELECT
         vid,
@@ -594,61 +577,29 @@ task BigQueryExportVat {
         clinvar_last_updated,
         ARRAY_TO_STRING(clinvar_phenotype, ", ") as clinvar_phenotype,
         FROM `~{dataset_name}.~{vat_table}`
-        WHERE contig="~{contig}"
         ORDER BY position
         '
 
+      mkdir TSVs
+      gstuil -m cp ~{intermediate} TSVs/
+      cat TSVs/*.tsv.gz > vat_complete.tsv.gz
+      rm TSVs/*.tsv.gz
+      echo "vid transcript contig position ref_allele alt_allele gvs_all_ac gvs_all_an gvs_all_af gvs_all_sc gvs_max_af gvs_max_ac gvs_max_an gvs_max_sc gvs_max_subpop gvs_afr_ac gvs_afr_an gvs_afr_af gvs_afr_sc gvs_amr_ac gvs_amr_an gvs_amr_af gvs_amr_sc gvs_eas_ac gvs_eas_an gvs_eas_af gvs_eas_sc gvs_eur_ac gvs_eur_an gvs_eur_af gvs_eur_sc gvs_mid_ac gvs_mid_an gvs_mid_af gvs_mid_sc gvs_oth_ac gvs_oth_an gvs_oth_af gvs_oth_sc gvs_sas_ac gvs_sas_an gvs_sas_af gvs_sas_sc gene_symbol transcript_source aa_change consequence dna_change_in_transcript variant_type exon_number intron_number genomic_location dbsnp_rsid gene_id gene_omim_id is_canonical_transcript gnomad_all_af gnomad_all_ac gnomad_all_an gnomad_failed_filter gnomad_max_af gnomad_max_ac gnomad_max_an gnomad_max_subpop gnomad_afr_ac gnomad_afr_an gnomad_afr_af gnomad_amr_ac gnomad_amr_an gnomad_amr_af gnomad_asj_ac gnomad_asj_an gnomad_asj_af gnomad_eas_ac gnomad_eas_an gnomad_eas_af gnomad_fin_ac gnomad_fin_an gnomad_fin_af gnomad_nfr_ac gnomad_nfr_an gnomad_nfr_af gnomad_sas_ac gnomad_sas_an gnomad_sas_af gnomad_oth_ac gnomad_oth_an gnomad_oth_af revel splice_ai_acceptor_gain_score splice_ai_acceptor_gain_distance splice_ai_acceptor_loss_score splice_ai_acceptor_loss_distance splice_ai_donor_gain_score splice_ai_donor_gain_distance splice_ai_donor_loss_score splice_ai_donor_loss_distance omim_phenotypes_id omim_phenotypes_name clinvar_classification clinvar_last_updated clinvar_phenotype" | gzip > header.gz
+      cat header.gz vat_complete.tsv.gz | gunzip | bgzip > vat_complete.tsv.bgz
+      gsutil -m cp vat_complete.tsv.bgz ~{output_path}
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "openbridge/ob_google-bigquery:latest"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211101"
         memory: "2 GB"
         preemptible: 3
         cpu: "1"
-        disks: "local-disk 100 HDD"
+        disks: "local-disk 250 HDD"
     }
     # ------------------------------------------------
     # Outputs:
     output {
-        Boolean tsv_file = export_path
+        File tsv_file = output_path + "vat_complete.tsv.bgz"
     }
 }
-
-task MergeTSVs {
-  input {
-    Array[String] contig_array
-    String output_path
-    String path_to_tsv_files
-    String? service_account_json_path
-  }
-
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-  # gs://aou-genomics-curation-prod-processing/vat/beta_99k_VAT_v3/export/chr1/*.tsv.gz
-  command <<<
-    set -e
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
-    CONTIGS_ARRAY=(~{sep=" " contig_array})
-
-    for i in "${!CONTIGS_ARRAY[@]}"; do
-
-
-    gsutil -m cp ~{path_to_tsv_files}/*/*.tsv.gz .
-  >>>
-  runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_04_25"
-    memory: "1 GB"
-    preemptible: 3
-    cpu: "1"
-    disks: "local-disk 250 HDD"
-  }
-
-  output {
-    File vat_export = "vat.bgz"
-  }
-}
-
