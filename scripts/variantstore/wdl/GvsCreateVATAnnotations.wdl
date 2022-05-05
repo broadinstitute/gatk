@@ -126,12 +126,12 @@ task ExtractAnAcAfFromVCF {
         ## track the dropped variants with +50 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
         bcftools view --threads 4 -i 'N_ALT>50 || REF~"N"' -O u original.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
-        wc -l track_dropped.tsv
-
-        echo_date "VAT: filter out sites with too many alt alleles"
+        echo_date "VAT: filter out sites with too many alt alleles and trim extraneous INFO and FORMAT fields"
         bcftools view --threads 4 -e 'N_ALT>50 || REF~"N"' --no-update original.bcf -O u | \
         ## filter out the non-passing sites
-        bcftools view --threads 4 -f 'PASS,.' --no-update -O b -o filtered.bcf
+        bcftools view --threads 4 -f 'PASS,.' --no-update -O u | \
+        ## remove extraneous INFO and FORMAT fields
+        bcftools annotate -x ^INFO/AC,INFO/AF,INFO/AN,^FORMAT/FT,FORMAT/GT -O b -o filtered.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
         bcftools norm --threads 4 -m- --check-ref w -f Homo_sapiens_assembly38.fasta filtered.bcf -O b -o normalized.bcf
@@ -149,9 +149,9 @@ task ExtractAnAcAfFromVCF {
 
         ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
         ## to locate the duplicates, we first make a file of just the first 5 columns
-        bcftools query normalized.filtered.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5 > duplicates.tsv
+        grep -v '^#' normalized.filtered.bcf | cut -f1,2,4,5 | sort | uniq -d > duplicates.tsv
 
-        # If there ARE dups to remove
+        # If there ARE dupes to remove
         if [ -s duplicates.tsv ]; then
             ## remove those rows (that match up to the first 5 cols)
             bcftools view --threads 4 normalized.filtered.bcf | grep -v -wFf duplicates.tsv | bcftools view --threads 4 -O b -o deduplicated.bcf
@@ -178,7 +178,6 @@ task ExtractAnAcAfFromVCF {
 
         ## compress the vcf and index it, make it sites-only for the next step
         bcftools view --threads 4 --no-update --drop-genotypes deduplicated.bcf -O z -o ~{normalized_vcf_compressed}
-        ## if we can spare the IO and want to pass a smaller file we can also drop the info field w bcftools annotate -x INFO
         bcftools index --tbi ~{normalized_vcf_compressed}
 
         echo_date "VAT: finished"
