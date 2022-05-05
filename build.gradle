@@ -57,6 +57,7 @@ repositories {
     }
 
     mavenLocal()
+    jcenter()
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.24.1-1-gf0c975a-SNAPSHOT')
@@ -816,7 +817,22 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
     options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath())
 }
 
-task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
+def execWDLValidation = { validateWDL ->
+    println "Executing: $validateWDL"
+    try {
+        def proc = validateWDL.execute()
+        def retCode = proc.waitFor()
+        if (retCode.intValue() != 0) {
+            println "[ERROR] ${proc.getErrorStream()}"
+            throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
+        }
+        return retCode
+    } catch (IOException e) {
+        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+    }
+}
+
+task gatkValidateScriptsWdl() {
     doFirst {
         // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
         // WOMTOOL_JAR set to the jar locations
@@ -825,21 +841,31 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
         }
     }
 
-    def execWDLValidation = { validateWDL ->
-        println "Executing: $validateWDL"
-        try {
-            def retCode = validateWDL.execute().waitFor()
-            if (retCode.intValue() != 0) {
-                throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
-            }
-            return retCode
-        } catch (IOException e) {
-            throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+    doLast {
+        // Run the womtool validator on all WDL files in the 'scripts' directory
+        final File wdlFolder = new File("scripts")
+        def wdlFiles = fileTree(dir: wdlFolder).filter {
+            f -> f.getAbsolutePath().endsWith(".wdl")
+        }
+        final womtoolLocation = System.getenv('WOMTOOL_JAR')
+        wdlFiles.any() { wdlFile ->
+            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
+            execWDLValidation(validateWDLCommand)
+        }
+    }
+}
+
+task gatkValidateGeneratedWdl(dependsOn: [gatkWDLGen, shadowJar]) {
+    doFirst {
+        // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
+        // WOMTOOL_JAR set to the jar locations
+        if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
+            throw new GradleException("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
         }
     }
 
     doLast {
-        // first, run the womtool validator
+        // first, run the womtool validator on WDL files in the 'docs/wdlGen' directory
         final File wdlGenFolder = new File("$docBuildDir/wdlGen")
         def wdlFiles = fileTree(dir: wdlGenFolder).filter {
             f -> !f.getAbsolutePath().endsWith(".html") && !f.getAbsolutePath().endsWith(".json")
@@ -875,7 +901,6 @@ task gatkWDLGenValidation(dependsOn: [gatkWDLGen, shadowJar]) {
             file("$buildDir/cromwell-workflow-logs").deleteDir()
         }
     }
-
 }
 
 
