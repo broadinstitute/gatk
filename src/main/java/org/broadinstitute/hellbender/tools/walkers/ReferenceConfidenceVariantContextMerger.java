@@ -538,21 +538,26 @@ public final class ReferenceConfidenceVariantContextMerger {
             final int ploidy = g.getPloidy();
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(g);
             if (!doSomaticMerge) {
-                if (g.hasPL()) {
-                    // lazy initialization of the genotype index map by ploidy.
+                if (g.hasPL() | g.hasAD()) {
                     int[]  perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(remappedAlleles, targetAlleles, vc.getStart(), g, false);
-                    final int[] genotypeIndexMapByPloidy = genotypeIndexMapsByPloidy[ploidy] == null
-                            ? calculators.getInstance(ploidy, maximumAlleleCount).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, calculators) //probably horribly slow
-                            : genotypeIndexMapsByPloidy[ploidy];
-                    final int[] PLs = generatePL(g, genotypeIndexMapByPloidy);
-                    final int[] AD = g.hasAD() ? AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles) : null;
-                    genotypeBuilder.PL(PLs).AD(AD);
-                //clean up low confidence hom refs for better annotations later
+                    if (g.hasPL()) {
+                        // lazy initialization of the genotype index map by ploidy.
+                        final int[] genotypeIndexMapByPloidy = genotypeIndexMapsByPloidy[ploidy] == null
+                                ? calculators.getInstance(ploidy, maximumAlleleCount).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, calculators) //probably horribly slow
+                                : genotypeIndexMapsByPloidy[ploidy];
+                        final int[] PLs = generatePL(g, genotypeIndexMapByPloidy);
+                        genotypeBuilder.PL(PLs);
+                    }
+                    if (g.hasAD()) {
+                        final int[] AD = g.hasAD() ? AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles) : null;
+                        genotypeBuilder.AD(AD);
+                    }
+                // clean up low confidence hom refs for better annotations later
                 } else if (GenotypeGVCFsEngine.excludeFromAnnotations(g)) {
                     genotypeBuilder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
                 }
             }
-            else {  //doSomaticMerge
+            else {  // doSomaticMerge
                 genotypeBuilder.noAttributes();
                 if (g.hasDP()) {
                     genotypeBuilder.DP(g.getDP());
