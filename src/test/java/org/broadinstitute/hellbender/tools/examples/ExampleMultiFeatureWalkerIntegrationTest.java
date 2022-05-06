@@ -120,6 +120,24 @@ public class ExampleMultiFeatureWalkerIntegrationTest extends CommandLineProgram
     }
 
     @Test
+    public void testRepeatedCoordinates() {
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, Log.LogLevel.ERROR.name());
+        // full HG38 dictionary with 3366 entries
+        argsBuilder.add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, FULL_HG38_DICT);
+        argsBuilder.add(StandardArgumentDefinitions.FEATURE_LONG_NAME, packageRootTestDir + "engine/tiny_chr10_3.pe.txt");
+        final ExampleMultiFeatureWalker example = new ExampleMultiFeatureWalker();
+        example.instanceMain(argsBuilder.getArgsArray());
+
+        Assert.assertEquals(example.features.size(), 11);
+        int lastStart = -1;
+        for ( final Feature feature : example.features ) {
+            Assert.assertTrue(feature.getStart() >= lastStart );
+            lastStart = feature.getStart();
+        }
+    }
+
+    @Test
     public void testIntervalSubset() {
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, Log.LogLevel.ERROR.name());
