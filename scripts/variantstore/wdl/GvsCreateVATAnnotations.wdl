@@ -149,7 +149,7 @@ task ExtractAnAcAfFromVCF {
 
         ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
         ## to locate the duplicates, we first make a file of just the first 5 columns
-        grep -v '^#' normalized.filtered.bcf | cut -f1,2,4,5 | sort | uniq -d > duplicates.tsv
+        bcftools query normalized.filtered.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
 
         # If there ARE dupes to remove
         if [ -s duplicates.tsv ]; then
