@@ -26,24 +26,30 @@ import java.util.*;
  * The setting of the arguments is done such that argument already specified on the command line are not
  * overwritten. This allows for mode refinement - i.e. the setting of the mode while turing some of its arguments
  * to specific values.
+ *
+ * NOTE: This utility relies on the argument engine having already been executed. Consequently, the best place in the
+ *       standard GATKTool would be in the #customCommandLineArgumentValidation() or at a similar stage since that gets
+ *       executed after Barclay parsing is complete but before the tool has done anything with the filled arguments.
  */
 
-public class ModeArgumentUtils {
+public final class ModeArgumentUtils {
 
     protected static final Logger logger = LogManager.getLogger(ModeArgumentUtils.class);
 
     /**
-     * set a group of  arguments (and associated fields) to the specified values - thereby implementing a mode
+     * Set a group of  arguments (and associated fields) to the specified values - thereby implementing a mode
      *
      * The method does not overwrite arguments already set on the command line (as indicated by the parser)
      * Additionally, the method emits a warning message indicating which argument were set by the mode and
      * to which values.
      *
+     * NOTE: This does not validate that the specified mode was actually set, that responsibility is left to tool authors.
+     *
      * @param parser - commandline parser associated with the tool. This should be an instance of CommandLineArgumentParser
      * @param argValues - an array of arguments and values to potentially set. The order of elements in the array
      *                  is arg0,value0,arg1,value1 ...
      * @param modeName - the name of the mode being set. This is used in textual message, such as the warning
-     *                 issued to notify the user of the changed argument
+     *                 issued to notify the user of the changed argument and not for validation that the argument was set.
      */
     public static void setArgValues(final CommandLineParser parser, final String[] argValues, final String modeName) {
         final Map<String, String>  modifiedArgs = new LinkedHashMap<>();
@@ -58,7 +64,7 @@ public class ModeArgumentUtils {
                     modifiedArgs.put(argValues[i], argValues[i + 1] + " (" + parserMessage + ")");
                 }
             } else {
-                logger.info("parameter not set by this mode, as it was already set on the command line: " + argValues[i]);
+                logger.info("parameter not set by the '" + modeName + "' argument mode, as it was already set on the command line: " + argValues[i]);
             }
         }
 
