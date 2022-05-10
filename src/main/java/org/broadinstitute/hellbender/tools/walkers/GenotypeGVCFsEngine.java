@@ -484,12 +484,18 @@ public class GenotypeGVCFsEngine
         return recoveredGs;
     }
 
+    /**
+     *  Does this genotype look like it has no reads and should be excluded from annotations?
+     */
     static boolean excludeFromAnnotations(Genotype oldGT) {
         return oldGT.isHomRef() && !oldGT.hasPL()
                 && ((oldGT.hasDP() && oldGT.getDP() == 0) || !oldGT.hasDP())
                 && oldGT.hasGQ() && oldGT.getGQ() == 0;
     }
 
+    /**
+     *  for GQ0 hom-refs that have no data, turn them back into no-calls so they don't affect the INFO annotations
+     */
     private List<Genotype> assignNoCallsAnnotationExcludedGenotypes(final GenotypesContext genotypes) {
         final List<Genotype> returnList = new ArrayList<>();
         for (final Genotype oldGT : genotypes) {
