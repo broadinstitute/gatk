@@ -122,6 +122,8 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         while ( locusIterator.hasNext() && nextRegion == null ) {
             final AlignmentContext pileup = locusIterator.next();
 
+            logger.debug(()->"AssemblyRegionIterator pileup: " + pileup);
+
             // Pop any new pending regions off of the activity profile. These pending regions will not become ready
             // until we've traversed all the reads that belong in them.
             //
@@ -140,6 +142,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             }
 
             final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, pileupFeatureContext);
+            logger.debug(() -> profile.toString());
             activityProfile.add(profile);
 
             // A pending region only becomes ready once our locus iterator has advanced beyond the end of its extended span
