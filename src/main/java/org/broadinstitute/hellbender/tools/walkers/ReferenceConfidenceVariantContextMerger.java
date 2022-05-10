@@ -549,7 +549,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                         genotypeBuilder.PL(PLs);
                     }
                     if (g.hasAD()) {
-                        final int[] AD = g.hasAD() ? AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles) : null;
+                        final int[] AD = AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles);
                         genotypeBuilder.AD(AD);
                     }
                 // clean up low confidence hom refs for better annotations later
