@@ -203,15 +203,6 @@ task CollectCounts {
       Int? preemptible_attempts
     }
 
-    parameter_meta {
-      bam: {
-        localization_optional: true
-      }
-      bam_idx: {
-        localization_optional: true
-      }
-    }
-
     Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
     Int command_mem_mb = machine_mem_mb - 1000
 
