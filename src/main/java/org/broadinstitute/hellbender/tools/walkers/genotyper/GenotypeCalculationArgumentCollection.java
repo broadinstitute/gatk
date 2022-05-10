@@ -21,12 +21,14 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final String MAX_GENOTYPE_COUNT_LONG_NAME = "max-genotype-count";
     public static final String SAMPLE_PLOIDY_SHORT_NAME = "ploidy";
     public static final String SAMPLE_PLOIDY_LONG_NAME = "sample-ploidy";
+    public static final String GENOTYPE_ASSIGNMENT_METHOD_LONG_NAME = "genotype-assignment-method";
+    public static final String USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME = "use-posteriors-to-calculate-qual";
 
     public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
     public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
     public static final int DEFAULT_MAX_GENOTYPE_COUNT = 1024;
 
-    @Argument(fullName="use-posteriors-to-calculate-qual", shortName="gp-qual", optional = true, doc = "if available, use the genotype posterior probabilities to calculate the site QUAL")
+    @Argument(fullName= USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME, shortName="gp-qual", optional = true, doc = "if available, use the genotype posterior probabilities to calculate the site QUAL")
     public boolean usePosteriorProbabilitiesToCalculateQual = false;
 
     /**
@@ -188,6 +190,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     @Argument(fullName= NUM_REF_SAMPLES_LONG_NAME,doc="Number of hom-ref genotypes to infer at sites not present in a panel",optional=true)
     public int numRefIfMissing = 0;
 
-    @Argument(fullName= "genotype-assignment-method", shortName = "gam", doc = "How we assign genotypes", optional = true)
+    @Argument(fullName= GENOTYPE_ASSIGNMENT_METHOD_LONG_NAME, shortName = "gam", doc = "How we assign genotypes", optional = true)
     public GenotypeAssignmentMethod genotypeAssignmentMethod = GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN;
 }
