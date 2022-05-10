@@ -763,10 +763,10 @@ public interface GATKRead extends Locatable {
     Integer getAttributeAsInteger( final String attributeName );
 
     /**
-     * Retrieve the value of a particular attribute typed as an floatingpoint value.
+     * Retrieve the value of a particular attribute typed as a floating point value.
      *
      * @param attributeName name of the attribute to retrieve
-     * @return integer value of the requested attribute, or {@code null} if the attribute is not present
+     * @return float value of the requested attribute, or {@code null} if the attribute is not present
      * @throws GATKException.ReadAttributeTypeMismatch if the attribute
      *         value cannot be typed as a float
      */
