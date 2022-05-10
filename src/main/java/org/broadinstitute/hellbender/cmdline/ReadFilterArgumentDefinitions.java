@@ -56,5 +56,11 @@ public final class ReadFilterArgumentDefinitions {
 
     public static final String INVERT_SOFT_CLIP_RATIO_FILTER = "invert-soft-clip-ratio-filter";
 
+    public static final String READ_FILTER_TAG = "read-filter-tag";
+    public static final String READ_FILTER_TAG_COMP = "read-filter-tag-comp";
+    public static final String READ_FILTER_TAG_OP = "read-filter-tag-op";
+    public static final String READ_FILTER_EXPRESSION_LONG_NAME = "read-filter-expression";
+
+
     public static final String MATE_TOO_DISTANT_LENGTH = "mate-too-distant-length";
 }
