@@ -16,6 +16,7 @@ workflows:
      filters:
          branches:
              - master
+             - mg_cnv_wdl_requesterpays
    - name: cnv_somatic_pair_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl
