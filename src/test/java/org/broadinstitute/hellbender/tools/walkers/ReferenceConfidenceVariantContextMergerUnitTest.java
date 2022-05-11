@@ -140,6 +140,12 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
         final VariantContext vcAA_A_ALT = new VariantContextBuilder(VCprevBase).alleles(AA_A_ALT).genotypes(gAA_A_ALT).make();
         final List<Allele> A_C_del = Arrays.asList(Aref, C, del);
 
+        final Genotype gA_C_G_ALT_noPLs = new GenotypeBuilder("A_C_G").AD(new int[]{60,9}).alleles(noCalls).make();
+        final VariantContext vcA_C_G_noPLs = new VariantContextBuilder(VCbase2).alleles(A_C_G_ALT).genotypes(gA_C_G_ALT_noPLs).make();
+        final VariantContext vcA_C_G_ALT_noPLs = new VariantContextBuilder(VCbase).alleles(A_C_G_ALT).genotypes(gA_C_G_ALT_noPLs).make();
+
+
+
         // first test the case of a single record
         tests.add(new Object[]{"test00",Arrays.asList(vcA_C_ALT),
                 loc, false, false,
@@ -204,6 +210,13 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
                 new VariantContextBuilder(VCbase).alleles(A_C_G).genotypes(
                         new GenotypeBuilder("A_C_G.test2").PL(new int[]{40, 20, 30, 20, 10, 30}).alleles(noCalls).make(),
                         new GenotypeBuilder("A_C_G.test").PL(new int[]{40, 20, 30, 20, 10, 30}).alleles(noCalls).make()).make()});
+
+        // test creation of AD with proper allele indexing without PLs
+        // this needs to be multi-allelic
+        tests.add(new Object[]{"test12",Arrays.asList(vcA_C_G_noPLs, vcA_C_G_ALT_noPLs), loc, false, true,
+                new VariantContextBuilder(VCbase).alleles(A_C_G).genotypes(
+                        new GenotypeBuilder("A_C_G.test2").AD(new int[]{60,9,0}).alleles(noCalls).make(),
+                        new GenotypeBuilder("A_C_G.test").AD(new int[]{60,9,0}).alleles(noCalls).make()).make()});
 
         return tests.toArray(new Object[][]{});
     }
