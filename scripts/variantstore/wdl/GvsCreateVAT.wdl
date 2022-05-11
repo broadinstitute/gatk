@@ -455,6 +455,8 @@ task BigQueryExportVat {
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
+      apt-get update
+      apt-get install tabix
       echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
       if [ ~{has_service_account_file} = 'true' ]; then

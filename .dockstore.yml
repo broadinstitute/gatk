@@ -143,6 +143,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_merge_vat_tsvs
    - name: GvsCreateVATAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl
