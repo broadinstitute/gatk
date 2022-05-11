@@ -153,8 +153,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vat_speed
-         - vat_speed_kctest
+         - rc-remove-AD-from-VAT
    - name: GvsCreateVATFromAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATFromAnnotations.wdl
@@ -164,7 +163,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vat-clinvar-updates
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
@@ -174,7 +172,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vat-clinvar-updates
    - name: GvsExtractCohortFromSampleNames
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl

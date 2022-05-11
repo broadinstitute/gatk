@@ -1,6 +1,7 @@
 version 1.0
+
 workflow GvsCreateVATAnnotations {
-   input {
+    input {
         File input_vcf
         File input_vcf_index
         String input_vcf_name
@@ -13,10 +14,10 @@ workflow GvsCreateVATAnnotations {
         File ref
     }
 
-      ## Create a sites-only VCF from the original GVS jointVCF
-      ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
-        call ExtractAnAcAfFromVCF {
-          input:
+    ## Create a sites-only VCF from the original GVS jointVCF
+    ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
+    call ExtractAnAcAfFromVCF {
+        input:
             input_vcf = input_vcf,
             input_vcf_index = input_vcf_index,
             service_account_json_path = service_account_json_path,
@@ -24,34 +25,34 @@ workflow GvsCreateVATAnnotations {
             custom_annotations_template = custom_annotations_template,
             ref = ref,
             output_path = output_path
-        }
+    }
 
 
-      ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
-        call AnnotateVCF {
-          input:
+    ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
+    call AnnotateVCF {
+        input:
             input_vcf = ExtractAnAcAfFromVCF.output_vcf,
             input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = ExtractAnAcAfFromVCF.annotations_file,
-        }
+    }
 
-        call PrepAnnotationJson {
-          input:
+    call PrepAnnotationJson {
+        input:
             annotation_json = AnnotateVCF.annotation_json,
             output_file_suffix = "${input_vcf_name}.json.gz",
             output_path = output_path,
             service_account_json_path = service_account_json_path
-        }
+    }
 
-        # ------------------------------------------------
-        # Outputs:
-        output {
-            Int count_variants = ExtractAnAcAfFromVCF.count_variants
-            File track_dropped = ExtractAnAcAfFromVCF.track_dropped
-            Boolean done = true
-        }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        Int count_variants = ExtractAnAcAfFromVCF.count_variants
+        File track_dropped = ExtractAnAcAfFromVCF.track_dropped
+        Boolean done = true
+    }
 }
 
 ################################################################################
@@ -67,11 +68,13 @@ task ExtractAnAcAfFromVCF {
         String output_path
     }
     parameter_meta {
-        input_vcf: {
-          localization_optional: true
+        input_vcf:
+        {
+            localization_optional: true
         }
-        input_vcf_index: {
-          localization_optional: true
+        input_vcf_index:
+        {
+            localization_optional: true
         }
     }
 
@@ -91,10 +94,9 @@ task ExtractAnAcAfFromVCF {
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
 
         if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json_path} local.service_account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-          gcloud auth activate-service-account --key-file=local.service_account.json
-
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
         fi
 
         echo_date "VAT: Custom localization of inputs"
@@ -124,12 +126,12 @@ task ExtractAnAcAfFromVCF {
         ## track the dropped variants with +50 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
         bcftools view --threads 4 -i 'N_ALT>50 || REF~"N"' -O u original.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
-        wc -l track_dropped.tsv
-
-        echo_date "VAT: filter out sites with too many alt alleles"
+        echo_date "VAT: filter out sites with too many alt alleles and trim extraneous INFO and FORMAT fields"
         bcftools view --threads 4 -e 'N_ALT>50 || REF~"N"' --no-update original.bcf -O u | \
         ## filter out the non-passing sites
-        bcftools view --threads 4 -f 'PASS,.' --no-update -O b -o filtered.bcf
+        bcftools view --threads 4 -f 'PASS,.' --no-update -O u | \
+        ## remove extraneous INFO and FORMAT fields
+        bcftools annotate -x ^INFO/AC,INFO/AF,INFO/AN,^FORMAT/FT,FORMAT/GT -O b -o filtered.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
         bcftools norm --threads 4 -m- --check-ref w -f Homo_sapiens_assembly38.fasta filtered.bcf -O b -o normalized.bcf
@@ -147,9 +149,9 @@ task ExtractAnAcAfFromVCF {
 
         ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
         ## to locate the duplicates, we first make a file of just the first 5 columns
-        bcftools query normalized.filtered.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort check_duplicates.tsv | uniq -d | cut -f1,2,3,4,5 > duplicates.tsv
+        bcftools query normalized.filtered.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
 
-        # If there ARE dups to remove
+        # If there ARE dupes to remove
         if [ -s duplicates.tsv ]; then
             ## remove those rows (that match up to the first 5 cols)
             bcftools view --threads 4 normalized.filtered.bcf | grep -v -wFf duplicates.tsv | bcftools view --threads 4 -O b -o deduplicated.bcf
@@ -176,7 +178,6 @@ task ExtractAnAcAfFromVCF {
 
         ## compress the vcf and index it, make it sites-only for the next step
         bcftools view --threads 4 --no-update --drop-genotypes deduplicated.bcf -O z -o ~{normalized_vcf_compressed}
-        ## if we can spare the IO and want to pass a smaller file we can also drop the info field w bcftools annotate -x INFO
         bcftools index --tbi ~{normalized_vcf_compressed}
 
         echo_date "VAT: finished"
@@ -238,21 +239,21 @@ task AnnotateVCF {
         # Add AC/AN/AF as custom annotations
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
         dotnet ~{custom_creation_location} customvar \
-             -r $DATA_SOURCES_FOLDER~{path_reference} \
-             -i ~{custom_annotations_file} \
-             -o $CUSTOM_ANNOTATIONS_FOLDER
+            -r $DATA_SOURCES_FOLDER~{path_reference} \
+            -i ~{custom_annotations_file} \
+            -o $CUSTOM_ANNOTATIONS_FOLDER
 
         # =======================================
         # Create Nirvana annotations:
 
 
         dotnet ~{nirvana_location} \
-             -c $DATA_SOURCES_FOLDER~{path} \
-             --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
-             --sd $CUSTOM_ANNOTATIONS_FOLDER \
-             -r $DATA_SOURCES_FOLDER~{path_reference} \
-             -i ~{input_vcf} \
-             -o ~{output_annotated_file_name}
+            -c $DATA_SOURCES_FOLDER~{path} \
+            --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
+            --sd $CUSTOM_ANNOTATIONS_FOLDER \
+            -r $DATA_SOURCES_FOLDER~{path_reference} \
+            -i ~{input_vcf} \
+            -o ~{output_annotated_file_name}
 
     >>>
     # ------------------------------------------------
@@ -304,14 +305,14 @@ task PrepAnnotationJson {
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_variant_annotation_table.py \
-          --annotated_json ~{annotation_json} \
-          --output_vt_json ~{output_vt_json} \
-          --output_genes_json ~{output_genes_json}
+            --annotated_json ~{annotation_json} \
+            --output_vt_json ~{output_vt_json} \
+            --output_genes_json ~{output_genes_json}
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
-     >>>
+    >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
