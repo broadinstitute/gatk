@@ -920,4 +920,32 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final List<String> sors = vc.getAttributeAsStringList(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY,"");
         Assert.assertEquals(sors.size(), 1);
     }
+
+    @Test
+    public void testRawGtCountAnnotation() {
+        final File reblockedGVCF = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/twoReblocked.g.vcf");
+        final File output = createTempFile("reblockedAndGenotyped", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(b37_reference_20_21)
+                .addVCF(reblockedGVCF)
+                .addOutput(output)
+                .add("keep-combined-raw-annotations", true)
+                .add("A", "RawGtCount");
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        for(VariantContext vc : outputData.getRight()) {
+            if (vc.getStart() == 10087820) {
+                List<Object> rawGtCount = vc.getAttributeAsList(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY);
+                Assert.assertEquals(rawGtCount.size(), 3);
+                Assert.assertEquals(rawGtCount.get(0), ".");
+                Assert.assertEquals(rawGtCount.get(1), "2");
+                Assert.assertEquals(rawGtCount.get(2), "0");
+            }
+
+        }
+    }
+
+
 }

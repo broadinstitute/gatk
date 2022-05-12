@@ -110,6 +110,16 @@ public final class AssemblyRegionTrimmer {
         }
 
         /**
+         * Returns the trimmed variant containing a specific region.
+         *
+         * @return never {@code null}.
+         */
+        public AssemblyRegion getVariantRegion(SimpleInterval variantSpan, SimpleInterval paddedSpan) {
+
+            return originalRegion.trim(variantSpan, paddedSpan);
+        }
+
+        /**
          *  Returns the trimmed out left non-variant region.
          *  <p/>
          *  Notice that in case of no variation, the whole original region is considered the left flanking region.

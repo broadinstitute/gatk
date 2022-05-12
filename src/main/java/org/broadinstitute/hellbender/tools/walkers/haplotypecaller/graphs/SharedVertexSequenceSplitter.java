@@ -231,14 +231,14 @@ public final class SharedVertexSequenceSplitter {
     private void addSuffixNodeAndEdges(final SeqVertex bot) {
         outer.addVertex(getSuffixV());
         if ( bot != null ) {
-            outer.addEdge(getSuffixV(), bot, BaseEdge.makeOREdge(splitGraph.incomingEdgesOf(getSuffixV()), 1));
+            outer.addEdge(getSuffixV(), bot, BaseEdge.makeOREdge(splitGraph.incomingEdgesOf(getSuffixV()),1));
         }
     }
 
     private void addPrefixNodeAndEdges(final SeqVertex top) {
         outer.addVertex(getPrefixV());
         if ( top != null ) {
-            outer.addEdge(top, getPrefixV(), BaseEdge.makeOREdge(splitGraph.outgoingEdgesOf(getPrefixV()), 1));
+            outer.addEdge(top, getPrefixV(), BaseEdge.makeOREdge(splitGraph.outgoingEdgesOf(getPrefixV()),1));
         }
     }
 

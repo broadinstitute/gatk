@@ -15,6 +15,8 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.FlowBasedAlignmentArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -37,6 +39,8 @@ import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
+import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 
 import java.io.File;
 import java.util.*;
@@ -49,12 +53,13 @@ import java.util.stream.Collectors;
  */
 public final class AssemblyBasedCallerUtils {
 
-    static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
+    public static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
     public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 5;
     public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
-    public static final String READ_ORIGINAL_ALIGNMENT_KEY = "originalAlignment";
+    public static final String EXT_COLLAPSED_TAG = "XC";
+    public static final String EXT_SPECIAL_TAG = "XS"; // added to haplotype to assist in reading them back in with all fields restored.
     public static final Function<Haplotype, Double> HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY = h -> {
         final Cigar cigar = h.getCigar();
         final int referenceTerm = (h.isReference() ? 1 : 0);
@@ -119,6 +124,8 @@ public final class AssemblyBasedCallerUtils {
                                       final SampleList samplesList,
                                       final boolean correctOverlappingBaseQualities,
                                       final boolean softClipLowQualityEnds,
+                                      final boolean overrideSoftclipFragmentCheck,
+                                      final FlowBasedArgumentCollection fbargs,
                                       final boolean trackHardclippedReads) {
         if ( region.isFinalized() ) {
             return;
@@ -132,17 +139,24 @@ public final class AssemblyBasedCallerUtils {
         for (final GATKRead originalRead : region.getReads()) {
             // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
             // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-            final GATKRead readTemp = (dontUseSoftClippedBases || !ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
-                    ReadClipper.hardClipSoftClippedBases(originalRead) : ReadClipper.revertSoftClippedBases(originalRead));
+            for (GATKRead originalRead : region.getReads()) {
+                // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
+                // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
+                GATKRead readTemp = FlowBasedReadUtils.isFlow(originalRead) ? FlowBasedRead.hardClipUncertainBases(originalRead, readsHeader, fbargs):originalRead;
+                readTemp =  dontUseSoftClippedBases || ! ( overrideSoftclipFragmentCheck || ReadUtils.hasWellDefinedFragmentSize(readTemp)) ?
+                        ReadClipper.hardClipSoftClippedBases(readTemp) : revertSoftClippedBases(readTemp);
 
-            final GATKRead read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(readTemp, minTailQualityToUse) :
-                    ReadClipper.hardClipLowQualEnds(readTemp, minTailQualityToUse));
-            HardClipAndPossiblyAddToCollection(region, readsToUse, originalRead, read);
 
-            if (trackHardclippedReads) {
-                final GATKRead hardClippedRead = ReadClipper.hardClipLowQualEnds(ReadClipper.hardClipSoftClippedBases(originalRead), minTailQualityToUse);
+                final GATKRead read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(readTemp, minTailQualityToUse) :
+                        ReadClipper.hardClipLowQualEnds(readTemp, minTailQualityToUse));
 
-                HardClipAndPossiblyAddToCollection(region, hardClippedReadsToUse, originalRead, hardClippedRead);
+                HardClipAndPossiblyAddToCollection(region, readsToUse, originalRead, read);
+
+                if (trackHardclippedReads) {
+                    final GATKRead hardClippedRead = ReadClipper.hardClipLowQualEnds(ReadClipper.hardClipSoftClippedBases(originalRead), minTailQualityToUse);
+
+                    HardClipAndPossiblyAddToCollection(region, hardClippedReadsToUse, originalRead, hardClippedRead);
+                }
             }
         }
 
@@ -243,15 +257,35 @@ public final class AssemblyBasedCallerUtils {
      *
      * @return never {@code null}.
      */
-    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs, final boolean handleSoftclips) {
+
+    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs, final boolean handleSoftClips) {
+        return createLikelihoodCalculationEngine(likelihoodArgs, new FlowBasedAlignmentArgumentCollection(), handleSoftClips, likelihoodArgs.likelihoodEngineImplementation);
+    }
+
+    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs,
+                                                                                    final FlowBasedAlignmentArgumentCollection fbargs,
+                                                                                    final boolean handleSoftclips,
+                                                                                    final ReadLikelihoodCalculationEngine.Implementation implementation) {
         //AlleleLikelihoods::normalizeLikelihoods uses Double.NEGATIVE_INFINITY as a flag to disable capping
         final double log10GlobalReadMismappingRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
                 : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
 
-        return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
+        switch ( implementation) {
+            // TODO these constructors should eventually be matched so they both incorporate all the same ancilliary arguments
+            case PairHMM:
+                return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
                 likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, likelihoodArgs.pairHmmResultsFile, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel,
                 likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD, likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
                 likelihoodArgs.expectedErrorRatePerBase, !likelihoodArgs.disableSymmetricallyNormalizeAllelesToReference, likelihoodArgs.disableCapReadQualitiesToMapQ, handleSoftclips);
+            case FlowBased:
+                return new FlowBasedAlignmentLikelihoodEngine(fbargs, log10GlobalReadMismappingRate, likelihoodArgs.expectedErrorRatePerBase, likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant);
+            case FlowBasedHMM:
+                return new FlowBasedHMMEngine(fbargs, (byte) likelihoodArgs.gcpHMM, log10GlobalReadMismappingRate, likelihoodArgs.expectedErrorRatePerBase, likelihoodArgs.pcrErrorModel,
+                        likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams), likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
+                        likelihoodArgs.minUsableIndelScoreToUse, (byte) likelihoodArgs.flatDeletionPenalty, (byte) likelihoodArgs.flatInsertionPenatly);
+            default:
+                throw new UserException("Unsupported likelihood calculation engine.");
+        }
     }
 
     public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
@@ -262,6 +296,14 @@ public final class AssemblyBasedCallerUtils {
                 Optional.of(new HaplotypeBAMWriter(args.bamWriterType, IOUtils.getPath(args.bamOutputPath), createBamOutIndex, createBamOutMD5, header)) :
                 Optional.empty();
     }
+
+    public static Optional<AlleleLikelihoodWriter> createAlleleLikelihoodWriter(final AssemblyBasedCallerArgumentCollection args) {
+        return args.alleleLikelihoodMatrixPath != null ?
+                Optional.of(new AlleleLikelihoodWriter(IOUtils.getPath(args.alleleLikelihoodMatrixPath),
+                        new SimpleInterval(args.alleleLikelihoodMatrixInterval) ) ):Optional.empty();
+    }
+
+
 
     // Contract: the List<Allele> alleles of the resulting VariantContext is the ref allele followed by alt alleles in the
     // same order as in the input vcs
@@ -290,8 +332,22 @@ public final class AssemblyBasedCallerUtils {
                                                   final ReferenceSequenceFile referenceReader,
                                                   final ReadThreadingAssembler assemblyEngine,
                                                   final SmithWatermanAligner aligner,
-                                                  final boolean correctOverlappingBaseQualities){
-        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities, argumentCollection.softClipLowQualityEnds, true);
+                                                  final boolean correctOverlappingBaseQualities,
+                                                  final FlowBasedArgumentCollection fbargs,
+                                                  final boolean bypassAssembly){
+        finalizeRegion(region,
+                argumentCollection.assemblerArgs.errorCorrectReads,
+                argumentCollection.dontUseSoftClippedBases,
+                (byte)(argumentCollection.minBaseQualityScore - 1),
+                header,
+                sampleList,
+                correctOverlappingBaseQualities,
+                argumentCollection.softClipLowQualityEnds,
+                argumentCollection.overrideSoftclipFragmentCheck,
+                fbargs,
+                true);
+
+
         if( argumentCollection.assemblerArgs.debugAssembly) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getPaddedSpan() + ")");
         }
@@ -311,9 +367,40 @@ public final class AssemblyBasedCallerUtils {
                 : new PileupReadErrorCorrector(argumentCollection.assemblerArgs.pileupErrorCorrectionLogOdds, header);
         final SWParameters danglingEndSWParameters = argumentCollection.getDanglingEndSWParameters();
         final SWParameters haplotypeToReferenceSWParameters = argumentCollection.getHaplotypeToReferenceSWParameters();
+
+        // establish reference mapper, if needed
+        final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing = (argumentCollection.flowAssemblyCollapseHKerSize > 0 && LongHomopolymerHaplotypeCollapsingEngine.needsCollapsing(refHaplotype.getBases(), argumentCollection.flowAssemblyCollapseHKerSize, logger))
+                                            ? new LongHomopolymerHaplotypeCollapsingEngine(argumentCollection.flowAssemblyCollapseHKerSize, argumentCollection.flowAssemblyCollapsePartialMode, fullReferenceWithPadding,
+                paddedReferenceLoc, logger, argumentCollection.assemblerArgs.debugAssembly, aligner, argumentCollection.getHaplotypeToReferenceSWParameters())
+                                            : null;
+        if ( haplotypeCollapsing != null ) {
+            logger.debug("deploying haplotypeCollapsing on " + paddedReferenceLoc + ", region: " + region);
+        }
+
         try {
-            final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
-                    paddedReferenceLoc, readErrorCorrector, header, aligner, danglingEndSWParameters, haplotypeToReferenceSWParameters);
+            final AssemblyResultSet assemblyResultSet =
+                    !bypassAssembly
+                            ? assemblyEngine.runLocalAssembly(
+                            region,
+                            refHaplotype,
+                            fullReferenceWithPadding,
+                            paddedReferenceLoc,
+                            readErrorCorrector,
+                            header, aligner,
+                            haplotypeCollapsing,
+                            danglingEndSWParameters, haplotypeToReferenceSWParameters)
+                            : assemblyEngine.generateEmptyLLocalAssemblyResult(
+                            region,
+                            refHaplotype,
+                            fullReferenceWithPadding,
+                            paddedReferenceLoc,
+                            haplotypeCollapsing);
+
+            assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
+
+            if (!givenAlleles.isEmpty()) {
+                addGivenAlleles(region.getPaddedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, haplotypeToReferenceSWParameters, refHaplotype, assemblyResultSet);
+            }
 
             if (!forcedPileupAlleles.isEmpty()) {
                 processPileupAlleles(region, forcedPileupAlleles, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
@@ -795,7 +882,6 @@ public final class AssemblyBasedCallerUtils {
                         // because we're in GGA mode and it's not an allele we want
                         continue;
                     }
-
                 } else {
                     if (emitSpanningDels) {
                         // the event starts prior to the current location, so it's a spanning deletion
@@ -810,11 +896,13 @@ public final class AssemblyBasedCallerUtils {
                         break;
                     }
                 }
+
             }
 
         }
         return result;
     }
+
 
     /**
      * Tries to phase the individual alleles based on pairwise comparisons to the other alleles based on all called haplotypes
@@ -1128,5 +1216,15 @@ public final class AssemblyBasedCallerUtils {
                     alt1.basesMatch(Arrays.copyOf(alt2.getBases(), alt1.length())) :
                     alt2.basesMatch(Arrays.copyOf(alt1.getBases(), alt2.length())));
         }
+    }
+
+    // revert soft clipped bases, but also save the original position in a tag
+    private static GATKRead revertSoftClippedBases(GATKRead inputRead){
+        int softStart = inputRead.getStart();
+        int softEnd = inputRead.getEnd();
+        GATKRead result = ReadClipper.revertSoftClippedBases(inputRead);
+        result.setAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_START_TAG, softStart);
+        result.setAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_END_TAG, softEnd);
+        return result;
     }
 }

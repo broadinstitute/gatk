@@ -67,6 +67,8 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
 
     private List<MultiIntervalLocalReadShard> readShards;
 
+    private boolean nonRandomDownsamplingMode;
+
     /**
      * Initialize data sources for traversal.
      *
@@ -139,7 +141,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     protected ReadsDownsampler createDownsampler() {
-        return assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, getHeaderForReads()) : null;
+        return assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, getHeaderForReads(), nonRandomDownsamplingMode) : null;
     }
 
     /**
@@ -252,4 +254,10 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * @param featureContext features overlapping the padded span of the assembly region
      */
     public abstract void apply( final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext );
+
+    public void setNonRandomDownsamplingMode(boolean nonRandomDownsamplingMode) {
+        this.nonRandomDownsamplingMode = nonRandomDownsamplingMode;
+    }
+
+
 }

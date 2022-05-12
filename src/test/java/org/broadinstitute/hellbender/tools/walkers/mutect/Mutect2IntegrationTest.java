@@ -87,6 +87,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     private static final File FILTERING_DIR = new File(toolsTestDir, "mutect/filtering");
 
+    private static final File FLOW_BASED_INPUT_BAM = new File(publicTestDir + "/large", "input_jukebox_for_test.bam");
+
     private static final File GNOMAD_WITHOUT_AF_SNIPPET = new File(toolsTestDir, "mutect/gnomad-without-af.vcf");
     private static final File UNPARSIMONIOUS_GNOMAD_SNIPPET = new File(toolsTestDir, "mutect/unparsimonious_germline.vcf");
 
@@ -141,7 +143,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 args -> args.addMask(mask).add(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts),
                 args -> args.add(M2ArgumentCollection.MUTECT3_DATASET_LONG_NAME, dataset),
                 args -> args.addFlag(M2ArgumentCollection.MUTECT3_TRAINING_MODE_LONG_NAME),
-                args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, 3.0) : args
+                args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_LONG_NAME, 3.0) : args
         );
 
         // verify that alleles contained in likelihoods matrix but dropped from somatic calls do not show up in annotations
@@ -302,14 +304,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // every variant on this interval in this sample is in gnomAD
         Assert.assertTrue(numVariantsPassingFilters < 2);
     }
-    
+
     @Test
     public void testMutect3Dataset() {
         Utils.resetRandomGenerator();
         final File tumor = new File(NA12878_20_21_WGS_bam);
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File mutect3Dataset = createTempFile("mutect3", ".data");
-        
+
         runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD),
                    args -> args.addFlag(ReadThreadingAssemblerArgumentCollection.LINKED_DE_BRUIJN_GRAPH_LONG_NAME),
                    args -> args.add(M2ArgumentCollection.MUTECT3_DATASET_LONG_NAME, mutect3Dataset));
@@ -972,6 +974,23 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 args -> args.add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout));
         Assert.assertTrue(bamout.exists());
     }
+
+    // this test is here for basic sanity of flow mode
+    @Test
+    public void testBamoutFlowMode() {
+        final File outputVcf = createTempFile("output", ".vcf");
+        final File bamout = createTempFile("bamout", ".bam");
+
+        runMutect2(FLOW_BASED_INPUT_BAM, outputVcf, "chr9:81149486-81177047", hg38Reference, Optional.empty(),
+                args -> {
+                    args.add(M2ArgumentCollection.FLOW_M2_MODE_LONG_NAME, "ADVANCED");
+                    return args.add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout);
+
+                });
+        Assert.assertTrue(bamout.exists());
+    }
+
+
 
     @Test
     public void testFilteringHeaders() {

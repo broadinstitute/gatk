@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang3.tuple.Pair;
+import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
@@ -17,22 +17,18 @@ import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.OutputStreamWriter;
 import java.util.*;
-import java.util.function.ToDoubleFunction;
 
 /*
  * Classic likelihood computation: full pair-hmm all haplotypes vs all reads.
  */
 public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodCalculationEngine {
 
-    static final double DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR = 1.0;
+    public static final double DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR = 1.0;
     private static final Logger logger = LogManager.getLogger(PairHMMLikelihoodCalculationEngine.class);
 
-    private static final int MAX_STR_UNIT_LENGTH = 8;
-    private static final int MAX_REPEAT_LENGTH   = 20;
     private static final int MIN_ADJUSTED_QSCORE = 10;
 
     @VisibleForTesting
@@ -79,13 +75,6 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     private final byte baseQualityScoreThreshold;
 
     /**
-     * The expected rate of random sequencing errors for a read originating from its true haplotype.
-     *
-     * For example, if this is 0.01, then we'd expect 1 error per 100 bp.
-     */
-    public static final double DEFAULT_EXPECTED_ERROR_RATE_PER_BASE = 0.02;
-    
-    /**
      * Create a new PairHMMLikelihoodCalculationEngine using provided parameters and hmm to do its calculations
      *
      * @param constantGCP the gap continuation penalty to use with the PairHMM
@@ -106,7 +95,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
-        this( constantGCP, dragstrParams, arguments, hmmType, null, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, true, false, true);
+        this( constantGCP, dragstrParams, arguments, hmmType, null, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, ReadLikelihoodCalculationEngine.DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, true, false, true);
     }
 
     /**
@@ -178,12 +167,25 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     }
 
     @Override
-    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods( final AssemblyResultSet assemblyResultSet, final SampleList samples, final Map<String, List<GATKRead>> perSampleReadList) {
+    // NOTE that the PairHMM doesn't need to interrogate the header so we skip checking it for this version
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(AssemblyResultSet assemblyResultSet, SampleList samples,
+                                                                                 Map<String, List<GATKRead>> perSampleReadList,
+                                                                                 boolean filterPoorly) {
         Utils.nonNull(assemblyResultSet, "assemblyResultSet is null");
+        final List<Haplotype> haplotypeList = assemblyResultSet.getHaplotypeList();
+
+        return computeReadLikelihoods(haplotypeList, null, samples, perSampleReadList, filterPoorly);
+    }
+
+    @Override
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods( final List<Haplotype> haplotypeList,
+                                                                          final SAMFileHeader hdr,
+                                                                          final SampleList samples,
+                                                                          final Map<String, List<GATKRead>> perSampleReadList, final boolean filterPoorly) {
         Utils.nonNull(samples, "samples is null");
         Utils.nonNull(perSampleReadList, "perSampleReadList is null");
+        Utils.nonNull(haplotypeList, "haplotypeList is null");
 
-        final List<Haplotype> haplotypeList = assemblyResultSet.getHaplotypeList();
         final AlleleList<Haplotype> haplotypes = new IndexedAlleleList<>(haplotypeList);
 
         initializePairHMM(haplotypeList, perSampleReadList);
@@ -192,90 +194,14 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         final AlleleLikelihoods<GATKRead, Haplotype> result = new AlleleLikelihoods<>(samples, haplotypes, perSampleReadList);
         final int sampleCount = result.numberOfSamples();
         for (int i = 0; i < sampleCount; i++) {
-                computeReadLikelihoods(result.sampleMatrix(i));
+            computeReadLikelihoods(result.sampleMatrix(i));
         }
 
         result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
-
-        if (dynamicDisqualification) {
-            result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(expectedErrorRatePerBase, false)));
-        } else {
-            result.filterPoorlyModeledEvidence(log10MinTrueLikelihood(expectedErrorRatePerBase, true));
-        }
+        filterPoorlyModeledEvidence(result, dynamicDisqualification, expectedErrorRatePerBase, readDisqualificationScale);
         return result;
     }
 
-    private ToDoubleFunction<GATKRead> daynamicLog10MinLiklihoodModel(final double dynamicRadQualConstant, final ToDoubleFunction<GATKRead> log10MinTrueLikelihood) {
-        return read -> {
-            final double dynamicThreshold = calculateLog10DynamicReadQualThreshold(read, dynamicRadQualConstant);
-            final double log10MaxLikelihoodForTrueAllele = log10MinTrueLikelihood.applyAsDouble(read);
-            if (dynamicThreshold < log10MaxLikelihoodForTrueAllele ) {
-                if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
-                    HaplotypeCallerGenotypingDebugger.println("For read "+ read.getName() + " replacing old threshold ("+log10MaxLikelihoodForTrueAllele+") with new threshold: "+dynamicThreshold);
-                }
-                return dynamicThreshold;
-            } else {
-                return log10MaxLikelihoodForTrueAllele;
-            }
-        };
-    }
-
-    private static double calculateLog10DynamicReadQualThreshold(final GATKRead read, final double dynamicReadQualConstant) {
-        double sumMean = 0;
-        double sumVariance = 0;
-
-        final byte[] baseQualities = read.getOptionalTransientAttribute(HMM_BASE_QUALITIES_TAG, byte[].class)
-                                         .orElseGet(read::getBaseQualities);
-
-        for (final int qualByte : baseQualities) {
-            final int bq = 0xFF & qualByte; // making sure that larger BQ are not casted into negatives.
-            // bound the base qualities for lookup between 1 and 40
-            final int entryIndex = bq <= 1 ? 0 : Math.min(MAXIMUM_DYNAMIC_QUAL_THRESHOLD_ENTRY_BASEQ, bq) - 1;
-            final int meanOffset = entryIndex * DYNAMIC_QUAL_THRESHOLD_TABLE_ENTRY_LENGTH + DYNAMIC_QUAL_THRESHOLD_TABLE_ENTRY_MEAN_OFFSET;
-            final int varOffset = meanOffset + 1;
-            sumMean +=      dynamicReadQualThreshLookupTable[meanOffset];
-            sumVariance +=  dynamicReadQualThreshLookupTable[varOffset];
-        }
-
-        final double threshold = sumMean + dynamicReadQualConstant * Math.sqrt(sumVariance);
-        return QualityUtils.qualToErrorProbLog10(threshold); // = threshold * -.1;
-    }
-
-    // TODO i don't like having a lookup table be static like this, i would prefer this be computed at initialization (with the default values being saved as a test)
-    // table used for disqualifying reads for genotyping
-    // Format for each row of table: baseQ, mean, variance
-    // Actual threshold is calculated over the length of the read as:
-    // sum(means) + K * sqrt(sum(variances))
-    private static double dynamicReadQualThreshLookupTable[] = {
-            //baseQ,mean,variance
-            1,  5.996842844, 0.196616587, 2,  5.870018422, 1.388545569, 3,  5.401558531, 5.641990128,
-            4,  4.818940919, 10.33176216, 5,  4.218758304, 14.25799688, 6,  3.646319832, 17.02880749,
-            7,  3.122346753, 18.64537883, 8,  2.654731979, 19.27521677, 9,  2.244479156, 19.13584613,
-            10, 1.88893867,  18.43922003, 11, 1.583645342, 17.36842261, 12, 1.3233807, 16.07088712,
-            13, 1.102785365, 14.65952563, 14, 0.916703025, 13.21718577, 15, 0.760361881, 11.80207947,
-            16, 0.629457387, 10.45304833, 17, 0.520175654, 9.194183767, 18, 0.42918208,  8.038657241,
-            19, 0.353590663, 6.991779595, 20, 0.290923699, 6.053379213, 21, 0.23906788,  5.219610436,
-            22, 0.196230431, 4.484302033, 23, 0.160897421, 3.839943445, 24, 0.131795374, 3.27839108,
-            25, 0.1078567,   2.791361596, 26, 0.088189063, 2.370765375, 27, 0.072048567, 2.008921719,
-            28, 0.058816518, 1.698687797, 29, 0.047979438, 1.433525748, 30, 0.039111985, 1.207526336,
-            31, 0.031862437, 1.015402928, 32, 0.025940415, 0.852465956, 33, 0.021106532, 0.714585285,
-            34, 0.017163711, 0.598145851, 35, 0.013949904, 0.500000349, 36, 0.011332027, 0.41742159,
-            37, 0.009200898, 0.348056286, 38, 0.007467036, 0.289881373, 39, 0.006057179, 0.241163527,
-            40, 0.004911394, 0.200422214};
-
-    private static final int MAXIMUM_DYNAMIC_QUAL_THRESHOLD_ENTRY_BASEQ = 40;
-    private static final int DYNAMIC_QUAL_THRESHOLD_TABLE_ENTRY_LENGTH = 3;
-    private static final int DYNAMIC_QUAL_THRESHOLD_TABLE_ENTRY_MEAN_OFFSET = 1;
-
-    private ToDoubleFunction<GATKRead> log10MinTrueLikelihood(final double maximumErrorPerBase, final boolean capLikelihoods) {
-        return read -> {
-            // TODO this might be replaced by an explicit calculation
-            final int qualifiedReadLength = read.getTransientAttribute(HMM_BASE_QUALITIES_TAG) != null ? ((byte[])read.getTransientAttribute(HMM_BASE_QUALITIES_TAG)).length : read.getLength();
-            final double maxErrorsForRead = capLikelihoods ? Math.min(2.0, Math.ceil(qualifiedReadLength * maximumErrorPerBase)) : Math.ceil(qualifiedReadLength * maximumErrorPerBase);
-            final double log10QualPerBase = -4.0;
-            return maxErrorsForRead * log10QualPerBase;
-        };
-    }
 
     /**
      * Creates a new GATKRead with the source read's header, read group and mate
@@ -418,11 +344,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             return;
         }
 
-        pcrIndelErrorModelCache = new byte[MAX_REPEAT_LENGTH + 1];
+        pcrIndelErrorModelCache = new byte[ReadLikelihoodCalculationEngine.MAX_REPEAT_LENGTH + 1];
 
         final double rateFactor = pcrErrorModel.getRateFactor();
 
-        for( int i = 0; i <= MAX_REPEAT_LENGTH; i++ ) {
+        for(int i = 0; i <= ReadLikelihoodCalculationEngine.MAX_REPEAT_LENGTH; i++ ) {
             pcrIndelErrorModelCache[i] = getErrorModelAdjustedQual(i, rateFactor);
         }
     }
@@ -438,72 +364,10 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         }
 
         for ( int i = 1; i < readBases.length; i++ ) {
-            final int repeatLength = findTandemRepeatUnits(readBases, i-1).getRight();
+            final int repeatLength = ReadLikelihoodCalculationEngine.findTandemRepeatUnits(readBases, i-1).getRight();
             readInsQuals[i-1] = (byte) Math.min(0xff & readInsQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]);
             readDelQuals[i-1] = (byte) Math.min(0xff & readDelQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]);
         }
     }
 
-    @VisibleForTesting
-    static Pair<byte[], Integer> findTandemRepeatUnits(final byte[] readBases, final int offset) {
-        int maxBW = 0;
-        byte[] bestBWRepeatUnit = {readBases[offset]};
-        for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
-            // fix repeat unit length
-            //edge case: if candidate tandem repeat unit falls beyond edge of read, skip
-            if (offset+1-str < 0) {
-                break;
-            }
-
-            // get backward repeat unit and # repeats
-            maxBW = GATKVariantContextUtils.findNumberOfRepetitions(readBases, offset - str + 1,  str , readBases, 0, offset + 1, false);
-            if (maxBW > 1) {
-                bestBWRepeatUnit = Arrays.copyOfRange(readBases, offset - str + 1, offset + 1);
-                break;
-            }
-        }
-        byte[] bestRepeatUnit = bestBWRepeatUnit;
-        int maxRL = maxBW;
-
-        if (offset < readBases.length-1) {
-            byte[] bestFWRepeatUnit = {readBases[offset+1]};
-            int maxFW = 0;
-
-            for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
-                // fix repeat unit length
-                //edge case: if candidate tandem repeat unit falls beyond edge of read, skip
-                if (offset+str+1 > readBases.length) {
-                    break;
-                }
-
-                // get forward repeat unit and # repeats
-                maxFW = GATKVariantContextUtils.findNumberOfRepetitions(readBases, offset + 1, str, readBases, offset + 1, readBases.length-offset -1, true);
-                if (maxFW > 1) {
-                    bestFWRepeatUnit = Arrays.copyOfRange(readBases, offset + 1, offset+str+1);
-                    break;
-                }
-            }
-            // if FW repeat unit = BW repeat unit it means we're in the middle of a tandem repeat - add FW and BW components
-            if (Arrays.equals(bestFWRepeatUnit, bestBWRepeatUnit)) {
-                maxRL = maxBW + maxFW;
-                bestRepeatUnit = bestFWRepeatUnit; // arbitrary
-            } else {
-                // tandem repeat starting forward from current offset.
-                // It could be the case that best BW unit was different from FW unit, but that BW still contains FW unit.
-                // For example, TTCTT(C) CCC - at (C) place, best BW unit is (TTC)2, best FW unit is (C)3.
-                // but correct representation at that place might be (C)4.
-                // Hence, if the FW and BW units don't match, check if BW unit can still be a part of FW unit and add
-                // representations to total
-                final byte[] testString = Arrays.copyOfRange(readBases, 0, offset + 1);
-                maxBW = GATKVariantContextUtils.findNumberOfRepetitions(bestFWRepeatUnit, testString, false);
-                maxRL = maxFW + maxBW;
-                bestRepeatUnit = bestFWRepeatUnit;
-            }
-        }
-
-        if(maxRL > MAX_REPEAT_LENGTH) {
-            maxRL = MAX_REPEAT_LENGTH;
-        }
-        return Pair.of(bestRepeatUnit, maxRL);
-    }
 }

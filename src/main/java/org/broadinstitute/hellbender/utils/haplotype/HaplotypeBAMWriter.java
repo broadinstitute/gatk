@@ -9,6 +9,7 @@ import htsjdk.samtools.util.Locatable;
 import java.nio.file.Path;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceModel;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -33,6 +34,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
     public static final String DEFAULT_GATK3_HAPLOTYPE_READ_GROUP_ID = "ArtificialHaplotype";
     private static final int bestHaplotypeMQ = 60;
     private static final int otherMQ = 0;
+    private boolean addSpecialTag = false;
 
     private final HaplotypeBAMDestination output;
     private WriterType writerType;
@@ -56,7 +58,12 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         /**
          * With this option, haplotypes will not be included in the output bam.
          */
-        NO_HAPLOTYPES
+        NO_HAPLOTYPES,
+
+        /**
+         * Same as CALLED_HAPLOTYPES, but without reads
+         */
+        CALLED_HAPLOTYPES_NO_READS
     }
 
     /**
@@ -129,10 +136,9 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         Utils.nonNull(haplotypes, "haplotypes cannot be null");
         Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
         Utils.nonNull(calledHaplotypes, "calledHaplotypes cannot be null");
-        Utils.nonNull(readLikelihoods, "readLikelihoods cannot be null");
         Utils.nonNull(bestHaplotypes, "bestHaplotypes cannot be null");
 
-        if (writerType.equals(WriterType.CALLED_HAPLOTYPES)){
+        if (writerType.equals(WriterType.CALLED_HAPLOTYPES) || writerType.equals(WriterType.CALLED_HAPLOTYPES_NO_READS)){
             if (calledHaplotypes.isEmpty()){
                 return;
             }
@@ -142,10 +148,22 @@ public class HaplotypeBAMWriter implements AutoCloseable {
             writeHaplotypesAsReads(haplotypes, new LinkedHashSet<>(bestHaplotypes), paddedReferenceLoc, callableRegion);
         }
 
-        final int sampleCount = readLikelihoods.numberOfSamples();
-        for (int i = 0; i < sampleCount; i++) {
-            for (final GATKRead read : readLikelihoods.sampleEvidence(i)) {
-                writeReadAgainstHaplotype(read);
+        if ( !writerType.equals(WriterType.CALLED_HAPLOTYPES_NO_READS) && (readLikelihoods != null) ) {
+            final int sampleCount = readLikelihoods.numberOfSamples();
+            for (int i = 0; i < sampleCount; i++) {
+                for (final GATKRead read : readLikelihoods.sampleEvidence(i)) {
+
+                    //ugly santiization of the attributes that reference confidence model adds sometimes
+                    if (read.hasAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_START_TAG) ||
+                            read.hasAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_END_TAG)) {
+                        GATKRead readCopy = read.copy();
+                        readCopy.clearAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_START_TAG);
+                        readCopy.clearAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_END_TAG);
+                        writeReadAgainstHaplotype(readCopy);
+                    } else {
+                        writeReadAgainstHaplotype(read);
+                    }
+                }
             }
         }
     }
@@ -184,9 +202,10 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         Utils.nonNull(haplotypes, "haplotypes cannot be null");
         Utils.nonNull(bestHaplotypes, "bestHaplotypes cannot be null");
         Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
-
+        int index = 0 ;
         for (final Haplotype haplotype : haplotypes) {
-            writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype), callableRegion);
+            writeHaplotype(haplotype, paddedReferenceLoc, bestHaplotypes.contains(haplotype), callableRegion, index);
+            index++;
         }
     }
 
@@ -201,7 +220,8 @@ public class HaplotypeBAMWriter implements AutoCloseable {
     private void writeHaplotype(final Haplotype haplotype,
                                 final Locatable paddedRefLoc,
                                 final boolean isAmongBestHaplotypes,
-                                final Locatable callableRegion) {
+                                final Locatable callableRegion,
+                                final int haplotype_count) {
         Utils.nonNull(haplotype, "haplotype cannot be null");
         Utils.nonNull(paddedRefLoc, "paddedRefLoc cannot be null");
 
@@ -212,7 +232,7 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         record.setBaseQualities(Utils.dupBytes((byte) '!', haplotype.getBases().length));
         record.setCigar(haplotype.getCigar());
         record.setMappingQuality(isAmongBestHaplotypes ? bestHaplotypeMQ : otherMQ);
-        record.setReadName(output.getHaplotypeSampleTag() + uniqueNameCounter++);
+        record.setReadName(output.getHaplotypeSampleTag() + "_" + uniqueNameCounter++ + "_" + haplotype_count);
         record.setAttribute(output.getHaplotypeSampleTag(), haplotype.hashCode());
         record.setReadUnmappedFlag(false);
         record.setReferenceIndex(output.getBAMOutputHeader().getSequenceIndex(paddedRefLoc.getContig()));
@@ -222,7 +242,24 @@ public class HaplotypeBAMWriter implements AutoCloseable {
         if (callableRegion != null) {
             record.setAttribute(AssemblyBasedCallerUtils.CALLABLE_REGION_TAG, callableRegion.toString());
         }
+        if (haplotype.isCollapsed())
+            record.setAttribute(AssemblyBasedCallerUtils.EXT_COLLAPSED_TAG, "1");
+
+        // add special
+        if ( addSpecialTag ) {
+            record.setAttribute(AssemblyBasedCallerUtils.EXT_SPECIAL_TAG,
+                    (haplotype.isReference() ? "1" : "0") + ","
+                            + haplotype.getScore() + ","
+                            + haplotype.getAlignmentStartHapwrtRef() + ","
+                            + ((callableRegion == null)
+                            ? "" : (callableRegion.getContig() + ":"
+                            + callableRegion.getStart() + "-" + callableRegion.getEnd())));
+        }
 
         output.add(new SAMRecordToGATKReadAdapter(record));
+    }
+
+    public void setAddSpecialTag(final boolean addSpecialTag) {
+        this.addSpecialTag = addSpecialTag;
     }
 }

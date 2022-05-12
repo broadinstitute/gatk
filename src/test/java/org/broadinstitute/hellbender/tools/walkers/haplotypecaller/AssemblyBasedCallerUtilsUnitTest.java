@@ -6,6 +6,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
@@ -71,7 +72,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         SampleList sampleList = SampleList.singletonSampleList("tumor");
         Byte minbq = 9;
         // NOTE: this test MUST be run with correctOverlappingBaseQualities enabled otherwise this test can succeed even with unsafe code
-        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, true, false, false);
+        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, true, false, false, null, false);
 
         // make sure that the original reads are not changed due to finalizeRegion()
         Assert.assertTrue(reads.get(0).convertToSAMRecord(header).equals(orgRead0));
@@ -689,6 +690,21 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                         })
         });
 
+
+        // location forced to be after alleles - to activate Allele.SPAN_DEL insertion into the result
+        HashSet<Allele>         deletionLocationAfterAlleles = new HashSet<>(deletionStartingAtLocVc.getAlleles());
+        deletionLocationAfterAlleles.add(Allele.SPAN_DEL);
+        tests.add(new Object[]{
+                deletionStartingAtLocVc,
+                deletionStartingAtLocVc.getStart() + 1,
+                Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
+                Maps.asMap(new HashSet<>(deletionLocationAfterAlleles),
+                        (key) -> {
+                            if ( key.equals(Allele.SPAN_DEL) ) return Arrays.asList(deletionStartingAtLocHaplotype);
+                            if (deletionStartingAtLocAlleles.get(1).equals(key)) return Arrays.asList();
+                            return Arrays.asList(snpHaplotype, refHaplotype);
+                        })
+        });
 
         return tests.toArray(new Object[][]{});
     }

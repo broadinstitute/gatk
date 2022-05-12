@@ -7,11 +7,9 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Implementation of the {@link GATKRead} interface for the {@link SAMRecord} class.
@@ -754,6 +752,62 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         clearCachedValues();
 
         samRecord.reverseComplement(true);
+    }
+
+    /**
+     * Clip attributes that change after a hard clipping operation
+     *
+     * The method clips string or array attributes that are part of a pre-set list
+     * originating from FlowBasedRead (a white-list), that are at the same length
+     * as the sequence.
+     */
+    @Override
+    public void hardClipAttributes(final int newStart, final int newLength, final int originalLength)
+    {
+        // this is currently applicable only for flow based read groups
+        if ( samRecord.getReadGroup() == null || samRecord.getReadGroup().getFlowOrder() == null ) {
+            return;
+        }
+
+        // loop over whitelist
+        for ( final String tag : FlowBasedRead.HARD_CLIPPED_TAGS ) {
+
+            // attribute present?
+            if ( !samRecord.hasAttribute(tag) ) {
+                continue;
+            }
+
+            // ignore if not array
+            Object  value = samRecord.getAttribute(tag);
+
+            if ( !(value.getClass().isArray() || (value instanceof String) )) {
+                continue;
+            }
+
+            // check if length is same as original sequence
+            if ( value.getClass().isArray() && (Array.getLength(value) != originalLength) ) {
+                continue;
+            }
+
+            if ((value instanceof String )&&(((String) value).length()!=originalLength)) {
+                continue;
+            }
+
+            // clip
+            if ( value instanceof byte[] ) {
+                samRecord.setAttribute(tag, Arrays.copyOfRange((byte[])value, newStart, newStart + newLength));
+            } else if ( value instanceof short[] ) {
+                samRecord.setAttribute(tag, Arrays.copyOfRange((short[])value, newStart, newStart + newLength));
+            } else if ( value instanceof int[] ) {
+                samRecord.setAttribute(tag, Arrays.copyOfRange((int[])value, newStart, newStart + newLength));
+            } else if ( value instanceof float[] ) {
+                samRecord.setAttribute(tag, Arrays.copyOfRange((float[]) value, newStart, newStart + newLength));
+            } else if (value instanceof String){
+                samRecord.setAttribute(tag, ((String) value).substring(newStart, newStart + newLength));
+            } else {
+                throw new GATKException("unknown array type on attribute value: " + value.getClass().getName());
+            }
+        }
     }
 
     @Override

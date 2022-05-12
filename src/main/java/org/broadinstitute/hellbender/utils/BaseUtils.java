@@ -1,9 +1,13 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.Random;
 
 /**
@@ -350,5 +354,76 @@ public final class BaseUtils {
         }
         // the only possibility left is G/T
         return 'K';
+    }
+
+    // iterator for iterating over the hmers of a bases array
+    public static class HmerIterator implements Iterator<Pair<Byte,Integer>> {
+
+        final private byte[]    bases;          // bytes to break into hmers
+        private int             nextOffset;     // offset to be used in next() hmer
+
+        public HmerIterator(final byte[] bases) {
+            this.bases = bases;
+            this.nextOffset = 0;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return nextOffset < bases.length;
+        }
+
+        @Override
+        public Pair<Byte,Integer> next() {
+
+            // scan until end of hmer or end of bases
+            final int           startingOffset = nextOffset;
+            final byte          hmerBase = bases[nextOffset++];
+            int                 hmerLength = 1;
+            while ( nextOffset < bases.length && bases[nextOffset] == hmerBase ) {
+                hmerLength++;
+                nextOffset++;
+            }
+
+            // return hmer
+            return new ImmutablePair<>(hmerBase, hmerLength);
+        }
+    }
+
+    // are haplotypes different only in a single hmer's length?
+    static public boolean equalUpToHmerChange(final byte[] bases1, final byte[] bases2) {
+
+        final BaseUtils.HmerIterator  i1 = new BaseUtils.HmerIterator(bases1);
+        final BaseUtils.HmerIterator  i2 = new BaseUtils.HmerIterator(bases2);
+
+        // walk the haplotype hmers, look for differences
+        boolean         acceptableDiffAlreadyFound = false;
+        while ( i1.hasNext() && i2.hasNext() ) {
+
+            // get hmers
+            final Pair<Byte,Integer> p1 = i1.next();
+            final Pair<Byte,Integer>      p2 = i2.next();
+
+            // base must be the same
+            if ( p1.getLeft() != p2.getLeft() ) {
+                return false;
+            }
+
+            // if length the same, continue to next hmer
+            if ( p1.getRight() == p2.getRight() ) {
+                continue;
+            }
+
+            // hmers are of the same base but of different length.
+            // make sure we only allow one such hmer
+            if ( acceptableDiffAlreadyFound ) {
+                return false;
+            } else {
+                acceptableDiffAlreadyFound = true;
+            }
+        }
+
+        // if here, hmers are the same or only a single one is different.
+        // In any case, bother haplotypes should be out of hmers by now
+        return i1.hasNext() == i2.hasNext();
     }
 }
