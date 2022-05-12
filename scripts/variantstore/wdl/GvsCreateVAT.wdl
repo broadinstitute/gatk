@@ -90,6 +90,7 @@ workflow GvsCreateVAT {
 
     call MergeVatTSVs {
         input:
+            export_done = BigQueryExportVat.done,
             contig_array = contig_array,
             project_id = project_id,
             dataset_name = dataset_name,
@@ -621,6 +622,7 @@ task BigQueryExportVat {
 
 task MergeVatTSVs {
     input {
+        Array[Boolean] export_done
         Array[String] contig_array
         String project_id
         String dataset_name
