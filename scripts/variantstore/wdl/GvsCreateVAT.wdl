@@ -15,6 +15,7 @@ workflow GvsCreateVAT {
         File? genes_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json"
         String output_path
 
+        Int? merge_vcfs_disk_size_override
         String? service_account_json_path
         File ancestry_file
     }
@@ -92,10 +93,9 @@ workflow GvsCreateVAT {
         input:
             export_done = BigQueryExportVat.done,
             contig_array = contig_array,
-            project_id = project_id,
-            dataset_name = dataset_name,
             output_path = output_path,
-            vat_table = BigQueryLoadJson.vat_table_name,
+            project_id = project_id,
+            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
             service_account_json_path = service_account_json_path
     }
 
@@ -481,10 +481,10 @@ task BigQueryExportVat {
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         if [ ~{has_service_account_file} = 'true' ]; then
-        gsutil cp ~{service_account_json_path} local.service_account.json
-        export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-        gcloud auth activate-service-account --key-file=local.service_account.json
-        gcloud config set project ~{project_id}
+            gsutil cp ~{service_account_json_path} local.service_account.json
+            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
+            gcloud auth activate-service-account --key-file=local.service_account.json
+            gcloud config set project ~{project_id}
         fi
 
         # note: tab delimiter and compression creates tsv.gz files
@@ -625,19 +625,21 @@ task MergeVatTSVs {
         Array[Boolean] export_done
         Array[String] contig_array
         String project_id
-        String dataset_name
-        String vat_table
         String output_path
+
+        Int? merge_vcfs_disk_size_override
         String? service_account_json_path
     }
 
-    String intermediate_path = output_path + "intermediate/*.tsv.gz"
-
+    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then merge_vcfs_disk_size_override else 50
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         apt-get update
         apt-get install tabix
+
+        # custom function to prepend the current datetime to an echo statement
+        echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
 
         if [ ~{has_service_account_file} = 'true' ]; then
             gsutil cp ~{service_account_json_path} local.service_account.json
@@ -649,26 +651,26 @@ task MergeVatTSVs {
         contigs=( ~{sep=' ' contig_array} )
         files=" header.gz"
 
-        echo "looping over contgs: $contigs"
+        echo_date "looping over contgs: $contigs"
         for i in "${contigs[@]}"
         do
-            echo "copying files from ~{output_path}export/$i/*.tsv.gz"
+            echo_date "copying files from ~{output_path}export/$i/*.tsv.gz"
             gsutil -m cp ~{output_path}export/$i/*.tsv.gz TSVs/
-            echo "concatenating local tsv.gz files"
+            echo_date "concatenating local tsv.gz files"
             cat TSVs/*.tsv.gz > vat_$i.tsv.gz
-            echo "removing now concatenated files"
+            echo_date "removing now concatenated files"
             rm TSVs/*.tsv.gz
             files="$files vat_$i.tsv.gz"
         done
 
-        echo "making header.gz"
+        echo_date "making header.gz"
         echo "vid transcript contig position ref_allele alt_allele gvs_all_ac gvs_all_an gvs_all_af gvs_all_sc gvs_max_af gvs_max_ac gvs_max_an gvs_max_sc gvs_max_subpop gvs_afr_ac gvs_afr_an gvs_afr_af gvs_afr_sc gvs_amr_ac gvs_amr_an gvs_amr_af gvs_amr_sc gvs_eas_ac gvs_eas_an gvs_eas_af gvs_eas_sc gvs_eur_ac gvs_eur_an gvs_eur_af gvs_eur_sc gvs_mid_ac gvs_mid_an gvs_mid_af gvs_mid_sc gvs_oth_ac gvs_oth_an gvs_oth_af gvs_oth_sc gvs_sas_ac gvs_sas_an gvs_sas_af gvs_sas_sc gene_symbol transcript_source aa_change consequence dna_change_in_transcript variant_type exon_number intron_number genomic_location dbsnp_rsid gene_id gene_omim_id is_canonical_transcript gnomad_all_af gnomad_all_ac gnomad_all_an gnomad_failed_filter gnomad_max_af gnomad_max_ac gnomad_max_an gnomad_max_subpop gnomad_afr_ac gnomad_afr_an gnomad_afr_af gnomad_amr_ac gnomad_amr_an gnomad_amr_af gnomad_asj_ac gnomad_asj_an gnomad_asj_af gnomad_eas_ac gnomad_eas_an gnomad_eas_af gnomad_fin_ac gnomad_fin_an gnomad_fin_af gnomad_nfr_ac gnomad_nfr_an gnomad_nfr_af gnomad_sas_ac gnomad_sas_an gnomad_sas_af gnomad_oth_ac gnomad_oth_an gnomad_oth_af revel splice_ai_acceptor_gain_score splice_ai_acceptor_gain_distance splice_ai_acceptor_loss_score splice_ai_acceptor_loss_distance splice_ai_donor_gain_score splice_ai_donor_gain_distance splice_ai_donor_loss_score splice_ai_donor_loss_distance omim_phenotypes_id omim_phenotypes_name clinvar_classification clinvar_last_updated clinvar_phenotype" | gzip > header.gz
 
-        echo "concatenating $files"
+        echo_date "concatenating $files"
         cat $(echo $files) > vat_complete.tsv.gz
-        echo "bgzipping concatenated file"
+        echo_date "bgzipping concatenated file"
         cat vat_complete.tsv.gz | gunzip | bgzip > vat_complete.bgz.tsv.gz
-        echo "copying bgzipped file to ~{output_path}"
+        echo_date "copying bgzipped file to ~{output_path}"
         gsutil -m cp vat_complete.bgz.tsv.gz ~{output_path}
     >>>
     # ------------------------------------------------
@@ -678,12 +680,12 @@ task MergeVatTSVs {
         memory: "2 GB"
         preemptible: 3
         cpu: "1"
-        disks: "local-disk 250 HDD"
+        disks: "local-disk ~{disk_size} HDD"
     }
     # ------------------------------------------------
     # Outputs:
     output {
-        File tsv_file = output_path + "vat_complete.bgz.tsv.gz"
+        File tsv_file = "vat_complete.bgz.tsv.gz"
     }
 }
 
