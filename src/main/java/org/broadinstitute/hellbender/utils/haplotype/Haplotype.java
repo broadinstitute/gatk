@@ -24,13 +24,19 @@ public final class Haplotype extends Allele {
      */
     public static final Comparator<Haplotype> SIZE_AND_BASE_ORDER =
             Comparator.comparingInt((Haplotype hap) -> hap.getBases().length)
-                      .thenComparing(hap -> hap.getBaseString());
+                      .thenComparing(Allele::getBaseString);
 
     private Locatable genomeLocation = null;
     private EventMap eventMap = null;
     private Cigar cigar;
     private int alignmentStartHapwrtRef;
     private double score = Double.NaN;
+
+    /**
+     * see {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.LongHomopolymerHaplotypeCollapsingEngine} for a description of the semantics of collapsing
+     */
+    private boolean isCollapsed;
+    private int uniquenessValue;   // uniquely diffrentiates the haplotype from others with same ref/bases.
 
     // debug information for tracking kmer sizes used in graph construction for debug output
     private int kmerSize = 0;
@@ -88,6 +94,23 @@ public final class Haplotype extends Allele {
      * @return a new Haplotype within only the bases spanning the provided location, or null for some reason the haplotype would be malformed if
      */
     public Haplotype trim(final Locatable loc) {
+        return trim(loc, false);
+    }
+
+    /**
+     * Create a new Haplotype derived from this one that exactly spans the provided location
+     *
+     * Note that this haplotype must have a contain a genome loc for this operation to be successful.  If no
+     * GenomeLoc is contained than @throws an IllegalStateException
+     *
+     * Also loc must be fully contained within this Haplotype's genomeLoc.  If not an IllegalArgumentException is
+     * thrown.
+     *
+     * @param loc a location completely contained within this Haplotype's location
+     * @param ignoreRefState should the reference state of the original Haplotype be ignored
+     * @return a new Haplotype within only the bases spanning the provided location, or null for some reason the haplotype would be malformed if
+     */
+    public Haplotype trim(final Locatable loc, boolean ignoreRefState) {
         Utils.nonNull( loc, "Loc cannot be null");
         Utils.nonNull(genomeLocation, "Cannot trim a Haplotype without containing GenomeLoc");
         Utils.validateArg(new SimpleInterval(genomeLocation).contains(loc), () -> "Can only trim a Haplotype to a containing span.  My loc is " + genomeLocation + " but wanted trim to " + loc);
@@ -119,7 +142,7 @@ public final class Haplotype extends Allele {
         final Cigar leadingIndelTrimmedNewCigar = !(leadingInsertion || trailingInsertion)  ? newCigar :
                 new CigarBuilder(false).addAll(newCigar.getCigarElements().subList(firstIndexToKeepInclusive, lastIndexToKeepExclusive)).make();
 
-        final Haplotype ret = new Haplotype(newBases, isReference());
+        final Haplotype ret = new Haplotype(newBases, ignoreRefState ? false : isReference());
         ret.setCigar(leadingIndelTrimmedNewCigar);
         ret.setGenomeLocation(loc);
         ret.setScore(score);
@@ -128,9 +151,13 @@ public final class Haplotype extends Allele {
         return ret;
     }
 
+
     @Override
     public boolean equals( final Object h ) {
-        return h instanceof Haplotype && Arrays.equals(getBases(), ((Haplotype) h).getBases());
+        return h instanceof Haplotype
+                && getUniquenessValue() == ((Haplotype) h).getUniquenessValue()
+                && isReference() == ((Haplotype) h).isReference()
+                && Arrays.equals(getBases(), ((Haplotype) h).getBases());
     }
 
     @Override
@@ -232,16 +259,19 @@ public final class Haplotype extends Allele {
         final byte[] myBases = getBases();
 
         // can't insert if we don't have any sequence after the inserted alt allele to span the new variant
-        if (haplotypeInsertLocation + refAllele.length() >= myBases.length) {
+        if (haplotypeInsertLocation + refAllele.length()-commonPrefixLength > myBases.length) {
             return null;
         }
 
         byte[] newHaplotypeBases = {};
         newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases, 0, haplotypeInsertLocation)); // bases before the variant
-        newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, altAllele.getBases()); // the alt allele of the variant
-        newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases, haplotypeInsertLocation + refAllele.length(), myBases.length)); // bases after the variant
+        newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(altAllele.getBases(), commonPrefixLength, altAllele.getBases().length)); // the alt allele of the variant
+        newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases,
+                haplotypeInsertLocation + refAllele.length()-commonPrefixLength, myBases.length)); // bases after the variant
         return new Haplotype(newHaplotypeBases);
     }
+
+
 
     /**
      * Get the score (an estimate of the support) of this haplotype
@@ -270,11 +300,24 @@ public final class Haplotype extends Allele {
         return genomeLocation;
     }
 
+    public boolean isCollapsed() {
+        return isCollapsed;
+    }
 
+    public void setCollapsed(boolean collapsed) {
+        this.isCollapsed = collapsed;
+    }
+
+    public int getUniquenessValue() {
+        return uniquenessValue;
+    }
     public int getKmerSize() {
         return kmerSize;
     }
 
+    public void setUniquenessValue(int uniquenessValue) {
+        this.uniquenessValue = uniquenessValue;
+    }
     public void setKmerSize(int kmerSize) {
         this.kmerSize = kmerSize;
     }

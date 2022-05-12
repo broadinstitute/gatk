@@ -153,7 +153,7 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
 
     @Override
     public String toString() {
-        final String joinedPath = Strings.join(getVertices().stream().map(v -> v.getSequenceString()).collect(Collectors.toList()), "->");
+        final String joinedPath = Strings.join(getVertices().stream().map(BaseVertex::getSequenceString).collect(Collectors.toList()), "->");
         return String.format("Path{path=%s}", joinedPath);
     }
 
@@ -179,7 +179,7 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
      * @return a non-null, non-empty list of vertices
      */
     public List<V> getVertices() {
-        final List<V> result = new ArrayList<>(edgesInOrder.size()+1);
+        final List<V> result = new ArrayList<>(edgesInOrder.size() + 1);
         result.add(getFirstVertex());
         result.addAll(edgesInOrder.stream().map(graph::getEdgeTarget).collect(Collectors.toList()));
         return result;

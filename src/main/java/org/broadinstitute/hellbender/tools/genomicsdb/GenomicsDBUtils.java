@@ -84,6 +84,18 @@ public class GenomicsDBUtils {
                 GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY, true);
         vidMapPB = updateFieldSetDisableRemapMissingAlleleToNonRef(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.AS_SB_TABLE_KEY, true);
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.TREE_SCORE, SUM);
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.HAPLOTYPE_COMPLEXITY_KEY, ELEMENT_WISE_SUM);
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.HAPLOTYPE_DOMINANCE_KEY, ELEMENT_WISE_SUM);
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.HAPLOTYPES_BEFORE_FILTERING_KEY, SUM);
+        vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
+                GATKVCFConstants.HAPLOTYPES_FILTERED_KEY, SUM);
+
+
 
         importer.updateProtobufVidMapping(vidMapPB);
     }

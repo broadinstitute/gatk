@@ -1022,6 +1022,16 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
+     * Expose a read-only version of the raw user-supplied intervals. This can be used by tools that need to explicitly
+     * traverse the intervals themselves (rather than, for example, walking the reads based on the intervals)
+     *
+     * @return - the raw user-supplied intervals, as an unmodifiable list
+     */
+    public List<SimpleInterval> getUserSuppliedIntervals() {
+        return Collections.unmodifiableList(userIntervals);
+    }
+
+    /**
      * Returns the list of intervals to iterate, either limited to the user-supplied intervals or the entire reference genome if none were specified.
      * If no reference was supplied, null is returned
      */

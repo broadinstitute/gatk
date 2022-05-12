@@ -6,25 +6,42 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.read.*;
+import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Code for estimating the reference confidence
@@ -38,9 +55,16 @@ public class ReferenceConfidenceModel {
     // Annotation used to cache reference confidence information
     public static final String INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME = "IDL";
     public static final boolean USE_CACHED_READ_INDEL_INFORMATIVENESS_VALUES = true;
+    // these are filled only when the softclipping is being reversed
+    public static final String ORIGINAL_SOFTCLIP_START_TAG = "os";
+    public static final String ORIGINAL_SOFTCLIP_END_TAG = "oe";
+
     private final SampleList samples;
     private final int indelInformativeDepthIndelSize;
     private final int numRefSamplesForPrior;
+    private final byte refModelDeletionQuality;
+    private final boolean useSoftClippedBases;
+    private final boolean flowBasedModel;
 
     @VisibleForTesting
     protected static final String NON_REF_ALLELE_DESCRIPTION = "Represents any possible alternative allele not already represented at this location by REF and ALT";
@@ -54,7 +78,7 @@ public class ReferenceConfidenceModel {
      * when assessing the confidence on the hom-ref call at that site.
      * </p>
      */
-    private static final byte REF_MODEL_DELETION_QUAL = 30;
+    public static final byte REF_MODEL_DELETION_QUAL = 30;
 
     /**
      * Base calls with quality threshold lower than this number won't be considered when assessing the
@@ -110,16 +134,22 @@ public class ReferenceConfidenceModel {
      * @param samples the list of all samples we'll be considering with this model
      * @param header the SAMFileHeader describing the read information (used for debugging)
      * @param indelInformativeDepthIndelSize the max size of indels to consider when calculating indel informative depths
+     * @param refDelQual reference model deletion quality (30 - Ilmn, 20 - JB)
+     * @param useSoftClippedBases should the soft clipped bases be used as evidence against reference
      */
     public ReferenceConfidenceModel(final SampleList samples,
                                     final SAMFileHeader header,
                                     final int indelInformativeDepthIndelSize,
-                                    final int numRefForPrior) {
+                                    final int numRefForPrior,
+                                    final byte refDelQual,
+                                    final boolean useSoftClippedBases,
+                                    final boolean flowBasedModel) {
         Utils.nonNull(samples, "samples cannot be null");
         Utils.validateArg( samples.numberOfSamples() > 0, "samples cannot be empty");
         Utils.nonNull(header, "header cannot be empty");
         //TODO: code and comment disagree -- which is right?
         Utils.validateArg( indelInformativeDepthIndelSize >= 0, () -> "indelInformativeDepthIndelSize must be >= 1 but got " + indelInformativeDepthIndelSize);
+
 
         this.samples = samples;
         this.indelInformativeDepthIndelSize = indelInformativeDepthIndelSize;
@@ -127,6 +157,9 @@ public class ReferenceConfidenceModel {
         this.options = new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(HomoSapiensConstants.SNP_HETEROZYGOSITY,
                 HomoSapiensConstants.INDEL_HETEROZYGOSITY, useInputSamplesAlleleCounts, useMLEAC, ignoreInputSamplesForMissingVariants,
                 useFlatPriorsForIndels);
+        this.refModelDeletionQuality = refDelQual;
+        this.useSoftClippedBases = useSoftClippedBases;
+        this.flowBasedModel = flowBasedModel;
     }
 
     /**
@@ -225,6 +258,7 @@ public class ReferenceConfidenceModel {
         // be using caching values computed for a different reference block.
         if (USE_CACHED_READ_INDEL_INFORMATIVENESS_VALUES) {
             readLikelihoods.sampleEvidence(0).forEach(r -> r.clearTransientAttribute(INDEL_INFORMATIVE_BASES_CACHE_ATTRIBUTE_NAME));
+
         }
 
         return results;
@@ -363,11 +397,11 @@ public class ReferenceConfidenceModel {
      * @return a RefVsAnyResult genotype call.
      */
     public ReferenceConfidenceResult calcGenotypeLikelihoodsOfRefVsAny(final int ploidy,
-                                                        final ReadPileup pileup,
-                                                        final byte refBase,
-                                                        final byte minBaseQual,
-                                                        final MathUtils.RunningAverage hqSoftClips,
-                                                            final boolean readsWereRealigned) {
+                                                                       final ReadPileup pileup,
+                                                                       final byte refBase,
+                                                                       final byte minBaseQual,
+                                                                       final MathUtils.RunningAverage hqSoftClips,
+                                                                       final boolean readsWereRealigned) {
 
         final int likelihoodCount = ploidy + 1;
         final double log10Ploidy = MathUtils.log10(ploidy);
@@ -375,10 +409,22 @@ public class ReferenceConfidenceModel {
         final RefVsAnyResult result = new RefVsAnyResult(likelihoodCount);
         int readCount = 0;
         for (final PileupElement p : pileup) {
-            final byte qual = p.isDeletion() ? REF_MODEL_DELETION_QUAL : p.getQual();
-            if (!p.isDeletion() && qual <= minBaseQual) {
+            //note that reference confidence model is used both in active region detection (readsWereRealigned=false) and
+            //after the assembly. Only in the latter case flow based model is used in getDeletionQuality, in
+            //active region detection we for now use more sensitive reference confidence model where any deletion is
+            //a strong evidence against reference.
+            final byte qual = p.isDeletion() ? getDeletionQuality(p, refBase, readsWereRealigned) : p.getQual();
+            if ( (qual <= minBaseQual) && (flowBasedModel || !p.isDeletion())) {
                 continue;
             }
+            if (!useSoftClippedBases && readsWereRealigned){
+                int loc = pileup.getLocation().getStart();
+                //skip bases that were originally softclipped
+                if ((getOriginalSoftStart(p.getRead()) > loc) || (getOriginalSoftEnd(p.getRead()) < loc)){
+                    continue;
+                }
+            }
+
             readCount++;
             applyPileupElementRefVsNonRefLikelihoodAndCount(refBase, likelihoodCount, log10Ploidy, result, p, qual, hqSoftClips, readsWereRealigned);
         }
@@ -387,6 +433,41 @@ public class ReferenceConfidenceModel {
             result.genotypeLikelihoods[i] -= denominator;
         }
         return result;
+    }
+
+    private int getOriginalSoftStart(GATKRead read) {
+        if (!read.hasAttribute(ORIGINAL_SOFTCLIP_START_TAG)){
+            throw new GATKException("Attempt to read soft clip start that was not saved");
+        } else {
+            return read.getAttributeAsInteger(ORIGINAL_SOFTCLIP_START_TAG);
+        }
+    }
+
+    private int getOriginalSoftEnd(GATKRead read) {
+        if (!read.hasAttribute(ORIGINAL_SOFTCLIP_END_TAG)){
+            throw new GATKException("Attempt to read soft clip end that was not saved");
+        } else {
+            return read.getAttributeAsInteger(ORIGINAL_SOFTCLIP_END_TAG);
+        }
+    }
+
+
+    /**
+     *  in flow based read the deletion quality can be found as the quality of the nearby base
+     *  assuming that the deletion is hmer deletion
+     *  we use this only in the case of using reference confidence model after the assembly/realignment.
+     *  when reference confidence model is used for active region detection we use standard reference
+     *  confidence where any deletion has a constant quality
+     *
+     */
+    private byte getDeletionQuality(PileupElement p, byte refBase, final boolean notInIsActive) {
+        if (flowBasedModel && notInIsActive){
+            GATKRead read = p.getRead();
+            if (read.getBase(p.getOffset()+1 ) == refBase){ // if hmer indel - assume that deletion is left aligned
+                return read.getBaseQuality(p.getOffset()+1);
+            }
+        }
+        return refModelDeletionQuality;
     }
 
     private void applyPileupElementRefVsNonRefLikelihoodAndCount(final byte refBase, final int likelihoodCount, final double log10Ploidy, final RefVsAnyResult result, final PileupElement element, final byte qual, final MathUtils.RunningAverage hqSoftClips, final boolean readsWereRealigned) {
@@ -402,6 +483,7 @@ public class ReferenceConfidenceModel {
             nonRefLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
             result.refDepth++;
         }
+
         // Homozygous likelihoods don't need the logSum trick.
         result.genotypeLikelihoods[0] += referenceLikelihood + log10Ploidy;
         result.genotypeLikelihoods[likelihoodCount - 1] += nonRefLikelihood + log10Ploidy;
@@ -417,7 +499,7 @@ public class ReferenceConfidenceModel {
         }
     }
 
-    protected static boolean isAltBeforeAssembly(final PileupElement element, final byte refBase){
+    public static boolean isAltBeforeAssembly(final PileupElement element, final byte refBase){
         return element.getBase() != refBase || element.isDeletion() || element.isBeforeDeletionStart()
                 || element.isAfterDeletionEnd() || element.isBeforeInsertion() || element.isAfterInsertion() || element.isNextToSoftClip();
     }
@@ -764,4 +846,6 @@ public class ReferenceConfidenceModel {
         refHaplotype.setCigar(c);
         return refHaplotype;
     }
+
+
 }

@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -813,6 +814,7 @@ public final class ReadUtils {
         return read.hasAttribute(BQSR_BASE_INSERTION_QUALITIES) || read.hasAttribute(BQSR_BASE_DELETION_QUALITIES);
     }
 
+
     /**
      * @return the base deletion quality or null if read doesn't have one
      */
@@ -1143,11 +1145,6 @@ public final class ReadUtils {
      *     In most cases for mapped reads, this is typically equal to the sum of the size of soft-clipping at the
      *     beginning of the alignment.
      * </p>
-     * <p>
-     *     Notice that this index makes reference to the offset of that first base in the array returned by {@link GATKRead#getBases()}, If you
-     *     are after the first base in the original unclipped and not reverse-complemented read, you must use
-     *     {@link #getFirstAlignedReadPosition} instead.
-     * </p>
      *
      * @throws IllegalArgumentException if the input {@code read} is {@code null} or does not have any base aligned
      *  against the reference (e.g. is unmapped).
@@ -1199,4 +1196,5 @@ public final class ReadUtils {
     public static boolean readHasReasonableMQ(final GATKRead read){
         return read.getMappingQuality() != 0 && read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     }
+
 }

@@ -81,7 +81,8 @@ public class SomaticGenotypingEngine implements AutoCloseable {
             final List<VariantContext> givenAlleles,
             final SAMFileHeader header,
             final boolean withBamOut,
-            final boolean emitRefConf) {
+            final boolean emitRefConf,
+            final Set<Integer> suspiciousLocations) {
         Utils.nonNull(logReadLikelihoods);
         Utils.validateArg(logReadLikelihoods.numberOfSamples() > 0, "likelihoods have no samples");
         Utils.nonNull(activeRegionWindow);
@@ -158,7 +159,9 @@ public class SomaticGenotypingEngine implements AutoCloseable {
             final List<Allele> allAllelesToEmit = ListUtils.union(Arrays.asList(mergedVC.getReference()), tumorAltAlleles);
 
 
-            final Map<String, Object> negativeLogPopulationAFAnnotation = getNegativeLogPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc), allAllelesToEmit, MTAC.getDefaultAlleleFrequency());
+            final Map<String, Object> negativeLogPopulationAFAnnotation =
+                    getNegativeLogPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc),
+                            allAllelesToEmit, MTAC.getDefaultAlleleFrequency());
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allAllelesToEmit)
@@ -197,7 +200,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
 
 
             final VariantContext annotatedCall =  annotationEngine.annotateContext(trimmedCall, featureContext, referenceContext,
-                    trimmedLikelihoodsForAnnotation, Optional.of(trimmedLikelihoods), Optional.of(logFragmentLikelihoods), a -> true);
+                    trimmedLikelihoodsForAnnotation, Optional.of(trimmedLikelihoods), Optional.of(logFragmentLikelihoods), Optional.empty(), a -> true);
             if(withBamOut) {
                 AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(trimmedCall, trimmedLikelihoods, Fragment::getReads);
             }
@@ -216,7 +219,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
         return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
     }
 
-    private double[] makePriorPseudocounts(final int numAlleles) {
+    public double[] makePriorPseudocounts(final int numAlleles) {
         return new IndexRange(0, numAlleles).mapToDouble(n -> n == 0 ? refPseudocount : altPseudocount);
     }
 
@@ -314,7 +317,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
         return result;
     }
 
-    private static <EVIDENCE extends Locatable> LikelihoodMatrix<EVIDENCE, Allele> combinedLikelihoodMatrix(final List<LikelihoodMatrix<EVIDENCE, Allele>> matrices, final AlleleList<Allele> alleleList) {
+    public static <EVIDENCE extends Locatable> LikelihoodMatrix<EVIDENCE, Allele> combinedLikelihoodMatrix(final List<LikelihoodMatrix<EVIDENCE, Allele>> matrices, final AlleleList<Allele> alleleList) {
         final List<EVIDENCE> reads = matrices.stream().flatMap(m -> m.evidence().stream()).collect(Collectors.toList());
         final AlleleLikelihoods<EVIDENCE, Allele> combinedLikelihoods = new AlleleLikelihoods<>(SampleList.singletonSampleList("COMBINED"), alleleList, ImmutableMap.of("COMBINED", reads));
 

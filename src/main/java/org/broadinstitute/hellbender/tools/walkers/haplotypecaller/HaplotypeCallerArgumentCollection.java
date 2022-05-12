@@ -1,15 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.tools.FlowBasedAlignmentArgumentCollection;
+import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
@@ -17,7 +21,6 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgum
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -36,9 +39,21 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String TRANSFORM_DRAGEN_MAPPING_QUALITY_LONG_NAME = "transform-dragen-mapping-quality";
     public static final String MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME = "mapping-quality-threshold-for-genotyping";
 
+    public static final String FLOW_GATK_MODE_LONG_NAME = "flow-mode";
+    public static final String STEPWISE_FITLERING_ARGUMENT = "use-flow-aligner-for-stepwise-hc-filtering";
+    public static final String DISABLE_SPANNING_EVENT_GENOTYPING_LONG_NAME = "disable-spanning-event-genotyping";
+    public static final String MAX_EFFECTIVE_DEPTH_ADJUSTMENT_FOR_FRD_LONG_NAME = "max-effective-depth-adjustment-for-frd";
+    public static final String KEEP_RG_LONG_NAME = "keep-rg";
+    public static final String JUST_DETERMINE_ACTIVE_REGIONS_LONG_NAME = "just-determine-active-regions";
+    public static final String DEBUG_ASSEMBLY_REGION_STATE_LONG_NAME = "debug-assembly-region-state";
+    public static final String DEBUG_GENOTYPER_OUTPUT_LONG_NAME = "debug-genotyper-output";
+    public static final String DONT_GENOTYPE_LONG_NAME = "dont-genotype";
 
     @ArgumentCollection
     public StandardCallerArgumentCollection standardArgs = new StandardCallerArgumentCollection();
+
+    @ArgumentCollection
+    public FlowBasedAlignmentArgumentCollection fbargs = new FlowBasedAlignmentArgumentCollection();
 
     @Override
     protected int getDefaultMaxMnpDistance() { return 0; }
@@ -142,13 +157,16 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = DRAGEN_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).")
     public Boolean dragenMode = false;
     @Advanced
+    @Argument(fullName = FLOW_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of Flow Based features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).")
+    public FlowMode flowMode = FlowMode.NONE;
+    @Advanced
     @Argument(fullName = APPLY_BQD_LONG_NAME, doc = "If enabled this argument will apply the DRAGEN-GATK BaseQualityDropout model to the genotyping model for filtering sites due to Linked Error mode.", optional = true)
     public boolean applyBQD = false;
     @Advanced
     @Argument(fullName = APPLY_FRD_LONG_NAME, doc = "If enabled this argument will apply the DRAGEN-GATK ForeignReadDetection model to the genotyping model for filtering sites.", optional = true)
     public boolean applyFRD = false;
     @Advanced
-    @Argument(fullName = "disable-spanning-event-genotyping", doc = "If enabled this argument will disable inclusion of the '*' spanning event when genotyping events that overlap deletions", optional = true)
+    @Argument(fullName = DISABLE_SPANNING_EVENT_GENOTYPING_LONG_NAME, doc = "If enabled this argument will disable inclusion of the '*' spanning event when genotyping events that overlap deletions", optional = true)
     public boolean disableSpanningEventGenotyping = false;
     @Advanced
     @Argument(fullName = TRANSFORM_DRAGEN_MAPPING_QUALITY_LONG_NAME, doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
@@ -161,36 +179,36 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName = MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME, doc = "Control the threshold for discounting reads from the genotyper due to mapping quality after the active region detection and assembly steps but before genotyping. NOTE: this is in contrast to the --"+ ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME+" argument which filters reads from all parts of the HaplotypeCaller. If you would like to call genotypes with a different threshold both arguments must be set.", optional = true)
     public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
     @Advanced
-    @Argument(fullName = "max-effective-depth-adjustment-for-frd", doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_ADJUSTMENT_FOR_FRD_LONG_NAME, doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)
     public int maxEffectiveDepthAdjustment = 0;
 
     @Hidden
-    @Argument(fullName = "keep-rg", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
+    @Argument(fullName = KEEP_RG_LONG_NAME, doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
     public String keepRG = null;
 
     /**
      * This argument is intended for benchmarking and scalability testing.
      */
     @Hidden
-    @Argument(fullName = "just-determine-active-regions", doc = "Just determine ActiveRegions, don't perform assembly or calling", optional = true)
+    @Argument(fullName = JUST_DETERMINE_ACTIVE_REGIONS_LONG_NAME, doc = "Just determine ActiveRegions, don't perform assembly or calling", optional = true)
     public boolean justDetermineActiveRegions = false;
 
 
     @Hidden
     @Advanced
-    @Argument(fullName="debug-assembly-region-state", doc="Write output files for assembled regions with read summaries and called haplotypes to the specified path", optional = true)
+    @Argument(fullName= DEBUG_ASSEMBLY_REGION_STATE_LONG_NAME, doc="Write output files for assembled regions with read summaries and called haplotypes to the specified path", optional = true)
     public GATKPath assemblyStateOutput = null;
 
     @Hidden
     @Advanced
-    @Argument(fullName="debug-genotyper-output", doc ="Location to write genotyper debug stream that contains detailed information about the internal state of the genotyepr", optional = true)
+    @Argument(fullName= DEBUG_GENOTYPER_OUTPUT_LONG_NAME, doc ="Location to write genotyper debug stream that contains detailed information about the internal state of the genotyepr", optional = true)
     public String genotyperDebugOutStream = null;
 
     /**
      * This argument is intended for benchmarking and scalability testing.
      */
     @Hidden
-    @Argument(fullName = "dont-genotype", doc = "Perform assembly but do not genotype variants", optional = true)
+    @Argument(fullName = DONT_GENOTYPE_LONG_NAME, doc = "Perform assembly but do not genotype variants", optional = true)
     public boolean dontGenotype = false;
 
     /**
@@ -228,5 +246,57 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
                 GenotypeCalculationArgumentCollection.CALL_CONFIDENCE_LONG_NAME, "3.0",
                 GenotypeCalculationArgumentCollection.USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME, "true",
         };
+    }
+
+    @Advanced
+    @Hidden
+    @Argument(fullName = STEPWISE_FITLERING_ARGUMENT, doc = "If enabled, this will create a FlowBasedAligner to use for filtering haplotypes before using another likelihoods engine for scoring.")
+    public boolean stepwiseFiltering = false;
+
+    /**
+     * the different flow modes, in terms of their parameters and their values
+     *
+     * NOTE: a parameter value ending with /o is optional - meaning it will not fail the process if it
+     * is not existent on the target parameters collection. This allows setting parameters which are
+     * specific to only a subset of the tools supporting flow-mode
+     */
+    public enum FlowMode {
+        NONE(new String[]{}, null),
+
+        STANDARD(new String[]{
+                MIN_BASE_QUALITY_SCORE_SHORT_NAME, "0",
+                FILTER_ALLELES, "true",
+                FILTER_ALLELES_SOR_THRESHOLD, "3",
+                FLOW_ASSEMBLY_COLLAPSE_HMER_SIZE_LONG_NAME, "12",
+                OVERRIDE_FRAGMENT_SOFTCLIP_CHECK_LONG_NAME, "true",
+                FlowBasedAlignmentArgumentCollection.FLOW_LIKELIHOOD_PARALLEL_THREADS_LONG_NAME, "2",
+                FlowBasedAlignmentArgumentCollection.FLOW_LIKELIHOOD_OPTIMIZED_COMP_LONG_NAME, "true",
+                LikelihoodEngineArgumentCollection.LIKELIHOOD_CALCULATION_ENGINE_FULL_NAME, ReadLikelihoodCalculationEngine.Implementation.FlowBased.toString()
+        }, null),
+
+        ADVANCED(new String[]{
+                HaplotypeCallerReadThreadingAssemblerArgumentCollection.ADAPTIVE_PRUNING_LONG_NAME, "true",
+                ReadThreadingAssemblerArgumentCollection.PRUNING_LOD_THRESHOLD_LONG_NAME, "3.0",
+                LikelihoodEngineArgumentCollection.ENABLE_DYNAMIC_READ_DISQUALIFICATION_FOR_GENOTYPING_LONG_NAME, "true",
+                LikelihoodEngineArgumentCollection.DYNAMIC_READ_DISQUALIFICATION_THRESHOLD_LONG_NAME, "10",
+                APPLY_FRD_LONG_NAME, "true",
+                ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME, "1",
+                MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME, "1"
+        }, STANDARD);
+
+        final private String[] nameValuePairs;
+        final private FlowMode parent;
+
+        FlowMode(final String[] nameValuePairs, final FlowMode parent) {
+            this.nameValuePairs = nameValuePairs;
+            this.parent = parent;
+        }
+
+        public String[] getNameValuePairs() {
+            if ( parent == null )
+                return nameValuePairs;
+            else
+                return ArrayUtils.addAll(nameValuePairs, parent.getNameValuePairs());
+        }
     }
 }

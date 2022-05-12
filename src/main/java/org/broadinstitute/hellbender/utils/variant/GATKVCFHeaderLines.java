@@ -151,6 +151,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(FISHER_STRAND_KEY, 1, VCFHeaderLineType.Float, "Phred-scaled p-value using Fisher's exact test to detect strand bias"));
         addInfoLine(new VCFInfoHeaderLine(AS_FISHER_STRAND_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "allele specific phred-scaled p-value using Fisher's exact test to detect strand bias of each alt allele"));
         addInfoLine(new VCFInfoHeaderLine(AS_SB_TABLE_KEY, 1, VCFHeaderLineType.String, "Allele-specific forward/reverse read counts for strand bias tests. Includes the reference and alleles separated by |."));
+        addInfoLine(new VCFInfoHeaderLine(AS_SBP_TABLE_KEY, 1, VCFHeaderLineType.String, "Allele-specific forward/reverse read counts for strand bias tests (with probability). Includes the reference and alleles separated by |."));
         addInfoLine(new VCFInfoHeaderLine(NOCALL_CHROM_KEY, 1, VCFHeaderLineType.Integer, "Number of no-called samples"));
         addInfoLine(new VCFInfoHeaderLine(GQ_MEAN_KEY, 1, VCFHeaderLineType.Float, "Mean of all GQ values"));
         addInfoLine(new VCFInfoHeaderLine(GQ_STDEV_KEY, 1, VCFHeaderLineType.Float, "Standard deviation of all GQ values"));
@@ -189,6 +190,7 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(SAMPLE_LIST_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "List of polymorphic samples"));
         addInfoLine(new VCFInfoHeaderLine(STRAND_ODDS_RATIO_KEY, 1, VCFHeaderLineType.Float, "Symmetric Odds Ratio of 2x2 contingency table to detect strand bias"));
         addInfoLine(new VCFInfoHeaderLine(AS_STRAND_ODDS_RATIO_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele specific strand Odds Ratio of 2x|Alts| contingency table to detect allele specific strand bias"));
+        addInfoLine(new VCFInfoHeaderLine(AS_STRAND_ODDS_RATIO_PROB_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele specific strand Odds Ratio of 2x|Alts| contingency table to detect allele specific strand bias (using probability)"));
         addInfoLine(new VCFInfoHeaderLine(STR_PRESENT_KEY, 0, VCFHeaderLineType.Flag, "Variant is a short tandem repeat"));
         addInfoLine(new VCFInfoHeaderLine(REPEAT_UNIT_KEY, 1, VCFHeaderLineType.String, "Tandem repeat unit (bases)"));
         addInfoLine(new VCFInfoHeaderLine(REPEATS_PER_ALLELE_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Number of times tandem repeat unit is repeated, for each allele (including reference)"));
@@ -209,6 +211,8 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(BASE_QUAL_HISTOGRAM_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer,
                 "Base quality counts for each allele represented sparsely as alternating entries of qualities and counts for each allele." +
                         "For example [10,1,0,20,0,1] means one ref base with quality 10 and one alt base with quality 20."));
+
+        addInfoLine(new VCFInfoHeaderLine(TREE_SCORE, 1, VCFHeaderLineType.Float, "Score from single sample filtering with random forest model."));
 
         // M2-related info lines
         addInfoLine(new VCFInfoHeaderLine(EVENT_COUNT_IN_HAPLOTYPE_KEY, 1, VCFHeaderLineType.Integer, "Number of events in this haplotype"));
@@ -235,10 +239,24 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(UNITIG_SIZES_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Sizes of reassembled unitigs"));
         addInfoLine(new VCFInfoHeaderLine(JOINT_ALIGNMENT_COUNT_KEY, 1, VCFHeaderLineType.Integer, "Number of joint alignments"));
         addInfoLine(new VCFInfoHeaderLine(ALIGNMENT_SCORE_DIFFERENCE_KEY, 1, VCFHeaderLineType.Integer, "Difference in alignment score between best and next-best alignment"));
+        addInfoLine(new VCFInfoHeaderLine(EXT_COLLAPSED_KEY,1, VCFHeaderLineType.Integer, "Indicates longer hmer collapsing took place (this is a flow-based specific tag)"));
+        addInfoLine(new VCFInfoHeaderLine(POSSIBLE_FP_ADJACENT_TP_KEY,1, VCFHeaderLineType.Flag, "Indicates a locus where false positive allele might be affecting a true positive allele"));
+
+        // flow annotations
+        addInfoLine(new VCFInfoHeaderLine(FLOW_INDEL_CLASSIFY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Flow: indel class: ins, del, NA"));
+        addInfoLine(new VCFInfoHeaderLine(FLOW_INDEL_LENGTH, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Flow: length of indel"));
+        addInfoLine(new VCFInfoHeaderLine(FLOW_HMER_INDEL_LENGTH, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Flow: length of the hmer indel, if so"));
+        addInfoLine(new VCFInfoHeaderLine(FLOW_HMER_INDEL_NUC, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Flow: nucleotide of the hmer indel, if so"));
+        addInfoLine(new VCFInfoHeaderLine(FLOW_LEFT_MOTIF, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Flow: motif to the left of the indel"));
+        addInfoLine(new VCFInfoHeaderLine(FLOW_RIGHT_MOTIF, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Flow: motif to the right of the indel"));
+        addInfoLine(new VCFInfoHeaderLine(FLOW_GC_CONTENT, 1, VCFHeaderLineType.Float, "Flow: percentage of G or C in the window around hmer"));
+        addInfoLine(new VCFInfoHeaderLine(FLOW_CYCLESKIP_STATUS, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Flow: cycle skip status: cycle-skip, possible-cycle-skip, non-skip"));
+        addInfoLine(new VCFInfoHeaderLine(FLOW_VARIANT_TYPE, 1, VCFHeaderLineType.String, "Flow: type of variant: SNP/NON-H-INDEL/H-INDEL"));
         addInfoLine(new VCFInfoHeaderLine(REFERENCE_BASES_KEY, 1, VCFHeaderLineType.String, "local reference bases."));
         addInfoLine(new VCFInfoHeaderLine(HAPLOTYPE_EQUIVALENCE_COUNTS_KEY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Counts of support for haplotype groups excluding difference at the site in question."));
         addInfoLine(new VCFInfoHeaderLine(HAPLOTYPE_COMPLEXITY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Edit distances of each alt allele's most common supporting haplotype from closest germline haplotype, excluding differences at the site in question."));
         addInfoLine(new VCFInfoHeaderLine(HAPLOTYPE_DOMINANCE_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "For each alt allele, fraction of read support that best fits the most-supported haplotype containing the allele"));
-
+        addInfoLine(new VCFInfoHeaderLine(HAPLOTYPES_BEFORE_FILTERING_KEY, 1, VCFHeaderLineType.Integer, "Haplotypes detected by the assembly region before haplotype filtering is applied"));
+        addInfoLine(new VCFInfoHeaderLine(HAPLOTYPES_FILTERED_KEY, 1, VCFHeaderLineType.Integer, "Haplotypes filtered out by the haplotype filtering code"));
     }
 }
