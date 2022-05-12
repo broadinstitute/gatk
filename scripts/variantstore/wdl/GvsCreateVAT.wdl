@@ -630,7 +630,8 @@ task MergeVatTSVs {
         String? service_account_json_path
     }
 
-    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then merge_vcfs_disk_size_override else 50
+    # going large with the default to make gsutil -m cp really zippy
+    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then merge_vcfs_disk_size_override else 250
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
@@ -656,7 +657,10 @@ task MergeVatTSVs {
             echo_date "copying files from ~{output_path}export/$i/*.tsv.gz"
             gsutil -m cp ~{output_path}export/$i/*.tsv.gz TSVs/
             echo_date "concatenating local tsv.gz files"
+
+            # the internet says that * is deterministic, see https://serverfault.com/questions/122737/in-bash-are-wildcard-expansions-guaranteed-to-be-in-order
             cat TSVs/*.tsv.gz > vat_$i.tsv.gz
+
             echo_date "removing now concatenated files"
             rm TSVs/*.tsv.gz
             files="$files vat_$i.tsv.gz"
