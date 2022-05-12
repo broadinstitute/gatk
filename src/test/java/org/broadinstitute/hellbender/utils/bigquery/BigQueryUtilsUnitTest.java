@@ -6,6 +6,7 @@ import com.google.cloud.bigquery.TableResult;
 import jersey.repackaged.com.google.common.collect.Lists;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -115,8 +116,6 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups = {"cloud"})
     public void testQueryWithEmptyDatasetStorageAPI() {
-        final Map<String, String> expectedNamesAndAges = getAllExpectedNamesAndAges();
-
         final String query = String.format("SELECT * FROM `%s` WHERE false", BIGQUERY_FULLY_QUALIFIED_TABLE);
 
         final List<String> fieldsToRetrieve = new LinkedList<>();
@@ -147,22 +146,29 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups = {"cloud"})
     public void testQueryWithNullWorkflow_Name() { // THIS IS THE TEST IM WRITING
-        // this build a docker
+        final Map<String, String> expectedNamesAndAges = getAllExpectedNamesAndAges();
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
-        final List<> fieldsToRetrieve = Lists.asList("");
-        Map<String, String> labels = null;
+        final List<String> fieldsToRetrieve = new LinkedList<>();
+        final String noUDFs = null;
+        fieldsToRetrieve.add("name");
+        Map<String, String> labels = new HashMap<String, String>();
+        labels.put("gatktestquery", "teststorageapi" + runUuid);
         final StorageAPIAvroReader reader = BigQueryUtils.executeQueryWithStorageAPI(
                 query,
                 fieldsToRetrieve,
-                "projectID",
-                "datasetID",
-                "userDefinedFunctions",
+                BIGQUERY_TEST_PROJECT,
+                BIGQUERY_TEST_DATASET,
+                noUDFs,
                 false,
-                labels
+                labels,
+                null
         );
+        String tableName = reader.getTableRef();
 
-        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+        Assert.assertEquals(tableName.substring(0, 56), BIGQUERY_TEST_PROJECT+BIGQUERY_TEST_DATASET+"temp_table_GVS");
     }
+
+
 
     private Map<String, String> getAllExpectedNamesAndAges() {
         final Map<String, String> expectedNamesAndAges = new HashMap<>();
