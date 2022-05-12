@@ -413,7 +413,7 @@ public final class BigQueryUtils {
                                                                   final boolean runQueryInBatchMode,
                                                                   Map<String, String> labels,
                                                                   final String workflow_name) {
-        final String workflow = Optional.ofNullable(workflow_name).orElse("defaultValue");
+        final String workflow = Optional.ofNullable(workflow_name).orElse("GVS");
         final String tempTableName = String.format("%s_%s_%s", "temp_table", workflow, UUID.randomUUID().toString().replace('-', '_'));
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, datasetID, tempTableName);
 
