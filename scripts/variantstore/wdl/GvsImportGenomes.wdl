@@ -128,7 +128,7 @@ task CheckForDuplicateData {
     echo "WITH items as (SELECT s.sample_id, s.sample_name, s.is_loaded, s.withdrawn FROM \`${TEMP_TABLE}\` t left outer join \`${SAMPLE_INFO_TABLE}\` s on (s.sample_name = t.sample_name)) " >> query.sql
     echo "SELECT i.sample_name FROM \`${INFO_SCHEMA_TABLE}\` p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%')" >> query.sql
     echo "UNION DISTINCT "  >> query.sql
-    echo "SELECT i.sample_name FROM items i WHERE i.is_loaded = True AND i.withdrawn IS NULL "  >> query.sql
+    echo "SELECT i.sample_name FROM items i WHERE i.is_loaded = True "  >> query.sql
     echo "UNION DISTINCT "  >> query.sql
     echo "SELECT i.sample_name FROM items i WHERE i.sample_id IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\`) "  >> query.sql
 
