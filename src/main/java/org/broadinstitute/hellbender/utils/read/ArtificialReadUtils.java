@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -765,5 +764,26 @@ public final class ArtificialReadUtils {
         }
         gatkRead.setBases(newBases);
         return PileupElement.createPileupForReadAndOffset(gatkRead, offsetIntoRead);
+    }
+
+    public static void makeIntoFlowBased(final GATKRead read) {
+
+        // create synthetic matrix attribute (tp) - length should be same as number of bases
+        byte[]      tp = new byte[read.getBasesNoCopy().length];
+        Arrays.fill(tp, (byte)1);
+        read.setAttribute(FlowBasedRead.FLOW_MATRIX_TAG_NAME, tp);
+
+        String      t0 = new String(new char[read.getBasesNoCopy().length]).replace('\0', 'I');
+        read.setAttribute(FlowBasedRead.FLOW_MATRIX_T0_TAG_NAME, t0);
+        // ensure that read group has a flow order
+        if ( read instanceof SAMRecordToGATKReadAdapter ) {
+            makeIntoFlowBased(((SAMRecordToGATKReadAdapter)read).getEncapsulatedSamRecord().getReadGroup());
+        }
+    }
+
+    public static void makeIntoFlowBased(final SAMReadGroupRecord readGroup) {
+        if ( readGroup != null && readGroup.getFlowOrder() == null ) {
+            readGroup.setFlowOrder(FlowBasedRead.DEFAULT_FLOW_ORDER);
+        }
     }
 }

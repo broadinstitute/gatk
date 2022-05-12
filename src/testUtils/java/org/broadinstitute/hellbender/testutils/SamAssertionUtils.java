@@ -248,7 +248,12 @@ public final class SamAssertionUtils {
     }
 
     private static <T> String compareValues(final T v1, final T v2, final String label) {
-        boolean eq = Objects.equals(v1, v2);
+        boolean eq;
+        if ((v1!=null) && (v2!=null) && (v1.getClass().isArray()) && (v2.getClass().isArray())) {
+            eq = Arrays.equals((byte[]) v1,(byte [])v2);
+        } else {
+            eq = Objects.equals(v1, v2);
+        }
         if (eq) {
             return null;
         } else {

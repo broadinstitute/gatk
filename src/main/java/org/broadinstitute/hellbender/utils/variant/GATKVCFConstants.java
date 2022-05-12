@@ -44,6 +44,8 @@ public final class GATKVCFConstants {
     public static final String FISHER_STRAND_KEY =                  "FS";
     public static final String AS_FISHER_STRAND_KEY =               "AS_FS";
     public static final String AS_SB_TABLE_KEY =                    "AS_SB_TABLE";
+    public static final String AS_SBP_TABLE_KEY =                   "AS_SBP_TABLE";
+    public static final String POSSIBLE_FP_ADJACENT_TP_KEY =        "SUSP_NOISY_ADJACENT_TP_VARIANT";
     public static final String SB_TABLE_KEY =                       "SB_TABLE";
     public static final String GQ_MEAN_KEY =                        "GQ_MEAN";
     public static final String GQ_STDEV_KEY =                       "GQ_STDDEV";
@@ -83,12 +85,15 @@ public final class GATKVCFConstants {
     public static final String SAMPLE_LIST_KEY =                    "Samples";
     public static final String STRAND_ODDS_RATIO_KEY =              "SOR";
     public static final String AS_STRAND_ODDS_RATIO_KEY =           "AS_SOR";
+    public static final String AS_STRAND_ODDS_RATIO_PROB_KEY =      "AS_SORP";
     public static final String STR_PRESENT_KEY =                    "STR";
     public static final String VQS_LOD_KEY =                        "VQSLOD";
     public static final String CNN_1D_KEY =                         "CNN_1D";
     public static final String CNN_2D_KEY =                         "CNN_2D";
     public static final String F1R2_KEY =                           "F1R2";
     public static final String F2R1_KEY =                           "F2R1";
+
+    public static final String TREE_SCORE =                         "TREE_SCORE";
 
     // Mutect2-specific INFO keys
     public static final String TUMOR_LOG_10_ODDS_KEY =              "TLOD";
@@ -139,11 +144,28 @@ public final class GATKVCFConstants {
     public static final String HAPLOTYPE_EQUIVALENCE_COUNTS_KEY =   "HEC";
     public static final String HAPLOTYPE_COMPLEXITY_KEY =           "HAPCOMP";
     public static final String HAPLOTYPE_DOMINANCE_KEY =            "HAPDOM";
+    public static final String HAPLOTYPES_BEFORE_FILTERING_KEY =    "ASSEMBLED_HAPS";
+    public static final String HAPLOTYPES_FILTERED_KEY =            "FILTERED_HAPS";
     public final static String TRANSMISSION_PROBABILITY_KEY =       "TP"; //PhaseByTransmission
     public static final String FRAGMENT_ALLELE_DEPTHS =             "FAD";
 
+    // flow annotations
+    public final static String FLOW_INDEL_CLASSIFY =                "X_IC";
+    public final static String FLOW_INDEL_LENGTH =                  "X_IL";
+    public final static String FLOW_HMER_INDEL_LENGTH =             "X_HIL";
+    public final static String FLOW_HMER_INDEL_NUC =                "X_HIN";
+    public final static String FLOW_LEFT_MOTIF =                    "X_LM";
+    public final static String FLOW_RIGHT_MOTIF =                   "X_RM";
+    public final static String FLOW_GC_CONTENT =                    "X_GCC";
+    public final static String FLOW_CYCLESKIP_STATUS =              "X_CSS";
+    public final static String FLOW_VARIANT_TYPE =                  "VARIANT_TYPE";
+
+
     // M2-specific FORMAT keys
     public static final String ALLELE_FRACTION_KEY =                "AF";
+
+    // Collapse keys
+    public static final String EXT_COLLAPSED_KEY =                  "XC";
 
     //FILTERS
     /* Note that many filters used throughout GATK (most notably in VariantRecalibration) are dynamic,

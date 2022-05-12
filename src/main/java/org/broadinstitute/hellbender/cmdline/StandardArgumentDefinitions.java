@@ -45,6 +45,7 @@ public final class StandardArgumentDefinitions {
     public static final String SITES_ONLY_LONG_NAME = "sites-only-vcf-output";
     public static final String INVALIDATE_PREVIOUS_FILTERS_LONG_NAME = "invalidate-previous-filters";
     public static final String SORT_ORDER_LONG_NAME = "sort-order";
+    public static final String FLOW_ORDER_FOR_ANNOTATIONS = "flow-order-for-annotations";
 
 
     public static final String INPUT_SHORT_NAME = "I";

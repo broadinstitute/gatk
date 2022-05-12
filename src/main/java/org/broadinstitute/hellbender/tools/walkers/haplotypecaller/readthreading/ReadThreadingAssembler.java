@@ -26,12 +26,15 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.LongHomopolymerHaplotypeCollapsingEngine;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 public final class ReadThreadingAssembler {
     private static final Logger logger = LogManager.getLogger(ReadThreadingAssembler.class);
@@ -82,7 +85,8 @@ public final class ReadThreadingAssembler {
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
                                   final double pruningSeedingLogOddsThreshold, final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs,
-                                  final boolean enableLegacyGraphCycleDetection, final int minMachingBasesToDanglingEndRecovery) {
+                                  final boolean enableLegacyGraphCycleDetection,
+                                  final int minMatchingBasesToDanglngEndRecovery) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes.stream().sorted(Integer::compareTo).collect(Collectors.toList());
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
@@ -98,7 +102,7 @@ public final class ReadThreadingAssembler {
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, pruningSeedingLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
-        this.minMatchingBasesToDanglingEndRecovery = minMachingBasesToDanglingEndRecovery;
+        this.minMatchingBasesToDanglingEndRecovery = minMatchingBasesToDanglngEndRecovery;
     }
 
     @VisibleForTesting
@@ -125,6 +129,7 @@ public final class ReadThreadingAssembler {
      * @param refLoc                    GenomeLoc object corresponding to the reference sequence with padding
      * @param readErrorCorrector        a ReadErrorCorrector object, if read are to be corrected before assembly. Can be null if no error corrector is to be used.
      * @param aligner                   {@link SmithWatermanAligner} used to align dangling ends and haplotypes to the reference sequence
+     * @param haplotypeCollapsing       an optional engine for handling long hmer collapsing (used only inflow mode)
      * @param danglingEndSWParameters   {@link SWParameters} used to align dangling ends to the reference sequence
      * @param haplotypeToReferenceSWParameters  {@link SWParameters} used to align haplotypes to the reference sequence
      * @return                          the resulting assembly-result-set
@@ -136,6 +141,7 @@ public final class ReadThreadingAssembler {
                                               final ReadErrorCorrector readErrorCorrector,
                                               final SAMFileHeader header,
                                               final SmithWatermanAligner aligner,
+                                              final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing,
                                               final SWParameters danglingEndSWParameters,
                                               final SWParameters haplotypeToReferenceSWParameters) {
         Utils.nonNull(assemblyRegion, "Assembly engine cannot be used with a null AssemblyRegion.");
@@ -155,6 +161,9 @@ public final class ReadThreadingAssembler {
 
         final List<AbstractReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
+        if ( haplotypeCollapsing != null ) {
+            logger.debug("starting runLocalAssembly with haplotypeCollapsing: " + haplotypeCollapsing);
+        }
         final AssemblyResultSet resultSet = new AssemblyResultSet();
         resultSet.setRegionForGenotyping(assemblyRegion);
         resultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
@@ -162,6 +171,8 @@ public final class ReadThreadingAssembler {
         final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getPaddedSpan();
         refHaplotype.setGenomeLocation(activeRegionExtendedLocation);
         resultSet.add(refHaplotype);
+        resultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
+
         // either follow the old method for building graphs and then assembling or assemble and haplotype call before expanding kmers
         if (generateSeqGraph) {
             assembleKmerGraphsAndHaplotypeCall(refHaplotype, refLoc, header, aligner, danglingEndSWParameters,
@@ -261,7 +272,7 @@ public final class ReadThreadingAssembler {
                     //TODO                 - If we get no variation
 
                     // if asssembly didn't fail ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
-                    if (! savedAssemblyResults.get(savedAssemblyResults.size() - 1).getDiscoveredHaplotypes().isEmpty()) {
+                    if (! assembledResult.getDiscoveredHaplotypes().isEmpty()) {
                         // we have found our workable kmer size so lets add the results and finish
                         if (!assembledResult.containsSuspectHaplotypes()) {
                             for (Haplotype h : assembledResult.getDiscoveredHaplotypes()) {
@@ -271,7 +282,7 @@ public final class ReadThreadingAssembler {
                         }
                     }
 
-                // if no variation is discoverd in the graph don't bother expanding the kmer size.
+                // if no variation is discovered in the graph don't bother expanding the kmer size.
                 } else if (assembledResult != null && assembledResult.getStatus() == AssemblyResult.Status.JUST_ASSEMBLED_REFERENCE) {
                     hasAdequatelyAssembledGraph = true;
                 }
@@ -316,23 +327,24 @@ public final class ReadThreadingAssembler {
                                   final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
                                   final AssemblyResultSet resultSet, final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters) {
         // add the reference haplotype separately from all the others to ensure that it is present in the list of haplotypes
-        final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
+        Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
 
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
         int failedCigars = 0;
 
         // Validate that the graph is valid with extant source and sink before operating
-        for( final BaseGraph<V, E> graph : graphs ) {
+        for (final BaseGraph<V, E> graph : graphs) {
             final AssemblyResult assemblyResult = assemblyResultByGraph.get(graph);
             final V source = graph.getReferenceSourceVertex();
             final V sink = graph.getReferenceSinkVertex();
             Utils.validateArg(source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
 
-            for (final KBestHaplotype<V, E> kBestHaplotype :
-                    (generateSeqGraph ?
-                            new GraphBasedKBestHaplotypeFinder<>(graph, source, sink) :
-                            new JunctionTreeKBestHaplotypeFinder<>(graph, source, sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, recoverHaplotypesFromEdgesNotCoveredInJunctionTrees))
-                            .findBestHaplotypes(numBestHaplotypesPerGraph)) {
+            List<KBestHaplotype<V, E>>  bestHaplotypes = (generateSeqGraph ?
+                    new GraphBasedKBestHaplotypeFinder<>(graph, source, sink) :
+                    new JunctionTreeKBestHaplotypeFinder<>(graph, source, sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, recoverHaplotypesFromEdgesNotCoveredInJunctionTrees))
+                    .findBestHaplotypes(numBestHaplotypesPerGraph);
+
+            for (final KBestHaplotype<V, E> kBestHaplotype : bestHaplotypes) {
                 // TODO for now this seems like the solution, perhaps in the future it will be to excise the haplotype completely)
                 if (kBestHaplotype instanceof JTBestHaplotype && ((JTBestHaplotype<V, E>) kBestHaplotype).isWasPoorlyRecovered()) {
                     assemblyResult.setContainsSuspectHaplotypes(true);
@@ -395,31 +407,40 @@ public final class ReadThreadingAssembler {
             // Make sure that the ref haplotype is amongst the return haplotypes and calculate its score as
             // the first returned by any finder.
             // HERE we want to preserve the signal that assembly failed completely so in this case we don't add anything to the empty list
-            if (!returnHaplotypes.isEmpty() && !returnHaplotypes.contains(refHaplotype)) {
+
+            // downstream uncollapsing code needs to have a haplotype that is marked as reference that will be used to compare other haplotypes
+            // also uncollapsing code removes duplicated haplotypes (that become identical after uncollapsing) and needs to make sure that
+            // the reference haplotype is not removed after.
+            // thus we search for reference haplotype and mark it as reference
+            Haplotype tmpRefHaplotype = new Haplotype(refHaplotype.getBases(), false);
+            if (!returnHaplotypes.isEmpty()){
+                if ( returnHaplotypes.contains((tmpRefHaplotype))){
+                    returnHaplotypes.remove(tmpRefHaplotype);
+                }
                 returnHaplotypes.add(refHaplotype);
             }
-
             assemblyResult.setDiscoveredHaplotypes(returnHaplotypes);
-        }
 
-        if (failedCigars != 0) {
-            logger.debug(String.format("failed to align some haplotypes (%d) back to the reference (loc=%s); these will be ignored.", failedCigars, refLoc.toString()));
-        }
-
-        if ( debug ) {
-            if( returnHaplotypes.size() > 1 ) {
-                logger.info("Found " + returnHaplotypes.size() + " candidate haplotypes of " + returnHaplotypes.size() + " possible combinations to evaluate every read against.");
-            } else {
-                logger.info("Found only the reference haplotype in the assembly graph.");
+            if (failedCigars != 0) {
+                logger.debug(format("failed to align some haplotypes (%d) back to the reference (loc=%s); these will be ignored.", failedCigars, refLoc.toString()));
             }
-            for( final Haplotype h : returnHaplotypes ) {
-                logger.info( h.toString() );
-                logger.info( "> Cigar = " + h.getCigar() + " : " + h.getCigar().getReferenceLength() + " score " + h.getScore() + " ref " + h.isReference());
+
+            if (debug) {
+                if (returnHaplotypes.size() > 1) {
+                    logger.info("Found " + returnHaplotypes.size() + " candidate haplotypes of " + returnHaplotypes.size() + " possible combinations to evaluate every read against.");
+                } else {
+                    logger.info("Found only the reference haplotype in the assembly graph.");
+                }
+                for (final Haplotype h : returnHaplotypes) {
+                    logger.info(h.toString());
+                    logger.info("> Cigar = " + h.getCigar() + " : " + h.getCigar().getReferenceLength() + " score " + h.getScore() + " ref " + h.isReference());
+                }
             }
         }
 
         return new ArrayList<>(returnHaplotypes);
     }
+
     /**
      * We use CigarOperator.N as the signal that an incomplete or too divergent bubble was found during bubble traversal
      * @param c the cigar to test
@@ -472,9 +493,10 @@ public final class ReadThreadingAssembler {
         seqGraph.removeVerticesNotConnectedToRefRegardlessOfEdgeDirection();
 
         if (debugGraphTransformations) {
-            printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.2.pruned.dot");
+            printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph." + seqGraph.getKmerSize() + ".1.2.pruned.dot");
         }
         seqGraph.simplifyGraph();
+
         if (debugGraphTransformations) {
             printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.3.merged.dot");
         }
@@ -498,7 +520,7 @@ public final class ReadThreadingAssembler {
             seqGraph.addEdge(complete, dummy, new BaseEdge(true, 0));
         }
         if (debugGraphTransformations) {
-            printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph."+seqGraph.getKmerSize()+".1.4.final.dot");
+            printDebugGraphTransform(seqGraph, refHaplotype.getLocation() + "-sequenceGraph." + seqGraph.getKmerSize() + ".1.4.final.dot");
         }
         return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, seqGraph, null);
     }
@@ -621,7 +643,9 @@ public final class ReadThreadingAssembler {
             return new AssemblyResult(AssemblyResult.Status.FAILED, null, null);
         }
 
-        if ( !allowNonUniqueKmersInRef && !ReadThreadingGraph.determineNonUniqueKmers(new ReadThreadingGraph.SequenceForKmers("ref", refHaplotype.getBases(), 0, refHaplotype.getBases().length, 1, true), kmerSize).isEmpty() ) {
+        if ( !allowNonUniqueKmersInRef && !ReadThreadingGraph.determineNonUniqueKmers(
+                new ReadThreadingGraph.SequenceForKmers("ref", refHaplotype.getBases(), 0,
+                        refHaplotype.getBases().length, 1, true), kmerSize).isEmpty() ) {
             if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers");
             }
@@ -635,7 +659,7 @@ public final class ReadThreadingAssembler {
         rtgraph.setThreadingStartOnlyAtExistingVertex(!recoverDanglingBranches);
 
         // add the reference sequence to the graph
-        rtgraph.addSequence("ref", refHaplotype.getBases(), true);
+        rtgraph.addSequence("ref", refHaplotype.getBases(), 1, true);
 
         // Next pull kmers out of every read and throw them on the graph
         for( final GATKRead read : reads ) {
@@ -890,5 +914,25 @@ public final class ReadThreadingAssembler {
                         queue.stream().limit(200).forEachOrdered(vc -> assembledEventMapVcfOutputWriter.get().add(vc));
                     }
                     queue.add(event);}));
+    }
+
+    public AssemblyResultSet generateEmptyLLocalAssemblyResult(final AssemblyRegion assemblyRegion,
+                                              final Haplotype refHaplotype,
+                                              final byte[] fullReferenceWithPadding,
+                                              final SimpleInterval refLoc,
+                                              final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing
+                                              ) {
+
+        final AssemblyResultSet resultSet = new AssemblyResultSet();
+        resultSet.setRegionForGenotyping(assemblyRegion);
+        resultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
+        resultSet.setPaddedReferenceLoc(refLoc);
+
+        final SimpleInterval activeRegionExtendedLocation = assemblyRegion.getPaddedSpan();
+        refHaplotype.setGenomeLocation(activeRegionExtendedLocation);
+        resultSet.add(refHaplotype);
+        resultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
+
+        return resultSet;
     }
 }

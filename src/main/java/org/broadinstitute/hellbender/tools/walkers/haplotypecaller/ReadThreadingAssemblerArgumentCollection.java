@@ -20,12 +20,31 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final double DEFAULT_PRUNING_SEEDING_LOG_ODDS_THRESHOLD = MathUtils.log10ToLog(4.0);
 
     public static final String ERROR_CORRECT_READS_LONG_NAME = "error-correct-reads";
-    public static final String PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME = "error-correction-log-odds";
-
+    public static final String PILEUP_ERROR_CORRECTION_LOG_ODDS_LONG_NAME = "error-correction-log-odds";
     public static final String CAPTURE_ASSEMBLY_FAILURE_BAM_LONG_NAME = "capture-assembly-failure-bam";
     public static final String KMER_SIZE_LONG_NAME = "kmer-size";
     public static final String DONT_INCREASE_KMER_SIZE_LONG_NAME = "dont-increase-kmer-sizes-for-cycles";
     public static final String LINKED_DE_BRUIJN_GRAPH_LONG_NAME = "linked-de-bruijn-graph";
+    public static final String ALLOW_NON_UNIQUE_KMERS_IN_REF_LONG_NAME = "allow-non-unique-kmers-in-ref";
+    public static final String NUM_PRUNING_SAMPLES_LONG_NAME = "num-pruning-samples";
+    public static final String MIN_DANGLING_BRANCH_LENGTH_LONG_NAME = "min-dangling-branch-length";
+    public static final String RECOVER_ALL_DANGLING_BRANCHES_LONG_NAME = "recover-all-dangling-branches";
+    public static final String MAX_NUM_HAPLOTYPES_IN_POPULATION_LONG_NAME = "max-num-haplotypes-in-population";
+    public static final String MIN_PRUNING_LONG_NAME = "min-pruning";
+    public static final String ADAPTIVE_PRUNING_INITIAL_ERROR_RATE_LONG_NAME = "adaptive-pruning-initial-error-rate";
+    public static final String PRUNING_LOD_THRESHOLD_LONG_NAME = "pruning-lod-threshold";
+    public static final String PRUNING_SEEDING_LOD_THRESHOLD_LONG_NAME = "pruning-seeding-lod-threshold";
+    public static final String MAX_UNPRUNED_VARIANTS_LONG_NAME = "max-unpruned-variants";
+    public static final String DISABLE_ARTIFICIAL_HAPLOTYPE_RECOVERY_LONG_NAME = "disable-artificial-haplotype-recovery";
+    public static final String ENABLE_LEGACY_GRAPH_CYCLE_DETECTION_LONG_NAME = "enable-legacy-graph-cycle-detection";
+    public static final String DEBUG_ASSEMBLY_LONG_NAME = "debug-assembly";
+    public static final String DEBUG_GRAPH_TRANSFORMATIONS_LONG_NAME = "debug-graph-transformations";
+    public static final String DEBUG_ASSEMBLY_VARIANTS_OUT_LONG_NAME = "debug-assembly-variants-out";
+    public static final String GRAPH_OUTPUT_LONG_NAME = "graph-output";
+    public static final String HAPLOTYPE_DEBUG_HISTOGRAM_OUTPUT_LONG_NAME = "haplotype-debug-histogram-output";
+    public static final String NUM_MATCHING_BASES_IN_DANGLING_END_TO_RECOVER_LONG_NAME = "num-matching-bases-in-dangling-end-to-recover";
+    public static final String KMER_LENGTH_FOR_READ_ERROR_CORRECTION_LONG_NAME = "kmer-length-for-read-error-correction";
+    public static final String MIN_OBSERVATIONS_FOR_KMER_TO_BE_SOLID_LONG_NAME = "min-observations-for-kmer-to-be-solid";
 
 
 
@@ -53,14 +72,14 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * this check may cause problems in the assembly graph.
      */
     @Advanced
-    @Argument(fullName="allow-non-unique-kmers-in-ref", doc="Allow graphs that have non-unique kmers in the reference", optional = true)
+    @Argument(fullName= ALLOW_NON_UNIQUE_KMERS_IN_REF_LONG_NAME, doc="Allow graphs that have non-unique kmers in the reference", optional = true)
     public boolean allowNonUniqueKmersInRef = false;
 
     /**
      * If fewer samples than the specified number pass the minPruning threshold for a given path, that path will be eliminated from the graph.
      */
     @Advanced
-    @Argument(fullName="num-pruning-samples", doc="Number of samples that must pass the minPruning threshold", optional = true)
+    @Argument(fullName= NUM_PRUNING_SAMPLES_LONG_NAME, doc="Number of samples that must pass the minPruning threshold", optional = true)
     public int numPruningSamples = 1;
 
     /**
@@ -69,7 +88,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * try to rescue it.  A smaller number here will lead to higher sensitivity to real variation but also to a higher number of false positives.
      */
     @Advanced
-    @Argument(fullName="min-dangling-branch-length", doc="Minimum length of a dangling branch to attempt recovery", optional = true)
+    @Argument(fullName= MIN_DANGLING_BRANCH_LENGTH_LONG_NAME, doc="Minimum length of a dangling branch to attempt recovery", optional = true)
     public int minDanglingBranchLength = 4;
 
     /**
@@ -77,7 +96,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * tells the assembly engine to recover all dangling branches.
      */
     @Advanced
-    @Argument(fullName="recover-all-dangling-branches", doc="Recover all dangling branches", optional = true)
+    @Argument(fullName= RECOVER_ALL_DANGLING_BRANCHES_LONG_NAME, doc="Recover all dangling branches", optional = true)
     public boolean recoverAllDanglingBranches = false;
 
     /**
@@ -89,7 +108,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * You can consider increasing this number when calling organisms with high heterozygosity.
      */
     @Advanced
-    @Argument(fullName="max-num-haplotypes-in-population", doc="Maximum number of haplotypes to consider for your population", optional = true)
+    @Argument(fullName= MAX_NUM_HAPLOTYPES_IN_POPULATION_LONG_NAME, doc="Maximum number of haplotypes to consider for your population", optional = true)
     public int maxNumHaplotypesInPopulation = 128;
 
     /**
@@ -102,7 +121,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * depth to produce calls).
      */
     @Advanced
-    @Argument(fullName="min-pruning", doc = "Minimum support to not prune paths in the graph", optional = true)
+    @Argument(fullName= MIN_PRUNING_LONG_NAME, doc = "Minimum support to not prune paths in the graph", optional = true)
     public int minPruneFactor = 2;
 
     /**
@@ -110,28 +129,28 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * parameter because it is only a starting point from which the algorithm discovers the true error rate.
      */
     @Advanced
-    @Argument(fullName="adaptive-pruning-initial-error-rate", doc = "Initial base error rate estimate for adaptive pruning", optional = true)
+    @Argument(fullName= ADAPTIVE_PRUNING_INITIAL_ERROR_RATE_LONG_NAME, doc = "Initial base error rate estimate for adaptive pruning", optional = true)
     public double initialErrorRateForPruning = 0.001;
 
     /**
      * Log-10 likelihood ratio threshold for adaptive pruning algorithm.
      */
     @Advanced
-    @Argument(fullName="pruning-lod-threshold", doc = "Ln likelihood ratio threshold for adaptive pruning algorithm", optional = true)
+    @Argument(fullName= PRUNING_LOD_THRESHOLD_LONG_NAME, doc = "Ln likelihood ratio threshold for adaptive pruning algorithm", optional = true)
     public double pruningLogOddsThreshold = DEFAULT_PRUNING_LOG_ODDS_THRESHOLD;
 
     /**
      * Log-10 likelihood ratio threshold for adaptive pruning algorithm.
      */
     @Advanced
-    @Argument(fullName="pruning-seeding-lod-threshold", doc = "Ln likelihood ratio threshold for seeding subgraph of good variation in adaptive pruning algorithm", optional = true)
+    @Argument(fullName= PRUNING_SEEDING_LOD_THRESHOLD_LONG_NAME, doc = "Ln likelihood ratio threshold for seeding subgraph of good variation in adaptive pruning algorithm", optional = true)
     public double pruningSeedingLogOddsThreshold = DEFAULT_PRUNING_SEEDING_LOG_ODDS_THRESHOLD;
 
     /**
      * The maximum number of variants in graph the adaptive pruner will allow
      */
     @Advanced
-    @Argument(fullName="max-unpruned-variants", doc = "Maximum number of variants in graph the adaptive pruner will allow", optional = true)
+    @Argument(fullName= MAX_UNPRUNED_VARIANTS_LONG_NAME, doc = "Maximum number of variants in graph the adaptive pruner will allow", optional = true)
     public int maxUnprunedVariants = 100;
 
     /**
@@ -151,7 +170,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * will affect sensitivity but improve phasing and runtime somewhat.
      */
     @Hidden
-    @Argument(fullName="disable-artificial-haplotype-recovery", doc = "If in 'linked-de-bruijn-graph' mode, disable recovery of haplotypes based on graph edges that are not in junction trees", optional = true)
+    @Argument(fullName= DISABLE_ARTIFICIAL_HAPLOTYPE_RECOVERY_LONG_NAME, doc = "If in 'linked-de-bruijn-graph' mode, disable recovery of haplotypes based on graph edges that are not in junction trees", optional = true)
     public boolean disableArtificialHaplotypeRecovery = false;
 
     /**
@@ -160,30 +179,30 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * purning low weight chains.
      */
     @Hidden
-    @Argument(fullName="enable-legacy-graph-cycle-detection", doc = "Use to revert the change to assembly graph code that moved pruning to before cycle detection")
+    @Argument(fullName= ENABLE_LEGACY_GRAPH_CYCLE_DETECTION_LONG_NAME, doc = "Use to revert the change to assembly graph code that moved pruning to before cycle detection")
     public boolean enableLegacyGraphCycleDetection = false;
 
     @Advanced
-    @Argument(fullName="debug-assembly", shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
+    @Argument(fullName= DEBUG_ASSEMBLY_LONG_NAME, shortName="debug", doc="Print out verbose debug information about each assembly region", optional = true)
     public boolean debugAssembly;
 
     @Hidden
-    @Argument(fullName="debug-graph-transformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
+    @Argument(fullName= DEBUG_GRAPH_TRANSFORMATIONS_LONG_NAME, doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
     public boolean debugGraphTransformations = false;
     @Hidden
-    @Argument(fullName = "debug-assembly-variants-out", doc="Write a VCF file containing all of the variants from the event map (pre-filter) for each active region", optional = true)
+    @Argument(fullName = DEBUG_ASSEMBLY_VARIANTS_OUT_LONG_NAME, doc="Write a VCF file containing all of the variants from the event map (pre-filter) for each active region", optional = true)
     public String debugAssemblyVariantsOut = null;
     /**
      * This argument is meant for debugging and is not immediately useful for normal analysis use.
      */
-    @Argument(fullName="graph-output", shortName="graph", doc="Write debug assembly graph information to this file", optional = true)
+    @Argument(fullName= GRAPH_OUTPUT_LONG_NAME, shortName="graph", doc="Write debug assembly graph information to this file", optional = true)
     public String graphOutput = null;
 
     /**
      * This argument is meant for debugging and is not immediately useful for normal analysis use.
      */
     @Hidden
-    @Argument(fullName="haplotype-debug-histogram-output", doc="Write debug assembly graph information to this file", optional = true)
+    @Argument(fullName= HAPLOTYPE_DEBUG_HISTOGRAM_OUTPUT_LONG_NAME, doc="Write debug assembly graph information to this file", optional = true)
     public String haplotypeHistogramOutput = null;
 
     @Hidden
@@ -191,7 +210,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public boolean captureAssemblyFailureBAM = false;
 
     @Hidden
-    @Argument(fullName = "num-matching-bases-in-dangling-end-to-recover", doc = "Sets the number of exactly matching bases in the suffix of a dangling tail and the prefix for a dangling head necessary in order to recover the path. (-1 indicates legacy behavior)", optional = true)
+    @Argument(fullName = NUM_MATCHING_BASES_IN_DANGLING_END_TO_RECOVER_LONG_NAME, doc = "Sets the number of exactly matching bases in the suffix of a dangling tail and the prefix for a dangling head necessary in order to recover the path. (-1 indicates legacy behavior)", optional = true)
     public int minMatchingBasesToDanglingEndRecovery = -1;
 
     //---------------------------------------------------------------------------------------------------------------
@@ -204,7 +223,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * Enabling this argument may cause fundamental problems with the assembly graph itself.
      */
     @Hidden
-    @Argument(fullName = PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, doc = "Log odds threshold for pileup error correction.  Off by default", optional = true)
+    @Argument(fullName = PILEUP_ERROR_CORRECTION_LOG_ODDS_LONG_NAME, doc = "Log odds threshold for pileup error correction.  Off by default", optional = true)
     public double pileupErrorCorrectionLogOdds = Double.NEGATIVE_INFINITY;
 
 
@@ -219,11 +238,11 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
      * Enabling this argument may cause fundamental problems with the assembly graph itself.
      */
     @Hidden
-    @Argument(fullName="kmer-length-for-read-error-correction", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
+    @Argument(fullName= KMER_LENGTH_FOR_READ_ERROR_CORRECTION_LONG_NAME, doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
     public int kmerLengthForReadErrorCorrection = 25;
 
     @Hidden
-    @Argument(fullName="min-observations-for-kmer-to-be-solid", doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
+    @Argument(fullName= MIN_OBSERVATIONS_FOR_KMER_TO_BE_SOLID_LONG_NAME, doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
     public int minObservationsForKmerToBeSolid = 20;
 
     public abstract ReadThreadingAssembler makeReadThreadingAssembler();

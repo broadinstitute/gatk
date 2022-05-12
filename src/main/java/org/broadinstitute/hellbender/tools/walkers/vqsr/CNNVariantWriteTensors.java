@@ -163,5 +163,4 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
         );
         return pythonReturnCode;
     }
-
 }

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
@@ -20,6 +21,8 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String BAM_OUTPUT_LONG_NAME = "bam-output";
     public static final String BAM_OUTPUT_SHORT_NAME = "bamout";
     public static final String BAM_WRITER_TYPE_LONG_NAME = "bam-writer-type";
+    public static final String ALLELE_LIKELIHOOD_MATRIX_PATH = "alm-path";
+    public static final String ALLELE_LIKELIHOOD_MATRIX_INTERVAL = "alm-interval";
     public static final String DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME = "dont-use-soft-clipped-bases";
     public static final String DO_NOT_RUN_PHYSICAL_PHASING_LONG_NAME = "do-not-run-physical-phasing";
     public static final String MAX_MNP_DISTANCE_LONG_NAME = "max-mnp-distance";
@@ -49,6 +52,9 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     public static final String SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_OPEN_PENALTY_LONG_NAME = "smith-waterman-read-to-haplotype-gap-open-penalty";
     public static final String SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_EXTEND_PENALTY_LONG_NAME = "smith-waterman-read-to-haplotype-gap-extend-penalty";
 
+    public static final String FLOW_ASSEMBLY_COLLAPSE_HMER_SIZE_LONG_NAME = "flow-assembly-collapse-hmer-size";
+    public static final String FLOW_ASSEMBLY_COLLAPSE_PARTIAL_MODE_LONG_NAME = "flow-assembly-collapse-partial-mode";
+
     /**
      * See documentation at {@link SmithWatermanAlignmentConstants#STANDARD_NGS}.
      */
@@ -62,6 +68,9 @@ public abstract class AssemblyBasedCallerArgumentCollection {
      */
     private static final SWParameters DEFAULT_READ_TO_HAPLOTYPE_SMITH_WATERMAN_PARAMETERS = SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS;
     public static final String SOFT_CLIP_LOW_QUALITY_ENDS_LONG_NAME = "soft-clip-low-quality-ends";
+
+    public static final String MIN_BASE_QUALITY_SCORE_SHORT_NAME = "mbq";
+    public static final String OVERRIDE_FRAGMENT_SOFTCLIP_CHECK_LONG_NAME = "override-fragment-softclip-check";
 
     public ReadThreadingAssembler createReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = assemblerArgs.makeReadThreadingAssembler();
@@ -128,15 +137,31 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     // -----------------------------------------------------------------------------------------------
 
     @Advanced
+    @Hidden
+    @Argument(fullName = ALLELE_LIKELIHOOD_MATRIX_PATH, doc="Output file to write alleleLikelihoodMatrix", optional=true)
+    public String alleleLikelihoodMatrixPath=null;
+
+    @Advanced
+    @Hidden
+    @Argument(fullName = ALLELE_LIKELIHOOD_MATRIX_INTERVAL, doc="Interval for which to write the alleleLikelihoodMatrix", optional=true)
+    public String alleleLikelihoodMatrixInterval=null;
+
+    @Advanced
+    @Hidden
     @Argument(fullName = DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME, doc = "Do not analyze soft clipped bases in the reads", optional = true)
     public boolean dontUseSoftClippedBases = false;
+
+    @Advanced
+    @Hidden
+    @Argument(fullName = OVERRIDE_FRAGMENT_SOFTCLIP_CHECK_LONG_NAME, doc = "Use softclipped bases for assembly even when fragment size is ambiguous", optional = true)
+    public boolean overrideSoftclipFragmentCheck = false;
 
     // Parameters to control read error correction
 
     /**
      * Bases with a quality below this threshold will not be used for calling.
      */
-    @Argument(fullName = MIN_BASE_QUALITY_SCORE_LONG_NAME, shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)
+    @Argument(fullName = MIN_BASE_QUALITY_SCORE_LONG_NAME, shortName = MIN_BASE_QUALITY_SCORE_SHORT_NAME, doc = "Minimum base quality required to consider a base for calling", optional = true)
     public byte minBaseQualityScore = 10;
 
     //Annotations
@@ -170,6 +195,14 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     @Advanced
     @Argument(fullName = FORCE_CALL_FILTERED_ALLELES_LONG_NAME, shortName = FORCE_CALL_FILTERED_ALLELES_SHORT_NAME, doc = "Force-call filtered alleles included in the resource specified by --alleles", optional = true)
     public boolean forceCallFiltered = false;
+
+    /**
+     * This parameter is determining the deletion quality in the reference confidence model.
+     */
+    @Advanced
+    @Argument(fullName = "reference-model-deletion-quality", doc = "The quality of deletion in the reference model", optional = true)
+    public byte refModelDelQual= ReferenceConfidenceModel.REF_MODEL_DELETION_QUAL;
+
 
     @Advanced
     @Argument(fullName = SOFT_CLIP_LOW_QUALITY_ENDS_LONG_NAME, doc = "If enabled will preserve low-quality read ends as softclips (used for DRAGEN-GATK BQD genotyper model)", optional = true)
@@ -301,4 +334,68 @@ public abstract class AssemblyBasedCallerArgumentCollection {
                 smithWatermanReadToHaplotypeGapOpenPenalty,
                 smithWatermanReadToHaplotypeGapExtendPenalty);
     }
+
+    @Hidden
+    @Advanced
+    @Argument(fullName=FLOW_ASSEMBLY_COLLAPSE_HMER_SIZE_LONG_NAME, doc="Collapse reference regions with >Nhmer during assembly, normal value when used is 12", optional = true)
+    public int flowAssemblyCollapseHKerSize = 0;
+
+    @Advanced
+    @Argument(fullName=FLOW_ASSEMBLY_COLLAPSE_PARTIAL_MODE_LONG_NAME, doc="Collapse long flow-based hmers only up to difference in reference", optional = true)
+    public boolean flowAssemblyCollapsePartialMode = false;
+
+    /**
+     * These are the parameters that control allele filtering / haplotype pruning behaviour. The goal of this step is to
+     * filter out alleles that are coming from true allele + sequencing error. Those alleles affect the quality and the SOR
+     * of the true allele especially if aligner places them on a different locations.
+     *
+     * The filtering happens if --flow-filter-alleles tag is toggled.
+     * For every active region we cluster close variants that may affect each other in genotyping (see AlleleFiltering)
+     * and calculate quality of each allele relative to all other alleles in the cluster.
+     * The weakest allele (that has quality lower than flow-filter-alleles-qual-threshold) is removed and then the process
+     * is repeated (note that if two alleles "compete" with each other, e.g. SNP and INDEL+SNP, once the worse allele
+     * is filtered, the quality of the other allele increases). After filtering out all alleles with quality lower than
+     * the threshold, we iteratively filter alleles with SOR higher than flow-filter-alleles-sor-threshold (this filters
+     * out false positives due to biased sequencing error that usually occur on a single strand).
+     *
+     * The filtering is done by removing all haplotypes that contribute this allele.
+     */
+
+    public static final float PREFILTER_QUAL_THRESHOLD = 30;
+    public static final float PREFILTER_SOR_THRESHOLD = 3;
+
+
+    public static final String FILTER_ALLELES = "flow-filter-alleles";
+    public static final String FILTER_ALLELES_QUAL_THRESHOLD = "flow-filter-alleles-qual-threshold";
+    public static final String FILTER_ALLELES_SOR_THRESHOLD = "flow-filter-alleles-sor-threshold";
+    public static final String FILTER_ALLELES_FILTER_LONE_ALLELES = "flow-filter-lone-alleles";
+
+    public final String FILTER_ALLELES_DEBUG_GRAPH = "flow-filter-alleles-debug-graphs";
+
+
+    @Advanced
+    @Argument(fullName = FILTER_ALLELES, doc = "pre-filter alleles before genotyping", optional=true)
+    public boolean filterAlleles=false;
+
+    @Advanced
+    @Argument(fullName = FILTER_ALLELES_QUAL_THRESHOLD, doc = "Threshold for prefiltering alleles on quality", optional=true)
+    public float prefilterQualThreshold=PREFILTER_QUAL_THRESHOLD;
+
+
+    @Advanced
+    @Argument(fullName = FILTER_ALLELES_SOR_THRESHOLD, doc = "Threshold for prefiltering alleles on SOR", optional=true)
+    public float prefilterSorThreshold=PREFILTER_SOR_THRESHOLD;
+
+    @Advanced
+    @Argument(fullName = FILTER_ALLELES_FILTER_LONE_ALLELES, doc = "Remove also lone alleles during allele filtering", optional=true)
+    public boolean filterLoneAlleles=false;
+
+
+    /* This is a debugging printout - printing how much each allele affects other allele (i.e. how much
+     * quality of an allele is affected by removing other allele */
+
+    @Advanced
+    @Hidden
+    @Argument(fullName = FILTER_ALLELES_DEBUG_GRAPH, doc = "Write an interaction graph in allele filtering", optional=true)
+    public boolean writeFilteringGraphs = false;
 }

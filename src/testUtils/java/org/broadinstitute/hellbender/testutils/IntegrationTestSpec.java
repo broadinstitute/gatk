@@ -9,20 +9,18 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 
 public final class IntegrationTestSpec {
 
@@ -55,6 +53,18 @@ public final class IntegrationTestSpec {
 
     //Stringency for validation of bams.
     private ValidationStringency validationStringency;
+
+    //callback interface for determining if a file is binary or text (by filename). used by EqualZipFiles
+    public interface EqualZipFilesAssist {
+        boolean isFilenameText(String filename);
+    }
+
+    static public EqualZipFilesAssist EqualZipFilesAssist_AllText = new EqualZipFilesAssist() {
+        @Override
+        public boolean isFilenameText(String filename) {
+            return true;
+        }
+    };
 
     public IntegrationTestSpec(String args, List<String> expectedFileNames) {
         this.args = args;
@@ -251,13 +261,18 @@ public final class IntegrationTestSpec {
         assertEqualTextFiles(resultFile, expectedFile, commentPrefix, true);
     }
 
-        /**
-         * Compares two text files and ignores all lines that start with the comment prefix.
-         */
     public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix, final boolean doTrimWhitespace) throws IOException {
+        assertEqualTextFiles(IOUtils.makeReaderMaybeGzipped(resultFile), IOUtils.makeReaderMaybeGzipped(expectedFile)
+                ,resultFile.toString(), expectedFile.toString(), commentPrefix, doTrimWhitespace);
+    }
 
-        XReadLines actual = new XReadLines(resultFile, doTrimWhitespace, commentPrefix);
-        XReadLines expected = new XReadLines(expectedFile, doTrimWhitespace, commentPrefix);
+    /**
+     * Compares two text files and ignores all lines that start with the comment prefix.
+     */
+    public static void assertEqualTextFiles(final Reader resultReader, final Reader expectedReader, final String resultName, final String expectedName, final String commentPrefix, final boolean doTrimWhitespace) throws IOException {
+
+        XReadLines actual = new XReadLines(resultReader, doTrimWhitespace, commentPrefix);
+        XReadLines expected = new XReadLines(expectedReader, doTrimWhitespace, commentPrefix);
 
         // For ease of debugging, we look at the lines first and only then check their counts.
         // For performance, we stream the lines through instead of loading everything first.
@@ -284,11 +299,65 @@ public final class IntegrationTestSpec {
             throw new AssertionError("File sizes are unequal - actual = " + actual.readLines().size() + ", expected = " + expected.readLines().size() + " AND detected unequal lines: " + numUnequalLines);
         }
         else if ( numUnequalLines != 0 ) {
-            throw new AssertionError("Detected unequal lines: " + numUnequalLines + " between files actual file = "+resultFile+", expected file = "+expectedFile);
+            throw new AssertionError("Detected unequal lines: " + numUnequalLines + " between files actual file = "+resultName+", expected file = "+expectedName);
         }
         else if (!sizeMatches) {
-            throw new AssertionError("File sizes are unequal - actual = " + (i + actual.readLines().size()) + ", expected = " + (i + expected.readLines().size()));
+            throw new AssertionError("File sizes are unequal - actual = " + (i + actual.readLines().size()) + ", expected = " + (i + expected.readLines().size()) + " between files actual file = "+resultName+", expected file = "+expectedName);
         }
     }
+
+    public static void assertEqualZipFiles(final File resultFile, final File expectedFile, final EqualZipFilesAssist assist) throws IOException {
+
+        // open both as zip files
+        final ZipFile             resultZip = new ZipFile(resultFile);
+        final ZipFile             expectedZip = new ZipFile(expectedFile);
+
+        try {
+
+            // walk the streams, comparing name and content
+            Enumeration<? extends ZipEntry> resultEntries = resultZip.entries();
+            Enumeration<? extends ZipEntry> expectedEntries = expectedZip.entries();
+            while (resultEntries.hasMoreElements() || expectedEntries.hasMoreElements()) {
+
+                // access entries
+                final ZipEntry resultEntry = resultEntries.hasMoreElements() ? resultEntries.nextElement() : null;
+                final ZipEntry expectedEntry = expectedEntries.hasMoreElements() ? expectedEntries.nextElement() : null;
+
+                // both should have valid entries
+                if (resultEntry == null) {
+                    throw new AssertionError("result zip missing entries, near " + expectedEntry.getName());
+                } else if (expectedEntry == null) {
+                    throw new AssertionError("result zip has extra extries near " + resultEntry.getName());
+                }
+
+                // name should match
+                if (!resultEntry.getName().equals(expectedEntry.getName())) {
+                    throw new AssertionError("result entry name differs from expected: " + resultEntry.getName() + " != " + expectedEntry.getName());
+                }
+
+                // determine text/binary (names already verified to be the same)
+                final boolean isText = (assist != null) ? assist.isFilenameText(resultEntry.getName()) : false;
+                if (isText) {
+
+                    final Reader resultReader = new InputStreamReader(resultZip.getInputStream(resultEntry));
+                    final Reader expectedReader = new InputStreamReader(expectedZip.getInputStream(expectedEntry));
+
+                    assertEqualTextFiles(resultReader, expectedReader, resultEntry.getName(), expectedEntry.getName(), null, true);
+                } else {
+
+                    // binary file must match in size
+                    if (resultEntry.getSize() != expectedEntry.getSize()) {
+                        throw new AssertionError("result entry " + resultEntry.getName() + " differs from expected in size: "
+                                + resultEntry.getSize() + " != " + expectedEntry.getSize());
+                    }
+                }
+            }
+        } finally {
+            resultZip.close();
+            expectedZip.close();
+        }
+    }
+
+
 
 }

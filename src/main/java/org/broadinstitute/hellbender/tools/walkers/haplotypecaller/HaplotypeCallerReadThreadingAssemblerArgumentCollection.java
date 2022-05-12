@@ -10,28 +10,32 @@ import java.util.Collections;
 
 public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends ReadThreadingAssemblerArgumentCollection {
     private static final long serialVersionUID = 6520834L;
+    public static final String ADAPTIVE_PRUNING_LONG_NAME = "adaptive-pruning";
+    public static final String DO_NOT_RECOVER_DANGLING_BRANCHES_LONG_NAME = "do-not-recover-dangling-branches";
+    public static final String RECOVER_DANGLING_HEADS_LONG_NAME = "recover-dangling-heads";
     /**
      * A single edge multiplicity cutoff for pruning doesn't work in samples with variable depths, for example exomes
      * and RNA.  This parameter enables the probabilistic algorithm for pruning the assembly graph that considers the
      * likelihood that each chain in the graph comes from real variation.
      */
     @Advanced
-    @Argument(fullName="adaptive-pruning", doc = "Use Mutect2's adaptive graph pruning algorithm", optional = true)
+    @Argument(fullName= ADAPTIVE_PRUNING_LONG_NAME, doc = "Use Mutect2's adaptive graph pruning algorithm", optional = true)
     public boolean useAdaptivePruning = false;
 
     /**
      * By default, the read threading assembler will attempt to recover dangling heads and tails. See the `minDanglingBranchLength` argument documentation for more details.
      */
     @Hidden
-    @Argument(fullName="do-not-recover-dangling-branches", doc="Disable dangling head and tail recovery", optional = true)
+    @Argument(fullName= DO_NOT_RECOVER_DANGLING_BRANCHES_LONG_NAME, doc="Disable dangling head and tail recovery", optional = true)
     public boolean doNotRecoverDanglingBranches = false;
 
     /**
      * As of version 3.3, this argument is no longer needed because dangling end recovery is now the default behavior. See GATK 3.3 release notes for more details.
      */
     @Deprecated
-    @Argument(fullName="recover-dangling-heads", doc="This argument is deprecated since version 3.3", optional = true)
+    @Argument(fullName= RECOVER_DANGLING_HEADS_LONG_NAME, doc="This argument is deprecated since version 3.3", optional = true)
     public boolean DEPRECATED_RecoverDanglingHeads = false;
+
 
     @Override
     public ReadThreadingAssembler makeReadThreadingAssembler() {

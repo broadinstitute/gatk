@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
@@ -198,7 +199,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder,
                                          final int numReducers, final boolean dontMarkUnmappedMates,
-                                         final MarkDuplicates.DuplicateTaggingPolicy taggingPolicy) {
+                                         final MarkDuplicates.DuplicateTaggingPolicy taggingPolicy,
+                                         final MarkDuplicatesSparkArgumentCollection mdArgs) {
         final boolean markUnmappedMates = !dontMarkUnmappedMates;
         SAMFileHeader headerForTool = header.clone();
 
@@ -208,7 +210,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         // If we need to remove optical duplicates or tag them, then make sure we are keeping track
         final boolean markOpticalDups = (taggingPolicy != MarkDuplicates.DuplicateTaggingPolicy.DontTag);
 
-        final JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers, markOpticalDups);
+        final JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers, markOpticalDups, mdArgs);
 
         // Here we explicitly repartition the read names of the unmarked reads to match the partitioning of the original bam
         final JavaRDD<Tuple2<String,Integer>> repartitionedReadNames = namesOfNonDuplicates
@@ -273,7 +275,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                     finder,
                     numReducers,
                     mdArgs.dontMarkUnmappedMates,
-                    mdArgs.taggingPolicy);
+                    mdArgs.taggingPolicy,
+                    mdArgs
+                    );
     }
 
 
@@ -378,5 +382,21 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         }
         return false;
     }
+
+    /**
+     * mode adjustments
+     * @return error messages
+     */
+    @Override
+    protected String[] customCommandLineValidation() {
+        if (markDuplicatesSparkArgumentCollection.useFlowFragments) {
+            ModeArgumentUtils.setArgValues(
+                    getCommandLineParser(),
+                    markDuplicatesSparkArgumentCollection.getFlowModeArgValues(),
+                    MarkDuplicatesSparkArgumentCollection.FLOW_MD_MODE_LONG_NAME);
+        }
+        return null;
+    }
+
 
 }
