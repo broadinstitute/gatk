@@ -461,7 +461,6 @@ task BigQuerySmokeTest {
     }
 }
 
-
 task BigQueryExportVat {
     input {
         String contig
@@ -638,7 +637,7 @@ task MergeVatTSVs {
         apt-get update
         apt-get install tabix
 
-        # custom function to prepend the current datetime to an echo statement
+        # custom function to prepend the current datetime to an echo statement "borrowed" from ExtractAnAcAfFromVCF
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
 
         if [ ~{has_service_account_file} = 'true' ]; then
