@@ -648,9 +648,9 @@ task MergeVatTSVs {
 
         mkdir TSVs
         contigs=( ~{sep=' ' contig_array} )
-        files=" header.gz"
+        files="header.gz"
 
-        echo_date "looping over contgs: $contigs"
+        echo_date "looping over contigs: $contigs"
         for i in "${contigs[@]}"
         do
             echo_date "copying files from ~{output_path}export/$i/*.tsv.gz"
@@ -675,7 +675,7 @@ task MergeVatTSVs {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_03"
+        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
         memory: "2 GB"
         preemptible: 3
         cpu: "1"
