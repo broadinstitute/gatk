@@ -1,8 +1,0 @@
-{
-  "GvsExtractCallset.default_name": "DATASET_NAME",
-  "GvsExtractCallset.extract_table_prefix": "COHORT_TABLE",
-  "GvsExtractCallset.filter_set_name": "FILTER_SET_NAME",
-  "GvsExtractCallset.output_file_base_name": "OUTPUT_FILE_BASE_NAME",
-  "GvsExtractCallset.project_id": "PROJECT_ID",
-  "GvsExtractCallset.scatter_count": 50
-}

@@ -1,8 +1,0 @@
-{
-  "GvsImportGenomes.dataset_name": "DATASET_NAME",
-  "GvsImportGenomes.drop_state": "SIXTY",
-  "GvsImportGenomes.external_samples_names": "${this.samples.research_id}",
-  "GvsImportGenomes.input_vcfs": "${this.samples.reblocked_vcf}",
-  "GvsImportGenomes.input_vcf_indexes": "${this.samples.reblocked_vcf_index}",
-  "GvsImportGenomes.project_id": "PROJECT_ID"
-}

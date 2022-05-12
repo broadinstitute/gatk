@@ -110,8 +110,6 @@ workflows:
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/GvsExtractCallset.example.inputs.json
      filters:
        branches:
          - master
@@ -119,8 +117,6 @@ workflows:
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/GvsImportGenomes.example.inputs.json
      filters:
        branches:
          - master
@@ -137,8 +133,6 @@ workflows:
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/GvsCreateVAT.example.inputs.json
      filters:
        branches:
          - master
