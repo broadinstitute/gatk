@@ -339,7 +339,7 @@ public final class ReadThreadingAssembler {
             final V sink = graph.getReferenceSinkVertex();
             Utils.validateArg(source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
 
-            List<KBestHaplotype<V, E>>  bestHaplotypes = (generateSeqGraph ?
+            List<KBestHaplotype<V, E>> bestHaplotypes = (generateSeqGraph ?
                     new GraphBasedKBestHaplotypeFinder<>(graph, source, sink) :
                     new JunctionTreeKBestHaplotypeFinder<>(graph, source, sink, JunctionTreeKBestHaplotypeFinder.DEFAULT_OUTGOING_JT_EVIDENCE_THRESHOLD_TO_BELEIVE, recoverHaplotypesFromEdgesNotCoveredInJunctionTrees))
                     .findBestHaplotypes(numBestHaplotypesPerGraph);
@@ -413,28 +413,28 @@ public final class ReadThreadingAssembler {
             // the reference haplotype is not removed after.
             // thus we search for reference haplotype and mark it as reference
             Haplotype tmpRefHaplotype = new Haplotype(refHaplotype.getBases(), false);
-            if (!returnHaplotypes.isEmpty()){
-                if ( returnHaplotypes.contains((tmpRefHaplotype))){
+            if (!returnHaplotypes.isEmpty()) {
+                if (returnHaplotypes.contains((tmpRefHaplotype))) {
                     returnHaplotypes.remove(tmpRefHaplotype);
                 }
                 returnHaplotypes.add(refHaplotype);
             }
             assemblyResult.setDiscoveredHaplotypes(returnHaplotypes);
+        }
 
-            if (failedCigars != 0) {
-                logger.debug(format("failed to align some haplotypes (%d) back to the reference (loc=%s); these will be ignored.", failedCigars, refLoc.toString()));
+        if (failedCigars != 0) {
+            logger.debug(String.format("failed to align some haplotypes (%d) back to the reference (loc=%s); these will be ignored.", failedCigars, refLoc.toString()));
+        }
+
+        if ( debug ) {
+            if( returnHaplotypes.size() > 1 ) {
+                logger.info("Found " + returnHaplotypes.size() + " candidate haplotypes of " + returnHaplotypes.size() + " possible combinations to evaluate every read against.");
+            } else {
+                logger.info("Found only the reference haplotype in the assembly graph.");
             }
-
-            if (debug) {
-                if (returnHaplotypes.size() > 1) {
-                    logger.info("Found " + returnHaplotypes.size() + " candidate haplotypes of " + returnHaplotypes.size() + " possible combinations to evaluate every read against.");
-                } else {
-                    logger.info("Found only the reference haplotype in the assembly graph.");
-                }
-                for (final Haplotype h : returnHaplotypes) {
-                    logger.info(h.toString());
-                    logger.info("> Cigar = " + h.getCigar() + " : " + h.getCigar().getReferenceLength() + " score " + h.getScore() + " ref " + h.isReference());
-                }
+            for( final Haplotype h : returnHaplotypes ) {
+                logger.info( h.toString() );
+                logger.info( "> Cigar = " + h.getCigar() + " : " + h.getCigar().getReferenceLength() + " score " + h.getScore() + " ref " + h.isReference());
             }
         }
 
