@@ -26,13 +26,10 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
 
     public static final String LIKELIHOOD_CALCULATION_ENGINE_FULL_NAME = "likelihood-calculation-engine";
     public static final String PAIR_HMM_GAP_CONTINUATION_PENALTY_LONG_NAME = "pair-hmm-gap-continuation-penalty";
-    public static final String EXPECTED_MISMATCH_RATE_FOR_READ_DISQUALIFICATION_LONG_NAME = "expected-mismatch-rate-for-read-disqualification";
     public static final String PAIR_HMM_IMPLEMENTATION_LONG_NAME = "pair-hmm-implementation";
     public static final String PCR_INDEL_MODEL_LONG_NAME = "pcr-indel-model";
     public static final String PHRED_SCALED_GLOBAL_READ_MISMAPPING_RATE_LONG_NAME = "phred-scaled-global-read-mismapping-rate";
     public static final String DISABLE_SYMMETRIC_HMM_NORMALIZING_LONG_NAME = "disable-symmetric-hmm-normalizing";
-    public static final String DISABLE_CAP_BASE_QUALITIES_TO_MAP_QUALITY_LONG_NAME = "disable-cap-base-qualities-to-map-quality";
-    public static final String ENABLE_DYNAMIC_READ_DISQUALIFICATION_FOR_GENOTYPING_LONG_NAME = "enable-dynamic-read-disqualification-for-genotyping";
     public static final String DYNAMIC_READ_DISQUALIFICATION_THRESHOLD_LONG_NAME = "dynamic-read-disqualification-threshold";
     public static final String FLOW_HMM_ENGINE_MIN_INDEL_ADJUST_LONG_NAME = "flow-hmm-engine-min-indel-adjust";
     public static final String FLOW_HMM_ENGINE_FLAT_INSERTION_PENATLY_LONG_NAME = "flow-hmm-engine-flat-insertion-penatly";
