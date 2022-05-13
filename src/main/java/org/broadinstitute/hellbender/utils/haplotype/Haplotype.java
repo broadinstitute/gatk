@@ -259,18 +259,16 @@ public final class Haplotype extends Allele {
         final byte[] myBases = getBases();
 
         // can't insert if we don't have any sequence after the inserted alt allele to span the new variant
-        if (haplotypeInsertLocation + refAllele.length()-commonPrefixLength > myBases.length) {
+        if (haplotypeInsertLocation + refAllele.length() >= myBases.length) {
             return null;
         }
 
         byte[] newHaplotypeBases = {};
         newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases, 0, haplotypeInsertLocation)); // bases before the variant
-        newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(altAllele.getBases(), commonPrefixLength, altAllele.getBases().length)); // the alt allele of the variant
-        newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases,
-                haplotypeInsertLocation + refAllele.length()-commonPrefixLength, myBases.length)); // bases after the variant
+        newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, altAllele.getBases()); // the alt allele of the variant
+        newHaplotypeBases = ArrayUtils.addAll(newHaplotypeBases, ArrayUtils.subarray(myBases, haplotypeInsertLocation + refAllele.length(), myBases.length)); // bases after the variant
         return new Haplotype(newHaplotypeBases);
     }
-
 
 
     /**

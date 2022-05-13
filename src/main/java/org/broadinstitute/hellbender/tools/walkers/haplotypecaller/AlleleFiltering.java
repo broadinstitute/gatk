@@ -387,23 +387,15 @@ public abstract class AlleleFiltering {
 
         final List<Pair<AlleleAndContext, AlleleAndContext>> result = new ArrayList<>();
         for (final Pair<AlleleAndContext, AlleleAndContext> allelePair: allelePairs) {
-
-            final int commonPrefixLengthLeft = getCommonPrefixLength(allelePair.getLeft().getAllele(), allelePair.getLeft().getRefAllele());
-            final int commonPrefixLengthRight = getCommonPrefixLength(allelePair.getRight().getAllele(), allelePair.getRight().getRefAllele());
-
             final Pair<Haplotype, Haplotype> modifiedHaplotypes = new ImmutablePair<>(
                     refHaplotype.insertAllele(
                             allelePair.getLeft().getRefAllele(),
                             allelePair.getLeft().getAllele(),
-                            allelePair.getLeft().getLoc()-activeWindowStart,
-                            -1,
-                            commonPrefixLengthLeft),
+                            allelePair.getLeft().getLoc()),
                     refHaplotype.insertAllele(
                             allelePair.getRight().getRefAllele(),
                             allelePair.getRight().getAllele(),
-                            allelePair.getRight().getLoc() - activeWindowStart,
-                            -1,
-                            commonPrefixLengthRight));
+                            allelePair.getRight().getLoc()));
 
             if ( BaseUtils.equalUpToHmerChange(modifiedHaplotypes.getLeft().getBases(), modifiedHaplotypes.getRight().getBases()) ) {
                 result.add(allelePair);

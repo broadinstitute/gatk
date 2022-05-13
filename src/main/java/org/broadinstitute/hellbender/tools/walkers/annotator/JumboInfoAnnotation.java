@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCompoundHeaderLine;
@@ -19,10 +20,11 @@ public interface JumboInfoAnnotation extends VariantAnnotation{
 
     default VCFCompoundHeaderLine.SupportedHeaderLineType annotationType() { return VCFCompoundHeaderLine.SupportedHeaderLineType.INFO; }
 
+    // TODO: fix ? extends Locatable - that actually is not needed, just pass the allele parts of the likelihoods
     Map<String, Object> annotate(final ReferenceContext ref,
                                  final FeatureContext features,
                                  final VariantContext vc,
                                  final AlleleLikelihoods<GATKRead, Allele> likelihoods,
-                                 final AlleleLikelihoods<Fragment, Allele> fragmentLikelihoods,
-                                 final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods);
+                                 final AlleleLikelihoods<? extends Locatable, Allele> fragmentLikelihoods,
+                                 final AlleleLikelihoods<? extends Locatable, Haplotype> haplotypeLikelihoods);
 }
