@@ -51,7 +51,7 @@ public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
         final File expectedOutBam = new File(localTestData, "expected." + inBam + "." + optAbrv + extension);
         Assert.assertTrue(expectedOutBam.exists(), "expected output read file exists " + expectedOutBam.getAbsolutePath());
         Assert.assertTrue(outFileBam.exists(), "actual output read file exists " + outFileBam.getAbsolutePath());
-        SamAssertionUtils.assertSamsEqual(expectedOutBam, outFileBam, referenceFile);
+        SamAssertionUtils.assertSamsEqual(outFileBam, expectedOutBam,  referenceFile);
 
         if (doStats) {
             final File outFileStat = new File(tmpStatOutName);
