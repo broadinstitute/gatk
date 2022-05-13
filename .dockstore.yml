@@ -98,6 +98,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-418-allow-withdrawn
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
