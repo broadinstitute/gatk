@@ -16,7 +16,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 
-import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.handleCausalStatusRuntimeException;
+import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
 
 public class LoadStatus {
     static final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.tools.gvs.ingest.LoadStatus.class);
@@ -120,7 +120,7 @@ public class LoadStatus {
                 break;
             } catch (Exception e) {
                 @SuppressWarnings("ThrowableNotThrown")
-                StatusRuntimeException se = handleCausalStatusRuntimeException(e);
+                StatusRuntimeException se = extractCausalStatusRuntimeExceptionOrThrow(e);
 
                 if (retryCount >= maxRetries) {
                     throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", e);

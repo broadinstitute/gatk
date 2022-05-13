@@ -15,7 +15,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.handleCausalStatusRuntimeException;
+import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
 
 
 public class CommittedBQWriter implements AutoCloseable {
@@ -79,7 +79,7 @@ public class CommittedBQWriter implements AutoCloseable {
             future.get();
             jsonArr = new JSONArray();
         } catch (Exception e) {
-            StatusRuntimeException se = handleCausalStatusRuntimeException(e);
+            StatusRuntimeException se = extractCausalStatusRuntimeExceptionOrThrow(e);
             // Google BigQuery write API error handling
             // https://cloud.google.com/bigquery/docs/write-api#error_handling
             // The comments in the case matching below are nearly all quotations from the documentation linked above.

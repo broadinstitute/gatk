@@ -463,7 +463,7 @@ public final class BigQueryUtils {
                 projectID, datasetName, tableName, sampleId));
     }
 
-    private static StatusRuntimeException handleCausalStatusRuntimeException(Throwable original, Throwable current) {
+    private static StatusRuntimeException extractCausalStatusRuntimeExceptionOrThrow(Throwable original, Throwable current) {
         if (current == null) {
             throw new GATKException("No causal StatusRuntimeException found", original);
         }
@@ -477,10 +477,19 @@ public final class BigQueryUtils {
             }
             return (StatusRuntimeException) current;
         }
-        return handleCausalStatusRuntimeException(original, current.getCause());
+        return extractCausalStatusRuntimeExceptionOrThrow(original, current.getCause());
     }
 
-    public static StatusRuntimeException handleCausalStatusRuntimeException(Throwable t) throws GATKException {
-        return handleCausalStatusRuntimeException(t, t);
+    /**
+     * Extracts the `StatusRuntimeException` most closely nested in arbitrarily many layers of exceptions of other
+     * types.
+     *
+     * @param t The `Throwable` whose nested `getCause()`s will be searched for a `StatusRuntimeException`.
+     * @return a `StatusRuntimeException` with a non-null `getStatus().getCode()`.
+     * @throws GATKException If there is no nested `StatusRuntimeException` of there is a nested
+     * `StatusRuntimeException` but either `getStatus()` or `getStatus().getCode()` returns null.
+     */
+    public static StatusRuntimeException extractCausalStatusRuntimeExceptionOrThrow(Throwable t) throws GATKException {
+        return extractCausalStatusRuntimeExceptionOrThrow(t, t);
     }
 }
