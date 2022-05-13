@@ -1,14 +1,10 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
-import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.TableResult;
-import jersey.repackaged.com.google.common.collect.Lists;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import java.util.*;
 
@@ -145,16 +141,15 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(groups = {"cloud"})
-    public void testQueryWithNullWorkflow_Name() { // THIS IS THE TEST IM WRITING
-        final Map<String, String> expectedNamesAndAges = getAllExpectedNamesAndAges();
-        final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
+    public void testQueryWithNullWorkflow_Name() {
+        final String workflowQuery = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
         final List<String> fieldsToRetrieve = new LinkedList<>();
         final String noUDFs = null;
         fieldsToRetrieve.add("name");
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("gatktestquery", "teststorageapi" + runUuid);
-        final StorageAPIAvroReader reader = BigQueryUtils.executeQueryWithStorageAPI(
-                query,
+        BigQueryUtils.executeQueryWithStorageAPI(
+                workflowQuery,
                 fieldsToRetrieve,
                 BIGQUERY_TEST_PROJECT,
                 BIGQUERY_TEST_DATASET,
@@ -163,9 +158,14 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
                 labels,
                 null
         );
-        String tableName = reader.getTableRef();
 
-        Assert.assertEquals(tableName.substring(0, 56), BIGQUERY_TEST_PROJECT+BIGQUERY_TEST_DATASET+"temp_table_GVS");
+        final String tempTableName = BIGQUERY_TEST_PROJECT+"."+BIGQUERY_TEST_DATASET+".temp_table_GVS*";
+
+        final String query = String.format("SELECT * FROM `%s`", tempTableName);
+        final TableResult result = BigQueryUtils.executeQuery(query, true, labels);
+
+        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+        Assert.assertNotSame(result.getTotalRows(),0);
     }
 
 
