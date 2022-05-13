@@ -139,24 +139,20 @@ public final class AssemblyBasedCallerUtils {
         for (final GATKRead originalRead : region.getReads()) {
             // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
             // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-            for (GATKRead originalRead : region.getReads()) {
-                // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
-                // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-                GATKRead readTemp = FlowBasedReadUtils.isFlow(originalRead) ? FlowBasedRead.hardClipUncertainBases(originalRead, readsHeader, fbargs):originalRead;
-                readTemp =  dontUseSoftClippedBases || ! ( overrideSoftclipFragmentCheck || ReadUtils.hasWellDefinedFragmentSize(readTemp)) ?
-                        ReadClipper.hardClipSoftClippedBases(readTemp) : revertSoftClippedBases(readTemp);
+            GATKRead readTemp = FlowBasedReadUtils.isFlow(originalRead) ? FlowBasedRead.hardClipUncertainBases(originalRead, readsHeader, fbargs):originalRead;
+            readTemp =  dontUseSoftClippedBases || ! ( overrideSoftclipFragmentCheck || ReadUtils.hasWellDefinedFragmentSize(readTemp)) ?
+                    ReadClipper.hardClipSoftClippedBases(readTemp) : revertSoftClippedBases(readTemp);
 
 
-                final GATKRead read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(readTemp, minTailQualityToUse) :
-                        ReadClipper.hardClipLowQualEnds(readTemp, minTailQualityToUse));
+            final GATKRead read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(readTemp, minTailQualityToUse) :
+                    ReadClipper.hardClipLowQualEnds(readTemp, minTailQualityToUse));
 
-                HardClipAndPossiblyAddToCollection(region, readsToUse, originalRead, read);
+            HardClipAndPossiblyAddToCollection(region, readsToUse, originalRead, read);
 
-                if (trackHardclippedReads) {
-                    final GATKRead hardClippedRead = ReadClipper.hardClipLowQualEnds(ReadClipper.hardClipSoftClippedBases(originalRead), minTailQualityToUse);
+            if (trackHardclippedReads) {
+                final GATKRead hardClippedRead = ReadClipper.hardClipLowQualEnds(ReadClipper.hardClipSoftClippedBases(originalRead), minTailQualityToUse);
 
-                    HardClipAndPossiblyAddToCollection(region, hardClippedReadsToUse, originalRead, hardClippedRead);
-                }
+                HardClipAndPossiblyAddToCollection(region, hardClippedReadsToUse, originalRead, hardClippedRead);
             }
         }
 
@@ -398,8 +394,9 @@ public final class AssemblyBasedCallerUtils {
 
             assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
 
-            if (!givenAlleles.isEmpty()) {
-                addGivenAlleles(region.getPaddedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, haplotypeToReferenceSWParameters, refHaplotype, assemblyResultSet);
+            if (!forcedPileupAlleles.isEmpty()) {
+                addGivenAlleles(forcedPileupAlleles, argumentCollection.maxMnpDistance,
+                        aligner, haplotypeToReferenceSWParameters, assemblyResultSet);
             }
 
             if (!forcedPileupAlleles.isEmpty()) {

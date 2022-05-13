@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Map;
@@ -22,6 +23,6 @@ public interface JumboInfoAnnotation extends VariantAnnotation{
                                  final FeatureContext features,
                                  final VariantContext vc,
                                  final AlleleLikelihoods<GATKRead, Allele> likelihoods,
-                                 final AlleleLikelihoods<?, Allele> fragmentLikelihoods,
-                                 final AlleleLikelihoods<?, Haplotype> haplotypeLikelihoods);
+                                 final AlleleLikelihoods<Fragment, Allele> fragmentLikelihoods,
+                                 final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods);
 }
