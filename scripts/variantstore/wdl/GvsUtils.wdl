@@ -322,3 +322,45 @@ task TerminateWorkflow {
     cpu: 1
   }
 }
+                                                                                                                                                               }
+task ScaleXYBedValues {
+  input {
+    File interval_weights_bed
+    Int xy_bed_weight_scaling
+  }
+  command <<<
+    python3 <<FIN
+    input = open('~{interval_weights_bed}', 'r')
+    output = open('interval_weights_xy_scaled.bed', 'w')
+    multiplier=~{xy_bed_weight_scaling}
+
+    while True:
+        line = input.readline()
+        if not line:
+        break
+
+    line = line.rstrip('\n')
+    if line.startswith('chrX') or line.startswith('chrY'):
+        fields = line.split('\t')
+        weight = fields[-1]
+        fields[-1] = str(int(weight) * multiplier)
+        output.write('\t'.join(fields) + '\n')
+    else:
+        output.write(line + '\n')
+        output.close()
+    FIN
+  >>>
+
+  output {
+    File xy_scaled_bed = glob("interval_weights_xy_scaled.bed")
+  }
+
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_02"
+    maxRetries: 3
+    memory: "7 GB"
+    preemptible: 3
+    cpu: "2"
+    disks: "local-disk 500 HDD"
+  }
+}
