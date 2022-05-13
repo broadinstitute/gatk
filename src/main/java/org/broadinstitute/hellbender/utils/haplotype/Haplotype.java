@@ -259,7 +259,7 @@ public final class Haplotype extends Allele {
         final byte[] myBases = getBases();
 
         // can't insert if we don't have any sequence after the inserted alt allele to span the new variant
-        if (haplotypeInsertLocation + refAllele.length() >= myBases.length) {
+        if (haplotypeInsertLocation + refAllele.length() > myBases.length) {
             return null;
         }
 
