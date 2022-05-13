@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.bigquery.PendingBQWriter;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 import org.json.JSONObject;
@@ -27,13 +28,19 @@ public class VetCreator {
     private PendingBQWriter vetBQJsonWriter = null;
     private final boolean forceLoadingFromNonAlleleSpecific;
 
+    private static final String VET_FILETYPE_PREFIX = "vet_";
+
+    public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, String sampleId) {
+        if (outputType != CommonCode.OutputType.BQ) return false;
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, sampleId);
+    }
+
     public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
 
         try {
-            String VET_FILETYPE_PREFIX = "vet_";
             String PREFIX_SEPARATOR = "_";
             switch (outputType) {
                 case BQ:
