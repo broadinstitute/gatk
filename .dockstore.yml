@@ -217,6 +217,14 @@ workflows:
          - master
          - ah_var_store
          - vs_261_ingest_errors
+   - name: GvsXYBedWeightScaling
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsXYBedWeightScaling.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_389_xy_reweighting
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
