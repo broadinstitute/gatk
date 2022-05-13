@@ -457,7 +457,7 @@ public class SVClusterEngine<T extends SVLocatable> {
          * active clusters can be clustered with any future inputs.
          */
         public List<T> forceFlush() {
-            final List<T> result = new ArrayList(buffer);
+            final List<T> result = new ArrayList<>(buffer);
             buffer.clear();
             return result;
         }
