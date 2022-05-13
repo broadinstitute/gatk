@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.cloud.bigquery.*;
+import io.grpc.StatusRuntimeException;
 import org.apache.ivy.util.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -457,5 +461,35 @@ public final class BigQueryUtils {
         }
         throw new GATKException(String.format("No rows returned from count of `%s.%s.%s` for sample id %s",
                 projectID, datasetName, tableName, sampleId));
+    }
+
+    private static StatusRuntimeException extractCausalStatusRuntimeExceptionOrThrow(Throwable original, Throwable current) {
+        if (current == null) {
+            throw new GATKException("No causal StatusRuntimeException found", original);
+        }
+        if (current instanceof StatusRuntimeException) {
+            StatusRuntimeException se = (StatusRuntimeException) current;
+            if (se.getStatus() == null) {
+                throw new GATKException("StatusRuntimeException has null status", original);
+            }
+            if (se.getStatus().getCode() == null) {
+                throw new GATKException("StatusRuntimeException status has null code", original);
+            }
+            return (StatusRuntimeException) current;
+        }
+        return extractCausalStatusRuntimeExceptionOrThrow(original, current.getCause());
+    }
+
+    /**
+     * Extracts the `StatusRuntimeException` most closely nested in arbitrarily many layers of exceptions of other
+     * types.
+     *
+     * @param t The `Throwable` whose nested `getCause()`s will be searched for a `StatusRuntimeException`.
+     * @return a `StatusRuntimeException` with a non-null `getStatus().getCode()`.
+     * @throws GATKException If there is no nested `StatusRuntimeException` of there is a nested
+     * `StatusRuntimeException` but either `getStatus()` or `getStatus().getCode()` returns null.
+     */
+    public static StatusRuntimeException extractCausalStatusRuntimeExceptionOrThrow(Throwable t) throws GATKException {
+        return extractCausalStatusRuntimeExceptionOrThrow(t, t);
     }
 }

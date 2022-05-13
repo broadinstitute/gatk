@@ -203,6 +203,14 @@ workflows:
          - master
          - ah_var_store
          - vs_357_quickstart_integration
+   - name: GvsIngestTieout
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_261_ingest_errors
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
