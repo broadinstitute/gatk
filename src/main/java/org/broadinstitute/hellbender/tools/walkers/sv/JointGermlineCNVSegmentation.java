@@ -271,8 +271,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         //variantContexts should have identical start, so choose 0th arbitrarily
         final String variantContig = variantContexts.get(0).getContig();
         if (currentContig != null && !variantContig.equals(currentContig)) {
-            // Since we need to check for variant overlap and reset genotypes, only flush clustering when we hit a new contig
-            processClusters(false);
+            processClusters();
         }
         currentContig = variantContig;
         for (final VariantContext vc : variantContexts) {
@@ -289,15 +288,20 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
     @Override
     public Object onTraversalSuccess() {
-        processClusters(true);
+        processClusters();
         return null;
     }
 
-    private void processClusters(final boolean force) {
-        final List<SVCallRecord> defragmentedCalls = force ?  defragmenter.forceFlush() : defragmenter.flush();
+    /**
+     * Force-flushes the defragmenter, adds the resulting calls to the clustering engine, and flushes the clustering
+     * engine. Since we need to check for variant overlap and reset genotypes, only flush clustering when we hit a
+     * new contig.
+     */
+    private void processClusters() {
+        final List<SVCallRecord> defragmentedCalls = defragmenter.forceFlush();
         defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
         //Jack and Isaac cluster first and then defragment
-        final List<SVCallRecord> clusteredCalls = force ? clusterEngine.forceFlush() : clusterEngine.flush();
+        final List<SVCallRecord> clusteredCalls = clusterEngine.forceFlush();
         write(clusteredCalls);
     }
 
@@ -678,9 +682,17 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         return builder.make();
     }
 
+    /**
+     * "Fills" genotype alleles so that it has the correct ploidy
+     * @param builder new alleles will be set for this builder
+     * @param g non-ref alleles will be carried over from this genotype
+     * @param ploidy desired ploidy for the new genotype
+     * @param refAllele desired ref allele for new genotype
+     */
     private static void correctGenotypePloidy(final GenotypeBuilder builder, final Genotype g, final int ploidy,
                                               final Allele refAllele) {
         if (g.getAlleles().size() == 1 && g.getAllele(0).isNoCall()) {
+            // Special case to force interpretation of a single no-call allele as a possible null GT
             builder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
         } else {
             final ArrayList<Allele> alleles = new ArrayList<>(g.getAlleles());

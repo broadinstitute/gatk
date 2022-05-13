@@ -432,6 +432,10 @@ public class SVClusterEngine<T extends SVLocatable> {
             buffer.add(record);
         }
 
+        /**
+         * Returns any records that can be safely flushed based on the current minimum starting position
+         * of items still being actively clustered.
+         */
         public List<T> flush() {
             final Integer minActiveStart = getMinActiveStartingPosition();
             final int minPos = minActiveStart == null ? Integer.MAX_VALUE : minActiveStart;
@@ -450,6 +454,10 @@ public class SVClusterEngine<T extends SVLocatable> {
                     .collect(Collectors.toList());
         }
 
+        /**
+         * Returns all buffered records, regardless of any active clusters. To be used only when certain that no
+         * active clusters can be clustered with any future inputs.
+         */
         public List<T> forceFlush() {
             final List<T> result = buffer.stream().sorted(recordComparator).collect(Collectors.toList());
             buffer.clear();
