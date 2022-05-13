@@ -63,7 +63,7 @@ public abstract class PairWalker extends ReadWalker {
                 prevInterval = curInterval;
             } else if ( prevInterval.getContig().equals(curInterval.getContig()) &&
                         prevInterval.getStart() <= curInterval.getEnd() + 1 &&
-                        prevInterval.getStart() <= curInterval.getEnd() + 1 ) {
+                        curInterval.getStart() <= prevInterval.getEnd() + 1 ) {
                 prevInterval = prevInterval.mergeWithContiguous(curInterval);
             } else {
                 paddedIntervals.add(prevInterval);
