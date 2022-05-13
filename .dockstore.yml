@@ -117,6 +117,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-418-allow-withdrawn
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -135,6 +136,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-418-allow-withdrawn
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
