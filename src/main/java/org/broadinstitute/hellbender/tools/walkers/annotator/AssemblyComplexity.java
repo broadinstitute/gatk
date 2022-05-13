@@ -1,4 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
+
+
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang.mutable.MutableInt;
@@ -12,7 +15,6 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -38,9 +40,9 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
                                         final FeatureContext features,
                                         final VariantContext vc,
                                         final AlleleLikelihoods<GATKRead, Allele> likelihoods,
-                                        final AlleleLikelihoods<Fragment, Allele> fragmentLikelihoods,
-                                        final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods) {
-        final Triple<int[], int[], double[]> annotations = annotate(vc, haplotypeLikelihoods);
+                                        final AlleleLikelihoods<? extends Locatable, Allele> fragmentLikelihoods,
+                                        final AlleleLikelihoods<? extends Locatable, Haplotype> haplotypeLikelihoods) {
+        final Triple<int[], int[], double[]> annotations = annotate(vc, haplotypeLikelihoods, germlineMode);
         final Map<String, Object> result = new HashMap<>();
 
         result.put(GATKVCFConstants.HAPLOTYPE_EQUIVALENCE_COUNTS_KEY , annotations.getLeft());
@@ -49,7 +51,9 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
         return result;
     }
 
-    public Triple<int[], int[], double[]> annotate(final VariantContext vc, final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods) {
+    public static Triple<int[], int[], double[]> annotate(final VariantContext vc,
+                                                          final AlleleLikelihoods<? extends Locatable, Haplotype> haplotypeLikelihoods,
+                                                          boolean germlineMode) {
 
         // count best-read support for each haplotype
         final Map<Haplotype, MutableInt> haplotypeSupportCounts = haplotypeLikelihoods.alleles().stream()
