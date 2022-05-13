@@ -79,7 +79,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-225-add-AD
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
@@ -128,6 +127,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-418-allow-withdrawn
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
