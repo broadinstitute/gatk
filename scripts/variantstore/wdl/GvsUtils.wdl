@@ -324,43 +324,53 @@ task TerminateWorkflow {
 }
                                                                                                                                                                }
 task ScaleXYBedValues {
-  input {
-    File interval_weights_bed
-    Int xy_bed_weight_scaling
-  }
-  command <<<
-    python3 <<FIN
-    input = open('~{interval_weights_bed}', 'r')
-    output = open('interval_weights_xy_scaled.bed', 'w')
-    multiplier=~{xy_bed_weight_scaling}
+    input {
+        Boolean go = true
+        File interval_weights_bed
+        Float scale_factor
+    }
+    command <<<
+        python3 <<FIN
+        import sys
 
-    while True:
-        line = input.readline()
-        if not line:
-        break
+        input = open('~{interval_weights_bed}', 'r')
+        output = open('interval_weights_xy_scaled.bed', 'w')
+        scale_factor=~{scale_factor}
 
-    line = line.rstrip('\n')
-    if line.startswith('chrX') or line.startswith('chrY'):
-        fields = line.split('\t')
-        weight = fields[-1]
-        fields[-1] = str(int(weight) * multiplier)
-        output.write('\t'.join(fields) + '\n')
-    else:
-        output.write(line + '\n')
+        if scale_factor < 1.0:
+            print("Error: illegal X/Y chromosome weight scale factor ~{scale_factor}; scale factor value must be >= 1.0")
+            sys.exit(1)
+
+        while True:
+            line = input.readline()
+            if not line:
+                break
+
+            line = line.rstrip('\n')
+
+            if line.startswith('chrX') or line.startswith('chrY'):
+                fields = line.split('\t')
+                weight = fields[-1]
+                fields[-1] = str(int(int(weight) * scale_factor))
+                output.write('\t'.join(fields) + '\n')
+            else:
+                output.write(line + '\n')
+
         output.close()
-    FIN
-  >>>
+        FIN
+    >>>
 
-  output {
-    File xy_scaled_bed = glob("interval_weights_xy_scaled.bed")
-  }
+    output {
+        File xy_scaled_bed = "interval_weights_xy_scaled.bed"
+        Boolean done = true
+    }
 
-  runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_02"
-    maxRetries: 3
-    memory: "7 GB"
-    preemptible: 3
-    cpu: "2"
-    disks: "local-disk 500 HDD"
-  }
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_02"
+        maxRetries: 3
+        memory: "7 GB"
+        preemptible: 3
+        cpu: "2"
+        disks: "local-disk 500 HDD"
+    }
 }
