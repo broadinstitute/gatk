@@ -580,4 +580,11 @@ public final class AssemblyResultSet {
         haplotypes.clear();;
         refHaplotype = null;
     }
+    public void replaceAllHaplotypes(Set<Haplotype> list) {
+        haplotypes.clear();;
+        refHaplotype = null;
+        for ( Haplotype h : list )
+            add(h);
+    }
+
 }
