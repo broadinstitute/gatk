@@ -418,6 +418,10 @@ public final class ReadThreadingAssembler {
                     returnHaplotypes.remove(tmpRefHaplotype);
                 }
                 returnHaplotypes.add(refHaplotype);
+
+                if (resultSet != null) {
+                    resultSet.replaceAllHaplotypes(returnHaplotypes);
+                }
             }
             assemblyResult.setDiscoveredHaplotypes(returnHaplotypes);
 
