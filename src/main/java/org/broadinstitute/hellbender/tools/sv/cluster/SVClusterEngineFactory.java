@@ -26,7 +26,7 @@ public class SVClusterEngineFactory {
         linkage.setDepthOnlyParams(depthParameters);
         linkage.setMixedParams(mixedParameters);
         linkage.setEvidenceParams(pesrParameters);
-        return new SVClusterEngine<>(type, new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, breakpointSummaryStrategy, insertionLengthSummaryStrategy), linkage);
+        return new SVClusterEngine<>(type, new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, breakpointSummaryStrategy, insertionLengthSummaryStrategy), linkage, dictionary);
     }
 
     public static SVClusterEngine<SVCallRecord> createCNVDefragmenter(final SAMSequenceDictionary dictionary,
@@ -36,7 +36,7 @@ public class SVClusterEngineFactory {
                                                                       final double minSampleOverlap) {
         final SVClusterLinkage<SVCallRecord> linkage = new CNVLinkage(dictionary, paddingFraction, minSampleOverlap);
         final SVCollapser<SVCallRecord> collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
-        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, collapser, linkage);
+        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, collapser, linkage, dictionary);
     }
 
     public static SVClusterEngine<SVCallRecord> createBinnedCNVDefragmenter(final SAMSequenceDictionary dictionary,
@@ -47,6 +47,6 @@ public class SVClusterEngineFactory {
                                                                             final List<GenomeLoc> coverageIntervals) {
         final SVClusterLinkage<SVCallRecord> linkage = new BinnedCNVLinkage(dictionary, paddingFraction, minSampleOverlap, coverageIntervals);
         final SVCollapser<SVCallRecord> collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
-        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, collapser, linkage);
+        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, collapser, linkage, dictionary);
     }
 }

@@ -174,6 +174,16 @@ public final class SVCallRecordUtils {
     }
 
     /**
+     * Gets a comparator for objects implementing {@link SVLocatable}.
+     * @param dictionary sequence dictionary pertaining to both records (not validated)
+     * @param <T> record class
+     * @return comparator
+     */
+    public static <T extends SVLocatable> Comparator<T> getSVLocatableComparator(final SAMSequenceDictionary dictionary) {
+        return (o1, o2) -> compareSVLocatables(o1, o2, dictionary);
+    }
+
+    /**
      * Compares two objects based on start and end positions.
      */
     public static int compareSVLocatables(final SVLocatable first, final SVLocatable second, final SAMSequenceDictionary dictionary) {

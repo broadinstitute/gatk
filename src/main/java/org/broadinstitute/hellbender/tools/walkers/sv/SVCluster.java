@@ -24,7 +24,6 @@ import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSegmentation.BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME;
 
@@ -326,8 +325,6 @@ public final class SVCluster extends MultiVariantWalker {
     private SAMSequenceDictionary dictionary;
     private ReferenceSequenceFile reference;
     private PloidyTable ploidyTable;
-    private Comparator<SVCallRecord> recordComparator;
-    private OutputSortingBuffer outputBuffer;
     private VariantContextWriter writer;
     private SVClusterEngine<SVCallRecord> clusterEngine;
     private Set<String> samples;
@@ -347,7 +344,6 @@ public final class SVCluster extends MultiVariantWalker {
             throw new UserException("Reference sequence dictionary required");
         }
         ploidyTable = new PloidyTable(ploidyTablePath.toPath());
-        recordComparator = SVCallRecordUtils.getCallComparator(dictionary);
         samples = getSamplesForVariants();
 
         if (algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
@@ -364,7 +360,6 @@ public final class SVCluster extends MultiVariantWalker {
             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm.name());
         }
 
-        outputBuffer = new OutputSortingBuffer(clusterEngine);
         writer = createVCFWriter(outputFile);
         writer.writeHeader(createHeader());
         currentContig = null;
@@ -414,7 +409,7 @@ public final class SVCluster extends MultiVariantWalker {
     }
 
     private void write(final boolean force) {
-        final List<SVCallRecord> records = force ? outputBuffer.forceFlush() : outputBuffer.flush();
+        final List<SVCallRecord> records = force ? clusterEngine.forceFlush() : clusterEngine.flush();
         records.stream().map(this::buildVariantContext).forEachOrdered(writer::add);
     }
 
@@ -467,35 +462,6 @@ public final class SVCluster extends MultiVariantWalker {
             builder.rmAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY);
         }
         return builder.make();
-    }
-
-    private final class OutputSortingBuffer {
-        private final TreeSet<SVCallRecord> buffer;
-        private final SVClusterEngine<SVCallRecord> engine;
-
-        public OutputSortingBuffer(final SVClusterEngine<SVCallRecord> engine) {
-            this.buffer = new TreeSet<>(SVCallRecordUtils.getCallComparator(dictionary));
-            this.engine = engine;
-        }
-
-        public List<SVCallRecord> flush() {
-            buffer.addAll(engine.getOutput());
-            final Integer minActiveStart = engine.getMinActiveStartingPosition();
-            final int minPos = minActiveStart == null ? Integer.MAX_VALUE : minActiveStart;
-            final List<SVCallRecord> result = buffer.stream()
-                    .filter(record -> !record.getContigA().equals(currentContig) || record.getPositionA() < minPos)
-                    .sorted(recordComparator)
-                    .collect(Collectors.toList());
-            buffer.removeAll(result);
-            return result;
-        }
-
-        public List<SVCallRecord> forceFlush() {
-            buffer.addAll(engine.forceFlushAndGetOutput());
-            final List<SVCallRecord> result = buffer.stream().sorted(recordComparator).collect(Collectors.toList());
-            buffer.clear();
-            return result;
-        }
     }
 
 }

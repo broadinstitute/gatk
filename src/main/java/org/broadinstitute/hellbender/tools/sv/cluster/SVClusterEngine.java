@@ -1,6 +1,11 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.BoundType;
+import com.google.common.collect.SortedMultiset;
+import com.google.common.collect.TreeMultiset;
+import htsjdk.samtools.SAMSequenceDictionary;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SVLocatable;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -36,13 +41,14 @@ public class SVClusterEngine<T extends SVLocatable> {
     private final SVClusterLinkage<T> linkage;
     private Map<Integer, Cluster> idToClusterMap; // Active clusters
     private final Map<Integer, T> idToItemMap; // Active items
-    private final List<T> outputBuffer;
     protected final CLUSTERING_TYPE clusteringType;
+    private final ItemSortingBuffer buffer;
+    private final Comparator<T> itemComparator;
+
     private String currentContig;
     private int nextItemId;
     private int nextClusterId;
     private int lastStart;
-    private Integer minActiveStartingPosition;
     private Integer minActiveStartingPositionItemId;
 
     /**
@@ -51,20 +57,20 @@ public class SVClusterEngine<T extends SVLocatable> {
      */
     public SVClusterEngine(final CLUSTERING_TYPE clusteringType,
                            final SVCollapser<T> collapser,
-                           final SVClusterLinkage<T> linkage) {
+                           final SVClusterLinkage<T> linkage,
+                           final SAMSequenceDictionary dictionary) {
         this.clusteringType = clusteringType;
         this.collapser = Utils.nonNull(collapser);
         this.linkage = Utils.nonNull(linkage);
         idToClusterMap = new HashMap<>();
-        outputBuffer = new ArrayList<>();
         currentContig = null;
         idToItemMap = new HashMap<>();
+        itemComparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
+        buffer = new ItemSortingBuffer();
         nextItemId = 0;
         nextClusterId = 0;
         lastStart = 0;
-        minActiveStartingPosition = null;
         minActiveStartingPositionItemId = null;
-
     }
 
 
@@ -72,18 +78,16 @@ public class SVClusterEngine<T extends SVLocatable> {
      * Flushes all active clusters, adding them to the output buffer. Results from the output buffer are then copied out
      * and the buffer is cleared. This should be called between contigs to save memory.
      */
-    public final List<T> forceFlushAndGetOutput() {
+    public final List<T> forceFlush() {
         flushClusters();
-        return getOutput();
+        return buffer.forceFlush();
     }
 
     /**
      * Gets any available finalized clusters.
      */
-    public final List<T> getOutput() {
-        final List<T> output = new ArrayList<>(outputBuffer);
-        outputBuffer.clear();
-        return output;
+    public final List<T> flush() {
+        return buffer.flush();
     }
 
     @VisibleForTesting
@@ -96,15 +100,17 @@ public class SVClusterEngine<T extends SVLocatable> {
         return linkage;
     }
 
-    public Integer getMinActiveStartingPosition() {
-        return minActiveStartingPosition;
+    public T getMinActiveStartingPositionItem() {
+        Utils.validate(minActiveStartingPositionItemId == null || idToItemMap.containsKey(minActiveStartingPositionItemId),
+                "Unregistered item id " + minActiveStartingPositionItemId);
+        return idToItemMap.get(minActiveStartingPositionItemId);
     }
 
     /**
      * Returns true if there are any active or finalized clusters.
      */
     public final boolean isEmpty() {
-        return idToClusterMap.isEmpty() && outputBuffer.isEmpty();
+        return idToClusterMap.isEmpty() && buffer.isEmpty();
     }
 
     /**
@@ -130,8 +136,7 @@ public class SVClusterEngine<T extends SVLocatable> {
         lastStart = item.getPositionA();
         final int itemId = nextItemId++;
         idToItemMap.put(itemId, item);
-        if (minActiveStartingPosition == null || item.getPositionA() < minActiveStartingPosition) {
-            minActiveStartingPosition = item.getPositionA();
+        if (minActiveStartingPositionItemId == null || item.getPositionA() < getMinActiveStartingPositionItem().getPositionA()) {
             minActiveStartingPositionItemId = itemId;
         }
         return itemId;
@@ -263,7 +268,7 @@ public class SVClusterEngine<T extends SVLocatable> {
         final Cluster cluster = getCluster(clusterIndex);
         idToClusterMap.remove(clusterIndex);
         final List<Integer> clusterItemIds = cluster.getItemIds();
-        outputBuffer.add(collapser.collapse(clusterItemIds.stream().map(idToItemMap::get).collect(Collectors.toList())));
+        buffer.add(collapser.collapse(clusterItemIds.stream().map(idToItemMap::get).collect(Collectors.toList())));
         // Clean up item id map
         if (clusterItemIds.size() == 1) {
             // Singletons won't be present in any other clusters
@@ -290,13 +295,13 @@ public class SVClusterEngine<T extends SVLocatable> {
      * Scans active items for the current min active starting position.
      */
     private final void findAndSetMinActiveStart() {
-        minActiveStartingPosition = null;
         minActiveStartingPositionItemId = null;
+        T minActiveStartingPositionItem = null;
         for (final Integer itemId : idToItemMap.keySet()) {
             final T item = idToItemMap.get(itemId);
-            if (minActiveStartingPosition == null || item.getPositionA() < minActiveStartingPosition) {
-                minActiveStartingPosition = item.getPositionA();
+            if (minActiveStartingPositionItemId == null || itemComparator.compare(item, minActiveStartingPositionItem) < 0) {
                 minActiveStartingPositionItemId = itemId;
+                minActiveStartingPositionItem = idToItemMap.get(itemId);
             }
         }
     }
@@ -320,7 +325,6 @@ public class SVClusterEngine<T extends SVLocatable> {
             processCluster(clusterId);
         }
         idToItemMap.clear();
-        minActiveStartingPosition = null;
         minActiveStartingPositionItemId = null;
         nextItemId = 0;
         nextClusterId = 0;
@@ -414,6 +418,52 @@ public class SVClusterEngine<T extends SVLocatable> {
         @Override
         public int hashCode() {
             return Objects.hash(itemIds);
+        }
+    }
+
+    private final class ItemSortingBuffer {
+        private SortedMultiset<T> buffer;
+
+        public ItemSortingBuffer() {
+            Utils.nonNull(itemComparator);
+            this.buffer = TreeMultiset.create(itemComparator);
+        }
+
+        public void add(final T record) {
+            buffer.add(record);
+        }
+
+        /**
+         * Returns any records that can be safely flushed based on the current minimum starting position
+         * of items still being actively clustered.
+         */
+        public List<T> flush() {
+            if (buffer.isEmpty()) {
+                return Collections.emptyList();
+            }
+            final T minActiveStartItem = getMinActiveStartingPositionItem();
+            if (minActiveStartItem == null) {
+                forceFlush();
+            }
+            final SortedMultiset<T> finalizedRecordView = buffer.headMultiset(minActiveStartItem, BoundType.CLOSED);
+            final ArrayList<T> finalizedRecords = new ArrayList<>(finalizedRecordView);
+            // Clearing a view of the buffer also clears the items from the buffer itself
+            finalizedRecordView.clear();
+            return finalizedRecords;
+        }
+
+        /**
+         * Returns all buffered records, regardless of any active clusters. To be used only when certain that no
+         * active clusters can be clustered with any future inputs.
+         */
+        public List<T> forceFlush() {
+            final List<T> result = new ArrayList<>(buffer);
+            buffer.clear();
+            return result;
+        }
+
+        public boolean isEmpty() {
+            return buffer.isEmpty();
         }
     }
 }
