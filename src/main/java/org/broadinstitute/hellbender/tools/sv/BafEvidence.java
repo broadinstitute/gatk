@@ -20,8 +20,6 @@ public final class BafEvidence implements SVFeature {
         Utils.nonNull(sample);
         Utils.nonNull(contig);
         Utils.validateArg(position > 0, "starting position must be positive");
-        Utils.validateArg(value >= 0. || value == MISSING_VALUE,
-                "value must be non-negative or missing");
         this.sample = sample;
         this.contig = contig;
         this.position = position;

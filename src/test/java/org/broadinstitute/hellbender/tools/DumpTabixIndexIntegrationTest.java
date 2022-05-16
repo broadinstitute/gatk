@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
-import org.broadinstitute.hellbender.tools.sv.LocusDepthtoBAF;
+import org.broadinstitute.hellbender.tools.sv.SiteDepthtoBAF;
 import org.testng.annotations.Test;
 
 import java.io.IOException;

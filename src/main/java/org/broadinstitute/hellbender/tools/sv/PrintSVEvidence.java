@@ -27,9 +27,9 @@ import java.util.*;
  *     <dt>DiscordantPairEvidence</dt>
  *     <dd>Evidence of a read pair that spans a genomic distance that's too large or too small.
  *          File extensions are *.pe.txt, *.pe.txt.gz, or *.pe.bci.</dd>
- *     <dt>LocusDepth</dt>
+ *     <dt>SiteDepth</dt>
  *     <dd>The read counts of each base call for some sample at some locus.
- *          File extensions are *.ld.txt, *.ld.txt.gz, or *.ld.bci.</dd>
+ *          File extensions are *.sd.txt, *.sd.txt.gz, or *.sd.bci.</dd>
  *     <dt>SplitReadEvidence</dt>
  *     <dd>The number of chimeric reads in some sample at some locus.
  *          File extensions are *.sr.txt, *.sr.txt.gz, or *.sr.bci.</dd>
@@ -82,7 +82,7 @@ public class PrintSVEvidence extends MultiFeatureWalker<SVFeature> {
             doc = "Input feature file URI(s) with extension '"
                     + SplitReadEvidenceCodec.FORMAT_SUFFIX + "', '"
                     + DiscordantPairEvidenceCodec.FORMAT_SUFFIX + "', '"
-                    + LocusDepthCodec.FORMAT_SUFFIX + "', '"
+                    + SiteDepthCodec.FORMAT_SUFFIX + "', '"
                     + BafEvidenceCodec.FORMAT_SUFFIX + "', or '"
                     + DepthEvidenceCodec.FORMAT_SUFFIX + "' (may be gzipped). "
                     + "Can also handle bci rather than txt files.",
