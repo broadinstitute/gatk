@@ -69,7 +69,7 @@ workflow GvsCreateFilterSet {
       project_id = project_id
   }
 
-  Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 10
+  Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 20
                       else if GetNumSamplesLoaded.num_samples < 1000 then 100
                            else if GetNumSamplesLoaded.num_samples < 10000 then 200
                                 else if GetNumSamplesLoaded.num_samples < 100000 then 500 else 1000
