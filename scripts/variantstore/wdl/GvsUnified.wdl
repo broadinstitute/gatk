@@ -27,6 +27,7 @@ workflow GvsUnified {
 
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
+        Int cromwell_parallelism = 2000
         # End GvsImportGenomes
 
         # Begin GvsCreateFilterSet
@@ -90,7 +91,8 @@ workflow GvsUnified {
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_gatk_override = gatk_override,
-            service_account_json_path = service_account_json_path
+            service_account_json_path = service_account_json_path,
+            cromwell_parallelism = cromwell_parallelism
     }
 
     call CreateAltAllele.GvsCreateAltAllele {
