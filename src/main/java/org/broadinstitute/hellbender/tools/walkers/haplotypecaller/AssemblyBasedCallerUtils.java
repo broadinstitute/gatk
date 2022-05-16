@@ -395,11 +395,6 @@ public final class AssemblyBasedCallerUtils {
             assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
 
             if (!forcedPileupAlleles.isEmpty()) {
-                addGivenAlleles(forcedPileupAlleles, argumentCollection.maxMnpDistance,
-                        aligner, haplotypeToReferenceSWParameters, assemblyResultSet);
-            }
-
-            if (!forcedPileupAlleles.isEmpty()) {
                 processPileupAlleles(region, forcedPileupAlleles, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
             }
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
