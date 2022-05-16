@@ -11,7 +11,6 @@ workflow GvsCreateFilterSet {
 
     String filter_set_name
     Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
-    Int scatter_count
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -69,6 +68,11 @@ workflow GvsCreateFilterSet {
       service_account_json_path = service_account_json_path,
       project_id = project_id
   }
+
+  Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 10
+                      else if GetNumSamplesLoaded.num_samples < 1000 then 100
+                           else if GetNumSamplesLoaded.num_samples < 10000 then 200
+                                else if GetNumSamplesLoaded.num_samples < 100000 then 500 else 1000
 
   call Utils.SplitIntervals {
     input:
