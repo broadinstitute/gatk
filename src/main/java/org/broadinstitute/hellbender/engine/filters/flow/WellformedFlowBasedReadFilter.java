@@ -31,7 +31,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS,
         groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY,
-        summary = "Keep only flow based reads that are well-formed",
+        summary = "Keep only flow based reads that are well-formed"
 )
 public final class WellformedFlowBasedReadFilter extends ReadFilter {
     private static final long serialVersionUID = 1l;
