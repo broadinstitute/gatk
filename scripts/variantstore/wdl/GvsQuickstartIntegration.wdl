@@ -64,7 +64,6 @@ workflow GvsQuickstartIntegration {
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
-            create_filter_set_scatter_count = 20,
             extract_table_prefix = "quickit",
             extract_scatter_count = 100,
             # Force filtering off as it is not deterministic and the initial version of this integration test does not
