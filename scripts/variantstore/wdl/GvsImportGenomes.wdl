@@ -50,7 +50,7 @@ workflow GvsImportGenomes {
       service_account_json_path = service_account_json_path
   }
 
-  Int batch_size = if (len(external_sample_names) / cromwell_parallelism < 1) then 1 else len(external_sample_names) / cromwell_parallelism
+  Int batch_size = if (length(external_sample_names) / cromwell_parallelism < 1) then 1 else length(external_sample_names) / cromwell_parallelism
 
   call CreateFOFNs {
     input:
