@@ -99,7 +99,12 @@ public final class AlleleSubsettingUtils {
 
             final GenotypeBuilder gb = new GenotypeBuilder(g);
             final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
-            final int[] perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(originalAlleles, allelesToKeep, start, g, false);
+            final int[] perSampleIndexesOfRelevantAlleles;
+            if (originalAlleles.contains(Allele.NON_REF_ALLELE)) {
+                perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(originalAlleles, allelesToKeep, start, g, false);
+            } else {
+                perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAlleles(originalAlleles, allelesToKeep, start, g);
+            }
             //if we have a valid VCF header, use the annotation information there to check and potentially correct array lengths
             if (header != null) {
                 checkAndCorrectAnnotationArrayLengths(start, originalAlleles, allelesToKeep, header, g, ploidy, attributes, perSampleIndexesOfRelevantAlleles);
