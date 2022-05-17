@@ -24,7 +24,9 @@ workflow GvsImportGenomes {
   if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
     call TerminateWorkflow {
       input:
-        message = "The number of external_sample_names, sample input_vcfs and sample input_vcf_indexes are not the same."
+        external_sample_count = length(external_sample_names),
+        input_length = input_length,
+        input_indexes_length = input_indexes_length
     }
   }
 
@@ -294,17 +296,21 @@ task LoadData {
 }
 
 
-
 task TerminateWorkflow {
   input {
-    String message
+    Int external_sample_count
+    Int input_length
+    Int input_indexes_length
   }
 
   command <<<
     set -e
-    echo ~{message}
+    echo "The lengths of workflow inputs `external_sample_names` (~{external_sample_count}), `input_vcfs` (~{input_length}) and `input_vcf_indexes` (~{input_indexes_length}) should be the same."
+    echo
+    echo "If any of these counts are zero an incorrect or non-existent attribute may have been referenced.
     exit 1
   >>>
+
   runtime {
     docker: "python:3.8-slim-buster"
     memory: "1 GB"
