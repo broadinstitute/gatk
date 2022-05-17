@@ -119,7 +119,10 @@ public class CommittedBQWriter implements AutoCloseable {
                             }
                             logger.warn("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", e);
                             long backOffMillis = backoff.nextBackOffMillis();
+                            logger.warn("Sleeping for {} milliseconds before retrying.", backOffMillis);
                             Thread.sleep(backOffMillis);
+
+                            writeJsonArray(retryCount + 1);
                             break;
                         default:
                             // If you receive an error that's not listed above, then try to open a new connection by closing the
@@ -131,7 +134,6 @@ public class CommittedBQWriter implements AutoCloseable {
                             logger.warn("Caught StatusRuntimeException with status code {}, throwing", code);
                             throw e;
                     }
-                    writeJsonArray(retryCount + 1);
             }
         }
     }
