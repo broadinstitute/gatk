@@ -128,6 +128,7 @@ public class CommittedBQWriter implements AutoCloseable {
                             // In practice with a PENDING WriteStream.Type the advice above does not work out;
                             // everything that has been `append`ed prior to the writer being closed is lost. Instead,
                             // just throw and let `maxRetries` start up a subsequent attempt from the beginning.
+                            logger.warn("Caught StatusRuntimeException with status code {}, throwing", code);
                             throw e;
                     }
                     writeJsonArray(retryCount + 1);
