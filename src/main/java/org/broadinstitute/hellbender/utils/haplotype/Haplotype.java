@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import spire.math.All;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -249,6 +250,21 @@ public final class Haplotype extends Allele {
      * delete the GTT.  Then refAllele = CGTT, alt allele = C, and insertLocation = 102.
      */
     public Haplotype insertAllele(final Allele refAllele, final Allele altAllele, final int insertLocation) {
+        //special case for zeroth base deletion. In this case the common base is "outside" of the contig
+        final byte[] myBases = getBases();
+        if ((refAllele.length()>altAllele.length()) && (insertLocation==(int)getStartPosition()-1)){
+            int delSize = refAllele.length() - altAllele.length();
+            if (delSize > myBases.length){
+                return null;
+            }
+            else{
+                byte[] newHaplotypeBases = {};
+                newHaplotypeBases = ArrayUtils.subarray(myBases, delSize, myBases.length); // bases before the variant
+                return new Haplotype(newHaplotypeBases);
+            }
+        }
+
+
         final Pair<Integer, CigarOperator> haplotypeInsertLocationAndOperator = ReadUtils.getReadIndexForReferenceCoordinate((int) getStartPosition(), cigar, insertLocation);
 
         // can't insert outside the haplotype or into a deletion
@@ -256,7 +272,6 @@ public final class Haplotype extends Allele {
             return null;
         }
         final int haplotypeInsertLocation = haplotypeInsertLocationAndOperator.getLeft();
-        final byte[] myBases = getBases();
 
         // can't insert if we don't have any sequence after the inserted alt allele to span the new variant
         if (haplotypeInsertLocation + refAllele.length() > myBases.length) {
