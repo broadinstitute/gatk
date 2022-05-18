@@ -122,7 +122,6 @@ public class CommittedBQWriter implements AutoCloseable {
                             logger.warn("Sleeping for {} milliseconds before retrying.", backOffMillis);
                             Thread.sleep(backOffMillis);
 
-                            writeJsonArray(retryCount + 1);
                             break;
                         default:
                             // If you receive an error that's not listed above, then try to open a new connection by closing the
@@ -133,6 +132,7 @@ public class CommittedBQWriter implements AutoCloseable {
                             // just throw and let `maxRetries` start up a subsequent attempt from the beginning.
                             throw new GATKException("Caught StatusRuntimeException with status code "  + code + " which is not known to be retryable, throwing", e);
                     }
+                    writeJsonArray(retryCount + 1);
             }
         }
     }
