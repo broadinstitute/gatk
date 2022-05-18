@@ -302,8 +302,14 @@ task TerminateWorkflow {
   }
 
   command <<<
-    set -e
-    echo '~{message}'
+    set -o errexit
+
+    # To avoid issues with special characters embedded within the message, write the message to a file and cat the file.
+    cat > message.txt <<FIN
+    ~{message}
+    FIN
+
+    cat message.txt
     exit 1
   >>>
 
