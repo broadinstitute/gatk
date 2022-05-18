@@ -4,14 +4,18 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.CopyNumberTestUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineDenoisingModelArgumentCollection;
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.IntStream;
+
 
 /**
  * Integration tests for {@link GermlineCNVCaller}.
@@ -24,6 +28,19 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
     private static final File CONTIG_PLOIDY_CALLS_OUTPUT_DIR = new File(GCNV_SIM_DATA_DIR + "contig-ploidy-calls/");
     private static final File SIM_INTERVAL_LIST_SUBSET_FILE = new File(GCNV_SIM_DATA_DIR + "sim_intervals_subset.interval_list");
     private static final File OUTPUT_DIR = createTempDir("test-germline-cnv");
+    private static final String SAMPLE_DIR_EXT = "SAMPLE_0";
+    private static final File MODEL_EXACT_MATCH_EXPECTED_SUB_DIR = new File(toolsTestDir + "copynumber/gcnv-postprocess/shard_0-model/");
+    private static final File CALLS_EXACT_MATCH_EXPECTED_SUB_DIR = new File(toolsTestDir + "copynumber/gcnv-postprocess/shard_0-calls/" + SAMPLE_DIR_EXT);
+    private static final File SIM_INTERVAL_LIST_SHARD_0 = new File(GCNV_SIM_DATA_DIR + "sim_intervals_shard_0.interval_list");
+    private static final File SIM_INTERVAL_LIST_SHARD_0_ANNOTATED_FILE = new File(GCNV_SIM_DATA_DIR + "sim_intervals_shard_0.annotated.tsv");
+    private static final double ALLOWED_DELTA_FOR_DOUBLE_VALUES = 1E-6;
+
+    final List<String> MODEL_FILES_TO_COMPARE = Arrays.asList("log_q_tau_tk.tsv", "mu_ard_u_log__.tsv", "mu_psi_t_log__.tsv",
+            "std_ard_u_log__.tsv", "std_psi_t_log__.tsv", "mu_W_tu.tsv", "mu_log_mean_bias_t.tsv", "std_W_tu.tsv", "std_log_mean_bias_t.tsv");
+    final List<String> CALLS_FILES_TO_COMPARE = Arrays.asList("baseline_copy_number_t.tsv", "log_c_emission_tc.tsv",
+            "log_q_c_tc.tsv", "mu_psi_s_log__.tsv", "mu_read_depth_s_log__.tsv",
+            "mu_z_su.tsv", "sample_name.txt", "std_psi_s_log__.tsv",
+            "std_read_depth_s_log__.tsv", "std_z_su.tsv");
 
     /**
      * Run the tool in the COHORT mode for all 20 samples on a small subset of intervals
@@ -88,11 +105,67 @@ public final class GermlineCNVCallerIntegrationTest extends CommandLineProgramTe
         runCommandLine(argsBuilder);
     }
 
-    @Test(groups = {"python"}, enabled = false)
-    public void testCohortWithInputModel() {
+    /**
+     * Test that result falls within a numerical accuracy bound defined. This test is meant to detect things like major
+     * Python library updates that affect gCNV results, and detect unintentional consequences of minor model changes.
+     */
+    @Test(groups = {"python"})
+    public void testNumericalAccuracy() {
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        final String outputPrefix = "test-germline-cnv-accuracy";
+        Arrays.stream(TEST_COUNT_FILES, 0, 20).forEach(argsBuilder::addInput);
+        argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
+                .add("L", SIM_INTERVAL_LIST_SHARD_0)
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString())
+                .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
+                        CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, outputPrefix);
+        runCommandLine(argsBuilder);
+        MODEL_FILES_TO_COMPARE.forEach(f -> CopyNumberTestUtils.assertFilesEqualUpToAllowedDeltaForDoubleValues(
+                new File(Paths.get(OUTPUT_DIR.getAbsolutePath(), outputPrefix + "-model").toString(), f),
+                new File(MODEL_EXACT_MATCH_EXPECTED_SUB_DIR,  f),
+                ALLOWED_DELTA_FOR_DOUBLE_VALUES,
+                logger));
+        CALLS_FILES_TO_COMPARE.forEach(f -> CopyNumberTestUtils.assertFilesEqualUpToAllowedDeltaForDoubleValues(
+                new File(Paths.get(OUTPUT_DIR.getAbsolutePath(), outputPrefix + "-calls", SAMPLE_DIR_EXT).toString(), f),
+                new File(CALLS_EXACT_MATCH_EXPECTED_SUB_DIR,  f),
+                ALLOWED_DELTA_FOR_DOUBLE_VALUES,
+                logger));
     }
 
-    @Test(groups = {"python"}, enabled = false)
+    /**
+     * Run the tool in the COHORT mode using a provided model for initialization. Note for developers: the model used
+     * for initialization is created by the {@link #testCohortWithoutIntervalAnnotations()} test.
+     */
+    @Test(groups = {"python"}, dependsOnMethods = "testCohortWithoutIntervalAnnotations")
+    public void testCohortWithInputModel() {
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
+        argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
+                .add("L", SIM_INTERVAL_LIST_SUBSET_FILE)
+                .add(CopyNumberStandardArgument.MODEL_LONG_NAME,
+                        new File(OUTPUT_DIR, "test-germline-cnv-cohort-model").getAbsolutePath())
+                .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
+                        CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-cohort-with-input-model")
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString());
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(groups = {"python"})
     public void testCohortWithAnnotatedIntervals() {
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        Arrays.stream(TEST_COUNT_FILES).forEach(argsBuilder::addInput);
+        argsBuilder.add(GermlineCNVCaller.RUN_MODE_LONG_NAME, GermlineCNVCaller.RunMode.COHORT.name())
+                .add("L", SIM_INTERVAL_LIST_SHARD_0)
+                .add(CopyNumberStandardArgument.ANNOTATED_INTERVALS_FILE_LONG_NAME, SIM_INTERVAL_LIST_SHARD_0_ANNOTATED_FILE)
+                .add(GermlineCNVCaller.CONTIG_PLOIDY_CALLS_DIRECTORY_LONG_NAME,
+                        CONTIG_PLOIDY_CALLS_OUTPUT_DIR.getAbsolutePath())
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, OUTPUT_DIR.getAbsolutePath())
+                .add(CopyNumberStandardArgument.OUTPUT_PREFIX_LONG_NAME, "test-germline-cnv-cohort")
+                .add(IntervalArgumentCollection.INTERVAL_MERGING_RULE_LONG_NAME, IntervalMergingRule.OVERLAPPING_ONLY.toString());
+        runCommandLine(argsBuilder);
     }
 }
