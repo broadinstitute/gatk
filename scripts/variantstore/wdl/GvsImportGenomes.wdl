@@ -37,14 +37,6 @@ workflow GvsImportGenomes {
       service_account_json_path = service_account_json_path
   }
 
-  call CheckForDuplicateData {
-    input:
-      dataset_name = dataset_name,
-      project_id = project_id,
-      sample_names = external_sample_names,
-      service_account_json_path = service_account_json_path
-  }
-
   call CreateFOFNs {
     input:
       batch_size = 1,
@@ -58,7 +50,6 @@ workflow GvsImportGenomes {
       input:
         dataset_name = dataset_name,
         project_id = project_id,
-        duplicate_check_passed = CheckForDuplicateData.done,
         drop_state = "FORTY",
         drop_state_includes_greater_than = false,
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
@@ -136,8 +127,8 @@ task CheckForDuplicateData {
 
     cat query.sql | bq --location=US --project_id=~{project_id} query --format=csv -n ~{num_samples} --use_legacy_sql=false | sed -e '/sample_name/d' > duplicates
 
-      # remove the temp table
-      bq --project_id=~{project_id} rm -f -t ${TEMP_TABLE}
+    # remove the temp table
+    bq --project_id=~{project_id} rm -f -t ${TEMP_TABLE}
 
     # true if there is data in results
     if [ -s duplicates ]; then
@@ -195,7 +186,6 @@ task LoadData {
     String dataset_name
     String project_id
 
-    Boolean duplicate_check_passed
     Array[File] input_vcf_indexes
     Array[File] input_vcfs
     File interval_list
@@ -245,6 +235,8 @@ task LoadData {
       gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
     # translate WDL arrays into BASH arrays
     VCFS_ARRAY=(~{sep=" " input_vcfs})
     VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
@@ -252,11 +244,24 @@ task LoadData {
 
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
+
       input_vcf="${VCFS_ARRAY[$i]}"
       input_vcf_basename=$(basename $input_vcf)
       updated_input_vcf=$input_vcf
       input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
+
+      # first, see if this sample is already in the DB, and if so, skip
+      echo "SELECT DISTINCT i.sample_id FROM `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` p, `~{dataset_name}.sample_info` i WHERE i.sample_name = '${sample_name}' AND p.partition_id = CAST(i.sample_id AS STRING) AND p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%')" > query.sql
+
+      cat query.sql
+      cat query.sql | bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false | sed -e '/sampleid/d' > duplicates
+
+      if [ -s duplicates ]; then
+        echo "Skipping already loaded sample, id: " $(cat duplicates)
+        rm duplicates
+        continue
+      fi
 
       # we always do our own localization
       gsutil cp $input_vcf .
