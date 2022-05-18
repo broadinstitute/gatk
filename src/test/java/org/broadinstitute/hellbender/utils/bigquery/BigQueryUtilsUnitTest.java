@@ -159,13 +159,25 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
                 null
         );
 
-        final String tempTableName = BIGQUERY_TEST_PROJECT+"."+BIGQUERY_TEST_DATASET+".temp_table_GVS*";
+        final String tempTableDefaultName = BIGQUERY_TEST_PROJECT+"."+BIGQUERY_TEST_DATASET+".temp_table_GVS*";
+        String query = String.format("SELECT * FROM `%s`", tempTableDefaultName);
+        TableResult result = BigQueryUtils.executeQuery(query, true, labels);
+        Assert.assertTrue(result.getTotalRows() > 0, "Default correctly added to the table name");
+        BigQueryUtils.executeQueryWithStorageAPI(
+                workflowQuery,
+                fieldsToRetrieve,
+                BIGQUERY_TEST_PROJECT,
+                BIGQUERY_TEST_DATASET,
+                noUDFs,
+                false,
+                labels,
+                "work-it"
+        );
 
-        final String query = String.format("SELECT * FROM `%s`", tempTableName);
-        final TableResult result = BigQueryUtils.executeQuery(query, true, labels);
-
-        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
-        Assert.assertNotSame(result.getTotalRows(),0);
+        final String tempTableName = BIGQUERY_TEST_PROJECT+"."+BIGQUERY_TEST_DATASET+".temp_table_work-it*";
+        query = String.format("SELECT * FROM `%s`", tempTableName);
+        result = BigQueryUtils.executeQuery(query, true, labels);
+        Assert.assertTrue(result.getTotalRows() > 0, "Workflow name correctly added to the table name");
     }
 
 
