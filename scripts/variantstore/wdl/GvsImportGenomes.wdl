@@ -14,11 +14,12 @@ workflow GvsImportGenomes {
     Array[File] input_vcf_indexes
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    # If increasing this also consider increasing `load_data_preemptible_override` and `load_data_maxretries_override`.
+    Int load_data_batch_size = 5
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220415/gatk-package-4.2.0.0-492-g1387d47-SNAPSHOT-local.jar"
     String? service_account_json_path
-    Int cromwell_parallelism = 2000
   }
 
   # return an error if the lengths are not equal
@@ -50,11 +51,9 @@ workflow GvsImportGenomes {
       service_account_json_path = service_account_json_path
   }
 
-  Int batch_size = if (length(external_sample_names) / cromwell_parallelism < 1) then 1 else length(external_sample_names) / cromwell_parallelism
-
   call CreateFOFNs {
     input:
-      batch_size = batch_size,
+      batch_size = load_data_batch_size,
       input_vcf_index_list = write_lines(input_vcf_indexes),
       input_vcf_list = write_lines(input_vcfs),
       sample_name_list = write_lines(external_sample_names),
