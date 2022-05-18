@@ -254,11 +254,11 @@ task LoadData {
       # first, see if this sample is already in the DB, and if so, skip
       echo "SELECT DISTINCT i.sample_id FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` p, \`~{dataset_name}.sample_info\` i WHERE i.sample_name = '${sample_name}' AND p.partition_id = CAST(i.sample_id AS STRING) AND p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%')" > query.sql
 
-      cat query.sql
-      cat query.sql | bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false | sed -e '/sampleid/d' > duplicates
+      cat query.sql | bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false | sed -e '/sample_id/d' > duplicates
 
       if [ -s duplicates ]; then
-        echo "Skipping already loaded sample, id: " $(cat duplicates)
+      else
+        echo "\nSkipping already loaded sample, id: " $(cat duplicates)
         rm duplicates
         continue
       fi
