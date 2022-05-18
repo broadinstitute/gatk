@@ -294,3 +294,24 @@ task BuildGATKJarAndCreateDataset {
     disks: "local-disk 500 HDD"
   }
 }
+
+
+task TerminateWorkflow {
+  input {
+    String message
+  }
+
+  command <<<
+    set -e
+    echo "~{message}"
+    exit 1
+  >>>
+
+  runtime {
+    docker: "python:3.8-slim-buster"
+    memory: "1 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
