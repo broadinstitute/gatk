@@ -309,7 +309,7 @@ task TerminateWorkflow {
     ~{message}
     FIN
 
-    cat message.txt
+    cat message.txt >&2
     exit 1
   >>>
 
