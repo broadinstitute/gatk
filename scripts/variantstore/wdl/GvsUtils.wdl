@@ -303,7 +303,7 @@ task TerminateWorkflow {
 
   command <<<
     set -e
-    echo "~{message}"
+    echo '~{message}'
     exit 1
   >>>
 
