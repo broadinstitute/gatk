@@ -36,6 +36,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class ExtractCohortEngine {
@@ -89,7 +90,10 @@ public class ExtractCohortEngine {
     private final String filterSetName;
 
     private final GQStateEnum inferredReferenceState;
+    private final InferredReferenceRecord inferredReferenceRecord;
+
     private final boolean presortedAvroFiles;
+
 
     public ExtractCohortEngine(final String projectID,
                                final VariantContextWriter vcfWriter,
@@ -178,6 +182,9 @@ public class ExtractCohortEngine {
         this.inferredReferenceState = inferredReferenceState;
 
         this.presortedAvroFiles = presortedAvroFiles;
+
+        this.inferredReferenceRecord = new InferredReferenceRecord(inferredReferenceState);
+
     }
 
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
@@ -370,13 +377,13 @@ public class ExtractCohortEngine {
         }
     }
 
-    private void processSampleRecordsForLocation(final long location,
-                                                 final Iterable<ExtractCohortRecord> sampleRecordsAtPosition,
-                                                 final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
-                                                 final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
-                                                 final boolean noVqslodFilteringRequested,
-                                                 final HashMap<Long, List<String>> siteFilterMap,
-                                                 final ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
+    protected VariantContext processSampleRecordsForLocation(final long location,
+                                                             final Iterable<ExtractCohortRecord> sampleRecordsAtPosition,
+                                                             final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+                                                             final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
+                                                             final boolean noVqslodFilteringRequested,
+                                                             final HashMap<Long, List<String>> siteFilterMap,
+                                                             final ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
 
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final List<ReferenceGenotypeInfo> refCalls = new ArrayList<>();
@@ -387,7 +394,7 @@ public class ExtractCohortEngine {
         boolean currentPositionHasVariant = false;
         final int currentPosition = SchemaUtils.decodePosition(location);
         final String contig = SchemaUtils.decodeContig(location);
-        final Allele refAllele = Allele.create(refSource.queryAndPrefetch(contig, currentPosition, currentPosition).getBaseString(), true);
+        final Allele refAllele = getReferenceAllele(refSource, location, 1);
         int numRecordsAtPosition = 0;
 
         final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap;
@@ -452,7 +459,9 @@ public class ExtractCohortEngine {
                 case "6":  // Non Variant Block with 60 <= GQ (usually omitted from tables)
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 60));
                     break;
-                case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
+                case "*":   // Spanning Deletion
+                    VariantContext vcStar = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap, VQSLODFilteringType);
+                    unmergedCalls.add(vcStar);
                     break;
                 case "m":   // Missing
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
@@ -467,10 +476,10 @@ public class ExtractCohortEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
+        return finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
     }
 
-    private void finalizeCurrentVariant(final List<VariantContext> unmergedVariantCalls,
+    VariantContext finalizeCurrentVariant(final List<VariantContext> unmergedVariantCalls,
                                         final List<ReferenceGenotypeInfo> referenceCalls,
                                         final BitSet samplesSeen,
                                         final boolean currentPositionHasVariant,
@@ -484,7 +493,7 @@ public class ExtractCohortEngine {
                                         final HashMap<Long, List<String>> siteFilterMap) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
-            return;
+            return null;
         }
 
         VariantContext mergedVC = variantContextMerger.merge(
@@ -559,12 +568,16 @@ public class ExtractCohortEngine {
         // clean up extra annotations
         final VariantContext finalVC = removeAnnotations(filteredVC);
 
-        if ( finalVC != null ) {
+        return finalVC;
+    }
+
+    private void writeToVcf(VariantContext vc) {
+        if ( vc != null ) {
             // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
-            if (finalVC.isNotFiltered() || !excludeFilteredSites) {
-                vcfWriter.add(finalVC);
+            if (vc.isNotFiltered() || !excludeFilteredSites) {
+                vcfWriter.add(vc);
             }
-            progressMeter.update(finalVC);
+            progressMeter.update(vc);
         }
     }
 
@@ -1032,14 +1045,26 @@ public class ExtractCohortEngine {
 
     }
 
-    private void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
-                                                final Iterable<GenericRecord> sortedVet,
-                                                Iterable<GenericRecord> sortedReferenceRange,
-                                                final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
-                                                final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
-                                                final HashMap<Long, List<String>> siteFilterMap,
-                                                final boolean noVqslodFilteringRequested
-                                                ) {
+
+    void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
+                                        final Iterable<GenericRecord> sortedVet,
+                                        Iterable<GenericRecord> sortedReferenceRange,
+                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
+                                        final HashMap<Long, List<String>> siteFilterMap,
+                                        final boolean noVqslodFilteringRequested) {
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested, (vc) -> writeToVcf(vc));
+    }
+
+    void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
+                                        final Iterable<GenericRecord> sortedVet,
+                                        Iterable<GenericRecord> sortedReferenceRange,
+                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
+                                        final HashMap<Long, List<String>> siteFilterMap,
+                                        final boolean noVqslodFilteringRequested,
+                                        Consumer<VariantContext> variantContextConsumer
+    ) {
 
         long maxSampleId = sampleIdsToExtract.stream().max(Long::compare).orElseThrow(
                 () -> new GATKException("Unable to calculate max sample id, sample list may be empty")
@@ -1088,7 +1113,8 @@ public class ExtractCohortEngine {
                 }
 
                 ++totalNumberOfSites;
-                processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
+                VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
+                variantContextConsumer.accept(vc);
                 currentPositionRecords.clear();
 
                 lastSample = null;
@@ -1120,7 +1146,8 @@ public class ExtractCohortEngine {
 
         if (!currentPositionRecords.isEmpty()) {
             ++totalNumberOfSites;
-            processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
+            VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
+            variantContextConsumer.accept(vc);
         }
     }
 
@@ -1132,8 +1159,13 @@ public class ExtractCohortEngine {
         int refLength = vetRow.getRefAllele().length();
 
         if (refLength > smallestAltLength) {
+            // TODO: robustify check if deletion is het or hom
+            long distinctAlleles
+                    = Arrays.stream(vetRow.getCallGT().replace("|", "/").split("/")).distinct().count();
+            String gq = vetRow.getCallGQ();
+
             referenceCache.get(sample).add(
-                    new ReferenceRecord(position+1, sample, refLength - smallestAltLength, "*")
+                    new SpanningDeletionRecord(position+1, sample, refLength - smallestAltLength, (distinctAlleles == 1) ? "1/1" : "0/1", gq)
             );
         }
     }
@@ -1152,16 +1184,31 @@ public class ExtractCohortEngine {
     }
 
     private ExtractCohortRecord processReferenceData(Iterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
-        String state = processReferenceDataFromCache(referenceCache, location, sampleId);
+        ReferenceRecord r = processReferenceDataFromCache(referenceCache, location, sampleId);
 
-        if (state == null) {
-            state = processReferenceDataFromStream(sortedReferenceRangeIterator, referenceCache, location, sampleId);
+        if (r == null) {
+            r = processReferenceDataFromStream(sortedReferenceRangeIterator, referenceCache, location, sampleId);
         }
 
-        return new ExtractCohortRecord(location, sampleId, state);
+        // handle spanning deletion record
+        if (r instanceof SpanningDeletionRecord) {
+            SpanningDeletionRecord sdr = (SpanningDeletionRecord) r;
+            Allele refAllele = getReferenceAllele(refSource, location, 1); // note this is location of the query/parameter, not the start of the deletion
+            return new ExtractCohortRecord(location, sampleId, sdr.getState(), refAllele.getBaseString(), Allele.SPAN_DEL_STRING, sdr.getGT(), sdr.getGQ());
+        } else {
+            return new ExtractCohortRecord(location, sampleId, r.getState());
+        }
     }
 
-    private String processReferenceDataFromCache(Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
+    // TODO: use this as a return record, singleton
+    // TODO: so much hackery to instantiate this thing...
+    public class InferredReferenceRecord extends ReferenceRecord {
+        public InferredReferenceRecord(GQStateEnum inferredState) {
+            super(SchemaUtils.chromAdjustment + 1, -1, -1, inferredState.getValue());
+        }
+    }
+
+    private ReferenceRecord processReferenceDataFromCache(Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
 
         // PERF: bottleneck (iterator and remove) 6%
         Iterator<ReferenceRecord> iter = referenceCache.get(sampleId).iterator();
@@ -1177,12 +1224,12 @@ public class ExtractCohortEngine {
             // if it overlaps our location, use it!  Don't worry about removing it, if it
             // becomes irrelevant the next time we process it we will remove it
             if (row.getLocation() <= location && row.getEndLocation() >= location) {
-                return row.getState();
+                return row;
             }
 
             // completely after position, inferred state
             if (row.getLocation() > location) {
-                return inferredReferenceState.getValue();
+                return inferredReferenceRecord;
             }
         }
 
@@ -1195,7 +1242,7 @@ public class ExtractCohortEngine {
         }
     }
 
-    private String processReferenceDataFromStream(Iterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
+    private ReferenceRecord processReferenceDataFromStream(Iterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long sampleId) {
         while(sortedReferenceRangeIterator.hasNext()) {
             final ReferenceRecord refRow = new ReferenceRecord(sortedReferenceRangeIterator.next());
             totalRangeRecords++;
@@ -1214,19 +1261,24 @@ public class ExtractCohortEngine {
 
                 // if this is for the requested sample, return the value
                 if (refRow.getSampleId() == sampleId) {
-                    return refRow.getState();
+                    return refRow;
                 }
             }
 
             // we are now past the position, put this one entry in the cache and return the inferred state
             if (refRow.getLocation() > location) {
                 referenceCache.get(refRow.getSampleId()).add(refRow);
-                return inferredReferenceState.getValue();
+                return inferredReferenceRecord;
             }
         }
 
         // if we are still here... use the inferred state
-        return inferredReferenceState.getValue();
+        return inferredReferenceRecord;
     }
 
+    private static Allele getReferenceAllele(ReferenceDataSource refSource, long location, int length) {
+        String contig = SchemaUtils.decodeContig(location);
+        long position = SchemaUtils.decodePosition(location);
+        return Allele.create(refSource.queryAndPrefetch(contig, position, position + length - 1).getBaseString(), true);
+    }
 }
