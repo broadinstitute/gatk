@@ -304,11 +304,12 @@ task TerminateWorkflow {
   command <<<
     set -o errexit
 
-    # To avoid issues with special characters embedded within the message, write the message to a file and cat the file.
+    # To avoid issues with special characters within the message, write the message to a file.
     cat > message.txt <<FIN
     ~{message}
     FIN
 
+    # cat the file to stderr as this task is going to fail due to the exit 1.
     cat message.txt >&2
     exit 1
   >>>
