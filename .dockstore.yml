@@ -88,7 +88,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-418-allow-withdrawn
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -98,7 +97,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-418-allow-withdrawn
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -115,7 +113,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-418-allow-withdrawn
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -123,7 +120,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-418-allow-withdrawn
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -133,7 +129,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-418-allow-withdrawn
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
@@ -141,7 +136,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_merge_vat_tsvs
    - name: GvsCreateVATAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl
@@ -151,7 +145,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-remove-AD-from-VAT
    - name: GvsCreateVATFromAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATFromAnnotations.wdl
@@ -198,7 +191,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_AddPrecisionAndSensitivityWdl
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -206,7 +198,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_357_quickstart_integration
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
@@ -214,7 +205,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_261_ingest_errors
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
