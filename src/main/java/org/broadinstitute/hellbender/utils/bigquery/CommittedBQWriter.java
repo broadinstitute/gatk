@@ -69,11 +69,11 @@ public class CommittedBQWriter implements AutoCloseable {
         }
     }
 
-    protected void writeJsonArray() throws ExecutionException, InterruptedException, IOException {
+    protected void writeJsonArray() throws InterruptedException, IOException {
         writeJsonArray(0);
     }
 
-    protected void writeJsonArray(int retryCount) throws ExecutionException, InterruptedException, IOException {
+    protected void writeJsonArray(int retryCount) throws InterruptedException, IOException {
         try {
             ApiFuture<AppendRowsResponse> future = writer.append(jsonArr);
             future.get();
