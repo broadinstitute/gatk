@@ -142,11 +142,11 @@ public class LongHomopolymerHaplotypeCollapsingEngine {
     public static Map<Haplotype, List<Haplotype>> identicalBySequence(final List<Haplotype> haplotypes) {
 
         // create a map where each node's value contains a list of haplotypes with an identical sequence
-        final Map<String, List<Haplotype>> sequenceMap = new CollectionUtil.DefaultingMap<>((k) -> new ArrayList<>(), true);
-        haplotypes.forEach(h -> sequenceMap.get(h.getBaseString()).add(h));
+        final Map<String, List<Haplotype>> sequenceMap = new LinkedHashMap<>();
+        haplotypes.forEach(h -> sequenceMap.computeIfAbsent(h.getBaseString(), k -> new LinkedList<>()).add(h));
 
         // create a map where each node's key is a haplotype and the value is the list of all haplotypes (incl self) with same sequence
-        final Map<Haplotype, List<Haplotype>> result = new HashMap<>();
+        final LinkedHashMap<Haplotype, List<Haplotype>> result = new LinkedHashMap<>();
         sequenceMap.values().forEach(h -> result.put(h.get(0), h));
 
         // find reference haplotype, there should always be one
