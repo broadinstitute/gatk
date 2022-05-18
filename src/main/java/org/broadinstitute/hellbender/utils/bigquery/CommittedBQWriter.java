@@ -107,7 +107,7 @@ public class CommittedBQWriter implements AutoCloseable {
                     // successful write. This error can also happen if the application sets the wrong offset value.
                     //
                     // PERMISSION_DENIED. The application does not have permission to write to this table.
-                    throw e;
+                    throw new GATKException("Caught StatusRuntimeException with unretryable status code " + code + ", throwing", e);
                 default:
                     switch (code) {
                         case INTERNAL:
@@ -131,8 +131,7 @@ public class CommittedBQWriter implements AutoCloseable {
                             // In practice with a PENDING WriteStream.Type the advice above does not work out;
                             // everything that has been `append`ed prior to the writer being closed is lost. Instead,
                             // just throw and let `maxRetries` start up a subsequent attempt from the beginning.
-                            logger.warn("Caught StatusRuntimeException with status code {}, throwing", code);
-                            throw e;
+                            throw new GATKException("Caught StatusRuntimeException with status code "  + code + " which is not known to be retryable, throwing", e);
                     }
             }
         }
