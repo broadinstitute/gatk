@@ -32,7 +32,6 @@ workflow GvsUnified {
         # Begin GvsCreateFilterSet
         String filter_set_name
         Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
-        Int create_filter_set_scatter_count
         Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
         Int? INDEL_VQSR_max_gaussians_override = 4
@@ -109,7 +108,6 @@ workflow GvsUnified {
             project_id = project_id,
             filter_set_name = filter_set_name,
             indel_recalibration_annotation_values = indel_recalibration_annotation_values,
-            scatter_count = create_filter_set_scatter_count,
             snp_recalibration_annotation_values = snp_recalibration_annotation_values,
             interval_list = interval_list,
             gatk_override = gatk_override,
