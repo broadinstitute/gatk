@@ -146,7 +146,7 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         final List<String> fieldsToRetrieve = new LinkedList<>();
         final String noUDFs = null;
         fieldsToRetrieve.add("name");
-        Map<String, String> labels = new HashMap<String, String>();
+        Map<String, String> labels = new HashMap<>();
         labels.put("gatktestquery", "teststorageapi" + runUuid);
         BigQueryUtils.executeQueryWithStorageAPI(
                 workflowQuery,
