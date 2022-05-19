@@ -94,7 +94,7 @@ workflow GvsUnified {
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_gatk_override = gatk_override,
             service_account_json_path = service_account_json_path,
-            import_batch_size = load_data_batch_size
+            load_data_batch_size = load_data_batch_size
     }
 
     call CreateAltAllele.GvsCreateAltAllele {
