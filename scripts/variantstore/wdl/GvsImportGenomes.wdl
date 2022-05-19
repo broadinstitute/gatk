@@ -391,15 +391,15 @@ task CurateInputLists {
       gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
-    gsutil cp  ~{input_vcf_index_list} input_vcf_index_file
-    gsutil cp  ~{input_vcf_list} input_vcf_file
+    gsutil cp  ~{input_vcf_index_list} input_vcf_index_list_file
+    gsutil cp  ~{input_vcf_list} input_vcf_list_file
     gsutil cp  ~{input_sample_map} input_sample_map_file
-    gsutil cp  ~{input_sample_name_list} input_sample_name_file
+    gsutil cp  ~{input_sample_name_list} input_sample_name_list_file
 
     python3 /app/curate_input_array_files.py
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_skip_samples_20220519_2"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_skip_samples_20220519_4"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
@@ -408,8 +408,8 @@ task CurateInputLists {
   }
 
   output {
-    File index_list = "output_vcf_index_list"
-    File vcf_list = "output_vcf_list"
-    File sample_name_list = "output_sample_name_list"
+    File index_list = "output_vcf_index_list_file"
+    File vcf_list = "output_vcf_list_file"
+    File sample_name_list = "output_sample_name_list_file"
   }
 }

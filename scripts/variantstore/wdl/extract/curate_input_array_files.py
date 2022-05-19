@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 
 SAMPLE_MAP_FILE_SUFFIX = "sample_map_file"
-SAMPLE_NAME_FILE_SUFFIX = "sample_names_list_file"
+SAMPLE_NAME_FILE_SUFFIX = "sample_name_list_file"
 VCF_FILE_SUFFIX = "vcf_list_file"
 VCF_INDEX_FILE_SUFFIX = "vcf_index_list_file"
 
