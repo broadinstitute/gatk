@@ -28,7 +28,7 @@ workflow GvsImportGenomes {
     }
   }
 
-  call GetSampleIds {
+  call GetUningestedSampleIds {
     input:
       dataset_name = dataset_name,
       project_id = project_id,
@@ -37,12 +37,23 @@ workflow GvsImportGenomes {
       service_account_json_path = service_account_json_path
   }
 
+  call CurateInputLists {
+    input:
+      dataset_name = dataset_name,
+      project_id = project_id,
+      input_vcf_index_list = write_lines(input_vcf_indexes),
+      input_vcf_list = write_lines(input_vcfs),
+      input_sample_name_list = write_lines(external_sample_names),
+      input_sample_map = GetUningestedSampleIds.sample_map,
+      service_account_json_path = service_account_json_path
+  }
+
   call CreateFOFNs {
     input:
       batch_size = 1,
-      input_vcf_index_list = write_lines(input_vcf_indexes),
-      input_vcf_list = write_lines(input_vcfs),
-      sample_name_list = write_lines(external_sample_names),
+      input_vcf_index_list = CurateInputLists.index_list,
+      input_vcf_list = CurateInputLists.vcf_list,
+      sample_name_list = CurateInputLists.sample_name_list
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
@@ -59,7 +70,7 @@ workflow GvsImportGenomes {
         load_data_preemptible_override = load_data_preemptible_override,
         load_data_maxretries_override = load_data_maxretries_override,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        sample_map = GetSampleIds.sample_map,
+        sample_map = CurateInputLists.output_sample_map,
         service_account_json_path = service_account_json_path,
     }
   }
@@ -75,78 +86,6 @@ workflow GvsImportGenomes {
   output {
     Boolean done = true
     Array[File] load_data_stderrs = LoadData.stderr
-  }
-}
-
-task CheckForDuplicateData {
-  input {
-    String dataset_name
-    String project_id
-
-    Array[String] sample_names
-
-    String? service_account_json_path
-  }
-
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-  Int num_samples = length(sample_names)
-
-  meta {
-    volatile: true
-  }
-
-  command <<<
-    set -e
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{project_id}
-    fi
-
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-    INFO_SCHEMA_TABLE="~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS"
-    TEMP_TABLE="~{dataset_name}.sample_dupe_check"
-    SAMPLE_INFO_TABLE="~{dataset_name}.sample_info"
-
-    # create a temp table with the sample_names
-    bq --project_id=~{project_id} mk ${TEMP_TABLE} "sample_name:STRING"
-    NAMES_FILE=~{write_lines(sample_names)}
-    bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
-
-    # check the INFORMATION_SCHEMA.PARTITIONS table to see if any of input sample names/ids have data loaded into their partitions
-    # this returns the list of sample names that do already have data loaded
-    echo "WITH items as (SELECT s.sample_id, s.sample_name, s.is_loaded, s.withdrawn FROM \`${TEMP_TABLE}\` t left outer join \`${SAMPLE_INFO_TABLE}\` s on (s.sample_name = t.sample_name)) " >> query.sql
-    echo "SELECT i.sample_name FROM \`${INFO_SCHEMA_TABLE}\` p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%')" >> query.sql
-    echo "UNION DISTINCT "  >> query.sql
-    echo "SELECT i.sample_name FROM items i WHERE i.is_loaded = True AND i.withdrawn IS NULL "  >> query.sql
-    echo "UNION DISTINCT "  >> query.sql
-    echo "SELECT i.sample_name FROM items i WHERE i.sample_id IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\`) "  >> query.sql
-
-
-    cat query.sql | bq --location=US --project_id=~{project_id} query --format=csv -n ~{num_samples} --use_legacy_sql=false | sed -e '/sample_name/d' > duplicates
-
-    # remove the temp table
-    bq --project_id=~{project_id} rm -f -t ${TEMP_TABLE}
-
-    # true if there is data in results
-    if [ -s duplicates ]; then
-      echo "ERROR: Trying to load samples that have already been loaded"
-      cat duplicates
-      exit 1
-    fi
-  >>>
-  runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
-    memory: "1 GB"
-    disks: "local-disk 10 HDD"
-    preemptible: 5
-    cpu: 1
-  }
-  output {
-    Boolean done = true
-    File? duplicates = "duplicates"
   }
 }
 
@@ -256,8 +195,7 @@ task LoadData {
 
       cat query.sql | bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false | sed -e '/sample_id/d' > duplicates
 
-      if [ -s duplicates ]; then
-      else
+      if ! [ -s duplicates ]; then
         echo "\nSkipping already loaded sample, id: " $(cat duplicates)
         rm duplicates
         continue
@@ -297,8 +235,6 @@ task LoadData {
     File stderr = stderr()
   }
 }
-
-
 
 task TerminateWorkflow {
   input {
@@ -362,7 +298,7 @@ task SetIsLoadedColumn {
   }
 }
 
-task GetSampleIds {
+task GetUningestedSampleIds {
   meta {
     volatile: true
   }
@@ -391,20 +327,19 @@ task GetSampleIds {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
-     set +e
-     TEMP_TABLE="~{dataset_name}.sample_names_to_load"
-     bq show --project_id ~{project_id} ${TEMP_TABLE} > /dev/null
-     BQ_SHOW_RC=$?
-     set -e
+    set +e
+    TEMP_TABLE="~{dataset_name}.sample_names_to_load"
+    bq show --project_id ~{project_id} ${TEMP_TABLE} > /dev/null
+    BQ_SHOW_RC=$?
+    set -e
 
-     # if there is already a table of sample names or something else is wrong, bail
-     if [ $BQ_SHOW_RC -eq 0 ]; then
-       echo "There is already a list of sample names. This may need manual cleanup. Exiting"
-       exit 1
-     fi
+    # if there is already a table of sample names or something else is wrong, bail
+    if [ $BQ_SHOW_RC -eq 0 ]; then
+      echo "There is already a list of sample names. This may need manual cleanup. Exiting"
+      exit 1
+    fi
 
     echo "Creating the external sample name list table ${TEMP_TABLE}"
-    TEMP_TABLE="~{dataset_name}.sample_names_to_load"
     bq --project_id=~{project_id} mk ${TEMP_TABLE} "sample_name:STRING"
     NAMES_FILE=~{write_lines(external_sample_names)}
     bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
@@ -426,8 +361,9 @@ task GetSampleIds {
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
+    # get sample map of samples that haven't been loaded yet
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
-      "SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name" > sample_map
+      "SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name WHERE samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status='FINISHED')" > sample_map
 
     cut -d, -f1 sample_map > gvs_ids
 
@@ -446,5 +382,48 @@ task GetSampleIds {
     Int min_table_id = ceil(read_float("min_sample_id"))
     File sample_map = "sample_map"
     File gvs_ids = "gvs_ids"
+  }
+}
+
+task CurateInputLists {
+  input {
+    String dataset_name
+    String project_id
+    File input_vcf_index_list
+    File input_vcf_list
+    File input_sample_map
+    File input_sample_name_list
+
+    String? service_account_json_path
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  command <<<
+    set -ex
+    if [ ~{has_service_account_file} = 'true' ]; then
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+    fi
+
+    gsutil cp  ~{input_vcf_index_list} input_vcf_index_list
+    gsutil cp  ~{input_vcf_list} input_vcf_list
+    gsutil cp  ~{input_sample_map} input_sample_map
+    gsutil cp  ~{input_sample_name_list} input_sample_name_list
+
+    python3 /app/curate_input_array_files.py
+  >>>
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_skip_samples_20220519"
+    memory: "3 GB"
+    disks: "local-disk 100 HDD"
+    bootDiskSizeGb: 15
+    preemptible: 0
+    cpu: 1
+  }
+
+  output {
+    File index_list = "output_vcf_index_list"
+    File vcf_list = "output_vcf_list"
+    File sample_name_list = "output_sample_name_list"
   }
 }
