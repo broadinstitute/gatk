@@ -391,10 +391,10 @@ task CurateInputLists {
       gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
-    gsutil cp  ~{input_vcf_index_list} input_vcf_index_list
-    gsutil cp  ~{input_vcf_list} input_vcf_list
-    gsutil cp  ~{input_sample_map} input_sample_map
-    gsutil cp  ~{input_sample_name_list} input_sample_name_list
+    gsutil cp  ~{input_vcf_index_list} input_vcf_index_file
+    gsutil cp  ~{input_vcf_list} input_vcf_file
+    gsutil cp  ~{input_sample_map} input_sample_map_file
+    gsutil cp  ~{input_sample_name_list} input_sample_name_file
 
     python3 /app/curate_input_array_files.py
   >>>
