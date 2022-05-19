@@ -26,9 +26,9 @@ public class VQSLODTranche extends Tranche {
 
     public VQSLODTranche(
             final double minVQSLod,
-            final int numKnown,
+            final long numKnown,
             final double knownTiTv,
-            final int numNovel,
+            final long numNovel,
             final double novelTiTv,
             final int accessibleTruthSites,
             final int callsAtTruthSites,
@@ -178,10 +178,10 @@ public class VQSLODTranche extends Tranche {
 
     public static VQSLODTranche mergeAndConvertTranches(final List<VQSLODTranche> scatteredTranches, VariantRecalibratorArgumentCollection.Mode mode) {
         double indexVQSLOD = scatteredTranches.get(0).minVQSLod;
-        int sumNumKnown = 0;
+        long sumNumKnown = 0;
         double sumKnownTransitions = 0;
         double sumKnownTransversions = 0;
-        int sumNumNovel = 0;
+        long sumNumNovel = 0;
         double sumNovelTransitions = 0;
         double sumNovelTransversions = 0;
         int sumAccessibleTruthSites = 0;

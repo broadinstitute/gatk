@@ -27,14 +27,16 @@ public class Tranche {
     final double minVQSLod;  //minimum value of VQSLOD in this tranche
     final double knownTiTv;  //titv value of known sites in this tranche
     final double novelTiTv;  //titv value of novel sites in this tranche
-    final int numKnown;      //number of known sites in this tranche
-    final int numNovel;      //number of novel sites in this tranche
+    final long numKnown;      //number of known sites in this tranche
+    final long numNovel;      //number of novel sites in this tranche
     final VariantRecalibratorArgumentCollection.Mode model;
     final String name;       //Name of the tranche
 
-    public Tranche(final String name, final double knownTiTv, final int numNovel, final double minVQSLod, final VariantRecalibratorArgumentCollection.Mode model, final double novelTiTv, final int accessibleTruthSites, final int numKnown, final int callsAtTruthSites) {
+    public Tranche(final String name, final double knownTiTv, final long numNovel, final double minVQSLod,
+                   final VariantRecalibratorArgumentCollection.Mode model, final double novelTiTv,
+                   final int accessibleTruthSites, final long numKnown, final int callsAtTruthSites) {
         if ( numKnown < 0 || numNovel < 0) {
-            throw new GATKException("Invalid tranche - no. variants is < 0 : known " + numKnown + " novel " + numNovel);
+            throw new GATKException("Invalid tranche " + name + " - no. variants is < 0 : known " + numKnown + " novel " + numNovel);
         }
 
         if ( name == null ) {
@@ -104,7 +106,8 @@ public class Tranche {
     }
 
     protected static Tranche trancheOfVariants(final List<VariantDatum> data, final int minI, final double ts, final VariantRecalibratorArgumentCollection.Mode model ) {
-        int numKnown = 0, numNovel = 0, knownTi = 0, knownTv = 0, novelTi = 0, novelTv = 0;
+        long numKnown = 0, numNovel = 0;
+        int knownTi = 0, knownTv = 0, novelTi = 0, novelTv = 0;
 
         final double minLod = data.get(minI).lod;
         for (final VariantDatum datum : data) {
@@ -147,8 +150,8 @@ public class Tranche {
 
         final double knownTiTv = 0.0;
         final double novelTiTv = 0.0;
-        final int numKnown = 0;
-        final int numNovel = 0;
+        final long numKnown = 0;
+        final long numNovel = 0;
 
         return new Tranche("unnamed", knownTiTv, numNovel, minLod, model, novelTiTv, accessibleTruthSites, numKnown, nCallsAtTruth);
     }
