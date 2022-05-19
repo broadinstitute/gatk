@@ -295,7 +295,6 @@ task BuildGATKJarAndCreateDataset {
   }
 }
 
-
 task TerminateWorkflow {
   input {
     String message
@@ -321,13 +320,18 @@ task TerminateWorkflow {
     preemptible: 3
     cpu: 1
   }
+
+  output {
+    Boolean done = true
+  }
 }
-                                                                                                                                                               }
+
 task ScaleXYBedValues {
     input {
         Boolean go = true
         File interval_weights_bed
-        Float scale_factor
+        Float x_bed_weight_scaling
+        Float y_bed_weight_scaling
     }
     command <<<
         python3 <<FIN
@@ -335,10 +339,20 @@ task ScaleXYBedValues {
 
         input = open('~{interval_weights_bed}', 'r')
         output = open('interval_weights_xy_scaled.bed', 'w')
-        scale_factor=~{scale_factor}
+        x_scale_factor=~{x_bed_weight_scaling}
+        y_scale_factor=~{y_bed_weight_scaling}
 
-        if scale_factor < 1.0:
-            print("Error: illegal X/Y chromosome weight scale factor ~{scale_factor}; scale factor value must be >= 1.0")
+        fail=False
+
+        if x_scale_factor < 1.0:
+            print(f"Error: illegal X chromosome weight scale factor {x_scale_factor}; scale factor value must be >= 1.0")
+            fail=True
+
+        if y_scale_factor < 1.0:
+            print(f"Error: illegal Y chromosome weight scale factor {y_scale_factor}; scale factor value must be >= 1.0")
+            fail=True
+
+        if fail:
             sys.exit(1)
 
         while True:
@@ -349,6 +363,7 @@ task ScaleXYBedValues {
             line = line.rstrip('\n')
 
             if line.startswith('chrX') or line.startswith('chrY'):
+                scale_factor = x_scale_factor if line.startsWith('chrX') else y_scale_factor
                 fields = line.split('\t')
                 weight = fields[-1]
                 fields[-1] = str(int(int(weight) * scale_factor))
