@@ -39,7 +39,9 @@ public class ShardBAMForExpansionHunter extends PairWalker {
     }
 
     @Override public void applyUnpaired( final GATKRead read ) {
-        writer.addRead(read);
+        if ( !read.isSecondaryAlignment() && !read.isSupplementaryAlignment() ) {
+            writer.addRead(read);
+        }
     }
 
     @Override public void closeTool() {
