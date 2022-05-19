@@ -452,7 +452,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         args.add("V", inputGvcf)
                 .addOutput(output)
                 .addReference(hg38_reference_20_21)
-                .add(ReblockGVCF.TREE_SCORE_THRESHOLD_SHORT_NAME, 0.3)
+                .add(ReblockGVCF.TREE_SCORE_THRESHOLD_LONG_NAME, 0.3)
                 .add(ReblockGVCF.ANNOTATIONS_TO_KEEP_LONG_NAME, "TREE_SCORE")
                 .add("do-qual-approx", true);
 
