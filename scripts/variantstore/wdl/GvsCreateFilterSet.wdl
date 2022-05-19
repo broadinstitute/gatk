@@ -14,7 +14,7 @@ workflow GvsCreateFilterSet {
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220415/gatk-package-4.2.0.0-492-g1387d47-SNAPSHOT-local.jar"
+    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-add-withdrawn-back/gatk-package-4.2.0.0-527-ge5b9dd6-SNAPSHOT-local.jar"
 
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
@@ -284,7 +284,7 @@ task GetNumSamplesLoaded {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-    'SELECT COUNT(*) as num_rows FROM `~{fq_sample_table}` WHERE is_loaded = true AND withdrawn IS NULL' > num_rows.csv
+    'SELECT COUNT(*) as num_rows FROM `~{fq_sample_table}` WHERE is_loaded = true' > num_rows.csv
 
     NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 

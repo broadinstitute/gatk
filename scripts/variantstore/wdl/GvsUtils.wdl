@@ -294,3 +294,31 @@ task BuildGATKJarAndCreateDataset {
     disks: "local-disk 500 HDD"
   }
 }
+
+
+task TerminateWorkflow {
+  input {
+    String message
+  }
+
+  command <<<
+    set -o errexit
+
+    # To avoid issues with special characters within the message, write the message to a file.
+    cat > message.txt <<FIN
+    ~{message}
+    FIN
+
+    # cat the file to stderr as this task is going to fail due to the exit 1.
+    cat message.txt >&2
+    exit 1
+  >>>
+
+  runtime {
+    docker: "python:3.8-slim-buster"
+    memory: "1 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
