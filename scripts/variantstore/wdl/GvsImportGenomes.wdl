@@ -70,7 +70,7 @@ workflow GvsImportGenomes {
         load_data_preemptible_override = load_data_preemptible_override,
         load_data_maxretries_override = load_data_maxretries_override,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        sample_map = CurateInputLists.output_sample_map,
+        sample_map = GetUningestedSampleIds.sample_map,
         service_account_json_path = service_account_json_path,
     }
   }
@@ -174,8 +174,6 @@ task LoadData {
       gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
     # translate WDL arrays into BASH arrays
     VCFS_ARRAY=(~{sep=" " input_vcfs})
     VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
@@ -183,23 +181,11 @@ task LoadData {
 
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
-
       input_vcf="${VCFS_ARRAY[$i]}"
       input_vcf_basename=$(basename $input_vcf)
       updated_input_vcf=$input_vcf
       input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
-
-      # first, see if this sample is already in the DB, and if so, skip
-      echo "SELECT DISTINCT i.sample_id FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` p, \`~{dataset_name}.sample_info\` i WHERE i.sample_name = '${sample_name}' AND p.partition_id = CAST(i.sample_id AS STRING) AND p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%')" > query.sql
-
-      cat query.sql | bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false | sed -e '/sample_id/d' > duplicates
-
-      if ! [ -s duplicates ]; then
-        echo "\nSkipping already loaded sample, id: " $(cat duplicates)
-        rm duplicates
-        continue
-      fi
 
       # we always do our own localization
       gsutil cp $input_vcf .
