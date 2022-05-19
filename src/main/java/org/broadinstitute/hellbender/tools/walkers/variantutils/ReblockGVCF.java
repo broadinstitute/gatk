@@ -103,6 +103,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
     public static final String DROP_LOW_QUALS_ARG_NAME = "drop-low-quals";
     public static final String RGQ_THRESHOLD_LONG_NAME = "rgq-threshold-to-no-call";
     public static final String RGQ_THRESHOLD_SHORT_NAME = "rgq-threshold";
+    public static final String TREE_SCORE_THRESHOLD_LONG_NAME = "tree-score-threshold-to-no-call";
+    public static final String ANNOTATIONS_TO_KEEP_LONG_NAME = "annotations-to-keep";
     public static final String KEEP_ALL_ALTS_ARG_NAME = "keep-all-alts";
     public static final String QUAL_APPROX_LONG_NAME = "do-qual-score-approximation";
     public static final String QUAL_APPROX_SHORT_NAME = "do-qual-approx";
@@ -139,6 +141,14 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @Advanced
     @Argument(fullName=RGQ_THRESHOLD_LONG_NAME, shortName=RGQ_THRESHOLD_SHORT_NAME, doc="Reference genotype quality (PL[0]) value below which variant sites will be converted to GQ0 homRef calls", optional = true)
     protected double rgqThreshold = 0.0;
+
+    @Advanced
+    @Argument(fullName=TREE_SCORE_THRESHOLD_LONG_NAME, doc="Tree score value below which variant sites will be converted to GQ0 homRef calls. Disabled when set to 0 (which is the default).", optional = true)
+    private double treeScoreThreshold = 0.0;
+
+    @Advanced
+    @Argument(fullName=ANNOTATIONS_TO_KEEP_LONG_NAME, doc="Annotations that are not recognized by GATK to keep, that should be kept in final GVCF at variant sites.", optional = true)
+    private List<String> annotationsToKeep = new ArrayList<>();
 
     @Advanced
     @Argument(fullName=QUAL_APPROX_LONG_NAME, shortName=QUAL_APPROX_SHORT_NAME, doc="Add necessary INFO field annotation to perform QUAL approximation downstream; required for GnarlyGenotyper", optional = true)
@@ -225,6 +235,18 @@ public final class ReblockGVCF extends MultiVariantWalker {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
         if (inputHeader.hasInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED)) {
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED));
+        }
+
+        for(String annotation : annotationsToKeep) {
+            if(inputHeader.hasInfoLine(annotation)) {
+                VCFInfoHeaderLine headerLine = inputHeader.getInfoHeaderLine(annotation);
+                if (headerLine.getCountType().equals(VCFHeaderLineCount.A)) {
+                    throw new UserException(String.format("%s is an allele specific annotation which is currently unsupported. Only fixed length annotations may be kept in reblocking.", annotation));
+                }
+                headerLines.add(inputHeader.getInfoHeaderLine(annotation));
+            } else {
+                throw new UserException(String.format("%s is not in header of input GVCF but was requested to be kept by %s argument.", annotation, ANNOTATIONS_TO_KEEP_LONG_NAME));
+            }
         }
 
         if ( dbsnp.dbsnp != null  ) {
@@ -326,7 +348,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 return;
             }
             //make sure result has annotations so we don't have to keep originalVC around
-            result = new VariantContextBuilder(regenotyped).attributes(subsetAnnotationsIfNecessary(annotationEngine, doQualApprox, posteriorsKey, originalVC, regenotyped)).make();
+            result = new VariantContextBuilder(regenotyped).attributes(subsetAnnotationsIfNecessary(annotationEngine, doQualApprox, posteriorsKey, originalVC, regenotyped, annotationsToKeep)).make();
         }
 
 
@@ -360,7 +382,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @VisibleForTesting
     static Map<String, Object> subsetAnnotationsIfNecessary(final VariantAnnotatorEngine annotationEngine,
                                                             final boolean doQualApprox, final String posteriorsKey,
-                                                            final VariantContext originalVC, final VariantContext regenotyped) {
+                                                            final VariantContext originalVC, final VariantContext regenotyped,
+                                                            final List<String> annotationsToKeep) {
         final Map<String, Object> newAnnotations;
         if (regenotyped.getNAlleles() != originalVC.getNAlleles()) {
             final Permutation<Allele> allelePermutation = new IndexedAlleleList<>(originalVC.getAlleles()).
@@ -368,7 +391,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
             final int[] relevantIndices = IntStream.range(0, regenotyped.getAlleles().size())
                     .map(n -> allelePermutation.fromIndex(n)).toArray();
             newAnnotations = new LinkedHashMap<>();
-            composeUpdatedAnnotations(newAnnotations, doQualApprox, posteriorsKey, originalVC, annotationEngine, relevantIndices, regenotyped);
+            composeUpdatedAnnotations(newAnnotations, doQualApprox, posteriorsKey, originalVC, annotationEngine, relevantIndices, regenotyped, annotationsToKeep);
         } else {
             newAnnotations = originalVC.getAttributes();
         }
@@ -436,7 +459,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
         return (pls != null && pls[0] < rgqThreshold)
                 || !genotypeHasConcreteAlt(finalAlleles)
                 || finalAlleles.stream().anyMatch(a -> a.equals(Allele.NON_REF_ALLELE))
-                || (!genotype.hasPL() && !genotype.hasGQ());
+                || (!genotype.hasPL() && !genotype.hasGQ()
+                // If TREE_SCORE threshold is set to be > 0 then sites without TREE_SCORE should be reblocked.
+                || vc.getAttributeAsDouble(GATKVCFConstants.TREE_SCORE, 0) < treeScoreThreshold);
     }
 
     /**
@@ -603,7 +628,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final List<Genotype> genotypesArray = removeNonRefADs(updatedAllelesGenotype, updatedAllelesVC.getAlleleIndex(Allele.NON_REF_ALLELE));
         builder.genotypes(genotypesArray);
 
-        composeUpdatedAnnotations(attrMap, doQualApprox, posteriorsKey, variant, annotationEngine, relevantIndices, updatedAllelesVC);
+        composeUpdatedAnnotations(attrMap, doQualApprox, posteriorsKey, variant, annotationEngine, relevantIndices, updatedAllelesVC, annotationsToKeep);
 
         return builder.attributes(attrMap).unfiltered().make();
     }
@@ -674,7 +699,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
      * @param updatedAllelesVC  variant context with final set of alleles
      */
     private static void composeUpdatedAnnotations(final Map<String, Object> destination, final boolean doQualApprox, final String posteriorsKey, final VariantContext variant, final VariantAnnotatorEngine annotationEngine,
-                                                  final int[] relevantIndices, final VariantContext updatedAllelesVC) {
+                                                  final int[] relevantIndices, final VariantContext updatedAllelesVC, final List<String> annotationsToKeep) {
         updateMQAnnotations(destination, variant);
 
         final boolean allelesNeedSubsetting = relevantIndices.length < variant.getNAlleles();
@@ -696,6 +721,11 @@ public final class ReblockGVCF extends MultiVariantWalker {
         }
         destination.put(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, updatedAllelesGenotype.getAlleles().stream().anyMatch(Allele::isReference) ?
                 Arrays.asList(0,1,0) : Arrays.asList(0,0,1)); //ExcessHet currently uses rounded/integer genotype counts, so do the same here
+        for (String annotation : annotationsToKeep) {
+            if (variant.hasAttribute(annotation)) {
+                destination.put(annotation, variant.getAttribute(annotation));
+            }
+        }
     }
 
     /**

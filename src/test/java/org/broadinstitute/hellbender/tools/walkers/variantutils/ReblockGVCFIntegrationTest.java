@@ -442,4 +442,41 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(outVCs.get(0).getStart(), 1);
         Assert.assertEquals(outVCs.get(1).getStart(), 1);
     }
+
+    @Test
+    public void testTreeScoreThreshold() {
+        final File inputGvcf = new File(getToolTestDataDir() + "treeScoreGvcf.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", inputGvcf)
+                .addOutput(output)
+                .addReference(hg38_reference_20_21)
+                .add(ReblockGVCF.TREE_SCORE_THRESHOLD_SHORT_NAME, 0.3)
+                .add(ReblockGVCF.ANNOTATIONS_TO_KEEP_LONG_NAME, "TREE_SCORE")
+                .add("do-qual-approx", true);
+
+        runCommandLine(args);
+
+        final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        for (VariantContext vc : outVCs) {
+            if(vc.getStart() == 69511) {
+                Assert.assertEquals(vc.getGenotype(0).getGQ(), 99, "Site chr20:69511 should not have been changed from GQ 99.");
+            }
+            if(vc.getStart() == 69512) {
+                Assert.assertEquals(vc.getGenotype(0).getGQ(), 99, "Ref block chr20:69512 should not have been changed from GQ 99.");
+            }
+            if(vc.getStart() == 69767) {
+                Assert.assertEquals(vc.getGenotype(0).getGQ(), 0, "Ref block chr20:69767 should have been grouped with GQ 0 block.");
+                Assert.assertEquals(vc.getEnd(), 69783, "Ref block chr20:69767 should have been expanded to include site 69771.");
+            }
+            Assert.assertNotEquals(vc.getStart(), 69771, "Site chr20:69771 should have been made into a ref block due to low TREE_SCORE.");
+            if(vc.getStart() == 69785){
+                Assert.assertEquals(vc.getGenotype(0).getGQ(), 0, "Site chr20:69785 should have been made GQ 0 due to missing TREE_SCORE");
+            }
+            if(!vc.isReferenceBlock()) {
+                Assert.assertTrue(vc.hasAttribute(GATKVCFConstants.TREE_SCORE));
+            }
+        }
+    }
 }
