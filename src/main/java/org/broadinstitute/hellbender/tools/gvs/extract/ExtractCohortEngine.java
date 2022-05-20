@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import io.opencensus.trace.Span;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -1126,13 +1127,9 @@ public class ExtractCohortEngine {
             // handle the actual variant record
             currentPositionRecords.merge(variantSample, vetRow, this::mergeSampleRecord);
 
-            // if the variant record was a deletion, fabricate a spanning deletion row for the cache
+            // if the variant record was a deletion, fabricate a spanning deletion row(s) for the cache
             // so that a future request for reference state at a position underlying the deletion is
             // properly handled
-            // TODO: is it possible that we will have two records now in the reference cache, and will we need logic to get "all" the records?
-            // TODO: should we really build a VariantContext here, and let that sort out the length of the deletion for now, get the shortest of the alternates (biggest deletion)
-            // TODO: use the genotypes of this specific sample (e.g. 0/1 vs 1/2) to decide how big the spanning deletion is.  The current logic matches what we do on ingest though
-            // TODO: really, really, really think this through!!!
             handlePotentialSpanningDeletion(vetRow, referenceCache);
 
             lastPosition = variantLocation;
@@ -1155,21 +1152,94 @@ public class ExtractCohortEngine {
         long position = vetRow.getLocation();
         long sample = vetRow.getSampleId();
 
-        int smallestAltLength = Arrays.stream(vetRow.getAltAllele().split(",")).map(x -> x.length()).min(Integer::compare).orElse(0);
         int refLength = vetRow.getRefAllele().length();
 
-        if (refLength > smallestAltLength) {
-            // TODO: robustify check if deletion is het or hom
-            long distinctAlleles
-                    = Arrays.stream(vetRow.getCallGT().replace("|", "/").split("/")).distinct().count();
-            String gq = vetRow.getCallGQ();
+        List<Integer> orderedDeletionLengths =
+                Arrays.stream(vetRow.getAltAllele().split(","))
+                        .filter(x -> !x.equals(Allele.NO_CALL_STRING))
+                        .map(x -> refLength - x.length())
+                        .filter(x -> x > 0)
+                        .sorted()
+                        .collect(Collectors.toList());
 
-            referenceCache.get(sample).add(
-                    new SpanningDeletionRecord(position+1, sample, refLength - smallestAltLength, (distinctAlleles == 1) ? "1/1" : "0/1", gq)
-            );
+        if (orderedDeletionLengths.size() > 0) {
+
+            // if there is a single deletion, just encode it with the right zygosity
+            if (orderedDeletionLengths.size() == 1) {
+                boolean isHet
+                        = Arrays.stream(vetRow.getCallGT().replace("|", "/").split("/")).filter(x -> !x.equals(Allele.NO_CALL_STRING)).distinct().count() == 2;
+
+                mergeSpanningDeletionIntoCache(referenceCache.get(sample),
+                        new SpanningDeletionRecord(position + 1, sample, orderedDeletionLengths.get(0), isHet ? "0/1" : "1/1", vetRow.getCallGQ())
+                );
+            } else if (orderedDeletionLengths.size() == 2) {
+                // we need to add two different spanning deletions, one for the hom region and one for the het region
+                int shorter = orderedDeletionLengths.get(0); // 5
+                int longer = orderedDeletionLengths.get(1);  // 5
+                int lengthHomRegion = shorter;
+                int lengthHetRegion = longer - shorter;
+
+                mergeSpanningDeletionIntoCache(referenceCache.get(sample),
+                        new SpanningDeletionRecord(position + 1, sample, lengthHomRegion, "1/1", vetRow.getCallGQ())
+                );
+
+                // in the case of a single homozygous deletion, the length of the het region is zero so don't add it
+                if (lengthHetRegion > 0) {
+                    mergeSpanningDeletionIntoCache(referenceCache.get(sample),
+                            new SpanningDeletionRecord(position + lengthHomRegion + 1, sample, lengthHetRegion, "0/1", vetRow.getCallGQ())
+                    );
+                }
+            } else {
+                // there are only three options here -- no deletions (do nothing) one deletion or two deletions
+                throw new GATKException("Found > 2 different deletions in a single het genotype!!" + vetRow);
+            }
         }
     }
 
+    private void mergeSpanningDeletionIntoCache(TreeSet<ReferenceRecord> cache, SpanningDeletionRecord sdr) {
+        // extract out any ReferenceRecords that overlap this record
+        List<ReferenceRecord> recs = cache.stream().filter(x -> x.overlaps(sdr)).collect(Collectors.toList());
+        // make most common case efficient
+        if (recs.size() == 0) {
+            cache.add(sdr);
+        } else if (recs.size() == 1) {
+            if (! (recs.get(0) instanceof SpanningDeletionRecord)) {
+                throw new GATKException("Merging SpanningDeletionRecord " + sdr + " but found existing non-SpanningDeletionRecord " + recs.get(0));
+            }
+
+            // There are two kinds of overlap we have to deal with.  Essentially we want the later record to override the
+            // earlier record in a region of overlap.
+            //
+            // (1) simple overlap -- intervals overlap at one end.  In this case we need to produce TWO records by just
+            // truncating the earlier one so they don't overlap
+            // (2) interior overlap -- one interval is completely inside the other.  In this case we need to create THREE
+            // records.  The first two records are the same as the simple overlap case, but then we need to generate a
+            // third record where the earlier records "resumes" after the end of the later record
+            SpanningDeletionRecord existing = (SpanningDeletionRecord) recs.get(0);
+
+            SpanningDeletionRecord earlier = (existing.getLocation() < sdr.getLocation()) ? existing : sdr;
+            SpanningDeletionRecord later = (existing.getLocation() >= sdr.getLocation()) ? existing : sdr;
+
+            // remove the existing row
+            cache.remove(existing);
+
+            // and replace it with a truncated earlier record, and the later record
+            SpanningDeletionRecord s1 = new SpanningDeletionRecord(earlier.getLocation(), earlier.getSampleId(), (int) (later.getLocation() - earlier.getLocation()), earlier.getGT(), earlier.getGQ());
+            cache.add(s1);
+            cache.add(later);
+
+            // and if the later record ends before the end of the earlier record emit the remainder (case 2 above)
+            if (later.getEnd() < earlier.getEnd()) {
+                long newStart = later.getEndLocation() + 1;
+                int newLength = (int) (earlier.getEndLocation() - newStart + 1);
+                SpanningDeletionRecord s2 = new SpanningDeletionRecord(newStart, earlier.getSampleId(), newLength, earlier.getGT(), earlier.getGQ());
+                cache.add(s2);
+            }
+        } else {
+            throw new GATKException("Found > 2 reference records that overlap for a diploid sample! " + recs + " and " + sdr);
+        }
+
+    }
     private void processReferenceData(Map<Long, ExtractCohortRecord> currentPositionRecords, Iterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long fromSampleId, long toSampleId, SortedSet<Long> sampleIdsToExtract) {
         // in the case where there are two adjacent samples with variants, this method is called where from is greater than to
         // this is ok, there is just no reference data to process but subSet will throw an exception so we handle it with this if block
