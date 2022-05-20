@@ -114,6 +114,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_389_xy_reweighting
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
