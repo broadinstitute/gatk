@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as GvsUtils
+
 workflow GvsImportGenomes {
 
   input {
@@ -22,9 +24,11 @@ workflow GvsImportGenomes {
   Int input_length = length(input_vcfs)
   Int input_indexes_length = length(input_vcf_indexes)
   if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
-    call TerminateWorkflow {
+    call GvsUtils.TerminateWorkflow {
       input:
-        message = "The number of external_sample_names, sample input_vcfs and sample input_vcf_indexes are not the same."
+        message = "The lengths of workflow inputs `external_sample_names` (" + length(external_sample_names) +
+                  "), `input_vcfs` (" + input_length + ") and `input_vcf_indexes` (" + input_indexes_length + ") should be the same.\n\n" +
+                  "If any of these counts are zero an incorrect or non-existent attribute may have been referenced."
     }
   }
 
@@ -129,7 +133,7 @@ task CheckForDuplicateData {
     echo "WITH items as (SELECT s.sample_id, s.sample_name, s.is_loaded, s.withdrawn FROM \`${TEMP_TABLE}\` t left outer join \`${SAMPLE_INFO_TABLE}\` s on (s.sample_name = t.sample_name)) " >> query.sql
     echo "SELECT i.sample_name FROM \`${INFO_SCHEMA_TABLE}\` p JOIN items i ON (p.partition_id = CAST(i.sample_id AS STRING)) WHERE p.total_logical_bytes > 0 AND (table_name like 'ref_ranges_%' OR table_name like 'vet_%')" >> query.sql
     echo "UNION DISTINCT "  >> query.sql
-    echo "SELECT i.sample_name FROM items i WHERE i.is_loaded = True AND i.withdrawn IS NULL "  >> query.sql
+    echo "SELECT i.sample_name FROM items i WHERE i.is_loaded = True "  >> query.sql
     echo "UNION DISTINCT "  >> query.sql
     echo "SELECT i.sample_name FROM items i WHERE i.sample_id IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\`) "  >> query.sql
 
@@ -294,25 +298,6 @@ task LoadData {
 }
 
 
-
-task TerminateWorkflow {
-  input {
-    String message
-  }
-
-  command <<<
-    set -e
-    echo ~{message}
-    exit 1
-  >>>
-  runtime {
-    docker: "python:3.8-slim-buster"
-    memory: "1 GB"
-    disks: "local-disk 10 HDD"
-    preemptible: 3
-    cpu: 1
-  }
-}
 
 task SetIsLoadedColumn {
   meta {

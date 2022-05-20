@@ -11,11 +11,10 @@ workflow GvsCreateFilterSet {
 
     String filter_set_name
     Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
-    Int scatter_count
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220415/gatk-package-4.2.0.0-492-g1387d47-SNAPSHOT-local.jar"
+    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-add-withdrawn-back/gatk-package-4.2.0.0-527-ge5b9dd6-SNAPSHOT-local.jar"
 
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
@@ -69,6 +68,11 @@ workflow GvsCreateFilterSet {
       service_account_json_path = service_account_json_path,
       project_id = project_id
   }
+
+  Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 20
+                      else if GetNumSamplesLoaded.num_samples < 1000 then 100
+                           else if GetNumSamplesLoaded.num_samples < 10000 then 200
+                                else if GetNumSamplesLoaded.num_samples < 100000 then 500 else 1000
 
   call Utils.SplitIntervals {
     input:
@@ -280,7 +284,7 @@ task GetNumSamplesLoaded {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-    'SELECT COUNT(*) as num_rows FROM `~{fq_sample_table}` WHERE is_loaded = true AND withdrawn IS NULL' > num_rows.csv
+    'SELECT COUNT(*) as num_rows FROM `~{fq_sample_table}` WHERE is_loaded = true' > num_rows.csv
 
     NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
