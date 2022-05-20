@@ -91,7 +91,7 @@ public abstract class PairWalker extends ReadWalker {
         final String contig = read.getAssignedContig();
         if ( contig != null && !contig.equals(curContig) ) {
             clearBufferSet();
-            curContig = read.getContig();
+            curContig = contig;
         }
 
         final boolean inInterval = regionChecker == null || regionChecker.isInInterval(read);
