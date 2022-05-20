@@ -28,8 +28,8 @@ workflow GvsExtractCallset {
     String? service_account_json_path
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
-    Int? x_bed_weight_scaling = 4
-    Int? y_bed_weight_scaling = 4
+    Float x_bed_weight_scaling = 4
+    Float y_bed_weight_scaling = 4
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
