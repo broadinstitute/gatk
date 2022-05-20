@@ -14,7 +14,7 @@ workflow GvsImportGenomes {
     Array[File] input_vcf_indexes
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    # If increasing this also consider increasing `load_data_preemptible_override` and `load_data_maxretries_override`.
+    # If increasing this, also consider increasing `load_data_preemptible_override` and `load_data_maxretries_override`.
     Int load_data_batch_size = 5
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
