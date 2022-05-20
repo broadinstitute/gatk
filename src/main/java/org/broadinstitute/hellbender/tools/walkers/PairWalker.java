@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.tools.PrintDistantMates;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.collections.HopscotchSet;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.util.ArrayList;
@@ -89,7 +90,9 @@ public abstract class PairWalker extends ReadWalker {
         }
 
         final String contig = read.getAssignedContig();
-        if ( contig != null && !contig.equals(curContig) ) {
+        if ( contig != null &&
+                !contig.equals(ReadConstants.UNSET_CONTIG) &&
+                !contig.equals(curContig) ) {
             clearBufferSet();
             curContig = contig;
         }
