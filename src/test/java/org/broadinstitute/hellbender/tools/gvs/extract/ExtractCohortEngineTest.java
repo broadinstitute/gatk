@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
-import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
@@ -61,7 +61,6 @@ class ExtractCohortEngineTest extends CommandLineProgramTest {
             .optionalString("call_PL")
             .endRecord();
 
-    // Refactoring Opportunity -- this enum is statically stateful...
     static {
         ChromosomeEnum.setRefVersion("hg38");
     }
@@ -109,8 +108,13 @@ class ExtractCohortEngineTest extends CommandLineProgramTest {
                 false);
     }
 
+    //
+    // Also see this Google Sheet for visualization of these tests
+    // https://docs.google.com/spreadsheets/d/1EB8vj_nCpGgMm5BBtWAneqnK5KnKGdzQk_H0mYGTS00/edit#gid=0
+    //
+
     @Test
-    public void testSpanningDeletion() throws Exception {
+    public void testBasicSpanningDeletion() {
         Map<Long, String> sampleIdToName = new HashMap<>();
         sampleIdToName.put(1L, "sample_1");
         sampleIdToName.put(2L, "sample_2");
@@ -118,28 +122,24 @@ class ExtractCohortEngineTest extends CommandLineProgramTest {
 
         ExtractCohortEngine engine = getMinimalEngine(new SimpleInterval("chr20", 100000, 100010), sampleIdToName);
 
-        // we have 3 samples (sample1, sample2, sample3) and two locations of interest  CTTGAGCATG
-        // chr20:100000 -- alt is a 10bp deletion, sample 1 is 0/1 sample 2 is 1/1 and sample 3 is 0/0
+        // we have 3 samples (sample1, sample2, sample3) and three locations of interest
+        // chr20:100000 -- alt is a 9bp deletion, sample 1 is 0/1 sample 2 is 1/1 and sample 3 is 0/0
         // chr20:100005 -- alt is a SNP, sample 1 should be */0, sample 2 is */* and sample 3 is 0/1
         // chr20:100010 -- alt is a SNP, sample 1 should be 0/0, sample 2 is 0/0 and sample 3 is 0/1
 
-        // TODO another test case would be a 1/2 sample with different length deletions and see it go from */* to */0 or something
-
-        long location1 = SchemaUtils.encodeLocation("chr20", 100000);
-        GenericRecord r11 = createVetRecord(location1, 1, "CTTGAGCATG", "C", "0/1", "30");
-        GenericRecord r12 = createVetRecord(location1, 2, "CTTGAGCATG", "C", "1/1", "40");
-        GenericRecord r23 = createVetRecord(location1 + 5, 3, "G", "T", "0/1", "50");
-        GenericRecord r33 = createVetRecord(location1 + 10, 3, "C", "T", "0/1", "50");
+        long location = SchemaUtils.encodeLocation("chr20", 100000);
+        GenericRecord r11 = createVetRecord(location, 1, "CTTGAGCATG", "C", "0/1", "30");
+        GenericRecord r12 = createVetRecord(location, 2, "CTTGAGCATG", "C", "1/1", "40");
+        GenericRecord r23 = createVetRecord(location + 5, 3, "G", "T", "0/1", "50");
+        GenericRecord r33 = createVetRecord(location + 10, 3, "C", "T", "0/1", "50");
 
         List<VariantContext> results = new ArrayList<>();
-
-        List<GenericRecord> sortedRefRanges = new ArrayList<>();
         List<GenericRecord> sortedVet = Arrays.asList(r11, r12, r23, r33);
 
         engine.createVariantsFromSortedRanges(
                 new TreeSet<>(sampleIdToName.keySet()),
                 sortedVet,
-                sortedRefRanges,
+                new ArrayList<>(),
                 new HashMap<>(),
                 new HashMap<>(),
                 new HashMap<>(),
@@ -147,35 +147,152 @@ class ExtractCohortEngineTest extends CommandLineProgramTest {
                 (vc) -> results.add(vc)
         );
 
+        // for easier debugging visually
+        // dumpToVcf(new File("out.vcf"), sampleIdToName.values(), results);
+
         // we should have three "rows"
         Assert.assertEquals(results.size(), 3);
 
         VariantContext vc0 = results.get(0);
-        Assert.assertEquals(vc0.getGenotype("sample_1").getGenotypeString(), "CTTGAGCATG/C");
-        Assert.assertEquals(vc0.getGenotype("sample_1").getGQ(), 30);
-        Assert.assertEquals(vc0.getGenotype("sample_2").getGenotypeString(), "C/C");
-        Assert.assertEquals(vc0.getGenotype("sample_2").getGQ(), 40);
-        Assert.assertEquals(vc0.getGenotype("sample_3").getGenotypeString(), "CTTGAGCATG/CTTGAGCATG");
-        Assert.assertEquals(vc0.getGenotype("sample_3").getGQ(), 60);
+        assertVariant(vc0, "sample_1", "CTTGAGCATG/C", 30);
+        assertVariant(vc0, "sample_2", "C/C", 40);
+        assertVariant(vc0, "sample_3", "CTTGAGCATG/CTTGAGCATG", 60);
 
         VariantContext vc1 = results.get(1);
-        Assert.assertEquals(vc1.getGenotype("sample_1").getGenotypeString(), "G/*");
-        Assert.assertEquals(vc1.getGenotype("sample_1").getGQ(), 30);
-        Assert.assertEquals(vc1.getGenotype("sample_2").getGenotypeString(), "*/*");
-        Assert.assertEquals(vc1.getGenotype("sample_2").getGQ(), 40);
-        Assert.assertEquals(vc1.getGenotype("sample_3").getGenotypeString(), "G/T");
-        Assert.assertEquals(vc1.getGenotype("sample_3").getGQ(), 50);
+        assertVariant(vc1, "sample_1", "G/*", 30);
+        assertVariant(vc1, "sample_2", "*/*", 40);
+        assertVariant(vc1, "sample_3", "G/T", 50);
 
-        VariantContext vc3 = results.get(2);
-        Assert.assertEquals(vc3.getGenotype("sample_1").getGenotypeString(), "C/C");
-        Assert.assertEquals(vc3.getGenotype("sample_1").getGQ(), 60);
-        Assert.assertEquals(vc3.getGenotype("sample_2").getGenotypeString(), "C/C");
-        Assert.assertEquals(vc3.getGenotype("sample_2").getGQ(), 60);
-        Assert.assertEquals(vc3.getGenotype("sample_3").getGenotypeString(), "C/T");
-        Assert.assertEquals(vc3.getGenotype("sample_3").getGQ(), 50);
+        VariantContext vc2 = results.get(2);
+        assertVariant(vc2, "sample_1", "C/C", 60);
+        assertVariant(vc2, "sample_2", "C/C", 60);
+        assertVariant(vc2, "sample_3", "C/T", 50);
+
+    }
+
+    @Test
+    public void testCompoundSpanningDeletion() {
+        Map<Long, String> sampleIdToName = new HashMap<>();
+        sampleIdToName.put(1L, "sample_1");
+        sampleIdToName.put(2L, "sample_2");
+
+        ExtractCohortEngine engine = getMinimalEngine(new SimpleInterval("chr20", 100000, 100010), sampleIdToName);
+
+        // we have 2 samples (sample1, sample2) and four locations of interest
+        // chr20:100000 -- het non-ref with a 9bp deletion and a 6bp deletion, sample 1 is 0/1 sample 2 is ref
+        // chr20:100005 -- alt is a SNP, sample 1 should be */* and sample 2 is 0/1
+        // chr20:100007 -- alt is a SNP, sample 1 should be 0/* and sample 2 is 0/1
+        // chr20:100010 -- alt is a SNP, sample 1 should be 0/0 and sample 2 is 0/1
+
+        long location = SchemaUtils.encodeLocation("chr20", 100000);
+        GenericRecord r11 = createVetRecord(location, 1, "CTTGAGCATG", "C,CATG", "1/2", "30");
+        GenericRecord r22 = createVetRecord(location + 5, 2, "G", "T", "0/1", "50");
+        GenericRecord r32 = createVetRecord(location + 7, 2, "A", "C", "0/1", "50");
+        GenericRecord r42 = createVetRecord(location + 10, 2, "C", "T", "0/1", "50");
+
+        List<VariantContext> results = new ArrayList<>();
+        List<GenericRecord> sortedVet = Arrays.asList(r11, r22, r32, r42);
+
+        engine.createVariantsFromSortedRanges(
+                new TreeSet<>(sampleIdToName.keySet()),
+                sortedVet,
+                new ArrayList<>(),
+                new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>(),
+                true,
+                (vc) -> results.add(vc)
+        );
 
         // for easier debugging visually
         // dumpToVcf(new File("out.vcf"), sampleIdToName.values(), results);
+
+        // we should have three "rows"
+        Assert.assertEquals(results.size(), 4);
+
+        VariantContext vc0 = results.get(0);
+        assertVariant(vc0, "sample_1", "C/CATG", 30);
+        assertVariant(vc0, "sample_2", "CTTGAGCATG/CTTGAGCATG", 60);
+
+        VariantContext vc1 = results.get(1);
+        assertVariant(vc1, "sample_1", "*/*", 30);
+        assertVariant(vc1, "sample_2", "G/T", 50);
+
+        VariantContext vc2 = results.get(2);
+        assertVariant(vc2, "sample_1", "A/*", 30);
+        assertVariant(vc2, "sample_2", "A/C", 50);
+
+        VariantContext vc3 = results.get(3);
+        assertVariant(vc3, "sample_1", "C/C", 60);
+        assertVariant(vc3, "sample_2", "C/T", 50);
+    }
+
+    @Test
+    public void testOverlappingSpanningDeletion() {
+        Map<Long, String> sampleIdToName = new HashMap<>();
+        sampleIdToName.put(1L, "sample_1");
+        sampleIdToName.put(2L, "sample_2");
+
+        ExtractCohortEngine engine = getMinimalEngine(new SimpleInterval("chr20", 100000, 100010), sampleIdToName);
+
+        // we have 2 samples (sample1, sample2) and five locations of interest
+        // chr20:100000 -- sample 1 with a het 9bp deletion, sample 2 is ref
+        // chr20:100001 -- alt is 4bp deletion, sample 1 should be */1 and sample 2 is ref
+        // chr20:100005 -- alt is a SNP, sample 1 should be */* and sample 2 is 0/1
+        // chr20:100007 -- alt is a SNP, sample 1 should be */0 and sample 2 is 0/1
+        // chr20:100010 -- alt is a SNP, sample 1 should be 0/0 and sample 2 is 0/1
+
+        long location = SchemaUtils.encodeLocation("chr20", 100000);
+        GenericRecord r11 = createVetRecord(location, 1, "CTTGAGCATG", "C", "0/1", "37");
+        GenericRecord r21 = createVetRecord(location + 1, 1, "TTGAG", "*,T", "1/2", "42");
+        GenericRecord r32 = createVetRecord(location + 5, 2, "G", "T", "0/1", "50");
+        GenericRecord r42 = createVetRecord(location + 7, 2, "A", "C", "0/1", "50");
+        GenericRecord r52 = createVetRecord(location + 10, 2, "C", "T", "0/1", "50");
+
+        List<VariantContext> results = new ArrayList<>();
+        List<GenericRecord> sortedVet = Arrays.asList(r11, r21, r32, r42, r52);
+
+        engine.createVariantsFromSortedRanges(
+                new TreeSet<>(sampleIdToName.keySet()),
+                sortedVet,
+                new ArrayList<>(),
+                new HashMap<>(),
+                new HashMap<>(),
+                new HashMap<>(),
+                true,
+                (vc) -> results.add(vc)
+        );
+
+        // for easier debugging visually
+        // dumpToVcf(new File("out.vcf"), sampleIdToName.values(), results);
+
+        // we should have three "rows"
+        Assert.assertEquals(results.size(), 5);
+
+        VariantContext vc0 = results.get(0);
+        assertVariant(vc0, "sample_1", "CTTGAGCATG/C", 37);
+        assertVariant(vc0, "sample_2", "CTTGAGCATG/CTTGAGCATG", 60);
+
+        VariantContext vc1 = results.get(1);
+        assertVariant(vc1, "sample_1", "*/T", 42);
+        assertVariant(vc1, "sample_2", "TTGAG/TTGAG", 60);
+
+        VariantContext vc2 = results.get(2);
+        assertVariant(vc2, "sample_1", "*/*", 42);
+        assertVariant(vc2, "sample_2", "G/T", 50);
+
+        VariantContext vc3 = results.get(3);
+        assertVariant(vc3, "sample_1", "A/*", 37);
+        assertVariant(vc3, "sample_2", "A/C", 50);
+
+        VariantContext vc4 = results.get(4);
+        assertVariant(vc4, "sample_1", "C/C", 60);
+        assertVariant(vc4, "sample_2", "C/T", 50);    }
+
+    private void assertVariant(VariantContext vc, String sampleName, String genotypeString, int gq) {
+        Genotype g = vc.getGenotype(sampleName);
+        Assert.assertEquals(g.getGenotypeString(), genotypeString);
+        Assert.assertEquals(g.getGQ(), gq);
     }
 
     private void dumpToVcf(File outputVcf, Collection<String> sampleNames, List<VariantContext> variants) {
