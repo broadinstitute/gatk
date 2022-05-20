@@ -32,13 +32,13 @@ def curate_input_arrays():
             rows_to_delete.append(i)
 
     # re-create input arrays using array of "rows" to delete
-    vcf_array = [vcf_array[i] for i, e in enumerate(vcf_array) if i not in rows_to_delete]
-    vcf_indexes_array = [vcf_indexes_array[i] for i, e in enumerate(vcf_indexes_array) if
+    vcf_array = [vcf_array[i] for i in range(len(vcf_array)) if i not in rows_to_delete]
+    vcf_indexes_array = [vcf_indexes_array[i] for i in range(len(vcf_indexes_array)) if
                          i not in rows_to_delete]
-    sample_names_array = [sample_names_array[i] for i, e in enumerate(sample_names_array) if
+    sample_names_array = [sample_names_array[i] for i in range(len(sample_names_array)) if
                           i not in rows_to_delete]
 
-    # create output files with array contents
+    print(f"Creating 'output_{SAMPLE_NAME_FILE_SUFFIX}', 'output_{VCF_FILE_SUFFIX}' and 'output_{VCF_INDEX_FILE_SUFFIX}'.")
     np.savetxt(f"output_{SAMPLE_NAME_FILE_SUFFIX}", sample_names_array, fmt='%s')
     np.savetxt(f"output_{VCF_FILE_SUFFIX}", vcf_array, fmt='%s')
     np.savetxt(f"output_{VCF_INDEX_FILE_SUFFIX}", vcf_indexes_array, fmt='%s')

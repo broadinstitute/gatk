@@ -383,7 +383,7 @@ task CurateInputLists {
     python3 /app/curate_input_array_files.py
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_skip_samples_20220519_5"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_skip_samples_20220520"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
