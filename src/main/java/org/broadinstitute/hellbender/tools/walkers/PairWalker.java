@@ -35,7 +35,7 @@ public abstract class PairWalker extends ReadWalker {
 
     @Argument(fullName = "pair-padding", shortName = "pp",
                 doc = "Amount of extra padding (in bp) to add to pick up mates near your intervals.")
-    protected int intervalPadding = 1000;
+    protected int intervalPadding = 1250;
 
     private RegionChecker regionChecker = null;
     private final HopscotchSet<PairBufferEntry> pairBufferSet = new HopscotchSet<>(1000000);
@@ -83,28 +83,35 @@ public abstract class PairWalker extends ReadWalker {
     public void apply( final GATKRead read,
                        final ReferenceContext referenceContext,
                        final FeatureContext featureContext ) {
-        if ( !read.isUnmapped() && !read.getContig().equals(curContig) ) {
-            clearBufferSet();
-            curContig = read.getContig();
-        }
         if ( !read.isPaired() || read.isSecondaryAlignment() || read.isSupplementaryAlignment() ) {
             applyUnpaired(read);
             return;
         }
+
+        final String contig = read.getAssignedContig();
+        if ( contig != null && !contig.equals(curContig) ) {
+            clearBufferSet();
+            curContig = read.getContig();
+        }
+
         final boolean inInterval = regionChecker == null || regionChecker.isInInterval(read);
         final PairBufferEntry pb = new PairBufferEntry(read, inInterval);
         final PairBufferEntry pbMate = pairBufferSet.find(pb);
         if ( pbMate == null ) {
             // If it's in one of our intervals, it's always interesting -- hopefully we'll find the mate.
             // And if it's the first to arrive of the pair, it just might be interesting, anyway.
+            // (Actually, if it's not definitely the 2nd of the pair, we'll save it. There can be doubt.)
             // But if it's not in the interval and its mate is upstream, we'd expect the mate to be in
             //   the buffer set already.  The fact that it's not means that the mate must not have been
             //   near any of the intervals: so the pair is uninteresting, and we don't add it to the
             //   buffer set.
-            if ( pb.isInInterval() || pb.isDistantMate() || pb.isUpstreamRead() ) {
+            if ( inInterval || !pb.isDownstreamMate() ) {
                 pairBufferSet.add(pb);
             }
-        } else {
+        } else if ( pb.getRead().isFirstOfPair() != pbMate.getRead().isFirstOfPair() ) {
+            // above check is necessary because under rare circumstances you might see the
+            //  real read and it's distant-mate shadow before seeing the other read in the pair
+
             if ( pb.isInInterval() || pbMate.isInInterval() ) {
                 if ( !pb.isDistantMate() && !pbMate.isDistantMate() ) {
                     apply(pbMate.getRead(), pb.getRead());
@@ -226,9 +233,12 @@ public abstract class PairWalker extends ReadWalker {
         public GATKRead getRead() { return read; }
         public boolean isInInterval() { return inInterval; }
         public boolean isDistantMate() { return distantMate; }
-        public boolean isUpstreamRead() {
-            return read.getStart() < read.getMateStart() &&
-                    (read.isUnmapped() || read.getContig().equals(read.getMateContig()));
+        public boolean isDownstreamMate() {
+            if ( distantMate || read.getStart() <= read.getMateStart() ||
+                    read.isUnmapped() || read.mateIsUnmapped() ) {
+                return false;
+            }
+            return read.getContig().equals(read.getMateContig());
         }
 
         @Override
