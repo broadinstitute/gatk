@@ -409,16 +409,6 @@ public final class BigQueryUtils {
                                                                   final String projectID,
                                                                   final String datasetID,
                                                                   final String userDefinedFunctions,
-                                                                  Map<String, String> labels) {
-
-        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, datasetID, userDefinedFunctions, false, labels);
-    }
-
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
-                                                                  final List<String> fieldsToRetrieve,
-                                                                  final String projectID,
-                                                                  final String datasetID,
-                                                                  final String userDefinedFunctions,
                                                                   final boolean runQueryInBatchMode,
                                                                   Map<String, String> labels) {
         final String tempTableName = String.format("%s_%s", "temp_table", UUID.randomUUID().toString().replace('-', '_'));

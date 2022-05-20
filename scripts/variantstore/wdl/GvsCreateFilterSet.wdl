@@ -21,12 +21,10 @@ workflow GvsCreateFilterSet {
     String? service_account_json_path
     Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
+    # this is the minimum number of samples where the SNP model will be created and applied in separate tasks
+    # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
+    Int snps_variant_recalibration_threshold = 5000
   }
-
-  # this is the minimum number of samples where the SNP model will be created and applied in separate tasks
-  # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
-  Int snps_variant_recalibration_threshold = 20000
-
 
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
 
