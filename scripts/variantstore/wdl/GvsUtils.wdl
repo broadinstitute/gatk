@@ -363,7 +363,7 @@ task ScaleXYBedValues {
             line = line.rstrip('\n')
 
             if line.startswith('chrX') or line.startswith('chrY'):
-                scale_factor = x_scale_factor if line.startsWith('chrX') else y_scale_factor
+                scale_factor = x_scale_factor if line.startswith('chrX') else y_scale_factor
                 fields = line.split('\t')
                 weight = fields[-1]
                 fields[-1] = str(int(int(weight) * scale_factor))
