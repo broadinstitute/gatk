@@ -334,45 +334,11 @@ task ScaleXYBedValues {
         Float y_bed_weight_scaling
     }
     command <<<
-        python3 <<FIN
-        import sys
-
-        input = open('~{interval_weights_bed}', 'r')
-        output = open('interval_weights_xy_scaled.bed', 'w')
-        x_scale_factor=~{x_bed_weight_scaling}
-        y_scale_factor=~{y_bed_weight_scaling}
-
-        fail=False
-
-        if x_scale_factor < 1.0:
-            print(f"Error: illegal X chromosome weight scale factor {x_scale_factor}; scale factor value must be >= 1.0")
-            fail=True
-
-        if y_scale_factor < 1.0:
-            print(f"Error: illegal Y chromosome weight scale factor {y_scale_factor}; scale factor value must be >= 1.0")
-            fail=True
-
-        if fail:
-            sys.exit(1)
-
-        while True:
-            line = input.readline()
-            if not line:
-                break
-
-            line = line.rstrip('\n')
-
-            if line.startswith('chrX') or line.startswith('chrY'):
-                scale_factor = x_scale_factor if line.startswith('chrX') else y_scale_factor
-                fields = line.split('\t')
-                weight = fields[-1]
-                fields[-1] = str(int(int(weight) * scale_factor))
-                output.write('\t'.join(fields) + '\n')
-            else:
-                output.write(line + '\n')
-
-        output.close()
-        FIN
+        python3 /app/scale_xy_bed_values.py \
+            --input ~{interval_weights_bed} \
+            --output "interval_weights_xy_scaled.bed" \
+            --xscale ~{x_bed_weight_scaling} \
+            --yscale ~{y_bed_weight_scaling} \
     >>>
 
     output {
@@ -381,7 +347,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_02"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_389_xy_reweighting_2022_05_24"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
