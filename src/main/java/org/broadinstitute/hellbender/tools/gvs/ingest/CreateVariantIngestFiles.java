@@ -138,6 +138,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean forceLoadingFromNonAlleleSpecific = false;
 
+    @Argument(
+            fullName = "skip-loading-vqsr-fields",
+            doc = "Do not load data for fields specific to VQSR",
+            optional = true
+    )
+    public boolean skipLoadingVqsrFields = false;
+
     private boolean shouldWriteLoadStatusStarted = true;
 
     // getGenotypes() returns list of lists for all samples at variant
@@ -248,7 +255,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         if (enableVet && !vetRowsExist) {
-            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific);
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
     }
 

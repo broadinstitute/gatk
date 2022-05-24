@@ -27,6 +27,7 @@ public class VetCreator {
     private final String sampleId;
     private PendingBQWriter vetBQJsonWriter = null;
     private final boolean forceLoadingFromNonAlleleSpecific;
+    private final boolean skipLoadingVqsrFields;
 
     private static final String VET_FILETYPE_PREFIX = "vet_";
 
@@ -35,10 +36,11 @@ public class VetCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific) {
+    public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
+        this.skipLoadingVqsrFields = skipLoadingVqsrFields;
 
         try {
             String PREFIX_SEPARATOR = "_";
@@ -64,11 +66,6 @@ public class VetCreator {
     public void apply(VariantContext variant) throws IOException {
         int start = variant.getStart();
         long location = SchemaUtils.encodeLocation(variant.getContig(), start);
-        List<String> row = createRow(
-                location,
-                variant,
-                sampleId
-        );
 
         switch(outputType) {
             case BQ:
@@ -80,7 +77,7 @@ public class VetCreator {
                 break;
             case TSV:
                 // write the variant to the XSV
-                vetWriter.getNewLineBuilder().setRow(row).write();
+                vetWriter.getNewLineBuilder().setRow(createRow(location, variant, sampleId)).write();
                 break;
 
         }
@@ -91,9 +88,11 @@ public class VetCreator {
         for ( final VetFieldEnum fieldEnum : VetFieldEnum.values() ) {
             if (fieldEnum.equals(VetFieldEnum.location)) {
                 row.add(String.valueOf(location));
-            } else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
+            }
+            else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
                 row.add(sampleId);
-            } else {
+            }
+            else if ( !(skipLoadingVqsrFields && fieldEnum.isVqsrSpecificField() ) ) {
                 row.add(fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific));
             }
         }
@@ -106,12 +105,15 @@ public class VetCreator {
         for ( final VetFieldEnum fieldEnum : VetFieldEnum.values() ) {
             if (fieldEnum.equals(VetFieldEnum.location)) {
                 jsonObject.put(VetFieldEnum.location.toString(), location);
-            } else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
+            }
+            else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
                 jsonObject.put(VetFieldEnum.sample_id.toString(), sampleId);
-            } else if (fieldEnum.equals(VetFieldEnum.call_GQ)) {
+            }
+            else if (fieldEnum.equals(VetFieldEnum.call_GQ)) {
                 jsonObject.put(fieldEnum.toString(), Integer.valueOf(fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific)));
-            } else {
-                String strVal = fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific);
+            }
+            else {
+                final String strVal = !(skipLoadingVqsrFields && fieldEnum.isVqsrSpecificField()) ? fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific) : "";
                 jsonObject.put(fieldEnum.toString(), StringUtils.isEmpty(strVal) ? null : strVal);
             }
         }

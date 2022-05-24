@@ -30,12 +30,12 @@ import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.VARIA
  *     location, // req
  *     reference_bases, // req
  *     alternate_bases_alt, // req
- *     alternate_bases_AS_RAW_MQ, // req
+ *     alternate_bases_AS_RAW_MQ,
  *     alternate_bases_AS_RAW_MQRankSum,
- *     alternate_bases_AS_QUALapprox, // req
+ *     alternate_bases_AS_QUALapprox,
  *     alternate_bases_AS_RAW_ReadPosRankSum,
- *     alternate_bases_AS_SB_TABLE, // req
- *     alternate_bases_AS_VarDP, // req
+ *     alternate_bases_AS_SB_TABLE,
+ *     alternate_bases_AS_VarDP,
  *     call_genotype, // req
  *     call_AD,
  *     call_DP, // Laura says consider removing for now-- so similar to AS_VarDP
@@ -76,7 +76,7 @@ public enum VetFieldEnum {
     },
 
     AS_RAW_MQ {
-        // Required
+        // Required for VQSR Data
         // can strip off the first one?
         // TODO sci notation?
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
@@ -87,10 +87,10 @@ public enum VetFieldEnum {
                 throw new UserException("Cannot be missing required value for alternate_bases.AS_RAW_MQ, RAW_MQandDP or RAW_MQ.");
             }
             if (!forceLoadingFromNonAlleleSpecific && out != null) {
-                if(!out.endsWith("|0.00")) {
 // KC: we are seeing a TON of these!
+//                if (!out.endsWith("|0.00")) {
 //                    logger.warn("Expected AS_RAW_MQ value to end in |0.00. value is: " + out + " for variant " + variant.toString());
-                }
+//                }
                 out = out.substring(0, out.lastIndexOf("|"));
                 String[] outValues = out.split("\\|");
                 out = Arrays
@@ -124,9 +124,13 @@ public enum VetFieldEnum {
                 return outNotAlleleSpecific;
             }
         }
+        public boolean isVqsrSpecificField() {
+            return true;
+        }
     },
 
     AS_RAW_MQRankSum { // TODO -- maybe rely on 1/1 for call_GT, also get rid of the | at the beginning
+        // Required for VQSR Data
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             // in the case where neither allele is reference, don't return a value
             if (isGenotypeAllNonRef(variant.getGenotype(0))) {
@@ -175,27 +179,34 @@ public enum VetFieldEnum {
                 //throw new UserException("Expected AS_RAW_MQRankSum value to be ||, ||| or to end in |NaN");
             }
             return out;
-
+        }
+        public boolean isVqsrSpecificField() {
+            return true;
         }
     },
 
-    QUALapprox { // Required
+    QUALapprox {
+        // Required for VQSR Data
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = getAttribute(variant, RAW_QUAL_APPROX_KEY, null);
             if (out == null) {
-                throw new UserException("Cannot be missing required value for QUALapprox at site: " + variant.toString());
+                throw new UserException("Cannot be missing required value for QUALapprox at site: " + variant);
             }
             return out;
         }
+        public boolean isVqsrSpecificField() {
+            return true;
+        }
     },
 
-    AS_QUALapprox { // Required
+    AS_QUALapprox {
+        // Required for VQSR Data
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = getAttribute(variant, AS_RAW_QUAL_APPROX_KEY, null);
             if (out == null) {
                 String outNotAlleleSpecific = getAttribute(variant, RAW_QUAL_APPROX_KEY, null);
                 if (outNotAlleleSpecific == null) {
-                    throw new UserException("Cannot be missing required value for AS_QUALapprox or QUALapprox at site: " + variant.toString());
+                    throw new UserException("Cannot be missing required value for AS_QUALapprox or QUALapprox at site: " + variant);
                 }
                 return outNotAlleleSpecific;
             }
@@ -216,6 +227,9 @@ public enum VetFieldEnum {
                 throw new UserException("Expected AS_QUALapprox to have two or three values");
             }
             return out;
+        }
+        public boolean isVqsrSpecificField() {
+            return true;
         }
     },
 
@@ -268,9 +282,13 @@ public enum VetFieldEnum {
             }
             return out;
         }
+        public boolean isVqsrSpecificField() {
+            return true;
+        }
     },
 
-    AS_SB_TABLE { // Required
+    AS_SB_TABLE {
+        // Required for VQSR Data
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = getAttribute(variant, GATKVCFConstants.AS_SB_TABLE_KEY, null);
             if (forceLoadingFromNonAlleleSpecific || out == null) {
@@ -296,16 +314,20 @@ public enum VetFieldEnum {
             }
             return out;
         }
+        public boolean isVqsrSpecificField() {
+            return true;
+        }
     },
 
-    AS_VarDP { // Required
+    AS_VarDP {
+        // Required for VQSR Data
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             String out = getAttribute(variant, AS_VARIANT_DEPTH_KEY, null);
             if (out == null) {
                 String varDP = getAttribute(variant, VARIANT_DEPTH_KEY, null);
                 String dP = getAttribute(variant, DEPTH_KEY, null);
                 if (varDP == null || dP == null) {
-                    throw new UserException("Cannot be missing required value for AS_VarDP, or VarDP and DP, at site:" + variant.toString());
+                    throw new UserException("Cannot be missing required value for AS_VarDP, or VarDP and DP, at site:" + variant);
                 }
                 int refDP = Integer.parseInt(dP) - Integer.parseInt(varDP);
                 out = refDP + "|" + varDP + "|";
@@ -319,10 +341,16 @@ public enum VetFieldEnum {
             }
             return out;
         }
+        public boolean isVqsrSpecificField() {
+            return true;
+        }
     },
 
     call_GT {
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
+            if (!variant.hasGenotypes()) {
+                throw new UserException("Cannot be missing required value for call.GT");
+            }
             // TODO how is missing handled?
             return CommonCode.getGTString(variant);
         }
@@ -357,8 +385,7 @@ public enum VetFieldEnum {
     call_GQ { // Required
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             if (!variant.getGenotype(0).hasGQ()) {
-                //throw new UserException("Cannot be missing required value for call.GQ");
-                return "";
+                throw new UserException("Cannot be missing required value for call.GQ");
             }
             return  String.valueOf(variant.getGenotype(0).getGQ());
         }
@@ -387,6 +414,10 @@ public enum VetFieldEnum {
 
     public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
         throw new IllegalArgumentException("Not implemented");
+    }
+
+    public boolean isVqsrSpecificField() {
+        return false;
     }
 
     public static boolean isGenotypeAllNonRef(Genotype g) {
