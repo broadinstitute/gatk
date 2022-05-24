@@ -85,6 +85,7 @@ import java.util.stream.Collectors;
  * <li>This tool only supports mammalian genomes with XX/XY sex determination.</li>
  * </ul></p>
  **/
+@DocumentedFeature
 @BetaFeature
 @CommandLineProgramProperties(
         summary = "Gathers single-sample or multi-sample segmented gCNV VCFs, harmonizes breakpoints, and outputs a cohort VCF with genotypes.",
