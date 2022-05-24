@@ -274,11 +274,13 @@ public abstract class MultiFeatureWalker<F extends Feature> extends WalkerBase {
 
     public static final class PQEntry<F extends Feature> implements Comparable<PQEntry<F>> {
         private final PQContext<F> context;
+        private final int contigIndex;
         private final F feature;
 
         public PQEntry( final PQContext<F> context, final F feature ) {
             this.context = context;
             this.feature = feature;
+            this.contigIndex = context.getDictionary().getSequenceIndex(feature.getContig());
         }
 
         public PQContext<F> getContext() { return context; }
@@ -287,7 +289,14 @@ public abstract class MultiFeatureWalker<F extends Feature> extends WalkerBase {
 
         @Override
         public int compareTo( PQEntry<F> entry ) {
-            return IntervalUtils.compareLocatables(feature, entry.getFeature(), context.getDictionary());
+            int result = Integer.compare(contigIndex, entry.contigIndex);
+            if ( result == 0 ) {
+                result = Integer.compare(feature.getStart(), entry.feature.getStart());
+                if ( result == 0 ) {
+                    result = Integer.compare(feature.getEnd(), entry.feature.getEnd());
+                }
+            }
+            return result;
         }
     }
 }
