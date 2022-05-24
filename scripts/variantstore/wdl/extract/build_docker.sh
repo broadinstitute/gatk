@@ -13,15 +13,15 @@ docker build . -t ${REPO_WITH_TAG}
 
 echo ${REPO_WITH_TAG}
 
-# Test that the VAT python code has not been broken
-docker run -v $PWD:/in  -t ${REPO_WITH_TAG} bash -c "cd /in; python3 -m unittest test_create_variant_annotation_table.py"
-
-VAT_TEST_RESULTS=$?
-if [ $VAT_TEST_RESULTS -ne 0 ]; then
-    echo "TestMakeAnnotatedJsonRow python test has failed"
-    exit 1
-fi
-
+# Unit tests for VAT and XY scaling for extract
+for test in test_create_variant_annotation_table.py test_scale_xy_bed_values.py
+do
+    docker run -v $PWD:/in -t ${REPO_WITH_TAG} bash -c "cd /in; python3 -m unittest $test"
+    if [ $? -ne 0 ]; then
+        echo "$test has failed"
+        exit 1
+    fi
+done
 
 docker tag ${REPO_WITH_TAG} ${GCR_TAG}
 docker push ${GCR_TAG}
