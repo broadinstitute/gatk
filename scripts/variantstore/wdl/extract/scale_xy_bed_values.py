@@ -1,23 +1,19 @@
 import argparse
-import sys
 
 
 def scale_xy_bed_values(input_file, output_file, x_scale_factor, y_scale_factor):
     input_bed = open(input_file, 'r')
     output_bed = open(output_file, 'w')
-
-    fail = False
+    error = ""
 
     if x_scale_factor < 1.0:
-        print(f"Error: illegal X chromosome weight scale factor {x_scale_factor}; scale factor value must be >= 1.0")
-        fail = True
+        error = f"Error: illegal X chromosome weight scale factor {x_scale_factor}; scale factor must be >= 1.0\n"
 
     if y_scale_factor < 1.0:
-        print(f"Error: illegal Y chromosome weight scale factor {y_scale_factor}; scale factor value must be >= 1.0")
-        fail = True
+        error = f"{error}Error: illegal Y chromosome weight scale factor {y_scale_factor}; scale factor must be >= 1.0"
 
-    if fail:
-        sys.exit(1)
+    if len(error) > 0:
+        raise ValueError(error)
 
     while True:
         line = input_bed.readline()
@@ -29,6 +25,8 @@ def scale_xy_bed_values(input_file, output_file, x_scale_factor, y_scale_factor)
         if line.startswith('chrX') or line.startswith('chrY'):
             scale_factor = x_scale_factor if line.startswith('chrX') else y_scale_factor
             fields = line.split('\t')
+            if len(fields) != 5:
+                raise ValueError(f"Expected 5 fields in input BED file, got {len(fields)}: {line}")
             weight = fields[-1]
             fields[-1] = str(int(int(weight) * scale_factor))
             output_bed.write('\t'.join(fields) + '\n')
