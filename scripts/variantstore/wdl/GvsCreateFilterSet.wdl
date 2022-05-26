@@ -21,8 +21,10 @@ workflow GvsCreateFilterSet {
     String? service_account_json_path
     Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
-    # this is the minimum number of samples where the SNP model will be created and applied in separate tasks
+    # This is the minimum number of samples where the SNP model will be created and applied in separate tasks
     # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
+    # For WARP classic this is done with 20k but the 10K Stroke Anderson dataset would not work unscattered (at least
+    # with the default VM memory settings) so this was adjusted down to 5K.
     Int snps_variant_recalibration_threshold = 5000
   }
 
