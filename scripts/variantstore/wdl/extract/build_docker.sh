@@ -4,19 +4,18 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-INFO=$1
+set -o xtrace
+
 BASE_REPO="broad-dsde-methods/variantstore"
-REPO_WITH_TAG="${BASE_REPO}:${INFO}"
+REPO_WITH_TAG="${BASE_REPO}:${1}"
 GCR_TAG="us.gcr.io/${REPO_WITH_TAG}"
 
-docker build . -t ${REPO_WITH_TAG}
+docker build . -t "${REPO_WITH_TAG}"
 
-echo ${REPO_WITH_TAG}
-
-# Unit tests for VAT and XY scaling for extract
-for test in test_create_variant_annotation_table.py test_scale_xy_bed_values.py
+# Run unit tests before pushing to GCR.
+for test in test_*.py
 do
-    docker run -v $PWD:/in -t ${REPO_WITH_TAG} bash -c "cd /in; python3 -m unittest $test"
+    docker run -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
     if [ $? -ne 0 ]; then
         echo "$test has failed"
         exit 1
