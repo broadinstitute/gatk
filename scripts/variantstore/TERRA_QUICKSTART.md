@@ -99,7 +99,6 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | extract_table_prefix | the unique, descriptive name for the tables containing the callset you chose in step 4  |
 | filter_set_name      | the name of the filter set created in step 3  |
 | project_id           | the name of the google project containing the dataset |
-| scatter_count        | how wide to scatter the extract task (use 100 for the Quickstart's 10 samples) |
 
 ## 6. Your VCF files are ready!
 
