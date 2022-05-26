@@ -1,4 +1,3 @@
-from os.path import abspath
 import unittest
 
 from scale_xy_bed_values import scale_xy_bed_values
@@ -10,11 +9,13 @@ class TestScaleXYBedValues(unittest.TestCase):
         import tempfile
 
         for x, y in [(10, 10), (1, 10), (10, 1)]:
-            with tempfile.NamedTemporaryFile() as tmp:
+            with tempfile.NamedTemporaryFile() as actual_output_bed:
                 scale_xy_bed_values('scale_xy_bed_values_test_files/intervals_downsampled_5.bed',
-                                    tmp.name,
+                                    actual_output_bed.name,
                                     x,
                                     y)
-                self.assertTrue(filecmp.cmp(f'scale_xy_bed_values_test_files/intervals_downsampled_5_scaled_{x}_{y}.bed',
-                                            tmp.name,
+
+                expected_output_bed = f'scale_xy_bed_values_test_files/intervals_downsampled_5_scaled_{x}_{y}.bed'
+                self.assertTrue(filecmp.cmp(expected_output_bed,
+                                            actual_output_bed.name,
                                             shallow=False), f'fail on X scaling {x} and Y scaling {y}')

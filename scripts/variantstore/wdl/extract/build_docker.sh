@@ -13,16 +13,22 @@ GCR_TAG="us.gcr.io/${REPO_WITH_TAG}"
 docker build . -t "${REPO_WITH_TAG}"
 
 # Run unit tests before pushing to GCR.
+fail=0
 for test in test_*.py
 do
     docker run -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
     if [ $? -ne 0 ]; then
+        fail=1
         echo "$test has failed"
-        exit 1
     fi
 done
 
-docker tag ${REPO_WITH_TAG} ${GCR_TAG}
-docker push ${GCR_TAG}
+if [ $fail -ne 0 ]; then
+    echo "One or more unit test has failed, exiting."
+    exit $fail
+fi
+
+docker tag "${REPO_WITH_TAG}" "${GCR_TAG}"
+docker push "${GCR_TAG}"
 
 echo "docker image pushed to \"${GCR_TAG}\""
