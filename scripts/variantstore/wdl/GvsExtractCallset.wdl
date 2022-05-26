@@ -77,11 +77,12 @@ workflow GvsExtractCallset {
   }
 
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
-                                else if GetNumSamplesLoaded.num_samples < 100 then 100
-                                     else if GetNumSamplesLoaded.num_samples < 1000 then 1000
-                                          else if GetNumSamplesLoaded.num_samples < 10000 then 2000
-                                               else if GetNumSamplesLoaded.num_samples < 100000 then 4000
-                                                    else 8000
+                                else if GetNumSamplesLoaded.num_samples < 100 then 100 # Quickstart
+                                     else if GetNumSamplesLoaded.num_samples < 1000 then 500
+                                          else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                               else if GetNumSamplesLoaded.num_samples < 50000 then 10000
+                                                    else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
+                                                         else 40000
 
   call Utils.SplitIntervals {
     input:
