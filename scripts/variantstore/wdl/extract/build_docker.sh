@@ -16,7 +16,7 @@ docker build . -t "${REPO_WITH_TAG}"
 fail=0
 for test in test_*.py
 do
-    docker run -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
+    docker run --rm -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
     if [ $? -ne 0 ]; then
         fail=1
         echo "$test has failed"
