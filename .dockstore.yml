@@ -124,6 +124,7 @@ workflows:
          - master
          - ah_var_store
          - rc-vs-418-allow-withdrawn
+         - vs_344_ingest_10k
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl

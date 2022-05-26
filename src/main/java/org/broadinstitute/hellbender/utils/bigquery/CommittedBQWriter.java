@@ -69,11 +69,11 @@ public class CommittedBQWriter implements AutoCloseable {
         }
     }
 
-    protected void writeJsonArray() throws ExecutionException, InterruptedException, IOException {
+    protected void writeJsonArray() throws InterruptedException, IOException {
         writeJsonArray(0);
     }
 
-    protected void writeJsonArray(int retryCount) throws ExecutionException, InterruptedException, IOException {
+    protected void writeJsonArray(int retryCount) throws InterruptedException, IOException {
         try {
             ApiFuture<AppendRowsResponse> future = writer.append(jsonArr);
             future.get();
@@ -107,7 +107,7 @@ public class CommittedBQWriter implements AutoCloseable {
                     // successful write. This error can also happen if the application sets the wrong offset value.
                     //
                     // PERMISSION_DENIED. The application does not have permission to write to this table.
-                    throw e;
+                    throw new GATKException("Caught StatusRuntimeException with unretryable status code " + code + ", throwing", e);
                 default:
                     switch (code) {
                         case INTERNAL:
@@ -119,7 +119,9 @@ public class CommittedBQWriter implements AutoCloseable {
                             }
                             logger.warn("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", e);
                             long backOffMillis = backoff.nextBackOffMillis();
+                            logger.warn("Sleeping for {} milliseconds before retrying.", backOffMillis);
                             Thread.sleep(backOffMillis);
+
                             break;
                         default:
                             // If you receive an error that's not listed above, then try to open a new connection by closing the
@@ -128,7 +130,7 @@ public class CommittedBQWriter implements AutoCloseable {
                             // In practice with a PENDING WriteStream.Type the advice above does not work out;
                             // everything that has been `append`ed prior to the writer being closed is lost. Instead,
                             // just throw and let `maxRetries` start up a subsequent attempt from the beginning.
-                            throw e;
+                            throw new GATKException("Caught StatusRuntimeException with status code "  + code + " which is not known to be retryable, throwing", e);
                     }
                     writeJsonArray(retryCount + 1);
             }
