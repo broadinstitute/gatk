@@ -8,6 +8,8 @@ workflow GvsExtractCallset {
     String dataset_name
     String project_id
 
+    String cohort_project_id = project_id
+    String cohort_dataset_name = dataset_name
     Boolean do_not_filter_override = false
     Boolean control_samples = false
     String extract_table_prefix
@@ -36,15 +38,17 @@ workflow GvsExtractCallset {
   File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
   File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
+  String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
+  String fq_cohort_dataset = "~{cohort_project_id}.~{cohort_dataset_name}"
+
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
-  String fq_cohort_extract_table  = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__DATA"
-  String fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info"
-  String fq_filter_set_site_table = "~{project_id}.~{dataset_name}.filter_set_sites"
-  String fq_filter_set_tranches_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
-  String fq_ranges_cohort_ref_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__REF_DATA"
-  String fq_ranges_cohort_vet_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__VET_DATA"
-  String fq_samples_to_extract_table = "~{project_id}.~{dataset_name}.~{full_extract_prefix}__SAMPLES"
-  String fq_ranges_dataset = "~{project_id}.~{dataset_name}"
+  String fq_filter_set_info_table = "~{fq_gvs_dataset}.filter_set_info"
+  String fq_filter_set_site_table = "~{fq_gvs_dataset}.filter_set_sites"
+  String fq_filter_set_tranches_table = "~{fq_gvs_dataset}.filter_set_tranches"
+  String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
+  String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
+  String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__VET_DATA"
+  String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
 
   Boolean emit_pls = false
@@ -111,7 +115,6 @@ workflow GvsExtractCallset {
         fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
         read_project_id                    = query_project,
         do_not_filter_override             = do_not_filter_override,
-        fq_ranges_dataset                  = fq_ranges_dataset,
         fq_filter_set_info_table           = fq_filter_set_info_table,
         fq_filter_set_site_table           = fq_filter_set_site_table,
         fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
@@ -172,7 +175,7 @@ task ValidateFilterSetName {
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command <<<
-    set -e
+    set -ex
 
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
@@ -182,7 +185,7 @@ task ValidateFilterSetName {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT filter_set_name as available_filter_set_names FROM ~{data_project}.~{data_dataset}.filter_set_info GROUP BY filter_set_name")
+    OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT filter_set_name as available_filter_set_names FROM \`~{data_project}.~{data_dataset}.filter_set_info\` GROUP BY filter_set_name")
     FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
     if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
@@ -229,7 +232,6 @@ task ExtractTask {
     Boolean emit_ads
 
     Boolean do_not_filter_override
-    String fq_ranges_dataset
     String fq_filter_set_info_table
     String fq_filter_set_site_table
     String fq_filter_set_tranches_table
