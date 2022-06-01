@@ -86,7 +86,7 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         fieldsToRetrieve.add("name");
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("gatktestquery", "teststorageapi" + runUuid);
-        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, noUDFs, false, labels);
+        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, noUDFs, false, labels, "workflow");
 
         int rowCount = 0;
         final Set<String> retrievedNames = new HashSet<>();
@@ -119,9 +119,8 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         fieldsToRetrieve.add("name");
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("gatktestquery", "testapiwithemptydata" + runUuid);
-        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, noUDFs, false, labels);
+        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, noUDFs, false, labels, "workflow");
 
-        int rowCount = 0;
         final Set<String> retrievedNames = new HashSet<>();
 
         while( result.hasNext() ) {
