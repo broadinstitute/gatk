@@ -5,6 +5,7 @@ import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -213,7 +214,7 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
 
 
             // TODO: give this tool M2 Assembler args to allow override default M2ArgumentCollection?
-            final AssemblyResultSet assemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyRegion, Collections.emptyList(), MTAC, bamHeader, samplesList, logger, referenceReader, assemblyEngine, smithWatermanAligner, false, null, false);
+            final AssemblyResultSet assemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyRegion, new Tuple<>(Collections.emptyList(),Collections.emptyList()), MTAC, bamHeader, samplesList, logger, referenceReader, assemblyEngine, smithWatermanAligner, false, null, false);
             final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
 
             final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, bamHeader, regionForGenotyping.getReads());

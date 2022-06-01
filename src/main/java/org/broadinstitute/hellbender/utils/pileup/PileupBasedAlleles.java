@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.pileup;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -37,9 +38,10 @@ public final class PileupBasedAlleles {
      * @param headerForReads                    Header for the reads (only necessary for SAM file conversion)
      * @return A list of variant context objects corresponding to potential variants that pass our heuristics.
      */
-    public static ArrayList<VariantContext> getPileupVariantContexts(final List<AlignmentAndReferenceContext> alignmentAndReferenceContextList, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForReads) {
+    public static Tuple<List<VariantContext>,List<VariantContext>> getPileupVariantContexts(final List<AlignmentAndReferenceContext> alignmentAndReferenceContextList, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForReads) {
 
-        final ArrayList<VariantContext> pileupVariantList = new ArrayList<>();
+        final List<VariantContext> pileupVariantList = new ArrayList<>();
+        final List<VariantContext> pileupFilteringVariantsListForAssembly = new ArrayList<>();
 
         // Iterate over every base
         for(AlignmentAndReferenceContext alignmentAndReferenceContext : alignmentAndReferenceContextList) {
@@ -56,6 +58,7 @@ public final class PileupBasedAlleles {
 
             int totalAltReads = 0;
             int totalAltBadReads = 0;
+            int totalAltBadAssemblyReads = 0;
 
             for (PileupElement element : pileup) {
                 final byte eachBase = element.getBase();
@@ -67,6 +70,9 @@ public final class PileupBasedAlleles {
                     // Handle the "badness"
                     if (evaluateBadRead(element.getRead(), referenceContext, args, headerForReads)) {
                         totalAltBadReads++;
+                    }
+                    if (evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads)) {
+                        totalAltBadAssemblyReads++;
                     }
                 }
 
@@ -88,12 +94,15 @@ public final class PileupBasedAlleles {
                     if (evaluateBadRead(element.getRead(), referenceContext, args, headerForReads)) {
                         totalAltBadReads++;
                     }
+                    if (evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads)) {
+                        totalAltBadAssemblyReads++;
+                    }
                 }
 
             }
 
             // Evaluate the detected SNP alleles for this site
-            final List<Allele> alleles = new ArrayList<>();
+            List<Allele> alleles = new ArrayList<>();
             alleles.add(Allele.create(referenceContext.getBase(), true));
             final Optional<Map.Entry<Byte, Integer>> maxAlt = altCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
             if (maxAlt.isPresent()
@@ -103,10 +112,19 @@ public final class PileupBasedAlleles {
                 final VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
                 pileupVariantList.add(pileupSNP.make());
             }
+            alleles = new ArrayList<>();
+            alleles.add(Allele.create(referenceContext.getBase(), true));
+            if (maxAlt.isPresent()
+                    && failsAssemblyFilters(args, false, numOfBases, totalAltBadAssemblyReads, totalAltReads, maxAlt.get())) {
+
+                alleles.add(Allele.create(maxAlt.get().getKey()));
+                final VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
+                pileupFilteringVariantsListForAssembly.add(pileupSNP.make());
+            }
 
             // Evaluate the detected Insertions alleles for this site
             if (args.detectIndels) {
-                final List<Allele> indelAlleles = new ArrayList<>();
+                List<Allele> indelAlleles = new ArrayList<>();
                 indelAlleles.add(Allele.create(referenceContext.getBase(), true));
                 final Optional<Map.Entry<String, Integer>> maxIns = insertionCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
                 if (maxIns.isPresent()
@@ -116,11 +134,21 @@ public final class PileupBasedAlleles {
                     final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), indelAlleles);
                     pileupVariantList.add(pileupInsertion.make());
                 }
+
+                indelAlleles = new ArrayList<>();
+                indelAlleles.add(Allele.create(referenceContext.getBase(), true));
+                if (maxIns.isPresent()
+                        && failsAssemblyFilters(args, true, numOfBases, totalAltBadAssemblyReads, totalAltReads, maxIns.get())) {
+
+                    indelAlleles.add(Allele.create((char)referenceContext.getBase() + maxIns.get().getKey()));
+                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), indelAlleles);
+                    pileupFilteringVariantsListForAssembly.add(pileupInsertion.make());
+                }
             }
 
             // Evaluate the detected Deletions alleles for this site
             if (args.detectIndels) {
-                final List<Allele> indelAlleles = new ArrayList<>();
+                List<Allele> indelAlleles = new ArrayList<>();
                 indelAlleles.add(Allele.create(referenceContext.getBase(), false));
 
                 final Optional<Map.Entry<Integer, Integer>> maxDel = deletionCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
@@ -135,10 +163,24 @@ public final class PileupBasedAlleles {
                     final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd() + maxDel.get().getKey(), indelAlleles);
                     pileupVariantList.add(pileupInsertion.make());
                 }
+
+                indelAlleles = new ArrayList<>();
+                indelAlleles.add(Allele.create(referenceContext.getBase(), false));
+                if (maxDel.isPresent()
+                        && failsAssemblyFilters(args, true, numOfBases, totalAltBadAssemblyReads, totalAltReads, maxDel.get())) {
+
+                    indelAlleles.add(Allele.create(referenceContext.getBases(
+                                    new SimpleInterval(referenceContext.getContig(),
+                                            alignmentContext.getStart(),
+                                            alignmentContext.getEnd() + maxDel.get().getKey())),
+                            true));
+                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd() + maxDel.get().getKey(), indelAlleles);
+                    pileupFilteringVariantsListForAssembly.add(pileupInsertion.make());
+                }
             }
         }
 
-        return pileupVariantList;
+        return new Tuple<>(pileupVariantList, pileupFilteringVariantsListForAssembly);
     }
 
     /**
@@ -151,6 +193,18 @@ public final class PileupBasedAlleles {
         return ((float) maxAlt.getValue() / (float) numOfBases) > (indel ? args.indelThreshold : args.snpThreshold)
                 && numOfBases >= args.pileupAbsoluteDepth
                 && ((args.badReadThreshold <= 0.0) || (float) totalAltBadReads / (float)totalAltReads <= args.badReadThreshold);
+    }
+
+    /**
+     * Apply the filters to discovered alleles
+     * - Does it have greater than snpThreshold fraction of bases support in the pileups?
+     * - Does it have greater than pileupAbsoluteDepth number of reads supporting it?
+     * - Are the reads supporting alts at the site greater than badReadThreshold percent "good"? //TODO evaluate if this is worth doing on a per-allele basis or otherwise
+     */
+    private static boolean failsAssemblyFilters(final PileupDetectionArgumentCollection args, boolean indel, final int numOfBases, final int totalAltBadReads, final int totalAltReads, final Map.Entry<?, Integer> maxAlt) {
+        return ((float) maxAlt.getValue() / (float) numOfBases) > (indel ? args.indelThreshold : args.snpThreshold)
+                && numOfBases >= args.pileupAbsoluteDepth
+                && ((args.assemblyBadReadThreshold <= 0.0) || (float) totalAltBadReads / (float)totalAltReads <= args.assemblyBadReadThreshold);
     }
 
     /**
@@ -207,6 +261,33 @@ public final class PileupBasedAlleles {
                 return true;
             }
         }
+        return false;
+    }
+
+    @VisibleForTesting
+    static boolean evaluateBadReadForAssembly(final GATKRead read, final ReferenceContext referenceContext, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForRead) {
+        if (args.assemblyBadReadThreshold <= 0.0) {
+            return false;
+        }
+
+        //TODO this conversion is really unnecessary. Perhaps we should expose a new SequenceUtil like NM tag calculation?...
+        SAMRecord samRecordForRead = read.convertToSAMRecord(headerForRead);
+
+        // Assert that the edit distance for the read is in line
+        if (args.assemblyBadReadEditDistance > 0.0) {
+            final int nmScore;
+            if (! read.hasAttribute("NM")) {
+                nmScore = SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart() - 1);
+            } else {
+                nmScore = read.getAttributeAsInteger("NM");
+            }
+            // We adjust the NM score by any indels in the read
+            int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
+            if (adjustedNMScore > (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() * args.assemblyBadReadEditDistance)) {
+                return true;
+            }
+        }
+
         return false;
     }
 
