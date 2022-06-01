@@ -4,26 +4,31 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-INFO=$1
+set -o xtrace
+
 BASE_REPO="broad-dsde-methods/variantstore"
-REPO_WITH_TAG="${BASE_REPO}:${INFO}"
+REPO_WITH_TAG="${BASE_REPO}:${1}"
 GCR_TAG="us.gcr.io/${REPO_WITH_TAG}"
 
-docker build . -t ${REPO_WITH_TAG}
+docker build . -t "${REPO_WITH_TAG}"
 
-echo ${REPO_WITH_TAG}
+# Run unit tests before pushing to GCR.
+fail=0
+for test in test_*.py
+do
+    docker run --rm -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
+    if [ $? -ne 0 ]; then
+        fail=1
+        echo "$test has failed"
+    fi
+done
 
-# Test that the VAT python code has not been broken
-docker run -v $PWD:/in  -t ${REPO_WITH_TAG} bash -c "cd /in; python3 -m unittest test_create_variant_annotation_table.py"
-
-VAT_TEST_RESULTS=$?
-if [ $VAT_TEST_RESULTS -ne 0 ]; then
-    echo "TestMakeAnnotatedJsonRow python test has failed"
-    exit 1
+if [ $fail -ne 0 ]; then
+    echo "One or more unit test has failed, exiting."
+    exit $fail
 fi
 
-
-docker tag ${REPO_WITH_TAG} ${GCR_TAG}
-docker push ${GCR_TAG}
+docker tag "${REPO_WITH_TAG}" "${GCR_TAG}"
+docker push "${GCR_TAG}"
 
 echo "docker image pushed to \"${GCR_TAG}\""

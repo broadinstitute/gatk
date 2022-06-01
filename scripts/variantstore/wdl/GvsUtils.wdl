@@ -295,7 +295,6 @@ task BuildGATKJarAndCreateDataset {
   }
 }
 
-
 task TerminateWorkflow {
   input {
     String message
@@ -321,4 +320,38 @@ task TerminateWorkflow {
     preemptible: 3
     cpu: 1
   }
+
+  output {
+    Boolean done = true
+  }
+}
+
+task ScaleXYBedValues {
+    input {
+        Boolean go = true
+        File interval_weights_bed
+        Float x_bed_weight_scaling
+        Float y_bed_weight_scaling
+    }
+    command <<<
+        python3 /app/scale_xy_bed_values.py \
+            --input ~{interval_weights_bed} \
+            --output "interval_weights_xy_scaled.bed" \
+            --xscale ~{x_bed_weight_scaling} \
+            --yscale ~{y_bed_weight_scaling} \
+    >>>
+
+    output {
+        File xy_scaled_bed = "interval_weights_xy_scaled.bed"
+        Boolean done = true
+    }
+
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_389_xy_reweighting_2022_05_24"
+        maxRetries: 3
+        memory: "7 GB"
+        preemptible: 3
+        cpu: "2"
+        disks: "local-disk 500 HDD"
+    }
 }

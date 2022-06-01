@@ -13,6 +13,8 @@ workflow GvsImportGenomes {
     Array[File] input_vcf_indexes
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    # If increasing this, also consider increasing `load_data_preemptible_override` and `load_data_maxretries_override`.
+    Int load_data_batch_size = 5
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220415/gatk-package-4.2.0.0-492-g1387d47-SNAPSHOT-local.jar"
@@ -53,10 +55,10 @@ workflow GvsImportGenomes {
 
   call CreateFOFNs {
     input:
-      batch_size = 1,
-      input_vcf_index_list = CurateInputLists.index_list,
-      input_vcf_list = CurateInputLists.vcf_list,
-      sample_name_list = CurateInputLists.sample_name_list
+      batch_size = load_data_batch_size,
+      input_vcf_index_list = write_lines(input_vcf_indexes),
+      input_vcf_list = write_lines(input_vcfs),
+      sample_name_list = write_lines(external_sample_names),
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
