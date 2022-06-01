@@ -58,7 +58,7 @@ public class SplitCRAMIntegrationTest extends CommandLineProgramTest {
             for ( int i = 0 ; i < OUTPUT_FILE_COUNT ; i++ ) {
 
                 // verify length
-                Assert.assertEquals(outputFiles[i].length(), expectedFiles[i].length());
+                Assert.assertTrue(Math.abs(outputFiles[i].length() - expectedFiles[i].length())<3);
 
                 // check that files can be consumed as CRAM files
                 try (final CramContainerIterator iter = new CramContainerIterator(new BufferedInputStream(new FileInputStream(outputFiles[i])))) {
