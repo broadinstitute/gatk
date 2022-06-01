@@ -136,6 +136,7 @@ task ExtractAnAcAfFromVCF {
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
         bcftools norm --threads 4 -m- --check-ref w -f Homo_sapiens_assembly38.fasta filtered.bcf -O b -o normalized.bcf
         rm filtered.bcf
+        ## note that normalization may create sites with more than 50 alt alleles
 
         echo_date "VAT: filter out spanning deletions and variants with an AC of 0, respect the FT flag"
         bcftools view --threads 4 -e 'ALT[0]="*" || AC=0' --no-update normalized.bcf -O u | \
