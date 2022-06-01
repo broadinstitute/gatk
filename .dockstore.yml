@@ -115,8 +115,6 @@ workflows:
          - master
          - ah_var_store
          - vs_389_xy_reweighting
-         - rc-vs-418-allow-withdrawn
-         - gg_VS-443_VETIngestValidation
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -124,8 +122,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-418-allow-withdrawn
-         - gg_VS-443_VETIngestValidation
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -205,7 +201,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_357_quickstart_integration
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
