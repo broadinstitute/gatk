@@ -47,7 +47,7 @@ workflow GvsImportGenomes {
       input_vcf_index_list = write_lines(input_vcf_indexes),
       input_vcf_list = write_lines(input_vcfs),
       input_sample_name_list = write_lines(external_sample_names),
-      input_sample_map = GetUningestedSampleIds.sample_map,
+      input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map,
       service_account_json_path = service_account_json_path
   }
 
@@ -361,7 +361,7 @@ task CurateInputLists {
     String project_id
     File input_vcf_index_list
     File input_vcf_list
-    File input_sample_map
+    File input_samples_to_be_loaded_map
     File input_sample_name_list
 
     String? service_account_json_path
@@ -377,7 +377,7 @@ task CurateInputLists {
 
     gsutil cp  ~{input_vcf_index_list} input_vcf_index_list_file
     gsutil cp  ~{input_vcf_list} input_vcf_list_file
-    gsutil cp  ~{input_sample_map} input_sample_map_file
+    gsutil cp  ~{input_samples_to_be_loaded_map} input_samples_to_be_loaded_map_file
     gsutil cp  ~{input_sample_name_list} input_sample_name_list_file
 
     python3 /app/curate_input_array_files.py
