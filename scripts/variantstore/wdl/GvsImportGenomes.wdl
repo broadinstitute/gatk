@@ -1,6 +1,6 @@
 version 1.0
 
-import "GvsUtils.wdl" as GvsUtils
+import "GvsUtils.wdl" as Utils
 
 workflow GvsImportGenomes {
 
@@ -28,7 +28,7 @@ workflow GvsImportGenomes {
   Int input_length = length(input_vcfs)
   Int input_indexes_length = length(input_vcf_indexes)
   if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
-    call GvsUtils.TerminateWorkflow {
+    call Utils.TerminateWorkflow {
       input:
         message = "The lengths of workflow inputs `external_sample_names` (" + length(external_sample_names) +
                   "), `input_vcfs` (" + input_length + ") and `input_vcf_indexes` (" + input_indexes_length + ") should be the same.\n\n" +
@@ -105,6 +105,9 @@ task CreateFOFNs {
     File input_vcf_list
     File sample_name_list
   }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
 
   command <<<
     set -e
@@ -157,7 +160,7 @@ task LoadData {
 
   meta {
     description: "Load data into BigQuery using the Write Api"
-    volatile: true
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   parameter_meta {
@@ -234,17 +237,16 @@ task LoadData {
 }
 
 task SetIsLoadedColumn {
-  meta {
-    volatile: true
-  }
-
   input {
     String dataset_name
     String project_id
 
     Array[String] load_done
-
     String? service_account_json_path
+  }
+  meta {
+    # This is doing some tricky stuff with `INFORMATION_SCHEMA` so just punt and let it be `volatile`.
+    volatile: true
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -277,10 +279,6 @@ task SetIsLoadedColumn {
 }
 
 task GetUningestedSampleIds {
-  meta {
-    volatile: true
-  }
-
   input {
     String dataset_name
     String project_id
@@ -289,7 +287,11 @@ task GetUningestedSampleIds {
     String table_name
 
     String? service_account_json_path
- }
+  }
+  meta {
+    # Do not call cache this, we want to read the database state every time.
+    volatile: true
+  }
 
   Int samples_per_table = 4000
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -373,6 +375,9 @@ task CurateInputLists {
     File input_sample_name_list
 
     String? service_account_json_path
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'

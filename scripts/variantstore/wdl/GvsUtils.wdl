@@ -73,6 +73,9 @@ task SplitIntervals {
     File? gatk_override
     String? service_account_json_path
   }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -142,15 +145,14 @@ task SplitIntervals {
 }
 
 task GetBQTableLastModifiedDatetime {
-  # because this is being used to determine if the data has changed, never use call cache
-  meta {
-    volatile: true
-  }
-
   input {
     String query_project
     String fq_table
     String? service_account_json_path
+  }
+  meta {
+    # because this is being used to determine if the data has changed, never use call cache
+    volatile: true
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -194,17 +196,16 @@ task GetBQTableLastModifiedDatetime {
 }
 
 task GetBQTablesMaxLastModifiedTimestamp {
-  # because this is being used to determine if the data has changed, never use call cache
-  meta {
-    volatile: true
-  }
-
   input {
     String query_project
     String data_project
     String data_dataset
     Array[String] table_patterns
     String? service_account_json_path
+  }
+  meta {
+    # because this is being used to determine if the data has changed, never use call cache
+    volatile: true
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -240,14 +241,13 @@ task GetBQTablesMaxLastModifiedTimestamp {
 }
 
 task BuildGATKJarAndCreateDataset {
-  # Since this might be called repeatedly on the same branch (and the latest commit might have been updated), so we never call cache.
-  meta {
-    volatile: true
-  }
-
   input {
     String branch_name
     String dataset_prefix
+  }
+  meta {
+    # Branch may be updated so do not call cache!
+    volatile: true
   }
 
   command <<<
@@ -304,6 +304,10 @@ task TerminateWorkflow {
   input {
     String message
   }
+  meta {
+    # Definitely do not call cache this!
+    volatile: true
+  }
 
   command <<<
     set -o errexit
@@ -337,6 +341,9 @@ task ScaleXYBedValues {
         File interval_weights_bed
         Float x_bed_weight_scaling
         Float y_bed_weight_scaling
+    }
+    meta {
+        # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
     }
     command <<<
         python3 /app/scale_xy_bed_values.py \

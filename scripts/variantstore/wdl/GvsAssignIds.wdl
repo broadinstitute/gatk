@@ -85,14 +85,13 @@ task AssignIds {
     File? gatk_override
     String? service_account_json_path
   }
+  meta {
+    description: "Assigns Ids to samples"
+    # Not `volatile: true` since successfully assigned IDs should not be assigned again.
+  }
 
   Int samples_per_table = 4000
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
-  meta {
-    description: "Assigns Ids to samples"
-    volatile: true
-  }
 
   command <<<
     set -e

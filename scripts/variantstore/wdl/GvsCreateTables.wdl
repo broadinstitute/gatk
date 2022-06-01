@@ -48,11 +48,7 @@ workflow CreateBQTables {
 
 # Creates all the tables necessary for the LoadData operation
 task CreateTables {
-  meta {
-    volatile: true
-  }
-
-	input {
+  input {
     String project_id
     String dataset_name
     String datatype
@@ -61,7 +57,9 @@ task CreateTables {
     String superpartitioned
     String partitioned
     String? service_account_json_path
-
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'

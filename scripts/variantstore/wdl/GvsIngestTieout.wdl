@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsAssignIds.wdl" as GvsAssignIds
 import "GvsImportGenomes.wdl" as GvsImportGenomes
-import "GvsUtils.wdl" as GvsUtils
+import "GvsUtils.wdl" as Utils
 
 workflow GvsIngestTieout {
     input {
@@ -15,7 +15,7 @@ workflow GvsIngestTieout {
         String? service_account_json_path
     }
 
-    call GvsUtils.BuildGATKJarAndCreateDataset {
+    call Utils.BuildGATKJarAndCreateDataset {
         input:
             branch_name = branch_name,
             dataset_prefix = "ingest_tieout"
@@ -59,6 +59,10 @@ task IngestTieout {
         String reference_dataset_name
         String project
         Array[File] stderrs
+    }
+    meta {
+        # Do not call cache, dataset may have been updated.
+        volatile: true
     }
 
     parameter_meta {

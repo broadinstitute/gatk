@@ -84,21 +84,30 @@ workflow GvsCreateFilterSet {
       gatk_override = gatk_override
   }
 
+  call Utils.GetBQTableLastModifiedDatetime as AltAlleleTableDatetimeCheck {
+    input:
+      query_project = project_id,
+      fq_table = fq_alt_allele_table,
+      service_account_json_path = service_account_json_path
+  }
+
   scatter(i in range(length(SplitIntervals.interval_files))) {
     call ExtractFilterTask {
       input:
-        gatk_override             = gatk_override,
-        reference                 = reference,
-        reference_index           = reference_index,
-        reference_dict            = reference_dict,
-        fq_sample_table           = fq_sample_table,
-        intervals                 = SplitIntervals.interval_files[i],
-        fq_alt_allele_table       = fq_alt_allele_table,
-        excess_alleles_threshold  = 1000000,
-        output_file               = "${filter_set_name}_${i}.vcf.gz",
-        service_account_json_path = service_account_json_path,
-        query_project             = project_id,
-        dataset_id                = dataset_name,
+        gatk_override              = gatk_override,
+        reference                  = reference,
+        reference_index            = reference_index,
+        reference_dict             = reference_dict,
+        fq_sample_table            = fq_sample_table,
+        sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
+        intervals                  = SplitIntervals.interval_files[i],
+        fq_alt_allele_table        = fq_alt_allele_table,
+        alt_allele_table_timestamp = AltAlleleTableDatetimeCheck.last_modified_timestamp,
+        excess_alleles_threshold   = 1000000,
+        output_file                = "${filter_set_name}_${i}.vcf.gz",
+        service_account_json_path  = service_account_json_path,
+        query_project              = project_id,
+        dataset_id                 = dataset_name,
     }
   }
 
@@ -270,6 +279,9 @@ task GetNumSamplesLoaded {
     String? service_account_json_path
     String project_id
   }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -311,10 +323,13 @@ task ExtractFilterTask {
     File reference_dict
 
     String fq_sample_table
+    String sample_table_timestamp
 
     File intervals
 
     String fq_alt_allele_table
+    String alt_allele_table_timestamp
+
     String output_file
     Int? excess_alleles_threshold
 
@@ -324,7 +339,9 @@ task ExtractFilterTask {
     String query_project
     String dataset_id
   }
-
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -383,6 +400,9 @@ task PopulateFilterSetInfo {
     String query_project
 
     File? gatk_override
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -460,6 +480,9 @@ task PopulateFilterSetSites {
 
     File? gatk_override
   }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
@@ -522,6 +545,9 @@ task PopulateFilterSetTranches {
 
     String? service_account_json_path
     String query_project
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'

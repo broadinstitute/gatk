@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsCreateAltAllele {
   input {
     Boolean go = true
@@ -23,6 +25,13 @@ workflow GvsCreateAltAllele {
       service_account_json_path = service_account_json_path
   }
 
+  call Utils.GetBQTableLastModifiedDatetime {
+    input:
+      query_project = project_id,
+      fq_table = "alt_allele",
+      service_account_json_path = service_account_json_path
+  }
+
   scatter (idx in range(length(GetVetTableNames.vet_tables))) {
     call PopulateAltAlleleTable {
       input:
@@ -30,7 +39,8 @@ workflow GvsCreateAltAllele {
         project_id = project_id,
         create_table_done = CreateAltAlleleTable.done,
         vet_table_name = GetVetTableNames.vet_tables[idx],
-        service_account_json_path = service_account_json_path
+        service_account_json_path = service_account_json_path,
+        last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
   }
 
@@ -41,15 +51,15 @@ workflow GvsCreateAltAllele {
 }
 
 task GetVetTableNames {
-  meta {
-    volatile: true
-  }
-
   input {
     String dataset_name
     String project_id
 
     String? service_account_json_path
+  }
+
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -84,15 +94,14 @@ task GetVetTableNames {
 }
 
 task CreateAltAlleleTable {
-  meta {
-    volatile: true
-  }
-
   input {
     String dataset_name
     String project_id
 
     String? service_account_json_path
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -150,10 +159,6 @@ task CreateAltAlleleTable {
 }
 
 task PopulateAltAlleleTable {
-  meta {
-    volatile: true
-  }
-
   input {
     String dataset_name
     String project_id
@@ -162,6 +167,11 @@ task PopulateAltAlleleTable {
     String vet_table_name
 
     String? service_account_json_path
+
+    String last_modified_timestamp
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
