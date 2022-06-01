@@ -587,4 +587,17 @@ public final class AssemblyResultSet {
             add(h);
     }
 
+    //TODO this is REALLY BAD get rid of it for future code:
+    public void removeHapltotype(final Haplotype hap) {
+
+        haplotypes.remove(hap);
+        assemblyResultByHaplotype.remove(hap);
+        for (Integer kmerSize : assemblyResultByKmerSize.keySet()) {
+            Set<Haplotype> discovered = assemblyResultByKmerSize.get(kmerSize).getDiscoveredHaplotypes();
+            discovered.remove(hap);
+            assemblyResultByKmerSize.get(kmerSize).setDiscoveredHaplotypes(discovered);
+        }
+        assemblyResultByKmerSize.keySet().forEach(kmer -> assemblyResultByKmerSize.get(kmer).getDiscoveredHaplotypes());
+    }
+
 }

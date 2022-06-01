@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -290,7 +291,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
                 RampUtils.logReads(rpArgs.rampsDebugReads, "onramp: reads before trimming", context.assemblyResult.getRegionForGenotyping().getReads());
 
                 RampUtils.logReads(rpArgs.rampsDebugReads, "onramp: BEFORE untrimmedAssemblyResult reads", context.region.getReads());
-                final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(context.region, context.givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner,
+                final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(context.region, new Tuple<>(Collections.emptyList(), Collections.emptyList()), hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner,
                         !hcArgs.doNotCorrectOverlappingBaseQualities, hcArgs.fbargs, postFilterOnRamp != null);
                 RampUtils.logReads(rpArgs.rampsDebugReads, "onramp: AFTER untrimmedAssemblyResult reads", context.region.getReads());
                 context.assemblyResult.setRegionForGenotyping(untrimmedAssemblyResult.getRegionForGenotyping());
@@ -320,7 +321,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
             // run the local assembler, getting back a collection of information on how we should proceed
             RampUtils.logReads(rpArgs.rampsDebugReads, "BEFORE untrimmedAssemblyResult reads", context.region.getReads());
-            final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(context.region, context.givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner,
+            final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(context.region, new Tuple<>(Collections.emptyList(), Collections.emptyList()), hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner,
                     !hcArgs.doNotCorrectOverlappingBaseQualities, hcArgs.fbargs, postFilterOnRamp != null);
             RampUtils.logReads(rpArgs.rampsDebugReads, "AFTER untrimmedAssemblyResult reads", context.region.getReads());
             if (postFilterOnRamp != null) {

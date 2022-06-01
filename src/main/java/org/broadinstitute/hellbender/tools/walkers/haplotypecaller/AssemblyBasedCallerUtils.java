@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -320,7 +321,7 @@ public final class AssemblyBasedCallerUtils {
      * for further HC steps
      */
     public static AssemblyResultSet assembleReads(final AssemblyRegion region,
-                                                  final List<VariantContext> forcedPileupAlleles,
+                                                  final Tuple<List<VariantContext>, List<VariantContext>> forcedPileupAlleles,
                                                   final AssemblyBasedCallerArgumentCollection argumentCollection,
                                                   final SAMFileHeader header,
                                                   final SampleList sampleList,
@@ -394,8 +395,30 @@ public final class AssemblyBasedCallerUtils {
 
             assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
 
-            if (!forcedPileupAlleles.isEmpty()) {
-                processPileupAlleles(region, forcedPileupAlleles, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
+            //TODO workonthis
+            List<Haplotype> haplotypesWithFilterAlleles = new ArrayList<>();
+            if (!forcedPileupAlleles.b.isEmpty()) {
+                for(VariantContext delVariant : forcedPileupAlleles.b) {
+                    for (Haplotype hap : assemblyResultSet.getHaplotypeList()) {
+                        if (hap.getEventMap().getVariantContexts().stream().anyMatch(v -> v.getStart()==delVariant.getStart()
+                                && delVariant.getReference().equals(v.getReference())
+                                && delVariant.getAlternateAllele(0).equals(v.getAlternateAllele(0)))) {
+                            System.out.println("Flagging hap "+hap+" for containing variant "+delVariant);
+                            haplotypesWithFilterAlleles.add(hap);
+                        }
+                    }
+                }
+            }
+
+            // TODO removing haplotypes whole cloth is dangerous and might have to be fixed
+            if (!haplotypesWithFilterAlleles.isEmpty()) {
+                for (Haplotype hap : haplotypesWithFilterAlleles) {
+                    assemblyResultSet.removeHapltotype(hap);
+                }
+            }
+
+            if (!forcedPileupAlleles.a.isEmpty()) {
+                processPileupAlleles(region, forcedPileupAlleles.a, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
             }
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
             assemblyResultSet.debugDump(logger);

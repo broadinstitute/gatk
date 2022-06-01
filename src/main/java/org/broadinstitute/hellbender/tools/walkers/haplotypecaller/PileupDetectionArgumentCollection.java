@@ -31,6 +31,10 @@ public final class PileupDetectionArgumentCollection {
     // Argumetns related to filtering the list at the assembly graph level
     public static final String PILEUP_DETECTION_INDEL_SNP_BLOCKING_RANGE = "pileup-detection-snp-adjacent-to-assembled-indel-range";
 
+    // Arguments related to post-assembly filtering heuristics.
+    public static final String PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD = "pileup-detection-filter-assembly-alt-bad-read-tolerance";
+    public static final String PILEUP_DETECTION_EDIT_DISTANCE_BADNESS_FOR_ASSEMBLY_LONG_NAME = "pileup-detection-edit-distance-read-badness-for-assembly-filtering-threshold";
+
     /**
      * Enables pileup-based haplotype creation and variant detection
      *
@@ -94,4 +98,18 @@ public final class PileupDetectionArgumentCollection {
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_TLEN_STD_LONG_NAME, doc = "Pileup Detection: Standard deviation template length (T LEN) to consider for read badness. Requires '--"+PILEUP_DETECTION_TLEN_MEAN_LONG_NAME+"' to also be set.", optional = true)
     public double templateLengthStd = 0.0;
+
+    /**
+     * Enables pileup-based haplotype creation and variant detection
+     *
+     * NOTE: --pileup-detection is a beta feature. Use this mode at your own risk.
+     */
+    @Advanced
+    @Hidden
+    @Argument(fullName= PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD, doc = "If enabled (set to non-zero), will apply the \"badness\" filter to compatable assembled haplotypes.", optional = true)
+    public double assemblyBadReadThreshold = 0.0;
+    @Hidden
+    @Argument(fullName= PILEUP_DETECTION_EDIT_DISTANCE_BADNESS_FOR_ASSEMBLY_LONG_NAME, doc = "Pileup Detection: Reject alt reads with greater than this fraction of mismatching bases from the reference (proxied using the NM tag). (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
+    public double assemblyBadReadEditDistance = 0.12;
+
 }

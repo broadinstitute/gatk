@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.RuntimeIOException;
+import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -623,7 +624,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
-        List<VariantContext> forcedPileupAlleles = Collections.emptyList();
+        Tuple<List<VariantContext>, List<VariantContext>> forcedPileupAlleles = new Tuple<>(Collections.emptyList(),Collections.emptyList());
         if(hcArgs.pileupDetectionArgs.usePileupDetection){
             forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(region.getAlignmentData(), hcArgs.pileupDetectionArgs, readsHeader);
         }
