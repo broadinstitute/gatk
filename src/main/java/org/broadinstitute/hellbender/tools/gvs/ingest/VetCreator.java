@@ -64,8 +64,8 @@ public class VetCreator {
     }
 
     public void apply(VariantContext variant) throws IOException {
-        int start = variant.getStart();
-        long location = SchemaUtils.encodeLocation(variant.getContig(), start);
+        final int start = variant.getStart();
+        final long location = SchemaUtils.encodeLocation(variant.getContig(), start);
 
         switch(outputType) {
             case BQ:
@@ -77,7 +77,12 @@ public class VetCreator {
                 break;
             case TSV:
                 // write the variant to the XSV
-                vetWriter.getNewLineBuilder().setRow(createRow(location, variant, sampleId)).write();
+                final List<String> row = createRow(
+                        location,
+                        variant,
+                        sampleId
+                );
+                vetWriter.getNewLineBuilder().setRow(row).write();
                 break;
 
         }
@@ -88,11 +93,9 @@ public class VetCreator {
         for ( final VetFieldEnum fieldEnum : VetFieldEnum.values() ) {
             if (fieldEnum.equals(VetFieldEnum.location)) {
                 row.add(String.valueOf(location));
-            }
-            else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
+            } else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
                 row.add(sampleId);
-            }
-            else if ( !(skipLoadingVqsrFields && fieldEnum.isVqsrSpecificField() ) ) {
+            } else if (!(skipLoadingVqsrFields && fieldEnum.isVqsrSpecificField())) {
                 row.add(fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific));
             }
         }
@@ -105,14 +108,11 @@ public class VetCreator {
         for ( final VetFieldEnum fieldEnum : VetFieldEnum.values() ) {
             if (fieldEnum.equals(VetFieldEnum.location)) {
                 jsonObject.put(VetFieldEnum.location.toString(), location);
-            }
-            else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
+            } else if (fieldEnum.equals(VetFieldEnum.sample_id)) {
                 jsonObject.put(VetFieldEnum.sample_id.toString(), sampleId);
-            }
-            else if (fieldEnum.equals(VetFieldEnum.call_GQ)) {
+            } else if (fieldEnum.equals(VetFieldEnum.call_GQ)) {
                 jsonObject.put(fieldEnum.toString(), Integer.valueOf(fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific)));
-            }
-            else {
+            } else {
                 final String strVal = !(skipLoadingVqsrFields && fieldEnum.isVqsrSpecificField()) ? fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific) : "";
                 jsonObject.put(fieldEnum.toString(), StringUtils.isEmpty(strVal) ? null : strVal);
             }
