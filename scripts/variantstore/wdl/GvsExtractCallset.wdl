@@ -84,13 +84,15 @@ workflow GvsExtractCallset {
       service_account_json_path = service_account_json_path
   }
 
-  call ValidateFilterSetName {
-    input:
+  if ( !do_not_filter_override ) {
+    call ValidateFilterSetName {
+      input:
       query_project = query_project,
       filter_set_name = filter_set_name,
       data_project = project_id,
       data_dataset = dataset_name,
       service_account_json_path = service_account_json_path
+    }
   }
 
   scatter(i in range(length(SplitIntervals.interval_files))) {
@@ -116,7 +118,7 @@ workflow GvsExtractCallset {
         fq_filter_set_site_table           = fq_filter_set_site_table,
         fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
         filter_set_name                    = filter_set_name,
-        filter_set_name_verified           = ValidateFilterSetName.done,
+        filter_set_name_verified           = select_first([ValidateFilterSetName.done, "done"]),
         service_account_json_path          = service_account_json_path,
         drop_state                         = "FORTY",
         output_file                        = vcf_filename,
