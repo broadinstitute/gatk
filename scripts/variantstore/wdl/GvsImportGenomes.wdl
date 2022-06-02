@@ -12,12 +12,14 @@ workflow GvsImportGenomes {
     Array[File] input_vcfs
     Array[File] input_vcf_indexes
 
+    Boolean skip_loading_vqsr_fields = false
+
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     # If increasing this, also consider increasing `load_data_preemptible_override` and `load_data_maxretries_override`.
     Int load_data_batch_size = 5
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220415/gatk-package-4.2.0.0-492-g1387d47-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-443_VETIngestValidation_20220531/gatk-package-4.2.0.0-531-gf8f4ede-SNAPSHOT-local.jar"
     String? service_account_json_path
   }
 
@@ -66,6 +68,7 @@ workflow GvsImportGenomes {
       input:
         dataset_name = dataset_name,
         project_id = project_id,
+        skip_loading_vqsr_fields = skip_loading_vqsr_fields,
         drop_state = "FORTY",
         drop_state_includes_greater_than = false,
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
@@ -139,6 +142,7 @@ task LoadData {
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
     Boolean force_loading_from_non_allele_specific = false
+    Boolean skip_loading_vqsr_fields = false
 
     File? gatk_override
     Int? load_data_preemptible_override
@@ -210,7 +214,8 @@ task LoadData {
         --enable-vet ~{load_vet} \
         -SN ${sample_name} \
         -SNM ~{sample_map} \
-        --ref-version 38
+        --ref-version 38 \
+        --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
     done
   >>>
   runtime {
@@ -394,8 +399,8 @@ task CurateInputLists {
   }
 
   output {
-    File index_list = "output_vcf_index_list_file"
-    File vcf_list = "output_vcf_list_file"
+    File input_vcf_indexes = "output_vcf_index_list_file"
+    File input_vcfs = "output_vcf_list_file"
     File sample_name_list = "output_sample_name_list_file"
   }
 }
