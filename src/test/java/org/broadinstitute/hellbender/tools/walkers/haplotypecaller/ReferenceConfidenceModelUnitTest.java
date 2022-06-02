@@ -59,7 +59,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
     @BeforeMethod
     public void setupModel() {
-        model = new ReferenceConfidenceModel(samples, header, 10, -1);
+        model = new ReferenceConfidenceModel(samples, header, 10, -1, false);
     }
 
     @DataProvider(name = "CalcNIndelInformativeReadsData")

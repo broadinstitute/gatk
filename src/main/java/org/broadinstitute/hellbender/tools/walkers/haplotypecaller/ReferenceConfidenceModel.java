@@ -11,6 +11,9 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
 import org.broadinstitute.hellbender.utils.*;
@@ -25,6 +28,8 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Code for estimating the reference confidence
@@ -102,6 +107,7 @@ public class ReferenceConfidenceModel {
     private static final boolean useMLEAC = true;
     private static final boolean ignoreInputSamplesForMissingVariants = true;
     private static final boolean useFlatPriorsForIndels = false;
+    private boolean handleSpanningAlleles = false;
 
 
     /**
@@ -114,7 +120,8 @@ public class ReferenceConfidenceModel {
     public ReferenceConfidenceModel(final SampleList samples,
                                     final SAMFileHeader header,
                                     final int indelInformativeDepthIndelSize,
-                                    final int numRefForPrior) {
+                                    final int numRefForPrior,
+                                    final boolean refConfSpanningEvents) {
         Utils.nonNull(samples, "samples cannot be null");
         Utils.validateArg( samples.numberOfSamples() > 0, "samples cannot be empty");
         Utils.nonNull(header, "header cannot be empty");
@@ -127,6 +134,7 @@ public class ReferenceConfidenceModel {
         this.options = new PosteriorProbabilitiesUtils.PosteriorProbabilitiesOptions(HomoSapiensConstants.SNP_HETEROZYGOSITY,
                 HomoSapiensConstants.INDEL_HETEROZYGOSITY, useInputSamplesAlleleCounts, useMLEAC, ignoreInputSamplesForMissingVariants,
                 useFlatPriorsForIndels);
+        this.handleSpanningAlleles = refConfSpanningEvents;
     }
 
     /**
@@ -214,9 +222,13 @@ public class ReferenceConfidenceModel {
                 } else {
                     results.add(overlappingSite);
                 }
-            } else {
+            } else if (!handleSpanningAlleles || overlappingSite == null){
                 // otherwise emit a reference confidence variant context
                 results.add(makeReferenceConfidenceVariantContext(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset, applyPriors, currentPriors));
+
+            } else {
+                // There must be a spanning event. Genotype it accordingly
+                results.add(makeReferenceConfidenceVariantContextWithSpanning(ploidy, ref, sampleName, globalRefOffset, pileup, curPos, offset, applyPriors, currentPriors));
             }
         }
 
@@ -263,6 +275,61 @@ public class ReferenceConfidenceModel {
             //TODO FIXME: after new-qual refactoring, these should be static calls to AF calculator
         }
     }
+
+
+    public VariantContext makeReferenceConfidenceVariantContextWithSpanning(final int ploidy,
+                                                                final byte[] ref,
+                                                                final String sampleName,
+                                                                final int globalRefOffset,
+                                                                final ReadPileup pileup,
+                                                                final Locatable curPos,
+                                                                final int offset,
+                                                                final boolean applyPriors,
+                                                                final List<VariantContext> VCpriors) {
+        // Assume infinite population on a single sample.
+        final int refOffset = offset + globalRefOffset;
+        final byte refBase = ref[refOffset];
+        final RefVsSpanningVsAnyResult homRefCalc = calcGenotypeLikelihoodsOfRefVsSpanningVsAny(ploidy, pileup, refBase, BASE_QUAL_THRESHOLD, true);
+
+        final Allele refAllele = Allele.create(refBase, true);
+        final List<Allele> refSiteAlleles = Arrays.asList(refAllele, Allele.SPAN_DEL, Allele.NON_REF_ALLELE);
+        final VariantContextBuilder vcb = new VariantContextBuilder("HC", curPos.getContig(), curPos.getStart(), curPos.getStart(), refSiteAlleles);
+        final GenotypeBuilder gb = new GenotypeBuilder(sampleName, generateStarGenotypeFromResult(refAllele, ploidy, homRefCalc));
+        gb.AD(homRefCalc.getAD());
+        gb.DP(homRefCalc.getDP());
+
+        // If we have a spanning deletion we skip out on the indel confidence code.
+        // TODO we should evaluate if reads that maybe have indels should factor in here at all and how so...
+        homRefCalc.finalPhredScaledGenotypeLikelihoods = GenotypeLikelihoods.fromLog10Likelihoods(homRefCalc.getGenotypeLikelihoodsCappedByHomRefLikelihood()).getAsPLs();
+
+        addGenotypeData(homRefCalc, gb);
+        if(!applyPriors) {
+            return vcb.genotypes(gb.make()).make();
+        }
+        else {
+            return PosteriorProbabilitiesUtils.calculatePosteriorProbs(vcb.genotypes(gb.make()).make(), VCpriors, numRefSamplesForPrior, options);
+            //TODO FIXME: after new-qual refactoring, these should be static calls to AF calculator
+        }
+    }
+
+    //TODO test
+    @VisibleForTesting
+    public static List<Allele> generateStarGenotypeFromResult(final Allele refAllele, final int ploidy, final RefVsSpanningVsAnyResult homRefCalc) {
+        // Since we can be sure star is always the first allele here, we can interrogate the first ployidy
+        final double[] gls = homRefCalc.genotypeLikelihoods;
+        int maxIndex = 0;
+        double maxGL = gls[0];
+
+        for (int i = 1; i <= ploidy; i++) {
+            if (gls[i] > maxGL) {
+                maxIndex = i;
+            }
+        }
+
+        return Stream.of(Collections.nCopies(ploidy - maxIndex, refAllele), Collections.nCopies(maxIndex, Allele.SPAN_DEL))
+                .flatMap(Collection::stream).collect(Collectors.toList());
+    }
+
 
     public void doIndelRefConfCalc(final int ploidy, final byte[] ref, final ReadPileup pileup, final int refOffset, final ReferenceConfidenceResult refResult) {
         final RefVsAnyResult homRefCalc = (RefVsAnyResult)refResult;
@@ -389,6 +456,34 @@ public class ReferenceConfidenceModel {
         return result;
     }
 
+    public RefVsSpanningVsAnyResult calcGenotypeLikelihoodsOfRefVsSpanningVsAny(final int ploidy,
+                                                                                   final ReadPileup pileup,
+                                                                                   final byte refBase,
+                                                                                   final byte minBaseQual,
+                                                                                   final boolean readsWereRealigned) {
+
+        final GenotypeLikelihoodCalculators genotypeLikelihoodCalculator = new GenotypeLikelihoodCalculators();
+        final int likelihoodCount = genotypeLikelihoodCalculator.genotypeCount(ploidy, 3);
+        final double log10Ploidy = MathUtils.log10(ploidy);
+
+
+        final RefVsSpanningVsAnyResult result = new RefVsSpanningVsAnyResult(likelihoodCount, ploidy);
+        int readCount = 0;
+        for (final PileupElement p : pileup) {
+            final byte qual = p.isDeletion() ? REF_MODEL_DELETION_QUAL : p.getQual();
+            if (!p.isDeletion() && qual <= minBaseQual) {
+                continue;
+            }
+            readCount++;
+            applyPileupElementRefVsDelVsNonRefLikelihoodsCount(refBase, ploidy, log10Ploidy, result, p, qual,readsWereRealigned, genotypeLikelihoodCalculator);
+        }
+        final double denominator = readCount * log10Ploidy;
+        for (int i = 0; i < likelihoodCount; i++) {
+            result.genotypeLikelihoods[i] -= denominator;
+        }
+        return result;
+    }
+
     private void applyPileupElementRefVsNonRefLikelihoodAndCount(final byte refBase, final int likelihoodCount, final double log10Ploidy, final RefVsAnyResult result, final PileupElement element, final byte qual, final MathUtils.RunningAverage hqSoftClips, final boolean readsWereRealigned) {
         final boolean isAlt = readsWereRealigned ? isAltAfterAssembly(element, refBase) : isAltBeforeAssembly(element, refBase);
         final double referenceLikelihood;
@@ -414,6 +509,50 @@ public class ReferenceConfidenceModel {
         }
         if (isAlt && hqSoftClips != null && element.isNextToSoftClip()) {
             hqSoftClips.add(AlignmentUtils.countHighQualitySoftClips(element.getRead(), HQ_BASE_QUALITY_SOFTCLIP_THRESHOLD));
+        }
+    }
+
+    private void applyPileupElementRefVsDelVsNonRefLikelihoodsCount(final byte refBase, final int ployidy, final double log10Ploidy, final RefVsSpanningVsAnyResult result, final PileupElement element, final byte qual, final boolean readsWereRealigned, final GenotypeLikelihoodCalculators genotypeLikelihoodCalculator) {
+        if (!readsWereRealigned) {
+            throw new GATKException.ShouldNeverReachHereException("Attempting to fast genotype spanning deletions on un-realigned reads, this is not allowed");
+        }
+
+        final boolean isDel = element.isDeletion();
+        final boolean isRef = element.getBase() == refBase;
+        final double referenceLikelihood;
+        final double deletionLikelihood;
+        final double nonRefLikelihood;
+        if (isDel) {
+            deletionLikelihood = QualityUtils.qualToProbLog10(qual);
+            nonRefLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
+            referenceLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
+            result.spanningDepth++;
+        } else if (isRef) {
+            referenceLikelihood = QualityUtils.qualToProbLog10(qual);
+            deletionLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
+            nonRefLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
+            result.refDepth++;
+        } else {
+            nonRefLikelihood = QualityUtils.qualToProbLog10(qual);
+            deletionLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
+            referenceLikelihood = QualityUtils.qualToErrorProbLog10(qual) + MathUtils.LOG10_ONE_THIRD;
+            result.nonRefDepth++;
+        }
+
+        GenotypeLikelihoodCalculator calculator = genotypeLikelihoodCalculator.getInstance(ployidy,3);
+
+        // Homozygous likelihoods don't need the logSum trick.
+        result.genotypeLikelihoods[0] += referenceLikelihood + log10Ploidy;
+
+        for (int i = ployidy - 1; i >= 0; i--) {
+            for (int j = ployidy - i; j >= 0; j--) {
+                int k = ployidy - i - j;
+                double gl = MathUtils.approximateLog10SumLog10(new double[]{
+                        i == 0 ? Double.NEGATIVE_INFINITY : referenceLikelihood + MathUtils.log10(i),
+                        j == 0 ? Double.NEGATIVE_INFINITY : deletionLikelihood + MathUtils.log10(j),
+                        k == 0 ? Double.NEGATIVE_INFINITY : nonRefLikelihood + MathUtils.log10(k)});
+                result.genotypeLikelihoods[calculator.alleleCountsToIndex(0, i, 1, j, 2, k)] += gl;
+            }
         }
     }
 

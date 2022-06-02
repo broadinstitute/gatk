@@ -112,6 +112,13 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public int indelSizeToEliminateInRefModel = 10;
 
     /**
+     * Whether to include spanning symbolic alleles in the genotypes underlying spanning events
+     */
+    @Advanced
+    @Argument(fullName = "spanning-deletions-in-ref-model", doc = "If true, when in reference confidence mode include '*' alleles around spanning events", optional = true)
+    public boolean refConfSpanningEvents = false;
+
+    /**
      * If set, certain "early exit" optimizations in HaplotypeCaller, which aim to save compute and time by skipping
      * calculations if an ActiveRegion is determined to contain no variants, will be disabled. This is most likely to be useful if
      * you're using the -bamout argument to examine the placement of reads following reassembly and are interested in seeing the mapping of

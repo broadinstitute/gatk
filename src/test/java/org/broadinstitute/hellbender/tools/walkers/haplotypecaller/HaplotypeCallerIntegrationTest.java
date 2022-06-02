@@ -880,6 +880,28 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testThing() throws IOException{
+        final File testBAM = new File(TEST_FILES_DIR + "pretendTobeTetraPloidTetraAllelicSite.bam");
+        final File output = createTempFile("testHaplotypeCallerRemoveAltAlleleBasedOnHaptypeScoresResults", ".gvcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testHaplotypeCallerRemoveAltAlleleBasedOnHaptypeScores.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", "/Users/emeryj/hellbender/gatk/minimal/bam-snippets/SPT18475.bam",
+                "-R", "/Users/emeryj/hellbender/gatk/minimal/ref/PlasmoDB-54_Pfalciparum3D7_Genome.fasta",
+                "-L", "Pf3D7_01_v3:100390-100430",
+                "-O", outputPath,
+                "-ERC","BP_RESOLUTION"
+        };
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
     // test that ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT removes reads that consume zero reference bases
     // e.g. read name HAVCYADXX150109:1:2102:20528:2129 with cigar 23S53I
     @Test

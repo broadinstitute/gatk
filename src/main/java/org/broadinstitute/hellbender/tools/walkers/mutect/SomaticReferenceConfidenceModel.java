@@ -34,7 +34,7 @@ public class SomaticReferenceConfidenceModel extends ReferenceConfidenceModel {
      */
     SomaticReferenceConfidenceModel(final SampleList samples, final SAMFileHeader header, final int indelInformativeDepthIndelSize,
                                     final double minAF){
-        super(samples, header, indelInformativeDepthIndelSize, 0);
+        super(samples, header, indelInformativeDepthIndelSize, 0, false);
         Utils.validateArg(minAF >= 0.0 && minAF < 1, "minAF must be < 1 and >= 0");
 
         // To softly cut off allele fractions below minAF, we use a Beta prior of the form Beta(1+epsilon, 1); that is

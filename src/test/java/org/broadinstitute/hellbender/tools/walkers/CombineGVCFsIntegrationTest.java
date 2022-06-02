@@ -449,6 +449,19 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    /** Should throw a BadInput exception as combining GVCFs with MNPs is unsupported. */
+    @Test()
+    public void testThing() throws Exception {
+        final File output = createTempFile("combinegvcfs", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference("/Users/emeryj/hellbender/gatk/minimal/ref/PlasmoDB-54_Pfalciparum3D7_Genome.fasta");
+        args.addOutput(output);
+        args.addVCF("/Users/emeryj/hellbender/gatk/minimal/bpres/PM0720-CW.gvcf");
+        args.addVCF("/Users/emeryj/hellbender/gatk/minimal/bpres/SPT18475.gvcf");
+        runCommandLine(args);
+        System.out.println("foo");
+    }
+
     @Test
     public void testCombineSomaticGvcfs() throws Exception {
         final File output = createTempFile("combinegvcfs", ".vcf");

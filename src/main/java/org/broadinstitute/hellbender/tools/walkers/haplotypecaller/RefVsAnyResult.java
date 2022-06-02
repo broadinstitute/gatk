@@ -10,7 +10,7 @@ import java.util.stream.DoubleStream;
  * IMPORTANT PERFORMANCE NOTE!!! Allowing direct field access (within this class only) speeds up
  * the HaplotypeCaller by ~10% vs. accessing the fields indirectly via setters, as seen in a profiler.
  */
-public final class RefVsAnyResult extends ReferenceConfidenceResult {
+public class RefVsAnyResult extends ReferenceConfidenceResult {
     /**
      * The genotype likelihoods for ref/ref ref/non-ref non-ref/non-ref
      *
