@@ -67,9 +67,9 @@ public class RampedHaplotypeCallerIntegrationTest extends CommandLineProgramTest
 
         runCommandLine(args);
 
-//        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
-//            IntegrationTestSpec.assertEqualZipFiles(offramp, offrampExpected, IntegrationTestSpec.EqualZipFilesAssist_AllText);
-//        }
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualZipFiles(offramp, offrampExpected, IntegrationTestSpec.EqualZipFilesAssist_AllText);
+        }
     }
 
     @DataProvider(name = "onrampTestData")
