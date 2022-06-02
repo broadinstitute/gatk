@@ -56,9 +56,9 @@ workflow GvsImportGenomes {
   call CreateFOFNs {
     input:
       batch_size = load_data_batch_size,
-      input_vcf_index_list = write_lines(input_vcf_indexes),
-      input_vcf_list = write_lines(input_vcfs),
-      sample_name_list = write_lines(external_sample_names),
+      input_vcf_index_list = CurateInputLists.input_vcf_indexes,
+      input_vcf_list = CurateInputLists.input_vcfs,
+      sample_name_list = CurateInputLists.sample_name_list,
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
@@ -385,7 +385,7 @@ task CurateInputLists {
     python3 /app/curate_input_array_files.py
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_skip_samples_20220520"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_skip_samples_20220602"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
