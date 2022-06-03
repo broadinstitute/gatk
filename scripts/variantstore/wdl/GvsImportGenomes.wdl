@@ -383,12 +383,11 @@ task CurateInputLists {
       gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
-#    gsutil cp  ~{input_vcf_index_list} input_vcf_index_list_file
-#    gsutil cp  ~{input_vcf_list} input_vcf_list_file
-#    gsutil cp  ~{input_samples_to_be_loaded_map} input_samples_to_be_loaded_map_file
-#    gsutil cp  ~{input_sample_name_list} input_sample_name_list_file
-
-    python3 /app/curate_input_array_files.py
+    python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
+                                             --sample_name_list_file_name ~{input_sample_name_list} \
+                                             --vcf_list_file_name ~{input_vcf_list} \
+                                             --vcf_index_list_file_name  ~{input_vcf_index_list} \
+                                             --output_files True
   >>>
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_skip_samples_20220602"
