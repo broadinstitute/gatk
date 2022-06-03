@@ -200,7 +200,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_415_default_extract_scatter_width
+         - vs_464_update_quickstart_integration
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
