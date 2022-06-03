@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.sv.BafEvidence;
 import org.broadinstitute.hellbender.tools.sv.BafEvidenceSortMerger;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.List;
 
@@ -21,6 +22,7 @@ public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence>
     public static final String FORMAT_SUFFIX = ".baf.txt";
     public static final String COL_DELIMITER = "\t";
     private static final Splitter splitter = Splitter.on(COL_DELIMITER);
+    private static final DecimalFormat valueFormatter = new DecimalFormat("#.00");
 
     public BafEvidenceCodec() {
         super(BafEvidence.class);
@@ -82,7 +84,7 @@ public class BafEvidenceCodec extends AsciiFeatureCodec<BafEvidence>
         final List<String> columns = Arrays.asList(
                 ev.getContig(),
                 Integer.toString(ev.getStart() - 1),
-                Double.toString(ev.getValue()),
+                valueFormatter.format(ev.getValue()),
                 ev.getSample()
         );
         return String.join(COL_DELIMITER, columns);

@@ -47,7 +47,10 @@ public class BafEvidenceUnitTest {
     @Test
     public void testTextRoundTrip() {
         final BafEvidenceCodec codec = new BafEvidenceCodec();
-        for ( final BafEvidence be : bafs ) {
+        for ( final BafEvidence bafEvidence : bafs ) {
+            // text codec prints just two significant digits to economize on file size
+            double roundedValue = Math.round(100*bafEvidence.getValue())/100.;
+            final BafEvidence be = new BafEvidence(bafEvidence, roundedValue);
             Assert.assertEquals(codec.decode(BafEvidenceCodec.encode(be)), be);
         }
     }
