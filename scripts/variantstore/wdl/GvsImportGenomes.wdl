@@ -386,7 +386,7 @@ task CurateInputLists {
     python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
                                              --sample_name_list_file_name ~{input_sample_name_list} \
                                              --vcf_list_file_name ~{input_vcf_list} \
-                                             --vcf_index_list_file_name  ~{input_sample_name_list} \
+                                             --vcf_index_list_file_name  ~{input_vcf_index_list} \
                                              --output_files True
   >>>
   runtime {
