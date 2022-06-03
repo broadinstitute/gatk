@@ -3,6 +3,7 @@ version 1.0
 import "GvsUtils.wdl" as GvsUtils
 
 workflow GvsImportGenomes {
+
   input {
     Boolean go = true
     String dataset_name
@@ -382,10 +383,10 @@ task CurateInputLists {
       gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
-    gsutil cp  ~{input_vcf_index_list} input_vcf_index_list_file
-    gsutil cp  ~{input_vcf_list} input_vcf_list_file
-    gsutil cp  ~{input_samples_to_be_loaded_map} input_samples_to_be_loaded_map_file
-    gsutil cp  ~{input_sample_name_list} input_sample_name_list_file
+#    gsutil cp  ~{input_vcf_index_list} input_vcf_index_list_file
+#    gsutil cp  ~{input_vcf_list} input_vcf_list_file
+#    gsutil cp  ~{input_samples_to_be_loaded_map} input_samples_to_be_loaded_map_file
+#    gsutil cp  ~{input_sample_name_list} input_sample_name_list_file
 
     python3 /app/curate_input_array_files.py
   >>>
@@ -394,7 +395,7 @@ task CurateInputLists {
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
-    preemptible: 0
+    preemptible: 3
     cpu: 1
   }
 
