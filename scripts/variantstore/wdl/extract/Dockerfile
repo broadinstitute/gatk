@@ -14,6 +14,7 @@ COPY alt_allele_positions.sql /app
 COPY alt_allele_temp_function.sql /app
 COPY utils.py /app
 COPY add_max_as_vqslod.py /app
+COPY curate_input_array_files.py /app
 COPY scale_xy_bed_values.py /app
 
 WORKDIR /app
