@@ -73,7 +73,7 @@ workflow GvsQuickstartIntegration {
             # Force filtering off as it is not deterministic and the initial version of this integration test does not
             # allow for inexact matching of actual and expected results.
             extract_do_not_filter_override = true,
-            load_data_batch_size = load_data_batch_size
+            load_data_batch_size = load_data_batch_size,
     }
 
     call AssertIdenticalOutputs {
