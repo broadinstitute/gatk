@@ -120,7 +120,7 @@ task AssertIdenticalOutputs {
         done
         # Download and unzip all the expected data
         cat expected_fofn.txt | gsutil -m cp -I .
-        gzip -d *
+        gzip -d *.gz
         cd ..
 
         # Also unzip actual result data
@@ -130,7 +130,9 @@ task AssertIdenticalOutputs {
         for file in ~{sep=' ' actual_vcfs}; do
           unzipped=${file%.gz}
           expected="expected/$(basename $unzipped)"
+          set +o errexit
           cmp <(grep '^#' $unzipped) <(grep '^#' $expected)
+          set -o errexit
           if [[ $? -ne 0 ]]; then
             # If there is a mismatch add it to a list of failures but keep on looking for mismatches.
             failures+=( $unzipped )
@@ -152,7 +154,9 @@ task AssertIdenticalOutputs {
         for file in ~{sep=' ' actual_vcfs}; do
           unzipped=${file%.gz}
           expected="expected/$(basename $unzipped)"
+          set +o errexit
           cmp $unzipped $expected
+          set -o errexit
           if [[ $? -ne 0 ]]; then
             echo "Error: file contents of expected and actual do not match: $(basename $unzipped)"
             fail=1
