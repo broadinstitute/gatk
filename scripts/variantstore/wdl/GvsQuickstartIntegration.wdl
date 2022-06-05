@@ -132,8 +132,9 @@ task AssertIdenticalOutputs {
           expected="expected/$(basename $unzipped)"
           set +o errexit
           cmp <(grep '^#' $unzipped) <(grep '^#' $expected)
+          rc=$?
           set -o errexit
-          if [[ $? -ne 0 ]]; then
+          if [[ $rc -ne 0 ]]; then
             # If there is a mismatch add it to a list of failures but keep on looking for mismatches.
             failures+=( $unzipped )
           fi
@@ -156,8 +157,9 @@ task AssertIdenticalOutputs {
           expected="expected/$(basename $unzipped)"
           set +o errexit
           cmp $unzipped $expected
+          rc=$?
           set -o errexit
-          if [[ $? -ne 0 ]]; then
+          if [[ $rc -ne 0 ]]; then
             echo "Error: file contents of expected and actual do not match: $(basename $unzipped)"
             fail=1
           fi
