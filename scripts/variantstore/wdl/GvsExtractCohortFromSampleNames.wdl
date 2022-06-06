@@ -17,9 +17,9 @@ workflow GvsExtractCohortFromSampleNames {
     # not using the defaults in GvsPrepareCallset because we're using pre created datasets defined by the caller
     String destination_dataset_name
     String destination_project_id
+    String? fq_gvs_extraction_temp_tables_dataset
     String extraction_uuid
     String filter_set_name
-    String fq_gvs_extraction_temp_tables_dataset
     String output_file_base_name
     Int scatter_count
 
@@ -45,7 +45,7 @@ workflow GvsExtractCohortFromSampleNames {
       destination_project             = destination_project_id,
       destination_dataset             = destination_dataset_name,
       fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset,
-      service_account_json_path       = service_account_json_path
+      service_account_json_path       = service_account_json_path,
   }
 
   call GvsExtractCallset.GvsExtractCallset {
@@ -53,6 +53,8 @@ workflow GvsExtractCohortFromSampleNames {
       project_id = gvs_project,
       query_project = query_project,
       dataset_name = gvs_dataset,
+      cohort_project_id = destination_project_id,
+      cohort_dataset_name = destination_dataset_name,
       extract_table_prefix = cohort_table_prefix,
 
       scatter_count = scatter_count,
@@ -64,7 +66,9 @@ workflow GvsExtractCohortFromSampleNames {
       extract_preemptible_override = extract_preemptible_override,
       extract_maxretries_override = extract_maxretries_override,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
-      split_intervals_mem_override = split_intervals_mem_override
+      split_intervals_mem_override = split_intervals_mem_override,
+
+      gatk_override = gatk_override
   }
 
   output {

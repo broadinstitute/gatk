@@ -240,6 +240,11 @@ task GetBQTablesMaxLastModifiedTimestamp {
 }
 
 task BuildGATKJarAndCreateDataset {
+  # Since this might be called repeatedly on the same branch (and the latest commit might have been updated), so we never call cache.
+  meta {
+    volatile: true
+  }
+
   input {
     String branch_name
     String dataset_prefix
