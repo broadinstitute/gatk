@@ -15,6 +15,7 @@ workflow GvsExtractCallset {
     String extract_table_prefix
     String filter_set_name
     String query_project = project_id
+    # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
     Int? scatter_count
     Boolean zero_pad_output_vcf_filenames = true
 
