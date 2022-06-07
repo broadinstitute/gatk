@@ -10,9 +10,12 @@ import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.readers.AsciiLineReader;
 import htsjdk.tribble.readers.AsciiLineReaderIterator;
 import htsjdk.tribble.readers.LineIterator;
+import htsjdk.tribble.readers.PositionalBufferedStream;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.tools.sv.*;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.BafEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
 import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
@@ -94,17 +97,23 @@ public class FeatureOutputStreamUnitTest extends GATKBaseTest {
     private <T extends Feature> void testWithStream(final FeatureOutputStream<T> stream, final ArrayList<T> featureList,
                                 final Path outFilePath, final FeatureCodec<T, LineIterator> codec,
                                 final String expectedHeader, final boolean indexed) throws IOException {
-        final Path outIndexPath = Paths.get(outFilePath + FileExtensions.TABIX_INDEX);
         if (expectedHeader != null) {
             stream.writeHeader(expectedHeader);
         }
         featureList.stream().forEachOrdered(s -> stream.write(s));
         stream.close();
         if (indexed) {
+            final Path outIndexPath = Paths.get(outFilePath + FileExtensions.TABIX_INDEX);
             Assert.assertTrue(Files.exists(outIndexPath), "Index does not exist");
+
+            // try to use the index a little
+            final FeatureDataSource<T> dataSource = new FeatureDataSource<T>(outFilePath.toFile());
+            dataSource.query(new SimpleInterval("chr1", 1234, 5678));
+            dataSource.close();
         }
         final InputStream inputStream = IOUtil.isBlockCompressed(outFilePath) ?
-                new BlockCompressedInputStream(outFilePath.toFile()) : new FileInputStream(outFilePath.toFile());
+                new BlockCompressedInputStream(outFilePath.toFile()) :
+                new PositionalBufferedStream(new FileInputStream(outFilePath.toFile()));
         final LineIterator reader = new AsciiLineReaderIterator(AsciiLineReader.from(inputStream));
 
         //Check header

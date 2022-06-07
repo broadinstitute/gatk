@@ -30,7 +30,13 @@ public class FeatureOutputStream <F extends Feature> implements FeatureSink<F> {
 
     private final Function<F, String> encoder;
     private final OutputStream outputStream;
-    private final LocationAware locationAware;
+    private final LocationAware locationAware; // same object as outputStream, above
+    // This is necessary because there is no LocationAwareOutputStream class for
+    // PositionalOutputStream and BlockCompressedOutputStream to extend.  Sadly.
+    // Do not wrap the BlockCompressedOutputStream in a PositionalOutputStream. The
+    // PositionalOutputStream just counts bytes output, but that's not a valid virtual file offset
+    // for a bgzip-compressed file.
+
     private final IndexCreator indexCreator;
     private final Path featurePath;
 
