@@ -82,6 +82,17 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
 
     @Override
     public boolean areClusterable(final SVCallRecord a, final SVCallRecord b) {
+        if (!typesMatch(a, b)) {
+            return false;
+        }
+        if (!strandsMatch(a, b)) {
+            return false;
+        }
+        // Checks appropriate parameter set
+        return validPair(a, b);
+    }
+
+    protected boolean typesMatch(final SVCallRecord a, final SVCallRecord b) {
         if (a.getType() != b.getType()) {
             if (!clusterDelWithDup) {
                 // CNV clustering disabled, so no type mixing
@@ -91,11 +102,14 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
                 return false;
             }
         }
-        // Strands match
-        if (a.getStrandA() != b.getStrandA() || a.getStrandB() != b.getStrandB()) {
-            return false;
-        }
-        // Checks appropriate parameter set
+        return true;
+    }
+
+    protected boolean strandsMatch(final SVCallRecord a, final SVCallRecord b) {
+        return a.getStrandA() == b.getStrandA() || a.getStrandB() == b.getStrandB();
+    }
+
+    protected boolean validPair(final SVCallRecord a, final SVCallRecord b) {
         if (evidenceParams.isValidPair(a, b)) {
             return clusterTogetherWithParams(a, b, evidenceParams, dictionary);
         } else if (mixedParams.isValidPair(a, b)) {

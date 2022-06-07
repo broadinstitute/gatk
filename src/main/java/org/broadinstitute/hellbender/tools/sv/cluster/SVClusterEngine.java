@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  *
  * @param <T> class of items to cluster
  */
-public class SVClusterEngine<T extends SVLocatable> {
+public abstract class SVClusterEngine<T extends SVLocatable, C extends SVClusterEngine.Cluster> {
 
     /**
      * Available clustering algorithms
@@ -37,48 +37,46 @@ public class SVClusterEngine<T extends SVLocatable> {
         MAX_CLIQUE
     }
 
-    private final SVCollapser<T> collapser; // Flattens clusters into a single representative item for output
-    private final SVClusterLinkage<T> linkage;
-    private Map<Integer, Cluster> idToClusterMap; // Active clusters
-    private final Map<Integer, T> idToItemMap; // Active items
-    protected final CLUSTERING_TYPE clusteringType;
-    private final ItemSortingBuffer buffer;
-    private final Comparator<T> itemComparator;
+    protected final SVClusterLinkage<T> linkage;
+    protected ClusterSortingBuffer buffer;
+    protected final Comparator<T> itemComparator;
 
+    private Map<Integer, C> idToClusterMap; // Active clusters
+    private final Map<Integer, T> idToItemMap; // Active items
     private String currentContig;
     private int nextItemId;
     private int nextClusterId;
     private int lastStart;
     private Integer minActiveStartingPositionItemId;
 
-    /**
-     * @param clusteringType algorithm choice
-     * @param collapser function that ingests a collection of clustered items and returns a single representative item
-     */
-    public SVClusterEngine(final CLUSTERING_TYPE clusteringType,
-                           final SVCollapser<T> collapser,
-                           final SVClusterLinkage<T> linkage,
+    public SVClusterEngine(final SVClusterLinkage<T> linkage,
                            final SAMSequenceDictionary dictionary) {
-        this.clusteringType = clusteringType;
-        this.collapser = Utils.nonNull(collapser);
         this.linkage = Utils.nonNull(linkage);
-        idToClusterMap = new HashMap<>();
         currentContig = null;
         idToItemMap = new HashMap<>();
         itemComparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
-        buffer = new ItemSortingBuffer();
         nextItemId = 0;
         nextClusterId = 0;
         lastStart = 0;
         minActiveStartingPositionItemId = null;
+        idToClusterMap = new HashMap<>();
+        createItemClusterComparator();
     }
 
+    protected abstract void createItemClusterComparator();
+    protected abstract void cluster(Integer itemId);
+    protected abstract C createCluster(List<Integer> itemIds);
+
+
+    protected boolean itemIsMinActiveStart(T item) {
+        return item.getPositionA() < getMinActiveStartingPositionItem().getPositionA();
+    }
 
     /**
      * Flushes all active clusters, adding them to the output buffer. Results from the output buffer are then copied out
      * and the buffer is cleared. This should be called between contigs to save memory.
      */
-    public final List<T> forceFlush() {
+    public final List<OutputCluster> forceFlush() {
         flushClusters();
         return buffer.forceFlush();
     }
@@ -86,13 +84,14 @@ public class SVClusterEngine<T extends SVLocatable> {
     /**
      * Gets any available finalized clusters.
      */
-    public final List<T> flush() {
-        return buffer.flush();
-    }
-
-    @VisibleForTesting
-    public SVCollapser<T> getCollapser() {
-        return collapser;
+    public final List<OutputCluster> flush() {
+        if (minActiveStartingPositionItemId == null) {
+            return Collections.emptyList();
+        }
+        final T minActiveItem = idToItemMap.get(minActiveStartingPositionItemId);
+        Utils.nonNull(minActiveItem, "Unknown item id");
+        final OutputCluster minActiveComparisonCluster = new OutputCluster(Collections.singletonList(minActiveItem));
+        return buffer.flush(minActiveComparisonCluster);
     }
 
     @VisibleForTesting
@@ -118,157 +117,59 @@ public class SVClusterEngine<T extends SVLocatable> {
      * @param item item to cluster
      */
     public final void add(final T item) {
+        final int itemId = registerItem(item);
+        cluster(itemId);
+        finalizeClusters(item);
+    }
+
+    /**
+     * May override
+     * @param itemId
+     * @param item
+     */
+    protected void putNewItem(final Integer itemId, final T item) {
+        idToItemMap.put(itemId, item);
+    }
+
+    private final int registerItem(final T item) {
         // Start a new cluster if on a new contig
         if (!item.getContigA().equals(currentContig)) {
             flushClusters();
             currentContig = item.getContigA();
             lastStart = 0;
-            seedCluster(registerItem(item));
-            return;
+        } else {
+            Utils.validate(item.getPositionA() >= lastStart, "Items must be added in order of increasing start coordinate");
         }
-        final int itemId = registerItem(item);
-        final List<Integer> clusterIdsToProcess = cluster(itemId);
-        processClusters(clusterIdsToProcess);
-    }
-
-    private final int registerItem(final T item) {
-        Utils.validate(item.getPositionA() >= lastStart, "Items must be added in order of increasing start coordinate");
         lastStart = item.getPositionA();
         final int itemId = nextItemId++;
-        idToItemMap.put(itemId, item);
-        if (minActiveStartingPositionItemId == null || item.getPositionA() < getMinActiveStartingPositionItem().getPositionA()) {
+        putNewItem(nextItemId++, item);
+        if (minActiveStartingPositionItemId == null || itemIsMinActiveStart(item)) {
             minActiveStartingPositionItemId = itemId;
         }
         return itemId;
     }
 
-    private final int getMaxClusterableStartingPositionByIds(final Collection<Integer> itemIds) {
+    protected final Collection<C> removeClusters(final Collection<Integer> clusterIds) {
+        final Collection<C> clusters = clusterIds.stream().map(this::getCluster).collect(Collectors.toList());
+        clusterIds.stream().forEach(idToClusterMap::remove);
+        return clusters;
+    }
+
+    protected final int getMaxClusterableStartingPositionByIds(final Collection<Integer> itemIds) {
         Utils.nonNull(itemIds);
         Utils.nonEmpty(itemIds);
         return linkage.getMaxClusterableStartingPosition(itemIds.stream().map(this::getItem).collect(Collectors.toList()));
     }
 
     /**
-     * Add a new {@param <T>} to the current clusters and determine which are complete
-     * @param itemId id of registered item to add
-     * @return the IDs for clusters that are complete and ready for processing
-     */
-    private final List<Integer> cluster(final Integer itemId) {
-        final T item = getItem(itemId);
-        // Get list of item IDs from active clusters that cluster with this item
-        final Set<Integer> linkedItems = idToClusterMap.values().stream().map(Cluster::getItemIds)
-                .flatMap(List::stream)
-                .distinct()
-                .filter(other -> !other.equals(itemId) && linkage.areClusterable(item, getItem(other)))
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-
-        // Find clusters to which this item belongs, and which active clusters we're definitely done with
-        final List<Integer> clusterIdsToProcess = new ArrayList<>();
-        // Clusters to which we simply add the item
-        final List<Integer> clustersToAugment = new ArrayList<>();
-        // New clusters, formed from subsets of currently active clusters, to which we will add the item
-        final Set<List<Integer>> clustersToSeedWith = new HashSet<>();    // Use set to prevent creating duplicate clusters
-        for (final Map.Entry<Integer, Cluster> entry : idToClusterMap.entrySet()) {
-            final Integer clusterIndex = entry.getKey();
-            final Cluster cluster = entry.getValue();
-            final List<Integer> clusterItems = cluster.getItemIds();
-            if (item.getPositionA() > cluster.getMaxClusterableStart()) {
-                clusterIdsToProcess.add(clusterIndex);  //this cluster is complete -- process it when we're done
-            } else {
-                if (clusteringType.equals(CLUSTERING_TYPE.MAX_CLIQUE)) {
-                    final List<Integer> linkedClusterItems = clusterItems.stream().filter(linkedItems::contains).collect(Collectors.toList());
-                    final int numLinkedItems = linkedClusterItems.size();
-                    if (numLinkedItems == clusterItems.size()) {
-                        clustersToAugment.add(clusterIndex);
-                    } else if (numLinkedItems > 0) {
-                        clustersToSeedWith.add(linkedClusterItems);
-                    }
-                } else if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
-                    final boolean matchesCluster = clusterItems.stream().anyMatch(linkedItems::contains);
-                    if (matchesCluster) {
-                        clustersToAugment.add(clusterIndex);
-                    }
-                } else {
-                    throw new IllegalArgumentException("Clustering algorithm for type " + clusteringType.name() + " not implemented");
-                }
-            }
-        }
-
-        // Create new clusters from subsets (max-clique only)
-        if (!clustersToSeedWith.isEmpty()) {
-            // Currently existing clusters to which we will add the current item
-            final List<Set<Integer>> augmentedClusterItemLists = clustersToAugment.stream()
-                    .map(idToClusterMap::get)
-                    .map(Cluster::getItemIds)
-                    .map(HashSet::new)
-                    .collect(Collectors.toList());
-            final List<Set<Integer>> triggeredClusterItemSets = new ArrayList<>(clustersToSeedWith.size() + augmentedClusterItemLists.size());
-            // New clusters formed from subsets of the currently active clusters
-            triggeredClusterItemSets.addAll(clustersToSeedWith.stream().map(HashSet::new).collect(Collectors.toList()));
-            triggeredClusterItemSets.addAll(augmentedClusterItemLists);
-            triggeredClusterItemSets.sort(Comparator.comparingInt(Set::size));
-            for (int i = 0; i < triggeredClusterItemSets.size(); i++) {
-                final Set<Integer> seedItems = triggeredClusterItemSets.get(i);
-                // Check that this cluster is not a sub-cluster of any of the others being created
-                boolean isSubset = false;
-                for (int j = i + 1; j < triggeredClusterItemSets.size(); j++) {
-                    if (triggeredClusterItemSets.get(j).containsAll(seedItems)) {
-                        isSubset = true;
-                        break;
-                    }
-                }
-                if (!isSubset) {
-                    seedWithExistingCluster(itemId, seedItems);
-                }
-            }
-        }
-
-        // Add to or merge existing clusters
-        if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
-            if (!clustersToAugment.isEmpty()) {
-                combineClusters(clustersToAugment, itemId);
-            }
-        } else {
-            for (final Integer clusterId : clustersToAugment) {
-                addToCluster(clusterId, itemId);
-            }
-        }
-        
-        // If there weren't any matches, create a new singleton cluster
-        if (clustersToAugment.isEmpty() && clustersToSeedWith.isEmpty()) {
-            seedCluster(itemId);
-        }
-        return clusterIdsToProcess;
-    }
-
-    /**
-     * Creates a new cluster by agglomerating clusters with the given ids together (and deleting them from the currently
-     * active set), along with an additional item.
-     * @param clusterIds ids of clusters to combine
-     * @param itemId id of item to add to new cluster
-     */
-    private final void combineClusters(final Collection<Integer> clusterIds, final Integer itemId) {
-        final List<Cluster> clusters = clusterIds.stream().map(this::getCluster).collect(Collectors.toList());
-        clusterIds.stream().forEach(idToClusterMap::remove);
-        final List<Integer> clusterItems = clusters.stream()
-                .map(Cluster::getItemIds)
-                .flatMap(List::stream)
-                .distinct()
-                .collect(Collectors.toList());
-        final List<Integer> newClusterItems = new ArrayList<>(clusterItems.size() + 1);
-        newClusterItems.addAll(clusterItems);
-        newClusterItems.add(itemId);
-        idToClusterMap.put(nextClusterId++, new Cluster(getMaxClusterableStartingPositionByIds(newClusterItems), newClusterItems));
-    }
-
-    /**
      * Finalizes a single cluster, removing it from the currently active set and adding it to the output buffer.
      */
-    private final void processCluster(final int clusterIndex) {
-        final Cluster cluster = getCluster(clusterIndex);
+    private final void finalizeCluster(final int clusterIndex) {
+        final Cluster idCluster = getCluster(clusterIndex);
         idToClusterMap.remove(clusterIndex);
-        final List<Integer> clusterItemIds = cluster.getItemIds();
-        buffer.add(collapser.collapse(clusterItemIds.stream().map(idToItemMap::get).collect(Collectors.toList())));
+        final List<Integer> clusterItemIds = idCluster.getMembers();
+        final OutputCluster itemCluster = new OutputCluster(idCluster.getMembers().stream().map(idToItemMap::get).collect(Collectors.toList()));
+        buffer.add(itemCluster);
         // Clean up item id map
         if (clusterItemIds.size() == 1) {
             // Singletons won't be present in any other clusters
@@ -276,7 +177,7 @@ public class SVClusterEngine<T extends SVLocatable> {
         } else {
             // Need to check that items aren't present in any other clusters
             final Set<Integer> activeItemIds = idToClusterMap.values().stream()
-                    .map(Cluster::getItemIds)
+                    .map(Cluster::getMembers)
                     .flatMap(List::stream)
                     .collect(Collectors.toSet());
             final List<Integer> itemsToRemove = idToItemMap.keySet().stream().filter(i -> !activeItemIds.contains(i))
@@ -297,7 +198,7 @@ public class SVClusterEngine<T extends SVLocatable> {
     private final void findAndSetMinActiveStart() {
         minActiveStartingPositionItemId = null;
         T minActiveStartingPositionItem = null;
-        for (final Integer itemId : idToItemMap.keySet()) {
+        for (final Integer itemId : getClusterableItemIds()) {
             final T item = idToItemMap.get(itemId);
             if (minActiveStartingPositionItemId == null || itemComparator.compare(item, minActiveStartingPositionItem) < 0) {
                 minActiveStartingPositionItemId = itemId;
@@ -309,9 +210,11 @@ public class SVClusterEngine<T extends SVLocatable> {
     /**
      * Finalizes a set of clusters.
      */
-    private final void processClusters(final List<Integer> clusterIdsToProcess) {
-        for (final Integer clusterId : clusterIdsToProcess) {
-            processCluster(clusterId);
+    protected final void finalizeClusters(final T currentItem) {
+        for (final Map.Entry<Integer, C> entry : idToClusterMap.entrySet()) {
+            if (currentItem == null || currentItem.getPositionA() > entry.getValue().getMaxClusterableStart()) {
+                finalizeCluster(entry.getKey());
+            }
         }
     }
 
@@ -319,76 +222,63 @@ public class SVClusterEngine<T extends SVLocatable> {
      * Finalizes all active clusters and adds them to the output buffer. Also clears the currently active set of clusters
      * and items.
      */
-    private final void flushClusters() {
-        final List<Integer> clustersToFlush = new ArrayList<>(idToClusterMap.keySet());
-        for (final Integer clusterId : clustersToFlush) {
-            processCluster(clusterId);
-        }
+    protected final void flushClusters() {
+        finalizeClusters(null);
         idToItemMap.clear();
         minActiveStartingPositionItemId = null;
         nextItemId = 0;
         nextClusterId = 0;
     }
 
-    /**
-     * Creates a new singleton cluster containing the given item.
-     */
-    private final void seedCluster(final Integer item) {
-        final List<Integer> newClusters = new ArrayList<>(1);
-        newClusters.add(item);
-        idToClusterMap.put(nextClusterId++, new Cluster(linkage.getMaxClusterableStartingPosition(getItem(item)), newClusters));
+    protected final Set<Integer> getClusterIds() {
+        return idToClusterMap.keySet();
     }
 
-    /**
-     * Create a new cluster containing a new item and a set of existing items, and add it to the set of active clusters.
-     * Note that if there exists an identical activate cluster, it will not be added.
-     * @param item new item (assumed registered)
-     * @param seedItems existing items
-     */
-    private final void seedWithExistingCluster(final Integer item, final Collection<Integer> seedItems) {
-        final List<Integer> newClusterItems = new ArrayList<>(1 + seedItems.size());
-        newClusterItems.addAll(seedItems);
-        newClusterItems.add(item);
-        idToClusterMap.put(nextClusterId++,
-                new Cluster(getMaxClusterableStartingPositionByIds(newClusterItems), newClusterItems));
+    protected final Collection<C> getClusters() {
+        return idToClusterMap.values();
     }
 
-    private final Cluster getCluster(final int id) {
+    protected final C getCluster(final int id) {
         Utils.validateArg(idToClusterMap.containsKey(id), "Cluster ID " + id + " does not exist.");
         return idToClusterMap.get(id);
     }
 
-    private final T getItem(final int id) {
+    protected final T getItem(final int id) {
         Utils.validateArg(idToItemMap.containsKey(id), "Item ID " + id + " does not exist.");
         return idToItemMap.get(id);
     }
 
     /**
-     * Add the item specified by {@param itemId} to the cluster specified by {@param clusterIndex}
-     * and expand the clustering interval
-     * @param clusterId
-     * @param itemId
+     * All item ids that can be clustered. May override when Cluster subclasses include additional item groups.
+     * @return
      */
-    private final void addToCluster(final int clusterId, final Integer itemId) {
-        final Cluster cluster = getCluster(clusterId);
-        final List<Integer> clusterItems = cluster.getItemIds();
-        clusterItems.add(itemId);
-        final T item = getItem(itemId);
-        final int itemClusterableStartPosition = linkage.getMaxClusterableStartingPosition(item);
-        cluster.setMaxClusterableStart(Math.max(cluster.getMaxClusterableStart(), itemClusterableStartPosition));
+    protected Set<Integer> getClusterableItemIds() {
+        return getItemIds();
+    }
+
+    /**
+     * Item ids that are members of clusters
+     * @return
+     */
+    protected final Set<Integer> getItemIds() {
+        return idToItemMap.keySet();
+    }
+
+    protected final void registerCluster(final C cluster) {
+        idToClusterMap.put(nextClusterId++, cluster);
     }
 
     /**
      * Container class for clustered items
      */
-    private static final class Cluster {
+    public static class Cluster {
         private int maxClusterableStart;
-        private final List<Integer> itemIds;
+        private final List<Integer> members;
 
-        public Cluster(final int maxClusterableStart, final List<Integer> itemIds) {
-            Utils.nonNull(itemIds);
+        public Cluster(final int maxClusterableStart, final List<Integer> members) {
+            Utils.nonNull(members);
             this.maxClusterableStart = maxClusterableStart;
-            this.itemIds = itemIds;
+            this.members = new ArrayList<>(members);
         }
 
         public int getMaxClusterableStart() {
@@ -399,8 +289,13 @@ public class SVClusterEngine<T extends SVLocatable> {
             maxClusterableStart = position;
         }
 
-        public List<Integer> getItemIds() {
-            return itemIds;
+        public List<Integer> getMembers() {
+            return members;
+        }
+
+        public void addMember(final Integer member, final int memberMaxClusterableStart) {
+            members.add(member);
+            maxClusterableStart = Math.max(maxClusterableStart, memberMaxClusterableStart);
         }
 
         /**
@@ -412,52 +307,58 @@ public class SVClusterEngine<T extends SVLocatable> {
             if (this == o) return true;
             if (!(o instanceof Cluster)) return false;
             Cluster cluster = (Cluster) o;
-            return itemIds.equals(cluster.itemIds);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(itemIds);
+            return members.equals(cluster.members);
         }
     }
 
-    private final class ItemSortingBuffer {
-        private SortedMultiset<T> buffer;
+    public class OutputCluster {
+        private final List<T> members;
 
-        public ItemSortingBuffer() {
-            Utils.nonNull(itemComparator);
-            this.buffer = TreeMultiset.create(itemComparator);
+        public OutputCluster(final List<T> members) {
+            Utils.nonNull(members);
+            this.members = members;
         }
 
-        public void add(final T record) {
-            buffer.add(record);
+        public List<T> getMembers() {
+            return members;
+        }
+    }
+
+    protected final class ClusterSortingBuffer {
+        private SortedMultiset<OutputCluster> buffer;
+
+        public ClusterSortingBuffer(final Comparator<OutputCluster> clusterComparator) {
+            this.buffer = TreeMultiset.create(clusterComparator);
+        }
+
+        public void add(final OutputCluster cluster) {
+            buffer.add(cluster);
         }
 
         /**
          * Returns any records that can be safely flushed based on the current minimum starting position
          * of items still being actively clustered.
          */
-        public List<T> flush() {
+        public List<OutputCluster> flush(final OutputCluster minActiveStartingPositionCluster) {
             if (buffer.isEmpty()) {
                 return Collections.emptyList();
             }
-            final T minActiveStartItem = getMinActiveStartingPositionItem();
-            if (minActiveStartItem == null) {
+            if (minActiveStartingPositionCluster == null) {
                 forceFlush();
             }
-            final SortedMultiset<T> finalizedRecordView = buffer.headMultiset(minActiveStartItem, BoundType.CLOSED);
-            final ArrayList<T> finalizedRecords = new ArrayList<>(finalizedRecordView);
+            final SortedMultiset<OutputCluster> finalizedView = buffer.headMultiset(minActiveStartingPositionCluster, BoundType.CLOSED);
+            final ArrayList<OutputCluster> finalizedClusters = new ArrayList<>(finalizedView);
             // Clearing a view of the buffer also clears the items from the buffer itself
-            finalizedRecordView.clear();
-            return finalizedRecords;
+            finalizedView.clear();
+            return finalizedClusters;
         }
 
         /**
          * Returns all buffered records, regardless of any active clusters. To be used only when certain that no
          * active clusters can be clustered with any future inputs.
          */
-        public List<T> forceFlush() {
-            final List<T> result = new ArrayList<>(buffer);
+        public List<OutputCluster> forceFlush() {
+            final List<OutputCluster> result = new ArrayList<>(buffer);
             buffer.clear();
             return result;
         }

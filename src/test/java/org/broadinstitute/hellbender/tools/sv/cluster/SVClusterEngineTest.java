@@ -34,7 +34,7 @@ public class SVClusterEngineTest {
     public void testCollapser() {
         //depth only and depthAndStuff have same bounds, less than call2
         final List<SVCallRecord> testCluster = Arrays.asList(SVTestUtils.depthOnly, SVTestUtils.depthAndStuff, SVTestUtils.call2);
-        final SVCallRecord flattened = engine.getCollapser().collapse(testCluster);
+        final SVCallRecord flattened = SVTestUtils.defaultCollapser.collapse(testCluster);
         Assert.assertEquals(flattened.getPositionA(), SVTestUtils.depthAndStuff.getPositionA());
         Assert.assertEquals(flattened.getPositionB(), SVTestUtils.depthAndStuff.getPositionB());
         //should have all the algs
@@ -61,7 +61,7 @@ public class SVClusterEngineTest {
                         2,
                         null)
         );
-        final SVCallRecord subtypedFlattened = engine.getCollapser().collapse(subtypedRecords);
+        final SVCallRecord subtypedFlattened = SVTestUtils.defaultCollapser.collapse(subtypedRecords);
         Assert.assertEquals(subtypedFlattened.getAlleles().size(), 2);
         Assert.assertEquals(subtypedFlattened.getAltAlleles().size(), 1);
         final List<Allele> collapsedAlleles = subtypedFlattened.getGenotypes().stream().map(Genotype::getAlleles)
@@ -367,7 +367,10 @@ public class SVClusterEngineTest {
         Assert.assertFalse(temp1.isEmpty());
         //force new cluster by adding a non-overlapping event
         temp1.add(SVTestUtils.call3);
-        final List<SVCallRecord> output1 = temp1.forceFlush(); //flushes all clusters
+        final List<SVCallRecord> output1 = temp1.forceFlush().stream()
+                .map(SVClusterEngine.Cluster::getMembers)
+                .map(SVTestUtils.defaultCollapser::collapse)
+                .collect(Collectors.toList()); //flushes all clusters
         Assert.assertTrue(temp1.isEmpty());
         Assert.assertEquals(output1.size(), 2);
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
@@ -378,7 +381,10 @@ public class SVClusterEngineTest {
         temp2.add(SVTestUtils.overlapsCall1);
         //force new cluster by adding a call on another contig
         temp2.add(SVTestUtils.call4_chr10);
-        final List<SVCallRecord> output2 = temp2.forceFlush();
+        final List<SVCallRecord> output2 = temp2.forceFlush().stream()
+                .map(SVClusterEngine.Cluster::getMembers)
+                .map(SVTestUtils.defaultCollapser::collapse)
+                .collect(Collectors.toList());
         Assert.assertEquals(output2.size(), 2);
         //median of two items ends up being the second item here
         Assert.assertEquals(output2.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
@@ -389,7 +395,10 @@ public class SVClusterEngineTest {
         final SVClusterEngine<SVCallRecord> temp3 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         temp3.add(SVTestUtils.call1);
         temp3.add(SVTestUtils.sameBoundsSampleMismatch);
-        final List<SVCallRecord> output3 = temp3.forceFlush();
+        final List<SVCallRecord> output3 = temp3.forceFlush().stream()
+                .map(SVClusterEngine.Cluster::getMembers)
+                .map(SVTestUtils.defaultCollapser::collapse)
+                .collect(Collectors.toList());
         Assert.assertEquals(output3.size(), 1);
         Assert.assertEquals(output3.get(0).getPositionA(), SVTestUtils.call1.getPositionA());
         Assert.assertEquals(output3.get(0).getPositionB(), SVTestUtils.call1.getPositionB());
@@ -407,7 +416,10 @@ public class SVClusterEngineTest {
             final int end = start + length - 1;
             engine.add(SVTestUtils.newCallRecordWithIntervalAndType(start, end, StructuralVariantType.DEL));
         }
-        final List<SVCallRecord> result = engine.forceFlush();
+        final List<SVCallRecord> result = engine.forceFlush().stream()
+                .map(SVClusterEngine.Cluster::getMembers)
+                .map(SVTestUtils.defaultCollapser::collapse)
+                .collect(Collectors.toList());
         Assert.assertEquals(result.size(), 50);
         for (final SVCallRecord resultRecord : result) {
             Assert.assertTrue(resultRecord.getAttributes().containsKey(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
@@ -512,7 +524,10 @@ public class SVClusterEngineTest {
         }
         final SVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
         records.stream().sorted(SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict)).forEach(engine::add);
-        final List<SVCallRecord> output = engine.forceFlush();
+        final List<SVCallRecord> output = engine.forceFlush().stream()
+                .map(SVClusterEngine.Cluster::getMembers)
+                .map(SVTestUtils.defaultCollapser::collapse)
+                .collect(Collectors.toList());
         Assert.assertEquals(output.size(), 2926);
     }
 }

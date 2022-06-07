@@ -98,8 +98,10 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private SortedSet<String> samples;
     private VariantContextWriter vcfWriter;
     private SAMSequenceDictionary dictionary;
-    private SVClusterEngine<SVCallRecord> defragmenter;
-    private SVClusterEngine<SVCallRecord> clusterEngine;
+    private CanonicalSVClusterEngine<SVCallRecord> defragmenter;
+    private SVCollapser<SVCallRecord> defragmentCollapser;
+    private CanonicalSVClusterEngine<SVCallRecord> clusterEngine;
+    private SVCollapser<SVCallRecord> clusterCollapser;
     private List<GenomeLoc> callIntervals;
     private String currentContig;
     private SampleDB sampleDB;
@@ -211,13 +213,14 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
         final ClusteringParameters clusterArgs = ClusteringParameters.createDepthParameters(clusterIntervalOverlap, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
         if (callIntervals == null) {
-            defragmenter = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap);
+            defragmenter = SVClusterEngineFactory.createCNVDefragmenter(dictionary, defragmentationPadding, minSampleSetOverlap);
         } else {
-            defragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap, callIntervals);
+            defragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(dictionary, defragmentationPadding, minSampleSetOverlap, callIntervals);
         }
-        clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy, altAlleleSummaryStrategy, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN,
-                dictionary, reference, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
-
+        defragmentCollapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+        clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE,
+                dictionary, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
+        clusterCollapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, breakpointSummaryStrategy, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
         vcfWriter = getVCFWriter();
 
         if (getSamplesForVariants().size() != 1) {
@@ -300,10 +303,16 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
      * new contig.
      */
     private void processClusters() {
-        final List<SVCallRecord> defragmentedCalls = defragmenter.forceFlush();
+        final List<SVCallRecord> defragmentedCalls = defragmenter.forceFlush().stream()
+                .map(SVClusterEngine.OutputCluster::getMembers)
+                .map(defragmentCollapser::collapse)
+                .collect(Collectors.toList());
         defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
         //Jack and Isaac cluster first and then defragment
-        final List<SVCallRecord> clusteredCalls = clusterEngine.forceFlush();
+        final List<SVCallRecord> clusteredCalls = clusterEngine.forceFlush().stream()
+                .map(SVClusterEngine.OutputCluster::getMembers)
+                .map(clusterCollapser::collapse)
+                .collect(Collectors.toList());
         write(clusteredCalls);
     }
 

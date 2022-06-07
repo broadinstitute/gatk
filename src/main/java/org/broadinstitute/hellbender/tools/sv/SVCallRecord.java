@@ -113,18 +113,10 @@ public class SVCallRecord implements SVLocatable {
     /**
      * Convenience constructor without extra attributes
      */
-    public SVCallRecord(final SVCallRecord baseRecord,
-                        final String id,
-                        final Boolean strandA,
-                        final Boolean strandB,
-                        final StructuralVariantType type,
-                        final Integer length,
-                        final List<String> algorithms,
-                        final List<Allele> alleles,
-                        final List<Genotype> genotypes,
-                        final Map<String,Object> attributes) {
-        this(id, baseRecord.getContigA(), baseRecord.getPositionA(), strandA, baseRecord.getContigB(),
-                baseRecord.getPositionB(), strandB, type, length, algorithms, alleles, genotypes, attributes);
+    public SVCallRecord(final SVCallRecord baseRecord) {
+        this(baseRecord.getId(), baseRecord.getContigA(), baseRecord.getPositionA(), baseRecord.getStrandA(), baseRecord.getContigB(),
+                baseRecord.getPositionB(), baseRecord.getStrandB(), baseRecord.getType(), baseRecord.getLength(),
+                baseRecord.getAlgorithms(), baseRecord.getAlleles(), baseRecord.getGenotypes(), baseRecord.getAttributes());
     }
 
     /**

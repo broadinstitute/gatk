@@ -20,7 +20,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConsta
  * of its length and then merged with any other overlapping variants that meet the minimum sample overlap. Additionally,
  * singleton variants (with only one carrier sample) will only be linked with variants of the same copy number.
  */
-public class CNVLinkage extends SVClusterLinkage<SVCallRecord> {
+public class CNVLinkage<T extends SVCallRecord> extends SVClusterLinkage<T> {
 
     public static final double DEFAULT_SAMPLE_OVERLAP = 0.8;
     public static final double DEFAULT_PADDING_FRACTION = 0.25;
@@ -38,7 +38,7 @@ public class CNVLinkage extends SVClusterLinkage<SVCallRecord> {
     }
 
     @Override
-    public boolean areClusterable(final SVCallRecord a, final SVCallRecord b) {
+    public boolean areClusterable(final T a, final T b) {
         // Only do clustering on depth-only CNVs
         if (!a.isDepthOnly() || !b.isDepthOnly()) return false;
         if (!a.isSimpleCNV() || !b.isSimpleCNV()) return false;
@@ -94,7 +94,7 @@ public class CNVLinkage extends SVClusterLinkage<SVCallRecord> {
      * possible event that would extend to the end of the contig.
      */
     @Override
-    public int getMaxClusterableStartingPosition(final SVCallRecord call) {
+    public int getMaxClusterableStartingPosition(final T call) {
         final int contigLength = dictionary.getSequence(call.getContigA()).getSequenceLength();
         if (!call.isSimpleCNV()) {
             return 0;

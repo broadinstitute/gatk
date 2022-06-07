@@ -23,7 +23,7 @@ import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
-import java.util.*;
+import java.util.Set;
 
 import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSegmentation.BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME;
 
@@ -326,7 +326,8 @@ public final class SVCluster extends MultiVariantWalker {
     private ReferenceSequenceFile reference;
     private PloidyTable ploidyTable;
     private VariantContextWriter writer;
-    private SVClusterEngine<SVCallRecord> clusterEngine;
+    private CanonicalSVClusterEngine<SVCallRecord> clusterEngine;
+    private SVCollapser<SVCallRecord> collapser;
     private Set<String> samples;
     private String currentContig;
     private int numVariantsBuilt = 0;
@@ -347,18 +348,19 @@ public final class SVCluster extends MultiVariantWalker {
         samples = getSamplesForVariants();
 
         if (algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
-            clusterEngine = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy,
-                    reference, defragPaddingFraction, defragSampleOverlapFraction);
+            clusterEngine = SVClusterEngineFactory.createCNVDefragmenter(dictionary,
+                    defragPaddingFraction, defragSampleOverlapFraction);
         } else if (algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE || algorithm == CLUSTER_ALGORITHM.MAX_CLIQUE) {
             final SVClusterEngine.CLUSTERING_TYPE type = algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE ?
                     SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE : SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE;
-            clusterEngine = SVClusterEngineFactory.createCanonical(type, breakpointSummaryStrategy,
-                    altAlleleSummaryStrategy, insertionLengthSummaryStrategy, dictionary, reference, enableCnv,
+            clusterEngine = SVClusterEngineFactory.createCanonical(type,
+                    dictionary, enableCnv,
                     clusterParameterArgs.getDepthParameters(), clusterParameterArgs.getMixedParameters(),
                     clusterParameterArgs.getPESRParameters());
         } else {
             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm.name());
         }
+        collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, breakpointSummaryStrategy, insertionLengthSummaryStrategy);
 
         writer = createVCFWriter(outputFile);
         writer.writeHeader(createHeader());
@@ -409,8 +411,11 @@ public final class SVCluster extends MultiVariantWalker {
     }
 
     private void write(final boolean force) {
-        final List<SVCallRecord> records = force ? clusterEngine.forceFlush() : clusterEngine.flush();
-        records.stream().map(this::buildVariantContext).forEachOrdered(writer::add);
+        (force ? clusterEngine.forceFlush() : clusterEngine.flush()).stream()
+                .map(SVClusterEngine.OutputCluster::getMembers)
+                .map(collapser::collapse)
+                .map(this::buildVariantContext)
+                .forEachOrdered(writer::add);
     }
 
     private VCFHeader createHeader() {

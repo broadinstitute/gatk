@@ -13,7 +13,7 @@ import java.util.TreeMap;
  * variant padding by rounding to the nearest bin boundary. This is particularly important for exomes, which typically
  * have a wide range of bin sizes.
  */
-public class BinnedCNVLinkage extends CNVLinkage {
+public class BinnedCNVLinkage<T extends SVCallRecord> extends CNVLinkage<T> {
 
     protected final TreeMap<GenomeLoc, Integer> genomicCoordinatesToBinIndexMap;
     protected final List<GenomeLoc> coverageIntervals;
@@ -32,7 +32,7 @@ public class BinnedCNVLinkage extends CNVLinkage {
 
     // TODO: try to calculate this by sweeping through the bin intervals
     @Override
-    public int getMaxClusterableStartingPosition(final SVCallRecord call) {
+    public int getMaxClusterableStartingPosition(final T call) {
         Utils.nonNull(call);
         return dictionary.getSequence(call.getContigA()).getSequenceLength();
     }
