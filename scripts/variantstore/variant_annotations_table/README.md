@@ -1,3 +1,4 @@
+
 # Creating the Variant Annotations Table
 
 ### The VAT pipeline is a set of WDLs
@@ -26,10 +27,8 @@ All optional inputs are provided with default values.
 
 Note that there are two temporary tables that are created in addition to the main VAT table: the Genes and VT tables. They have a time to live of 24 hours.
 The VAT table is created by that query fresh each time so that there is no risk of duplicates.  
-HOWEVER the Genes and VT tables are not. They are cleaned up after 24 hours, but this code needs to be tweaked so that you can’t get into a state where duplicates are created here. The real question here is going to be, is there a use case that we might want to run where adding to a VAT that was created say weeks ago is beneficial, but given that calculations occur on a sample summing level, this seems unlikely.
 
-
-To check that all of the shards have successfully made it past the first of the sub workflow steps (the most complicated and likely to fail) they will need to be annotated / transformed into json files and put here:
+To check that all of the shards have successfully made it past the first of the sub workflow steps (the most complicated and likely to fail) make sure that the full number of expected files are here:
 `gsutil ls  [output_path]/annotations/  | wc -l`
 
 And then once they have been transformed by the python script and are ready to be loaded into BQ they will be here:
@@ -52,7 +51,12 @@ To grab any files not in the bucket, but in the file of file names:
 
 _(dont forget to do this for the indices as well)_
 
-All dropped variants are tracked
+Variants may be filtered out of the VAT (that were in the GVS extract) for the following reasons:
+- they are hard-filtered out based on the initial soft filtering from the GVS extract
+- they have excess alternate alleles--currently that cut off is 50 alternate alleles
+- they are duplicates of other variants (this occurs very rarely after normalization) Both duplicates are dropped.
+- there is an N in the reference -- this will be removed from future releases of the VAT
+All dropped variants are tracked in external files, one file for each shard, called track_dropped.tsv
 
 
 
