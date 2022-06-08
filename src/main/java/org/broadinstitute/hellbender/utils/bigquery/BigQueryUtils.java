@@ -425,6 +425,7 @@ public final class BigQueryUtils {
         logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
         // UDFs need to come before the CREATE TABLE clause
+        // The TTL of the temp table is defaulted here to 24 hours
         final String queryStringIntoTempTable =
                 (userDefinedFunctions == null ? "" : userDefinedFunctions) +
                 " CREATE TABLE `" + tempTableFullyQualified + "`\n" +
