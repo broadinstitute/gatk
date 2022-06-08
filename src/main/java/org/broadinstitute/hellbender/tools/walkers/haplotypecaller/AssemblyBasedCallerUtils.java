@@ -398,11 +398,17 @@ public final class AssemblyBasedCallerUtils {
             if (!forcedPileupAlleles.b.isEmpty()) {
                 for(VariantContext delVariant : forcedPileupAlleles.b) {
                     for (Haplotype hap : assemblyResultSet.getHaplotypeList()) {
-                        if (hap.getEventMap().getVariantContexts().stream().anyMatch(v -> v.getStart()==delVariant.getStart()
-                                && delVariant.getReference().equals(v.getReference())
-                                && delVariant.getAlternateAllele(0).equals(v.getAlternateAllele(0)))) {
-                            System.out.println("Flagging hap "+hap+" for containing variant "+delVariant);
-                            haplotypesWithFilterAlleles.add(hap);
+                        if (hap.getEventMap()==null) {
+                            if (!hap.isReference()) {
+                                throw new RuntimeException("empty event map for haplotype" + hap);
+                            }
+                        } else {
+                            if (hap.getEventMap().getVariantContexts().stream().anyMatch(v -> v.getStart() == delVariant.getStart()
+                                    && delVariant.getReference().equals(v.getReference())
+                                    && delVariant.getAlternateAllele(0).equals(v.getAlternateAllele(0)))) {
+                                System.err.println("Flagging hap " + hap + " for containing variant " + delVariant);
+                                haplotypesWithFilterAlleles.add(hap);
+                            }
                         }
                     }
                 }
