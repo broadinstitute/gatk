@@ -367,3 +367,47 @@ task ScaleXYBedValues {
         disks: "local-disk 500 HDD"
     }
 }
+
+task GetNumSamplesLoaded {
+  input {
+    String fq_sample_table
+    String fq_sample_table_lastmodified_timestamp
+    String? service_account_json_path
+    String project_id
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+
+  command <<<
+    set -e
+
+    if [ ~{has_service_account_file} = 'true' ]; then
+    gsutil cp ~{service_account_json_path} local.service_account.json
+    gcloud auth activate-service-account --key-file=local.service_account.json
+    gcloud config set project ~{project_id}
+    fi
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+    'SELECT COUNT(*) as num_rows FROM `~{fq_sample_table}` WHERE is_loaded = true' > num_rows.csv
+
+    NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+
+    [[ $NUMROWS =~ ^[0-9]+$ ]] && echo $NUMROWS || exit 1
+  >>>
+
+  output {
+    Int num_samples = read_int(stdout())
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}

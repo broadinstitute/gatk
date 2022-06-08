@@ -15,7 +15,8 @@ workflow GvsExtractCallset {
     String extract_table_prefix
     String filter_set_name
     String query_project = project_id
-    Int scatter_count
+    # This is optional now since the workflow will choose an appropriate value below if this is unspecified.
+    Int? scatter_count
     Boolean zero_pad_output_vcf_filenames = true
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -45,9 +46,11 @@ workflow GvsExtractCallset {
   String fq_filter_set_info_table = "~{fq_gvs_dataset}.filter_set_info"
   String fq_filter_set_site_table = "~{fq_gvs_dataset}.filter_set_sites"
   String fq_filter_set_tranches_table = "~{fq_gvs_dataset}.filter_set_tranches"
+  String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
   String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
   String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
   String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__VET_DATA"
+
   String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
   Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
 
@@ -63,6 +66,31 @@ workflow GvsExtractCallset {
       y_bed_weight_scaling = y_bed_weight_scaling
   }
 
+  call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
+    input:
+      query_project = project_id,
+      fq_table = fq_sample_table,
+      service_account_json_path = service_account_json_path
+  }
+
+  call Utils.GetNumSamplesLoaded {
+    input:
+      fq_sample_table = fq_sample_table,
+      fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
+      service_account_json_path = service_account_json_path,
+      project_id = project_id,
+      control_samples = control_samples
+  }
+
+  Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
+                                else if GetNumSamplesLoaded.num_samples < 100 then 100 # Quickstart
+                                     else if GetNumSamplesLoaded.num_samples < 1000 then 500
+                                          else if GetNumSamplesLoaded.num_samples < 5000 then 1000
+                                               else if GetNumSamplesLoaded.num_samples < 20000 then 2000 # Stroke Anderson
+                                                    else if GetNumSamplesLoaded.num_samples < 50000 then 10000
+                                                         else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
+                                                              else 40000
+
   call Utils.SplitIntervals {
     input:
       intervals = interval_list,
@@ -71,7 +99,7 @@ workflow GvsExtractCallset {
       ref_dict = reference_dict,
       interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
-      scatter_count = scatter_count,
+      scatter_count = effective_scatter_count,
       output_gcs_dir = output_gcs_dir,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
