@@ -386,9 +386,9 @@ task GetNumSamplesLoaded {
     set -e
 
     if [ ~{has_service_account_file} = 'true' ]; then
-    gsutil cp ~{service_account_json_path} local.service_account.json
-    gcloud auth activate-service-account --key-file=local.service_account.json
-    gcloud config set project ~{project_id}
+      gsutil cp ~{service_account_json_path} local.service_account.json
+      gcloud auth activate-service-account --key-file=local.service_account.json
+      gcloud config set project ~{project_id}
     fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
