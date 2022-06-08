@@ -342,7 +342,12 @@ public final class IntegrationTestSpec {
                     final Reader resultReader = new InputStreamReader(resultZip.getInputStream(resultEntry));
                     final Reader expectedReader = new InputStreamReader(expectedZip.getInputStream(expectedEntry));
 
-                    assertEqualTextFiles(resultReader, expectedReader, resultEntry.getName(), expectedEntry.getName(), null, true);
+                    try {
+                        assertEqualTextFiles(resultReader, expectedReader, resultEntry.getName(), expectedEntry.getName(), null, true);
+                    } catch (AssertionError e) {
+                        throw new AssertionError(String.format("The zipped archive file %s does not match", resultEntry.getName()), e);
+                    }
+
                 } else {
 
                     // binary file must match in size
