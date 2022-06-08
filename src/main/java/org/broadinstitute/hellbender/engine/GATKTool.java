@@ -47,7 +47,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.ShardingVCFWriter;
 
 /**
- * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
+ * Base class for all GATK tools. Tool authors that want to write a "GATK" tool but not use one of
  * the pre-packaged Walker traversals should feel free to extend this class directly. All other
  * GATK tools should extend one of the Walker classes instead.
  */
