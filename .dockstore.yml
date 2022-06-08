@@ -88,6 +88,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-clean-up-temp-tables
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -113,7 +114,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_389_xy_reweighting
+         - rc-clean-up-temp-tables
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -130,6 +131,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-clean-up-temp-tables
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
