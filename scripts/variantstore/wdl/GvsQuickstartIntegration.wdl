@@ -1,7 +1,7 @@
 version 1.0
 
 import "GvsUnified.wdl" as GvsUnified
-import "GvsUtils.wdl" as GvsUtils
+import "GvsUtils.wdl" as Utils
 
 workflow GvsQuickstartIntegration {
 
@@ -53,7 +53,7 @@ workflow GvsQuickstartIntegration {
         Int load_data_batch_size = 1
     }
 
-    call GvsUtils.BuildGATKJarAndCreateDataset {
+    call Utils.BuildGATKJarAndCreateDataset {
         input:
             branch_name = branch_name,
             dataset_prefix = "quickit"

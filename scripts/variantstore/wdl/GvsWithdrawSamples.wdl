@@ -34,12 +34,13 @@ task WithdrawSamples {
     String? service_account_json_path
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
   meta {
     description: "Withdraw Samples from GVS by marking them as 'withdrawn' in the sample_info table"
+    # Might not be strictly necessary to make this volatile, but just in case:
     volatile: true
   }
+
+  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command <<<
     set -e

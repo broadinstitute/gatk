@@ -107,13 +107,11 @@ workflow GvsExtractCallset {
       service_account_json_path = service_account_json_path,
   }
 
-  call Utils.GetBQTablesMaxLastModifiedTimestamp {
-    input:
-      query_project = query_project,
-      data_project = project_id,
-      data_dataset = dataset_name,
-      table_patterns = tables_patterns_for_datetime_check,
-      service_account_json_path = service_account_json_path
+  call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
+       input:
+       query_project = project_id,
+       fq_table = "filter_set_info",
+       service_account_json_path = service_account_json_path,
   }
 
   if ( !do_not_filter_override ) {
@@ -121,10 +119,20 @@ workflow GvsExtractCallset {
       input:
       query_project = query_project,
       filter_set_name = filter_set_name,
+      filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp,
       data_project = project_id,
       data_dataset = dataset_name,
       service_account_json_path = service_account_json_path
     }
+  }
+
+  call Utils.GetBQTablesMaxLastModifiedTimestamp {
+    input:
+      query_project = query_project,
+      data_project = project_id,
+      data_dataset = dataset_name,
+      table_patterns = tables_patterns_for_datetime_check,
+      service_account_json_path = service_account_json_path
   }
 
   scatter(i in range(length(SplitIntervals.interval_files))) {
@@ -175,9 +183,18 @@ workflow GvsExtractCallset {
   }
 
   if (control_samples == false) {
+
+    call Utils.GetBQTableLastModifiedDatetime {
+      input:
+        query_project = query_project,
+        fq_table = fq_samples_to_extract_table,
+        service_account_json_path = service_account_json_path
+    }
+
     call GenerateSampleListFile {
       input:
         fq_samples_to_extract_table = fq_samples_to_extract_table,
+        samples_to_extract_table_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         output_gcs_dir = output_gcs_dir,
         query_project = query_project,
         service_account_json_path = service_account_json_path
@@ -200,6 +217,10 @@ task ValidateFilterSetName {
     String data_dataset
     String query_project
     String? service_account_json_path
+    String filter_set_info_timestamp
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -278,6 +299,9 @@ task ExtractTask {
 
     # for call-caching -- check if DB tables haven't been updated since the last run
     String max_last_modified_timestamp
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -367,6 +391,9 @@ task SumBytes {
   input {
     Array[Float] file_sizes_bytes
   }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
 
   command <<<
     set -e
@@ -394,6 +421,9 @@ task CreateManifest {
       Array[String] manifest_lines
       String? output_gcs_dir
       String? service_account_json_path
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
@@ -429,17 +459,16 @@ task CreateManifest {
 }
 
 task GenerateSampleListFile {
-  # should not call cache in case of withdrawn samples
-  meta {
-    volatile: true
-  }
-
   input {
     String fq_samples_to_extract_table
+    String samples_to_extract_table_timestamp
     String query_project
 
     String? output_gcs_dir
     String? service_account_json_path
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'

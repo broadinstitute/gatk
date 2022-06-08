@@ -48,11 +48,6 @@ workflow GvsPrepareCallset {
 }
 
 task PrepareRangesCallsetTask {
-  # indicates that this task should NOT be call cached
-  meta {
-    volatile: true
-  }
-
   input {
     String destination_cohort_table_prefix
     File? sample_names_to_extract
@@ -67,6 +62,10 @@ task PrepareRangesCallsetTask {
     Int temp_table_ttl_in_hours = 24
 
     String? service_account_json_path
+  }
+  meta {
+    # All kinds of BQ reading happening in the referenced Python script.
+    volatile: true
   }
   # Note the coercion of optional query_labels using select_first([expr, default])
   Array[String] query_label_args = if defined(query_labels) then prefix("--query_labels ", select_first([query_labels])) else []
