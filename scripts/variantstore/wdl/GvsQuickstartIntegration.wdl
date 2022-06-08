@@ -47,6 +47,10 @@ workflow GvsQuickstartIntegration {
                                         "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
                                         "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
                                         ]
+
+        Int? extract_scatter_count
+
+        Int load_data_batch_size = 1
     }
 
     call GvsUtils.BuildGATKJarAndCreateDataset {
@@ -65,10 +69,11 @@ workflow GvsQuickstartIntegration {
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
             extract_table_prefix = "quickit",
-            extract_scatter_count = 100,
+            extract_scatter_count = extract_scatter_count,
             # Force filtering off as it is not deterministic and the initial version of this integration test does not
             # allow for inexact matching of actual and expected results.
-            extract_do_not_filter_override = true
+            extract_do_not_filter_override = true,
+            load_data_batch_size = load_data_batch_size
     }
 
     call AssertIdenticalOutputs {

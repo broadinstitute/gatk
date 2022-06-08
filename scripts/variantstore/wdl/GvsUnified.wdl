@@ -56,7 +56,7 @@ workflow GvsUnified {
         # End GvsPrepareRangesCallset
 
         # Begin GvsExtractCallset
-        Int extract_scatter_count
+        Int? extract_scatter_count
 
         File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
