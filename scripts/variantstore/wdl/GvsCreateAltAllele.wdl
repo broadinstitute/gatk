@@ -11,7 +11,7 @@ workflow GvsCreateAltAllele {
     String? service_account_json_path
   }
 
-  String fq_alt_allele_table = "~{dataset_name}.alt_allele"
+  String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
 
   call GetVetTableNames {
     input:

@@ -161,7 +161,8 @@ task GetBQTableLastModifiedDatetime {
   # try to get the last modified date for the table in question; fail if something comes back from BigQuery
   # that isn't in the right format (e.g. an error)
   command <<<
-    set -e
+    set -o xtrace
+    set -o errexit
 
     if [ ~{has_service_account_file} = 'true' ]; then
       gsutil cp ~{service_account_json_path} local.service_account.json
