@@ -67,6 +67,20 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testSimpleExpressionSelection--" + testFile, this);
     }
 
+    @Test(expectedExceptions = UserException.ValidationFailure.class)
+    public void testResortingFileWarning() throws IOException {
+        final String testFile = getToolTestDataDir() + "unsortedGenotypeFieldsTestFile.vcf";
+        final File output = File.createTempFile("test_unsortedGenotypeField", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(testFile)
+                .addOutput(output)
+                .addFlag("fail-on-unsorted-genotype");
+
+        runCommandLine(args);
+
+    }
+
     @Test
     public void testRepeatedLineSelectionAndExludeFiltered() throws IOException {
         final String testFile = getToolTestDataDir() + "test.dup.vcf";
