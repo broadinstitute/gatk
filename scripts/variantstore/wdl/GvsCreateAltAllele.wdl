@@ -29,6 +29,7 @@ workflow GvsCreateAltAllele {
 
   call Utils.GetBQTableLastModifiedDatetime {
     input:
+      go = CreateAltAlleleTable.done,
       query_project = project_id,
       fq_table = fq_alt_allele_table,
       service_account_json_path = service_account_json_path
@@ -97,6 +98,7 @@ task GetVetTableNames {
 
 task CreateAltAlleleTable {
   input {
+    Boolean go = true
     String dataset_name
     String project_id
 
@@ -156,7 +158,7 @@ task CreateAltAlleleTable {
   }
 
   output {
-    String done = "done"
+    Boolean done = true
   }
 }
 

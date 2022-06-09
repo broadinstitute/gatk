@@ -146,6 +146,7 @@ task SplitIntervals {
 
 task GetBQTableLastModifiedDatetime {
   input {
+    Boolean go = true
     String query_project
     String fq_table
     String? service_account_json_path
