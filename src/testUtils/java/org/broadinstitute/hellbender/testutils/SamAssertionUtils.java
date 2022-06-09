@@ -395,6 +395,20 @@ public final class SamAssertionUtils {
     }
 
     /**
+     * Compares the two given bam files, optionally sorting them before comparison.
+     * The sorting is helpful to compare files that are different but equivalent (eg read pairs with same coordinates get reordered).
+     */
+    public static void assertEqualBamFiles(
+            final Path resultFile,
+            final Path expectedFile,
+            final Path reference,
+            final ValidationStringency stringency) throws IOException {
+
+            assertSamsEqual(resultFile, expectedFile, stringency, reference);
+
+    }
+
+    /**
      * Validate/assert that the contents are CRAM if the extension is .cram
      */
     public static void assertCRAMContentsIfCRAM(final File putativeCRAMFile) {

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.io.Files;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.samtools.util.FileExtensions;
 import org.aeonbits.owner.util.Collections;
 import org.apache.commons.lang3.StringUtils;
@@ -14,13 +15,18 @@ import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 
 import java.io.*;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 
 public final class IntegrationTestSpec {
 
@@ -245,6 +251,23 @@ public final class IntegrationTestSpec {
         }
     }
 
+    public static void assertMatchingFiles(final List<Path> resultFiles, final ValidationStringency stringency, final boolean trimWhiteSpace, final List<Path> expectedFiles) throws IOException {
+        Assert.assertEquals(resultFiles.size(), expectedFiles.size());
+        for (int i = 0; i < resultFiles.size(); i++) {
+            final Path resultFile = resultFiles.get(i);
+            final String expectedFileName = expectedFiles.get(i).toString();
+            final Path expectedFile = expectedFiles.get(i);
+            final boolean isIndex = INDEX_EXTENSIONS.stream().anyMatch(ext -> expectedFileName.endsWith(ext));
+            if (isIndex) {
+                Assert.assertEquals(java.nio.file.Files.readAllBytes(resultFile), java.nio.file.Files.readAllBytes(expectedFile), String.format("Resulting index file %s different from expected",expectedFileName));
+            } else if (expectedFileName.endsWith(".bam")) {
+                SamAssertionUtils.assertEqualBamFiles(resultFile, expectedFile, null, stringency);
+            } else {
+                assertEqualTextFiles(resultFile, expectedFile, null, trimWhiteSpace);
+            }
+        }
+    }
+
     public static void assertEqualTextFiles(final File resultFile, final File expectedFile) throws IOException {
         assertEqualTextFiles(resultFile, expectedFile, null, true);
     }
@@ -311,56 +334,74 @@ public final class IntegrationTestSpec {
         // open both as zip files
         final ZipFile             resultZip = new ZipFile(resultFile);
         final ZipFile             expectedZip = new ZipFile(expectedFile);
+//
+//        File expectedTMP = BaseTest.createTempDir("expected."+expectedFile.getName());
+//        File resultTMP = BaseTest.createTempDir("expected."+expectedFile.getName());
 
-        try {
-
+        try (FileSystem expectedFS = FileSystems.newFileSystem(expectedFile.toPath(), null);
+             FileSystem resultFS = FileSystems.newFileSystem(resultFile.toPath(), null)
+        ) {
             // walk the streams, comparing name and content
-            Enumeration<? extends ZipEntry> resultEntries = resultZip.entries();
-            Enumeration<? extends ZipEntry> expectedEntries = expectedZip.entries();
-            while (resultEntries.hasMoreElements() || expectedEntries.hasMoreElements()) {
-
-                // access entries
-                final ZipEntry resultEntry = resultEntries.hasMoreElements() ? resultEntries.nextElement() : null;
-                final ZipEntry expectedEntry = expectedEntries.hasMoreElements() ? expectedEntries.nextElement() : null;
-
-                // both should have valid entries
-                if (resultEntry == null) {
-                    throw new AssertionError("result zip missing entries, near " + expectedEntry.getName());
-                } else if (expectedEntry == null) {
-                    throw new AssertionError("result zip has extra extries near " + resultEntry.getName());
+            final List<Path> resultEntries = StreamSupport.stream(resultFS.getRootDirectories().spliterator(), false).flatMap(root -> {
+                try {
+                    return java.nio.file.Files.walk(root);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
+                return Stream.empty();
+            }).filter(java.nio.file.Files::isRegularFile).collect(Collectors.toList());
 
-                // name should match
-                if (!resultEntry.getName().equals(expectedEntry.getName())) {
-                    throw new AssertionError("result entry name differs from expected: " + resultEntry.getName() + " != " + expectedEntry.getName());
+            final List<Path> expectedEntries = StreamSupport.stream(expectedFS.getRootDirectories().spliterator(), false).flatMap(root -> {
+                try {
+                    return java.nio.file.Files.walk(root);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
+                return Stream.empty();
+            }).filter(java.nio.file.Files::isRegularFile).collect(Collectors.toList());
 
-                // determine text/binary (names already verified to be the same)
-                final boolean isText = (assist != null) ? assist.isFilenameText(resultEntry.getName()) : false;
-                if (isText) {
-
-                    final Reader resultReader = new InputStreamReader(resultZip.getInputStream(resultEntry));
-                    final Reader expectedReader = new InputStreamReader(expectedZip.getInputStream(expectedEntry));
-
-                    try {
-                        assertEqualTextFiles(resultReader, expectedReader, resultEntry.getName(), expectedEntry.getName(), null, true);
-                    } catch (AssertionError e) {
-                        throw new AssertionError(String.format("The zipped archive file %s does not match", resultEntry.getName()), e);
-                    }
-
-                } else {
-
-                    // binary file must match in size
-                    if (resultEntry.getSize() != expectedEntry.getSize()) {
-                        throw new AssertionError("result entry " + resultEntry.getName() + " differs from expected in size: "
-                                + resultEntry.getSize() + " != " + expectedEntry.getSize());
-                    }
-                }
-            }
-        } finally {
-            resultZip.close();
-            expectedZip.close();
+            assertMatchingFiles(resultEntries, ValidationStringency.DEFAULT_STRINGENCY, false, expectedEntries);
         }
+//            while (resultEntries.hasNext() || expectedEntries.hasNext()) {
+//
+//                // access entries
+//                final Path resultEntry = resultEntries.hasNext() ? resultEntries.next() : null;
+//                final Path expectedEntry = expectedEntries.hasNext() ? expectedEntries.next() : null;
+//
+//                // both should have valid entries
+//                if (resultEntry == null) {
+//                    throw new AssertionError("result zip missing entries, near " + expectedEntry);
+//                } else if (expectedEntry == null) {
+//                    throw new AssertionError("result zip has extra extries near " + resultEntry);
+//                }
+//
+//                // name should match
+//                if (!resultEntry.getName(-1).equals(expectedEntry.getName(-1))) {
+//                    throw new AssertionError("result entry name differs from expected: " + resultEntry.getName() + " != " + expectedEntry.getName());
+//                }
+//
+//                // determine text/binary (names already verified to be the same)
+//                final boolean isText = (assist != null) ? assist.isFilenameText(resultEntry.getName()) : false;
+//                if (isText) {
+//                    IntegrationTestSpec.assertMatchingFiles();
+//
+//                    final Reader resultReader = new InputStreamReader(new BlockCompressedInputStream(resultZip.getInputStream(resultEntry)));
+//                    final Reader expectedReader = new InputStreamReader(new BlockCompressedInputStream(expectedZip.getInputStream(expectedEntry)));
+//
+//                    assertEqualTextFiles(resultReader, expectedReader, resultEntry.getName(), expectedEntry.getName(), null, true);
+//                } else {
+//
+//                    // binary file must match in size
+//                    if (resultEntry.getSize() != expectedEntry.getSize()) {
+//                        throw new AssertionError("result entry " + resultEntry.getName() + " differs from expected in size: "
+//                                + resultEntry.getSize() + " != " + expectedEntry.getSize());
+//                    }
+//                }
+//            }
+//        } finally {
+//            resultZip.close();
+//            expectedZip.close();
+//        }
     }
 
 
