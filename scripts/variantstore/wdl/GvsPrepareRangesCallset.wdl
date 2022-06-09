@@ -105,7 +105,7 @@ task PrepareRangesCallsetTask {
           --query_project ~{query_project} \
           ~{sep=" " query_label_args} \
           --fq_sample_mapping_table ~{fq_sample_mapping_table} \
-          --ttl ~{temp_table_ttl_in_hours} \
+          --ttl ~{temp_table_ttl_in_hours} \ ## note that this does let us pass in a TTL and it is 72 hours and 24 hours in diff lines of this file?
           $SERVICE_ACCOUNT_STANZA
   >>>
   output {
