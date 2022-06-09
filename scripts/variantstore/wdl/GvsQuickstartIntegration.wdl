@@ -1,13 +1,13 @@
 version 1.0
 
-import "GvsUnified.wdl" as GvsUnified
+import "GvsUnified.wdl" as Unified
 import "GvsUtils.wdl" as Utils
 
 workflow GvsQuickstartIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://broad-dsp-spec-ops/quickstart_integration/2022-04-25/"
+        String expected_output_prefix = "gs://broad-dsp-spec-ops/quickstart_integration/2022-06-03/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -59,7 +59,7 @@ workflow GvsQuickstartIntegration {
             dataset_prefix = "quickit"
     }
 
-    call GvsUnified.GvsUnified {
+    call Unified.GvsUnified {
         input:
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             project_id = "spec-ops-aou",
@@ -73,7 +73,7 @@ workflow GvsQuickstartIntegration {
             # Force filtering off as it is not deterministic and the initial version of this integration test does not
             # allow for inexact matching of actual and expected results.
             extract_do_not_filter_override = true,
-            load_data_batch_size = load_data_batch_size
+            load_data_batch_size = load_data_batch_size,
     }
 
     call AssertIdenticalOutputs {
@@ -99,6 +99,11 @@ task AssertIdenticalOutputs {
     }
 
     command <<<
+        set -o errexit
+        set -o nounset
+        set -o pipefail
+        set -o xtrace
+
         failures=()
 
         # Where the current set of expected results lives in the cloud
@@ -115,7 +120,7 @@ task AssertIdenticalOutputs {
         done
         # Download and unzip all the expected data
         cat expected_fofn.txt | gsutil -m cp -I .
-        gzip -d *
+        gzip -d *.gz
         cd ..
 
         # Also unzip actual result data
@@ -125,8 +130,11 @@ task AssertIdenticalOutputs {
         for file in ~{sep=' ' actual_vcfs}; do
           unzipped=${file%.gz}
           expected="expected/$(basename $unzipped)"
+          set +o errexit
           cmp <(grep '^#' $unzipped) <(grep '^#' $expected)
-          if [[ $? -ne 0 ]]; then
+          rc=$?
+          set -o errexit
+          if [[ $rc -ne 0 ]]; then
             # If there is a mismatch add it to a list of failures but keep on looking for mismatches.
             failures+=( $unzipped )
           fi
@@ -147,8 +155,11 @@ task AssertIdenticalOutputs {
         for file in ~{sep=' ' actual_vcfs}; do
           unzipped=${file%.gz}
           expected="expected/$(basename $unzipped)"
+          set +o errexit
           cmp $unzipped $expected
-          if [[ $? -ne 0 ]]; then
+          rc=$?
+          set -o errexit
+          if [[ $rc -ne 0 ]]; then
             echo "Error: file contents of expected and actual do not match: $(basename $unzipped)"
             fail=1
           fi
