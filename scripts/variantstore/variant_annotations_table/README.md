@@ -5,7 +5,7 @@
 - [GvsCreateVAT.wdl](/scripts/variantstore/wdl/GvsCreateVAT.wdl)
 - [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl)
 
-The pipeline takes in a jointVCF and outputs a table in BigQuery.
+The pipeline takes in jointVCFs (and their index files), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
 
 **GvsCreateVAT** creates the table, while
 **GvsValidateVAT** checks and validates the created VAT and prints a report of any failing validation
