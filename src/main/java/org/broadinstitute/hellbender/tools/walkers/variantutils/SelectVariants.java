@@ -510,7 +510,8 @@ public final class SelectVariants extends VariantWalker {
 
         // Look at the parameters to decide which analysis to perform
         discordanceOnly = discordanceTrack != null;
-        if (discordanceOnly) {logger.info("Selecting only variants discordant with the track: " + discordanceTrack.getName());
+        if (discordanceOnly) {
+            logger.info("Selecting only variants discordant with the track: " + discordanceTrack.getName());
         }
 
         concordanceOnly = concordanceTrack != null;
