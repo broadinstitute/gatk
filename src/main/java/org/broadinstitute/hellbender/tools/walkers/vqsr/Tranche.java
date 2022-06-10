@@ -197,6 +197,26 @@ public class Tranche {
         }
     }
 
+    protected static long getRequiredLong(final Map<String, String> bindings, final String key) {
+        if ( bindings.containsKey(key) ) {
+            try{
+                return Long.valueOf(bindings.get(key));
+            } catch (NumberFormatException e){
+                throw new UserException.MalformedFile("Malformed tranches file. Invalid value for key " + key);
+            }
+        } else {
+            throw new UserException.MalformedFile("Malformed tranches file.  Missing required key " + key);
+        }
+    }
+
+    protected static long getOptionalLong(final Map<String, String> bindings, final String key, final int defaultValue) {
+        try{
+            return Long.valueOf(bindings.getOrDefault(key, String.valueOf(defaultValue)));
+        } catch (NumberFormatException e){
+            throw new UserException.MalformedFile("Malformed tranches file. Invalid value for key " + key);
+        }
+    }
+
     protected double getTruthSensitivity() {
         return accessibleTruthSites > 0 ? callsAtTruthSites / (1.0*accessibleTruthSites) : 0.0;
     }

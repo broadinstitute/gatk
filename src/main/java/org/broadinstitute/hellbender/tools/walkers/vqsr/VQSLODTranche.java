@@ -114,9 +114,9 @@ public class VQSLODTranche extends Tranche {
                     }
                     tranches.add(new VQSLODTranche(
                             getRequiredDouble(bindings, "minVQSLod"),
-                            getOptionalInteger(bindings, "numKnown", -1),
+                            getOptionalLong(bindings, "numKnown", -1),
                             getOptionalDouble(bindings, "knownTiTv", -1.0),
-                            getRequiredInteger(bindings, "numNovel"),
+                            getRequiredLong(bindings, "numNovel"),
                             getRequiredDouble(bindings, "novelTiTv"),
                             getOptionalInteger(bindings, "accessibleTruthSites", -1),
                             getOptionalInteger(bindings, "callsAtTruthSites", -1),
