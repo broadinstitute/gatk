@@ -105,7 +105,7 @@ task PrepareRangesCallsetTask {
           --query_project ~{query_project} \
           ~{sep=" " query_label_args} \
           --fq_sample_mapping_table ~{fq_sample_mapping_table} \
-          --ttl ~{temp_table_ttl_in_hours} \ 
+          --ttl ~{temp_table_ttl_in_hours} \
           $SERVICE_ACCOUNT_STANZA
   >>>
   output {
