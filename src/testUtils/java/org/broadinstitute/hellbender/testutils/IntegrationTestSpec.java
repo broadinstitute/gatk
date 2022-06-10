@@ -331,13 +331,6 @@ public final class IntegrationTestSpec {
 
     public static void assertEqualZipFiles(final File resultFile, final File expectedFile, final EqualZipFilesAssist assist) throws IOException {
 
-        // open both as zip files
-        final ZipFile             resultZip = new ZipFile(resultFile);
-        final ZipFile             expectedZip = new ZipFile(expectedFile);
-//
-//        File expectedTMP = BaseTest.createTempDir("expected."+expectedFile.getName());
-//        File resultTMP = BaseTest.createTempDir("expected."+expectedFile.getName());
-
         try (FileSystem expectedFS = FileSystems.newFileSystem(expectedFile.toPath(), null);
              FileSystem resultFS = FileSystems.newFileSystem(resultFile.toPath(), null)
         ) {
@@ -362,48 +355,6 @@ public final class IntegrationTestSpec {
 
             assertMatchingFiles(resultEntries, ValidationStringency.DEFAULT_STRINGENCY, false, expectedEntries);
         }
-//            while (resultEntries.hasNext() || expectedEntries.hasNext()) {
-//
-//                // access entries
-//                final Path resultEntry = resultEntries.hasNext() ? resultEntries.next() : null;
-//                final Path expectedEntry = expectedEntries.hasNext() ? expectedEntries.next() : null;
-//
-//                // both should have valid entries
-//                if (resultEntry == null) {
-//                    throw new AssertionError("result zip missing entries, near " + expectedEntry);
-//                } else if (expectedEntry == null) {
-//                    throw new AssertionError("result zip has extra extries near " + resultEntry);
-//                }
-//
-//                // name should match
-//                if (!resultEntry.getName(-1).equals(expectedEntry.getName(-1))) {
-//                    throw new AssertionError("result entry name differs from expected: " + resultEntry.getName() + " != " + expectedEntry.getName());
-//                }
-//
-//                // determine text/binary (names already verified to be the same)
-//                final boolean isText = (assist != null) ? assist.isFilenameText(resultEntry.getName()) : false;
-//                if (isText) {
-//                    IntegrationTestSpec.assertMatchingFiles();
-//
-//                    final Reader resultReader = new InputStreamReader(new BlockCompressedInputStream(resultZip.getInputStream(resultEntry)));
-//                    final Reader expectedReader = new InputStreamReader(new BlockCompressedInputStream(expectedZip.getInputStream(expectedEntry)));
-//
-//                    assertEqualTextFiles(resultReader, expectedReader, resultEntry.getName(), expectedEntry.getName(), null, true);
-//                } else {
-//
-//                    // binary file must match in size
-//                    if (resultEntry.getSize() != expectedEntry.getSize()) {
-//                        throw new AssertionError("result entry " + resultEntry.getName() + " differs from expected in size: "
-//                                + resultEntry.getSize() + " != " + expectedEntry.getSize());
-//                    }
-//                }
-//            }
-//        } finally {
-//            resultZip.close();
-//            expectedZip.close();
-//        }
     }
-
-
 
 }
