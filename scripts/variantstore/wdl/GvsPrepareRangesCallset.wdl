@@ -36,7 +36,7 @@ workflow GvsPrepareCallset {
       fq_sample_mapping_table         = fq_sample_mapping_table,
       fq_temp_table_dataset           = fq_temp_table_dataset,
       fq_destination_dataset          = fq_destination_dataset,
-      temp_table_ttl_in_hours         = 72,
+      temp_table_ttl_in_hours         = 24,
       control_samples                 = control_samples,
       service_account_json_path       = service_account_json_path,
   }
