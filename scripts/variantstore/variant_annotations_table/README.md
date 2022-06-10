@@ -1,13 +1,14 @@
+
 # Creating the Variant Annotations Table
 
 ### The VAT pipeline is a set of WDLs
 - [GvsCreateVAT.wdl](/scripts/variantstore/wdl/GvsCreateVAT.wdl)
 - [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl)
 
-The pipeline takes in a jointVCF and outputs a table in BigQuery.
+The pipeline takes in jointVCFs (and their index files), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
 
 **GvsCreateVAT** creates the table, while
-**GvsValidateVAT** checks and validates the VAT
+**GvsValidateVAT** checks and validates the created VAT and prints a report of any failing validation
 
 
 ### Run GvsCreateVAT:
@@ -24,14 +25,10 @@ All optional inputs are provided with default values.
 
 ### Notes:
 
-When running this pipeline, currently I try to stay around 5k-10k shards—I have yet to successfully run more than that, but I think it’s more about nerves than anything else. At 20k shards, the shards do tend to step on each other if there are too many—not that anything fails or is wrong, but I’d rather get results for a run that I then do multiple times than wait for queued jobs.
-
 Note that there are two temporary tables that are created in addition to the main VAT table: the Genes and VT tables. They have a time to live of 24 hours.
 The VAT table is created by that query fresh each time so that there is no risk of duplicates.  
-HOWEVER the Genes and VT tables are not. They are cleaned up after 24 hours, but this code needs to be tweaked so that you can’t get into a state where duplicates are created here. The real question here is going to be, is there a use case that we might want to run where adding to a VAT that was created say weeks ago is beneficial, but given that calculations occur on a sample summing level, this seems unlikely.
 
-
-To check that all of the shards have successfully made it past the first of the sub workflow steps (the most complicated and likely to fail) they will need to be annotated / transformed into json files and put here:
+To check that all of the shards have successfully made it past the first of the sub workflow steps (the most complicated and likely to fail) make sure that the full number of expected files are here:
 `gsutil ls  [output_path]/annotations/  | wc -l`
 
 And then once they have been transformed by the python script and are ready to be loaded into BQ they will be here:
@@ -43,7 +40,7 @@ Once the shards have make it into the /genes/ and /vt/ directories, the majority
 They are ready to be loaded into BQ. You will notice that past this step, all there is to do is create the BQ tables, load the BQ tables, run a join query and then the remaining steps are all validations or an export into tsv.
 
 
-There are often a fair number of failures from google in this workflow—-so far they have all been 503s. Because of the re-working of the workflow, they should not interrupt unaffected shards, but the shards that are affected will need to be collected and put into a new File of File names and re-run.
+Sometimes shards will fail with a 503 from Google. The shards that are affected will need to be collected and put into a new File of File names and re-run.
 In theory you could actually just re-run the pipeline entirely and since the 503s seem to be completely random and intermittent, the same shards likely wont fail twice and you’d get everything you need, but at low efficiency and high expense.
 To grab any files not in the bucket, but in the file of file names:
 
@@ -54,12 +51,12 @@ To grab any files not in the bucket, but in the file of file names:
 
 _(dont forget to do this for the indices as well)_
 
-
-
-
-There is a line of code in ExtractAnAcAfFromVCF (the most expensive in $ and time task in the workflow) that can be removed because it is used to track the variants that are dropped _TODO: Rori to make using it a parameter_
-
-
+Variants may be filtered out of the VAT (that were in the GVS extract) for the following reasons:
+- they are hard-filtered out based on the initial soft filtering from the GVS extract
+- they have excess alternate alleles--currently that cut off is 50 alternate alleles
+- they are duplicates of other variants (this occurs very rarely after normalization) Both duplicates are dropped.
+- there is an N in the reference -- this will be removed from future releases of the VAT
+All dropped variants are tracked in external files, one file for each shard, called track_dropped.tsv
 
 
 
