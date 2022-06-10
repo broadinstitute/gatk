@@ -251,7 +251,7 @@ public final class IntegrationTestSpec {
         }
     }
 
-    public static void assertMatchingFiles(final List<Path> resultFiles, final ValidationStringency stringency, final boolean trimWhiteSpace, final List<Path> expectedFiles) throws IOException {
+    public static void assertMatchingFiles(final List<Path> resultFiles, final ValidationStringency stringency, final boolean trimWhiteSpace, final boolean skipIndexes, final List<Path> expectedFiles) throws IOException {
         Assert.assertEquals(resultFiles.size(), expectedFiles.size());
         for (int i = 0; i < resultFiles.size(); i++) {
             final Path resultFile = resultFiles.get(i);
@@ -259,7 +259,12 @@ public final class IntegrationTestSpec {
             final Path expectedFile = expectedFiles.get(i);
             final boolean isIndex = INDEX_EXTENSIONS.stream().anyMatch(ext -> expectedFileName.endsWith(ext));
             if (isIndex) {
-                Assert.assertEquals(java.nio.file.Files.readAllBytes(resultFile), java.nio.file.Files.readAllBytes(expectedFile), String.format("Resulting index file %s different from expected",expectedFileName));
+                //optionally we might not want to make assertions about the exact bytes of the index files
+                if (skipIndexes) {
+                    Assert.assertEquals(java.nio.file.Files.readAllBytes(resultFile).length > 0, java.nio.file.Files.readAllBytes(expectedFile).length > 0, String.format("Resulting index file %s was missing or empty",expectedFileName));
+                } else {
+                    Assert.assertEquals(java.nio.file.Files.readAllBytes(resultFile), java.nio.file.Files.readAllBytes(expectedFile), String.format("Resulting index file %s different from expected", expectedFileName));
+                }
             } else if (expectedFileName.endsWith(".bam")) {
                 SamAssertionUtils.assertEqualBamFiles(resultFile, expectedFile, null, stringency);
             } else {
@@ -353,7 +358,7 @@ public final class IntegrationTestSpec {
                 return Stream.empty();
             }).filter(java.nio.file.Files::isRegularFile).collect(Collectors.toList());
 
-            assertMatchingFiles(resultEntries, ValidationStringency.DEFAULT_STRINGENCY, false, expectedEntries);
+            assertMatchingFiles(resultEntries, ValidationStringency.DEFAULT_STRINGENCY, false, true, expectedEntries);
         }
     }
 
