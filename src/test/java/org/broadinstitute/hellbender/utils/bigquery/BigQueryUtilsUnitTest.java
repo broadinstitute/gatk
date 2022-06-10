@@ -140,7 +140,7 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(groups = {"cloud"})
-    public void testQueryWithNullWorkflow_Name() {
+    public void testQueryWithNullWorkflowName() {
         final String workflowQuery = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
         final List<String> fieldsToRetrieve = new LinkedList<>();
         final String noUDFs = null;
