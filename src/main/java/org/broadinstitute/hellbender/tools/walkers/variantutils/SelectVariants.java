@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -420,6 +421,11 @@ public final class SelectVariants extends VariantWalker {
             doc="Suppress reference path in output for test result differencing")
     private boolean suppressReferencePath = false;
 
+    @Hidden
+    @Argument(fullName="fail-on-unsorted-genotype", optional=true,
+            doc="Throw an exception if the genotype field is unsorted")
+    private boolean failOnUnsortedGenotype = false;
+
     @ArgumentCollection
     private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
 
@@ -471,6 +477,21 @@ public final class SelectVariants extends VariantWalker {
     @Override
     public void onTraversalStart() {
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
+
+        final List<String> genotypeField = getHeaderForVariants().getGenotypeSamples();
+        if(!ParsingUtils.isSorted(genotypeField)){
+            if(genotypeField.size() > 10) {
+                logger.warn("***************************************************************************************************************************");
+                logger.warn("* Detected unsorted genotype fields on input.                                                                             *");
+                logger.warn("* SelectVariants will sort the genotypes on output which could result in slow traversal as it involves genotype parsing.  *");
+                logger.warn("***************************************************************************************************************************");
+            }
+            if(failOnUnsortedGenotype){
+                throw new UserException.ValidationFailure("Input file genotypes are unsorted and we are in strict genotype ordering validation mode.");
+            }
+        }
+
+
 
         // Initialize VCF header lines
         final Set<VCFHeaderLine> headerLines = createVCFHeaderLineList(vcfHeaders);
