@@ -19,7 +19,7 @@ REF_TABLE_PREFIX = "ref_ranges_"
 VET_TABLE_PREFIX = "vet_"
 SAMPLES_PER_PARTITION = 4000
 
-FINAL_TABLE_TTL = ""
+FINAL_TABLE_TTL = "" ## Note: We may want to make these prepare table temporary, especially as part of the custom cohort creation workflow
 #FINAL_TABLE_TTL = " OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 72 HOUR)) "
 
 # temp-table-uuid
@@ -29,7 +29,7 @@ print(f"running with prefix {output_table_prefix}")
 REF_VET_TABLE_COUNT = -1
 client = None
 
-EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
+EXTRACT_SAMPLE_TABLE = f"temp_table_prepare_{output_table_prefix}_sample_names"
 
 def dump_job_stats():
   total = 0
@@ -313,7 +313,7 @@ if __name__ == '__main__':
   parser.add_argument('--fq_sample_mapping_table',type=str, help='Mapping table from sample_id to sample_name', required=True)
   parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
   parser.add_argument('--max_tables',type=int, help='Maximum number of PET/VET tables to consider', required=False, default=250)
-  parser.add_argument('--ttl',type=int, help='Temp table TTL in hours', required=False, default=72)
+  parser.add_argument('--ttl',type=int, help='Temp table TTL in hours', required=False, default=24)
 
   sample_args = parser.add_mutually_exclusive_group(required=True)
   sample_args.add_argument('--sample_names_to_extract',type=str, help='File containing list of samples to extract, 1 per line')

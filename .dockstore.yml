@@ -170,6 +170,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-clean-up-temp-tables
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl

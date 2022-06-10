@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -410,8 +411,10 @@ public final class BigQueryUtils {
                                                                   final String datasetID,
                                                                   final String userDefinedFunctions,
                                                                   final boolean runQueryInBatchMode,
-                                                                  Map<String, String> labels) {
-        final String tempTableName = String.format("%s_%s", "temp_table", UUID.randomUUID().toString().replace('-', '_'));
+                                                                  Map<String, String> labels,
+                                                                  final String workflow_name) {
+        final String workflow = Optional.ofNullable(workflow_name).orElse("GVS");
+        final String tempTableName = String.format("%s_%s_%s", "temp_table", workflow, UUID.randomUUID().toString().replace('-', '_'));
         final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, datasetID, tempTableName);
 
         final String queryStringWithUDFs = userDefinedFunctions == null ? queryString : userDefinedFunctions + queryString;
@@ -422,6 +425,7 @@ public final class BigQueryUtils {
         logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
         // UDFs need to come before the CREATE TABLE clause
+        // The TTL of the temp table is defaulted here to 24 hours
         final String queryStringIntoTempTable =
                 (userDefinedFunctions == null ? "" : userDefinedFunctions) +
                 " CREATE TABLE `" + tempTableFullyQualified + "`\n" +
