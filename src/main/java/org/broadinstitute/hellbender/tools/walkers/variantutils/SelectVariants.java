@@ -478,9 +478,14 @@ public final class SelectVariants extends VariantWalker {
     public void onTraversalStart() {
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
 
-        List<String> genotypeField = getHeaderForVariants().getGenotypeSamples();
+        final List<String> genotypeField = getHeaderForVariants().getGenotypeSamples();
         if(!ParsingUtils.isSorted(genotypeField)){
-            logger.warn("Detected unsorted genotype fields on input. This could result in very slow traversal for large files.");
+            if(genotypeField.size() > 10) {
+                logger.warn("***************************************************************************************************************************");
+                logger.warn("* Detected unsorted genotype fields on input.                                                                             *");
+                logger.warn("* SelectVariants will sort the genotypes on output which could result in slow traversal as it involves genotype parsing.  *");
+                logger.warn("***************************************************************************************************************************");
+            }
             if(failOnUnsortedGenotype){
                 throw new UserException.ValidationFailure("Input file genotypes are unsorted and we are in strict genotype ordering validation mode.");
             }
