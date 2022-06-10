@@ -97,6 +97,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_447_fixup_non_fq_invocations
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -113,6 +114,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_447_fixup_non_fq_invocations
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -198,6 +200,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_447_fixup_non_fq_invocations
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

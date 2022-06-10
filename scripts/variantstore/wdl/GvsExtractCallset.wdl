@@ -110,7 +110,7 @@ workflow GvsExtractCallset {
   call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
        input:
        query_project = project_id,
-       fq_table = "filter_set_info",
+       fq_table = "~{fq_gvs_dataset}.filter_set_info",
        service_account_json_path = service_account_json_path,
   }
 
