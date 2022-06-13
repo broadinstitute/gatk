@@ -250,6 +250,8 @@ task SetIsLoadedColumn {
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label mangedby:importgenomes"
 
   command <<<
     set -ex
@@ -263,7 +265,7 @@ task SetIsLoadedColumn {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
-    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
     'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` GROUP BY 1 HAVING COUNT(1) = 2)'
   >>>
   runtime {
@@ -296,6 +298,8 @@ task GetUningestedSampleIds {
   Int samples_per_table = 4000
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   Int num_samples = length(external_sample_names)
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label mangedby:importgenomes"
 
   command <<<
     set -ex
@@ -325,7 +329,7 @@ task GetUningestedSampleIds {
     bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
 
     # get the current maximum id, or 0 if there are none
-    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
       "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name" > results
 
     # prep for being able to return min table id
@@ -342,7 +346,7 @@ task GetUningestedSampleIds {
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
     # get sample map of samples that haven't been loaded yet
-    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false -n ~{num_samples} \
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=falsee ~{bq_labels} -n ~{num_samples} \
       "SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name WHERE samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status='FINISHED')" > sample_map
 
     cut -d, -f1 sample_map > gvs_ids
