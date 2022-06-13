@@ -10,7 +10,6 @@ workflow GvsVariantCalling {
         Array[File] input_vcfs
         Array[File] input_vcf_indexes
         String callset_identifier
-        String extract_table_prefix
     }
 
     Boolean samples_are_controls = false ## would setting this to True ever be useful? We wouldn't care about getting P&S on a filter model based on controls, right?
@@ -27,6 +26,7 @@ workflow GvsVariantCalling {
     String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     String extract_output_file_base_name = filter_set_name ## TODO make sure there are no spaces here!??!
+    String extract_table_prefix = filter_set_name ## TODO make sure there are no spaces here!??!
     Boolean extract_do_not_filter_override = false
 
     call Unified.GvsUnified as Unified {
