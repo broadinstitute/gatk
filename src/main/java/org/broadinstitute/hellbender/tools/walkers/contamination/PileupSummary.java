@@ -169,8 +169,8 @@ public class PileupSummary implements Locatable {
     }
 
     //-------- The following methods are boilerplate for reading and writing pileup summary tables
-    private static class PileupSummaryTableWriter extends TableWriter<PileupSummary> {
-        private PileupSummaryTableWriter(final Path output) throws IOException {
+    public static class PileupSummaryTableWriter extends TableWriter<PileupSummary> {
+        public PileupSummaryTableWriter(final Path output) throws IOException {
             super(output, PileupSummaryTableColumn.COLUMNS);
         }
 
