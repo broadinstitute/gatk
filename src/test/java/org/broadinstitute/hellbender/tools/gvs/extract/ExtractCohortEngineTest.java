@@ -227,8 +227,77 @@ class ExtractCohortEngineTest extends CommandLineProgramTest {
         assertVariant(vc3, "sample_2", "C/T", 50);
     }
 
+//    @Test
+//    public void testOverlappingSpanningDeletion() {
+//        Map<Long, String> sampleIdToName = new HashMap<>();
+//        sampleIdToName.put(1L, "sample_1");
+//        sampleIdToName.put(2L, "sample_2");
+//
+//        ExtractCohortEngine engine = getMinimalEngine(new SimpleInterval("chr20", 100000, 100010), sampleIdToName);
+//
+//        // we have 2 samples (sample1, sample2) and five locations of interest
+//        // chr20:100000 -- sample 1 with a het 9bp deletion, sample 2 is ref
+//        // chr20:100002 -- alt is a SNP, sample 1 should be 0/* and sample 2 is 0/1
+//        // chr20:100003 -- alt is 9bp deletion, sample 1 should be */1 and sample 2 is ref
+//        // chr20:100005 -- alt is a SNP, sample 1 should be */* and sample 2 is 0/1
+//        // chr20:100010 -- alt is a SNP, sample 1 should be 0/* and sample 2 is 0/1
+//        // chr20:100015 -- alt is a SNP, sample 1 should be 0/0 and sample 2 is 0/1
+//
+//        long location = SchemaUtils.encodeLocation("chr20", 100000);
+//        GenericRecord r11 = createVetRecord(location, 1, "CTTGAGCATG", "C", "0/1", "37");
+//        GenericRecord r22 = createVetRecord(location + 2, 2, "T", "C", "0/1", "50");
+//        GenericRecord r31 = createVetRecord(location + 3, 1, "GAGCATGCAG", "*,G", "1/2", "42");
+//        GenericRecord r42 = createVetRecord(location + 5, 2, "G", "T", "0/1", "50");
+//        GenericRecord r52 = createVetRecord(location + 10, 2, "C", "T", "0/1", "50");
+//        GenericRecord r62 = createVetRecord(location + 15, 2, "C", "G", "0/1", "50");
+//
+//        List<VariantContext> results = new ArrayList<>();
+//        List<GenericRecord> sortedVet = Arrays.asList(r11, r22, r31, r42, r52, r62);
+//
+//        engine.createVariantsFromSortedRanges(
+//                new TreeSet<>(sampleIdToName.keySet()),
+//                sortedVet,
+//                new ArrayList<>(),
+//                new HashMap<>(),
+//                new HashMap<>(),
+//                new HashMap<>(),
+//                true,
+//                (vc) -> results.add(vc)
+//        );
+//
+//        // for easier debugging visually
+//        dumpToVcf(new File("out.vcf"), sampleIdToName.values(), results);
+//
+//        // we should have six "rows"
+//        Assert.assertEquals(results.size(), 6);
+//
+//        VariantContext vc0 = results.get(0);
+//        assertVariant(vc0, "sample_1", "CTTGAGCATG/C", 37);
+//        assertVariant(vc0, "sample_2", "CTTGAGCATG/CTTGAGCATG", 60);
+//
+//        VariantContext vc1 = results.get(1);
+//        assertVariant(vc1, "sample_1", "T/*",37);
+//        assertVariant(vc1, "sample_2", "T/C", 50);
+//
+//        VariantContext vc2 = results.get(2);
+//        assertVariant(vc2, "sample_1", "*/G",42);
+//        assertVariant(vc2, "sample_2", "GAGCATGCAG/GAGCATGCAG", 60);
+//
+//        VariantContext vc3 = results.get(3);
+//        assertVariant(vc3, "sample_1", "*/*", 42);
+//        assertVariant(vc3, "sample_2", "G/T", 50);
+//
+//        VariantContext vc4 = results.get(4);
+//        assertVariant(vc4, "sample_1", "C/*", 42); // ? should be C/*... getting */* 37
+//        assertVariant(vc4, "sample_2", "C/T", 50);
+//
+//        VariantContext vc5 = results.get(5);
+//        assertVariant(vc5, "sample_1", "C/C", 60);
+//        assertVariant(vc5, "sample_2", "C/G", 50);
+//    }
+
     @Test
-    public void testOverlappingSpanningDeletion() {
+    public void testOverlappingInteriorSpanningDeletion() {
         Map<Long, String> sampleIdToName = new HashMap<>();
         sampleIdToName.put(1L, "sample_1");
         sampleIdToName.put(2L, "sample_2");
@@ -287,7 +356,8 @@ class ExtractCohortEngineTest extends CommandLineProgramTest {
 
         VariantContext vc4 = results.get(4);
         assertVariant(vc4, "sample_1", "C/C", 60);
-        assertVariant(vc4, "sample_2", "C/T", 50);    }
+        assertVariant(vc4, "sample_2", "C/T", 50);
+    }
 
     private void assertVariant(VariantContext vc, String sampleName, String genotypeString, int gq) {
         Genotype g = vc.getGenotype(sampleName);
