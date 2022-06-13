@@ -31,14 +31,15 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
 ## Prepare your workspace 
 * Clone the Terra workspace [Genomic\_Variant\_Store\_beta\_dev\_version](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version)
 * Load your data into the Terra workspace (Link to documentation for Terra data loading)
-* Share your Terra the workspace with the variants team
+* Create a sample set from the Data table by selecting all desired samples, clicking the pencil icon (edit), and choosing "Save Selection as Set" (the docs will refer to this set as: `gvs_sample_set`).
+* Share your Terra the workspace with the variants team at Broad (variants@broadinstitute.org)
 * Note that the GvsJointVariantCalling workflow will already be in your cloned workspace (https://support.terra.bio/hc/en-us/articles/360036379771-Get-started-running-workflows)
 
-Once the data is in your workspace, let us know by emailing Kylee and one of our engineers will validate your data
+Once the data is loaded into your workspace, let us know by emailing Kylee and one of our engineers will validate your data
 
 
 ## Run the pipeline
-Now that the samples have been validated and made into a sample set (is that still required?!?!?) run the GvsJointVariantCalling.wdl against this sample set.
+Now that the samples have been validated and made into a sample set, run the GvsJointVariantCalling.wdl against this sample set.
 Do this by selecting "sample_set" as the root entity type ("Step 1" on the workflow submission page) and `gvs_sample_set` for the data ("Step 2" on the workflow submission page).  
 Since you are creating your own sample set, note that the sample table should have columns for the re-blocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files.
 
