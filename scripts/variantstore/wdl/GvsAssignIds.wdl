@@ -19,7 +19,14 @@ workflow GvsAssignIds {
   String sample_info_table = "sample_info"
   String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"},{"name":"is_control","type":"BOOLEAN","mode":"REQUIRED"},{"name":"withdrawn","type":"TIMESTAMP","mode":"NULLABLE"}]'
   String sample_load_status_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
-
+  String cost_observability_json = '[ { "name": "call_set_identifier", "type": "STRING", "mode": "REQUIRED" }, ' +
+                                   '  { "name": "step", "type": "STRING", "mode": "REQUIRED" }, ' +
+                                   '  { "name": "call", "type": "STRING", "mode": "NULLABLE" }, ' +
+                                   '  { "name": "shard_identifier", "type": "STRING", "mode": "NULLABLE" }, ' +
+                                   '  { "name": "job_start_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' +
+                                   '  { "name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' +
+                                   '  { "name": "metadata_key", "type": "STRING", "mode": "REQUIRED" }, ' +
+                                   '  { "name": "data_bytes", "type": "INTEGER", "mode": "NULLABLE" } ] '
 
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
@@ -39,6 +46,18 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       datatype = "sample_load_status",
       schema_json = sample_load_status_json,
+      max_table_id = 1,
+      superpartitioned = "false",
+      partitioned = "false",
+      service_account_json_path = service_account_json_path,
+  }
+
+  call GvsCreateTables.CreateTables as CreateCostObservabilityTable {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      datatype = "cost_observability",
+      schema_json = cost_observability_json,
       max_table_id = 1,
       superpartitioned = "false",
       partitioned = "false",
