@@ -26,7 +26,7 @@ workflow GvsAssignIds {
                                    '  { "name": "job_start_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' +
                                    '  { "name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' +
                                    '  { "name": "metadata_key", "type": "STRING", "mode": "REQUIRED" }, ' +
-                                   '  { "name": "data_bytes", "type": "INTEGER", "mode": "NULLABLE" } ] '
+                                   '  { "name": "data_bytes", "type": "INTEGER", "mode": "REQUIRED" } ] '
 
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
