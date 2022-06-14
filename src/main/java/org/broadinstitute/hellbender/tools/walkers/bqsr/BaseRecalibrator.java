@@ -145,6 +145,13 @@ public final class BaseRecalibrator extends ReadWalker {
 
         Utils.warnOnNonIlluminaReadGroups(getHeaderForReads(), logger);
 
+        // grab reference if not specified in case of using an extended context covariate
+        if ( recalArgs.EXTENDED_CONTEXT_LOOKAHEAD != 0 ) {
+            if ( recalArgs.EXTENDED_CONTEXT_REFERENCE == null ) {
+                recalArgs.EXTENDED_CONTEXT_REFERENCE = new GATKPath(referenceArguments.getReferencePath().toAbsolutePath().toString());
+            }
+        }
+
         recalibrationEngine = new BaseRecalibrationEngine(recalArgs, getHeaderForReads());
         recalibrationEngine.logCovariatesUsed();
         referenceDataSource = ReferenceDataSource.of(referenceArguments.getReferencePath());
