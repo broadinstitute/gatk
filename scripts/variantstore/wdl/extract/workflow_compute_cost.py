@@ -13,57 +13,35 @@ excluded_submission_ids = []
 submission_ids = [s['submissionId'] for s in submissions]
 filtered_submission_ids = [s for s in submission_ids if s not in excluded_submission_ids]
 
-core_workflows = [
-    'GvsAssignIds',
-    'GvsImportGenomes',
-    'GvsCreateAltAllele',
-    'GvsCreateFilterSet',
-    'GvsPrepareCallset',
-    'GvsExtractCallset'
-]
-
-core_workflow_wrappers = [
-    'GvsUnified',
-    'GvsQuickstartIntegration'
-]
-
+# Two-level default dictionary for workflow name -> workflow id -> cost
 workflow_costs = defaultdict(lambda: defaultdict(dict))
-
-
-def assign_workflow_costs_from_parent_workflow(parent):
-    # print(parent)
-    for fully_qualified_name, subworkflows in parent['calls'].items():
-        subworkflow_id = subworkflows[0]['subWorkflowId']
-        subworkflow_name = fully_qualified_name.split('.')[-1]
-        subworkflow_cost = fapi.get_workflow_cost(workspace_namespace, workspace_name, submission_id, subworkflow_id).json()
-        print(f"cost is {subworkflow_cost}")
-        workflow_costs[subworkflow_name][subworkflow_id] = subworkflow_cost
-        print(f"Assigned cost of ${subworkflow_cost} to '{subworkflow_name}' id {subworkflow_id}")
-
 
 for submission_id in filtered_submission_ids:
     submission = fapi.get_submission(workspace_namespace, workspace_name, submission_id).json()
     workflows = submission['workflows']
     if not workflows:
+        print(f"Submission '{submission_id}' has no workflows, skipping cost calculation.")
         continue
     workflow_ids = [w['workflowId'] for w in workflows]
     for workflow_id in workflow_ids:
         workflow = fapi.get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
         workflow_name = workflow['workflowName']
         if not workflow_name:
+            print(f"Workflow {workflow_id} has no workflow name, skipping cost calculation.")
             continue
         print(f'Submission {submission_id}: workflow id {workflow_id}, name {workflow_name}')
 
-        if workflow_name in core_workflows:
-            cost = fapi.get_workflow_cost(workspace_namespace, workspace_name, submission_id, workflow_id)
-            workflow_costs[workflow_name][workflow_id] = cost
-        elif workflow_name == 'GvsUnified':
-            assign_workflow_costs_from_parent_workflow(workflow)
-        elif workflow_name == 'GvsQuickstartIntegration':
-            unified_id = workflow['calls']['GvsQuickstartIntegration.GvsUnified'][0]['subWorkflowId']
-            unified = fapi.get_workflow_metadata(workspace_namespace, workspace_name, submission_id, unified_id).json()
-            assign_workflow_costs_from_parent_workflow(unified)
+        if workflow_name.startswith('Gvs'):
+            if len(workflow_ids) == 1:
+                cost = fapi.get_workflow_cost(workspace_namespace, workspace_name, submission_id, workflow_id).json()
+                # If this run is < 1 day old the cost data may not yet be available.
+                if 'cost' not in cost:
+                    print(f"No cost found for workflow {workflow_id} in submission {submission_id}; possibly too recent.")
+                    continue
+                workflow_costs[workflow_name][workflow_id] = cost['cost']
+                print(workflow_costs)
+            else:
+                print(f"Unexpectedly found GVS workflow '{workflow_name}' among {len(workflow_ids)} workflows in submission {submission_id}. Expecting only 1 workflow in submission, skipping cost calculation.")
+                continue
         else:
-            print(f"Workflow '{workflow_name}' not recognized as a GVS workflow, skipping cost calculations.")
-
-    print(workflow_costs)
+            print(f"Workflow '{workflow_name}' in submission {submission_id} not recognized as a GVS workflow, skipping cost calculation.")
