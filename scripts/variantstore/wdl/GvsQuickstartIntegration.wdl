@@ -62,7 +62,7 @@ workflow GvsQuickstartIntegration {
     call Unified.GvsUnified {
         input:
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-            project_id = "spec-ops-aou",
+            project_id = "gvs-internal",
             external_sample_names = external_sample_names,
             gatk_override = BuildGATKJarAndCreateDataset.jar,
             input_vcfs = input_vcfs,
