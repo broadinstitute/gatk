@@ -35,7 +35,7 @@ import java.util.*;
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Variant allele fraction for a genotype")
 
-public final class AlleleFraction extends GenotypeAnnotation {
+public final class AlleleFraction implements GenotypeAnnotation {
     @Override
     public void annotate(final ReferenceContext ref,
                          final VariantContext vc,

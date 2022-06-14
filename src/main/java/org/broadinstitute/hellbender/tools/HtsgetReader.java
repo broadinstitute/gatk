@@ -226,6 +226,7 @@ public class HtsgetReader extends CommandLineProgram {
         }
     }
 
+    @SuppressWarnings( "deprecation" )
     private ObjectMapper getObjectMapper() {
         final ObjectMapper mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.UNWRAP_ROOT_VALUE);

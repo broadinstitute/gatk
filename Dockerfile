@@ -1,16 +1,20 @@
 # stage 1 for constructing the GATK zip
 FROM broadinstitute/gatk:gatkbase-2.3.0 AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
+ARG RELEASE=false
 
 RUN ls .
 ADD . /gatk
 WORKDIR /gatk
 
+# Get an updated gcloud signing key, in case the one in the base image has expired
+RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 RUN add-apt-repository universe && apt update
 RUN apt-get --assume-yes install git-lfs
-RUN git lfs install
+RUN git lfs install --force
 
-RUN git lfs pull
+#Download only resources required for the build, not for testing
+RUN git lfs pull --include src/main/resources/large
 
 RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
 RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/

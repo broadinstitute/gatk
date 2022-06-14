@@ -22,7 +22,7 @@ import java.util.*;
  * Alternatively, if a pedigree file has been supplied (not founderIDs) then extending classes can call getTrios() to
  * return a set of Trio objects corresponding to a parsing of pedigree file.
  */
-public abstract class PedigreeAnnotation extends InfoFieldAnnotation {
+public abstract class PedigreeAnnotation implements VariantAnnotation {
     private Collection<String> founderIds;
     private GATKPath pedigreeFile = null;
     private boolean hasAddedPedigreeFounders = false;

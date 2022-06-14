@@ -15,7 +15,9 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.sam.markduplicates.MarkDuplicates;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -36,7 +38,7 @@ import java.util.stream.Collectors;
  * <p>This annotation does not require or use any BAM file duplicate flags or UMI information, just the read alignments.</p>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of non-duplicate-insert ALT reads (AS_UNIQ_ALT_READ_COUNT)")
-public class UniqueAltReadCount extends InfoFieldAnnotation implements AlleleSpecificAnnotation {
+public class UniqueAltReadCount implements InfoFieldAnnotation, AlleleSpecificAnnotation {
     public static final String KEY = GATKVCFConstants.AS_UNIQUE_ALT_READ_SET_COUNT_KEY;
 
     @Override

@@ -5,13 +5,11 @@ import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -25,7 +23,7 @@ import java.util.stream.IntStream;
  * Apply a read-based annotation that reports the number of Ns seen at a given site. This is intended for use on consensus called data.
  */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Number of Ns at the pileup")
-public class CountNs extends InfoFieldAnnotation {
+public class CountNs implements InfoFieldAnnotation {
     /**
      * Calculate annotations for each allele based on given VariantContext and likelihoods for a given genotype's sample
      * and add the annotations to the GenotypeBuilder.  By default annotations are only calculated for alt alleles but

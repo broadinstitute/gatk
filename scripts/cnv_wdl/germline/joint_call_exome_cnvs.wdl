@@ -151,7 +151,7 @@ workflow JointCallExomeCNVs {
     }
     Array[String] subset_arr = select_all(subset)
     Array[String] subset_index_arr = select_all(subset_indexes)
-    Array[String] failed_samples = select_all(failed)
+    Array[String] failed_samples_arr = select_all(failed)
 
     call FastCombine {
       input:
@@ -178,7 +178,7 @@ workflow JointCallExomeCNVs {
       File annotated_vcf = Annotate.annotated_vcf
       File annotated_vcf_index = Annotate.annotated_vcf_idx
       Array[String] sample_qc_status_strings = SampleQC.qc_status_string
-      Array[String] failed_samples = failed_samples
+      Array[String] failed_samples = failed_samples_arr
     }
 }
 

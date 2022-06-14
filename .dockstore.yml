@@ -5,56 +5,244 @@ workflows:
      primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl
      testParameterFiles:
      -  /scripts/cnv_cromwell_tests/germline/cnv_germline_case_scattered_workflow.json
+     filters:
+       branches:
+        - master
    - name: cnv_germline_cohort_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl
      testParameterFiles:
      -  /scripts/cnv_cromwell_tests/germline/cnv_germline_cohort_workflow.json
+     filters:
+       branches:
+         - master
    - name: cnv_somatic_pair_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl
-     testParameterFiles: 
+     testParameterFiles:
      -  /scripts/cnv_cromwell_tests/somatic/cnv_somatic_pair_wes_do-gc_workflow.json
+     filters:
+       branches:
+         - master
    - name: cnv_somatic_panel_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl
      testParameterFiles:
      -  /scripts/cnv_cromwell_tests/somatic/cnv_somatic_panel_wes_do-gc_workflow.json
+     filters:
+       branches:
+         - master
    - name: cram2filtered
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/cram2filtered.wdl
      testParameterFiles:
      - /scripts/cnn_variant_wdl/jsons/cram2filtered.json
+     filters:
+       branches:
+         - master
    - name: cram2model
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/cram2model.wdl
      testParameterFiles:
      - /scripts/cnn_variant_wdl/jsons/cram2model.json
+     filters:
+       branches:
+         - master
    - name: funcotator
      subclass: WDL
      primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
      testParameterFiles:
      - /scripts/funcotator_wdl/funcotator.json
+     filters:
+       branches:
+         - master
+   - name: GvsAssignIds
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsAssignIds.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsAoUReblockGvcf
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsRescatterCallsetInterval
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsCreateFilterSet
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateFilterSet.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsCreateAltAllele
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateAltAllele.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_447_fixup_non_fq_invocations
+   - name: GvsCreateTables
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateTables.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsExtractCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_447_fixup_non_fq_invocations
+   - name: GvsImportGenomes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsPrepareRangesCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsPrepareRangesCallset.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsCreateVAT
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsCreateVATAnnotations
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateVATAnnotations.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsCreateVATFromAnnotations
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATFromAnnotations.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsCreateVATFromAnnotations.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsValidateVat
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
+     testParameterFiles:
+       - /scripts/variantstore/variant_annotations_table/GvsValidateVat.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsExtractCohortFromSampleNames
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsWithdrawSamples
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsUnified
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsUnified.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsCalculatePrecisionAndSensitivity
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsQuickstartIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_447_fixup_non_fq_invocations
+   - name: GvsIngestTieout
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
      testParameterFiles:
      -  /scripts/mitochondria_m2_wdl/test_mitochondria_m2_wdl.json
+     filters:
+       branches:
+         - master
    - name: mutect2
      subclass: WDL
      primaryDescriptorPath: /scripts/mutect2_wdl/mutect2.wdl
      testParameterFiles:
      - /scripts/m2_cromwell_tests/mutect2.inputs.json
+     filters:
+       branches:
+         - master
    - name: mutect2_pon
      subclass: WDL
      primaryDescriptorPath: /scripts/mutect2_wdl/mutect2_pon.wd
+     filters:
+       branches:
+         - master
    - name: run_happy
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/run_happy.wdl
      testParameterFiles:
      - /scripts/cnn_variant_wdl/jsons/run_happy.json
+     filters:
+       branches:
+         - master
    - name: pathseq_pipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/pathseq/wdl/pathseq_pipeline.wdl
      testParameterFiles:
      - /scripts/pathseq/wdl/pathseq_pipeline_template.json
+     filters:
+       branches:
+         - master

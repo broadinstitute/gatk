@@ -1,0 +1,93 @@
+name: 'upload-gatk-test-results'
+description: 'Uploads the results for matrix runs of gatk-tests.yml and maybe comments on failing runs on the PR associated with the test'
+inputs:
+  warnPR:
+    description: 'If true this will add a comment about the jococo tests to the PR with a link to the failed test'
+    required: true
+  job-matrix-id:
+    description: 'The job-unique identifier for which test was run (numbered by matrix run)'
+    required: true
+  repo-path:
+    description: 'The job-unique identifier to use for uploading the results of this run into a google bucket'
+    required: true
+  is-docker:
+    description: 'Whether to label the uplaod artifact as coming from a docker test'
+    required: false
+  identifier:
+    description: 'Identifier to use for finding the unique name for jobs in order to determine html logs location (eg. "Java 8 build and test integration")'
+    required: true
+## Secrets and token inputs
+  repo-token:
+    description: 'The GITHUB_TOKEN secret used for querying the github api to locate the logs for this run'
+    required: false
+  bot-comment-key:
+    description: 'Key corresponding to the user account to be used for making comments on github about test failures'
+    required: false
+## option to skip all but the artifact uplaod
+  only-artifact:
+    description: 'if "true" this will skip any uploading steps that require permissions and only upload the artifact file'
+    required: false
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        # ternary expression syntax is workaround found here https://github.com/actions/runner/issues/409
+        name: test-results-${{ inputs.is-docker == 'true' && 'docker-' ||  '' }}${{ matrix.Java }}-${{ matrix.testType }}
+        path: build/reports/tests
+
+    - name: Upload to codecov
+      run: bash <(curl -s https://raw.githubusercontent.com/broadinstitute/codecov-bash-uploader/main/codecov-verified.bash)
+      shell: bash
+
+    - name: Upload Reports
+      if: ${{ inputs.only-artifact != 'true' }}
+      id: uploadreports
+      run: |
+        gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/;
+        VIEW_URL=https://storage.googleapis.com${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/tests/test/index.html
+        echo "See the test report at ${VIEW_URL}";
+        echo ::set-output name=view_url::"${VIEW_URL}"
+      shell: bash
+
+# This code is necessary in order to extract the URL for the logs for a particular run. The github context exposes the run_id object
+# which corresponds to the unique identifier for an individual workflow execution but it doesn't expose the job_id.id which is necessary
+# to extract the logs for failing jobs. The best workaround seems to be this approach (querying the API and parsing the json output).
+    - name: Extract Log Location
+      if: ${{ inputs.only-artifact != 'true' }}
+      id: loghtml
+      env:
+        GITHUB_TOKEN: ${{ inputs.repo-token }}
+      run: |
+        GITHUB_BASEURL=https://api.github.com
+        REPO_ID=$(curl --get -Ss -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/${{ github.repository }} | jq -r .id)
+        GITHUB_API="/repositories/${REPO_ID}/actions/runs/${{ github.run_id }}/jobs"
+        eval "$(curl --get -Ss -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${GITHUB_BASEURL}${GITHUB_API}?per_page=30" \
+        | jq -r --arg job_name "${{ inputs.identifier }}" '.jobs | map(select(.name == $job_name)) | .[0] | @sh "job_id=\(.id) html_url=\(.html_url)"')"
+
+        echo ::set-output name=job_id::"${job_id}"
+        echo ::set-output name=html_url::"${html_url}"
+        echo ${job_id}
+        echo ${html_url}
+      shell: bash
+
+    - name: Updating the PR with failed results
+      if: ${{ inputs.warnPR == 'true' && inputs.only-artifact != 'true' }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.bot-comment-key }}
+        TEST_TYPE: ${{ matrix.testType }}
+        GITHUB_EVENT_NUMBER: ${{ github.event.number }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        JOB_MATRIX_ID: ${{ inputs.job-matrix-id }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        JDK_VERSION: ${{ matrix.Java }}
+        ACTIONS_JOB_WEB_URL: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}
+        GITHUB_LOGS_URL: ${{ steps.loghtml.outputs.html_url }}
+      run: |
+        pip install --user PyGithub;
+        python scripts/github_actions/Reporter.py ${{ steps.uploadreports.outputs.view_url }};
+      shell: bash

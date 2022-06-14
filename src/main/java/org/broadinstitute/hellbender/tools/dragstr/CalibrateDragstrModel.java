@@ -6,9 +6,12 @@ import it.unimi.dsi.fastutil.ints.*;
 import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
@@ -41,10 +44,12 @@ import java.util.stream.*;
  * </p>
  */
 @CommandLineProgramProperties(
-        summary = "estimates the parameters for the DRAGstr model for the input sample",
-        oneLineSummary = "summary",
-        programGroup = ExampleProgramGroup.class
+        summary = "estimates the parameters for the DRAGstr model for the input sample using the output of the ComposeSTRTable tool",
+        oneLineSummary = "estimates the parameters for the DRAGstr model",
+        programGroup = ShortVariantDiscoveryProgramGroup.class
 )
+@BetaFeature
+@DocumentedFeature
 public class CalibrateDragstrModel extends GATKTool {
 
     public static final String STR_TABLE_PATH_SHORT_NAME = "str";
@@ -67,21 +72,21 @@ public class CalibrateDragstrModel extends GATKTool {
     @Argument(shortName=STR_TABLE_PATH_SHORT_NAME, fullName=STR_TABLE_PATH_FULL_NAME, doc="location of the zip that contains the sampling sites for the reference")
     private GATKPath strTablePath = null;
 
-    @Argument(fullName=PARALLEL_FULL_NAME, doc="run alignment data collection and  estimation in parallel")
+    @Argument(fullName=PARALLEL_FULL_NAME, doc="run alignment data collection and  estimation in parallel", optional = true)
     private boolean runInParallel = false;
 
     @Argument(fullName=THREADS_FULL_NAME, minValue = SYSTEM_SUGGESTED_THREAD_NUMBER, doc="suggested number of parallel threads to perform the estimation, "
-            + "the default 0 leave it up to the VM to decide. When set to more than 1, this will activate parallel in the absence of --parallel")
+            + "the default 0 leave it up to the VM to decide. When set to more than 1, this will activate parallel in the absence of --parallel", optional = true)
     private int threads = SYSTEM_SUGGESTED_THREAD_NUMBER;
 
     @Argument(fullName=SHARD_SIZE_FULL_NAME, doc="when running in parallel this is the suggested shard size in base pairs. " +
             "The actual shard-size may vary to adapt to small contigs and the requested number of threads",
-              minValue = MINIMUM_SHARD_SIZE)
+              minValue = MINIMUM_SHARD_SIZE, optional = true)
     private int shardSize = DEFAULT_SHARD_SIZE;
 
     @Argument(fullName=DOWN_SAMPLE_SIZE_FULL_NAME, doc="Targeted maximum number of cases per combination period repeat count, " +
             "the larger the more precise but also the slower estimation.",
-              minValue = MINIMUM_DOWN_SAMPLE_SIZE)
+              minValue = MINIMUM_DOWN_SAMPLE_SIZE, optional = true)
     private int downsampleSize = DEFAULT_DOWN_SAMPLE_SIZE;
 
     @Argument(fullName= StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "where to write the parameter output file.")
@@ -467,7 +472,9 @@ public class CalibrateDragstrModel extends GATKTool {
         final AbsoluteCoordinates absoluteCoordinates = AbsoluteCoordinates.of(dictionary);
 
         final List<SimpleInterval> shards = shardIntervals(intervals, shardSize);
-        try (final ReadsDataSourcePool readsDataSourcePool = new ReadsDataSourcePool(readArguments.getReadPaths())) {
+
+        // Specify the reference here in case we are supplied a CRAM input. NOTE: this tool requires a reference input to begin with, thus we needn't assert that one is provided
+        try (final ReadsDataSourcePool readsDataSourcePool = new ReadsDataSourcePool(readArguments.getReadPaths(), referenceArguments.getReferencePath())) {
 
             final AtomicLong numberBasesProcessed = new AtomicLong(0);
             return Utils.runInParallel(threads, () ->

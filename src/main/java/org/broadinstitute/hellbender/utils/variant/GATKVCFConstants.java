@@ -27,6 +27,7 @@ public final class GATKVCFConstants {
     public static final String AS_RAW_RMS_MAPPING_QUALITY_KEY =     "AS_RAW_MQ";
     public static final String AS_CULPRIT_KEY =                     "AS_culprit";
     public static final String AS_VQS_LOD_KEY =                     "AS_VQSLOD";
+    public static final String AS_YNG_STATUS_KEY =                  "AS_YNG";
     public static final String ORIGINAL_AC_KEY =                    "AC_Orig"; //SelectVariants
     public static final String ORIGINAL_AF_KEY =                    "AF_Orig"; //SelectVariants
     public static final String ORIGINAL_AN_KEY =                    "AN_Orig"; //SelectVariants
@@ -166,6 +167,17 @@ public final class GATKVCFConstants {
     public static final String LOW_HET_FILTER_NAME =                           "mt_many_low_hets";
     public static final String FAIL =                                           "FAIL";
     public static final String SITE_LEVEL_FILTERS =                             "SITE";
+
+    public static final String SNP = "SNP";
+    public static final String INDEL = "INDEL";
+    public static final String EXCESS_ALLELES = "EXCESS_ALLELES";
+    public static final String NO_HQ_GENOTYPES = "NO_HQ_GENOTYPES";
+
+    public static final String NAY_FROM_YNG = "NAY";
+    public static final String VQSR_FAILURE_PREFIX = "low_VQSLOD_";
+    public static final String VQSR_FAILURE_SNP = VQSR_FAILURE_PREFIX + SNP;
+    public static final String VQSR_FAILURE_INDEL = VQSR_FAILURE_PREFIX + INDEL;
+
 
 
     public static final List<String> MUTECT_FILTER_NAMES = Arrays.asList(VCFConstants.PASSES_FILTERS_v4, POLYMERASE_SLIPPAGE,

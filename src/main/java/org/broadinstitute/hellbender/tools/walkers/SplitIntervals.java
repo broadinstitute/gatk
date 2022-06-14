@@ -86,11 +86,14 @@ public class SplitIntervals extends GATKTool {
 
     public static final String MIN_CONTIG_SIZE_LONG_NAME = "min-contig-size";
 
+    public static final String INTERVAL_FILE_PREFIX_FULL_NAME = "interval-file-prefix";
     public static final String INTERVAL_FILE_EXTENSION_FULL_NAME = "extension";
 
+    public static final String DEFAULT_PREFIX = "";
     public static final String PICARD_INTERVAL_FILE_EXTENSION = "interval_list";
     public static final String DEFAULT_EXTENSION = "-scattered." + PICARD_INTERVAL_FILE_EXTENSION;
 
+    public static final String INTERVAL_NUMBER_OF_DIGITS_FULL_NAME = "interval-file-num-digits";
     public static final int DEFAULT_NUMBER_OF_DIGITS = 4;  //to preserve backward compatibility
 
     @Argument(fullName = SCATTER_COUNT_LONG_NAME, shortName = SCATTER_COUNT_SHORT_NAME,
@@ -108,8 +111,14 @@ public class SplitIntervals extends GATKTool {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File outputDir;
 
+    @Argument(doc = "Prefix to use when writing interval files", fullName = INTERVAL_FILE_PREFIX_FULL_NAME, optional = true)
+    public String prefix = DEFAULT_PREFIX;
+
     @Argument(doc = "Extension to use when writing interval files", fullName = INTERVAL_FILE_EXTENSION_FULL_NAME, optional = true)
     public String extension = DEFAULT_EXTENSION;
+
+    @Argument(doc = "Number of digits to use when writing interval files", fullName = INTERVAL_NUMBER_OF_DIGITS_FULL_NAME, minValue = 1, optional = true)
+    public int numDigits = DEFAULT_NUMBER_OF_DIGITS;
 
     @Argument(doc = "Scattered interval files do not contain intervals from multiple contigs.  This is applied after the initial scatter, so that the requested scatter count is a lower bound on the number of actual scattered files.", fullName = DONT_MIX_CONTIGS_LONG_NAME, optional = true)
     public boolean dontMixContigs = false;
@@ -149,9 +158,9 @@ public class SplitIntervals extends GATKTool {
                         })  // turn the intervals back into an IntervalList
                 ).collect(Collectors.toList());
 
-        final int maxNumberOfPlaces = Math.max((int)Math.floor(Math.log10(scatterCount-1))+1, DEFAULT_NUMBER_OF_DIGITS);
+        final int maxNumberOfPlaces = Math.max((int)Math.floor(Math.log10(scatterCount-1))+1, numDigits);
         final String formatString = "%0" + maxNumberOfPlaces + "d";
-        IntStream.range(0, scatteredFinal.size()).forEach(n -> scatteredFinal.get(n).write(new File(outputDir, String.format(formatString, n) + extension)));
+        IntStream.range(0, scatteredFinal.size()).forEach(n -> scatteredFinal.get(n).write(new File(outputDir, prefix + String.format(formatString, n) + extension)));
     }
 
     @Override

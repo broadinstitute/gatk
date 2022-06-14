@@ -34,7 +34,7 @@ import java.util.*;
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Existence of a de novo mutation in at least one of the given families (hiConfDeNovo, loConfDeNovo)")
-public final class PossibleDeNovo extends PedigreeAnnotation {
+public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFieldAnnotation {
     protected final Logger warning = LogManager.getLogger(this.getClass());
     private final MendelianViolation mendelianViolation;
     private Set<Trio> trios;

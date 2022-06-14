@@ -1,0 +1,9 @@
+{
+  "GvsAoUReblockGvcf.gvcf": "${this.gvcf_path}",
+  "GvsAoUReblockGvcf.gvcf_index": "${this.gvcf_index_path}",
+  "GvsAoUReblockGvcf.ref_dict": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  "GvsAoUReblockGvcf.ref_fasta": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+  "GvsAoUReblockGvcf.ref_fasta_index": "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "GvsAoUReblockGvcf.service_account_json": "String",
+  "GvsAoUReblockGvcf.site_id": "${this.site_id}"
+}
