@@ -188,7 +188,7 @@ workflows:
          - ah_var_store
    - name: GvsJointVariantCalling
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsUnified.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
      filters:
        branches:
          - master
