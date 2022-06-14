@@ -42,7 +42,7 @@ import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.VARIA
  *     call_GQ, // req
  *     call_PGT,
  *     call_PID,
- *     call_PL // req
+ *     call_PL
  *
  */
 public enum VetFieldEnum {
