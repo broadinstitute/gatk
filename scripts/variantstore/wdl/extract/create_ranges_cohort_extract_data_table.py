@@ -247,7 +247,7 @@ def make_extract_table(control_samples,
           raise ValueError(f"label key or value did not pass validation--format should be 'key1=val1, key2=val2'")
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
-    query_labels.update({'service':'gvs','team':'variants','mangedby':'preparerangescallset'})
+    query_labels.update({'service':'gvs','team':'variants','managedby':'preparerangescallset'})
 
     #Default QueryJobConfig will be merged into job configs passed in
     #but if a specific default config is being updated (eg labels), new config must be added

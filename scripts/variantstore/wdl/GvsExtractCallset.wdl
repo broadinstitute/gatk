@@ -225,7 +225,7 @@ task ValidateFilterSetName {
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   # add labels for DSP Cloud Cost Control Labeling and Reporting
-  String bq_labels = "--label service:gvs --label team:variants --label mangedby:extractcallset"
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:extractcallset"
 
   command <<<
     set -ex
@@ -475,7 +475,7 @@ task GenerateSampleListFile {
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   # add labels for DSP Cloud Cost Control Labeling and Reporting
-  String bq_labels = "--label service:gvs --label team:variants --label mangedby:extractcallset"
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:extractcallset"
 
   command <<<
     set -e

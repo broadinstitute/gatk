@@ -67,7 +67,7 @@ task GetVetTableNames {
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   # add labels for DSP Cloud Cost Control Labeling and Reporting
-  String bq_labels = "--label service:gvs --label team:variants --label mangedby:createaltallele"
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:createaltallele"
 
   command <<<
     set -e
@@ -112,7 +112,7 @@ task CreateAltAlleleTable {
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   # add labels for DSP Cloud Cost Control Labeling and Reporting
-  String bq_labels = "--label service:gvs --label team:variants --label mangedby:createaltallele"
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:createaltallele"
 
   command <<<
     set -e
