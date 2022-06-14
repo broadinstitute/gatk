@@ -285,7 +285,7 @@ task BuildGATKJarAndCreateDataset {
     # any remaining characters that are not alphanumeric or underscores.
     dataset="$(echo ~{dataset_prefix}_${branch}_${hash} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
-    bq mk --project_id="spec-ops-aou" "$dataset"
+    bq mk --project_id="gvs-internal" "$dataset"
 
     echo -n "$dataset" > dataset.txt
   >>>
