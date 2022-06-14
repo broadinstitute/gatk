@@ -19,14 +19,15 @@ workflow GvsAssignIds {
   String sample_info_table = "sample_info"
   String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"},{"name":"is_control","type":"BOOLEAN","mode":"REQUIRED"},{"name":"withdrawn","type":"TIMESTAMP","mode":"NULLABLE"}]'
   String sample_load_status_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
-  String cost_observability_json = '[ { "name": "call_set_identifier", "type": "STRING", "mode": "REQUIRED" }, ' +
-                                   '  { "name": "step", "type": "STRING", "mode": "REQUIRED" }, ' +
-                                   '  { "name": "call", "type": "STRING", "mode": "NULLABLE" }, ' +
-                                   '  { "name": "shard_identifier", "type": "STRING", "mode": "NULLABLE" }, ' +
-                                   '  { "name": "job_start_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' +
-                                   '  { "name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' +
-                                   '  { "name": "metadata_key", "type": "STRING", "mode": "REQUIRED" }, ' +
-                                   '  { "name": "data_bytes", "type": "INTEGER", "mode": "REQUIRED" } ] '
+  String cost_observability_json =
+      '[ { "name": "call_set_identifier", "type": "STRING", "mode": "REQUIRED" }, '     + # The name by which we refer to the callset
+      '  { "name": "step", "type": "STRING", "mode": "REQUIRED" }, '                    + # The name of the core GVS workflow to which this belongs
+      '  { "name": "call", "type": "STRING", "mode": "NULLABLE" }, '                    + # The WDL call to which this belongs
+      '  { "name": "shard_identifier", "type": "STRING", "mode": "NULLABLE" }, '        + # A unique identifier for this shard, may or may not be its index
+      '  { "name": "call_start_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' + # When the call logging this event was started
+      '  { "name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, '      + # When the observability event was logged
+      '  { "name": "event_key", "type": "STRING", "mode": "REQUIRED" }, '               + # The type of observability event being logged
+      '  { "name": "event_bytes", "type": "INTEGER", "mode": "REQUIRED" } ] '             # Number of bytes reported for this observability event
 
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
