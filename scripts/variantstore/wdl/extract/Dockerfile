@@ -4,6 +4,7 @@ FROM gcr.io/google.com/cloudsdktool/cloud-sdk:349.0.0
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 RUN apt-get update && apt-get -y upgrade && apt-get -y install bcftools
+RUN pip install firecloud
 
 # Copy the application source code.
 COPY create_variant_annotation_table.py /app
