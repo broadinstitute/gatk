@@ -1204,36 +1204,45 @@ public class ExtractCohortEngine {
             cache.add(sdr);
         } else if (recs.size() == 1) {
             if (! (recs.get(0) instanceof SpanningDeletionRecord)) {
-                throw new GATKException("Merging SpanningDeletionRecord " + sdr + " but found existing non-SpanningDeletionRecord " + recs.get(0));
-            }
+                ReferenceRecord existing = recs.get(0);
 
-            // There are two kinds of overlap we have to deal with.  Essentially we want the later record to override the
-            // earlier record in a region of overlap.
-            //
-            // (1) simple overlap -- intervals overlap at one end.  In this case we need to produce TWO records by just
-            // truncating the earlier one so they don't overlap
-            // (2) interior overlap -- one interval is completely inside the other.  In this case we need to create THREE
-            // records.  The first two records are the same as the simple overlap case, but then we need to generate a
-            // third record where the earlier records "resumes" after the end of the later record
-            SpanningDeletionRecord existing = (SpanningDeletionRecord) recs.get(0);
+                // if this is an upstream reference record, just truncate it with the spanning deletion record
+                if (existing.getStart() < sdr.getStart()) {
+                    cache.remove(existing);
+                    cache.add(new ReferenceRecord(existing.getLocation(), existing.getSampleId(), (int) (sdr.getLocation() - sdr.getLocation()), existing.getState()));
+                } else {
+                    throw new GATKException("Merging SpanningDeletionRecord " + sdr + " but found existing downstream non-SpanningDeletionRecord " + recs.get(0));
+                }
+            } else {
 
-            SpanningDeletionRecord earlier = (existing.getLocation() < sdr.getLocation()) ? existing : sdr;
-            SpanningDeletionRecord later = (existing.getLocation() >= sdr.getLocation()) ? existing : sdr;
+                // There are two kinds of overlap we have to deal with.  Essentially we want the later record to override the
+                // earlier record in a region of overlap.
+                //
+                // (1) simple overlap -- intervals overlap at one end.  In this case we need to produce TWO records by just
+                // truncating the earlier one so they don't overlap
+                // (2) interior overlap -- one interval is completely inside the other.  In this case we need to create THREE
+                // records.  The first two records are the same as the simple overlap case, but then we need to generate a
+                // third record where the earlier records "resumes" after the end of the later record
+                SpanningDeletionRecord existing = (SpanningDeletionRecord) recs.get(0);
 
-            // remove the existing row
-            cache.remove(existing);
+                SpanningDeletionRecord earlier = (existing.getLocation() < sdr.getLocation()) ? existing : sdr;
+                SpanningDeletionRecord later = (existing.getLocation() >= sdr.getLocation()) ? existing : sdr;
 
-            // and replace it with a truncated earlier record, and the later record
-            SpanningDeletionRecord s1 = new SpanningDeletionRecord(earlier.getLocation(), earlier.getSampleId(), (int) (later.getLocation() - earlier.getLocation()), earlier.getGT(), earlier.getGQ());
-            cache.add(s1);
-            cache.add(later);
+                // remove the existing row
+                cache.remove(existing);
 
-            // and if the later record ends before the end of the earlier record emit the remainder (case 2 above)
-            if (later.getEnd() < earlier.getEnd()) {
-                long newStart = later.getEndLocation() + 1;
-                int newLength = (int) (earlier.getEndLocation() - newStart + 1);
-                SpanningDeletionRecord s2 = new SpanningDeletionRecord(newStart, earlier.getSampleId(), newLength, earlier.getGT(), earlier.getGQ());
-                cache.add(s2);
+                // and replace it with a truncated earlier record, and the later record
+                SpanningDeletionRecord s1 = new SpanningDeletionRecord(earlier.getLocation(), earlier.getSampleId(), (int) (later.getLocation() - earlier.getLocation()), earlier.getGT(), earlier.getGQ());
+                cache.add(s1);
+                cache.add(later);
+
+                // and if the later record ends before the end of the earlier record emit the remainder (case 2 above)
+                if (later.getEnd() < earlier.getEnd()) {
+                    long newStart = later.getEndLocation() + 1;
+                    int newLength = (int) (earlier.getEndLocation() - newStart + 1);
+                    SpanningDeletionRecord s2 = new SpanningDeletionRecord(newStart, earlier.getSampleId(), newLength, earlier.getGT(), earlier.getGQ());
+                    cache.add(s2);
+                }
             }
         } else {
             throw new GATKException("Found > 2 reference records that overlap for a diploid sample! " + recs + " and " + sdr);
@@ -1327,7 +1336,7 @@ public class ExtractCohortEngine {
             if (refRow.getLocation() <= location) {
 
                 // always add to the appropriate cache for use downstream
-                referenceCache.get(refRow.getSampleId()).add(refRow);
+                mergeIntoReferenceCache(referenceCache.get(refRow.getSampleId()), refRow);
 
                 // if this is for the requested sample, return the value
                 if (refRow.getSampleId() == sampleId) {
@@ -1337,13 +1346,41 @@ public class ExtractCohortEngine {
 
             // we are now past the position, put this one entry in the cache and return the inferred state
             if (refRow.getLocation() > location) {
-                referenceCache.get(refRow.getSampleId()).add(refRow);
+                mergeIntoReferenceCache(referenceCache.get(refRow.getSampleId()), refRow);
                 return inferredReferenceRecord;
             }
         }
 
         // if we are still here... use the inferred state
         return inferredReferenceRecord;
+    }
+
+    // Turns out some data has overlapping reference blocks.  Technically this is invalid,
+    // but it still exists in the wild and in WARP scientific test data.
+    private void mergeIntoReferenceCache(TreeSet<ReferenceRecord> cache, ReferenceRecord rec) {
+        if (cache.size() == 0) {
+            cache.add(rec);
+        } else {
+
+            // iterate through cache and look for an overlap
+            // NOTE: it might be possible to generalize this logic with similar logic
+            // from merging in SpanningDeletionRecords but keeping it separate for now
+            for (ReferenceRecord existing : cache) {
+                if (existing.overlaps(rec) && !(existing instanceof SpanningDeletionRecord)) {
+                    ReferenceRecord earlier = (existing.getLocation() < rec.getLocation()) ? existing : rec;
+                    ReferenceRecord later = (existing.getLocation() >= rec.getLocation()) ? existing : rec;
+
+                    // remove the existing row
+                    cache.remove(existing);
+
+                    // and replace it with a truncated earlier record, and the later record
+                    ReferenceRecord s1 = new ReferenceRecord(earlier.getLocation(), earlier.getSampleId(), (int) (later.getLocation() - earlier.getLocation()), earlier.getState());
+                    cache.add(s1);
+                    cache.add(later);
+                }
+            }
+
+        }
     }
 
     private static Allele getReferenceAllele(ReferenceDataSource refSource, long location, int length) {
