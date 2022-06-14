@@ -186,6 +186,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_add_prelim_labels
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
