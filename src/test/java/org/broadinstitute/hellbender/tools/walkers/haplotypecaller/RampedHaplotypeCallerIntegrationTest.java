@@ -51,7 +51,7 @@ public class RampedHaplotypeCallerIntegrationTest extends CommandLineProgramTest
         return testData;
     }
 
-    // THis test has been disabled due to issues with the ZipFilesystem comparisons operations. 
+    // THis test has been disabled due to issues with the ZipFilesystem comparisons operations.
     @Test(dataProvider = "offrampTestData", enabled = false)
     public void testOfframp(final String type, final String expectedFilename) throws Exception {
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
