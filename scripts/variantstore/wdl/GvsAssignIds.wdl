@@ -210,7 +210,6 @@ task CreateCostObservabilityTable {
       echo '~{cost_observability_json}' > schema.json
       bq --location=US mk ${PARTITION_STRING} --project_id=~{project_id} $TABLE schema.json
     fi
-    done
   >>>
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_16"
