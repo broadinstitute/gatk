@@ -22,7 +22,6 @@ workflow GvsJointVariantCalling {
     Int? SNP_VQSR_max_gaussians_override = 6
     String query_project = project_id
     String destination_project = project_id
-    String destination_dataset = dataset_name
     String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     String extract_output_file_base_name = filter_set_name ## TODO make sure there are no spaces here!??!
@@ -45,7 +44,7 @@ workflow GvsJointVariantCalling {
             extract_table_prefix = extract_table_prefix,
             query_project = query_project,
             destination_project = destination_project,
-            destination_dataset = destination_dataset,
+            destination_dataset = dataset_name,
             fq_temp_table_dataset = fq_temp_table_dataset,
             interval_weights_bed = interval_weights_bed,
             extract_output_file_base_name = extract_output_file_base_name,
