@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUnified.wdl" as Unified
 
-workflow GvsVariantCalling {
+workflow GvsJointVariantCalling {
     input {
         String dataset_name
         String project_id
