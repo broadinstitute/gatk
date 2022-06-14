@@ -196,6 +196,7 @@ task CreateCostObservabilityTable {
     set -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    TABLE="~{dataset_name}.cost_observability"
 
     # Check that the table has not been created yet
     set +o errexit
@@ -204,7 +205,6 @@ task CreateCostObservabilityTable {
     set -o errexit
 
     if [ $BQ_SHOW_RC -ne 0 ]; then
-      TABLE="~{dataset_name}.cost_observability"
       PARTITION_STRING="--time_partitioning_field call_start_timestamp --time_partitioning_type DAY"
       echo "making table $TABLE"
       echo '~{cost_observability_json}' > schema.json
