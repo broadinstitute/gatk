@@ -3,8 +3,11 @@ from collections import defaultdict
 from firecloud import api as fapi
 
 
-def calculate_costs(workspace_namespace, workspace_name, excluded_submission_ids):
-    submissions = fapi.list_submissions(workspace_namespace, workspace_name).json()
+def calculate_costs(workspace_namespace, workspace_name, excluded_submission_ids,
+                    list_submissions=fapi.list_submissions,
+                    get_submission=fapi.get_submission,
+                    get_workflow_metadata=fapi.get_workflow_metadata):
+    submissions = list_submissions(workspace_namespace, workspace_name).json()
 
     submission_ids = [s['submissionId'] for s in submissions]
 
@@ -15,14 +18,14 @@ def calculate_costs(workspace_namespace, workspace_name, excluded_submission_ids
         if submission_id in excluded_submission_ids:
             print(f"Submission id '{submission_id}' in exclude list, skipping cost calculation.")
             continue
-        submission = fapi.get_submission(workspace_namespace, workspace_name, submission_id).json()
+        submission = get_submission(workspace_namespace, workspace_name, submission_id).json()
         workflows = submission['workflows']
         if not workflows:
             print(f"Submission '{submission_id}' has no workflows, skipping cost calculation.")
             continue
         workflow_ids = [w['workflowId'] for w in workflows]
         for workflow_id in workflow_ids:
-            workflow = fapi.get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
+            workflow = get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
             workflow_name = workflow['workflowName']
             if not workflow_name:
                 print(f"Workflow {workflow_id} has no workflow name, skipping cost calculation.")
@@ -31,13 +34,11 @@ def calculate_costs(workspace_namespace, workspace_name, excluded_submission_ids
 
             if workflow_name.startswith('Gvs'):
                 if len(workflow_ids) == 1:
-                    cost = fapi.get_workflow_cost(workspace_namespace, workspace_name, submission_id, workflow_id).json()
                     # If this run is < 1 day old the cost data may not yet be available.
-                    if 'cost' not in cost:
+                    if 'cost' not in submission:
                         print(f"No cost found for workflow {workflow_id} in submission {submission_id}; possibly too recent.")
                         continue
-                    workflow_costs[workflow_name][workflow_id] = cost['cost']
-                    # print(workflow_costs)
+                    workflow_costs[workflow_name][workflow_id] = submission['cost']
                 else:
                     print(f"Unexpectedly found GVS workflow '{workflow_name}' among {len(workflow_ids)} workflows in submission {submission_id}. Expecting only 1 workflow in submission, skipping cost calculation.")
                     continue
@@ -68,6 +69,20 @@ if __name__ == '__main__':
     # workspace_name = 'VS-415 GVS Quickstart Default Extract Scatter'
 
     args = parse_args()
-    print(args.exclude)
     costs = calculate_costs(args.workspace_namespace, args.workspace_name, args.exclude)
 
+    wdls = [
+        'GvsAssignIds',
+        'GvsImportGenomes',
+        'GvsCreateAltAllele',
+        'GvsCreateFilterSet',
+        'GvsPrepareCallset',
+        'GvsExtractCallset',
+        'GvsUnified',
+        'GvsQuickstartIntegration'
+    ]
+
+    for wdl in wdls:
+        if wdl in costs:
+            cost = sum(costs[wdl].values())
+            print(f"{wdl}: {len(costs[wdl])} workflows, total compute cost ${cost:.2f}")
