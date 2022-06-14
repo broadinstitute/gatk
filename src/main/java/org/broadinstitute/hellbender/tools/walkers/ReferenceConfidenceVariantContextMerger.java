@@ -538,7 +538,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             final int ploidy = g.getPloidy();
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(g);
             if (!doSomaticMerge) {
-                if (g.hasPL() | g.hasAD()) {
+                if (g.hasPL() || g.hasAD()) {
                     int[]  perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(remappedAlleles, targetAlleles, vc.getStart(), g, false);
                     if (g.hasPL()) {
                         // lazy initialization of the genotype index map by ploidy.
