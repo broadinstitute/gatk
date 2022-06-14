@@ -19,15 +19,6 @@ workflow GvsAssignIds {
   String sample_info_table = "sample_info"
   String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"},{"name":"is_control","type":"BOOLEAN","mode":"REQUIRED"},{"name":"withdrawn","type":"TIMESTAMP","mode":"NULLABLE"}]'
   String sample_load_status_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
-  String cost_observability_json =
-      '[ { "name": "call_set_identifier", "type": "STRING", "mode": "REQUIRED" }, '     + # The name by which we refer to the callset
-      '  { "name": "step", "type": "STRING", "mode": "REQUIRED" }, '                    + # The name of the core GVS workflow to which this belongs
-      '  { "name": "call", "type": "STRING", "mode": "NULLABLE" }, '                    + # The WDL call to which this belongs
-      '  { "name": "shard_identifier", "type": "STRING", "mode": "NULLABLE" }, '        + # A unique identifier for this shard, may or may not be its index
-      '  { "name": "call_start_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' + # When the call logging this event was started
-      '  { "name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, '      + # When the observability event was logged
-      '  { "name": "event_key", "type": "STRING", "mode": "REQUIRED" }, '               + # The type of observability event being logged
-      '  { "name": "event_bytes", "type": "INTEGER", "mode": "REQUIRED" } ] '             # Number of bytes reported for this observability event
 
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
@@ -53,16 +44,10 @@ workflow GvsAssignIds {
       service_account_json_path = service_account_json_path,
   }
 
-  call GvsCreateTables.CreateTables as CreateCostObservabilityTable {
+  call CreateCostObservabilityTable {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      datatype = "cost_observability",
-      schema_json = cost_observability_json,
-      max_table_id = 1,
-      superpartitioned = "false",
-      partitioned = "false",
-      service_account_json_path = service_account_json_path,
   }
 
   call AssignIds {
@@ -185,6 +170,53 @@ task AssignIds {
   output {
     File gvs_ids_tsv = "gvs_ids.tsv"
     Int max_table_id = read_int("max_table_id")
+  }
+}
+
+task CreateCostObservabilityTable {
+  input {
+    String project_id
+    String dataset_name
+  }
+
+  String cost_observability_json =
+                                 '[ { "name": "call_set_identifier", "type": "STRING", "mode": "REQUIRED" }, '     + # The name by which we refer to the callset
+                                 '  { "name": "step", "type": "STRING", "mode": "REQUIRED" }, '                    + # The name of the core GVS workflow to which this belongs
+                                 '  { "name": "call", "type": "STRING", "mode": "NULLABLE" }, '                    + # The WDL call to which this belongs
+                                 '  { "name": "shard_identifier", "type": "STRING", "mode": "NULLABLE" }, '        + # A unique identifier for this shard, may or may not be its index
+                                 '  { "name": "call_start_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' + # When the call logging this event was started
+                                 '  { "name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, '      + # When the observability event was logged
+                                 '  { "name": "event_key", "type": "STRING", "mode": "REQUIRED" }, '               + # The type of observability event being logged
+                                 '  { "name": "event_bytes", "type": "INTEGER", "mode": "REQUIRED" } ] '             # Number of bytes reported for this observability event
+
+  meta {
+    # not volatile: true, always run this when asked
+  }
+  command <<<
+    set -o xtrace
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    # Check that the table has not been created yet
+    set +o errexit
+    bq show --project_id ~{project_id} $TABLE > /dev/null
+    BQ_SHOW_RC=$?
+    set -o errexit
+
+    if [ $BQ_SHOW_RC -ne 0 ]; then
+      TABLE="~{dataset_name}.cost_observability"
+      PARTITION_STRING="--time_partitioning_field call_start_timestamp --time_partitioning_type DAY"
+      echo "making table $TABLE"
+      echo '~{cost_observability_json}' > schema.json
+      bq --location=US mk ${PARTITION_STRING} --project_id=~{project_id} $TABLE schema.json
+    fi
+    done
+  >>>
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_16"
+  }
+  output {
+    Boolean done = true
   }
 }
 
