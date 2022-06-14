@@ -15,7 +15,6 @@ workflow GvsJointVariantCalling {
         Array[File] input_vcfs
         Array[File] input_vcf_indexes
         String callset_identifier
-        String extract_output_gcs_dir
     }
 
     String extract_output_file_base_name = callset_identifier ## TODO make sure there are no spaces here!??!
@@ -28,7 +27,7 @@ workflow GvsJointVariantCalling {
             external_sample_names = external_sample_names
     }
 
-    call ImportGenomes.GvsImportGenomes {
+    call ImportGenomes.GvsImportGenomes as ImportGenomes {
         input:
             go = AssignIds.done,
             dataset_name = dataset_name,
@@ -68,8 +67,7 @@ workflow GvsJointVariantCalling {
             project_id = project_id,
             extract_table_prefix = callset_identifier,
             filter_set_name = callset_identifier,
-            output_file_base_name = callset_identifier,
-            output_gcs_dir = extract_output_gcs_dir
+            output_file_base_name = callset_identifier
     }
 
     output {
