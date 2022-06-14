@@ -27,7 +27,7 @@ workflow GvsJointVariantCalling {
             external_sample_names = external_sample_names
     }
 
-    call ImportGenomes.GvsImportGenomes as ImportGenomes {
+    call ImportGenomes.GvsImportGenomes {
         input:
             go = AssignIds.done,
             dataset_name = dataset_name,
@@ -39,7 +39,7 @@ workflow GvsJointVariantCalling {
 
     call CreateAltAllele.GvsCreateAltAllele {
         input:
-            go = ImportGenomes.done,
+            go = GvsImportGenomes.done,
             dataset_name = dataset_name,
             project_id = project_id
     }
