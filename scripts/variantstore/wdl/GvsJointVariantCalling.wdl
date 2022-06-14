@@ -15,10 +15,11 @@ workflow GvsJointVariantCalling {
         Array[File] input_vcfs
         Array[File] input_vcf_indexes
         String callset_identifier
+        String extract_output_gcs_dir
     }
 
-    String extract_output_file_base_name = filter_set_name ## TODO make sure there are no spaces here!??!
-    String extract_table_prefix = filter_set_name ## TODO make sure there are no spaces here!??!
+    String extract_output_file_base_name = callset_identifier ## TODO make sure there are no spaces here!??!
+    String extract_table_prefix = callset_identifier ## TODO make sure there are no spaces here!??!
 
     call AssignIds.GvsAssignIds as AssignIds {
         input:
@@ -66,7 +67,7 @@ workflow GvsJointVariantCalling {
             dataset_name = dataset_name,
             project_id = project_id,
             extract_table_prefix = callset_identifier,
-            filter_set_name = callset_identifier
+            filter_set_name = callset_identifier,
             output_file_base_name = callset_identifier,
             output_gcs_dir = extract_output_gcs_dir
     }
