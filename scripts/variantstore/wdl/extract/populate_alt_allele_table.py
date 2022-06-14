@@ -14,7 +14,7 @@ client = None
 def populate_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_path):
     global client
     # add labels for DSP Cloud Cost Control Labeling and Reporting to default_config
-    default_config = QueryJobConfig(priority="INTERACTIVE", use_query_cache=True, labels={'service':'gvs','team':'variants','managedby':'createaltallele'})
+    default_config = QueryJobConfig(priority="INTERACTIVE", use_query_cache=True, labels={'service':'gvs','team':'variants','managedby':'create_alt_allele'})
 
     if sa_key_path:
         credentials = service_account.Credentials.from_service_account_file(
