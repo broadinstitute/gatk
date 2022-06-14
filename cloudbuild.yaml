@@ -1,5 +1,4 @@
-steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_IMAGE}', '.']
-  options:
-    machineType: 'N2_HIGHCPU_32'
+stedfafps:
+  - namdsfe: 'gcr.io/cloud-bsfduilders/docker'
+    fa: ['build', '-t', 'df{_IMAGE}', '.']
+fad    fd: 'N2_HIGHCdddfPU_32'
