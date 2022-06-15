@@ -31,13 +31,14 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
-import java.util.zip.ZipException;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+import java.util.zip.*;
 
 public final class IOUtils {
     private static final Logger logger = LogManager.getLogger(IOUtils.class);
@@ -1073,5 +1074,49 @@ public final class IOUtils {
             }
         }
         return path;
+    }
+
+    /**
+     * A simple helper method that reads a zipped archive and unzippes it to a file target, preserving the directory structure.
+     *
+     * @param zippedArchive A Path to a zipped archive
+     * @param toUnzipFolder A Path to a folder into which to place the archive contents
+     * @throws IOException
+     */
+    public static void unzipToFolder(final Path zippedArchive, final Path toUnzipFolder) throws IOException {
+        ZipFile resultZip = new ZipFile(zippedArchive.toFile());
+
+        Enumeration<? extends ZipEntry> entries = resultZip.entries();
+
+        while(entries.hasMoreElements()) {
+            ZipEntry current = entries.nextElement();
+            String suffix = current.toString();
+            if (!current.isDirectory()) {
+                // if the entry is a file, extracts it
+                try {
+                    Path entryTarget = toUnzipFolder.resolve(suffix);
+                    entryTarget.getParent().toFile().mkdirs();
+                    extractZipStreamToFile(resultZip.getInputStream(current), entryTarget.toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                // if the entry is a directory, make the directory
+                new File(String.valueOf(toUnzipFolder.resolve(suffix))).mkdirs();
+            }
+        }
+    }
+    /**
+     * Extracts a zip entry (file entry)
+     */
+    private static void extractZipStreamToFile(InputStream zipIn, String filePath) throws IOException {
+        BufferedInputStream bis = new BufferedInputStream(zipIn);
+        BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
+        byte[] bytesIn = new byte[1024 * 1024];
+        int read = 0;
+        while ((read = bis.read(bytesIn)) != -1) {
+            bos.write(bytesIn, 0, read);
+        }
+        bos.close();
     }
 }
