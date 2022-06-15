@@ -14,10 +14,10 @@ The GvsJointVariantCalling WDL is a wrapper WDL that expedites the creation of a
 
 
 ## Prerequisites
-This quickstart assumes that you are familiar with Terra workspaces, the data model and providing input parameters and launching workflows.
+These instructions assume that you are familiar with Terra workspaces, the data model and providing input parameters and launching workflows.
 
 1. You will need to have or create a Google **project**  (this corresponds to the input param: `project_id`).
-2. You will need to put the gVCFs you are using into a GCP bucket
+2. You will need to put the gVCFs you are using into a GCP bucket. (is this true?)
 3. You will need to have or create a BigQuery **dataset** (this corresponds to the input param: `dataset_name`).
 4. Grant the "BigQuery Data Editor" role on that **dataset** to your Terra PROXY group.  Your proxy group name can be found on your Terra Profile page and look something like `PROXY_12345678901234567890@firecloud.org`.
 5. Grant the following roles on the **project** containing the dataset to your proxy group:
@@ -29,13 +29,13 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
 
 
 ## Prepare your workspace 
-* Clone the Terra workspace [Genomic\_Variant\_Store\_beta\_dev\_version](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version)
-* Load your data into the Terra workspace (Link to documentation for Terra data loading)
+* Clone the Terra workspace [Genomic\_Variant\_Store\_beta\_dev\_version](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version).
+* Load your data into the Terra workspace (Link to documentation for Terra data loading).
 * Create a sample set from the Data table by selecting all desired samples, clicking the pencil icon (edit), and choosing "Save Selection as Set" (the docs will refer to this set as: `gvs_sample_set`).
-* Share your Terra the workspace with the variants team at Broad (variants@broadinstitute.org)
+* Share your Terra workspace with the GVS team at Broad (variants@broadinstitute.org).
 * Note that the GvsJointVariantCalling workflow will already be in your cloned workspace (https://support.terra.bio/hc/en-us/articles/360036379771-Get-started-running-workflows)
 
-Once the data is loaded into your workspace, let us know by emailing Kylee and one of our engineers will validate your data
+Once the data is loaded into your workspace, let us know by emailing Kylee ([kbergin@broadinstitute.org](mailto:kbergin@broadinstitute.org)) and one of our engineers will validate your data.
 
 
 ## Run the pipeline
@@ -51,14 +51,14 @@ These are the required parameters which must be supplied to the workflow:
 | dataset_name          | the name of the dataset you created above                                                      |
 | project_id            | the name of the google project containing the dataset                                          |
 | external_sample_names | `this.samples.sample_id` (the sample identifier column from the `gvs_sample_set` sample set)   |
-| input_vcfs            | the name of the google project containing the dataset                                          |
-| input_vcf_indexes     | the index files for the above gVCFs                                                            |
+| input_vcfs            | reblocked gVCF file for each sample; `this.samples.<gvcf_column_name>`       |                                          |
+| input_vcf_indexes     | the index files for the above gVCFs; `this.samples.<gvcf_index_column_name>`                   |                                                            |
 | callset_identifier    | the desired name for the exported callset                                                      |
 
 
 
 ## Your VCF files are ready!
-The sharded VCF output files are listed in the `Unified.output_vcf` workflow output, and the associated index files are listed in `Unified.output_vcf_index`.
+The sharded VCF output files are listed in the `GvsVariantCalling.output_vcfs` workflow output, and the associated index files are listed in `GvsVariantCalling.output_vcf_indexes`.
 
 
 
