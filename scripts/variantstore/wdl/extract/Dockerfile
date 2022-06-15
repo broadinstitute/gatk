@@ -17,5 +17,6 @@ COPY utils.py /app
 COPY add_max_as_vqslod.py /app
 COPY curate_input_array_files.py /app
 COPY scale_xy_bed_values.py /app
+COPY workflow_compute_costs.py /app
 
 WORKDIR /app

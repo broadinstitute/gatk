@@ -1,20 +1,17 @@
-import argparse
-from collections import defaultdict
-
 
 def fapi_list_submissions(workspace_namespace: str, workspace_name: str, submission_id: str):
     from firecloud import api as fapi
-    return fapi.list_submissions(workspace_namespace, workspace_name, submission_id).json()
+    return fapi.mock_list_submissions(workspace_namespace, workspace_name, submission_id).json()
 
 
 def fapi_get_submission(workspace_namespace: str, workspace_name: str, submission_id: str):
     from firecloud import api as fapi
-    return fapi.get_submission(workspace_namespace, workspace_name, submission_id).json()
+    return fapi.mock_get_submission(workspace_namespace, workspace_name, submission_id).json()
 
 
 def fapi_get_workflow_metadata(workspace_namespace: str, workspace_name: str, submission_id: str, workflow_id: str):
     from firecloud import api as fapi
-    return fapi.get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
+    return fapi.mock_get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
 
 
 def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
@@ -26,6 +23,7 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
     submission_ids = [s['submissionId'] for s in submissions]
 
     # Two-level default dictionary for workflow name -> workflow id -> cost
+    from collections import defaultdict
     workflow_costs = defaultdict(lambda: defaultdict(dict))
 
     for submission_id in submission_ids:
@@ -63,6 +61,7 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
 
 
 def parse_args():
+    import argparse
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Populate an alt_allele table for the BigQuery Variant Store')
 
@@ -75,13 +74,6 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    # import os
-    # workspace_namespace = os.environ['WORKSPACE_NAMESPACE']
-    # workspace_name = os.environ['WORKSPACE_NAME']
-
-    # workspace_namespace = 'broad-firecloud-dsde'
-    # workspace_name = 'VS-415 GVS Quickstart Default Extract Scatter'
-
     args = parse_args()
     costs = compute_costs(args.workspace_namespace, args.workspace_name, args.exclude)
 

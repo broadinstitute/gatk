@@ -7,7 +7,7 @@ WORKSPACE_NAMESPACE='test_workspace_namespace'
 WORKSPACE_NAME='test_workspace'
 
 
-def list_submissions(_workspace_namespace, _workspace_name):
+def mock_list_submissions(_workspace_namespace, _workspace_name):
     return [
         FAILED_INTEGRATION_SUBMISSION,
         SUCCEEDED_ASSIGN_IDS_SUBMISSION,
@@ -15,7 +15,7 @@ def list_submissions(_workspace_namespace, _workspace_name):
     ]
 
 
-def get_submission(_workspace_namespace, _workspace_name, submission_id):
+def mock_get_submission(_workspace_namespace, _workspace_name, submission_id):
     if submission_id == FAILED_INTEGRATION_SUBMISSION_ID:
         return FAILED_INTEGRATION_SUBMISSION
     elif submission_id == SUCCEEDED_INTEGRATION_SUBMISSION_ID:
@@ -26,7 +26,7 @@ def get_submission(_workspace_namespace, _workspace_name, submission_id):
         raise ValueError(f"Unrecognized submission id '{submission_id}")
 
 
-def get_workflow_metadata(_workspace_namespace, _workspace_name, submission_id, workflow_id):
+def mock_get_workflow_metadata(_workspace_namespace, _workspace_name, submission_id, workflow_id):
     if submission_id == FAILED_INTEGRATION_SUBMISSION_ID:
         expected_workflow = FAILED_INTEGRATION_WORKFLOW
     elif submission_id == SUCCEEDED_INTEGRATION_SUBMISSION_ID:
@@ -53,36 +53,42 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                               get_workflow_metadata=None
                               )
         # Asserts both empty costs and the non-invocation of `get_submission` and `get_workflow_metadata`.
-        self.assertEqual(len(costs), 0)
+        self.assertEqual(len(costs), 0, msg="Costs should be empty when there are no submission in the workspace.")
 
     def test_all_submissions(self):
         costs = compute_costs(workspace_namespace=WORKSPACE_NAMESPACE,
                               workspace_name=WORKSPACE_NAME,
                               excluded_submission_ids=[],
-                              list_submissions=list_submissions,
-                              get_submission=get_submission,
-                              get_workflow_metadata=get_workflow_metadata
+                              list_submissions=mock_list_submissions,
+                              get_submission=mock_get_submission,
+                              get_workflow_metadata=mock_get_workflow_metadata
                               )
-        # Asserts both empty costs and the non-invocation of `get_submission` and `get_workflow_metadata`.
-        self.assertEqual(len(costs), 2)
+
+        self.assertEqual(len(costs), 2, msg="Expecting exactly two kinds of workflows in costs dictionary")
+        integration = costs['GvsQuickstartIntegration']
+        expected = {'902df806-5852-43d0-9816-ff46bf7e1716': 0.104732, 'a7e9cf65-f3e6-4ede-b64e-38018ca560f3': 0.885638}
+        self.assertEqual(integration, expected)
+
+        expected = {'e3120691-cf45-471d-85d8-a10a8ef51a07': 0.018258}
+        assignids = costs['GvsAssignIds']
+        self.assertEqual(assignids, expected)
 
     def test_apply_exclusion(self):
-        pass
+        excluded_submission_id = '136781a2-64b8-4ede-8652-973136030aaf'
+        costs = compute_costs(workspace_namespace=WORKSPACE_NAMESPACE,
+                              workspace_name=WORKSPACE_NAME,
+                              excluded_submission_ids=[excluded_submission_id],
+                              list_submissions=mock_list_submissions,
+                              get_submission=mock_get_submission,
+                              get_workflow_metadata=mock_get_workflow_metadata
+                              )
 
+        self.assertEqual(len(costs), 2, msg="Expecting exactly two kinds of workflows in costs dictionary")
 
+        integration = costs['GvsQuickstartIntegration']
+        expected = {'a7e9cf65-f3e6-4ede-b64e-38018ca560f3': 0.885638}
+        self.assertEqual(integration, expected)
 
-    # def test_downsampled_scaling(self):
-    #     import filecmp
-    #     import tempfile
-    #
-    #     for x, y in [(10, 10), (1, 10), (10, 1)]:
-    #         with tempfile.NamedTemporaryFile() as actual_output_bed:
-    #             scale_xy_bed_values('scale_xy_bed_values_test_files/intervals_downsampled_5.bed',
-    #                                 actual_output_bed.name,
-    #                                 x,
-    #                                 y)
-    #
-    #             expected_output_bed = f'scale_xy_bed_values_test_files/intervals_downsampled_5_scaled_{x}_{y}.bed'
-    #             self.assertTrue(filecmp.cmp(expected_output_bed,
-    #                                         actual_output_bed.name,
-    #                                         shallow=False), f'fail on X scaling {x} and Y scaling {y}')
+        expected = {'e3120691-cf45-471d-85d8-a10a8ef51a07': 0.018258}
+        assignids = costs['GvsAssignIds']
+        self.assertEqual(assignids, expected)
