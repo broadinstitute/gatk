@@ -37,7 +37,7 @@ def execute_with_retry(client, label, sql):
             print(
                 f"COMPLETED ({time.time() - start} seconds, {3 - len(retry_delay)} retries, {mb_billed} MBs) - {label}")
 
-            return results
+            return {'results': results, 'job': job}
         except (google.api_core.exceptions.InternalServerError,
                 google.api_core.exceptions.TooManyRequests,
                 google.api_core.exceptions.ServiceUnavailable) as err:

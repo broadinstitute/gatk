@@ -28,21 +28,31 @@ print(f"running with prefix {output_table_prefix}")
 
 REF_VET_TABLE_COUNT = -1
 client = None
+default_config = None
 
 EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
 
-def dump_job_stats():
+def dump_job_stats(fq_dataset, call_set_identifier):
   total = 0
 
-  for jobid in JOB_IDS:
-    job = client.get_job(jobid[1])
+  for job in JOB_IDS:
+    job = client.get_job(job)
 
     bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
     total = total + bytes_billed
 
-    print(jobid[0], "jobid:  (", jobid[1], ") <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
+    print(job.query, "jobid:  (", job.job_id, ") <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
 
   print(" Total GBs billed ", total/(1024 * 1024 * 1024), " GBs")
+
+
+  # populate cost_observability data
+  sql = f"""INSERT INTO `{fq_dataset}.cost_observability`
+            (call_set_identifier, step, call, shard_identifier, event_key, call_start_timestamp, event_timestamp, event_bytes)
+            VALUES('{call_set_identifier}', 'GvsPrepareRanges', 'PrepareRangesCallsetTask', '{output_table_prefix}', 'BigQuery Query Billed',
+            CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {total})"""
+  query = client.query(sql, job_config=default_config)
+  query.result()
 
 def get_partition_range(i):
   if i < 1 or i > REF_VET_TABLE_COUNT:
@@ -81,8 +91,9 @@ def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
 def get_all_sample_ids(fq_destination_table_samples):
   sql = f"select sample_id from `{fq_destination_table_samples}`"
 
-  results = utils.execute_with_retry(client, "read cohort sample table", sql)
-  sample_ids = [row.sample_id for row in list(results)]
+  query_return = utils.execute_with_retry(client, "read cohort sample table", sql)
+  JOB_IDS.add(query_return['job'])
+  sample_ids = [row.sample_id for row in list(query_return['results'])]
   sample_ids.sort()
   return sample_ids
 
@@ -93,15 +104,17 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
 
   print(sql)
 
-  results = utils.execute_with_retry(client, "create extract sample table", sql)
-  return results
+  query_return = utils.execute_with_retry(client, "create extract sample table", sql)
+  JOB_IDS.add(query_return['job'])
+  return query_return['results']
 
 def get_table_count(fq_pet_vet_dataset):
   sql = f"SELECT MAX(CAST(SPLIT(table_name, '_')[OFFSET(1)] AS INT64)) max_table_number " \
         f"FROM `{fq_pet_vet_dataset}.INFORMATION_SCHEMA.TABLES` " \
         f"WHERE REGEXP_CONTAINS(lower(table_name), r'^(pet_[0-9]+)$') "
-  results = utils.execute_with_retry(client, "get max table", sql)
-  return int([row.max_table_number for row in list(results)][0])
+  query_return = utils.execute_with_retry(client, "get max table", sql)
+  JOB_IDS.add(query_return['job'])
+  return int([row.max_table_number for row in list(query_return['results'])][0])
 
 def create_final_extract_vet_table(fq_destination_table_vet_data):
   # first, create the table structure
@@ -125,7 +138,8 @@ def create_final_extract_vet_table(fq_destination_table_vet_data):
           {FINAL_TABLE_TTL}        
         """
   print(sql)
-  results = utils.execute_with_retry(client, "create-final-export-table", sql)
+  query_return = utils.execute_with_retry(client, "create final export vet table", sql)
+  JOB_IDS.add(query_return['job'])
 
 def create_final_extract_ref_table(fq_destination_table_ref_data):
   # first, create the table structure
@@ -142,7 +156,8 @@ def create_final_extract_ref_table(fq_destination_table_ref_data):
           {FINAL_TABLE_TTL}        
         """
   print(sql)
-  results = utils.execute_with_retry(client, "create-final-export-table", sql)
+  query_return = utils.execute_with_retry(client, "create final export ref table", sql)
+  JOB_IDS.add(query_return['job'])
 
 
 def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids):
@@ -174,8 +189,8 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
       print(f"{fq_ref_table} query is {utils.utf8len(sql)/(1024*1024)} MB in length")
 
       # KCIBUL: whenever this was refactored, we lost the JOB_ID reference to be able to dump stats at the end
-      utils.execute_with_retry(client, "populate destination table with reference data", sql)
-
+      query_return = utils.execute_with_retry(client, "populate destination table with reference data", sql)
+      JOB_IDS.add(query_return['job'])
   return
 
 def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids):
@@ -205,11 +220,12 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 
       print(sql)
       print(f"{fq_vet_table} query is {utils.utf8len(sql)/(1024*1024)} MB in length")
-      utils.execute_with_retry(client, "populate destination table with variant data", sql)
-
+      query_return = utils.execute_with_retry(client, "populate destination table with variant data", sql)
+      JOB_IDS.add(query_return['job'])
   return
 
-def make_extract_table(control_samples,
+def make_extract_table(call_set_identifier,
+                       control_samples,
                        fq_ranges_dataset,
                        max_tables,
                        sample_names_to_extract,
@@ -219,7 +235,6 @@ def make_extract_table(control_samples,
                        fq_temp_table_dataset,
                        fq_destination_dataset,
                        destination_table_prefix,
-                       min_variant_samples,
                        fq_sample_mapping_table,
                        sa_key_path,
                        temp_table_ttl_hours
@@ -230,6 +245,7 @@ def make_extract_table(control_samples,
     fq_destination_table_samples = f"{fq_destination_dataset}.{destination_table_prefix}__SAMPLES"
 
     global client
+    global default_config
     # this is where a set of labels are being created for the cohort extract
     query_labels_map = {}
     query_labels_map["id"]= output_table_prefix
@@ -265,7 +281,7 @@ def make_extract_table(control_samples,
 
     ## TODO -- provide a cmdline arg to override this (so we can simulate smaller datasets)
 
-    global REF_VET_TABLE_COUNT ## TODO why are we using PET here?
+    global REF_VET_TABLE_COUNT
     REF_VET_TABLE_COUNT = max_tables
 
     global TEMP_TABLE_TTL_HOURS
@@ -298,10 +314,11 @@ def make_extract_table(control_samples,
     populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids)
 
   finally:
-    dump_job_stats()
+    dump_job_stats(f"{fq_destination_dataset}", call_set_identifier)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')
+  parser.add_argument('--call_set_identifier',type=str, help='callset identifier used to track costs in cost_observability table', default='false')
   parser.add_argument('--control_samples',type=str, help='true for control samples only, false for participant samples only', default='false')
   parser.add_argument('--fq_ranges_dataset',type=str, help='project.dataset location of ranges/vet data', required=True)
   parser.add_argument('--fq_temp_table_dataset',type=str, help='project.dataset location where results should be stored', required=True)
@@ -309,7 +326,6 @@ if __name__ == '__main__':
   parser.add_argument('--destination_cohort_table_prefix',type=str, help='prefix used for destination cohort extract tables (e.g. my_fantastic_cohort)', required=True)
   parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
   parser.add_argument('--query_labels',type=str, action='append', help='Labels to put on the BQ query that will show up in the billing. Ex: --query_labels key1=value1 --query_labels key2=value2', required=False)
-  parser.add_argument('--min_variant_samples',type=int, help='Minimum variant samples at a site required to be emitted', required=False, default=0)
   parser.add_argument('--fq_sample_mapping_table',type=str, help='Mapping table from sample_id to sample_name', required=True)
   parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
   parser.add_argument('--max_tables',type=int, help='Maximum number of PET/VET tables to consider', required=False, default=250)
@@ -323,7 +339,8 @@ if __name__ == '__main__':
   # Execute the parse_args() method
   args = parser.parse_args()
 
-  make_extract_table(args.control_samples,
+  make_extract_table(args.call_set_identifier,
+                     args.control_samples,
                      args.fq_ranges_dataset,
                      args.max_tables,
                      args.sample_names_to_extract,
@@ -333,7 +350,6 @@ if __name__ == '__main__':
                      args.fq_temp_table_dataset,
                      args.fq_destination_dataset,
                      args.destination_cohort_table_prefix,
-                     args.min_variant_samples,
                      args.fq_sample_mapping_table,
                      args.sa_key_path,
                      args.ttl)
