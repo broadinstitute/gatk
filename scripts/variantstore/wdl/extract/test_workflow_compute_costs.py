@@ -53,7 +53,7 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                               get_workflow_metadata=None
                               )
         # Asserts both empty costs and the non-invocation of `get_submission` and `get_workflow_metadata`.
-        self.assertEqual(len(costs), 0, msg="Costs should be empty when there are no submission in the workspace.")
+        self.assertEqual(len(costs), 0, msg="Costs should be empty when there are no submissions in the workspace.")
 
     def test_all_submissions(self):
         costs = compute_costs(workspace_namespace=WORKSPACE_NAMESPACE,

@@ -1,17 +1,19 @@
+from logging import info, warning
 
-def fapi_list_submissions(workspace_namespace: str, workspace_name: str, submission_id: str):
+
+def fapi_list_submissions(workspace_namespace: str, workspace_name: str):
     from firecloud import api as fapi
-    return fapi.mock_list_submissions(workspace_namespace, workspace_name, submission_id).json()
+    return fapi.list_submissions(workspace_namespace, workspace_name).json()
 
 
 def fapi_get_submission(workspace_namespace: str, workspace_name: str, submission_id: str):
     from firecloud import api as fapi
-    return fapi.mock_get_submission(workspace_namespace, workspace_name, submission_id).json()
+    return fapi.get_submission(workspace_namespace, workspace_name, submission_id).json()
 
 
 def fapi_get_workflow_metadata(workspace_namespace: str, workspace_name: str, submission_id: str, workflow_id: str):
     from firecloud import api as fapi
-    return fapi.mock_get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
+    return fapi.get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
 
 
 def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
@@ -27,8 +29,8 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
     workflow_costs = defaultdict(lambda: defaultdict(dict))
 
     for submission_id in submission_ids:
-        if submission_id in excluded_submission_ids:
-            print(f"Submission id '{submission_id}' in exclude list, skipping cost calculation.")
+        if excluded_submission_ids and submission_id in excluded_submission_ids:
+            info(f"Submission id '{submission_id}' in exclude list, skipping cost calculation.")
             continue
         submission = get_submission(workspace_namespace, workspace_name, submission_id)
         workflows = submission['workflows']
@@ -42,7 +44,7 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
             if not workflow_name:
                 print(f"Workflow {workflow_id} has no workflow name, skipping cost calculation.")
                 continue
-            print(f'Submission {submission_id}: workflow id {workflow_id}, name {workflow_name}')
+            # info(f'Submission {submission_id}: workflow id {workflow_id}, name {workflow_name}')
 
             if workflow_name.startswith('Gvs'):
                 if len(workflow_ids) == 1:
@@ -73,7 +75,23 @@ def parse_args():
     return parser.parse_args()
 
 
+def configure_logging():
+    import logging
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+
+    # create formatter and add it to the handler
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    # add the handler to the logger
+    logger.addHandler(ch)
+
+
 if __name__ == '__main__':
+    configure_logging()
     args = parse_args()
     costs = compute_costs(args.workspace_namespace, args.workspace_name, args.exclude)
 
@@ -88,7 +106,8 @@ if __name__ == '__main__':
         'GvsQuickstartIntegration'
     ]
 
+    print("workflow_name\tworkflow_id\tcost")
     for wdl in wdls:
         if wdl in costs:
-            cost = sum(costs[wdl].values())
-            print(f"{wdl}: {len(costs[wdl])} workflows, total compute cost ${cost:.2f}")
+            for workflow_id, cost in costs[wdl].items():
+                print(f"{wdl}\t{workflow_id}\t{cost}")
