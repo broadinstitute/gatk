@@ -393,38 +393,45 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
     }
 
     // Expected exception is a UserException but gets wrapped in a RuntimeException
-    @Test(expectedExceptions = RuntimeException.class)
+    @Test(expectedExceptions = UserException.class)
     public void testVariantRecalibratorFailedRscriptOutput() throws IOException {
         final String inputFile = getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf";
+        final File rscriptOutput = createTempFile("rscriptOutput", ".R");
+/*
+        final String[] args = {String.format(StringUtils.join(VQSRBothAggregateParamsWithResources, " "), Arrays.asList(
+                modelReportRecal,
+                modelReportTranches)),
+            " --rscript-file ", rscriptOutput.getName()};
 
+        runCommandLine(args);
+
+ */
+        final String arg = StringUtils.join(VQSRBothAggregateParamsWithResources, " ");
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                " --variant " + inputFile +
-                        " -L 20:1,000,000-10,000,000" +
-                        " --resource:known,known=true,prior=10.0 " + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
-                        " --resource:truth_training1,truth=true,training=true,prior=15.0 " + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
-                        " --resource:truth_training2,training=true,truth=true,prior=12.0 " + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
-                        " -an QD -an HaplotypeScore -an HRun" +
-                        " --trust-all-polymorphic" + // for speed
-                        " --output %s" +
-                        " -tranches-file %s" +
-                        " --output-model " + modelReportFilename +
-                        " -mode SNP --max-gaussians 3" +  //reduce max gaussians so we have negative training data with the sampled input
-                        " -sample-every 2" +
-                        " --rscript-file " + createTempFile("rscriptOutput", ".R") +
-                        " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
-                Arrays.asList(
-                        modelReportRecal,
-                        modelReportTranches));
-        spec.executeTest("testVariantRecalibratorFailedRscriptOutput"+  inputFile, this);
-    }
+                arg + " --rscript-file " + rscriptOutput.getName(),
+                Arrays.asList(modelReportRecal, modelReportTranches)
+        );
 
+    }
 
     @Test
     public void testVariantRecalibratorRScriptOutput() throws IOException{
         final String inputFile = getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf";
 
-        File unrunRscript = createTempFile("rscriptOutput", ".R");
+        final File unrunRscript = createTempFile("rscriptOutput", ".R");
 
+        final String[] args = {String.format(StringUtils.join(VQSRBothAggregateParamsWithResources, " "),
+                modelReportRecal,
+                modelReportTranches),
+                " --disable-rexecutor",
+                " --rscript-file ", unrunRscript.getName()};
+
+        runCommandLine(args);
+
+        Assert.assertTrue(Files.exists(IOUtils.fileToPath(unrunRscript)), "Rscript file was not generated.");
+        Assert.assertTrue(Files.size(IOUtils.fileToPath(unrunRscript))>0, "Rscript file was empty.");
+
+        /*
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 " --variant " + inputFile +
                         " -L 20:1,000,000-10,000,000" +
@@ -444,9 +451,13 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                 Arrays.asList(
                         modelReportRecal,
                         modelReportTranches));
+
+
         spec.executeTest("testVariantRecalibratorRscriptOutput"+  inputFile, this);
         Assert.assertTrue(Files.exists(IOUtils.fileToPath(unrunRscript)), "Rscript file was not generated.");
         Assert.assertTrue(Files.size(IOUtils.fileToPath(unrunRscript))>0, "Rscript file was empty.");
+*/
+
     }
 
 
