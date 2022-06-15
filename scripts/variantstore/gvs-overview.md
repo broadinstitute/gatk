@@ -64,11 +64,11 @@ Input gVCF files for the GVS workflow must include the annotations described in 
 | Ref | Reference allele | --- |
 | Alt | Alternate allele | --- |
 | AS_RAW_MQ, RAW_MQandDP, or RAW_MQ | RMS mapping quality (‘AS’: allele-specific) | Required for VQSR Data |
-| AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate vs. reference read mapping qualities | Required for VQSR Data |
+| AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate versus reference read mapping qualities | Required for VQSR Data |
 | QUALapprox | Sum of PL[0] values; used to approximate the QUAL score | Required for VQSR Data |
 | AS_QUALapprox | Allele-specific sum of PL[0] values; used to approximate the QUAL score | Required for VQSR Data |
-| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE |Allele-specific forward/reverse read counts for strand bias tests | Required for VQSR Data |
-| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or Read depth  (‘AS’: allele-specific) | Required for VQSR Data |
+| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE | Allele-specific forward/reverse read counts for strand bias tests | Required for VQSR Data |
+| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or read depth  (‘AS’: allele-specific) | Required for VQSR Data |
 | call_GT | Genotype | --- |
 | call_GQ | Genotype quality | --- |
 
