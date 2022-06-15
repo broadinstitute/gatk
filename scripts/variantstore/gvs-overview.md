@@ -1,4 +1,4 @@
-# Genomic Variant Store Pipeline Overview
+# Genomic Variant Store pipeline overview
  
 | Pipeline Version | Date Updated | Documentation Authors | Questions or Feedback |
 | :----: | :---: | :----: | :--------------: |
