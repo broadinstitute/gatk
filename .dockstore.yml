@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_441_cost_observability
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
