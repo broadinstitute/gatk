@@ -1,14 +1,28 @@
 import argparse
 from collections import defaultdict
-from firecloud import api as fapi
 
 
-def calculate_costs(workspace_namespace, workspace_name, excluded_submission_ids,
-                    list_submissions=fapi.list_submissions,
-                    get_submission=fapi.get_submission,
-                    get_workflow_metadata=fapi.get_workflow_metadata):
-    submissions = list_submissions(workspace_namespace, workspace_name).json()
+def fapi_list_submissions(workspace_namespace: str, workspace_name: str, submission_id: str):
+    from firecloud import api as fapi
+    return fapi.list_submissions(workspace_namespace, workspace_name, submission_id).json()
 
+
+def fapi_get_submission(workspace_namespace: str, workspace_name: str, submission_id: str):
+    from firecloud import api as fapi
+    return fapi.get_submission(workspace_namespace, workspace_name, submission_id).json()
+
+
+def fapi_get_workflow_metadata(workspace_namespace: str, workspace_name: str, submission_id: str, workflow_id: str):
+    from firecloud import api as fapi
+    return fapi.get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
+
+
+def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
+                  list_submissions=fapi_list_submissions,
+                  get_submission=fapi_get_submission,
+                  get_workflow_metadata=fapi_get_workflow_metadata):
+
+    submissions = list_submissions(workspace_namespace, workspace_name)
     submission_ids = [s['submissionId'] for s in submissions]
 
     # Two-level default dictionary for workflow name -> workflow id -> cost
@@ -18,14 +32,14 @@ def calculate_costs(workspace_namespace, workspace_name, excluded_submission_ids
         if submission_id in excluded_submission_ids:
             print(f"Submission id '{submission_id}' in exclude list, skipping cost calculation.")
             continue
-        submission = get_submission(workspace_namespace, workspace_name, submission_id).json()
+        submission = get_submission(workspace_namespace, workspace_name, submission_id)
         workflows = submission['workflows']
         if not workflows:
             print(f"Submission '{submission_id}' has no workflows, skipping cost calculation.")
             continue
         workflow_ids = [w['workflowId'] for w in workflows]
         for workflow_id in workflow_ids:
-            workflow = get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
+            workflow = get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id)
             workflow_name = workflow['workflowName']
             if not workflow_name:
                 print(f"Workflow {workflow_id} has no workflow name, skipping cost calculation.")
@@ -69,7 +83,7 @@ if __name__ == '__main__':
     # workspace_name = 'VS-415 GVS Quickstart Default Extract Scatter'
 
     args = parse_args()
-    costs = calculate_costs(args.workspace_namespace, args.workspace_name, args.exclude)
+    costs = compute_costs(args.workspace_namespace, args.workspace_name, args.exclude)
 
     wdls = [
         'GvsAssignIds',
