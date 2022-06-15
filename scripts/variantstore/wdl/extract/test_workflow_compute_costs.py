@@ -6,13 +6,41 @@ from workflow_compute_costs_test_helper import *
 WORKSPACE_NAMESPACE='test_workspace_namespace'
 WORKSPACE_NAME='test_workspace'
 
-FAILED_SUBMISSION_ID='136781a2-64b8-4ede-8652-973136030aaf'
-EXCLUDED_SUBMISSION_ID='3b4ca454-bf05-4df0-806d-20880e1c7cfe'
-SUCCEEDED_SUBMISSION_ID=''
 
-SUBMISSION_IDS_RESPONSE={
+def list_submissions(_workspace_namespace, _workspace_name):
+    return [
+        FAILED_INTEGRATION_SUBMISSION,
+        SUCCEEDED_ASSIGN_IDS_SUBMISSION,
+        SUCCEEDED_INTEGRATION_SUBMISSION
+    ]
 
-}
+
+def get_submission(_workspace_namespace, _workspace_name, submission_id):
+    if submission_id == FAILED_INTEGRATION_SUBMISSION_ID:
+        return FAILED_INTEGRATION_SUBMISSION
+    elif submission_id == SUCCEEDED_INTEGRATION_SUBMISSION_ID:
+        return SUCCEEDED_INTEGRATION_SUBMISSION
+    elif submission_id == SUCCEEDED_ASSIGN_IDS_SUBMISSION_ID:
+        return SUCCEEDED_ASSIGN_IDS_SUBMISSION
+    else:
+        raise ValueError(f"Unrecognized submission id '{submission_id}")
+
+
+def get_workflow_metadata(_workspace_namespace, _workspace_name, submission_id, workflow_id):
+    if submission_id == FAILED_INTEGRATION_SUBMISSION_ID:
+        expected_workflow = FAILED_INTEGRATION_WORKFLOW
+    elif submission_id == SUCCEEDED_INTEGRATION_SUBMISSION_ID:
+        expected_workflow = SUCCEEDED_INTEGRATION_WORKFLOW
+    elif submission_id == SUCCEEDED_ASSIGN_IDS_SUBMISSION_ID:
+        expected_workflow = SUCCEEDED_ASSIGN_IDS_WORKFLOW
+    else:
+        raise ValueError(f"Unrecognized submission id '{submission_id}")
+
+    expected_workflow_id = expected_workflow['id']
+    if workflow_id != expected_workflow_id:
+        raise ValueError(f"Unexpected: workflow id '{workflow_id}' was expected to be '{expected_workflow_id}' for submission '{submission_id}'")
+
+    return expected_workflow
 
 
 class TestWorkflowComputeCosts(unittest.TestCase):
@@ -25,10 +53,18 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                               get_workflow_metadata=None
                               )
         # Asserts both empty costs and the non-invocation of `get_submission` and `get_workflow_metadata`.
-        self.assertTrue(len(costs) == 0)
+        self.assertEqual(len(costs), 0)
 
-    def test_return_all_costs(self):
-        pass
+    def test_all_submissions(self):
+        costs = compute_costs(workspace_namespace=WORKSPACE_NAMESPACE,
+                              workspace_name=WORKSPACE_NAME,
+                              excluded_submission_ids=[],
+                              list_submissions=list_submissions,
+                              get_submission=get_submission,
+                              get_workflow_metadata=get_workflow_metadata
+                              )
+        # Asserts both empty costs and the non-invocation of `get_submission` and `get_workflow_metadata`.
+        self.assertEqual(len(costs), 2)
 
     def test_apply_exclusion(self):
         pass
