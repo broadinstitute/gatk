@@ -56,6 +56,11 @@ class TestWorkflowComputeCosts(unittest.TestCase):
         # Asserts both empty costs and the non-invocation of `get_submission` and `get_workflow_metadata`.
         self.assertEqual(len(costs), 0, msg="Costs should be empty when there are no submissions in the workspace.")
 
+    def check_totals(self, costs):
+        expected_links = [w['link'] for w in costs['workflows']]
+        self.assertEqual(costs['total']['links'], expected_links)
+        self.assertAlmostEqual(sum([w['cost'] for w in costs['workflows']]), costs['total']['cost'])
+
     def test_all_submissions(self):
         self.maxDiff = None
         costs = compute_costs(workspace_namespace=WORKSPACE_NAMESPACE,
@@ -68,19 +73,20 @@ class TestWorkflowComputeCosts(unittest.TestCase):
 
         self.assertEqual(len(costs), 2, msg="Expecting exactly two workflow names in costs dictionary")
         integration = costs['GvsQuickstartIntegration']
-        integration['workflows'].sort(key=lambda w: w['workflow_id'])
 
-        expected = [{'cost': 0.104732,
+        expected = [{'cost': 0.885638,
+                     'link': 'https://app.terra.bio/#workspaces/test_workspace_namespace/GvsQuickstartIntegration/job_history/73ac71db-0488-46be-a8e8-7f00e795edec',
+                     'submission_id': '73ac71db-0488-46be-a8e8-7f00e795edec',
+                     'submission_timestamp': '2022-06-10T10:22:34.320Z',
+                     'workflow_id': 'a7e9cf65-f3e6-4ede-b64e-38018ca560f3'},
+                    {'cost': 0.104732,
                      'link': 'https://app.terra.bio/#workspaces/test_workspace_namespace/GvsQuickstartIntegration/job_history/136781a2-64b8-4ede-8652-973136030aaf',
                      'submission_id': '136781a2-64b8-4ede-8652-973136030aaf',
                      'submission_timestamp': '2022-06-09T20:28:57.797Z',
                      'workflow_id': '902df806-5852-43d0-9816-ff46bf7e1716'},
-                    {'cost': 0.885638,
-                     'link': 'https://app.terra.bio/#workspaces/test_workspace_namespace/GvsQuickstartIntegration/job_history/73ac71db-0488-46be-a8e8-7f00e795edec',
-                     'submission_id': '73ac71db-0488-46be-a8e8-7f00e795edec',
-                     'submission_timestamp': '2022-06-10T10:22:34.320Z',
-                     'workflow_id': 'a7e9cf65-f3e6-4ede-b64e-38018ca560f3'}]
+                    ]
         self.assertEqual(integration['workflows'], expected)
+        self.check_totals(integration)
 
         expected = [{'cost': 0.018258,
                      'link': 'https://app.terra.bio/#workspaces/test_workspace_namespace/GvsAssignIds/job_history/7b74f3e2-82ff-4289-92a5-5a801025a0f5',
@@ -89,6 +95,7 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                      'workflow_id': 'e3120691-cf45-471d-85d8-a10a8ef51a07'}]
         assign_ids = costs['GvsAssignIds']
         self.assertEqual(assign_ids['workflows'], expected)
+        self.check_totals(assign_ids)
 
     def test_apply_exclusion(self):
         self.maxDiff = None
@@ -110,6 +117,7 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                      'submission_timestamp': '2022-06-10T10:22:34.320Z',
                      'workflow_id': 'a7e9cf65-f3e6-4ede-b64e-38018ca560f3'}]
         self.assertEqual(integration['workflows'], expected)
+        self.check_totals(integration)
 
         expected = [{'cost': 0.018258,
                      'link': 'https://app.terra.bio/#workspaces/test_workspace_namespace/GvsAssignIds/job_history/7b74f3e2-82ff-4289-92a5-5a801025a0f5',
@@ -118,3 +126,4 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                      'workflow_id': 'e3120691-cf45-471d-85d8-a10a8ef51a07'}]
         assign_ids = costs['GvsAssignIds']
         self.assertEqual(assign_ids['workflows'], expected)
+        self.check_totals(assign_ids)
