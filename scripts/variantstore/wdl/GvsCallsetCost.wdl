@@ -7,7 +7,7 @@ workflow GvsCallsetCost {
         String workspace_namespace
         String workspace_name
 #        String callset_name
-        Array[String]? excluded_submission_ids
+        Array[String] excluded_submission_ids = []
     }
 
     call WorkflowComputeCosts {
@@ -52,17 +52,16 @@ task WorkflowComputeCosts {
     input {
         String workspace_namespace
         String workspace_name
-        Array[String]? excluded_submission_ids
+        Array[String] excluded_submission_ids
     }
 
-    Array[String] excluded_ids = prefix('--exclude ', select_first([excluded_submission_ids, []]))
-    String exclusions = "~{sep=' ' excluded_ids}"
+    Array[String] excluded_ids = prefix('--exclude ', excluded_submission_ids)
 
     command <<<
         python3 /app/workflow_compute_costs.py \
             --workspace_namespace '~{workspace_namespace}' \
             --workspace_name '~{workspace_name}' \
-            ~{exclusions} \
+            ~{sep=' ' excluded_ids} \
             > costs_by_workflow.json 2> workflow_compute_costs.log
     >>>
 
