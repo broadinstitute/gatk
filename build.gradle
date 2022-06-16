@@ -61,7 +61,7 @@ repositories {
     jcenter()
 }
 
-final htsjdkVersion = System.getProperty('htsjdk.version','2.24.1-1-gf0c975a-SNAPSHOT')
+final htsjdkVersion = System.getProperty('htsjdk.version','2.24.1')
 final picardVersion = System.getProperty('picard.version','2.27.1')
 final barclayVersion = System.getProperty('barclay.version','4.0.2')
 final sparkVersion = System.getProperty('spark.version', '2.4.5')
