@@ -62,6 +62,7 @@ workflow GvsQuickstartIntegration {
 
     call Unified.GvsUnified {
         input:
+            call_set_identifier = branch_name,
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             project_id = project_id,
             external_sample_names = external_sample_names,
