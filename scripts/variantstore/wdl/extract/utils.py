@@ -37,7 +37,7 @@ def execute_with_retry(client, label, sql):
             print(
                 f"COMPLETED ({time.time() - start} seconds, {3 - len(retry_delay)} retries, {mb_billed} MBs) - {label}")
 
-            return {'results': results, 'job': job}
+            return {'results': results, 'job': job, 'label': label}
         except (google.api_core.exceptions.InternalServerError,
                 google.api_core.exceptions.TooManyRequests,
                 google.api_core.exceptions.ServiceUnavailable) as err:
@@ -53,3 +53,22 @@ def execute_with_retry(client, label, sql):
 
 def utf8len(s):
     return len(s.encode('utf-8'))
+
+
+def dump_job_stats(jobs, client, fq_dataset, call_set_identifier):
+    total = 0
+
+    for query_return in jobs:
+        job = client.get_job(query_return['job'])
+        bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
+        total = total + bytes_billed
+        print(query_return['label'], "-- jobid:  (", job.job_id, ") <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
+    print("\n\nTotal GBs billed ", total/(1024 * 1024 * 1024), " GBs")
+
+    # populate cost_observability data
+    sql = f"""INSERT INTO `{fq_dataset}.cost_observability`
+            (call_set_identifier, step, call, event_key, call_start_timestamp, event_timestamp, event_bytes)
+            VALUES('{call_set_identifier}', 'GvsPrepareRanges', 'PrepareRangesCallsetTask', 'BigQuery Query Billed',
+            CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {total})"""
+    query = client.query(sql)
+    query.result()

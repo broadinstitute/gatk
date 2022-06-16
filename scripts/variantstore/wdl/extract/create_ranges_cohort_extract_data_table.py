@@ -10,7 +10,7 @@ from google.oauth2 import service_account
 
 import utils
 
-JOB_IDS = set()
+JOBS = []
 
 #
 # CONSTANTS
@@ -31,28 +31,6 @@ client = None
 default_config = None
 
 EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
-
-def dump_job_stats(fq_dataset, call_set_identifier):
-  total = 0
-
-  for job in JOB_IDS:
-    job = client.get_job(job)
-
-    bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
-    total = total + bytes_billed
-
-    print(job.query, "jobid:  (", job.job_id, ") <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
-
-  print(" Total GBs billed ", total/(1024 * 1024 * 1024), " GBs")
-
-
-  # populate cost_observability data
-  sql = f"""INSERT INTO `{fq_dataset}.cost_observability`
-            (call_set_identifier, step, call, shard_identifier, event_key, call_start_timestamp, event_timestamp, event_bytes)
-            VALUES('{call_set_identifier}', 'GvsPrepareRanges', 'PrepareRangesCallsetTask', '{output_table_prefix}', 'BigQuery Query Billed',
-            CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {total})"""
-  query = client.query(sql, job_config=default_config)
-  query.result()
 
 def get_partition_range(i):
   if i < 1 or i > REF_VET_TABLE_COUNT:
@@ -92,7 +70,7 @@ def get_all_sample_ids(fq_destination_table_samples):
   sql = f"select sample_id from `{fq_destination_table_samples}`"
 
   query_return = utils.execute_with_retry(client, "read cohort sample table", sql)
-  JOB_IDS.add(query_return['job'])
+  JOBS.append({'job': query_return['job'], 'label': query_return['label']})
   sample_ids = [row.sample_id for row in list(query_return['results'])]
   sample_ids.sort()
   return sample_ids
@@ -105,7 +83,7 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
   print(sql)
 
   query_return = utils.execute_with_retry(client, "create extract sample table", sql)
-  JOB_IDS.add(query_return['job'])
+  JOBS.append({'job': query_return['job'], 'label': query_return['label']})
   return query_return['results']
 
 def get_table_count(fq_pet_vet_dataset):
@@ -113,7 +91,7 @@ def get_table_count(fq_pet_vet_dataset):
         f"FROM `{fq_pet_vet_dataset}.INFORMATION_SCHEMA.TABLES` " \
         f"WHERE REGEXP_CONTAINS(lower(table_name), r'^(pet_[0-9]+)$') "
   query_return = utils.execute_with_retry(client, "get max table", sql)
-  JOB_IDS.add(query_return['job'])
+  JOBS.append({'job': query_return['job'], 'label': query_return['label']})
   return int([row.max_table_number for row in list(query_return['results'])][0])
 
 def create_final_extract_vet_table(fq_destination_table_vet_data):
@@ -139,7 +117,7 @@ def create_final_extract_vet_table(fq_destination_table_vet_data):
         """
   print(sql)
   query_return = utils.execute_with_retry(client, "create final export vet table", sql)
-  JOB_IDS.add(query_return['job'])
+  JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
 def create_final_extract_ref_table(fq_destination_table_ref_data):
   # first, create the table structure
@@ -157,7 +135,7 @@ def create_final_extract_ref_table(fq_destination_table_ref_data):
         """
   print(sql)
   query_return = utils.execute_with_retry(client, "create final export ref table", sql)
-  JOB_IDS.add(query_return['job'])
+  JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
 
 def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids):
@@ -184,13 +162,10 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
       sql = insert + ("\n".join(subs.values())) + "\n" + \
             "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
             f" (SELECT * FROM q_all)"
-
       print(sql)
       print(f"{fq_ref_table} query is {utils.utf8len(sql)/(1024*1024)} MB in length")
-
-      # KCIBUL: whenever this was refactored, we lost the JOB_ID reference to be able to dump stats at the end
       query_return = utils.execute_with_retry(client, "populate destination table with reference data", sql)
-      JOB_IDS.add(query_return['job'])
+      JOBS.append({'job': query_return['job'], 'label': query_return['label']})
   return
 
 def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids):
@@ -217,11 +192,10 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
       sql = insert + ("\n".join(subs.values())) + "\n" + \
             "q_all AS (" + (" union all ".join([ f"(SELECT * FROM q_{id})" for id in subs.keys()]))  + ")\n" + \
             f" (SELECT * FROM q_all)"
-
       print(sql)
       print(f"{fq_vet_table} query is {utils.utf8len(sql)/(1024*1024)} MB in length")
       query_return = utils.execute_with_retry(client, "populate destination table with variant data", sql)
-      JOB_IDS.add(query_return['job'])
+      JOBS.append({'job': query_return['job'], 'label': query_return['label']})
   return
 
 def make_extract_table(call_set_identifier,
@@ -314,7 +288,7 @@ def make_extract_table(call_set_identifier,
     populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids)
 
   finally:
-    dump_job_stats(f"{fq_destination_dataset}", call_set_identifier)
+    utils.dump_job_stats(JOBS, client, f"{fq_destination_dataset}", call_set_identifier)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')
