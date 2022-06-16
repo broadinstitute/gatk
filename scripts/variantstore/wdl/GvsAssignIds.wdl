@@ -180,14 +180,14 @@ task CreateCostObservabilityTable {
   }
 
   String cost_observability_json =
-                                 '[ { "name": "call_set_identifier", "type": "STRING", "mode": "REQUIRED" }, '     + # The name by which we refer to the callset
-                                 '  { "name": "step", "type": "STRING", "mode": "REQUIRED" }, '                    + # The name of the core GVS workflow to which this belongs
-                                 '  { "name": "call", "type": "STRING", "mode": "NULLABLE" }, '                    + # The WDL call to which this belongs
-                                 '  { "name": "shard_identifier", "type": "STRING", "mode": "NULLABLE" }, '        + # A unique identifier for this shard, may or may not be its index
-                                 '  { "name": "call_start_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, ' + # When the call logging this event was started
-                                 '  { "name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED" }, '      + # When the observability event was logged
-                                 '  { "name": "event_key", "type": "STRING", "mode": "REQUIRED" }, '               + # The type of observability event being logged
-                                 '  { "name": "event_bytes", "type": "INTEGER", "mode": "REQUIRED" } ] '             # Number of bytes reported for this observability event
+                                 '[ { "name": "call_set_identifier", "type": "STRING", "mode": "REQUIRED", "description": "The name by which we refer to the callset" }, ' +
+                                 '  { "name": "step", "type": "STRING", "mode": "REQUIRED", "description": "The name of the core GVS workflow to which this belongs" }, ' +
+                                 '  { "name": "call", "type": "STRING", "mode": "NULLABLE", "description": "The WDL call to which this belongs" }, ' +
+                                 '  { "name": "shard_identifier", "type": "STRING", "mode": "NULLABLE", "description": "A unique identifier for this shard, may or may not be its index" }, ' +
+                                 '  { "name": "call_start_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED", "description": "When the call logging this event was started" }, ' +
+                                 '  { "name": "event_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED", "description": "When the observability event was logged" }, ' +
+                                 '  { "name": "event_key", "type": "STRING", "mode": "REQUIRED", "description": "The type of observability event being logged" }, ' +
+                                 '  { "name": "event_bytes", "type": "INTEGER", "mode": "REQUIRED", "description": "Number of bytes reported for this observability event" } ] '
 
   meta {
     # not volatile: true, always run this when asked
