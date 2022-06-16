@@ -16,7 +16,7 @@ workflow GvsAoUReblockGvcf {
     String? service_account_json
     String? requester_pays_project
     String? site_id
-    String docker_image = "us.gcr.io/broad-gatk/gatk:4.2.2.0"
+    String docker_image = "us.gcr.io/broad-gatk/gatk:4.2.6.1"
 
   }
 
