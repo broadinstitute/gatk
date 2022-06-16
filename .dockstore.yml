@@ -209,7 +209,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsCallsetCost.wdl
+   - name: GvsCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetCost.wdl
      filters:
