@@ -31,6 +31,95 @@ import java.util.stream.Stream;
  */
 public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
 
+    @Test
+    public void testAS() {
+        final String[] argumentsSNP = {
+                "-L", "chr1",
+                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
+                "-O", "/home/slee/working/vqsr/scalable/vqsr-test/test.snp.as.recal.vcf",
+                "--tranches-file", "/home/slee/working/vqsr/scalable/vqsr-test/test.snp.as.tranches.csv",
+                "--use-allele-specific-annotations",
+                "-an", "AS_FS",
+                "-an", "AS_ReadPosRankSum",
+                "-an", "AS_QD",
+                "-an", "AS_SOR",
+                "--trust-all-polymorphic",
+                "-mode", "SNP",
+                "--resource:doctored,training=true,truth=true", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(argumentsSNP);
+
+        final String[] argumentsIndel = {
+                "-L", "chr1",
+                "-V", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
+                "-O", "/home/slee/working/vqsr/scalable/vqsr-test/test.indel.as.recal.vcf",
+                "--tranches-file", "/home/slee/working/vqsr/scalable/vqsr-test/test.indel.as.tranches.csv",
+                "--use-allele-specific-annotations",
+                "-an", "AS_FS",
+                "-an", "AS_ReadPosRankSum",
+                "-an", "AS_QD",
+                "-an", "AS_SOR",
+                "--max-gaussians", "1",
+                "--max-negative-gaussians", "1",
+                "--bad-lod-score-cutoff", "0",
+                "--trust-all-polymorphic",
+                "-mode", "INDEL",
+                "--resource:doctored,training=true,truth=true", largeFileTestDir + "VQSR/chr1snippet.doctoredMQ.doctoredAS.sites_only.vcf",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(argumentsIndel);
+    }
+
+    @Test
+    public void testJbxSNP() {
+        final String[] arguments = {
+                "-V", "/home/slee/working/vqsr/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
+                "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.vqsr.recal.vcf",
+                "--tranches-file", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.vqsr.tranches.csv",
+                "-an", "FS",
+                "-an", "ReadPosRankSum",
+                "-an", "MQRankSum",
+                "-an", "QD",
+                "-an", "SOR",
+                "-an", "MQ",
+                "-an", "COMBINED_TREE_SCORE",
+                "--trust-all-polymorphic",
+                "-mode", "SNP",
+                "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                "--verbosity", "DEBUG"
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test
+    public void testJbxSNPChromosomes() {
+        for (int c = 2; c <= 22; c++) {
+            final String[] arguments = {
+                    "-L", "chr" + c,
+                    "-V", "/home/slee/working/vqsr/jbx/resources/Test50Callset.annoated_pids.sites-only.vcf.gz",
+                    "-O", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.vqsr.chr" + c + ".recal.vcf",
+                    "--tranches-file", "/home/slee/working/vqsr/scalable/jbx/Test50Callset.snp.vqsr.chr" + c + ".tranches.csv",
+                    "-an", "FS",
+                    "-an", "ReadPosRankSum",
+                    "-an", "MQRankSum",
+                    "-an", "QD",
+                    "-an", "SOR",
+                    "-an", "MQ",
+                    "-an", "COMBINED_TREE_SCORE",
+                    "--trust-all-polymorphic",
+                    "-mode", "SNP",
+                    "--resource:hapmap,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/hapmap_3.3.hg38.vcf.gz",
+                    "--resource:omni,training=true,truth=true", "/mnt/4AB658D7B658C4DB/working/ref/1000G_omni2.5.hg38.vcf.gz",
+                    "--resource:1000G,training=true,truth=false", "/mnt/4AB658D7B658C4DB/working/ref/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+                    "--verbosity", "DEBUG"
+            };
+            runCommandLine(arguments);
+        }
+    }
+
     private final String[] VQSRSNPParamsWithResources =
         new String[] {
             "--variant",
