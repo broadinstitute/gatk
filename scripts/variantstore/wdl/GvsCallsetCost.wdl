@@ -55,8 +55,8 @@ task WorkflowComputeCosts {
         Array[String]? excluded_submission_ids
     }
 
-    Array[String] excluded_ids = select_first([excluded_submission_ids, []])
-    String exclusions = prefix(' --exclude ', excluded_ids)
+    Array[String] excluded_ids = prefix('--exclude ', select_first([excluded_submission_ids, []]))
+    String exclusions = "~{sep=' ' excluded_ids}"
 
     command <<<
         python3 /app/workflow_compute_costs.py \
