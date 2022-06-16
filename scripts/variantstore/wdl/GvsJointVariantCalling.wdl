@@ -13,8 +13,8 @@ workflow GvsJointVariantCalling {
         String? extract_output_gcs_dir
     }
 
-    String extract_output_file_base_name = callset_identifier ## TODO make sure there are no spaces here!??!
-    String extract_table_prefix = callset_identifier ## TODO make sure there are no spaces here!??!
+    String extract_output_file_base_name = sub(callset_identifier, "\s+|\_+", "-")
+    String extract_table_prefix = sub(callset_identifier, "\s+|\_+", "-")
     if(false) {
       Int extract_maxretries_override = ""
       Int extract_preemptible_override = ""
@@ -51,10 +51,10 @@ workflow GvsJointVariantCalling {
             destination_project = project_id,
             extract_do_not_filter_override = false,
             extract_maxretries_override = extract_maxretries_override,
-            extract_output_file_base_name = callset_identifier,
+            extract_output_file_base_name = extract_output_file_base_name,
             extract_preemptible_override = extract_preemptible_override,
             extract_scatter_count = extract_scatter_count,
-            extract_table_prefix = callset_identifier,
+            extract_table_prefix = extract_table_prefix,
             fq_temp_table_dataset = "~{project_id}.~{dataset_name}",
             gatk_override = gatk_override,
             indel_recalibration_annotation_values = indel_recalibration_annotation_values,
