@@ -7,7 +7,7 @@ workflow GvsQuickstartIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://broad-dsp-spec-ops/quickstart_integration/2022-06-03/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-06-15/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -52,6 +52,7 @@ workflow GvsQuickstartIntegration {
 
         Int load_data_batch_size = 1
     }
+    String project_id = "gvs-internal"
 
     call Utils.BuildGATKJarAndCreateDataset {
         input:
@@ -62,7 +63,7 @@ workflow GvsQuickstartIntegration {
     call Unified.GvsUnified {
         input:
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-            project_id = "gvs-internal",
+            project_id = project_id,
             external_sample_names = external_sample_names,
             gatk_override = BuildGATKJarAndCreateDataset.jar,
             input_vcfs = input_vcfs,
@@ -80,6 +81,13 @@ workflow GvsQuickstartIntegration {
         input:
             expected_output_prefix = expected_output_prefix,
             actual_vcfs = GvsUnified.output_vcfs
+    }
+
+    call AssertCostIsTrackedandExpected {
+        input:
+            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+            project_id = project_id,
+            expected_output_csv = expected_output_prefix + "cost_observability_excpected.csv"
     }
 
     output {
@@ -180,5 +188,40 @@ task AssertIdenticalOutputs {
     output {
         File fofn = "expected/expected_fofn.txt"
         Boolean done = true
+    }
+}
+
+task AssertCostIsTrackedandExpected {
+    input {
+        String dataset_name
+        String project_id
+        File expected_output_csv
+    }
+
+command <<<
+        set -o errexit
+        set -o nounset
+        set -o pipefail
+        set -o xtrace
+
+        echo '~{expected_output_csv}' > schema.json
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT step, call, event_key, event_bytes FROM ~{dataset_name}.cost_observability" > cost_observability_output.csv
+        diff cost_observability_output.csv ~{expected_output_csv} > diff
+
+        if [[ -s differences.txt ]]; then
+            echo "Differences found:"
+            cat diff
+            exit 1
+        fi
+    >>>
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
+        disks: "local-disk 10 HDD"
+    }
+
+    output {
     }
 }

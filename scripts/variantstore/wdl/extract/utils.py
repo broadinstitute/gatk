@@ -55,7 +55,7 @@ def utf8len(s):
     return len(s.encode('utf-8'))
 
 
-def dump_job_stats(jobs, client, fq_dataset, call_set_identifier):
+def dump_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, shard_identifier):
     total = 0
 
     for query_return in jobs:
@@ -67,8 +67,8 @@ def dump_job_stats(jobs, client, fq_dataset, call_set_identifier):
 
     # populate cost_observability data
     sql = f"""INSERT INTO `{fq_dataset}.cost_observability`
-            (call_set_identifier, step, call, event_key, call_start_timestamp, event_timestamp, event_bytes)
-            VALUES('{call_set_identifier}', 'GvsPrepareRanges', 'PrepareRangesCallsetTask', 'BigQuery Query Billed',
+            (call_set_identifier, step, call, shard_identifier, event_key, call_start_timestamp, event_timestamp, event_bytes)
+            VALUES('{call_set_identifier}', '{step}', '{call}', '{shard_identifier}', 'BigQuery Query Billed',
             CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {total})"""
     query = client.query(sql)
     query.result()
