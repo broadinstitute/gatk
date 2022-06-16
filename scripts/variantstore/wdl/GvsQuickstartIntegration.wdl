@@ -86,6 +86,7 @@ workflow GvsQuickstartIntegration {
 
     call AssertCostIsTrackedandExpected {
         input:
+            go = GvsUnified.done,
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             project_id = project_id,
             expected_output_csv = expected_output_prefix + "cost_observability_excpected.csv"
@@ -194,6 +195,7 @@ task AssertIdenticalOutputs {
 
 task AssertCostIsTrackedandExpected {
     input {
+        Boolean go = true
         String dataset_name
         String project_id
         File expected_output_csv

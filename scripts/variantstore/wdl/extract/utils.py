@@ -63,7 +63,7 @@ def dump_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, sh
         bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
         total = total + bytes_billed
         print(query_return['label'], "-- jobid:  (", job.job_id, ") <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
-    print("\n\nTotal GBs billed ", total/(1024 * 1024 * 1024), " GBs")
+    print("\nTotal GBs billed ", total/(1024 * 1024 * 1024), " GBs\n")
 
     # populate cost_observability data
     sql = f"""INSERT INTO `{fq_dataset}.cost_observability`
