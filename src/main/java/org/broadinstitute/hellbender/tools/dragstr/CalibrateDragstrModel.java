@@ -1,23 +1,54 @@
 package org.broadinstitute.hellbender.tools.dragstr;
 
-import htsjdk.samtools.*;
-import htsjdk.samtools.util.IntervalTree;
-import it.unimi.dsi.fastutil.ints.*;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.Vector;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
 import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.ExampleProgramGroup;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.BinaryTableReader;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.collections.AutoCloseableCollection;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParamUtils;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.utils.dragstr.STRTableFile;
@@ -25,12 +56,20 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.AbsoluteCoordinates;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.*;
-import java.util.stream.*;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.util.IntervalTree;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+import scala.Tuple4;
 
 /**
  * Estimates the parameters for the DRAGstr model for an input sample.
@@ -48,7 +87,6 @@ import java.util.stream.*;
         oneLineSummary = "estimates the parameters for the DRAGstr model",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
-@BetaFeature
 @DocumentedFeature
 public class CalibrateDragstrModel extends GATKTool {
 
@@ -59,6 +97,7 @@ public class CalibrateDragstrModel extends GATKTool {
     public static final String SHARD_SIZE_FULL_NAME = "shard-size";
     public static final String DOWN_SAMPLE_SIZE_FULL_NAME = "down-sample-size";
     public static final String DEBUG_SITES_OUTPUT_FULL_NAME = "debug-sites-output";
+    public static final String FORCE_ESTIMATION_FULL_NAME = "force-estimation";
 
     public static final int DEFAULT_SHARD_SIZE = 1_000_000;
     public static final int DEFAULT_DOWN_SAMPLE_SIZE = 4096;
@@ -95,7 +134,11 @@ public class CalibrateDragstrModel extends GATKTool {
     @Argument(fullName= DEBUG_SITES_OUTPUT_FULL_NAME, doc = "table with information gather on the samples sites. Includes what sites were downsampled, disqualified or accepted for parameter estimation", optional = true)
     private String sitesOutput = null;
 
+    @Argument(fullName= FORCE_ESTIMATION_FULL_NAME, doc = "for testing purpose only; force parameter estimation even with few datapoints available", optional = true)
+    private boolean forceEstimation = false;
+
     private SAMSequenceDictionary dictionary;
+    private SamReaderFactory factory;
     public static final ReadTransformer EXTENDED_MQ_READ_TRANSFORMER = new DRAGENMappingQualityReadTransformer();
 
     @Override
@@ -113,6 +156,8 @@ public class CalibrateDragstrModel extends GATKTool {
         super.onStartup();
         hyperParameters.validate();
         dictionary = directlyAccessEngineReadsDataSource().getSequenceDictionary();
+        factory = makeSamReaderFactory();
+
         if (runInParallel) {
             if (threads == 1) {
                 logger.warn("parallel processing was requested but the number of threads was set to 1");
@@ -169,15 +214,20 @@ public class CalibrateDragstrModel extends GATKTool {
     }
 
     private void printOutput(final StratifiedDragstrLocusCases finalSites, final String sampleName, final List<String> readGroups) {
-        final boolean usingDefaults = !isThereEnoughCases(finalSites);
+        final boolean enoughCases = isThereEnoughCases(finalSites);
+        final boolean usingDefaults = !enoughCases && !forceEstimation;
         final Object[] annotations = {
                 "sample", (sampleName == null ? "<unspecified>" : sampleName),
                 "readGroups", (readGroups.isEmpty() ? "<unspecified>" : Utils.join(", ", readGroups)),
-                "estimatedOrDefaults", (usingDefaults ? "defaults" : "estimated"),
+                "estimatedOrDefaults", (usingDefaults ? "defaults" : (enoughCases ? "estimated" : "estimatedByForce")),
                 "commandLine", getCommandLine()
         };
         if (!usingDefaults) {
-            logger.info("Estimating parameters used sampled down cases");
+            if (!enoughCases) {
+                logger.warn("Forcing parameters estimation using sampled down cases as requested");
+            } else {
+                logger.info("Estimating parameters using sampled down cases");
+            }
             final DragstrParams estimate = estimateParams(finalSites);
             logger.info("Done with estimation, printing output");
             DragstrParamUtils.print(estimate, output, annotations);
@@ -264,17 +314,31 @@ public class CalibrateDragstrModel extends GATKTool {
      */
     private boolean isThereEnoughCases(final StratifiedDragstrLocusCases allSites) {
         // period 1, repeat length 1 to 9 (inclusive)
-        final int[][] MCBL = MINIMUM_CASES_BY_PERIOD_AND_LENGTH;
-        final int maxP = Math.min(hyperParameters.maxPeriod, MCBL.length - 1);
-        for (int i = 1; i <= maxP; i++) {
-            final int maxL = Math.min(hyperParameters.maxRepeatLength, MCBL[i].length - 1);
-            for (int j = 1; j <= maxL; j++) {
-                if (allSites.get(i, j).size() < MCBL[i][j]) {
-                    return false;
+            final int[][] MCBL = MINIMUM_CASES_BY_PERIOD_AND_LENGTH;
+            final int maxP = Math.min(hyperParameters.maxPeriod, MCBL.length - 1);
+            final List<Tuple4<Integer, Integer, Integer, Integer>> failingCombos = new ArrayList<>(10);
+            for (int i = 1; i <= maxP; i++) {
+                final int maxL = Math.min(hyperParameters.maxRepeatLength, MCBL[i].length - 1);
+                for (int j = 1; j <= maxL; j++) {
+                    if (allSites.get(i, j).size() < MCBL[i][j]) {
+                        failingCombos.add(new Tuple4<>(i, j, allSites.get(i, j).size(), MCBL[i][j]));
+                    }
                 }
             }
-        }
-        return true;
+            if (failingCombos.isEmpty()) {
+                return true;
+            } else if (forceEstimation) {
+                logger.warn("there is not enough data to proceed to parameter empirical estimation " +
+                        "but user requested to force it, so we go ahead");
+                for (final Tuple4<Integer, Integer, Integer, Integer> failingCombo : failingCombos) {
+                    logger.warn(String.format("(P=%d, L=%d) count %d is less than minimum required %d ",
+                            failingCombo._1(), failingCombo._2(), failingCombo._3(), failingCombo._4()));
+                }
+                return true;
+            } else {
+                logger.warn("there is not enough data to proceed to parameter empirical estimation, using defaults instead");
+                return false;
+            }
     }
 
     /**
@@ -464,6 +528,7 @@ public class CalibrateDragstrModel extends GATKTool {
         return result;
     }
 
+    @SuppressWarnings("try") // silences intended use of unreferenced auto-closable within try-resource.
     private StratifiedDragstrLocusCases collectCaseStatsParallel(final List<SimpleInterval> intervals, final int shardSize, final STRTableFile strTable) {
 
         //TODO: instead of the dictionary this should take on the traversal intervals.
@@ -473,27 +538,37 @@ public class CalibrateDragstrModel extends GATKTool {
 
         final List<SimpleInterval> shards = shardIntervals(intervals, shardSize);
 
-        // Specify the reference here in case we are supplied a CRAM input. NOTE: this tool requires a reference input to begin with, thus we needn't assert that one is provided
-        try (final ReadsDataSourcePool readsDataSourcePool = new ReadsDataSourcePool(readArguments.getReadPaths(), referenceArguments.getReferencePath())) {
+        final Collection<ReadsPathDataSource> readSources = new Vector<>(threads);
+        final ThreadLocal<ReadsPathDataSource> threadReadSource = ThreadLocal.withInitial(
+                () -> {
+                    final ReadsPathDataSource result = new ReadsPathDataSource(readArguments.getReadPaths(), factory);
+                    readSources.add(result);
+                    return result;
+                });
 
+        try (@SuppressWarnings("unused") final AutoCloseableCollection<?> readSourceCloser = new AutoCloseableCollection<>(readSources)) {
             final AtomicLong numberBasesProcessed = new AtomicLong(0);
-            return Utils.runInParallel(threads, () ->
-                        shards.parallelStream()
-                                .map(shard -> {
-                                    try (final AutoCloseableReference<ReadsPathDataSource> readsSource = readsDataSourcePool.borrowAutoReturn();
-                                         final BinaryTableReader<DragstrLocus> lociReader = strTable.locusReader(shard)) {
-                                        final StratifiedDragstrLocusCases result = streamShardCasesStats(shard, readStream(readsSource.get(), shard), lociReader.stream())
-                                                .collect(DragstrLocusCaseStratificator.make(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength));
-                                        final int resultSize = result.size();
-                                        synchronized (numberBasesProcessed) {
-                                            final long processed = numberBasesProcessed.updateAndGet(l -> l + shard.size());
-                                            progressMeter.update(absoluteCoordinates.toSimpleInterval(processed, 1), resultSize);
-                                        }
-                                        return result;
-                                    } catch (final IOException ex) {
-                                        throw new GATKException("problems accessing the str-table-file contents at " + strTablePath, ex);
+            return Utils.runInParallel(Math.min(threads, shards.size()), () ->
+                    StreamSupport.stream(new InterleavingListSpliterator<>(shards), true)
+                            .map(shard -> {
+                                try (final BinaryTableReader<DragstrLocus> lociReader = strTable.locusReader(shard)) {
+                                    final ReadsPathDataSource readsSource = threadReadSource.get();
+                                    final StratifiedDragstrLocusCases result = streamShardCasesStats(shard, readStream(readsSource, shard), lociReader.stream())
+                                            .collect(DragstrLocusCaseStratificator.make(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength));
+                                    final int resultSize = result.size();
+                                    synchronized (numberBasesProcessed) {
+                                        final long processed = numberBasesProcessed.updateAndGet(l -> l + shard.size());
+                                        progressMeter.update(absoluteCoordinates.toSimpleInterval(processed, 1), resultSize);
                                     }
-                                }).reduce(StratifiedDragstrLocusCases::merge).orElseGet(() -> new StratifiedDragstrLocusCases(hyperParameters.maxPeriod, hyperParameters.maxRepeatLength)));
+                                    return result;
+                                } catch (final IOException ex) {
+                                    throw new GATKException("problems accessing the str-table-file contents at " + strTablePath, ex);
+                                }
+                            })
+                            .reduce(StratifiedDragstrLocusCases::merge)
+                            .orElseGet(() -> new StratifiedDragstrLocusCases(
+                                    hyperParameters.maxPeriod,
+                                    hyperParameters.maxRepeatLength)));
         }
     }
 
@@ -575,8 +650,6 @@ public class CalibrateDragstrModel extends GATKTool {
             return true;
         }
     }
-
-
 
     private static class DragstrLocusCaseStratificator implements Collector<DragstrLocusCase, StratifiedDragstrLocusCases, StratifiedDragstrLocusCases> {
 
@@ -841,7 +914,7 @@ public class CalibrateDragstrModel extends GATKTool {
     private Stream<org.broadinstitute.hellbender.utils.read.GATKRead> readStream(final ReadsDataSource source, final SimpleInterval interval) {
         final Stream<org.broadinstitute.hellbender.utils.read.GATKRead> unfiltered = interval == null ? Utils.stream(source) : Utils.stream(source.query(interval));
         return unfiltered
-                .filter(read -> (read.getFlags() & DISCARD_FLAG_VALUE) == 0)
+                .filter(read -> (read.getFlags() & DISCARD_FLAG_VALUE) == 0 && read.getAssignedStart() <= read.getEnd())
                 .map(EXTENDED_MQ_READ_TRANSFORMER);
     }
 

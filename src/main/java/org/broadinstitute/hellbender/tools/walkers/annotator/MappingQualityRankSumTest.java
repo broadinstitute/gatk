@@ -26,7 +26,7 @@ import java.util.OptionalDouble;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_RMSMappingQuality.php">RMSMappingQuality</a></b> gives an estimation of the overal read mapping quality supporting a variant call.</li>
+ *     <li><b>RMSMappingQuality</b> gives an estimation of the overal read mapping quality supporting a variant call.</li>
  * </ul>
  *
  */

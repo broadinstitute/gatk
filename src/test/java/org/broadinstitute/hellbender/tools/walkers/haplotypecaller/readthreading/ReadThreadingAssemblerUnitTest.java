@@ -8,6 +8,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -31,6 +33,8 @@ import java.nio.file.Paths;
 import java.util.*;
 
 public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
+    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentConstants.STANDARD_NGS;
+    private static final SWParameters HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
 
     private static final boolean DEBUG = false;
 
@@ -187,7 +191,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
         activeRegion.addAll(reads);
 //        logger.warn("Assembling " + activeRegion + " with " + engine);
         final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, null, header,
-                                                                                SmithWatermanJavaAligner.getInstance());
+                                                                                SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         return assemblyResultSet.getHaplotypeList();
     }
 
@@ -269,7 +273,7 @@ public final class ReadThreadingAssemblerUnitTest extends GATKBaseTest {
             assembler.setDebugGraphTransformations(true);
             assembler.setDebugGraphOutputPath(createTempDir("debugGraphs"));
             final SeqGraph graph = assembler.assemble(reads, refHaplotype, header, SmithWatermanJavaAligner
-                    .getInstance()).get(0).getSeqGraph();
+                    .getInstance(), DANGLING_END_SW_PARAMETERS).get(0).getSeqGraph();
             if ( DEBUG ) graph.printGraph(new File("test.dot"), 0);
             return graph;
         }

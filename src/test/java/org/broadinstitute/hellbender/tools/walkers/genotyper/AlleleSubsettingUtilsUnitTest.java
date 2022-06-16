@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -143,8 +141,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final GenotypesContext actual = selectedVCwithGTs.getNAlleles() == originalVC.getNAlleles() ? oldGs :
                                         AlleleSubsettingUtils.subsetAlleles(oldGs, 0, originalVC.getAlleles(),
                                                                             selectedVCwithGTs.getAlleles(), null,
-                                                                            GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES,
-                                                                            originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                                                                            GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
 
         Assert.assertEquals(actual.size(), expectedGenotypes.size());
         for ( final Genotype expected : expectedGenotypes ) {
@@ -290,7 +287,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
     public void testCalculateMostLikelyAllelesTieDoesntRemoveAllTiedAlleles(){
         VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(Aref, C, G))
                 .genotypes(Arrays.asList(new GenotypeBuilder("sample1", Arrays.asList(C,G)).PL( new double[]{5, 5, 5, 5, 0, 5}).make())).make();
-        Assert.assertEquals(AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 1), Arrays.asList(Aref,C)) ;
+        Assert.assertEquals(AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 1, false), Arrays.asList(Aref,C)) ;
     }
 
     @DataProvider
@@ -317,9 +314,9 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testCalculateMostLikelyAllelesPreconditions(){
         VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(Aref, C, G)).make();
-        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(null, 2, 2));
-        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 0, 2));
-        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 0));
+        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(null, 2, 2, false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 0, 2, false));
+        Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 0, false));
     }
 
     @Test
@@ -328,7 +325,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final List<Allele> alleles = Arrays.asList(Aref);
         final Genotype uniformativePL = new GenotypeBuilder("sample", alleles).PL(new int[] {0}).make();
         final GenotypesContext result  = AlleleSubsettingUtils.subsetAlleles(GenotypesContext.create(uniformativePL), 2,
-                                                                      alleles, alleles, null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, 10 );
+                                                                      alleles, alleles, null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
         final Genotype genotype = result.get(0);
         Assert.assertTrue(genotype.hasPL());
         Assert.assertEquals(genotype.getPL(), new int[]{0});
@@ -361,7 +358,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc1 = new VariantContextBuilder("source", "contig", 1, 1, twoAlleles)
                 .genotypes(Arrays.asList(g1, g2, g3, gNull)).make();
 
-        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc1, 2)[1], 4.2, 1.0e-8);
+        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc1, 2, false)[1], 4.2, 1.0e-8);
 
         // diploid, triallelic, two samples
         final List<Allele> threeAlleles = Arrays.asList(Aref, C, G);
@@ -385,7 +382,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc2 = new VariantContextBuilder("source", "contig", 1, 1, threeAlleles)
                 .genotypes(Arrays.asList(g4, g5)).make();
 
-        final double[] likelihoodSums2 = AlleleSubsettingUtils.calculateLikelihoodSums(vc2, 2);
+        final double[] likelihoodSums2 = AlleleSubsettingUtils.calculateLikelihoodSums(vc2, 2, false);
         Assert.assertEquals(likelihoodSums2[1], 4.1, 1.0e-8);
         Assert.assertEquals(likelihoodSums2[2], 3.1, 1.0e-8);
 
@@ -400,7 +397,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final VariantContext vc3 = new VariantContextBuilder("source", "contig", 1, 1, twoAlleles)
                 .genotypes(Arrays.asList(g6)).make();
 
-        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc3, 3)[1], 3.5, 1.0e-8);
+        Assert.assertEquals(AlleleSubsettingUtils.calculateLikelihoodSums(vc3, 3, false)[1], 3.5, 1.0e-8);
     }
 
     // This test exists to enforce the behavior that AlleleSubsetting utils can be used to reorder alleles, if a developer
@@ -413,7 +410,7 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
 
         final GenotypesContext newGs = AlleleSubsettingUtils.subsetAlleles(GenotypesContext.create(g5),
                 2, threeAlleles, threeAllelesSorted, null,
-                GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, 10);
+                GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
 
         Assert.assertEquals(newGs.get(0).getPL(), new int[] {50, 20, 0, 40, 10, 30});
     }

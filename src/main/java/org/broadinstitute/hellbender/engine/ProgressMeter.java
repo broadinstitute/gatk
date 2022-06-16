@@ -121,6 +121,12 @@ public final class ProgressMeter {
     private boolean stopped;
 
     /**
+     * Keeps track of whether the progress meter has been disabled. When disabled,
+     * operations on the ProgressMeter have no effect.
+     */
+    private final boolean disabled;
+
+    /**
      * Label for records in logger messages. For display purposes only.
      */
     private String recordLabel = DEFAULT_RECORD_LABEL;
@@ -139,7 +145,18 @@ public final class ProgressMeter {
      * @param secondsBetweenUpdates number of seconds that should elapse before outputting a line to the logger
      */
     public ProgressMeter( final double secondsBetweenUpdates ) {
-        this(secondsBetweenUpdates, DEFAULT_TIME_FUNCTION);
+        this(secondsBetweenUpdates, DEFAULT_TIME_FUNCTION, false);
+    }
+
+    /**
+     * Create a progress meter with a custom update interval and the default time function {@link #DEFAULT_TIME_FUNCTION},
+     * and allows the ProgressMeter to be set as disabled
+     *
+     * @param secondsBetweenUpdates number of seconds that should elapse before outputting a line to the logger
+     * @param disabled if true, set this ProgressMeter to be disabled, so that all operations on it are no-ops
+     */
+    public ProgressMeter( final double secondsBetweenUpdates, final boolean disabled ) {
+        this(secondsBetweenUpdates, DEFAULT_TIME_FUNCTION, disabled);
     }
 
     /**
@@ -154,10 +171,27 @@ public final class ProgressMeter {
      */
     @VisibleForTesting
     ProgressMeter( final double secondsBetweenUpdates, final LongSupplier timeFunction ) {
+        this(secondsBetweenUpdates, timeFunction, false);
+    }
+
+    /**
+     * Create a progress meter with a custom update interval and a custom function for getting the current
+     * time in milliseconds.
+     *
+     * Providing your own time function is only useful in unit tests -- in normal usage
+     * clients should call one of the other constructors.
+     *
+     * @param secondsBetweenUpdates number of seconds that should elapse before outputting a line to the logger
+     * @param timeFunction function that returns the current time in milliseconds.
+     * @param disabled if true, set this ProgressMeter to be disabled, so that all operations on it are no-ops
+     */
+    @VisibleForTesting
+    ProgressMeter( final double secondsBetweenUpdates, final LongSupplier timeFunction, final boolean disabled ) {
         Utils.nonNull(timeFunction);
         Utils.validateArg(secondsBetweenUpdates > 0, "secondsBetweenUpdates must be > 0.0");
         this.started = false;
         this.stopped = false;
+        this.disabled = disabled;
         this.secondsBetweenUpdates = secondsBetweenUpdates;
         this.timeFunction = timeFunction;
     }
@@ -186,6 +220,10 @@ public final class ProgressMeter {
      * @throws IllegalStateException if the meter has been started before or has been stopped already
      */
     public void start() {
+        if ( disabled ) {
+            return;
+        }
+
         Utils.validate( !started, "the progress meter has been started already");
         Utils.validate( !stopped, "the progress meter has been stopped already");
         started = true;
@@ -208,6 +246,10 @@ public final class ProgressMeter {
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
     public void update( final Locatable currentLocus ) {
+        if ( disabled ) {
+            return;
+        }
+
         Utils.validate(started, "the progress meter has not been started yet");
         Utils.validate( !stopped, "the progress meter has been stopped already");
         ++numRecordsProcessed;
@@ -231,6 +273,10 @@ public final class ProgressMeter {
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
     public void update( final Locatable currentLocus, final long recordCountIncrease ) {
+        if ( disabled ) {
+            return;
+        }
+
         Utils.validate(started, "the progress meter has not been started yet");
         Utils.validate( !stopped, "the progress meter has been stopped already");
         final long previousNumRecordsProcessed = numRecordsProcessed;
@@ -250,6 +296,10 @@ public final class ProgressMeter {
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
     public void stop() {
+        if ( disabled ) {
+            return;
+        }
+
         Utils.validate(started, "the progress meter has not been started yet");
         Utils.validate( !stopped, "the progress meter has been stopped already");
         this.stopped = true;
@@ -320,6 +370,14 @@ public final class ProgressMeter {
     }
 
     /**
+     * @return total number of records processed so far
+     */
+    @VisibleForTesting
+    long numRecordsProcessed() {
+        return numRecordsProcessed;
+    }
+
+    /**
      * @return genomic location of the most recent record formatted for output to the logger
      */
     private String currentLocusString() {
@@ -340,5 +398,4 @@ public final class ProgressMeter {
     public boolean stopped() {
         return stopped;
     }
-
 }

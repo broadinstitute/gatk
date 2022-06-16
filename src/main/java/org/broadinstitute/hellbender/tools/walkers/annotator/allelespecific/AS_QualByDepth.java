@@ -4,6 +4,8 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCompoundHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -41,9 +43,9 @@ import java.util.stream.Collectors;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_AS_QualByDepth.php">AS_QualByDepth</a></b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_Coverage.php">Coverage</a></b> gives the filtered depth of coverage for each sample and the unfiltered depth across all samples.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_DepthPerAlleleBySample.php">DepthPerAlleleBySample</a></b> calculates depth of coverage for each allele per sample (AD).</li>
+ *     <li><b>AS_QualByDepth</b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
+ *     <li><b>Coverage</b> gives the filtered depth of coverage for each sample and the unfiltered depth across all samples.</li>
+ *     <li><b>DepthPerAlleleBySample</b> calculates depth of coverage for each allele per sample (AD).</li>
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific call confidence normalized by depth of sample reads supporting the allele (AS_QD)")
@@ -64,10 +66,10 @@ public class AS_QualByDepth implements InfoFieldAnnotation, ReducibleAnnotation,
     }
 
     @Override
-    public List<String> getSecondaryRawKeys() { return Arrays.asList(GATKVCFConstants.AS_QUAL_KEY);}
+    public List<String> getSecondaryRawKeys() { return Arrays.asList(GATKVCFConstants.AS_QUAL_KEY, GATKVCFConstants.AS_VARIANT_DEPTH_KEY);}
 
     @Override
-    public List<VCFInfoHeaderLine> getRawDescriptions() {
+    public List<VCFCompoundHeaderLine> getRawDescriptions() {
         //We only have the finalized key name here because the raw key is internal to GenotypeGVCFs and won't get output in any VCF
         return getDescriptions();
     }

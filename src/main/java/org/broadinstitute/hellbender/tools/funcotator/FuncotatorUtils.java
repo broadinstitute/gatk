@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -34,9 +35,12 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -91,15 +95,19 @@ public final class FuncotatorUtils {
         final HashMap<String, AminoAcid>              mtCodons        = new HashMap<>();
         final HashMap<Pair<Genus, String>, AminoAcid> mtSpecialStarts = new HashMap<>();
 
+        // Add in the codons that are different in the MT code, including IUPAC bases:
         mtCodons.put("ATA", AminoAcid.METHIONINE);
         mtCodons.put("AGA", AminoAcid.STOP_CODON);
         mtCodons.put("AGG", AminoAcid.STOP_CODON);
+        mtCodons.put("AGR", AminoAcid.STOP_CODON);
         mtCodons.put("TGA", AminoAcid.TRYPTOPHAN);
 
+        // Add in the codons that serve as alternate start codons in various organisms, including IUPAC bases:
         mtSpecialStarts.put(Pair.of(Genus.BOS, "ATA"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.HOMO, "ATT"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.MUS, "ATT"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.MUS, "ATC"), AminoAcid.METHIONINE);
+        mtSpecialStarts.put(Pair.of(Genus.MUS, "ATY"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.CORTURNIX, "GTG"), AminoAcid.METHIONINE);
         mtSpecialStarts.put(Pair.of(Genus.GALLUS, "GTG"), AminoAcid.METHIONINE);
 
@@ -1021,6 +1029,11 @@ public final class FuncotatorUtils {
         final int protChangeStartPos = seqComp.getProteinChangeInfo().getAaStartPos();
         final int protChangeEndPos   = seqComp.getProteinChangeInfo().getAaEndPos();
 
+        // NOTE:
+        // It is possible for either amino acid sequence to contain AminoAcid.UNDECODABLE, however that should not
+        // actually impact the rendered amino acid sequence other than to put a "?" in the protein sequence in the
+        // appropriate place.
+
         if ( isStartCodonIndel(seqComp, startCodon) ) {
             return "";
         }
@@ -1149,6 +1162,8 @@ public final class FuncotatorUtils {
     /**
      * Creates an amino acid sequence from a given coding sequence.
      * If the coding sequence is not evenly divisible by {@link AminoAcid#CODON_LENGTH}, the remainder bases will not be included in the coding sequence.
+     * If the coding sequence cannot be fully decoded due to IUPAC bases in the ref or alt allele, then this method will
+     * include bases representing {@link AminoAcid#UNDECODABLE}.
      * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
      * @param isFrameshift Whether the given {@code codingSequence} was derived from a frameshift mutation.  In this case, no warning will be issued for incorrect sequence length.
      * @param extraLoggingInfo A {@link String} containing extra info for logging purposes.
@@ -1161,6 +1176,8 @@ public final class FuncotatorUtils {
     /**
      * Creates a Mitochondrial amino acid sequence from a given coding sequence.
      * If the coding sequence is not evenly divisible by 3, the remainder bases will not be included in the coding sequence.
+     * If the coding sequence cannot be fully decoded due to IUPAC bases in the ref or alt allele, then this method will
+     * include bases representing {@link AminoAcid#UNDECODABLE}.
      * @param codingSequence The coding sequence from which to create an amino acid sequence.  Must not be {@code null}.
      * @param isFrameshift Whether the given {@code codingSequence} was derived from a frameshift mutation.  In this case, no warning will be issued for incorrect sequence length.
      * @param extraLoggingInfo A {@link String} containing extra info for logging purposes.
@@ -1192,7 +1209,10 @@ public final class FuncotatorUtils {
         for ( int i = 0; i < maxIndex; i += AminoAcid.CODON_LENGTH ) {
             final AminoAcid aa = aminoAcidLookupFunction.apply(codingSequence.substring(i, i+3));
             if ( aa == null ) {
-                throw new UserException.MalformedFile("File contains a bad codon sequence that has no amino acid equivalent: " + codingSequence.substring(i, i+AminoAcid.CODON_LENGTH));
+                logger.warn("Unexpected codon sequence: " + codingSequence.substring(i, i+AminoAcid.CODON_LENGTH) + "   -   Cannot create protein prediction.  This may be due to \"N\" (or other IUPAC) bases in the Reference or the current variant's alleles.");
+
+                // Because we couldn't decode the amino acid we must append the UNDECODABLE AminoAcid sequence:
+                sb.append(AminoAcid.UNDECODABLE.getLetter());
             }
             else {
                 sb.append(aa.getLetter());
@@ -1680,6 +1700,7 @@ public final class FuncotatorUtils {
         // Check to make sure all our sequences are accounted for in the given dictionary.
 
         if ( sequenceDictionary == null ) {
+            logger.warn("No sequence dictionary provided in the input VCF file.  Cannot check against B37.");
             return false;
         }
 
@@ -1687,24 +1708,63 @@ public final class FuncotatorUtils {
             B37_SEQUENCE_DICTIONARY = initializeB37SequenceDict();
         }
 
+        // Track the missing / wrong data here for better logging:
+        final List<SAMSequenceRecord> missingSequenceRecords = new ArrayList<>();
+        final Map<SAMSequenceRecord, List<Integer>> incompatibleSequenceLengths = new HashMap<>();
+        final Map<SAMSequenceRecord, List<String>> incompatibleSequenceMd5Sums = new HashMap<>();
+
+        boolean isB37 = true;
         for ( final SAMSequenceRecord b37SequenceRecord : B37_SEQUENCE_DICTIONARY.getSequences() ) {
             // Now we check the Name, Length, and MD5Sum (if present) of all records:
 
             final SAMSequenceRecord inputSequenceRecord = sequenceDictionary.getSequence(b37SequenceRecord.getSequenceName());
             if ( inputSequenceRecord == null ) {
-                return false;
+                missingSequenceRecords.add(b37SequenceRecord);
+                isB37 = false;
+                continue;
             }
 
             if ( inputSequenceRecord.getSequenceLength() != b37SequenceRecord.getSequenceLength() ) {
-                return false;
+                incompatibleSequenceLengths.put(inputSequenceRecord,
+                        Arrays.asList(inputSequenceRecord.getSequenceLength(), b37SequenceRecord.getSequenceLength()));
+                isB37 = false;
+                continue;
             }
 
             if ( (inputSequenceRecord.getMd5() != null) && (!inputSequenceRecord.getMd5().equals(b37SequenceRecord.getMd5())) ) {
-                return false;
+                incompatibleSequenceMd5Sums.put(inputSequenceRecord,
+                        Arrays.asList(inputSequenceRecord.getMd5(), b37SequenceRecord.getMd5()));
+                isB37 = false;
             }
         }
 
-        return true;
+        if (!isB37) {
+            logger.info("Input VCF has been determined to not based on b37:");
+            if (missingSequenceRecords.size() > 0) {
+                logger.info("  The following contigs are present in b37 and missing in the input VCF sequence dictionary:");
+                for (final SAMSequenceRecord record : missingSequenceRecords) {
+                    logger.info("    " + record.getSequenceName() + " (len=" + record.getSequenceLength() + ",assembly=" + record.getAssembly() + ")");
+                }
+            }
+
+            if (incompatibleSequenceLengths.size() > 0) {
+                logger.info("  The following contigs are present in both b37 and the input VCF sequence dictionary, but have conflicting length information:");
+                for (final Map.Entry<SAMSequenceRecord, List<Integer>> e : incompatibleSequenceLengths.entrySet()) {
+                    final SAMSequenceRecord record = e.getKey();
+                    logger.info("    " + record.getSequenceName() + " (len=" + record.getSequenceLength() + ",assembly=" + record.getAssembly() + "):" + " VCF Length: " + e.getValue().get(0).toString() + ", b37 Length: " + e.getValue().get(1).toString());
+                }
+            }
+
+            if (incompatibleSequenceMd5Sums.size() > 0) {
+                logger.info("  The following contigs are present in both b37 and the input VCF sequence dictionary, but have conflicting md5sum:");
+                for (final Map.Entry<SAMSequenceRecord, List<String>> e : incompatibleSequenceMd5Sums.entrySet()) {
+                    final SAMSequenceRecord record = e.getKey();
+                    logger.info("    " + record.getSequenceName() + " (len=" + record.getSequenceLength() + ",assembly=" + record.getAssembly() + "):" + " VCF md5sum: " + e.getValue().get(0) + ", b37 md5sum: " + e.getValue().get(1));
+                }
+            }
+        }
+
+        return isB37;
     }
 
     /**
@@ -2137,9 +2197,17 @@ public final class FuncotatorUtils {
         final List<String> badLetters = Arrays.asList(",", ";", "=", "\t", VcfOutputRenderer.HEADER_LISTED_FIELD_DELIMITER, " ", "\n", VcfOutputRenderer.ALL_TRANSCRIPT_DELIMITER);
 
         // Encoded version:
-        final List<String> cleanLetters = badLetters.stream().map(
-                s -> "_%" + String.format("%02X", s.getBytes(StandardCharsets.US_ASCII)[0]) + "_")
-                .collect(Collectors.toList());
+        final List<String> cleanLetters = new ArrayList<>();
+        for(String s: badLetters) {
+            final String hex;
+            if (s.getBytes(StandardCharsets.US_ASCII)[0] < 16) {
+                hex = "_%0"+Integer.toHexString(s.getBytes(StandardCharsets.US_ASCII)[0] & 0xFF).toUpperCase()+ "_";
+            }
+            else {
+                hex = "_%" +Integer.toHexString(s.getBytes(StandardCharsets.US_ASCII)[0] & 0xFF).toUpperCase() + "_";
+            }
+            cleanLetters.add(hex);
+        }
 
         // Now replace them:
         return StringUtils.replaceEach(individualFuncotationField, badLetters.toArray(new String[]{}), cleanLetters.toArray(new String[]{}));
@@ -2319,5 +2387,58 @@ public final class FuncotatorUtils {
                     throw new IllegalArgumentException("Should not be able to have duplicate field names.");
                 }, LinkedHashMap::new));
     }
+
+    /**
+     * Set the severity for {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}s as specified in a given input file.
+     * @param customSeverityFile {@link GATKPath} to TSV file containing VARIANT_CLASSIFICATION SEV information.
+     */
+    public static void setVariantClassificationCustomSeverity(final GATKPath customSeverityFile) {
+        try {
+            logger.info("Setting custom variant classification severities from: " + customSeverityFile);
+
+            if ( !Files.exists(customSeverityFile.toPath()) ) {
+                throw new UserException.CouldNotReadInputFile("Custom severity file does not exist: " + customSeverityFile);
+            }
+            try (final BufferedReader reader = new BufferedReader(new InputStreamReader(customSeverityFile.getInputStream()))) {
+
+                int lineNum = 1;
+                String line = null;
+                while ( (line = reader.readLine()) != null ) {
+
+                    // Ignore empty lines:
+                    if ( line.length() == 0 ) {
+                        continue;
+                    }
+
+                    final String[] lineFields = line.split("\t", -1);
+                    if ( lineFields.length != 2 ) {
+                        throw new UserException.MalformedFile(customSeverityFile + ":" + lineNum + " has " + lineFields.length + " fields!  Each TSV line must have 2 fields!");
+                    }
+
+                    try {
+                        final String vcName = lineFields[ 0 ];
+                        final int    sev    = Integer.parseInt(lineFields[ 1 ]);
+
+                        try {
+                            logger.info("    Setting new Variant Classification severity: " + vcName + " = " + sev);
+                            GencodeFuncotation.VariantClassification.valueOf(vcName).setSeverity(sev);
+                        }
+                        catch (final IllegalArgumentException ex) {
+                            throw new UserException.MalformedFile(customSeverityFile + ":" + lineNum + ": invalid/unknown variant classification specified (possible typo): " + vcName);
+                        }
+                    }
+                    catch ( final NumberFormatException ex ) {
+                        throw new UserException.MalformedFile(customSeverityFile + ":" + lineNum + ": severity is not an integer  (" + lineFields[ 1 ] + ")!  Custom severities must be integer values!");
+                    }
+
+                    lineNum += 1;
+                }
+            }
+        }
+        catch (final IOException ex) {
+            throw new UserException.CouldNotReadInputFile("Could not read from custom Variant Classification file: " + customSeverityFile, ex);
+        }
+    }
+
 
 }

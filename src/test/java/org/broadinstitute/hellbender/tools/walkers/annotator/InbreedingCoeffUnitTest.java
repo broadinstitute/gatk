@@ -24,15 +24,56 @@ public final class InbreedingCoeffUnitTest extends GATKBaseTest {
     // simulating 20 reads with Q30 base qualities
     private final int[] hetPLs = {240, 0, 240};
     private final int[] homRefPLs = {0, 60, 600};
+    private final int[] confidentHomRefPLs = {0,90,1350};
+    private final int LOWER_BOUND_OF_BEST_GQ_BLOCK = 40;
+    private final int[] reblockedConfidentHomRefPLs = {0, LOWER_BOUND_OF_BEST_GQ_BLOCK, LOWER_BOUND_OF_BEST_GQ_BLOCK*10};
+    private final int[] het1 = {500,0,830};
+    private final int[] het2 = {770,0,722};
+    private final int[] het3 = {413,0,646};
+    private final int[] het4 = {520,0,820};
 
     private Genotype makeG(String sample, Allele a1, Allele a2, int... pls) {
         return new GenotypeBuilder(sample, Arrays.asList(a1, a2)).PL(pls).make();
+    }
+
+    private Genotype makeGNoPLs(String sample, Allele a1, Allele a2, int gq) {
+        return new GenotypeBuilder(sample, Arrays.asList(a1, a2)).GQ(gq).make();
     }
 
     private VariantContext makeVC(String source, List<Allele> alleles, Genotype... genotypes) {
         int start = 10;
         int stop = start; // alleles.contains(ATC) ? start + 3 : start;
         return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(Arrays.asList(genotypes)).filters((Set<String>) null).make();
+    }
+
+    //show that "flooring" high quality genotypes in reblocking won't dramatically change IC value
+    @Test
+    public void compareOldWithReblocked() {
+        final List<Genotype> oldGTs = new ArrayList<>();
+        for (int i = 0; i < 61; i++) {
+            oldGTs.add(makeG("s" + i, Aref, Aref, confidentHomRefPLs));
+        }
+        oldGTs.add(makeG("het1", Aref, T, het1));
+        oldGTs.add(makeG("het2", Aref, T, het2));
+        oldGTs.add(makeG("het3", Aref, T, het3));
+        oldGTs.add(makeG("het4", Aref, T, het4));
+        final VariantContext oldVC = new VariantContextBuilder("old", "1", 10, 10, Arrays.asList(Aref, T)).genotypes(oldGTs).make();
+        final Pair<Integer, Double> pair1 = InbreedingCoeff.calculateIC(oldVC, oldVC.getGenotypes());
+        final double ICresult1 = pair1.getRight();
+
+
+        final List<Genotype> newGTs = new ArrayList<>();
+        for (int i = 0; i < 61; i++) {
+            newGTs.add(makeGNoPLs("s" + i, Aref, Aref, LOWER_BOUND_OF_BEST_GQ_BLOCK));
+        }
+        newGTs.add(makeG("het1", Aref, T, het1));
+        newGTs.add(makeG("het2", Aref, T, het2));
+        newGTs.add(makeG("het3", Aref, T, het3));
+        newGTs.add(makeG("het4", Aref, T, het4));
+        final VariantContext newVC = new VariantContextBuilder("new", "1", 10, 10, Arrays.asList(Aref, T)).genotypes(newGTs).make();
+        final Pair<Integer, Double> pair2 = InbreedingCoeff.calculateIC(newVC, newVC.getGenotypes());
+        final double ICresult2 = pair2.getRight();
+        Assert.assertEquals(ICresult1, ICresult2, DELTA_PRECISION);
     }
 
     @Test

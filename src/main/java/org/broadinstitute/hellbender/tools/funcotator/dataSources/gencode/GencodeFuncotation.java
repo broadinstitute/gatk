@@ -7,13 +7,13 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
-import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfGeneFeature;
 
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A class to represent a Functional Annotation.  Each instance represents the annotations on a single transcript.
@@ -77,7 +77,7 @@ public class GencodeFuncotation implements Funcotation {
     private GencodeGtfGeneFeature.FeatureTag     apprisRank;
     private Integer                              transcriptLength;
     private String                               version;
-    private GencodeGtfFeature.GeneTranscriptType geneTranscriptType;
+    private String                               geneTranscriptType;
 
     //------------------------------------------------------------
     // Fields for overriding serialized values:
@@ -694,11 +694,11 @@ public class GencodeFuncotation implements Funcotation {
         this.version = version;
     }
 
-    public GencodeGtfFeature.GeneTranscriptType getGeneTranscriptType() {
+    public String getGeneTranscriptType() {
         return geneTranscriptType;
     }
 
-    public void setGeneTranscriptType(final GencodeGtfFeature.GeneTranscriptType geneTranscriptType) {
+    public void setGeneTranscriptType(final String geneTranscriptType) {
         this.geneTranscriptType = geneTranscriptType;
     }
 
@@ -753,6 +753,18 @@ public class GencodeFuncotation implements Funcotation {
      *     https://gatkforums.broadinstitute.org/gatk/discussion/8815/oncotator-variant-classification-and-secondary-variant-classification
      */
     public enum VariantClassification {
+
+        // __        ___    ____  _   _ ___ _   _  ____
+        // \ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+        //  \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+        //   \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+        //    \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+        //
+        // When new types are added to VariantClassification
+        // or when existing types are modified, they MUST
+        // also be added to the ALL_VC_NAMES variable.
+        //
+        // There does not seem to be a good way around this.
 
         /** Variant classification could not be determined. */
         COULD_NOT_DETERMINE("COULD_NOT_DETERMINE",99),
@@ -825,24 +837,56 @@ public class GencodeFuncotation implements Funcotation {
         LINCRNA("LINCRNA", 4);
 
         /**
+         * Variable to store the list of all valid {@link VariantClassification} types.
+         * This is used for command-line argument documentation and MUST be maintained if / when any of the
+         * VariantClassification values / names are updated.
+         */
+        public static final String ALL_VC_NAMES = "COULD_NOT_DETERMINE, INTRON, FIVE_PRIME_UTR, THREE_PRIME_UTR, IGR, FIVE_PRIME_FLANK, THREE_PRIME_FLANK, MISSENSE, NONSENSE, NONSTOP, SILENT, SPLICE_SITE, IN_FRAME_DEL, IN_FRAME_INS, FRAME_SHIFT_INS, FRAME_SHIFT_DEL, START_CODON_SNP, START_CODON_INS, START_CODON_DEL, DE_NOVO_START_IN_FRAME, DE_NOVO_START_OUT_FRAME, RNA, LINCRNA";
+
+        /**
          * The relative severity of each {@link VariantClassification}.
          * Lower numbers are considered more severe.
          * Higher numbers are considered less severe.
          */
-        final private int relativeSeverity;
+        private int relativeSeverity;
+
+        /**
+         * The default value for the {@link VariantClassification#relativeSeverity} of this {@link VariantClassification}.
+         */
+        final private int defaultRelativeSeverity;
 
         /** The serialized version of this {@link VariantClassification} */
         final private String serialized;
 
         VariantClassification(final String serialized, final int sev) {
             this.serialized = serialized;
+            defaultRelativeSeverity = sev;
             relativeSeverity = sev;
+        }
+
+        /**
+         * Reset the severities of all {@link VariantClassification}s to their default values.
+         */
+        public static void resetSeveritiesToDefault() {
+            for (VariantClassification vc : VariantClassification.values()) {
+                vc.setSeverity(vc.getDefaultSeverity());
+            }
         }
 
         /**
          * @return The {@link VariantClassification#relativeSeverity} of {@code this} {@link VariantClassification}.
          */
         public int getSeverity() { return relativeSeverity; }
+
+        /**
+         * @return The {@link VariantClassification#defaultRelativeSeverity} of {@code this} {@link VariantClassification}.
+         */
+        public int getDefaultSeverity() { return defaultRelativeSeverity; }
+
+        /**
+         * Set the {@link VariantClassification#relativeSeverity} of {@code this} {@link VariantClassification}.
+         */
+        public void setSeverity(final int sev) { this.relativeSeverity = sev; }
 
         @Override
         public String toString() {

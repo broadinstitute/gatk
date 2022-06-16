@@ -31,7 +31,20 @@ import java.util.*;
  *
  * <h3>Statistical notes</h3>
  * <p>This annotation uses the implementation from
- * <a href='http://www.sciencedirect.com/science/article/pii/S0002929707607356?via%3Dihub'>Wigginton JE, Cutler DJ, Abecasis GR. <i>A Note on Exact Tests of Hardy-Weinberg Equilibrium. American Journal of Human Genetics</i>. 2005;76(5):887-893</a>.
+ * <a href='https://doi.org/10.1086/429864'>Wigginton, Cutler, and Abecasis 2005.</a>
+ * to calculate a right-sided p-value (the probability of getting the observed number of heterozygotes or higher).
+ * <p>However, note that in releases prior to and including GATK 4.2.3.0, an additional mid-p correction
+ * not discussed in that reference was applied. That is, if n_{AB} is the observed number of heterozygous genotypes,
+ * N is the total number of samples, and n_A is the number of minor alleles, then the p-value was previously reported as:
+ * \sum_{N_{AB} = n_{AB}}^{N} P(N_{AB} | N, n_A) - P(n_{AB} | N, n_A) / 2.
+ * Similar mid-p corrections are discussed in e.g. <a href='https://doi.org/10.1515/sagmb-2012-0039'>Graffelman and Moreno 2013</a>.</p>
+ * <p>This mid-p correction was removed in subsequent releases, so that the p-value is now reported as:
+ * \sum_{N_{AB} = n_{AB}}^{N} P(N_{AB} | N, n_A). This p-value is thus concordant with the P_{high} p-value
+ * discussed by Wigginton et al., as well as the ExcHet annotation reported by
+ * <a href='https://samtools.github.io/bcftools/howtos/plugin.fill-tags.html'>bcftools</a>.</p>
+ * <p>See discussion at the corresponding GitHub
+ * <a href='https://github.com/broadinstitute/gatk/issues/7392'>issue</a> and
+ * <a href='https://github.com/broadinstitute/gatk/pull/7394'>pull request</a>.</p>
  *
  * <h3>Caveat</h3>
  * <p>The Excess Heterozygosity annotation can only be calculated for diploid samples.</p>
@@ -65,7 +78,7 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
                                         final VariantContext vc,
                                         final AlleleLikelihoods<GATKRead, Allele> likelihoods) {
         GenotypesContext genotypes = getFounderGenotypes(vc);
-        if (genotypes == null || !vc.isVariant()) {
+        if (genotypes == null || genotypes.isEmpty() || !vc.isVariant()) {
             return Collections.emptyMap();
         }
         final Pair<Integer, Double> sampleCountEH = calculateEH(vc, genotypes);
@@ -82,25 +95,25 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
     static Pair<Integer, Double> calculateEH(final VariantContext vc, final GenotypesContext genotypes) {
         final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, ROUND_GENOTYPE_COUNTS);
         // number of samples that have likelihoods
-        final int sampleCount = (int) genotypes.stream().filter(g->GenotypeUtils.isDiploidWithLikelihoods(g)).count();
+        final int sampleCount = (int) genotypes.stream().filter(GenotypeUtils::isCalledAndDiploidWithLikelihoodsOrWithGQ).count();
 
         return calculateEH(t, sampleCount);
     }
 
     @VisibleForTesting
     public static Pair<Integer, Double> calculateEH(final GenotypeCounts t, final int sampleCount) {
-        final int refCount = (int)t.getRefs();
-        final int hetCount = (int)t.getHets();
-        final int homCount = (int)t.getHoms();
+        final int refCount = (int) t.getRefs();
+        final int hetCount = (int) t.getHets();
+        final int homCount = (int) t.getHoms();
 
         final double pval = exactTest(hetCount, refCount, homCount);
 
-        //If the actual phredPval would be infinity we will probably still filter out just a very large number
-        //Since the method does not guarantee precision for any p-value smaller than 1e-16, we can return the phred scaled version
+        // If the actual phredPval would be infinity we will probably still filter out just a very large number
+        // Since the method does not guarantee precision for any p-value smaller than 1e-16, we can return the phred scaled version
         if (pval < 10e-60) {
             return Pair.of(sampleCount, PHRED_SCALED_MIN_P_VALUE);
         }
-        final double phredPval = -10.0 * Math.log10(pval);
+        final double phredPval = -10.0 * Math.log10(pval) + 0.; // We add 0. to prevent -0.0000 from being output
 
         return Pair.of(sampleCount, phredPval);
     }
@@ -110,6 +123,9 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
      * p-value is accurate, just that it is in fact smaller than 1.0E-16 (and therefore we should filter it). It would
      * be more computationally expensive to calculate accuracy beyond a given threshold. Here we have enough accuracy
      * to filter anything below a p-value of 10E-6.
+     *
+     * Discussion at https://github.com/broadinstitute/gatk/issues/7392 and
+     * https://github.com/broadinstitute/gatk/pull/7394 may be useful for developers.
      *
      * @param hetCount Number of observed hets (n_ab)
      * @param refCount Number of observed homRefs (n_aa)
@@ -123,7 +139,7 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
         Utils.validateArg(refCount >= 0, "Ref count cannot be less than 0");
         Utils.validateArg(homCount >= 0, "Hom count cannot be less than 0");
 
-        //Split into observed common allele and rare allele
+        // Split into observed common allele and rare allele
         final int obsHomR;
         final int obsHomC;
         if (refCount < homCount) {
@@ -137,14 +153,9 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
         final int rareCopies = 2 * obsHomR + hetCount;
         final int N = hetCount + obsHomC + obsHomR;
 
-        //If the probability distribution has only 1 point, then the mid p-value is .5
-        if (rareCopies <= 1) {
-            return .5;
-        }
-
         final double[] probs = new double[rareCopies + 1];
 
-        //Find (something close to the) mode for the midpoint
+        // Find (something close to the) mode for the midpoint
         int mid = (int) Math.floor(rareCopies * (2.0 * N - rareCopies) / (2.0 * N - 1.0));
         if ((mid % 2) != (rareCopies % 2)) {
             mid++;
@@ -153,7 +164,7 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
         probs[mid] = 1.0;
         double mysum = 1.0;
 
-        //Calculate probabilities from midpoint down
+        // Calculate probabilities from midpoint down
         int currHets = mid;
         int currHomR = (rareCopies - mid) / 2;
         int currHomC = N - currHets - currHomR;
@@ -167,13 +178,13 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
             probs[currHets - 2] = potentialProb;
             mysum = mysum + probs[currHets - 2];
 
-            //2 fewer hets means one additional homR and homC each
+            // 2 fewer hets means one additional homR and homC each
             currHets = currHets - 2;
             currHomR = currHomR + 1;
             currHomC = currHomC + 1;
         }
 
-        //Calculate probabilities from midpoint up
+        // Calculate probabilities from midpoint up
         currHets = mid;
         currHomR = (rareCopies - mid) / 2;
         currHomC = N - currHets - currHomR;
@@ -187,18 +198,18 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
             probs[currHets + 2] = potentialProb;
             mysum = mysum + probs[currHets + 2];
 
-            //2 more hets means 1 fewer homR and homC each
+            // 2 more hets means 1 fewer homR and homC each
             currHets = currHets + 2;
             currHomR = currHomR - 1;
             currHomC = currHomC - 1;
         }
 
-        final double rightPval = probs[hetCount] / (2.0 * mysum);
-        //Check if we observed the highest possible number of hets
+        final double rightPval = probs[hetCount] / mysum;
+        // Check if we observed the highest possible number of hets
         if (hetCount == rareCopies) {
-            return rightPval;
+            return Math.max(0., Math.min(1., rightPval));
         }
-        return rightPval + StatUtils.sum(Arrays.copyOfRange(probs, hetCount + 1, probs.length)) / mysum;
+        return Math.max(0., Math.min(1., rightPval + StatUtils.sum(Arrays.copyOfRange(probs, hetCount + 1, probs.length)) / mysum));
     }
 
     @Override
@@ -243,7 +254,7 @@ public final class ExcessHet extends PedigreeAnnotation implements InfoFieldAnno
      * @param originalVC -- used to get all the alleles for all gVCFs
      * @return A key, Object map containing the finalized annotations generated by this operation to be added to the code
      */
-   //@Override
+    //@Override
     public Map<String, Object> finalizeRawData(VariantContext vc, VariantContext originalVC) {
         if (vc.hasAttribute(getRawKeyName())) {
             List<Integer> counts = vc.getAttributeAsIntList(getRawKeyName(), 0);

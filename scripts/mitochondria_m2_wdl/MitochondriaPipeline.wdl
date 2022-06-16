@@ -15,7 +15,6 @@ workflow MitochondriaPipeline {
     File wgs_aligned_input_bam_or_cram
     File wgs_aligned_input_bam_or_cram_index
     String contig_name = "chrM"
-    Float autosomal_coverage = 30
 
     # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
     # affected by this number. Default is 151.
@@ -62,7 +61,6 @@ workflow MitochondriaPipeline {
     Float? f_score_beta
     Float? verifyBamID
     Boolean compress_output_vcf = false
-    Int? max_low_het_sites
 
     #Optional runtime arguments
     Int? preemptible_tries
@@ -70,7 +68,6 @@ workflow MitochondriaPipeline {
 
   parameter_meta {
     wgs_aligned_input_bam_or_cram: "Full WGS hg38 bam or cram"
-    autosomal_coverage: "Median coverage of full input bam"
     out_vcf: "Final VCF of mitochondrial SNPs and INDELs"
     vaf_filter_threshold: "Hard threshold for filtering low VAF sites"
     f_score_beta: "F-Score beta balances the filtering strategy between recall and precision. The relative weight of recall to precision."
@@ -103,7 +100,6 @@ workflow MitochondriaPipeline {
   call AlignAndCall.AlignAndCall as AlignAndCall {
     input:
       unmapped_bam = RevertSam.unmapped_bam,
-      autosomal_coverage = autosomal_coverage,
       base_name = base_name,
       mt_dict = mt_dict,
       mt_fasta = mt_fasta,
@@ -133,7 +129,6 @@ workflow MitochondriaPipeline {
       verifyBamID = verifyBamID,
       compress_output_vcf = compress_output_vcf,
       max_read_length = max_read_length,
-      max_low_het_sites = max_low_het_sites,
       preemptible_tries = preemptible_tries
   }
 
@@ -184,6 +179,7 @@ workflow MitochondriaPipeline {
     File contamination_metrics = AlignAndCall.contamination_metrics
     File base_level_coverage_metrics = CoverageAtEveryBase.table
     Int mean_coverage = AlignAndCall.mean_coverage
+    Float median_coverage = AlignAndCall.median_coverage
     String major_haplogroup = AlignAndCall.major_haplogroup
     Float contamination = AlignAndCall.contamination
   }

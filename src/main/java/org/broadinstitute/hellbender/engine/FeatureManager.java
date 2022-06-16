@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
@@ -43,7 +42,7 @@ import java.util.stream.Collectors;
  * by the user on the command line, determines the type of the file and the codec required to decode it,
  * creates a FeatureDataSource for that file, and adds it to a query-able resource pool.
  *
- * Clients can then call {@link #getFeatures(FeatureInput, SimpleInterval)} to query the data source for
+ * Clients can then call {@link #getFeatures(FeatureInput, Locatable)} to query the data source for
  * a particular FeatureInput over a specific interval.
  */
 public final class FeatureManager implements AutoCloseable {
@@ -64,7 +63,7 @@ public final class FeatureManager implements AutoCloseable {
      */
     private static final Class<FeatureInput> FEATURE_ARGUMENT_CLASS = FeatureInput.class;
 
-    /**
+    /*
      * At startup, walk through the packages in codec packages, and save any (concrete) FeatureCodecs discovered
      * in DISCOVERED_CODECS
      */
@@ -246,6 +245,11 @@ public final class FeatureManager implements AutoCloseable {
         featureSources.put(featureInput, new FeatureDataSource<>(featureInput, featureQueryLookahead, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, genomicsDBOptions));
     }
 
+    <F extends Feature> void addToFeatureSources (final FeatureInput<F> featureInput,
+                                                  final FeatureDataSource<F> featureDataSource) {
+        featureSources.put(featureInput, featureDataSource);
+    }
+
     /**
      * Given a ArgumentDefinition for an argument known to be of type FeatureInput (or a Collection thereof), retrieves the type
      * parameter for the FeatureInput (eg., for FeatureInput<VariantContext> or List<FeatureInput<VariantContext>>
@@ -329,6 +333,13 @@ public final class FeatureManager implements AutoCloseable {
     }
 
     /**
+     * Get all the sources managed by this FeatureManager.
+     */
+    public Set<FeatureInput<? extends Feature>> getAllInputs() {
+        return featureSources.keySet();
+    }
+
+    /**
      * Given a FeatureInput argument field from our tool, queries the data source for that FeatureInput
      * over the specified interval, and returns a List of the Features overlapping that interval from
      * that data source.
@@ -373,6 +384,22 @@ public final class FeatureManager implements AutoCloseable {
     public <T extends Feature> Iterator<T> getFeatureIterator(final FeatureInput<T> featureDescriptor) {
         final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
         return dataSource.iterator();
+    }
+
+    /**
+     * As above, but takes an optional list of intervals to examine.
+     * @param featureDescriptor FeatureInput to scan
+     * @param intervals The userIntervals to examine (may be null)
+     * @param <T> Feature type
+     * @return An iterator over the Features
+     */
+    public <T extends Feature> Iterator<T> getFeatureIterator( final FeatureInput<T> featureDescriptor,
+                                                               final List<SimpleInterval> intervals ) {
+        final FeatureDataSource<T> dataSource = lookupDataSource(featureDescriptor);
+        dataSource.setIntervalsForTraversal(intervals);
+        final Iterator<T> itr = dataSource.iterator();
+        dataSource.setIntervalsForTraversal(null);
+        return itr;
     }
 
     /**

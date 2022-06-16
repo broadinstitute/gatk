@@ -12,8 +12,8 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id "jacoco"
-    id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib
-    id "com.github.johnrengelman.shadow" version "6.1.0"    //used to build the shadow and sparkJars
+    id "de.undercouch.download" version "4.1.2" //used for downloading GSA lib
+    id "com.github.johnrengelman.shadow" version "7.1.1"    //used to build the shadow and sparkJars
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
     id 'com.palantir.git-version' version '0.5.1' //version helper
 }
@@ -48,6 +48,7 @@ task downloadGsaLibFile(type: Download) {
 repositories {
     mavenCentral()
 
+    jcenter()
     maven {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
@@ -61,25 +62,20 @@ repositories {
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.24.1-1-gf0c975a-SNAPSHOT')
-final picardVersion = System.getProperty('picard.version','2.25.0')
-final barclayVersion = System.getProperty('barclay.version','4.0.1')
+final picardVersion = System.getProperty('picard.version','2.27.1')
+final barclayVersion = System.getProperty('barclay.version','4.0.2')
 final sparkVersion = System.getProperty('spark.version', '2.4.5')
 final scalaVersion = System.getProperty('scala.version', '2.11')
 final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
-
-final genomicsdbVersion = System.getProperty('genomicsdb.version','1.3.2')
-final bigQueryVersion = System.getProperty('bigQuery.version', '2.5.1')
-final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.7.0')
-
-final guavaVersion = System.getProperty('guava.version', '27.1-jre')
-final log4j2Version = System.getProperty('log4j2Version', '2.17.0')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.3')
+final bigQueryVersion = System.getProperty('bigQuery.version', '2.9.0')
+final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.9.1')
+final guavaVersion = System.getProperty('guava.version', '31.0.1-jre')
+final log4j2Version = System.getProperty('log4j2Version', '2.17.1')
 final testNGVersion = '7.0.0'
 
-// Using the shaded version to avoid conflicts between its protobuf dependency
-// and that of Hadoop/Spark (either the one we reference explicitly, or the one
-// provided by dataproc).
-final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.117.0-alpha:shaded'
+final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.123.25'
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -184,7 +180,7 @@ configurations.all {
         force 'com.google.guava:guava:' + guavaVersion
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
-        force 'com.google.protobuf:protobuf-java:3.19.0'
+        force 'com.google.protobuf:protobuf-java:3.19.4'
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
@@ -262,18 +258,15 @@ dependencies {
     implementation ('org.genomicsdb:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'log4j-api'
         exclude module: 'log4j-core'
-        exclude module: 'spark-core_2.11'
-        exclude module: 'spark-sql_2.11'
+        exclude module: 'spark-core_2.12'
+        exclude module: 'spark-sql_2.12'
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
     implementation 'com.opencsv:opencsv:3.4'
     implementation 'com.google.guava:guava:' + guavaVersion
     implementation 'com.github.samtools:htsjdk:'+ htsjdkVersion
-    implementation(googleCloudNioDependency) {
-        transitive = false
-    }
-
+    implementation(googleCloudNioDependency)
     implementation 'com.google.cloud:google-cloud-bigquery:' + bigQueryVersion
     implementation 'com.google.cloud:google-cloud-bigquerystorage:' + bigQueryStorageVersion
 
@@ -327,8 +320,8 @@ dependencies {
         exclude module: 'hadoop-bam'
     }
 
-    implementation 'org.jgrapht:jgrapht-core:0.9.1'
-
+    implementation 'org.jgrapht:jgrapht-core:1.1.0'
+    implementation 'org.jgrapht:jgrapht-io:1.1.0'
     implementation('org.disq-bio:disq:' + disqVersion)
     implementation('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
     implementation('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
@@ -360,7 +353,7 @@ dependencies {
         transitive = false
     }
 
-    implementation('com.intel.gkl:gkl:0.8.6') {
+    implementation('com.intel.gkl:gkl:0.8.8') {
         exclude module: 'htsjdk'
     }
 
@@ -370,8 +363,8 @@ dependencies {
     implementation 'org.broadinstitute:http-nio:0.1.0-rc1'
 
     // Required for COSMIC Funcotator data source:
-    implementation 'org.xerial:sqlite-jdbc:3.20.1'
-    
+    implementation 'org.xerial:sqlite-jdbc:3.36.0.3'
+
     // Required for SV Discovery machine learning
     implementation group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
 
@@ -415,8 +408,8 @@ def createSymlinks(archivePath, symlinkLocation) {
 def createGatkSymlinks(destinationDir, archivePath, suffix, baseJarName, secondaryBaseJarName) {
     def finalSuffix = (suffix == "") ? "" : ("-" + suffix)
 
-    def symlinkLocation = destinationDir.toString() + "/" + baseJarName + finalSuffix + ".jar"
-    def symlinkLocation2 = destinationDir.toString() + "/" + secondaryBaseJarName + finalSuffix + ".jar"
+    def symlinkLocation = destinationDir.getAsFile().get().toString() + "/" + baseJarName + finalSuffix + ".jar"
+    def symlinkLocation2 = destinationDir.getAsFile().get().toString() + "/" + secondaryBaseJarName + finalSuffix + ".jar"
 
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation)
     createSymlinks(archivePath.getAbsolutePath(), symlinkLocation2)
@@ -442,7 +435,7 @@ tasks.withType(Jar) {
 }
 
 wrapper {
-    gradleVersion = '6.9.1'
+    gradleVersion = '7.3.2'
 }
 
 tasks.withType(ShadowJar) {
@@ -466,13 +459,12 @@ apply from: "testsettings.gradle"
 
 shadowJar {
     configurations = [project.configurations.runtimeClasspath]
-    classifier = 'local'
     mergeServiceFiles('reference.conf')
     doLast {
         // Create a symlink to the newly created jar.  The name will be gatk.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDir.toString(), archivePath, "", baseJarName, secondaryBaseJarName)
+        createGatkSymlinks(destinationDirectory, archivePath, "", baseJarName, secondaryBaseJarName)
     }
 }
 
@@ -482,12 +474,12 @@ task sparkJar(type: ShadowJar) {
     group = "Shadow"
     description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
     configurations = [project.configurations.sparkConfiguration]
-    classifier = 'spark'
+    archiveClassifier = 'spark'
     doLast {
         // Create a symlink to the newly created jar.  The name will be gatk.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        createGatkSymlinks(destinationDir.toString(), archivePath, classifier, baseJarName, secondaryBaseJarName)
+        createGatkSymlinks(destinationDirectory, archivePath, archiveClassifier, baseJarName, secondaryBaseJarName)
     }
 }
 
@@ -496,7 +488,7 @@ task shadowTestClassJar(type: ShadowJar){
     group = "Shadow"
     from sourceSets.test.output
     description = "Create a jar that packages the compiled test classes"
-    classifier = "test"
+    archiveClassifier = "test"
 }
 
 // A minimal jar that only contains the extra dependencies needed for running the tests
@@ -508,7 +500,7 @@ task shadowTestJar(type: ShadowJar){
             it.isDirectory() ? it : it.getName().endsWith(".jar") ? zipTree(it) : it
         }
     }
-    classifier = "testDependencies"
+    archiveClassifier = "testDependencies"
 }
 
 task collectBundleIntoDir(type: Copy) {
@@ -565,8 +557,8 @@ jacocoTestReport {
     getAdditionalSourceDirs().from(sourceSets.main.allJava.srcDirs)
 
     reports {
-        xml.enabled = true
-        html.enabled = true
+        xml.required = true
+        html.required = true
     }
 }
 
@@ -620,13 +612,13 @@ task localDevCondaEnv(type: Exec) {
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
+    archiveClassifier = 'javadoc'
     from "$docBuildDir/javadoc"
 }
 
 task sourcesJar(type: Jar) {
     from sourceSets.main.allSource
-    classifier = 'sources'
+    archiveClassifier = 'sources'
 }
 
 task testUtilsJar(type: Jar){
@@ -661,13 +653,13 @@ task testUtilsJavadoc(type: Javadoc) {
 
 task testUtilsJavadocJar(type: Jar, dependsOn: testUtilsJavadoc){
     archiveBaseName = "$project.name-test-utils"
-    classifier = 'javadoc'
+    archiveClassifier = 'javadoc'
     from "$docBuildDir/testUtilsJavadoc"
 }
 
 task testUtilsSourcesJar(type: Jar){
     archiveBaseName = "$project.name-test-utils"
-    classifier = 'sources'
+    archiveClassifier = 'sources'
     from sourceSets.testUtils.allSource
 }
 
@@ -820,10 +812,8 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
 def execWDLValidation = { validateWDL ->
     println "Executing: $validateWDL"
     try {
-        def proc = validateWDL.execute()
-        def retCode = proc.waitFor()
+        def retCode = validateWDL.execute().waitFor()
         if (retCode.intValue() != 0) {
-            println "[ERROR] ${proc.getErrorStream()}"
             throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
         }
         return retCode
@@ -955,12 +945,19 @@ def basePomConfiguration = {
     }
 }
 
+
+//remove the shadow jar from the published component
+components.java.withVariantsFromConfiguration(project.configurations.shadowRuntimeElements) {
+    skip()
+}
+
 publishing {
     publications {
         gatk(MavenPublication) {
             from components.java
             artifactId = "gatk"
             pom basePomConfiguration
+            pom.name = "GATK4"
 
             artifact sourcesJar
             artifact javadocJar
@@ -969,6 +966,7 @@ publishing {
         testUtils(MavenPublication) {
             artifactId = "gatk-test-utils"
             pom basePomConfiguration
+            pom.name = "GATK4 Test Utilities"
 
             artifact testUtilsJar
             artifact testUtilsSourcesJar
@@ -979,20 +977,11 @@ publishing {
 
     repositories {
         maven {
-            name = "SonaType"
-            url =  "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            name = isRelease ? "SonaType" : "Artifactory"
+            url =  isRelease ? "https://oss.sonatype.org/service/local/staging/deploy/maven2/" : "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/"
             credentials {
-                username = project.findProperty("sonatypeUsername")
-                password = project.findProperty("sonatypePassword")
-            }
-        }
-
-        maven {
-            name = "Artifactory"
-            url = "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/"
-            credentials {
-                username = System.env.ARTIFACTORY_USERNAME
-                password = System.env.ARTIFACTORY_PASSWORD
+                username = isRelease ? project.findProperty("sonatypeUsername") : System.env.ARTIFACTORY_USERNAME
+                password = isRelease ? project.findProperty("sonatypePassword") : System.env.ARTIFACTORY_PASSWORD
             }
         }
     }

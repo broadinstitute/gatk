@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.utils.SVInterval;
 
 /** It allows you to ask whether a given interval is near the beginning or end of the partition.
  *  This is useful in handling breakpoints for which the evidence is split across two partitions. */

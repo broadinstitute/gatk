@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -48,6 +49,11 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
         return null;
     }
 
+    @Override
+    public String getEmptyRawValue() {
+        return "0,0";
+    }
+
     /**
      * Method which determines how the Strand Bias read direction allele data must be combined into a final annotation
      * Must be overridden by client methods.
@@ -88,7 +94,7 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
             if (!perAltsStrandCounts.containsKey(a)) {
                 logger.warn("ERROR: VC allele not found in annotation alleles -- maybe there was trimming?");
             } else {
-                annotationString += String.format("%.3f", perAltsStrandCounts.get(a));
+                annotationString += perAltsStrandCounts.get(a) == null ? VCFConstants.MISSING_VALUE_v4 : String.format("%.3f", perAltsStrandCounts.get(a));
             }
         }
         return annotationString;

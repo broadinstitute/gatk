@@ -5,7 +5,6 @@ import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.metrics.MetricsUtils;
 import org.broadinstitute.hellbender.metrics.analysis.AlleleFrequencyQCMetric;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.AlleleFrequency.StratifyingScale;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.report.GATKReport;
@@ -49,13 +48,14 @@ public class AlleleFrequencyQC extends VariantEval {
 
     @Override
     public void onTraversalStart() {
-        NO_STANDARD_MODULES = true;
-        MODULES_TO_USE = Collections.singletonList("VariantAFEvaluator");
-        keepSitesWithAC0 = true;
-        NO_STANDARD_STRATIFICATIONS = true;
-        STRATIFICATIONS_TO_USE = Arrays.asList("AlleleFrequency", "Filter");
-        AFScale = StratifyingScale.LOGARITHMIC;
-        useCompAFStratifier = true;
+        variantEvalArgs.noStandardModules = true;
+        variantEvalArgs.modulesToUse = Collections.singletonList("VariantAFEvaluator");
+        variantEvalArgs.keepSitesWithAC0 = true;
+        variantEvalArgs.noStandardStratifications = true;
+        variantEvalArgs.stratificationsToUse = Arrays.asList("AlleleFrequency", "Filter");
+        variantEvalArgs.setAFScale(VariantEvalArgumentCollection.StratifyingScale.LOGARITHMIC);
+        variantEvalArgs.setUseCompAFStratifier(true);
+
         metricOutput = outFile; // output file for summary metrics
 
         // have to set the output file for variant eval; if not given a debug file to return the variant eval results
@@ -77,7 +77,7 @@ public class AlleleFrequencyQC extends VariantEval {
 
         super.onTraversalSuccess();
 
-        final GATKReportTable table= new GATKReport(outFile).getTable(MODULES_TO_USE.get(0));
+        final GATKReportTable table = new GATKReport(outFile).getTable(engine.getModulesToUse().get(0));
         final List<String> columnNames = table.getColumnInfo().stream().map(c -> c.getColumnName()).collect(Collectors.toList());
 
         // this is a map of allele frequency bin : length 2 list of observed allele frequencies ( one for comp, one for eval )

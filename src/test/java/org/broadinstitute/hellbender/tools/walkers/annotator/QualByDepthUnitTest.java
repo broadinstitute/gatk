@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.math3.stat.StatUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
 import org.broadinstitute.hellbender.utils.genotyper.*;

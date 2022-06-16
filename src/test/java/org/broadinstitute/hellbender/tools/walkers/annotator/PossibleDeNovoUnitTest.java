@@ -117,6 +117,13 @@ public final class PossibleDeNovoUnitTest extends GATKBaseTest {
         tests.add(new Object[]{gNo, gNo, g11, false});
         tests.add(new Object[]{gNo, gNo, gNo, false});
 
+        final Genotype g00NoPl = new GenotypeBuilder("2", homRef).DP(10).GQ(GQ30).make();
+        final Genotype g01NoPl = new GenotypeBuilder("1", het).DP(10).GQ(GQ30).make();
+        final Genotype g11NoPl = new GenotypeBuilder("3", homVar).DP(10).GQ(GQ30).make();
+
+        tests.add(new Object[]{g00NoPl, g01NoPl, g11NoPl, false});
+        tests.add(new Object[]{g00NoPl, g00NoPl, g01NoPl, true});
+
         return tests.toArray(new Object[][]{});
     }
 

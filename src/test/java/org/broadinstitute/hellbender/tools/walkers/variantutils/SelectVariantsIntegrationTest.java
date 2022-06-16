@@ -19,7 +19,7 @@ import org.testng.annotations.Test;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
-import shaded.cloud_nio.com.google.common.collect.Comparators;
+import com.google.common.collect.Comparators;
 
 import java.io.File;
 import java.io.IOException;
@@ -847,7 +847,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "haploid-multisample.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -sn HG00610 -select 'DP > 7' --remove-unused-alternates ", testFile),
+                baseTestString(" -sn HG00610 -select 'DP > 7' --remove-unused-alternates", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_Haploid.vcf")
         );
 

@@ -5,7 +5,6 @@ import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
-import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfGeneFeature;
 
 import java.util.ArrayList;
@@ -311,11 +310,11 @@ public class GencodeFuncotationBuilder {
     }
 
     /**
-     * Set the GeneTranscriptType {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType} in the {@link GencodeFuncotation}.
+     * Set the GeneTranscriptType in the {@link GencodeFuncotation}.
      * @param geneTranscriptType The {@link String} containing the GeneTranscriptType for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */
-    public GencodeFuncotationBuilder setGeneTranscriptType(final GencodeGtfFeature.GeneTranscriptType geneTranscriptType) {
+    public GencodeFuncotationBuilder setGeneTranscriptType(final String geneTranscriptType) {
         gencodeFuncotation.setGeneTranscriptType( geneTranscriptType );
         return this;
     }

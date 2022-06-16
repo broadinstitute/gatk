@@ -1079,11 +1079,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Before we get started, check to see if this is a non-protein-coding feature.
         // If it is, we must handle it differently:
-        if ( transcript.getGeneType() != GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING) {
-            return createCodingRegionFuncotationForNonProteinCodingFeature(variant, altAllele, reference, transcript, exon);
+        if ( GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
+            return createCodingRegionFuncotationForProteinCodingFeature(variant, altAllele, reference, transcript, exon);
         }
         else {
-            return createCodingRegionFuncotationForProteinCodingFeature(variant, altAllele, reference, transcript, exon);
+            return createCodingRegionFuncotationForNonProteinCodingFeature(variant, altAllele, reference, transcript, exon);
         }
     }
 
@@ -1700,7 +1700,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
 
         // Set the VariantClassification:
-        if ( transcript.getGeneType() == GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING ) {
+        if ( GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
             gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.INTRON);
         }
         else {
@@ -2736,84 +2736,20 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * Converts a given {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType} to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
-     * Assumes the given {@code type} is not {@link GencodeGtfFeature.GeneTranscriptType#PROTEIN_CODING}.
+     * Converts a given GeneTranscriptType {@link String} to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
+     * Assumes the given {@code type} is not {@link GencodeGtfFeature.KnownGeneBiotype#PROTEIN_CODING}.
      * If no type can be assessed, returns {@code null}.
-     * @param type A {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType} to convert to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
-     * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} representing the given {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.GeneTranscriptType}, or {@code null}.
+     * @param type A {@link String} representing a GeneTranscriptType to convert to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
+     * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} representing the given GeneTranscriptType {@link String}, or {@code null}.
      */
-    private static GencodeFuncotation.VariantClassification convertGeneTranscriptTypeToVariantClassification (final GencodeGtfFeature.GeneTranscriptType type ) {
+    private static GencodeFuncotation.VariantClassification convertGeneTranscriptTypeToVariantClassification (final String type ) {
 
-        //TODO: This all needs to be fixed so there is a 1:1 mapping of GeneTranscriptType->VariantClassification - Issue #4405
-        switch (type) {
-//             case IG_C_GENE:				            break;
-//             case IG_D_GENE:				            break;
-//             case IG_J_GENE:				            break;
-//             case IG_LV_GENE:				            break;
-//             case IG_V_GENE:				            break;
-//             case TR_C_GENE:				            break;
-//             case TR_J_GENE:				            break;
-//             case TR_V_GENE:				            break;
-//             case TR_D_GENE:				            break;
-//             case IG_PSEUDOGENE:			            break;
-//             case IG_C_PSEUDOGENE:			            break;
-//             case IG_J_PSEUDOGENE:			            break;
-//             case IG_V_PSEUDOGENE:			            break;
-//             case TR_V_PSEUDOGENE:			            break;
-//             case TR_J_PSEUDOGENE:			            break;
-             case MT_RRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case MT_TRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case MIRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case MISC_RNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case RRNA:					                return GencodeFuncotation.VariantClassification.RNA;
-             case SCRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case SNRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case SNORNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case RIBOZYME:					            return GencodeFuncotation.VariantClassification.RNA;
-             case SRNA:					                return GencodeFuncotation.VariantClassification.RNA;
-             case SCARNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case MT_TRNA_PSEUDOGENE:		            return GencodeFuncotation.VariantClassification.RNA;
-             case TRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-             case SNORNA_PSEUDOGENE:		            return GencodeFuncotation.VariantClassification.RNA;
-             case SNRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-             case SCRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-             case RRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-             case MISC_RNA_PSEUDOGENE:		            return GencodeFuncotation.VariantClassification.RNA;
-             case MIRNA_PSEUDOGENE:			            return GencodeFuncotation.VariantClassification.RNA;
-//             case TEC:					                break;
-//             case NONSENSE_MEDIATED_DECAY:	            break;
-//             case NON_STOP_DECAY:			            break;
-//             case RETAINED_INTRON:			            break;
-//             case PROTEIN_CODING:			            break;
-//             case PROCESSED_TRANSCRIPT:		            break;
-//             case NON_CODING:				            break;
-//             case AMBIGUOUS_ORF:			            break;
-//             case SENSE_INTRONIC:			            break;
-//             case SENSE_OVERLAPPING:		            break;
-//             case ANTISENSE:				            break;
-             case ANTISENSE_RNA:			            return GencodeFuncotation.VariantClassification.RNA;
-             case KNOWN_NCRNA:				            return GencodeFuncotation.VariantClassification.RNA;
-//             case PSEUDOGENE:				            break;
-//             case PROCESSED_PSEUDOGENE:		            break;
-//             case POLYMORPHIC_PSEUDOGENE:	            break;
-//             case RETROTRANSPOSED:			            break;
-//             case TRANSCRIBED_PROCESSED_PSEUDOGENE:	    break;
-//             case TRANSCRIBED_UNPROCESSED_PSEUDOGENE:   break;
-//             case TRANSCRIBED_UNITARY_PSEUDOGENE:	    break;
-//             case TRANSLATED_PROCESSED_PSEUDOGENE:	    break;
-//             case TRANSLATED_UNPROCESSED_PSEUDOGENE:    break;
-//             case UNITARY_PSEUDOGENE:				    break;
-//             case UNPROCESSED_PSEUDOGENE:			    break;
-//             case ARTIFACT:					            break;
-             case LINCRNA:					            return GencodeFuncotation.VariantClassification.LINCRNA;
-             case MACRO_LNCRNA:					        return GencodeFuncotation.VariantClassification.LINCRNA;
-             case THREE_PRIME_OVERLAPPING_NCRNA:	    return GencodeFuncotation.VariantClassification.RNA;
-//             case DISRUPTED_DOMAIN:					    break;
-             case VAULTRNA:					            return GencodeFuncotation.VariantClassification.RNA;
-             case BIDIRECTIONAL_PROMOTER_LNCRNA:	    return GencodeFuncotation.VariantClassification.RNA;
-             default:
-                return GencodeFuncotation.VariantClassification.RNA;
-        }
+        //TODO: This all needs to be fixed so there is a 1:1 mapping of GencodeGtfFeature.KnownGeneBiotype->VariantClassification - Issue #4405
+        if (GencodeGtfFeature.KnownGeneBiotype.LINCRNA.toString().equals(type) ||
+                GencodeGtfFeature.KnownGeneBiotype.MACRO_LNCRNA.toString().equals(type)) {
+			return GencodeFuncotation.VariantClassification.LINCRNA;
+		}
+        return GencodeFuncotation.VariantClassification.RNA;
     }
 
     //==================================================================================================================

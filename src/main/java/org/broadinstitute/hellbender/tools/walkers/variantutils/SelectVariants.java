@@ -5,7 +5,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.VariantContextUtils;
@@ -34,9 +33,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.samples.MendelianViolation;
-import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDB;
-import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.*;
@@ -215,7 +212,8 @@ public final class SelectVariants extends VariantWalker {
      * When this flag is enabled, all alternate alleles that are not present in the (output) samples will be removed.
      * Note that this even extends to biallelic SNPs - if the alternate allele is not present in any sample, it will be
      * removed and the record will contain a '.' in the ALT column. Note also that sites-only VCFs, by definition, do
-     * not include the alternate allele in any genotype calls.
+     * not include the alternate allele in any genotype calls.  Further note that PLs will be trimmed appropriately,
+     * removing likelihood information (even for homozygous reference calls).
      */
     @Argument(fullName="remove-unused-alternates",
                     doc="Remove alternate alleles not present in any genotypes", optional=true)
@@ -1023,16 +1021,23 @@ public final class SelectVariants extends VariantWalker {
         // strip out the alternate alleles that aren't being used
         final VariantContext sub = vc.subContextFromSamples(samples, removeUnusedAlternates);
 
-        // If no subsetting happened, exit now
+        // If no subsetting of samples or alleles happened, exit now
         if (sub.getNSamples() == vc.getNSamples() && sub.getNAlleles() == vc.getNAlleles()) {
             return vc;
         }
 
-        // fix the PL and AD values if sub has fewer alleles than original vc and remove a fraction of the genotypes if needed
-        final GenotypesContext oldGs = sub.getGenotypes();
-        GenotypesContext newGC = sub.getNAlleles() == vc.getNAlleles() ? oldGs :
-                AlleleSubsettingUtils.subsetAlleles(oldGs, 0, vc.getAlleles(), sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+        GenotypesContext newGC;
+        if (sub.getNAlleles() != vc.getNAlleles()) {
+            // fix the PL and AD values if sub has fewer alleles than original vc
+            final GenotypesContext subGenotypesWithOldAlleles = sub.getGenotypes();  //we need sub for the right samples, but PLs still go with old alleles
+            newGC = sub.getNAlleles() == vc.getNAlleles() ? subGenotypesWithOldAlleles :
+                    AlleleSubsettingUtils.subsetAlleles(subGenotypesWithOldAlleles, 0, vc.getAlleles(),
+                            sub.getAlleles(), null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
+        } else {
+            newGC = sub.getGenotypes();
+        }
 
+        //remove a fraction of the genotypes if requested
         if (fractionGenotypes > 0) {
             final List<Genotype> genotypes = newGC.stream().map(genotype -> randomGenotypes.nextDouble() > fractionGenotypes ? genotype :
                     new GenotypeBuilder(genotype).alleles(getNoCallAlleles(genotype.getPloidy())).noGQ().make()).collect(Collectors.toList());

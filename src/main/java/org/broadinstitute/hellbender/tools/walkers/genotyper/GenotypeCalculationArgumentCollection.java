@@ -5,7 +5,6 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.io.Serializable;
@@ -16,16 +15,20 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public static final String SUPPORTING_CALLSET_LONG_NAME = "population-callset";
     public static final String SUPPORTING_CALLSET_SHORT_NAME = "population";
     public static final String NUM_REF_SAMPLES_LONG_NAME = "num-reference-samples-if-no-call";
+    public static final String CALL_CONFIDENCE_LONG_NAME = "standard-min-confidence-threshold-for-calling";
+    public static final String CALL_CONFIDENCE_SHORT_NAME = "stand-call-conf";
     public static final String MAX_ALTERNATE_ALLELES_LONG_NAME = "max-alternate-alleles";
     public static final String MAX_GENOTYPE_COUNT_LONG_NAME = "max-genotype-count";
     public static final String SAMPLE_PLOIDY_SHORT_NAME = "ploidy";
     public static final String SAMPLE_PLOIDY_LONG_NAME = "sample-ploidy";
+    public static final String GENOTYPE_ASSIGNMENT_METHOD_LONG_NAME = "genotype-assignment-method";
+    public static final String USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME = "use-posteriors-to-calculate-qual";
 
     public static final double DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
     public static final int DEFAULT_MAX_ALTERNATE_ALLELES = 6;
     public static final int DEFAULT_MAX_GENOTYPE_COUNT = 1024;
 
-    @Argument(fullName="use-posteriors-to-calculate-qual", shortName="gp-qual", optional = true, doc = "if available, use the genotype posterior probabilities to calculate the site QUAL")
+    @Argument(fullName= USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME, shortName="gp-qual", optional = true, doc = "if available, use the genotype posterior probabilities to calculate the site QUAL")
     public boolean usePosteriorProbabilitiesToCalculateQual = false;
 
     /**
@@ -97,7 +100,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * The quantity that changes whether the GATK considers the possibility of a het genotype at all is the ploidy,
      * which determines how many chromosomes each individual in the species carries.
      */
-    @Argument(fullName = "heterozygosity", doc = "Heterozygosity value used to compute prior likelihoods for any locus.  See the GATKDocs for full details on the meaning of this population genetics concept", optional = true)
+    @Argument(fullName = "heterozygosity", doc = "Heterozygosity value used to compute prior probabilities for any locus.  See the GATKDocs for full details on the meaning of this population genetics concept", optional = true)
     public Double snpHeterozygosity = HomoSapiensConstants.SNP_HETEROZYGOSITY;
 
     /**
@@ -124,24 +127,28 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      *
      * Note that the default was changed from 10.0 to 30.0 in version 4.1.0.0 to accompany the switch to use the the new quality score by default.
      */
-    @Argument(fullName = "standard-min-confidence-threshold-for-calling", shortName = "stand-call-conf", doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
-    public double STANDARD_CONFIDENCE_FOR_CALLING = DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING;
+    @Argument(fullName = CALL_CONFIDENCE_LONG_NAME, shortName = CALL_CONFIDENCE_SHORT_NAME, doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
+    public double standardConfidenceForCalling = DEFAULT_STANDARD_CONFIDENCE_FOR_CALLING;
 
     /**
      * If there are more than this number of alternate alleles presented to the genotyper (either through discovery or GENOTYPE_GIVEN ALLELES),
      * then only this many alleles will be used.  Note that genotyping sites with many alternate alleles is both CPU and memory intensive and it
-     * scales exponentially based on the number of alternate alleles.  Unless there is a good reason to change the default value, we highly recommend
+     * scales exponentially based on the number of alternate alleles.
+     *
+     * Unless there is a good reason to change the default value, we highly recommend
      * that you not play around with this parameter.
      *
-     * See also {@link #MAX_GENOTYPE_COUNT}.
+     * See also {@link #maxGenotypeCount} and {@link org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection#MAX_ALTS_LONG_NAME}.
+     * This value can be no greater than one less than the corresponding GenomicsDB argument.  Sites that exceed the
+     * GenomicsDB alt allele max will not be output with likelihoods and will be dropped by GenotypeGVCFs.
      */
     @Advanced
     @Argument(fullName = MAX_ALTERNATE_ALLELES_LONG_NAME, doc = "Maximum number of alternate alleles to genotype", optional = true)
-    public int MAX_ALTERNATE_ALLELES = DEFAULT_MAX_ALTERNATE_ALLELES;
+    public int maxAlternateAlleles = DEFAULT_MAX_ALTERNATE_ALLELES;
 
     /**
      * If there are more than this number of genotypes at a locus presented to the genotyper, then only this many genotypes will be used.
-     * The possible genotypes are simply different ways of partitioning alleles given a specific ploidy asumption.
+     * The possible genotypes are simply different ways of partitioning alleles given a specific ploidy assumption.
      * Therefore, we remove genotypes from consideration by removing alternate alleles that are the least well supported.
      * The estimate of allele support is based on the ranking of the candidate haplotypes coming out of the graph building step.
      * Note that the reference allele is always kept.
@@ -150,17 +157,19 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * Unless there is a good reason to change the default value, we highly recommend that you not play around with this parameter.
      *
      * The maximum number of alternative alleles used in the genotyping step will be the lesser of the two:
-     * 1. the largest number of alt alleles, given ploidy, that yields a genotype count no higher than {@link #MAX_GENOTYPE_COUNT}
-     * 2. the value of {@link #MAX_ALTERNATE_ALLELES}
+     * 1. the largest number of alt alleles, given ploidy, that yields a genotype count no higher than {@link #maxGenotypeCount}
+     * 2. the value of {@link #maxAlternateAlleles}
      *
-     * See also {@link #MAX_ALTERNATE_ALLELES}.
+     * See also {@link #maxAlternateAlleles} and
+     * {@link org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection#maxDiploidAltAllelesThatCanBeGenotyped}
      */
     @Advanced
     @Argument(fullName = MAX_GENOTYPE_COUNT_LONG_NAME, doc = "Maximum number of genotypes to consider at any site", optional = true)
-    public int MAX_GENOTYPE_COUNT = DEFAULT_MAX_GENOTYPE_COUNT;
+    public int maxGenotypeCount = DEFAULT_MAX_GENOTYPE_COUNT;
 
     /**
-     *   Sample ploidy - equivalent to number of chromosomes per pool. In pooled experiments this should be = # of samples in pool * individual sample ploidy
+     *   Sample ploidy - equivalent to number of chromoso
+     *   mes per pool. In pooled experiments this should be = # of samples in pool * individual sample ploidy
      */
     @Argument(shortName = SAMPLE_PLOIDY_SHORT_NAME, fullName = SAMPLE_PLOIDY_LONG_NAME, doc="Ploidy (number of chromosomes) per sample. For pooled data, set to (Number of samples in each pool * Sample Ploidy).", optional=true)
     public int samplePloidy = HomoSapiensConstants.DEFAULT_PLOIDY;
@@ -181,6 +190,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     @Argument(fullName= NUM_REF_SAMPLES_LONG_NAME,doc="Number of hom-ref genotypes to infer at sites not present in a panel",optional=true)
     public int numRefIfMissing = 0;
 
-    @Argument(fullName= "genotype-assignment-method", shortName = "gam", doc = "How we assign genotypes", optional = true)
+    @Argument(fullName= GENOTYPE_ASSIGNMENT_METHOD_LONG_NAME, shortName = "gam", doc = "How we assign genotypes", optional = true)
     public GenotypeAssignmentMethod genotypeAssignmentMethod = GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN;
 }

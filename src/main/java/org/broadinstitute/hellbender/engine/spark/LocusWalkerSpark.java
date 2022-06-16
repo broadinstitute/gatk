@@ -10,7 +10,6 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceMultiSparkSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -19,7 +18,10 @@ import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Spliterators;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -116,7 +118,6 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
             final AlignmentContextIteratorBuilder alignmentContextIteratorBuilder = new AlignmentContextIteratorBuilder();
             alignmentContextIteratorBuilder.setDownsamplingInfo(downsamplingInfo);
             alignmentContextIteratorBuilder.setEmitEmptyLoci(isEmitEmptyLoci);
-            alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(false);
             alignmentContextIteratorBuilder.setIncludeNs(false);
 
             final Iterator<AlignmentContext> alignmentContextIterator = alignmentContextIteratorBuilder.build(

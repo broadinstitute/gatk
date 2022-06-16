@@ -27,7 +27,9 @@ import org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.BreakpointEvidence.ReadEvidence;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.*;
 import org.broadinstitute.hellbender.tools.spark.utils.FlatMapGluer;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMapSpark;
+import org.broadinstitute.hellbender.utils.SVInterval;
+import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexCache;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -166,7 +168,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 new ArrayList<>(),
                 evidenceScanResults.evidenceTargetLinks);
 
-        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap = evidenceScanResults.qNamesForAssemblyMultiMap;
+        final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesMultiMap = evidenceScanResults.qNamesForAssemblyMultiMap;
 
         // supplement the template names with other reads that share kmers
         final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList;
@@ -327,7 +329,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final int nIntervalsAfterDepthCleaning = intervals.size();
         log("Removed " + (nIntervalsAfterGapRemoval - nIntervalsAfterDepthCleaning) + " intervals that were entirely high-depth.", logger);
 
-        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap =
+        final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesMultiMap =
                 getQNames(params, ctx, broadcastMetadata, intervals, unfilteredReads, filter, broadcastHighCoverageSubIntervals);
 
         SparkUtils.destroyBroadcast(broadcastHighCoverageSubIntervals, "high-coverage subintervals");
@@ -372,12 +374,12 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final ReadMetadata readMetadata;
         final List<SVInterval> intervals;
         final List<EvidenceTargetLink> evidenceTargetLinks;
-        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesForAssemblyMultiMap;
+        final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesForAssemblyMultiMap;
 
         public EvidenceScanResults(final ReadMetadata readMetadata,
                                    final List<SVInterval> intervals,
                                    final List<EvidenceTargetLink> evidenceTargetLinks,
-                                   final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesForAssemblyMultiMap) {
+                                   final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesForAssemblyMultiMap) {
             this.readMetadata = readMetadata;
             this.intervals = intervals;
             this.evidenceTargetLinks = evidenceTargetLinks;
@@ -493,17 +495,17 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final ReadMetadata readMetadata,
             final JavaSparkContext ctx,
-            final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
+            final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesMultiMap,
             final int nIntervals,
             final JavaRDD<GATKRead> unfilteredReads,
             final SVReadFilter filter,
             final Logger logger)
     {
-        final Tuple2<List<AlignedAssemblyOrExcuse>, HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> kmerIntervalsAndDispositions =
+        final Tuple2<List<AlignedAssemblyOrExcuse>, HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval>> kmerIntervalsAndDispositions =
                 getKmerAndIntervalsSet(params, readMetadata, ctx, qNamesMultiMap, nIntervals,
                                         unfilteredReads, filter, logger);
 
-        final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmersAndIntervals =
+        final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmersAndIntervals =
                 removeUbiquitousKmers(params, readMetadata, ctx, kmerIntervalsAndDispositions._2(), unfilteredReads, filter, logger);
 
         qNamesMultiMap.addAll(getAssemblyQNames(params, ctx, kmersAndIntervals, unfilteredReads, filter));
@@ -524,11 +526,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * _1 describes the intervals that have been killed for having too few kmers (as a map from intervalId onto an explanatory string),
      * and _2 describes the good kmers that we want to use in local assemblies (as a multimap from kmer onto intervalId).
      */
-    private static Tuple2<List<AlignedAssemblyOrExcuse>, HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> getKmerAndIntervalsSet(
+    private static Tuple2<List<AlignedAssemblyOrExcuse>, HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval>> getKmerAndIntervalsSet(
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final ReadMetadata readMetadata,
             final JavaSparkContext ctx,
-            final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
+            final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesMultiMap,
             final int nIntervals,
             final JavaRDD<GATKRead> unfilteredReads,
             final SVReadFilter filter,
@@ -545,8 +547,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final Tuple2<List<AlignedAssemblyOrExcuse>, List<KmerAndInterval>> kmerIntervalsAndDispositions =
                 getKmerIntervals(params, readMetadata, ctx, qNamesMultiMap, nIntervals, kmerKillSet,
                                     unfilteredReads, filter, logger);
-        final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap =
-                new HopscotchUniqueMultiMap<>(kmerIntervalsAndDispositions._2());
+        final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmerMultiMap =
+                new HopscotchUniqueMultiMapSpark<>(kmerIntervalsAndDispositions._2());
         log("Discovered " + kmerMultiMap.size() + " kmers.", logger);
 
         return new Tuple2<>(kmerIntervalsAndDispositions._1(), kmerMultiMap);
@@ -566,7 +568,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      */
     @VisibleForTesting static List<AlignedAssemblyOrExcuse> handleAssemblies(
             final JavaSparkContext ctx,
-            final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
+            final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesMultiMap,
             final JavaRDD<GATKRead> unfilteredReads,
             final SVReadFilter filter,
             final int nIntervals,
@@ -579,7 +581,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         }
         final ComplexityPartitioner partitioner = new ComplexityPartitioner(counts);
 
-        final Broadcast<HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> broadcastQNamesMultiMap =
+        final Broadcast<HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval>> broadcastQNamesMultiMap =
                 ctx.broadcast(qNamesMultiMap);
         final List<AlignedAssemblyOrExcuse> intervalDispositions =
             unfilteredReads
@@ -620,15 +622,15 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * For a set of interesting kmers, count occurrences of each over all reads, and remove those
      * that appear too frequently from the set.
      */
-    private static HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> removeUbiquitousKmers(
+    private static HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> removeUbiquitousKmers(
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final ReadMetadata readMetadata,
             final JavaSparkContext ctx,
-            final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmersAndIntervals,
+            final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmersAndIntervals,
             final JavaRDD<GATKRead> unfilteredReads,
             final SVReadFilter filter,
             final Logger logger ) {
-        final Broadcast<HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> broadcastKmersAndIntervals =
+        final Broadcast<HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval>> broadcastKmersAndIntervals =
                 ctx.broadcast(kmersAndIntervals);
 
         final int kmersPerPartition = kmersAndIntervals.size();
@@ -680,10 +682,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @VisibleForTesting static List<QNameAndInterval> getAssemblyQNames(
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final JavaSparkContext ctx,
-            final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap,
+            final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmerMultiMap,
             final JavaRDD<GATKRead> unfilteredReads,
             final SVReadFilter filter ) {
-        final Broadcast<HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval>> broadcastKmersAndIntervals =
+        final Broadcast<HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval>> broadcastKmersAndIntervals =
                 ctx.broadcast(kmerMultiMap);
 
         final int kSize = params.kSize;
@@ -705,7 +707,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final ReadMetadata readMetadata,
             final JavaSparkContext ctx,
-            final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
+            final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesMultiMap,
             final int nIntervals,
             final Set<SVKmer> kmerKillSet,
             final JavaRDD<GATKRead> unfilteredReads,
@@ -713,7 +715,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final Logger logger ) {
 
         final Broadcast<Set<SVKmer>> broadcastKmerKillSet = ctx.broadcast(kmerKillSet);
-        final Broadcast<HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> broadcastQNameAndIntervalsMultiMap =
+        final Broadcast<HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval>> broadcastQNameAndIntervalsMultiMap =
                 ctx.broadcast(qNamesMultiMap);
 
         // given a set of template names with interval IDs and a kill set of ubiquitous kmers,
@@ -944,7 +946,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     }
 
     /** find template names for reads mapping to each interval */
-    @VisibleForTesting static HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> getQNames(
+    @VisibleForTesting static HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> getQNames(
             final FindBreakpointEvidenceSparkArgumentCollection params,
             final JavaSparkContext ctx,
             final Broadcast<ReadMetadata> broadcastMetadata,
@@ -964,8 +966,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         SparkUtils.destroyBroadcast(broadcastIntervals, "intervals");
 
-        final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap =
-                new HopscotchUniqueMultiMap<>(params.assemblyToMappedSizeRatioGuess*qNameAndIntervalList.size());
+        final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNamesMultiMap =
+                new HopscotchUniqueMultiMapSpark<>(params.assemblyToMappedSizeRatioGuess*qNameAndIntervalList.size());
         qNamesMultiMap.addAll(qNameAndIntervalList);
         return qNamesMultiMap;
     }

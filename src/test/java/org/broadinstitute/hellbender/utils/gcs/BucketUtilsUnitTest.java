@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
+import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.cloud.storage.contrib.nio.SeekableByteChannelPrefetcher;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -15,6 +18,8 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,10 +30,35 @@ import java.util.stream.Stream;
 
 public final class BucketUtilsUnitTest extends GATKBaseTest {
 
+    public static final String LINE_IN_REMOTE_TEXT_FILE = "The Project Gutenberg EBook of The Adventures of Sherlock Holmes";
+
+    /**
+     * This file is in a public requester pays bucket and is owned by the broad-gatk-test project.  It must be owned by
+     * a different project than the service account doing the testing or the test may fail because it can access the
+     * file directly    through alternative permissions.
+     */
+    public static final String FILE_IN_REQUESTER_PAYS_BUCKET = getGCPRequesterPaysBucket() + "test/resources/nio/big.txt";
+
     static {
+        setDefaultNioOptions();
+    }
+
+    private static void setDefaultNioOptions() {
         BucketUtils.setGlobalNIODefaultOptions(
             ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries(),
             ConfigFactory.getInstance().getGATKConfig().gcsProjectForRequesterPays());
+    }
+
+    private static void setNoProjectForRequesterPays() {
+        BucketUtils.setGlobalNIODefaultOptions(
+                ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries(),
+                null);
+    }
+
+    private static void setRequesterPays(){
+        BucketUtils.setGlobalNIODefaultOptions(
+                ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries(),
+                BaseTest.getGCPTestProject());
     }
 
     @Test(groups={"bucket"})
@@ -263,7 +293,7 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
         Assert.assertTrue(signed.contains("big.txt"), "path is missing blob name, "+ signed);
         Assert.assertTrue(Files.exists(path), "path doesn't exist: " + signed);
         try(final Stream<String> lines = Files.lines(path))  {
-            Assert.assertTrue(lines.anyMatch(line -> line.contains("The Project Gutenberg EBook of The Adventures of Sherlock Holmes")), "blob data is incorrect, " + signed);
+            Assert.assertTrue(lines.anyMatch(line -> line.contains(LINE_IN_REMOTE_TEXT_FILE)), "blob data is incorrect, " + signed);
         }
     }
 
@@ -275,4 +305,29 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(publicHttpLink, "https://storage.googleapis.com/hellbender/test/resources/nio/big.txt");
         Assert.assertTrue(Files.exists(IOUtils.getPath(publicHttpLink)));
     }
+
+    @Test(groups="cloud", singleThreaded=true)
+    public void testRequesterPays() throws IOException {
+
+        // IOUtils.getPath() triggers the requester pays check, it's not lazily delayed until trying to read
+        // the file.
+        try {
+            //Assert that this fails when no project is provided
+            setNoProjectForRequesterPays();
+            Assert.assertThrows(StorageException.class, () -> {
+                try( final Stream<String> lines = Files.lines(IOUtils.getPath(FILE_IN_REQUESTER_PAYS_BUCKET))) {
+                   lines.anyMatch(line -> line.contains(LINE_IN_REMOTE_TEXT_FILE));
+                }
+            });
+
+            setRequesterPays();
+            try( final Stream<String> lines = Files.lines(IOUtils.getPath(FILE_IN_REQUESTER_PAYS_BUCKET))) {
+                Assert.assertTrue(lines.anyMatch(line -> line.contains(LINE_IN_REMOTE_TEXT_FILE)),
+                        "Failed to read from file.");
+            }
+        } finally {
+            setDefaultNioOptions();
+        }
+    }
+
 }

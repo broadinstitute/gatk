@@ -209,6 +209,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
         if (genomicsDBOptions == null) {
+            //extract called genotypes so hom refs with no PLs aren't ambiguous
+            genomicsdbArgs.callGenotypes = true;
             genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs);
         }
         return genomicsDBOptions;
@@ -259,7 +261,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, keepCombined);
 
-        merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput);
+        merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, false, true);
 
         //methods that cannot be called in engine bc its protected
         Set<VCFHeaderLine> defaultToolVCFHeaderLines = getDefaultToolVCFHeaderLines();

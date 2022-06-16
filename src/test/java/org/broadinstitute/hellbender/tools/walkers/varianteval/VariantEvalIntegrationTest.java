@@ -3,11 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -15,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class VariantEvalIntegrationTest extends CommandLineProgramTest {
@@ -38,7 +40,6 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testFunctionClassWithSnpeff() throws IOException {
         String name = "testFunctionClassWithSnpeff";
-        
         IntegrationTestSpec spec = new IntegrationTestSpec(
                                         " -R " + b37Reference +
                                         " --dbsnp " + dbsnp_138_b37_1_65M_vcf +
@@ -105,6 +106,31 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
                 Arrays.asList(getExpectedFile(name))
         );
         spec.executeTest(name, this);
+    }
+
+    @DataProvider(name = "testContigStratWithUserSuppliedIntervalsData")
+    public Object[][] testContigStratWithUserSuppliedIntervalsData() {
+        return new Object[][]{
+                new Object[]{"1:1-1480226", "testContigStratWithUserSuppliedIntervals"},
+                new Object[]{"1", "testContigStratWithUserSuppliedIntervals2"},
+                new Object[]{null, "testContigStratWithUserSuppliedIntervals3"}
+        };
+    }
+
+    @Test(dataProvider = "testContigStratWithUserSuppliedIntervalsData")
+    public void testContigStratWithUserSuppliedIntervals(String intervalString, String expectedOutputFile) throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                        " -R " + b37Reference +
+                        " --eval " + snpEffVcf +
+                        " -no-ev" +
+                        " -EV CountVariants" +
+                        " -no-st" +
+                        " -ST Contig" +
+                        (intervalString == null ? "" : " -L " + intervalString) +
+                        " -O %s",
+                Arrays.asList(getExpectedFile(expectedOutputFile))
+        );
+        spec.executeTest(expectedOutputFile, this);
     }
 
     @Test
@@ -290,6 +316,37 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         spec.executeTest(name, this);
     }
 
+    @DataProvider(name = "testPedigreeValidationData")
+    private Object[][] testPedigreeValidationData() {
+        return new Object[][] {
+            new Object[]{PedigreeValidationType.SILENT, false},
+            new Object[]{PedigreeValidationType.STRICT, true},
+            new Object[]{null, true}
+        };
+    }
+
+    @Test(dataProvider = "testPedigreeValidationData")
+    public void testPedigreeValidation(PedigreeValidationType pvt, boolean expectFail) throws IOException {
+        String vcfFile = getTestFilePath("PhaseByTransmission.IntegrationTest.TP.vcf");
+        String pedFile = "MendelianViolationEval.ped";
+        String name = "testPedigreeValidation";
+
+        String argString = " -R " + b37Reference + " --eval " + vcfFile + " -ped "+ getTestFilePath(pedFile) +" -no-ev -EV MendelianViolationEvaluator -L 1:10109-10315 -O %s -mvq 0 -no-st ";
+        if (pvt != null) {
+            argString += " -pedValidationType " + pvt.name();
+        }
+
+        IntegrationTestSpec spec;
+        if (expectFail) {
+            spec = new IntegrationTestSpec(argString, 1, UserException.class);
+        }
+        else {
+            spec = new IntegrationTestSpec(argString, Collections.singletonList(getExpectedFile(name)));
+        }
+
+        spec.executeTest(name, this);
+    }
+
     @Test
     public void testMVEvalFamilyStrat() throws IOException {
         String name = "testMVEvalFamilyStrat";
@@ -336,12 +393,26 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         String vcf = getTestFilePath("noGenotypes.vcf");
 
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                " -R " + b37_reference_20_21 +
+                " -R " + b37Reference +
                         " -eval " + vcf +
                         " -O %s",
                 Arrays.asList(getExpectedFile(name))); //There is no md5 because we only care that this completes without an exception.
         spec.executeTest(name, this);
 
+    }
+
+    @Test
+    public void testEvalTrackWithoutGenotypesWithSampleFieldsWrongRef() throws IOException {
+        String name = "testEvalTrackWithoutGenotypesWithSampleFieldsWrongRef";
+        String vcf = getTestFilePath("noGenotypes.vcf");
+
+        //The VCF has chr 1, but FASTA has 20/21 only
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -R " + b37_reference_20_21 +
+                        " -eval " + vcf +
+                        " -O %s",
+                1, UserException.class);
+        spec.executeTest(name, this);
     }
 
     @Test
@@ -486,7 +557,7 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
                         " -L " + getTestFilePath(fundamentalTestSNPsVCF) +
                         " -O %s",
                 1,
-                CommandLineException.BadArgumentValue.class
+                CommandLineException.class
         );
         spec.executeTest(name, this);
     }
@@ -623,7 +694,6 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
         return tests.toArray(new Object[][]{});
     }
 
-
     @Test
     public void testPrintMissingComp() throws IOException {
         String name = "testPrintMissingComp";
@@ -675,20 +745,5 @@ public class VariantEvalIntegrationTest extends CommandLineProgramTest {
                 .add("EV", countVariants);
 
         runCommandLine(args);
-    }
-
-    @Test
-    public void testWithoutRequiringAReference() {
-        testForCrashWithGivenEvaluator("IndelSummary");
-    }
-
-    @Test(expectedExceptions = UserException.class)
-    public void testNoReferenceWithEvaluatorsThatRequireOne() {
-        testForCrashWithGivenEvaluator("CountVariants");
-    }
-
-    @Test(expectedExceptions = GATKException.class)
-    public void testIncorrectlyLabelledEvaluator(){
-        testForCrashWithGivenEvaluator("TestEvaluatorWhichRequiresReferenceButDoesntSayItDoes");
     }
 }

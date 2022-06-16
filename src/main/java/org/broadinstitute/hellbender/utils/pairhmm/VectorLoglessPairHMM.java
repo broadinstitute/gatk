@@ -35,10 +35,6 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
          * OpenMP multi-threaded AVX-accelerated version of PairHMM
          */
         OMP,
-        /**
-         * FPGA-accelerated version of PairHMM
-         */
-        FPGA
     }
 
     private static final Logger logger = LogManager.getLogger(VectorLoglessPairHMM.class);
@@ -75,14 +71,6 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
                 isSupported = pairHmm.load(null);
                 if (!isSupported) {
                     throw new UserException.HardwareFeatureException("Machine does not support OpenMP AVX PairHMM.");
-                }
-                break;
-
-            case FPGA:
-                pairHmm = new IntelPairHmmFpga();
-                isSupported = pairHmm.load(null);
-                if (!isSupported) {
-                    throw new UserException.HardwareFeatureException("Machine does not support FPGA PairHMM.");
                 }
                 break;
 
@@ -158,6 +146,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
                 //get idx of current haplotype in the list and use this idx to get the right likelihoodValue
                 final int idxInsideHaplotypeList = haplotypeToHaplotypeListIdxMap.get(haplotype);
                 logLikelihoods.set(hapIdx, r, mLogLikelihoodArray[readIdx + idxInsideHaplotypeList]);
+                writeToResultsFileIfApplicable(readDataArray[r].readBases, readDataArray[r].readQuals, readDataArray[r].insertionGOP, readDataArray[r].deletionGOP, readDataArray[r].overallGCP, haplotype.getBases(), mLogLikelihoodArray[readIdx + idxInsideHaplotypeList]);
                 ++hapIdx;
             }
             readIdx += numHaplotypes;

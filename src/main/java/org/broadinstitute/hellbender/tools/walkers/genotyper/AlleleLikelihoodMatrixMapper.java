@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * Creates {@link org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix} mappers to be used when working with a subset of the original alleles.
  */
-public class AlleleLikelihoodMatrixMapper<A extends Allele> {
+class AlleleLikelihoodMatrixMapper<A extends Allele> {
 
     private final AlleleListPermutation<A> permutation;
     /**
@@ -18,15 +18,12 @@ public class AlleleLikelihoodMatrixMapper<A extends Allele> {
      * @param permutation the requested permutation.
      *
      * @throws IllegalArgumentException if {@code permutation} is {@code null}.
-     *
-     * @return never {@code null}.
      */
-    public AlleleLikelihoodMatrixMapper(final AlleleListPermutation<A> permutation) {
+    AlleleLikelihoodMatrixMapper(final AlleleListPermutation<A> permutation) {
         this.permutation = Utils.nonNull(permutation);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public <EVIDENCE> LikelihoodMatrix<EVIDENCE, A> mapAlleles(final LikelihoodMatrix<EVIDENCE, A> original) {
+    <EVIDENCE> LikelihoodMatrix<EVIDENCE, A> mapAlleles(final LikelihoodMatrix<EVIDENCE, A> original) {
         if (permutation.isNonPermuted()) {
             return original;
         }
@@ -58,7 +55,7 @@ public class AlleleLikelihoodMatrixMapper<A extends Allele> {
             }
 
             @Override
-            public int indexOfAllele(final A allele) {
+            public int indexOfAllele(final Allele allele) {
                 Utils.nonNull(allele);
                 return permutation.indexOfAllele(allele);
             }

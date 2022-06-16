@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.base.Strings;
-import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.JunctionTreeLinkedDeBruijnGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -19,6 +19,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
+    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentConstants.STANDARD_NGS;
+    private static final SWParameters PATH_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
 
     public static byte[] getBytes(final String alignment) {
         return alignment.replace("-","").getBytes();
@@ -843,7 +845,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         }
         expectedCigar.add(new CigarElement(postRef.length(), CigarOperator.M));
 
-        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), expectedCigar.make().toString(), "Cigar string mismatch");
+        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance(), PATH_TO_REFERENCE_SW_PARAMETERS).toString(), expectedCigar.make().toString(), "Cigar string mismatch");
     }
 
     @DataProvider(name = "TripleBubbleDataProvider")
@@ -963,7 +965,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
             expectedCigar.add(new CigarElement(postAltOption.length(), CigarOperator.I));
         }
 
-        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(),
+        Assert.assertEquals(path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance(), PATH_TO_REFERENCE_SW_PARAMETERS).toString(),
                 expectedCigar.make().toString(),
                 "Cigar string mismatch: ref = " + ref + " alt " + new String(path.getBases()));
     }
@@ -981,8 +983,8 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         graph.addSequence("anonymous", getBytes(ref), false);
         graph.addSequence("anonymous", getBytes(alt), false);
         graph.buildGraphIfNecessary();
-        graph.recoverDanglingHeads(0, 0,  true, SmithWatermanJavaAligner.getInstance());
-        graph.recoverDanglingTails(0, 0,  true, SmithWatermanJavaAligner.getInstance());
+        graph.recoverDanglingHeads(0, 0,  true, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
+        graph.recoverDanglingTails(0, 0,  true, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
         graph.generateJunctionTrees();
 
         @SuppressWarnings("all")
@@ -991,8 +993,8 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final Path<MultiDeBruijnVertex,MultiSampleEdge> refPath = bestPaths.get(0);
         final Path<MultiDeBruijnVertex,MultiSampleEdge> altPath = bestPaths.get(1);
 
-        Assert.assertEquals(refPath.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "15M");
-        Assert.assertEquals(altPath.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "4M3I5M3D3M");
+        Assert.assertEquals(refPath.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance(), PATH_TO_REFERENCE_SW_PARAMETERS).toString(), "15M");
+        Assert.assertEquals(altPath.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance(), PATH_TO_REFERENCE_SW_PARAMETERS).toString(), "4M3I5M3D3M");
     }
 
     @Test (enabled = false) //TODO this is disabled due to the k max paths per node optimization not being implemented yet
@@ -1069,7 +1071,7 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         graph.addSequence("anonymous", getBytes(ref), false);
         graph.addSequence("anonymous", getBytes(alt), false);
         graph.buildGraphIfNecessary();
-        graph.recoverDanglingHeads(0, 2, true, SmithWatermanJavaAligner.getInstance());
+        graph.recoverDanglingHeads(0, 2, true, SmithWatermanJavaAligner.getInstance(), DANGLING_END_SW_PARAMETERS);
         graph.generateJunctionTrees();
 
         @SuppressWarnings("all")
@@ -1083,12 +1085,12 @@ public class JunctionTreeKBestHaplotypeFinderUnitTest extends GATKBaseTest {
         final Path<MultiDeBruijnVertex, MultiSampleEdge> altPath = paths.get(1);
 
         logger.warn("RefPath : " + refPath + " cigar " + refPath.calculateCigar(ref.getBytes(),
-                SmithWatermanJavaAligner.getInstance()));
+                SmithWatermanJavaAligner.getInstance(), PATH_TO_REFERENCE_SW_PARAMETERS));
         logger.warn("AltPath : " + altPath + " cigar " + altPath.calculateCigar(ref.getBytes(),
-                SmithWatermanJavaAligner.getInstance()));
+                SmithWatermanJavaAligner.getInstance(), PATH_TO_REFERENCE_SW_PARAMETERS));
 
-        Assert.assertEquals(refPath.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "59M");
-        Assert.assertEquals(altPath.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance()).toString(), "11M6I48M");
+        Assert.assertEquals(refPath.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance(), PATH_TO_REFERENCE_SW_PARAMETERS).toString(), "59M");
+        Assert.assertEquals(altPath.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance(), PATH_TO_REFERENCE_SW_PARAMETERS).toString(), "11M6I48M");
     }
 
     @Test

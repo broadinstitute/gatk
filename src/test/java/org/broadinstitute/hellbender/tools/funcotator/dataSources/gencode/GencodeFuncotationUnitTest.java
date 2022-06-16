@@ -399,4 +399,27 @@ public class GencodeFuncotationUnitTest extends GATKBaseTest {
     public void testGetFieldFail(final GencodeFuncotation gencodeFuncotation, final String fieldName) {
         gencodeFuncotation.getField(fieldName);
     }
+
+    @Test
+    public void testVariantClassificationSeverityOverride() {
+
+        // Check that we start with the defaults:
+        for ( final GencodeFuncotation.VariantClassification vc : GencodeFuncotation.VariantClassification.values()) {
+            Assert.assertEquals(vc.getSeverity(), vc.getDefaultSeverity());
+        }
+
+        // Now set some values and make sure they stick:
+        for (int i = 98; i < 173; ++i) {
+            GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE.setSeverity(i);
+            Assert.assertEquals(GencodeFuncotation.VariantClassification.COULD_NOT_DETERMINE.getSeverity(), i);
+        }
+
+        // Now reset the values:
+        GencodeFuncotation.VariantClassification.resetSeveritiesToDefault();
+
+        // Check that the reset works:
+        for ( final GencodeFuncotation.VariantClassification vc : GencodeFuncotation.VariantClassification.values()) {
+            Assert.assertEquals(vc.getSeverity(), vc.getDefaultSeverity());
+        }
+    }
 }

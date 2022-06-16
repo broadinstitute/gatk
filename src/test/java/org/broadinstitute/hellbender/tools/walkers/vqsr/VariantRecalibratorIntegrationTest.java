@@ -25,6 +25,9 @@ import java.util.stream.Stream;
  * from the command line, in order to ensure that the initial state of the random number generator is the same
  * between versions. In all cases, the variants in the expected files are identical to those produced by GATK3,
  * though the VCF headers were hand modified to account for small differences in the metadata lines.
+ *
+ * UPDATE: The expected results from GATK3 were updated in https://github.com/broadinstitute/gatk/pull/7709.
+ * However, we left the original comments referencing GATK3 below untouched.
  */
 public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
 
@@ -496,8 +499,14 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         doSNPTest(params, getLargeVQSRTestDataDir() + "/snpTranches.scattered.txt", getLargeVQSRTestDataDir() + "snpRecal.vcf"); //tranches file isn't in the expected/ directory because it's input to GatherTranchesIntegrationTest
     }
 
-    //One of the Gaussians has a covariance matrix with a determinant of zero, (can be confirmed that the entries of sigma for the row and column with the index of the constant annotation are zero) which leads to all +Inf LODs if we don't throw
-    @Test(expectedExceptions={UserException.VQSRPositiveModelFailure.class})
+    // One of the Gaussians has a covariance matrix with a determinant of zero,
+    // (can be confirmed that the entries of sigma for the row and column with the index of the constant annotation are zero)
+    // which leads to all +Inf LODs if we don't throw.
+    //
+    // UPDATE: Originally, this test checked for expectedExceptions = {UserException.VQSRPositiveModelFailure.class}.
+    // However, the convergence failure was fixed in https://github.com/broadinstitute/gatk/pull/7709,
+    // so we now expect the test to complete and can instead treat it as a regression test.
+    @Test
     public void testAnnotationsWithNoVarianceSpecified() throws IOException {
         // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
         List<String> args = new ArrayList<>(alleleSpecificVQSRParamsTooManyAnnotations.length);
@@ -511,7 +520,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(varRecalTool.instanceMain(args.toArray(new String[args.size()])), true);
     }
 
-    @Test(expectedExceptions={UserException.VQSRNegativeModelFailure.class})
+    @Test(expectedExceptions = {UserException.VQSRNegativeModelFailure.class})
     public void testNoNegativeTrainingData() throws IOException {
         // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
         List<String> args = new ArrayList<>(alleleSpecificVQSRParamsNoNegativeData.length);

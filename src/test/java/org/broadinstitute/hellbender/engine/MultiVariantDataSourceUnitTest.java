@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.variant.variantcontext.VariantContext;
-
+import htsjdk.variant.vcf.VCFFileReader;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -192,6 +192,54 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
 
     }
 
+    private String getKey(VariantContext vc) {
+        return vc.getContig() + ":" + vc.getStart() + "-" + vc.getEnd();
+    }
+
+    @Test
+    public void testVariantSource() {
+        List<FeatureInput<VariantContext>> featureInputs = new ArrayList<>();
+
+        File vcf1 = new File(MULTI_VARIANT_TEST_DIRECTORY, "interleavedVariants_1.vcf");
+        File vcf2 = new File(MULTI_VARIANT_TEST_DIRECTORY, "interleavedVariants_2.vcf");
+
+        featureInputs.add(new FeatureInput<>(vcf1.getAbsolutePath(), "interleavedVariants_1"));
+        featureInputs.add(new FeatureInput<>(vcf2.getAbsolutePath(), "interleavedVariants_2"));
+
+        final Map<String, String> variantToSource = new HashMap<>();
+        try (VCFFileReader reader = new VCFFileReader(vcf1)) {
+            reader.iterator().stream().forEach(vc -> {
+                String key = getKey(vc);
+                Assert.assertFalse(variantToSource.containsKey(key));
+                variantToSource.put(key, "interleavedVariants_1");
+            });
+        }
+
+        try (VCFFileReader reader = new VCFFileReader(vcf2)) {
+            reader.iterator().stream().forEach(vc -> {
+                String key = getKey(vc);
+                Assert.assertFalse(variantToSource.containsKey(key));
+                variantToSource.put(key, "interleavedVariants_2");
+            });
+        }
+
+        try (final MultiVariantDataSource multiVariantSource =
+                     new MultiVariantDataSource(featureInputs, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES)) {
+
+            Iterator<VariantContext> it = multiVariantSource.query(new SimpleInterval("1", 1, 1200));
+            while (it.hasNext()) {
+                VariantContext vc = it.next();
+                Assert.assertEquals(vc.getSource(), variantToSource.get(getKey(vc)));
+            };
+
+            it = multiVariantSource.query(new SimpleInterval("2", 200, 600));
+            while (it.hasNext()) {
+                VariantContext vc = it.next();
+                Assert.assertEquals(vc.getSource(), variantToSource.get(getKey(vc)));
+            };
+        }
+    }
+
     @Test
     public void testSetIntervals() {
         List<FeatureInput<VariantContext>> featureInputs = new ArrayList<>();
@@ -346,5 +394,3 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
     }
 
 }
-
-

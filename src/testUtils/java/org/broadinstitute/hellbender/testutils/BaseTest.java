@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.testutils;
 
+import com.google.common.base.Strings;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -106,6 +107,23 @@ public abstract class BaseTest {
     }
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.gatk");
+
+    /**
+     *  This is a public requester pays bucket owned by the broad-gatk-test project.
+     *  It must be owned by a different project than the service account doing the testing or the test may fail because it can access the
+     *  file directly through alternative permissions.
+     */
+    public static final String REQUESTER_PAYS_BUCKET = "gs://hellbender-requester-pays-test/";
+
+    /**
+     * A publicly readable GCS bucket set as requester pays, this should not be owned by the same project that is set
+     * as {@link BaseTest#getGCPTestProject()} or the tests for requester pays access may be invalid.
+     * @return HELLBENDER_REQUESTER_PAYS_BUCKET env. var if defined, {@value BaseTest#REQUESTER_PAYS_BUCKET}.
+     */
+    public static final String getGCPRequesterPaysBucket(){
+        final String valueFromEnvironment = System.getenv("HELLBENDER_REQUESTER_PAYS_BUCKET");
+        return Strings.isNullOrEmpty(valueFromEnvironment) ? REQUESTER_PAYS_BUCKET : valueFromEnvironment;
+    }
 
     /**
      * name of the google cloud project that stores the data and will run the code

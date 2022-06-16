@@ -631,6 +631,27 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public Float getAttributeAsFloat( final String attributeName ) {
+        ReadUtils.assertAttributeNameIsLegal(attributeName);
+        final Object attributeValue = samRecord.getAttribute(attributeName);
+
+        if ( attributeValue == null ) {
+            return null;
+        }
+        else if ( attributeValue instanceof Float ) {
+            return (Float)attributeValue;
+        }
+        else {
+            try {
+                return Float.parseFloat(attributeValue.toString());
+            }
+            catch ( NumberFormatException e ) {
+                throw new GATKException.ReadAttributeTypeMismatch(attributeName, "integer", e);
+            }
+        }
+    }
+
+    @Override
     public String getAttributeAsString( final String attributeName ) {
         ReadUtils.assertAttributeNameIsLegal(attributeName);
         final Object attributeValue = samRecord.getAttribute(attributeName);

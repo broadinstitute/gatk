@@ -1,82 +1,105 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
-import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
-import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.codecs.BafEvidenceCodec;
-import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
-import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
-import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
-import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
+import org.broadinstitute.hellbender.utils.codecs.*;
 
+import java.util.*;
 /**
- * Prints SV evidence records. Can be used with -L to retrieve records on a set of intervals. Supports streaming input
- * from GCS buckets.
+ * <p>Merges locus-sorted files of evidence for structural variation into a single output file.</p>
+ * <p>The tool can also subset the inputs to specified genomic intervals, or to a specified list of samples.</p>
+ * <p>The evidence types and their files extensions are:</p>
+ * <dl>
+ *     <dt>BafEvidence</dt>
+ *     <dd>The biallelic frequency of a SNP in some sample at some locus.
+ *          File extensions are *.baf.txt, *.baf.txt.gz, or *.baf.bci.</dd>
+ *     <dt>DepthEvidence</dt>
+ *     <dd>The read counts of any number of samples on some interval.
+ *          File extensions are *.rd.txt, *.rd.txt.gz, or *.rd.bci.</dd>
+ *     <dt>DiscordantPairEvidence</dt>
+ *     <dd>Evidence of a read pair that spans a genomic distance that's too large or too small.
+ *          File extensions are *.pe.txt, *.pe.txt.gz, or *.pe.bci.</dd>
+ *     <dt>LocusDepth</dt>
+ *     <dd>The read counts of each base call for some sample at some locus.
+ *          File extensions are *.ld.txt, *.ld.txt.gz, or *.ld.bci.</dd>
+ *     <dt>SplitReadEvidence</dt>
+ *     <dd>The number of chimeric reads in some sample at some locus.
+ *          File extensions are *.sr.txt, *.sr.txt.gz, or *.sr.bci.</dd>
+ * </dl>
  *
  * <h3>Inputs</h3>
  *
  * <ul>
  *     <li>
- *         Coordinate-sorted and indexed evidence file URI
+ *         One or more evidence files.
+ *         These must be locus-sorted, and must all contain the same type of evidence.
+ *         <br />Or a file containing a list of evidence files, one per line.
  *     </li>
- *     <li>
- *         Reference sequence dictionary
- *     </li>
+ *     <li>Optional:  A list of sample names to extract.</li>
  * </ul>
  *
  * <h3>Output</h3>
  *
  * <ul>
  *     <li>
- *         Coordinate-sorted evidence file, automatically indexed if ending with ".gz"
+ *         An output file containing merged evidence from the inputs.
  *     </li>
  * </ul>
  *
  * <h3>Usage example</h3>
  *
  * <pre>
- *     gatk PrintSVEvidence \
- *       --evidence-file gs://my-bucket/batch_name.SR.txt.gz \
- *       -L intervals.bed \
- *       --sequence-dictionary ref.dict \
- *       -O local.SR.txt.gz
+ *     gatk SVCluster \
+ *       -F file1.baf.txt.gz [-F file2.baf.txt.gz ...] \
+ *       -O merged.baf.bci \
+ *       --sample-names sample1 [--sample-names sample2 ...]
  * </pre>
  *
- * @author Mark Walker &lt;markw@broadinstitute.org&gt;
+ * @author Ted Sharpe &lt;tsharpe@broadinstitute.org&gt;
  */
-
 @CommandLineProgramProperties(
-        summary = "Prints SV evidence records to a file",
-        oneLineSummary = "Prints SV evidence records",
+        summary = "Merges multiple sources of SV evidence records of some particular feature type" +
+        " into a single output file.  Inputs must be locus-sorted." +
+        "  Can also subset by regions or samples.",
+        oneLineSummary = "Merges SV evidence records.",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @ExperimentalFeature
-@DocumentedFeature
-public final class PrintSVEvidence extends FeatureWalker<Feature> {
-
+public class PrintSVEvidence extends MultiFeatureWalker<SVFeature> {
     public static final String EVIDENCE_FILE_NAME = "evidence-file";
+    public static final String SAMPLE_NAMES_NAME = "sample-names";
     public static final String COMPRESSION_LEVEL_NAME = "compression-level";
 
     @Argument(
-            doc = "Input file URI with extension '"
+            doc = "Input feature file URI(s) with extension '"
                     + SplitReadEvidenceCodec.FORMAT_SUFFIX + "', '"
                     + DiscordantPairEvidenceCodec.FORMAT_SUFFIX + "', '"
+                    + LocusDepthCodec.FORMAT_SUFFIX + "', '"
                     + BafEvidenceCodec.FORMAT_SUFFIX + "', or '"
-                    + DepthEvidenceCodec.FORMAT_SUFFIX + "' (may be gzipped).",
-            fullName = EVIDENCE_FILE_NAME
+                    + DepthEvidenceCodec.FORMAT_SUFFIX + "' (may be gzipped). "
+                    + "Can also handle bci rather than txt files.",
+            fullName = EVIDENCE_FILE_NAME,
+            shortName = StandardArgumentDefinitions.FEATURE_SHORT_NAME
     )
-    private GATKPath inputFilePath;
+    private List<FeatureInput<SVFeature>> inputPaths;
+
+    @Argument(doc = "List of sample names to extract from the sources (either as a .list file or " +
+            " as repeated arguments).  If not specified, all samples will be merged.",
+              fullName = SAMPLE_NAMES_NAME, optional = true)
+    @VisibleForTesting
+    Set<String> sampleNames = new LinkedHashSet<>();
 
     @Argument(
-            doc = "Output file with an evidence extension matching the input. Will be indexed if it has a " +
-                    "block-compressed extension (e.g. '.gz').",
+            doc = "Output file for features of a type matching the input. Will be indexed if it " +
+                    "has a block-compressed extension (e.g. '.gz' or '.bci').",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
@@ -89,98 +112,71 @@ public final class PrintSVEvidence extends FeatureWalker<Feature> {
     )
     private int compressionLevel = 4;
 
-    private FeatureOutputStream<DiscordantPairEvidence> peStream;
-    private FeatureOutputStream<SplitReadEvidence> srStream;
-    private FeatureOutputStream<BafEvidence> bafStream;
-    private FeatureOutputStream<DepthEvidence> rdStream;
-    private FeatureCodec<? extends Feature, ?> featureCodec;
-    private Class<? extends Feature> evidenceClass;
+    private boolean noSampleFiltering = false;
+    private FeatureSink<SVFeature> outputSink;
 
     @Override
-    protected boolean isAcceptableFeatureType(final Class<? extends Feature> featureType) {
-        return featureType.equals(BafEvidence.class) || featureType.equals(DepthEvidence.class)
-                || featureType.equals(DiscordantPairEvidence.class) || featureType.equals(SplitReadEvidence.class);
-    }
-
-    @Override
-    public GATKPath getDrivingFeaturePath() {
-        return inputFilePath;
-    }
-
-    @Override
+    @SuppressWarnings("unchecked")
     public void onTraversalStart() {
         super.onTraversalStart();
-        featureCodec = FeatureManager.getCodecForFile(inputFilePath.toPath());
-        evidenceClass = featureCodec.getFeatureType();
-        initializeOutput();
-        writeHeader();
-    }
 
-    private void initializeOutput() {
-        if (evidenceClass.equals(DiscordantPairEvidence.class)) {
-            peStream = new FeatureOutputStream<>(outputFilePath, featureCodec, DiscordantPairEvidenceCodec::encode,
-                    getBestAvailableSequenceDictionary(), compressionLevel);
-        } else if (evidenceClass.equals(SplitReadEvidence.class)) {
-            srStream = new FeatureOutputStream<>(outputFilePath, featureCodec, SplitReadEvidenceCodec::encode,
-                    getBestAvailableSequenceDictionary(), compressionLevel);
-        } else if (evidenceClass.equals(BafEvidence.class)) {
-            bafStream = new FeatureOutputStream<>(outputFilePath, featureCodec, BafEvidenceCodec::encode,
-                    getBestAvailableSequenceDictionary(), compressionLevel);
-        } else if (evidenceClass.equals(DepthEvidence.class)) {
-            rdStream = new FeatureOutputStream<>(outputFilePath, featureCodec, DepthEvidenceCodec::encode,
-                    getBestAvailableSequenceDictionary(), compressionLevel);
-        } else {
-            throw new UserException.BadInput("Unsupported evidence type: " + evidenceClass.getSimpleName());
+        final FeatureOutputCodec<? extends Feature, ? extends FeatureSink<? extends Feature>> codec =
+                FeatureOutputCodecFinder.find(outputFilePath);
+        final Class<? extends Feature> outputClass = codec.getFeatureType();
+        if ( !SVFeature.class.isAssignableFrom(outputClass) ) {
+            throw new UserException("Output file " + outputFilePath + " implies Feature subtype " +
+                    outputClass.getSimpleName() + " but this tool requires an SVFeature subtype.");
         }
-    }
 
-    private void writeHeader() {
-        final Object header = getDrivingFeaturesHeader();
-        if (header != null) {
-            if (header instanceof String) {
-                if (peStream != null) {
-                    peStream.writeHeader((String) header);
-                } else if (srStream != null) {
-                    srStream.writeHeader((String) header);
-                } else if (bafStream != null) {
-                    bafStream.writeHeader((String) header);
-                } else {
-                    rdStream.writeHeader((String) header);
+        for ( FeatureInput<SVFeature> input : inputPaths ) {
+            try {
+                final Class<? extends Feature> inputClass =
+                        input.getFeatureCodecClass().getDeclaredConstructor().newInstance().getFeatureType();
+                if ( !outputClass.isAssignableFrom(inputClass) ) {
+                    throw new UserException("Incompatible feature input " + input.getFeaturePath() +
+                            " produces features of type " + inputClass.getSimpleName() +
+                            " rather than features of type " + outputClass.getSimpleName() +
+                            " as dictated by the output path " + outputFilePath);
                 }
-            } else {
-                throw new IllegalArgumentException("Expected header object of type " + String.class.getSimpleName());
+            } catch ( final ReflectiveOperationException roe ) {
+                throw new GATKException("Failed to instantiate codec " +
+                                            input.getFeatureCodecClass().getSimpleName());
             }
         }
+        if ( sampleNames.isEmpty() ) {
+            // use the complete set of sample names we found in the headers of the feature files
+            sampleNames.addAll(getSampleNames());
+            if ( sampleNames.isEmpty() ) {
+                noSampleFiltering = true;
+            }
+        }
+
+        // the validity of this cast was checked at the beginning of this method
+        outputSink = (FeatureSink<SVFeature>)codec.makeSortMerger(outputFilePath,
+                                    getDictionary(), new ArrayList<>(sampleNames), compressionLevel);
     }
 
     @Override
-    public void apply(final Feature feature,
-                      final ReadsContext readsContext,
-                      final ReferenceContext referenceContext,
-                      final FeatureContext featureContext) {
-        if (peStream != null) {
-            peStream.add((DiscordantPairEvidence) feature);
-        } else if (srStream != null) {
-            srStream.add((SplitReadEvidence) feature);
-        } else if (bafStream != null) {
-            bafStream.add((BafEvidence) feature);
+    public void apply( final SVFeature featureArg,
+                       final Object header,
+                       final ReadsContext readsContext,
+                       final ReferenceContext referenceContext ) {
+        final SVFeature feature;
+        if ( noSampleFiltering ) {
+            feature = featureArg;
         } else {
-            rdStream.add((DepthEvidence) feature);
+            feature = featureArg.extractSamples(sampleNames, header);
+            if ( feature == null ) {
+                return;
+            }
         }
+        outputSink.write(feature);
     }
 
     @Override
     public Object onTraversalSuccess() {
         super.onTraversalSuccess();
-        if (peStream != null) {
-            peStream.close();
-        } else if (srStream != null) {
-            srStream.close();
-        } else if (bafStream != null) {
-            bafStream.close();
-        } else {
-            rdStream.close();
-        }
+        outputSink.close();
         return null;
     }
 }

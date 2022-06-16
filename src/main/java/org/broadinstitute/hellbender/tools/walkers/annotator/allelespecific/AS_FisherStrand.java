@@ -35,9 +35,9 @@ import java.util.Map;
  * </ul>
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_AS_FisherStrand.php">AS_FisherStrand</a></b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_StrandBiasBySample.php">StrandBiasBySample</a></b> outputs counts of read depth per allele for each strand orientation.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_StrandOddsRatio.php">StrandOddsRatio</a></b> is an updated form of FisherStrand that uses a symmetric odds ratio calculation.</li>
+ *     <li><b>AS_FisherStrand</b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
+ *     <li><b>StrandBiasBySample</b> outputs counts of read depth per allele for each strand orientation.</li>
+ *     <li><b>StrandOddsRatio</b> is an updated form of FisherStrand that uses a symmetric odds ratio calculation.</li>
  * </ul>
  *
  */
@@ -74,8 +74,12 @@ public class AS_FisherStrand extends AS_StrandBiasTest implements AS_StandardAnn
         for (final Allele a : perAlleleData.keySet()) {
             if(!a.equals(combinedData.getRefAllele(),true)) {
                 final List<Integer> altStrandCounts = combinedData.getAttribute(a);
-                final int[][] refAltTable = new int[][]{new int[]{refStrandCounts.get(0), refStrandCounts.get(1)}, new int[]{altStrandCounts.get(0), altStrandCounts.get(1)}};
-                annotationMap.put(a, QualityUtils.phredScaleErrorRate(Math.max(FisherStrand.pValueForContingencyTable(refAltTable), MIN_PVALUE)));
+                if (altStrandCounts.isEmpty()) {
+                    annotationMap.put(a, null);
+                } else {
+                    final int[][] refAltTable = new int[][]{new int[]{refStrandCounts.get(0), refStrandCounts.get(1)}, new int[]{altStrandCounts.get(0), altStrandCounts.get(1)}};
+                    annotationMap.put(a, QualityUtils.phredScaleErrorRate(Math.max(FisherStrand.pValueForContingencyTable(refAltTable), MIN_PVALUE)));
+                }
             }
         }
         return annotationMap;

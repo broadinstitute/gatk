@@ -31,6 +31,7 @@ public class FuncotatorArgumentDefinitions {
     // Definitions for optional arguments:
 
     public static final String REMOVE_FILTERED_VARIANTS_LONG_NAME = "remove-filtered-variants";
+    public static final String REANNOTATE_VCF_LONG_NAME = "reannotate-vcf";
 
     public static final String TRANSCRIPT_SELECTION_MODE_LONG_NAME = "transcript-selection-mode";
     public static final TranscriptSelectionMode TRANSCRIPT_SELECTION_MODE_DEFAULT_VALUE = TranscriptSelectionMode.CANONICAL;
@@ -65,6 +66,8 @@ public class FuncotatorArgumentDefinitions {
 
     public static final String FORCE_B37_TO_HG19_REFERENCE_CONTIG_CONVERSION = "force-b37-to-hg19-reference-contig-conversion";
     public static final String MIN_NUM_BASES_FOR_SEGMENT_FUNCOTATION = "min-num-bases-for-segment-funcotation";
+
+    public static final String CUSTOM_VARIANT_CLASS_ORDER_FILE = "custom-variant-classification-order";
 
     // ------------------------------------------------------------
     // Helper Types:

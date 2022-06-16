@@ -90,7 +90,7 @@ public final class AnnotationUtils {
         if (rawDataString.startsWith("[")) {
             rawDataString = rawDataString.substring(1, rawDataString.length() - 1).replaceAll("\\s", "");
         }
-        return Arrays.asList(rawDataString.split(ALLELE_SPECIFIC_SPLIT_REGEX));
+        return Arrays.asList(rawDataString.split(ALLELE_SPECIFIC_SPLIT_REGEX, -1)); //-1 to keep empty data
     }
 
     static String generateMissingDataWarning(final VariantContext vc, final Genotype g, final AlleleLikelihoods<GATKRead, Allele> likelihoods) {

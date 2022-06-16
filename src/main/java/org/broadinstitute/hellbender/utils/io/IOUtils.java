@@ -97,7 +97,7 @@ public final class IOUtils {
      * Writes content to a temp file and returns the path to the temporary file.
      *
      * @param content   to write.
-     * @param prefix    Prefix for the temp file.
+     * @param prefix    Prefix for the temp file; {@link File#createTempFile(String, String, File)} requires that this be >= 3 characters
      * @param suffix    Suffix for the temp file.
      * @return the path to the temp file.
      */
@@ -109,7 +109,7 @@ public final class IOUtils {
      * Writes content to a temp file and returns the path to the temporary file.
      *
      * @param content   to write.
-     * @param prefix    Prefix for the temp file.
+     * @param prefix    Prefix for the temp file; {@link File#createTempFile(String, String, File)} requires that this be >= 3 characters
      * @param suffix    Suffix for the temp file.
      * @param directory Directory for the temp file.
      * @return the path to the temp file.
@@ -658,7 +658,7 @@ public final class IOUtils {
      * Creates a temp file that will be deleted on exit
      *
      * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
-     * @param name Prefix of the file.
+     * @param name Prefix of the file; {@link File#createTempFile(String, String, File)} requires that this be >= 3 characters
      * @param extension Extension to concat to the end of the file.
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
      */
@@ -670,7 +670,7 @@ public final class IOUtils {
      * Creates a temp file in a target directory that will be deleted on exit
      *
      * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
-     * @param name Prefix of the file.
+     * @param name Prefix of the file; {@link File#createTempFile(String, String, File)} requires that this be >= 3 characters
      * @param extension Extension to concat to the end of the file name.
      * @param targetDir Directory in which to create the temp file. If null, the default temp directory is used.
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
@@ -1053,5 +1053,25 @@ public final class IOUtils {
      */
     public static Path fileToPath(File toConvert) {
         return (null == toConvert ? null : toConvert.toPath());
+    }
+
+
+    /**
+     * Strips extension from the given path, if it has one. Note it will use the first matching extension in the list.
+     *
+     * @param path Path to modify. May not be null.
+     * @param extensions Possible extensions to remove, in order of priority
+     * @return Resulting path
+     */
+    public static Path removeExtension(final Path path, final List<String> extensions) {
+        Utils.nonNull(path);
+        Utils.nonNull(extensions);
+        final String pathString = path.toString();
+        for (final String testExtension : extensions) {
+            if (pathString.endsWith(testExtension)) {
+                return Paths.get(pathString.substring(0, pathString.length() - testExtension.length()));
+            }
+        }
+        return path;
     }
 }

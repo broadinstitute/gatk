@@ -3,7 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.sv.utils;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.FileExtensions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSetSpark;
+import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -49,7 +50,7 @@ public final class SVFileUtils {
         try ( final BufferedReader rdr =
                       new BufferedReader(new InputStreamReader(BucketUtils.openFile(kmersFilePath))) ) {
             final long fileLength = BucketUtils.fileSize(kmersFilePath);
-            kmers = new HopscotchSet<>((int)(fileLength/(kSize+1)));
+            kmers = new HopscotchSetSpark<>((int)(fileLength/(kSize+1)));
             String line;
             while ( (line = rdr.readLine()) != null ) {
                 if ( line.length() != kSize ) {
@@ -88,8 +89,8 @@ public final class SVFileUtils {
     }
 
     /** Read intervals from file. */
-    public static List<SVInterval> readIntervalsFile(final String intervalsFilePath,
-                                                     final Map<String, Integer> contigNameMap ) {
+    public static List<SVInterval> readIntervalsFile( final String intervalsFilePath,
+                                                      final Map<String, Integer> contigNameMap ) {
         Utils.nonNull(intervalsFilePath, "provided intervals file path is null");
         Utils.nonNull(contigNameMap, "provided map for contig index lookup is null");
 

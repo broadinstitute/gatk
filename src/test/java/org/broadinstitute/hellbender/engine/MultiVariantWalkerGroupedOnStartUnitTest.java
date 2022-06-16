@@ -3,22 +3,16 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.collections.IteratorUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static org.mockito.Mockito.when;
 
 public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
 
@@ -29,7 +23,8 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
         List<List<VariantContext>> seenVariants = new ArrayList<>();
         @Override
         public void apply(List<VariantContext> variantContexts, ReferenceContext referenceContext, final List<ReadsContext> readsContexts) {
-            seenVariants.add(variantContexts);
+            //NOTE: MultiVariantDataSource stores the FeatureInput name as the source, which is machine-specific, so remove it:
+            seenVariants.add(variantContexts.stream().map(vc -> new VariantContextBuilder(vc).source("Unknown").make()).collect(Collectors.toList()));
         }
     }
 
@@ -113,5 +108,4 @@ public class MultiVariantWalkerGroupedOnStartUnitTest extends GATKBaseTest {
         List<String> variants = tool.seenVariants.get(0).stream().map(VariantContext::toString).collect(Collectors.toList());
         Assert.assertTrue(variants.stream().noneMatch(s -> variants.indexOf(s)!=variants.lastIndexOf(s)));
     }
-
 }

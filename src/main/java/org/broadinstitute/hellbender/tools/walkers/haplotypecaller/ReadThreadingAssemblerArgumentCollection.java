@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
-import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
@@ -27,6 +26,8 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final String KMER_SIZE_LONG_NAME = "kmer-size";
     public static final String DONT_INCREASE_KMER_SIZE_LONG_NAME = "dont-increase-kmer-sizes-for-cycles";
     public static final String LINKED_DE_BRUIJN_GRAPH_LONG_NAME = "linked-de-bruijn-graph";
+
+
 
     // -----------------------------------------------------------------------------------------------
     // arguments to control internal behavior of the read threading assembler
@@ -144,6 +145,7 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Bruijn graph to recover better haplotypes", optional = true)
     public boolean useLinkedDeBruijnGraph = false;
 
+
     /**
      * This is used to disable the recovery of paths that were dropped in the graph based on the junction trees. Disabling this
      * will affect sensitivity but improve phasing and runtime somewhat.
@@ -168,7 +170,9 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Hidden
     @Argument(fullName="debug-graph-transformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
     public boolean debugGraphTransformations = false;
-
+    @Hidden
+    @Argument(fullName = "debug-assembly-variants-out", doc="Write a VCF file containing all of the variants from the event map (pre-filter) for each active region", optional = true)
+    public String debugAssemblyVariantsOut = null;
     /**
      * This argument is meant for debugging and is not immediately useful for normal analysis use.
      */

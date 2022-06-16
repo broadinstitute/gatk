@@ -5,9 +5,12 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResult;
@@ -62,7 +65,7 @@ public final class ReadThreadingAssembler {
     private boolean recoverDanglingBranches = true;
     private boolean recoverAllDanglingBranches = false;
     private int minDanglingBranchLength = 0;
-    
+
     protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
@@ -79,7 +82,7 @@ public final class ReadThreadingAssembler {
                                   final int numPruningSamples, final int pruneFactor, final boolean useAdaptivePruning,
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
                                   final double pruningSeedingLogOddsThreshold, final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs,
-                                  final boolean enableLegacyGraphCycleDetection, final int minMachingBasesToDanglngEndRecovery) {
+                                  final boolean enableLegacyGraphCycleDetection, final int minMachingBasesToDanglingEndRecovery) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes.stream().sorted(Integer::compareTo).collect(Collectors.toList());
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
@@ -95,7 +98,7 @@ public final class ReadThreadingAssembler {
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, pruningSeedingLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
-        this.minMatchingBasesToDanglingEndRecovery = minMachingBasesToDanglngEndRecovery;
+        this.minMatchingBasesToDanglingEndRecovery = minMachingBasesToDanglingEndRecovery;
     }
 
     @VisibleForTesting
@@ -121,7 +124,9 @@ public final class ReadThreadingAssembler {
      * @param fullReferenceWithPadding  byte array holding the reference sequence with padding
      * @param refLoc                    GenomeLoc object corresponding to the reference sequence with padding
      * @param readErrorCorrector        a ReadErrorCorrector object, if read are to be corrected before assembly. Can be null if no error corrector is to be used.
-     * @param aligner                   {@link SmithWatermanAligner} used to align dangling ends in assembly graphs to the reference sequence
+     * @param aligner                   {@link SmithWatermanAligner} used to align dangling ends and haplotypes to the reference sequence
+     * @param danglingEndSWParameters   {@link SWParameters} used to align dangling ends to the reference sequence
+     * @param haplotypeToReferenceSWParameters  {@link SWParameters} used to align haplotypes to the reference sequence
      * @return                          the resulting assembly-result-set
      */
     public AssemblyResultSet runLocalAssembly(final AssemblyRegion assemblyRegion,
@@ -130,7 +135,9 @@ public final class ReadThreadingAssembler {
                                               final SimpleInterval refLoc,
                                               final ReadErrorCorrector readErrorCorrector,
                                               final SAMFileHeader header,
-                                              final SmithWatermanAligner aligner) {
+                                              final SmithWatermanAligner aligner,
+                                              final SWParameters danglingEndSWParameters,
+                                              final SWParameters haplotypeToReferenceSWParameters) {
         Utils.nonNull(assemblyRegion, "Assembly engine cannot be used with a null AssemblyRegion.");
         Utils.nonNull(assemblyRegion.getPaddedSpan(), "Active region must have an extended location.");
         Utils.nonNull(refHaplotype, "Reference haplotype cannot be null.");
@@ -157,11 +164,11 @@ public final class ReadThreadingAssembler {
         resultSet.add(refHaplotype);
         // either follow the old method for building graphs and then assembling or assemble and haplotype call before expanding kmers
         if (generateSeqGraph) {
-            assembleKmerGraphsAndHaplotypeCall(refHaplotype, refLoc, header, aligner,
-                    correctedReads, nonRefSeqGraphs, resultSet, activeRegionExtendedLocation);
+            assembleKmerGraphsAndHaplotypeCall(refHaplotype, refLoc, header, aligner, danglingEndSWParameters,
+                    haplotypeToReferenceSWParameters, correctedReads, nonRefSeqGraphs, resultSet, activeRegionExtendedLocation);
         } else {
             assembleGraphsAndExpandKmersGivenHaplotypes(refHaplotype, refLoc, header, aligner,
-                    correctedReads, nonRefRTGraphs, resultSet, activeRegionExtendedLocation);
+                    danglingEndSWParameters, haplotypeToReferenceSWParameters, correctedReads, nonRefRTGraphs, resultSet, activeRegionExtendedLocation);
         }
 
         // If we get to this point then no graph worked... thats bad and indicates something horrible happened, in this case we just return a reference haplotype
@@ -183,16 +190,16 @@ public final class ReadThreadingAssembler {
     }
 
     /**
-     * Follow the old behavior, call into {@link #assemble(List, Haplotype, SAMFileHeader, SmithWatermanAligner)} to decide if a graph
+     * Follow the old behavior, call into {@link #assemble(List, Haplotype, SAMFileHeader, SmithWatermanAligner, SWParameters)} to decide if a graph
      * is acceptable for haplotype discovery then detect haplotypes.
      */
     private void assembleKmerGraphsAndHaplotypeCall(final Haplotype refHaplotype, final SimpleInterval refLoc, final SAMFileHeader header,
-                                                    final SmithWatermanAligner aligner, final List<GATKRead> correctedReads,
+                                                    final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters, final SWParameters haplotypeToReferenceSWParameters, final List<GATKRead> correctedReads,
                                                     final List<SeqGraph> nonRefSeqGraphs, final AssemblyResultSet resultSet,
                                                     final SimpleInterval activeRegionExtendedLocation) {
         final Map<SeqGraph,AssemblyResult> assemblyResultBySeqGraph = new HashMap<>();
         // create the graphs by calling our subclass assemble method
-        for ( final AssemblyResult result : assemble(correctedReads, refHaplotype, header, aligner) ) {
+        for ( final AssemblyResult result : assemble(correctedReads, refHaplotype, header, aligner, danglingEndSWParameters) ) {
             if ( result.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION ) {
                 // do some QC on the graph
                 sanityCheckGraph(result.getSeqGraph(), refHaplotype);
@@ -207,15 +214,15 @@ public final class ReadThreadingAssembler {
         }
 
         // add assembled alt haplotypes to the {@code resultSet}
-        findBestPaths(nonRefSeqGraphs, assemblyResultBySeqGraph, refHaplotype, refLoc, activeRegionExtendedLocation, resultSet, aligner);
+        findBestPaths(nonRefSeqGraphs, assemblyResultBySeqGraph, refHaplotype, refLoc, activeRegionExtendedLocation, resultSet, aligner, haplotypeToReferenceSWParameters);
     }
 
     /**
-     * Follow the kmer expansion heurisics as {@link #assemble(List, Haplotype, SAMFileHeader, SmithWatermanAligner)}, but in this case
+     * Follow the kmer expansion heurisics as {@link #assemble(List, Haplotype, SAMFileHeader, SmithWatermanAligner, SWParameters)}, but in this case
      * attempt to recover haplotypes from the kmer graph and use them to assess whether to expand the kmer size.
      */
     private void assembleGraphsAndExpandKmersGivenHaplotypes(final Haplotype refHaplotype, final SimpleInterval refLoc, final SAMFileHeader header,
-                                                             final SmithWatermanAligner aligner, final List<GATKRead> correctedReads,
+                                                             final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters, final SWParameters haplotypeToReferenceSWParameters, final List<GATKRead> correctedReads,
                                                              final List<AbstractReadThreadingGraph> nonRefRTGraphs, final AssemblyResultSet resultSet,
                                                              final SimpleInterval activeRegionExtendedLocation) {
         final Map<AbstractReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
@@ -230,7 +237,7 @@ public final class ReadThreadingAssembler {
             final int kmerSize = kmersToTry.get(i);
             final boolean isLastCycle = i == kmersToTry.size() - 1;
             if (!hasAdequatelyAssembledGraph) {
-                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, isLastCycle || dontIncreaseKmerSizesForCycles, isLastCycle || allowNonUniqueKmersInRef, header, aligner);
+                AssemblyResult assembledResult = createGraph(correctedReads, refHaplotype, kmerSize, isLastCycle || dontIncreaseKmerSizesForCycles, isLastCycle || allowNonUniqueKmersInRef, header, aligner, danglingEndSWParameters);
                 if (assembledResult != null && assembledResult.getStatus() == AssemblyResult.Status.ASSEMBLED_SOME_VARIATION) {
                     // do some QC on the graph
                     sanityCheckGraph(assembledResult.getThreadingGraph(), refHaplotype);
@@ -245,7 +252,7 @@ public final class ReadThreadingAssembler {
 
                     AbstractReadThreadingGraph graph = assembledResult.getThreadingGraph();
                     findBestPaths(Collections.singletonList(graph), Collections.singletonMap(graph, assembledResult),
-                            refHaplotype, refLoc, activeRegionExtendedLocation, null, aligner);
+                            refHaplotype, refLoc, activeRegionExtendedLocation, null, aligner, haplotypeToReferenceSWParameters);
 
                     savedAssemblyResults.add(assembledResult);
 
@@ -299,14 +306,15 @@ public final class ReadThreadingAssembler {
      * @param refLoc                location of reference haplotype
      * @param activeRegionWindow    window of the active region (without padding)
      * @param resultSet             (can be null) the results set into which to deposit discovered haplotypes
-     * @param aligner               SmithWaterman aligner to use for aligning the discovered haplotype to the reference haplotype
+     * @param aligner               {@link SmithWatermanAligner} to use for aligning the discovered haplotype to the reference haplotype
+     * @param haplotypeToReferenceSWParameters {@link SWParameters} to use for aligning the discovered haplotype to the reference haplotype
      * @return A list of discovered haplotyes (note that this is not currently used for anything)
      */
     @SuppressWarnings({"unchecked"})
     private <V extends  BaseVertex, E extends BaseEdge, T extends BaseGraph<V, E>>
     List<Haplotype> findBestPaths(final Collection<T> graphs, final Map<T, AssemblyResult> assemblyResultByGraph,
                                   final Haplotype refHaplotype, final SimpleInterval refLoc, final SimpleInterval activeRegionWindow,
-                                  final AssemblyResultSet resultSet, final SmithWatermanAligner aligner) {
+                                  final AssemblyResultSet resultSet, final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters) {
         // add the reference haplotype separately from all the others to ensure that it is present in the list of haplotypes
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
 
@@ -337,7 +345,7 @@ public final class ReadThreadingAssembler {
                     if (kBestHaplotype.isReference()) {
                         refHaplotype.setScore(kBestHaplotype.score());
                     }
-                    final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, SWOverhangStrategy.SOFTCLIP);
+                    final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.SOFTCLIP);
 
                     if (cigar == null) {
                         failedCigars++; // couldn't produce a meaningful alignment of haplotype to reference, fail quietly
@@ -349,7 +357,7 @@ public final class ReadThreadingAssembler {
                         // N cigar elements means that a bubble was too divergent from the reference so skip over this path
                         continue;
                     } else if (cigar.getReferenceLength() != refHaplotype.getCigar().getReferenceLength()) { // SW failure
-                        final Cigar cigarWithIndelStrategy = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, SWOverhangStrategy.INDEL);
+                        final Cigar cigarWithIndelStrategy = CigarUtils.calculateCigar(refHaplotype.getBases(), h.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.INDEL);
                         // the SOFTCLIP strategy can produce a haplotype cigar that matches the beginning of the reference and
                         // skips the latter part of the reference.  For example, when padded haplotype = NNNNNNNNNN[sequence 1]NNNNNNNNNN
                         // and padded ref = NNNNNNNNNN[sequence 1][sequence 2]NNNNNNNNNN, the alignment may choose to align only sequence 1.
@@ -538,15 +546,16 @@ public final class ReadThreadingAssembler {
      * @param reads the reads we're going to assemble
      * @param refHaplotype the reference haplotype
      * @param aligner {@link SmithWatermanAligner} used to align dangling ends in assembly graphs to the reference sequence
+     * @param danglingEndSWParameters {@link SWParameters} used to align dangling ends in assembly graphs to the reference sequence
      * @return a non-null list of reads
      */
     @VisibleForTesting
-    List<AssemblyResult> assemble(final List<GATKRead> reads, final Haplotype refHaplotype, final SAMFileHeader header, final SmithWatermanAligner aligner) {
+    List<AssemblyResult> assemble(final List<GATKRead> reads, final Haplotype refHaplotype, final SAMFileHeader header, final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters) {
         final List<AssemblyResult> results = new LinkedList<>();
 
         // first, try using the requested kmer sizes
         for ( final int kmerSize : kmerSizes ) {
-            addResult(results, createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner));
+            addResult(results, createGraph(reads, refHaplotype, kmerSize, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, header, aligner, danglingEndSWParameters));
         }
 
         // if none of those worked, iterate over larger sizes if allowed to do so
@@ -556,7 +565,7 @@ public final class ReadThreadingAssembler {
             while ( results.isEmpty() && numIterations <= MAX_KMER_ITERATIONS_TO_ATTEMPT ) {
                 // on the last attempt we will allow low complexity graphs
                 final boolean lastAttempt = numIterations == MAX_KMER_ITERATIONS_TO_ATTEMPT;
-                addResult(results, createGraph(reads, refHaplotype, kmerSize, lastAttempt, lastAttempt, header, aligner));
+                addResult(results, createGraph(reads, refHaplotype, kmerSize, lastAttempt, lastAttempt, header, aligner, danglingEndSWParameters));
                 kmerSize += KMER_SIZE_ITERATION_INCREASE;
                 numIterations++;
             }
@@ -596,6 +605,7 @@ public final class ReadThreadingAssembler {
      * @param allowLowComplexityGraphs if true, do not check for low-complexity graphs
      * @param allowNonUniqueKmersInRef if true, do not fail if the reference has non-unique kmers
      * @param aligner {@link SmithWatermanAligner} used to align dangling ends to the reference sequence
+     * @param danglingEndSWParameters {@link SWParameters} used to align dangling ends to the reference sequence
      * @return sequence graph or null if one could not be created (e.g. because it contains cycles or too many paths or is low complexity)
      */
     private AssemblyResult createGraph(final Iterable<GATKRead> reads,
@@ -604,7 +614,8 @@ public final class ReadThreadingAssembler {
                                        final boolean allowLowComplexityGraphs,
                                        final boolean allowNonUniqueKmersInRef,
                                        final SAMFileHeader header,
-                                       final SmithWatermanAligner aligner) {
+                                       final SmithWatermanAligner aligner,
+                                       final SWParameters danglingEndSWParameters) {
         if ( refHaplotype.length() < kmerSize ) {
             // happens in cases where the assembled region is just too small
             return new AssemblyResult(AssemblyResult.Status.FAILED, null, null);
@@ -661,7 +672,7 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final AssemblyResult result = getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner);
+        final AssemblyResult result = getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner, danglingEndSWParameters);
         // check whether recovering dangling ends created cycles
         if (recoverAllDanglingBranches && rtgraph.hasCycles()) {
             return null;
@@ -669,7 +680,7 @@ public final class ReadThreadingAssembler {
         return result;
     }
 
-    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner) {
+    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters) {
         if (!pruneBeforeCycleCounting) {
             chainPruner.pruneLowWeightChains(rtgraph);
         }
@@ -681,8 +692,8 @@ public final class ReadThreadingAssembler {
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference
         if ( recoverDanglingBranches ) {
-            rtgraph.recoverDanglingTails(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
-            rtgraph.recoverDanglingHeads(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner);
+            rtgraph.recoverDanglingTails(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner, danglingEndSWParameters);
+            rtgraph.recoverDanglingHeads(pruneFactor, minDanglingBranchLength, recoverAllDanglingBranches, aligner, danglingEndSWParameters);
         }
 
         // remove all heading and trailing paths
@@ -797,6 +808,10 @@ public final class ReadThreadingAssembler {
         this.graphOutputPath = graphOutputPath;
     }
 
+    public void setEventMapOut(File graphOutputPath) {
+        this.graphOutputPath = graphOutputPath;
+    }
+
     public byte getMinBaseQualityToUseInAssembly() {
         return minBaseQualityToUseInAssembly;
     }
@@ -865,5 +880,15 @@ public final class ReadThreadingAssembler {
             }
             recoverHaplotypesFromEdgesNotCoveredInJunctionTrees = false;
         }
+    }
+
+    // Debug output writer for the event map that ensures events are correctly sorted (even if there are cross region overlaps)
+    public static void addAssembledVariantsToEventMapOutput(final AssemblyResultSet untrimmedAssemblyResult, final Optional<PriorityQueue<VariantContext>> assembledEventMapVariants, final int maxMnpDistance, final Optional<VariantContextWriter> assembledEventMapVcfOutputWriter) {
+        assembledEventMapVariants.ifPresent(queue ->
+                untrimmedAssemblyResult.getVariationEvents(maxMnpDistance).forEach(event -> {
+                    if (queue.size() >= 300) {
+                        queue.stream().limit(200).forEachOrdered(vc -> assembledEventMapVcfOutputWriter.get().add(vc));
+                    }
+                    queue.add(event);}));
     }
 }

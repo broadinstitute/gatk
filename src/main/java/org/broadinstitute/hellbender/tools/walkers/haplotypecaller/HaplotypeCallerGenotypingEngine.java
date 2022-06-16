@@ -71,7 +71,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         genotypingModel = hcArgs.applyBQD || hcArgs.applyFRD ?
                 new DRAGENGenotypesModel(applyBQD, hcArgs.applyFRD, hcArgs.informativeReadOverlapMargin, hcArgs.maxEffectiveDepthAdjustment, dragstrParams) :
                 new IndependentSampleGenotypesModel();
-        maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.MAX_GENOTYPE_COUNT;
+        maxGenotypeCountToEnumerate = configuration.standardArgs.genotypeArgs.maxGenotypeCount;
         referenceConfidenceMode = configuration.emitReferenceConfidence;
         snpHeterozygosity = configuration.standardArgs.genotypeArgs.snpHeterozygosity;
         indelHeterozygosity = configuration.standardArgs.genotypeArgs.indelHeterozygosity;

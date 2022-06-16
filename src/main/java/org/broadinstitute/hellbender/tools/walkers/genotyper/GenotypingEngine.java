@@ -60,13 +60,14 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      *                    sample set will be used instead.
      * @param doAlleleSpecificCalcs Whether the AS_QUAL key should be calculated and added to newly genotyped variants.
      *
-     * @throws IllegalArgumentException if any of {@code samples}, {@code configuration} is {@code null}.
+     * @throws IllegalArgumentException if any of {@code samples}, {@code configuration} is {@code null} or if {@code samples} is empty.
      */
     protected GenotypingEngine(final Config configuration,
                                final SampleList samples,
                                final boolean doAlleleSpecificCalcs) {
         this.configuration = Utils.nonNull(configuration, "the configuration cannot be null");
-        this.samples = Utils.nonNull(samples, "the sample list cannot be null");
+        Utils.validate(!samples.asListOfSamples().isEmpty(), "the sample list cannot be null or empty");
+        this.samples = samples;
         this.doAlleleSpecificCalcs = doAlleleSpecificCalcs;
         logger = LogManager.getLogger(getClass());
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
@@ -111,28 +112,32 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     /**
-     * Main entry function to calculate genotypes of a given VC with corresponding GL's that is shared across genotypers (namely UG and HC).
+     * Main entry function to calculate genotypes of a given VC with corresponding GLs that is shared across
+     * genotypers (namely GGVCFs and HC).
      *
      * Completes a variant context with genotype calls and associated annotations given the genotype likelihoods and
-     * the model that need to be applied.
+     * the model that need to be applied.  Hom-ref likelihoods can be approximated from GQs, but if no genotype has
+     * likelihoods then that variant is either all-ref or contains variants with no likelihoods, and in both cases
+     * we want to exit.
      *
      * @param vc                                 Input variant context to complete.
      * @return                                   VC with assigned genotypes
      */
     public VariantContext calculateGenotypes(final VariantContext vc, final GenotypePriorCalculator gpc, final List<VariantContext> givenAlleles) {
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
-        if (hasTooManyAlternativeAlleles(vc) || vc.getNSamples() == 0) {
+        if (cannotBeGenotyped(vc) || vc.getNSamples() == 0) {
             return null;
         }
 
         final int defaultPloidy = configuration.genotypeArgs.samplePloidy;
-        final int maxAltAlleles = configuration.genotypeArgs.MAX_ALTERNATE_ALLELES;
+        final int maxAltAlleles = configuration.genotypeArgs.maxAlternateAlleles;
 
         VariantContext reducedVC = vc;
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
-            final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles);
+            final List<Allele> allelesToKeep = AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, defaultPloidy, maxAltAlleles, false);
             final GenotypesContext reducedGenotypes = allelesToKeep.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc, GenotypeAssignmentMethod.SET_TO_NO_CALL, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                    AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), allelesToKeep, gpc,
+                            GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL);  //with no PLs in some reblocked GVCFs, no-calls are just going to cause problems, so keep 0/0 genotypes as such without trying to recall
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
@@ -144,7 +149,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
         final AFCalculationResult AFresult = alleleFrequencyCalculator.calculate(reducedVC, defaultPloidy);
-        final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, givenAlleles);
+        final Set<Allele> forcedAlleles = AssemblyBasedCallerUtils.getAllelesConsistentWithGivenAlleles(givenAlleles, vc);
+        final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc, forcedAlleles);
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
@@ -157,7 +163,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic) && !emitAllActiveSites()
-                && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles) && givenAlleles.isEmpty()) {
+                && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles) && forcedAlleles.isEmpty()) {
             return null;
         }
 
@@ -180,7 +186,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // create the genotypes
         //TODO: omit subsetting if output alleles is not a proper subset of vc.getAlleles
         final GenotypesContext genotypes = outputAlleles.size() == 1 ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy) :
-                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod, vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
+                AlleleSubsettingUtils.subsetAlleles(vc.getGenotypes(), defaultPloidy, vc.getAlleles(), outputAlleles, gpc, configuration.genotypeArgs.genotypeAssignmentMethod);
 
         if (configuration.genotypeArgs.usePosteriorProbabilitiesToCalculateQual && hasPosteriors(genotypes)) {
             final double log10NoVariantPosterior = phredNoVariantPosteriorProbability(outputAlleles, genotypes) * -.1;
@@ -233,6 +239,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
     }
 
+    //note that posteriors could be Phred-scaled or not depending on the VCF version (!) -- see also issue https://github.com/broadinstitute/gatk/issues/7390
     private boolean hasPosteriors(final GenotypesContext gc) {
         return gc.stream().anyMatch(g -> g.hasExtendedAttribute(VCFConstants.GENOTYPE_POSTERIORS_KEY));
     }
@@ -284,17 +291,16 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * Provided the exact mode computations it returns the appropriate subset of alleles that progress to genotyping.
      * @param afCalculationResult the allele fraction calculation result.
      * @param vc the variant context
+     * @param forcedAlleles alleles from the vc input that are consistent with forced alleles in the assembly region {@link AssemblyBasedCallerUtils#getAllelesConsistentWithGivenAlleles}
      * @return information about the alternative allele subsetting {@code null}.
      */
-    private OutputAlleleSubset calculateOutputAlleleSubset(final AFCalculationResult afCalculationResult, final VariantContext vc, final List<VariantContext> givenAlleles) {
+    private OutputAlleleSubset calculateOutputAlleleSubset(final AFCalculationResult afCalculationResult, final VariantContext vc, final Set<Allele> forcedAlleles) {
         final List<Allele> outputAlleles = new ArrayList<>();
         final List<Integer> mleCounts = new ArrayList<>();
         boolean siteIsMonomorphic = true;
         final List<Allele> alleles = afCalculationResult.getAllelesUsedInGenotyping();
         final int alternativeAlleleCount = alleles.size() - 1;
         int referenceAlleleSize = 0;
-
-        final Set<Allele> forcedAlleles = AssemblyBasedCallerUtils.getAllelesConsistentWithGivenAlleles(givenAlleles, vc);
 
         for (final Allele allele : alleles) {
             if (allele.isReference() ) {
@@ -303,7 +309,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 // we want to keep the NON_REF symbolic allele but only in the absence of a non-symbolic allele, e.g.
                 // if we combined a ref / NON_REF gVCF with a ref / alt gVCF
                 final boolean isNonRefWhichIsLoneAltAllele = alternativeAlleleCount == 1 && allele.equals(Allele.NON_REF_ALLELE);
-                final boolean isPlausible = afCalculationResult.passesThreshold(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING);
+                final boolean isPlausible = afCalculationResult.passesThreshold(allele, configuration.genotypeArgs.standardConfidenceForCalling);
 
                 //it's possible that the upstream deletion that spanned this site was not emitted, mooting the symbolic spanning deletion allele
                 final boolean isSpuriousSpanningDeletion = GATKVCFConstants.isSpanningDeletion(allele) && !isVcCoveredByDeletion(vc);
@@ -388,14 +394,21 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @return {@code true} iff there is too many alternative alleles based on
      * {@link GenotypeLikelihoods#MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED}.
      */
-    protected final boolean hasTooManyAlternativeAlleles(final VariantContext vc) {
-        // protect against too many alternate alleles that we can't even run AF on:
-        if (vc.getNAlleles() <= GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED) {
+    protected final boolean cannotBeGenotyped(final VariantContext vc) {
+        if (vc.getNAlleles() <= GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED
+            && vc.getGenotypes().stream().anyMatch(Genotype::hasLikelihoods)) {  //likelihoods may be missing when reading from GenomicsDB if there are more alts that GDB args allow
             return false;
         }
-        logger.warn("Attempting to genotype more than " + GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED +
-                " alleles. Site will be skipped at location "+vc.getContig()+":"+vc.getStart());
-        return true;
+        // protect against too many alternate alleles that we can't even run AF on:
+        if (vc.getNAlleles() > GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED) {
+            logger.warn("Attempting to genotype more than " + GenotypeLikelihoods.MAX_DIPLOID_ALT_ALLELES_THAT_CAN_BE_GENOTYPED +
+                    " alleles. Site will be skipped at location " + vc.getContig() + ":" + vc.getStart());
+            return true;
+        }else {
+            logger.warn("No genotype contained sufficient data to recalculate site and allele qualities. Site will be skipped at location "
+                    + vc.getContig() + ":" + vc.getStart());
+            return true;
+        }
     }
 
     /**
@@ -412,7 +425,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     protected final boolean passesCallThreshold(final double conf) {
-        return conf >= configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING;
+        return conf >= configuration.genotypeArgs.standardConfidenceForCalling;
     }
 
     protected Map<String,Object> composeCallAttributes(final VariantContext vc, final List<Integer> alleleCountsofMLE,

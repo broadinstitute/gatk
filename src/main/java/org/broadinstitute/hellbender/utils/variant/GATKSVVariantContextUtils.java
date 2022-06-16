@@ -1,14 +1,16 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class GATKSVVariantContextUtils {
+
+    public static final Allele BND_ALLELE = Allele.create("<BND>");
 
     /**
      * Build the list of called alleles based on reference and called copy numbers
@@ -67,5 +69,22 @@ public class GATKSVVariantContextUtils {
         } else {
             return refAllele;
         }
+    }
+
+    /**
+     * Parses allele for the base type string, e.g. "INS" for "&lt;INS:MEI&gt;"
+     */
+    public static final String[] getSymbolicAlleleSymbols(final Allele allele) {
+        return allele.getDisplayString()
+                .replace("<", "")
+                .replace(">", "")
+                .split(":");
+    }
+
+    /**
+     * Determines whether a given SV type represents a CNV.
+     */
+    public static boolean isCnvType(final StructuralVariantType type) {
+        return type == StructuralVariantType.DEL || type == StructuralVariantType.DUP || type == StructuralVariantType.CNV;
     }
 }

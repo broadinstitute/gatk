@@ -63,11 +63,12 @@ public class FindAssemblyRegionsSpark {
             final Broadcast<Supplier<AssemblyRegionEvaluator>> assemblyRegionEvaluatorSupplierBroadcast,
             final AssemblyRegionReadShardArgumentCollection shardingArgs,
             final AssemblyRegionArgumentCollection assemblyRegionArgs,
-            final boolean shuffle) {
+            final boolean shuffle,
+            final boolean trackPileups) {
         JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards, shardingArgs.readShardSize, shuffle);
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
         return shardedReads.mapPartitions(getAssemblyRegionsFunctionFast(referenceFileName, bFeatureManager, header,
-                assemblyRegionEvaluatorSupplierBroadcast, assemblyRegionArgs));
+                assemblyRegionEvaluatorSupplierBroadcast, assemblyRegionArgs, trackPileups));
     }
 
     private static FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegionWalkerContext> getAssemblyRegionsFunctionFast(
@@ -75,7 +76,8 @@ public class FindAssemblyRegionsSpark {
             final Broadcast<FeatureManager> bFeatureManager,
             final SAMFileHeader header,
             final Broadcast<Supplier<AssemblyRegionEvaluator>> supplierBroadcast,
-            final AssemblyRegionArgumentCollection assemblyRegionArgs) {
+            final AssemblyRegionArgumentCollection assemblyRegionArgs,
+            final boolean trackPileups) {
         return (FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegionWalkerContext>) shardedReadIterator -> {
             final ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
@@ -90,7 +92,7 @@ public class FindAssemblyRegionsSpark {
                     .map(downsampledShardedRead -> {
                         final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
                                 new ShardToMultiIntervalShardAdapter<>(downsampledShardedRead),
-                                header, reference, features, assemblyRegionEvaluator, assemblyRegionArgs);
+                                header, reference, features, assemblyRegionEvaluator, assemblyRegionArgs, trackPileups);
                         return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
                                 new AssemblyRegionWalkerContext(assemblyRegion,
                                         new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),

@@ -88,7 +88,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
         featureInputs.forEach(
                 featureInput -> featureDataSources.add(
                         new FeatureDataSource<>(featureInput, queryLookaheadBases, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
-                                                reference)));
+                                                reference, true)));
 
         // Ensure that the merged header and sequence dictionary that we use are in sync with each
         // other, and reflect the actual dictionaries used to do validation:
@@ -252,7 +252,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
                 .map(ds -> getHeaderWithUpdatedSequenceDictionary(ds))
                 .collect(Collectors.toList());
 
-        // Now merge the headers using htsjdk, which is pretty promiscuous, and which only works properly
+        // Now merge the headers using htsjdk, which is pretty permissive, and which only works properly
         // because of the cross-dictionary validation done in validateAllSequenceDictionaries.
         return headers.size() > 1 ?
                 new VCFHeader(VCFUtils.smartMergeHeaders(headers, true)) :

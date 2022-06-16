@@ -23,9 +23,11 @@ import org.broadinstitute.hellbender.engine.MultiVariantWalkerGroupedOnStart;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -68,7 +70,7 @@ import java.util.*;
  * <p>Only GVCF files produced by HaplotypeCaller (or CombineGVCFs) can be used as input for this tool. Some other
  * programs produce files that they call GVCFs but those lack some important information (accurate genotype likelihoods
  * for every position) that GenotypeGVCFs requires for its operation.</p>
- * <p>If the GVCF files contain allele specific annotations, add `-G Standard -G AS_Standard` to the command line.</p>
+ * <p>If the GVCF files contain allele specific annotations, add `-G StandardAnnotation -G AS_StandardAnnotation` to the command line.</p>
  *
  * <p>Users generating large callsets (1000+ samples) may prefer GenomicsDBImport, which uses Intel's GenomicsDB and is capable of scaling to much larger sample sizes than CombineGVCFs.
  * This tool provides a pure java reference implementation of the combine operation which is available on all architectures.<p/>
@@ -122,6 +124,12 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
      */
     @Argument(fullName=DROP_SOMATIC_FILTERING_ANNOTATIONS_LONG_NAME, doc = "For input somatic GVCFs (i.e. from Mutect2) drop filtering annotations")
     protected boolean dropSomaticFilteringAnnotations = false;
+
+    /**
+     * By default CombineGVCFs reverts all genotypes to no-calls, but calls can be made if specified
+     */
+    @Argument(fullName = GenomicsDBArgumentCollection.CALL_GENOTYPES_LONG_NAME, doc = "Output called genotypes?", optional = true)
+    protected boolean makeGenotypeCalls = false;
 
     @Override
     public boolean useVariantAnnotations() { return true;}
@@ -266,7 +274,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
         vcfWriter = getVCFWriter();
 
-        referenceConfidenceVariantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, dropSomaticFilteringAnnotations);
+        referenceConfidenceVariantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, dropSomaticFilteringAnnotations, makeGenotypeCalls);
 
         //now that we have all the VCF headers, initialize the annotations (this is particularly important to turn off RankSumTest dithering in integration tests)'
         sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -437,6 +445,7 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
             start = prevPos.getStart() + 1;
             refAllele = Allele.create(refAfterPrevPos, true);
         }
+        final List<Allele> allelesToUse = Arrays.asList(refAllele, Allele.NON_REF_ALLELE);
 
         // attributes
         final Map<String, Object> attrs = new HashMap<>(1);
@@ -446,12 +455,17 @@ public final class CombineGVCFs extends MultiVariantWalkerGroupedOnStart {
 
         // genotypes
         final GenotypesContext genotypes = GenotypesContext.create();
+        final GenotypeAssignmentMethod assignmentMethod = makeGenotypeCalls ? GenotypeAssignmentMethod.PREFER_PLS : GenotypeAssignmentMethod.SET_TO_NO_CALL;
         for (final VariantContext vc : vcs) {
             for (final Genotype g : vc.getGenotypes()) {
-                genotypes.add(new GenotypeBuilder(g).alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).make());
+                final GenotypeBuilder gBuilder = new GenotypeBuilder(g);
+                GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
+                            gBuilder, assignmentMethod,
+                            g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null, allelesToUse, g.getAlleles(), null);
+                genotypes.add(gBuilder.make());
             }
         }
-        return new VariantContextBuilder("", first.getContig(), start, end, Arrays.asList(refAllele, Allele.NON_REF_ALLELE)).attributes(attrs).genotypes(genotypes).make();
+        return new VariantContextBuilder("", first.getContig(), start, end, allelesToUse).attributes(attrs).genotypes(genotypes).make();
     }
 
     /**

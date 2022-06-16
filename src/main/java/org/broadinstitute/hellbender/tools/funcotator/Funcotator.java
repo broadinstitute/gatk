@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -222,7 +223,7 @@ import java.util.*;
  *     <li>The version of the reference genome sequence being used (e.g. <i>hg19</i>, <i>hg38</i>, etc.).</li>
  *     <li>A VCF of variant calls to annotate.</li>
  *     <li>The path to a folder of data sources formatted for use by Funcotator.</li>
- *     <li>The desired output format for the annotated vaiants file (either <i>MAF</i> or <i>VCF</i>)</li>
+ *     <li>The desired output format for the annotated variants file (either <i>MAF</i> or <i>VCF</i>)</li>
  * </ul>
  *
  * <h3>Output</h3>
@@ -699,7 +700,7 @@ import java.util.*;
  *
  * <h3>Notes</h3>
  * <ul>
- *     <li>This tool is the spiritual successor to <a href="http://portals.broadinstitute.org/oncotator/">Oncotator</a>, with better support for germline data, numerous fixes for correctness, and many other features.</li>
+ *     <li>This tool is the spiritual successor to <a href="https://github.com/broadinstitute/oncotator">Oncotator</a>, with better support for germline data, numerous fixes for correctness, and many other features.</li>
  *     <li>REMEMBER: <strong>Funcotator is NOT Oncotator.</strong></li>
  * </ul>
  *
@@ -769,6 +770,10 @@ public class Funcotator extends VariantWalker {
         // Get the header for our variants:
         final VCFHeader vcfHeader = getHeaderForVariants();
 
+        if (!funcotatorArgs.reannotateVCF) {
+            checkIfAlreadyAnnotated(vcfHeader, drivingVariantFile);
+        }
+
         logger.info("Initializing data sources...");
         // Initialize all of our data sources:
         // Sort data sources to make them process in the same order each time:
@@ -811,6 +816,18 @@ public class Funcotator extends VariantWalker {
                 getDefaultToolVCFHeaderLines(),
                 this
         );
+    }
+
+    /**
+     *  Checks to see if the given vcf has already been annotated.
+     *
+     *  No need to annotate again.
+     */
+    @VisibleForTesting
+    static void checkIfAlreadyAnnotated(final VCFHeader vcfHeader, GATKPath drivingVariantFile) {
+        if (vcfHeader.getOtherHeaderLine(FuncotatorConstants.FUNCOTATOR_VERSION_VCF_HEADERLINE_KEY) != null) {
+            throw new UserException.BadInput("Given VCF " +drivingVariantFile+ " has already been annotated!");
+        }
     }
 
     /**

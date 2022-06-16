@@ -29,7 +29,7 @@ import java.util.*;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_DepthPerAlleleBySample.php">DepthPerAlleleBySample</a></b> calculates depth of coverage for each allele per sample (AD).</li>
+ *     <li><b>DepthPerAlleleBySample</b> calculates depth of coverage for each allele per sample (AD).</li>
  * </ul>
  *
  */
@@ -57,7 +57,7 @@ public final class AlleleFraction implements GenotypeAnnotation {
         // if there is no AD value calculate it now using likelihoods
         else if (likelihoods != null) {
             DepthPerAlleleBySample adCalc = new DepthPerAlleleBySample();
-            final int[] AD = adCalc.annotateWithLikelihoods(vc, g, new LinkedHashSet<>(vc.getAlleles()), likelihoods);
+            final int[] AD = DepthPerAlleleBySample.annotateWithLikelihoods(vc, g, new LinkedHashSet<>(vc.getAlleles()), likelihoods);
             final double[] allAlleleFractions = MathUtils.normalizeSumToOne(Arrays.stream(AD).mapToDouble(x -> x*1.0).toArray());
             gb.attribute(getKeyNames().get(0), Arrays.copyOfRange(allAlleleFractions, 1, allAlleleFractions.length)); //omit the first entry of the array corresponding to the reference
         }
@@ -65,9 +65,4 @@ public final class AlleleFraction implements GenotypeAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.ALLELE_FRACTION_KEY);}
-
-    @Override
-    public List<VCFFormatHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getFormatLine(getKeyNames().get(0)));
-    }
 }

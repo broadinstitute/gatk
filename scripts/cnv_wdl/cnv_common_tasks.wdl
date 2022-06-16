@@ -267,6 +267,7 @@ task CollectCounts {
         gatk --java-options "-Xmx~{command_mem_mb}m" CollectReadCounts \
             -L ~{intervals} \
             --input ~{bam} \
+            --read-index ~{bam_idx} \
             --reference ~{ref_fasta} \
             --format ~{default="HDF5" hdf5_or_tsv_or_null_format} \
             --interval-merging-rule OVERLAPPING_ONLY \
@@ -343,6 +344,7 @@ task CollectAllelicCounts {
         gatk --java-options "-Xmx~{command_mem_mb}m" CollectAllelicCounts \
             -L ~{common_sites} \
             --input ~{bam} \
+            --read-index ~{bam_idx} \
             --reference ~{ref_fasta} \
             --minimum-base-quality ~{default="20" minimum_base_quality} \
             --output ~{allelic_counts_filename} \
@@ -452,6 +454,8 @@ task PostprocessGermlineCNVCalls {
       Array[String]? allosomal_contigs
       Int ref_copy_number_autosomal_contigs
       Int sample_index
+      Int maximum_number_events
+      Int maximum_number_pass_events
       File? intervals_vcf
       File? intervals_vcf_index
       File? clustered_vcf
@@ -476,6 +480,7 @@ task PostprocessGermlineCNVCalls {
     String genotyped_intervals_vcf_filename = "genotyped-intervals-~{entity_id}.vcf.gz"
     String genotyped_segments_vcf_filename = "genotyped-segments-~{entity_id}.vcf.gz"
     String denoised_copy_ratios_filename = "denoised_copy_ratios-~{entity_id}.tsv"
+    String qc_status_filename = "~{entity_id}.qcStatus.txt"
 
     Array[String] allosomal_contigs_args = if defined(allosomal_contigs) then prefix("--allosomal-contig ", select_first([allosomal_contigs])) else []
 
@@ -531,6 +536,20 @@ task PostprocessGermlineCNVCalls {
             ~{"--clustered-breakpoints " + clustered_vcf} \
             ~{"-R " + reference_fasta}
 
+        #use wc instead of grep -c so zero count isn't non-zero exit
+        #use grep -P to recognize tab character
+        NUM_SEGMENTS=$(zgrep '^[^#]' ~{genotyped_segments_vcf_filename} | grep -v '0/0' | grep -v -P '\t0:1:' | grep '' | wc -l)
+        NUM_PASS_SEGMENTS=$(zgrep '^[^#]' ~{genotyped_segments_vcf_filename} | grep -v '0/0' | grep -v -P '\t0:1:' | grep 'PASS' | wc -l)
+        if [ $NUM_SEGMENTS -lt ~{maximum_number_events} ]; then
+            if [ $NUM_PASS_SEGMENTS -lt ~{maximum_number_pass_events} ]; then
+              echo "PASS" >> ~{qc_status_filename}
+            else
+              echo "EXCESSIVE_NUMBER_OF_PASS_EVENTS" >> ~{qc_status_filename}
+            fi
+        else
+            echo "EXCESSIVE_NUMBER_OF_EVENTS" >> ~{qc_status_filename}
+        fi
+
         rm -rf CALLS_*
         rm -rf MODEL_*
         rm -rf contig-ploidy-calls
@@ -550,55 +569,8 @@ task PostprocessGermlineCNVCalls {
         File genotyped_segments_vcf = genotyped_segments_vcf_filename
         File genotyped_segments_vcf_index = genotyped_segments_vcf_filename + ".tbi"
         File denoised_copy_ratios = denoised_copy_ratios_filename
-    }
-}
-
-task CollectSampleQualityMetrics {
-    input {
-      File genotyped_segments_vcf
-      String entity_id
-      Int maximum_number_events
-      Int maximum_number_pass_events
-
-      # Runtime parameters
-      String bash_docker
-      Int? mem_gb
-      Int? disk_space_gb
-      Boolean use_ssd = false
-      Int? cpu
-      Int? preemptible_attempts
-    }
-
-    Int machine_mem_mb = select_first([mem_gb, 1]) * 1000
-
-    command <<<
-        set -eu
-        #use wc instead of grep -c so zero count isn't non-zero exit
-        #use grep -P to recognize tab character
-        NUM_SEGMENTS=$(zgrep '^[^#]' ~{genotyped_segments_vcf} | grep -v '0/0' | grep -v -P '\t0:1:' | grep '' | wc -l)
-        NUM_PASS_SEGMENTS=$(zgrep '^[^#]' ~{genotyped_segments_vcf} | grep -v '0/0' | grep -v -P '\t0:1:' | grep 'PASS' | wc -l)
-        if [ $NUM_SEGMENTS -lt ~{maximum_number_events} ]; then
-            if [ $NUM_PASS_SEGMENTS -lt ~{maximum_number_pass_events} ]; then
-              echo "PASS" >> ~{entity_id}.qcStatus.txt
-            else
-              echo "EXCESSIVE_NUMBER_OF_PASS_EVENTS" >> ~{entity_id}.qcStatus.txt
-            fi
-        else
-            echo "EXCESSIVE_NUMBER_OF_EVENTS" >> ~{entity_id}.qcStatus.txt
-        fi
-    >>>
-
-    runtime {
-        docker: bash_docker
-        memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 20]) + if use_ssd then " SSD" else " HDD"
-        cpu: select_first([cpu, 1])
-        preemptible: select_first([preemptible_attempts, 5])
-    }
-
-    output {
-        File qc_status_file = "~{entity_id}.qcStatus.txt"
-        String qc_status_string = read_string("~{entity_id}.qcStatus.txt")
+        File qc_status_file = qc_status_filename
+        String qc_status_string = read_string(qc_status_filename)
     }
 }
 

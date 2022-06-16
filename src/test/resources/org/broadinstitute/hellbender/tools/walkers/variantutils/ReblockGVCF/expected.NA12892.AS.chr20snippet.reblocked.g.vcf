@@ -19,7 +19,6 @@
 ##INFO=<ID=AS_BaseQRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt Vs. Ref base qualities">
 ##INFO=<ID=AS_FS,Number=A,Type=Float,Description="allele specific phred-scaled p-value using Fisher's exact test to detect strand bias of each alt allele">
 ##INFO=<ID=AS_InbreedingCoeff,Number=A,Type=Float,Description="Allele-specific inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
-##INFO=<ID=AS_InbreedingCoeff,Number=A,Type=Float,Description="allele specific heterozygosity as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation; relate to inbreeding coefficient">
 ##INFO=<ID=AS_MQ,Number=A,Type=Float,Description="Allele-specific RMS Mapping Quality">
 ##INFO=<ID=AS_MQRankSum,Number=A,Type=Float,Description="Allele-specific Mapping Quality Rank Sum">
 ##INFO=<ID=AS_QD,Number=A,Type=Float,Description="Allele-specific Variant Confidence/Quality by Depth">
@@ -34,7 +33,6 @@
 ##INFO=<ID=AS_VarDP,Number=1,Type=String,Description="Allele-specific (informative) depth over variant genotypes -- including ref, RAW format">
 ##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
-##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
 ##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
 ##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
@@ -137,11 +135,11 @@
 ##contig=<ID=NC_007605,length=171823>
 ##reference=file:///seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12892
-20	10087820	.	C	CAGAGAG,<NON_REF>	598.60	.	AS_QUALapprox=|606|0;AS_RAW_BaseQRankSum=|1.0,1|NaN;AS_RAW_MQ=97208.00|47258.00|0.00;AS_RAW_MQRankSum=|-3.1,1|NaN;AS_RAW_ReadPosRankSum=|-0.3,1|NaN;AS_SB_TABLE=16,13|12,12|0,0;AS_VarDP=29|24|0;BaseQRankSum=0.955;DP=74;MQRankSum=-3.130;MQ_DP=74;QUALapprox=606;RAW_GT_COUNT=0,1,0;RAW_MQ=211789.00;RAW_MQandDP=211789,74;ReadPosRankSum=-0.254;VarDP=55	GT:AD:GQ:PL:SB	0/1:29,24,0:99:606,0,849,697,927,1653:16,13,12,14
+20	10087820	.	C	CAGAGAG,<NON_REF>	598.60	.	AS_QUALapprox=|606|0;AS_RAW_BaseQRankSum=|1.0,1|;AS_RAW_MQ=97208.00|47258.00|0.00;AS_RAW_MQRankSum=|-3.1,1|;AS_RAW_ReadPosRankSum=|-0.3,1|;AS_SB_TABLE=16,13|12,12|0,0;AS_VarDP=29|24|0;BaseQRankSum=0.955;DP=74;MQRankSum=-3.130;MQ_DP=74;QUALapprox=606;RAW_GT_COUNT=0,1,0;RAW_MQ=211789.00;RAW_MQandDP=211789,74;ReadPosRankSum=-0.254;VarDP=53	GT:AD:GQ:PL:SB	0/1:29,24,0:99:606,0,849,697,927,1653:16,13,12,14
 20	10433000	.	G	<NON_REF>	.	.	END=10433308	GT:DP:GQ:MIN_DP:PL	0/0:37:21:29:0,21,315
-20	10433309	.	T	<NON_REF>	.	.	END=10433319	GT:DP:GQ:MIN_DP:PL	0/0:30:6:25:0,6,90
+20	10433309	.	T	<NON_REF>	.	.	END=10433319	GT:DP:GQ:MIN_DP:PL	0/0:39:6:35:0,6,90
 20	10433321	.	A	<NON_REF>	.	.	END=10433321	GT:DP:GQ:MIN_DP:PL	0/0:35:21:35:0,21,315
-20	10433322	.	A	AT,<NON_REF>	442.60	.	AS_QUALapprox=|450|0;AS_RAW_BaseQRankSum=|0.8,1|NaN;AS_RAW_MQ=3364.00|31589.00|0.00;AS_RAW_MQRankSum=|2.2,1|NaN;AS_RAW_ReadPosRankSum=|1.9,1|NaN;AS_SB_TABLE=2,2|6,6|0,0;AS_VarDP=4|12|0;BaseQRankSum=0.877;DP=42;MQRankSum=1.895;MQ_DP=42;QUALapprox=450;RAW_GT_COUNT=0,1,0;RAW_MQ=86818.00;RAW_MQandDP=86818,42;ReadPosRankSum=1.704;VarDP=19	GT:AD:GQ:PL:SB	0/1:4,12,0:46:450,0,46,442,117,617:2,2,8,7
+20	10433322	.	A	AT,<NON_REF>	442.60	.	AS_QUALapprox=|450|0;AS_RAW_BaseQRankSum=|0.8,1|;AS_RAW_MQ=3364.00|31589.00|0.00;AS_RAW_MQRankSum=|2.2,1|;AS_RAW_ReadPosRankSum=|1.9,1|;AS_SB_TABLE=2,2|6,6|0,0;AS_VarDP=4|12|0;BaseQRankSum=0.877;DP=42;MQRankSum=1.895;MQ_DP=42;QUALapprox=450;RAW_GT_COUNT=0,1,0;RAW_MQ=86818.00;RAW_MQandDP=86818,42;ReadPosRankSum=1.704;VarDP=16	GT:AD:GQ:PL:SB	0/1:4,12,0:46:450,0,46,442,117,617:2,2,8,7
 20	10433324	.	A	T,<NON_REF>	863.06	.	AS_QUALapprox=|877|0;AS_RAW_BaseQRankSum=||;AS_RAW_MQ=841.00|38317.00|0.00;AS_RAW_MQRankSum=||;AS_RAW_ReadPosRankSum=||;AS_SB_TABLE=0,1|11,9|0,0;AS_VarDP=1|20|0;BaseQRankSum=1.458;DP=40;MQRankSum=0.871;MQ_DP=40;QUALapprox=877;RAW_GT_COUNT=0,0,1;RAW_MQ=79618.00;RAW_MQandDP=79618,40;ReadPosRankSum=1.736;VarDP=21	GT:AD:GQ:PGT:PID:PL:SB	1/1:1,20,0:53:0|1:10433324_A_T:877,53,0,880,61,888:0,1,11,9
 20	10433325	.	A	<NON_REF>	.	.	END=10433325	GT:DP:GQ:MIN_DP:PL	0/0:33:24:33:0,24,1136
 20	10433326	.	A	T,<NON_REF>	863.06	.	AS_QUALapprox=|877|0;AS_RAW_BaseQRankSum=||;AS_RAW_MQ=841.00|38317.00|0.00;AS_RAW_MQRankSum=||;AS_RAW_ReadPosRankSum=||;AS_SB_TABLE=0,1|11,9|0,0;AS_VarDP=1|20|0;BaseQRankSum=1.537;DP=36;MQRankSum=0.871;MQ_DP=36;QUALapprox=877;RAW_GT_COUNT=0,0,1;RAW_MQ=65218.00;RAW_MQandDP=65218,36;ReadPosRankSum=1.736;VarDP=21	GT:AD:GQ:PGT:PID:PL:SB	1/1:1,20,0:53:0|1:10433324_A_T:877,53,0,881,61,888:0,1,11,9

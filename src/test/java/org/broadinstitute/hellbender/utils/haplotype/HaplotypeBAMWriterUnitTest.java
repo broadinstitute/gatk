@@ -1,17 +1,12 @@
 package org.broadinstitute.hellbender.utils.haplotype;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.samtools.TextCigarCodec;
-import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.SamFiles;
 
 import java.nio.file.Path;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -116,7 +111,8 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         ) throws IOException
     {
         final Path outPath = GATKBaseTest.createTempFile("haplotypeBamWriterTest", outputFileExtension).toPath();
-        final SAMFileDestination fileDest = new SAMFileDestination(outPath, createIndex, createMD5, samHeader, "TestHaplotypeRG");
+        final String readGroupID = "TestHaplotypeRG";
+        final SAMFileDestination fileDest = new SAMFileDestination(outPath, createIndex, createMD5, samHeader, Optional.of(readGroupID));
 
         try (final HaplotypeBAMWriter haplotypeBAMWriter = new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, fileDest)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
@@ -128,7 +124,8 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         }
 
         Assert.assertEquals(getReadCounts(outPath), 5);
-
+        final List<SAMReadGroupRecord> readGroups = getReadGroups(outPath);
+        Assert.assertTrue(readGroups.stream().map(rg -> rg.getId()).anyMatch(id -> id.equals(readGroupID)));
         final File expectedMD5File = new File(outPath.toFile().getAbsolutePath() + ".md5");
         Assert.assertEquals(expectedMD5File.exists(), createMD5);
         if (createIndex) {
@@ -170,7 +167,8 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         )
     {
-        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature);
+        final String readGroupID = "testGroupID";
+        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature, Optional.of(readGroupID));
         try (final HaplotypeBAMWriter haplotypeBAMWriter = new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, mockDest)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
                     haplotypes,
@@ -180,6 +178,8 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
                     readLikelihoods);
         }
 
+        Assert.assertEquals(mockDest.getBAMOutputHeader().getReadGroups().size(), 1);
+        Assert.assertEquals(mockDest.getBAMOutputHeader().getReadGroups().get(0).getId(), readGroupID);
         Assert.assertTrue(mockDest.foundBases);
         Assert.assertTrue(mockDest.readCount == 5); // 4 samples + 1 haplotype
     }
@@ -193,7 +193,7 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         )
     {
-        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature);
+        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature, Optional.of("testGroupID"));
 
         Set<Haplotype> calledHaplotypes = new LinkedHashSet<>(1);
         calledHaplotypes.addAll(haplotypes);
@@ -207,10 +207,12 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
                     readLikelihoods);
         }
 
+        Assert.assertEquals(mockDest.getBAMOutputHeader().getReadGroups().size(), 1);
         Assert.assertTrue(mockDest.foundBases);
         Assert.assertTrue(mockDest.readCount==5); // 4 samples + 1 haplotype
     }
 
+    // None of the haplotypes was called, so do not write any of the haplotypes.
     @Test(dataProvider = "ReadsLikelikhoodData")
     public void testNoCalledHaplotypes
         (
@@ -220,20 +222,21 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         )
     {
-        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature);
+        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature, Optional.of("testGroupID"));
 
         try (final HaplotypeBAMWriter haplotypeBAMWriter = new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.CALLED_HAPLOTYPES, mockDest)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
                     haplotypes,
                     genomeLoc,
                     haplotypes,
-                    new LinkedHashSet<>(),
+                    new LinkedHashSet<>(),  // the set of called haplotypes is empty
                     readLikelihoods);
         }
 
         Assert.assertTrue(mockDest.readCount == 0); // no called haplotypes, no reads
     }
 
+    // User explicitly requested that the haplotypes not be included in the bamout.
     @Test(dataProvider = "ReadsLikelikhoodData")
     public void testDontWriteHaplotypes
         (
@@ -243,19 +246,18 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
             final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods
         )
     {
-        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature);
+        final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature, Optional.empty());
 
-        try (final HaplotypeBAMWriter haplotypeBAMWriter = new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.ALL_POSSIBLE_HAPLOTYPES, mockDest)) {
-            haplotypeBAMWriter.setWriteHaplotypes(false);
-
+        try (final HaplotypeBAMWriter haplotypeBAMWriter = new HaplotypeBAMWriter(HaplotypeBAMWriter.WriterType.NO_HAPLOTYPES, mockDest)) {
             haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
                     haplotypes,
                     genomeLoc,
                     haplotypes,
-                    new HashSet<>(), // called haplotypes
+                    new HashSet<>(),
                     readLikelihoods);
         }
 
+        Assert.assertTrue(mockDest.getBAMOutputHeader().getReadGroups().isEmpty());
         Assert.assertFalse(mockDest.foundBases);
         Assert.assertTrue(mockDest.readCount == 4); // 4 samples + 0 haplotypes
     }
@@ -272,8 +274,8 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         public int readCount = 0;           // number of reads written to this destination
         public boolean foundBases = false;  // true we've seen a read that contains the expectedBaseSignature
 
-        private MockValidatingDestination(String baseSignature) {
-            super(samHeader, "testGroupID");
+        private MockValidatingDestination(String baseSignature, Optional<String> haplotypeRGName) {
+            super(samHeader, haplotypeRGName);
             expectedBaseSignature = baseSignature;
         }
 
@@ -340,4 +342,13 @@ public class HaplotypeBAMWriterUnitTest extends GATKBaseTest {
         return count;
     }
 
+    private List<SAMReadGroupRecord> getReadGroups(final Path result) {
+        IOUtil.assertFileIsReadable(result);
+
+        try (final SamReader in = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT).open(result)) {
+            return in.getFileHeader().getReadGroups();
+        } catch (IOException e) {
+            throw new UserException("Unable to open " + result.toString());
+        }
+    }
 }

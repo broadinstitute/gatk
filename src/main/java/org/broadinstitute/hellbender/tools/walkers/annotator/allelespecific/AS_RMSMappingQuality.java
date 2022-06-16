@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
@@ -39,8 +40,8 @@ import java.util.*;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_RMSMappingQuality.php">RMSMappingQuality</a></b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_MappingQualityRankSumTest.php">MappingQualityRankSumTest</a></b> compares the mapping quality of reads supporting the REF and ALT alleles.</li>
+ *     <li><b>RMSMappingQuality</b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
+ *     <li><b>MappingQualityRankSumTest</b> compares the mapping quality of reads supporting the REF and ALT alleles.</li>
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Allele-specific root-mean-square of the mapping quality of reads across all samples (AS_MQ)")
@@ -50,6 +51,11 @@ public final class AS_RMSMappingQuality implements InfoFieldAnnotation, AS_Stand
 
     private static final OneShotLogger allele_logger = new OneShotLogger(AS_RMSMappingQuality.class);
     private static final OneShotLogger genotype_logger = new OneShotLogger(AS_RMSMappingQuality.class);
+
+    @Override
+    public String getEmptyRawValue() {
+        return "0.00";
+    }
 
     @Override
     public String getPrimaryRawKey() { return GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY; }
@@ -158,13 +164,21 @@ public final class AS_RMSMappingQuality implements InfoFieldAnnotation, AS_Stand
         }
     }
 
+    /**
+     *
+     * @param myData    may contain null values
+     */
     protected void parseRawDataString(final ReducibleAnnotationData<Double> myData) {
         final String rawDataString = myData.getRawData();
         //get per-allele data by splitting on allele delimiter
         final String[] rawDataPerAllele = rawDataString.split(AnnotationUtils.ALLELE_SPECIFIC_SPLIT_REGEX);
         for (int i=0; i<rawDataPerAllele.length; i++) {
             final String alleleData = rawDataPerAllele[i];
-            myData.putAttribute(myData.getAlleles().get(i), Double.parseDouble(alleleData));
+            if (alleleData.isEmpty()) {
+                myData.putAttribute(myData.getAlleles().get(i), null);
+            } else {
+                myData.putAttribute(myData.getAlleles().get(i), Double.parseDouble(alleleData));
+            }
         }
     }
 
@@ -173,7 +187,7 @@ public final class AS_RMSMappingQuality implements InfoFieldAnnotation, AS_Stand
      * Takes combined raw annotation data sums, and calculates per allele the average root mean squared from the raw data
      * using expected Allele Depth counts data.
      *
-     * Will output delineated doubles in the format: sqrt(TotalAllele1RMS/Allele1Depth)|sqrt(TotalAllele1RMS/Allele1Depth)|...
+     * Will output delimited doubles in the format: sqrt(TotalAllele1RMS/Allele1Depth)|sqrt(TotalAllele2RMS/Allele2Depth)|...
      */
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
@@ -235,7 +249,11 @@ public final class AS_RMSMappingQuality implements InfoFieldAnnotation, AS_Stand
                 annotationString += ",";
             }
             if (perAlleleValues.containsKey(current)) {
-                annotationString += String.format(printFormat, Math.sqrt((double) perAlleleValues.get(current) / variantADs.get(current)));
+                if (perAlleleValues.get(current) == null) {
+                    annotationString += VCFConstants.MISSING_VALUE_v4;
+                } else {
+                    annotationString += String.format(printFormat, Math.sqrt((double) perAlleleValues.get(current) / variantADs.get(current)));
+                }
             } else {
                 allele_logger.warn("ERROR: VC allele is not found in annotation alleles -- maybe there was trimming?");
             }

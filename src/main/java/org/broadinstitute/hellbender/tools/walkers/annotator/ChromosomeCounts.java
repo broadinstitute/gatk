@@ -40,12 +40,6 @@ public final class ChromosomeCounts implements InfoFieldAnnotation, StandardAnno
             VCFConstants.ALLELE_COUNT_KEY,
             VCFConstants.ALLELE_FREQUENCY_KEY };
 
-    public static final VCFInfoHeaderLine[] descriptions = {
-            VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY),
-            VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY),
-            VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY) };
-
-
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
@@ -62,7 +56,4 @@ public final class ChromosomeCounts implements InfoFieldAnnotation, StandardAnno
     public List<String> getKeyNames() {
         return Arrays.asList(keyNames);
     }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() { return Arrays.asList(descriptions); }
 }

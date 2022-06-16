@@ -1,9 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,8 +15,9 @@ import java.util.List;
 public class Degeneracy extends VariantStratifier {
     private HashMap<String, HashMap<Integer, String>> degeneracies;
 
-    @Override
-    public void initialize() {
+    public Degeneracy(VariantEvalEngine engine) {
+        super(engine);
+
         states.add("1-fold");
         states.add("2-fold");
         states.add("3-fold");
@@ -25,7 +25,7 @@ public class Degeneracy extends VariantStratifier {
         states.add("6-fold");
         states.add("all");
 
-        HashMap<String, String[]> aminoAcids = new HashMap<String, String[]>();
+        final HashMap<String, String[]> aminoAcids = new HashMap<>();
         aminoAcids.put("Ile",  new String[]{"ATT", "ATC", "ATA"});
         aminoAcids.put("Leu",  new String[]{"CTT", "CTC", "CTA", "CTG", "TTA", "TTG"});
         aminoAcids.put("Val",  new String[]{"GTT", "GTC", "GTA", "GTG"});
@@ -48,10 +48,10 @@ public class Degeneracy extends VariantStratifier {
         aminoAcids.put("Arg",  new String[]{"CGT", "CGC", "CGA", "CGG", "AGA", "AGG"});
         aminoAcids.put("Stop", new String[]{"TAA", "TAG", "TGA"});
 
-        degeneracies = new HashMap<String, HashMap<Integer, String>>();
+        degeneracies = new HashMap<>();
 
         for (String aminoAcid : aminoAcids.keySet()) {
-            String[] codons = aminoAcids.get(aminoAcid);
+            final String[] codons = aminoAcids.get(aminoAcid);
 
             for (int pos = 0; pos < 3; pos++) {
                 HashSet<Character> alleles = new HashSet<Character>();
@@ -79,8 +79,9 @@ public class Degeneracy extends VariantStratifier {
         }
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
-        ArrayList<Object> relevantStates = new ArrayList<Object>();
+    @Override
+    public List<Object> getRelevantStates(final VariantEvalContext context, final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
+        ArrayList<Object> relevantStates = new ArrayList<>();
 
         relevantStates.add("all");
 
