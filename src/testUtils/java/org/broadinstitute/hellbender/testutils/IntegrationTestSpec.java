@@ -180,7 +180,7 @@ public final class IntegrationTestSpec {
         executeTest(testName, testClass, args, expectedException);
 
         if (expectedException == null && !expectedFileNames.isEmpty()) {
-            assertMatchingFiles(tmpFiles, expectedFileNames, compareBamFilesSorted, validationStringency, trimWhiteSpace);
+            assertMatchingFiles(tmpFiles, expectedFileNames, compareBamFilesSorted, validationStringency, trimWhiteSpace, false);
             if (expectedIndexExtension != null) {
                 for (final File f : tmpFiles) {
                     final String indexPath = f.getAbsolutePath() + expectedIndexExtension;
@@ -234,10 +234,10 @@ public final class IntegrationTestSpec {
     }
 
     public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles, final boolean compareBamFilesSorted, final ValidationStringency stringency) throws IOException {
-        assertMatchingFiles(resultFiles, expectedFiles, compareBamFilesSorted, stringency, false);
+        assertMatchingFiles(resultFiles, expectedFiles, compareBamFilesSorted, stringency, false, false);
     }
 
-    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles, final boolean compareBamFilesSorted, final ValidationStringency stringency, final boolean trimWhiteSpace) throws IOException {
+    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles, final boolean compareBamFilesSorted, final ValidationStringency stringency, final boolean trimWhiteSpace, final boolean skipIndexes) throws IOException {
         Assert.assertEquals(resultFiles.size(), expectedFiles.size());
         for (int i = 0; i < resultFiles.size(); i++) {
             final File resultFile = resultFiles.get(i);
@@ -245,6 +245,9 @@ public final class IntegrationTestSpec {
             final File expectedFile = new File(expectedFileName);
             final boolean isIndex = INDEX_EXTENSIONS.stream().anyMatch(ext -> expectedFileName.endsWith(ext));
             if (isIndex) {
+                if (skipIndexes) {
+                    Assert.assertTrue(expectedFile.exists());
+                }
                 Assert.assertTrue(Files.equal(expectedFile, resultFile), "Resulting index file different from expected");
             } else if (expectedFileName.endsWith(".bam")) {
                 SamAssertionUtils.assertEqualBamFiles(resultFile, expectedFile, compareBamFilesSorted, stringency);
@@ -347,7 +350,7 @@ public final class IntegrationTestSpec {
 
         assertMatchingFiles(FileUtils.listFilesAndDirs(resultDir, TrueFileFilter.INSTANCE, TrueFileFilter.INSTANCE).stream().filter(File::isFile).collect(Collectors.toList()),
                 FileUtils.listFilesAndDirs(expectedDir, TrueFileFilter.INSTANCE, TrueFileFilter.INSTANCE).stream().filter(File::isFile).filter(File::isFile).map(File::toString).collect(Collectors.toList()),
-                false, ValidationStringency.DEFAULT_STRINGENCY);
+                false, ValidationStringency.DEFAULT_STRINGENCY, false, true);
     }
 
 }
