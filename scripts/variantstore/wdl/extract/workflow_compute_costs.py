@@ -1,4 +1,5 @@
 from logging import info, warning
+import urllib.parse
 
 
 def fapi_list_submissions(workspace_namespace: str, workspace_name: str):
@@ -24,9 +25,8 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
     submissions = list_submissions(workspace_namespace, workspace_name)
     submission_ids = [s['submissionId'] for s in submissions]
 
-    # Default dictionary for workflow name -> list of workflow objects
     from collections import defaultdict
-    workflow_costs = defaultdict(lambda: [])
+    workflow_costs = defaultdict(dict)
 
     for submission_id in submission_ids:
         if excluded_submission_ids and submission_id in excluded_submission_ids:
@@ -51,11 +51,17 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
                     if 'cost' not in submission:
                         warning(f"No cost found for workflow {workflow_id} in submission {submission_id}; possibly too recent.")
                         continue
-                    workflows = workflow_costs[workflow_name]
+
+                    if 'workflows' not in workflow_costs[workflow_name]:
+                        workflow_costs[workflow_name]['workflows'] = []
+                    workflows = workflow_costs[workflow_name]['workflows']
+                    namespace_and_name = urllib.parse.quote(f"{workspace_namespace}/{workflow_name}")
+                    link = f"https://app.terra.bio/#workspaces/{namespace_and_name}/job_history/{submission_id}"
                     workflow = {'submission_id': submission_id,
                                 'submission_timestamp': submission['submissionDate'],
                                 'workflow_id': workflow_id,
-                                'cost': submission['cost']}
+                                'cost': submission['cost'],
+                                'link': link}
                     workflows.append(workflow)
                 else:
                     warning(f"Unexpectedly found GVS workflow '{workflow_name}' among {len(workflow_ids)} workflows in submission {submission_id}. Expecting only 1 workflow in submission, skipping cost calculation.")
@@ -63,9 +69,15 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
             else:
                 warning(f"Workflow '{workflow_name}' in submission {submission_id} not recognized as a GVS workflow, skipping cost calculation.")
 
-    # Sort workflow arrays for each workflow name key by submission timestamp
-    for wdl, workflows in workflow_costs.items():
+    for wdl in workflow_costs.keys():
+        workflows = workflow_costs[wdl]['workflows']
+        # Sort workflow arrays for each workflow name key by submission timestamp
         workflows.sort(key=lambda w: w['submission_timestamp'], reverse=True)
+        # Add summary cost and links
+        workflow_costs[wdl]['total'] = {
+            'cost': sum([w['cost'] for w in workflows]),
+            'links': [w['link'] for w in workflows]
+        }
 
     return workflow_costs
 
