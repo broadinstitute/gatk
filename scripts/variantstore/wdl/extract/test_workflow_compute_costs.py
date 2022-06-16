@@ -64,14 +64,17 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                               get_workflow_metadata=mock_get_workflow_metadata
                               )
 
-        self.assertEqual(len(costs), 2, msg="Expecting exactly two kinds of workflows in costs dictionary")
+        self.assertEqual(len(costs), 2, msg="Expecting exactly two workflow names in costs dictionary")
         integration = costs['GvsQuickstartIntegration']
-        expected = {'902df806-5852-43d0-9816-ff46bf7e1716': 0.104732, 'a7e9cf65-f3e6-4ede-b64e-38018ca560f3': 0.885638}
+        integration.sort(key=lambda w: w['workflow_id'])
+
+        expected = [{'cost': 0.104732, 'workflow_id': '902df806-5852-43d0-9816-ff46bf7e1716'},
+                    {'cost': 0.885638, 'workflow_id': 'a7e9cf65-f3e6-4ede-b64e-38018ca560f3'}]
         self.assertEqual(integration, expected)
 
-        expected = {'e3120691-cf45-471d-85d8-a10a8ef51a07': 0.018258}
-        assignids = costs['GvsAssignIds']
-        self.assertEqual(assignids, expected)
+        expected = [{'cost': 0.018258, 'workflow_id': 'e3120691-cf45-471d-85d8-a10a8ef51a07'}]
+        assign_ids = costs['GvsAssignIds']
+        self.assertEqual(assign_ids, expected)
 
     def test_apply_exclusion(self):
         excluded_submission_id = '136781a2-64b8-4ede-8652-973136030aaf'
@@ -86,9 +89,9 @@ class TestWorkflowComputeCosts(unittest.TestCase):
         self.assertEqual(len(costs), 2, msg="Expecting exactly two kinds of workflows in costs dictionary")
 
         integration = costs['GvsQuickstartIntegration']
-        expected = {'a7e9cf65-f3e6-4ede-b64e-38018ca560f3': 0.885638}
+        expected = [{'workflow_id': 'a7e9cf65-f3e6-4ede-b64e-38018ca560f3', 'cost': 0.885638}]
         self.assertEqual(integration, expected)
 
-        expected = {'e3120691-cf45-471d-85d8-a10a8ef51a07': 0.018258}
-        assignids = costs['GvsAssignIds']
-        self.assertEqual(assignids, expected)
+        expected = [{'workflow_id': 'e3120691-cf45-471d-85d8-a10a8ef51a07', 'cost': 0.018258}]
+        assign_ids = costs['GvsAssignIds']
+        self.assertEqual(assign_ids, expected)

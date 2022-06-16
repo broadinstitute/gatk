@@ -1,34 +1,3 @@
-SUBMISSION_LIST_RESPONSE = [{'deleteIntermediateOutputFiles': False, 'methodConfigurationDeleted': False,
-                             'methodConfigurationName': 'GvsQuickstartIntegration',
-                             'methodConfigurationNamespace': 'method-config-namespace', 'status': 'Done',
-                             'submissionDate': '2022-06-09T20:28:57.797Z',
-                             'submissionId': '136781a2-64b8-4ede-8652-973136030aaf',
-                             'submitter': 'gumby@broadinstitute.org', 'useCallCache': False, 'userComment': '',
-                             'workflowStatuses': {'Failed': 1}},
-                            {'deleteIntermediateOutputFiles': False, 'methodConfigurationDeleted': False,
-                             'methodConfigurationName': 'GvsAssignIds',
-                             'methodConfigurationNamespace': 'method-config-namespace', 'status': 'Done',
-                             'submissionDate': '2022-06-14T21:01:51.577Z',
-                             'submissionEntity': {'entityType': 'sample_set', 'entityName': 'gvs_demo_10'},
-                             'submissionId': '3b4ca454-bf05-4df0-806d-20880e1c7cfe',
-                             'submitter': 'gumby@broadinstitute.org', 'useCallCache': False, 'userComment': '',
-                             'workflowStatuses': {'Succeeded': 1}},
-                            {'deleteIntermediateOutputFiles': False, 'methodConfigurationDeleted': False,
-                             'methodConfigurationName': 'GvsQuickstartIntegration',
-                             'methodConfigurationNamespace': 'method-config-namespace', 'status': 'Done',
-                             'submissionDate': '2022-06-10T10:22:34.320Z',
-                             'submissionId': '73ac71db-0488-46be-a8e8-7f00e795edec',
-                             'submitter': 'gumby@broadinstitute.org', 'useCallCache': False, 'userComment': '',
-                             'workflowStatuses': {'Succeeded': 1}},
-                            {'deleteIntermediateOutputFiles': False, 'methodConfigurationDeleted': False,
-                             'methodConfigurationName': 'GvsAssignIds',
-                             'methodConfigurationNamespace': 'method-config-namespace', 'status': 'Done',
-                             'submissionDate': '2022-06-13T14:43:57.830Z',
-                             'submissionEntity': {'entityType': 'sample_set', 'entityName': 'gvs_demo_10'},
-                             'submissionId': '7b74f3e2-82ff-4289-92a5-5a801025a0f5',
-                             'submitter': 'gumby@broadinstitute.org', 'useCallCache': False, 'userComment': '',
-                             'workflowStatuses': {'Succeeded': 1}}]
-
 FAILED_INTEGRATION_SUBMISSION_ID = '136781a2-64b8-4ede-8652-973136030aaf'
 
 FAILED_INTEGRATION_SUBMISSION = {'cost': 0.104732, 'deleteIntermediateOutputFiles': False, 'memoryRetryMultiplier': 1,
@@ -39,18 +8,18 @@ FAILED_INTEGRATION_SUBMISSION = {'cost': 0.104732, 'deleteIntermediateOutputFile
                                  'submitter': 'gumby@broadinstitute.org', 'useCallCache': False,
                                  'useReferenceDisks': False, 'userComment': '', 'workflows': [{'cost': 0.104732,
                                                                                                'inputResolutions': [{
-                                                                                                                        'inputName': 'GvsQuickstartIntegration.branch_name',
-                                                                                                                        'value': 'vs_447_fixup_non_fq_invocations'}],
+                                                                                                   'inputName': 'GvsQuickstartIntegration.branch_name',
+                                                                                                   'value': 'vs_447_fixup_non_fq_invocations'}],
                                                                                                'messages': [],
                                                                                                'status': 'Failed',
                                                                                                'statusLastChangedDate': '2022-06-09T21:57:36.364Z',
                                                                                                'workflowId': '902df806-5852-43d0-9816-ff46bf7e1716'}]}
 
 FAILED_INTEGRATION_WORKFLOW = {
-  "workflowName": "GvsQuickstartIntegration",
-  "id": "902df806-5852-43d0-9816-ff46bf7e1716",
-  "actualWorkflowLanguage": "WDL",
-  "actualWorkflowLanguageVersion": "1.0"
+    "workflowName": "GvsQuickstartIntegration",
+    "id": "902df806-5852-43d0-9816-ff46bf7e1716",
+    "actualWorkflowLanguage": "WDL",
+    "actualWorkflowLanguageVersion": "1.0"
 }
 
 SUCCEEDED_INTEGRATION_SUBMISSION_ID = '73ac71db-0488-46be-a8e8-7f00e795edec'
@@ -105,7 +74,6 @@ SUCCEEDED_ASSIGN_IDS_SUBMISSION = {'cost': 0.018258, 'deleteIntermediateOutputFi
                                                                                                      'entityType': 'sample_set',
                                                                                                      'entityName': 'gvs_demo_10'},
                                                                                                  'workflowId': 'e3120691-cf45-471d-85d8-a10a8ef51a07'}]}
-
 
 SUCCEEDED_INTEGRATION_WORKFLOW = {
     "workflowName": "GvsQuickstartIntegration",

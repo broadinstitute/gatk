@@ -24,9 +24,9 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
     submissions = list_submissions(workspace_namespace, workspace_name)
     submission_ids = [s['submissionId'] for s in submissions]
 
-    # Two-level default dictionary for workflow name -> workflow id -> cost
+    # Default dictionary for workflow name -> list of workflow objects
     from collections import defaultdict
-    workflow_costs = defaultdict(lambda: defaultdict(dict))
+    workflow_costs = defaultdict(lambda: [])
 
     for submission_id in submission_ids:
         if excluded_submission_ids and submission_id in excluded_submission_ids:
@@ -35,29 +35,33 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
         submission = get_submission(workspace_namespace, workspace_name, submission_id)
         workflows = submission['workflows']
         if not workflows:
-            print(f"Submission '{submission_id}' has no workflows, skipping cost calculation.")
+            warning(f"Submission '{submission_id}' has no workflows, skipping cost calculation.")
             continue
         workflow_ids = [w['workflowId'] for w in workflows]
         for workflow_id in workflow_ids:
             workflow = get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id)
             workflow_name = workflow['workflowName']
             if not workflow_name:
-                print(f"Workflow {workflow_id} has no workflow name, skipping cost calculation.")
+                warning(f"Workflow {workflow_id} has no workflow name, skipping cost calculation.")
                 continue
-            # info(f'Submission {submission_id}: workflow id {workflow_id}, name {workflow_name}')
 
             if workflow_name.startswith('Gvs'):
                 if len(workflow_ids) == 1:
                     # If this run is < 1 day old the cost data may not yet be available.
                     if 'cost' not in submission:
-                        print(f"No cost found for workflow {workflow_id} in submission {submission_id}; possibly too recent.")
+                        warning(f"No cost found for workflow {workflow_id} in submission {submission_id}; possibly too recent.")
                         continue
-                    workflow_costs[workflow_name][workflow_id] = submission['cost']
+                    workflows = workflow_costs[workflow_name]
+                    workflow = {'submission_id': submission_id,
+                                'submission_timestamp': submission['submissionDate'],
+                                'workflow_id': workflow_id,
+                                'cost': submission['cost']}
+                    workflows.append(workflow)
                 else:
-                    print(f"Unexpectedly found GVS workflow '{workflow_name}' among {len(workflow_ids)} workflows in submission {submission_id}. Expecting only 1 workflow in submission, skipping cost calculation.")
+                    warning(f"Unexpectedly found GVS workflow '{workflow_name}' among {len(workflow_ids)} workflows in submission {submission_id}. Expecting only 1 workflow in submission, skipping cost calculation.")
                     continue
             else:
-                print(f"Workflow '{workflow_name}' in submission {submission_id} not recognized as a GVS workflow, skipping cost calculation.")
+                warning(f"Workflow '{workflow_name}' in submission {submission_id} not recognized as a GVS workflow, skipping cost calculation.")
 
     return workflow_costs
 
@@ -90,24 +94,14 @@ def configure_logging():
     logger.addHandler(ch)
 
 
+def write_costs(c):
+    import json
+    s = json.dumps(c, sort_keys=True, indent=4)
+    print(s)
+
+
 if __name__ == '__main__':
     configure_logging()
     args = parse_args()
     costs = compute_costs(args.workspace_namespace, args.workspace_name, args.exclude)
-
-    wdls = [
-        'GvsAssignIds',
-        'GvsImportGenomes',
-        'GvsCreateAltAllele',
-        'GvsCreateFilterSet',
-        'GvsPrepareCallset',
-        'GvsExtractCallset',
-        'GvsUnified',
-        'GvsQuickstartIntegration'
-    ]
-
-    print("workflow_name\tworkflow_id\tcost")
-    for wdl in wdls:
-        if wdl in costs:
-            for workflow_id, cost in costs[wdl].items():
-                print(f"{wdl}\t{workflow_id}\t{cost}")
+    write_costs(costs)
