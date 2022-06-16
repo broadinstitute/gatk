@@ -55,7 +55,7 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
                     if 'workflows' not in workflow_costs[workflow_name]:
                         workflow_costs[workflow_name]['workflows'] = []
                     workflows = workflow_costs[workflow_name]['workflows']
-                    namespace_and_name = urllib.parse.quote(f"{workspace_namespace}/{workflow_name}")
+                    namespace_and_name = urllib.parse.quote(f"{workspace_namespace}/{workspace_name}")
                     link = f"https://app.terra.bio/#workspaces/{namespace_and_name}/job_history/{submission_id}"
                     workflow = {'submission_id': submission_id,
                                 'submission_timestamp': submission['submissionDate'],
