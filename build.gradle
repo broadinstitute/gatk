@@ -459,6 +459,7 @@ apply from: "testsettings.gradle"
 
 shadowJar {
     configurations = [project.configurations.runtimeClasspath]
+    archiveClassifier = 'local'
     mergeServiceFiles('reference.conf')
     doLast {
         // Create a symlink to the newly created jar.  The name will be gatk.jar and
