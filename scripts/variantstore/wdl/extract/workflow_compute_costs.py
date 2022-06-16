@@ -63,6 +63,10 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
             else:
                 warning(f"Workflow '{workflow_name}' in submission {submission_id} not recognized as a GVS workflow, skipping cost calculation.")
 
+    # Sort workflow arrays for each workflow name key by submission timestamp
+    for wdl, workflows in workflow_costs.items():
+        workflows.sort(key=lambda w: w['submission_timestamp'], reverse=True)
+
     return workflow_costs
 
 
