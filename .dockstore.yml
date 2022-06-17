@@ -202,7 +202,6 @@ workflows:
          - master
          - ah_var_store
          - vs_447_fixup_non_fq_invocations
-         - rsa_use_internal_project
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

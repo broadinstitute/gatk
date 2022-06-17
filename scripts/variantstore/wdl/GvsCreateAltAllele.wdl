@@ -66,6 +66,8 @@ task GetVetTableNames {
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:create_alt_allele"
 
   command <<<
     set -e
@@ -77,7 +79,7 @@ task GetVetTableNames {
     fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     'SELECT table_name FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name LIKE "vet_%" ORDER BY table_name' > vet_tables.csv
 
     # remove the header row from the CSV file
@@ -109,6 +111,8 @@ task CreateAltAlleleTable {
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:create_alt_allele"
 
   command <<<
     set -e
@@ -120,7 +124,7 @@ task CreateAltAlleleTable {
     fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     'CREATE OR REPLACE TABLE `~{project_id}.~{dataset_name}.alt_allele` (
       location INT64,
       sample_id INT64,
@@ -196,7 +200,7 @@ task PopulateAltAlleleTable {
       $SERVICE_ACCOUNT_STANZA
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_13"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_06_15"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

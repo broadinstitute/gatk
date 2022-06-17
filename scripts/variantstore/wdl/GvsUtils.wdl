@@ -287,6 +287,12 @@ task BuildGATKJarAndCreateDataset {
 
     bq mk --project_id="gvs-internal" "$dataset"
 
+    # add labels for DSP Cloud Cost Control Labeling and Reporting
+    bq update --set_label service:gvs gvs-internal:$dataset
+    bq update --set_label team:variants gvs-internal:$dataset
+    bq update --set_label environment:dev gvs-internal:$dataset
+    bq update --set_label managedby:build_gatk_jar_and_create_dataset gvs-internal:$dataset
+
     echo -n "$dataset" > dataset.txt
   >>>
 

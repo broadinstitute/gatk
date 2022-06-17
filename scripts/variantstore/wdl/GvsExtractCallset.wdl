@@ -224,6 +224,8 @@ task ValidateFilterSetName {
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset"
 
   command <<<
     set -ex
@@ -236,7 +238,7 @@ task ValidateFilterSetName {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT filter_set_name as available_filter_set_names FROM \`~{data_project}.~{data_dataset}.filter_set_info\` GROUP BY filter_set_name")
+    OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{data_project}.~{data_dataset}.filter_set_info\` GROUP BY filter_set_name")
     FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
     if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
@@ -472,6 +474,8 @@ task GenerateSampleListFile {
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset"
 
   command <<<
     set -e
@@ -487,7 +491,7 @@ task GenerateSampleListFile {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false "SELECT sample_name FROM ~{fq_samples_to_extract_table}" | sed 1d > sample-name-list.txt
+    bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT sample_name FROM ~{fq_samples_to_extract_table}" | sed 1d > sample-name-list.txt
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/
