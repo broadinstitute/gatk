@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -236,4 +237,16 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         spec.setTrimWhiteSpace(false);
         spec.executeTest("testMoltenOutputWithMultipleAlleles", this);
     }
+
+    @Test
+    public void testNoFieldsSpecified() throws IOException {
+        final File inputFile = new File(getToolTestDataDir(), "multiallelic.vcf");
+        final File outputFile = new File(getToolTestDataDir(), "noFieldsOutput.vcf");
+        //createTempFile("noFieldsOutput", ".table");
+
+        final String[] args = new String[] {"--variant", inputFile.getAbsolutePath(),
+                "-O", outputFile.getAbsolutePath()};
+        runCommandLine(args);
+    }
+
 }

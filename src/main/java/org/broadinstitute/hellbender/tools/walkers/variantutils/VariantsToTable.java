@@ -12,7 +12,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -30,6 +29,7 @@ import java.util.*;
 import java.util.function.Function;
 
 import static org.broadinstitute.hellbender.utils.Utils.split;
+import static org.broadinstitute.hellbender.utils.Utils.stream;
 
 /**
  * Extract fields from a VCF file to a tab-delimited table
@@ -135,6 +135,10 @@ public final class VariantsToTable extends VariantWalker {
             shortName="F",
             doc="The name of a standard VCF field or an INFO field to include in the output table", optional=true)
     protected List<String> fieldsToTake = new ArrayList<>();
+    //protected List<String> fieldsToTake = VCFHeader.HEADER_FIELDS.name();
+
+
+
 
     /**
      * Any annotation name in the FORMAT field (e.g., GQ, PL) to include in the output table.
@@ -238,6 +242,14 @@ public final class VariantsToTable extends VariantWalker {
             outputStream.println("RecordID\tSample\tVariable\tValue");
         } else {
             final List<String> fields = new ArrayList<>();
+
+            // if no fields specified, default to all mandatory fields
+            if(fieldsToTake.isEmpty()){
+                for(VCFHeader.HEADER_FIELDS header : VCFHeader.HEADER_FIELDS.values()){
+                    fieldsToTake.add(header.name());
+                }
+            }
+
             fields.addAll(fieldsToTake);
             fields.addAll(asFieldsToTake);
             fields.addAll(createGenotypeFields());
