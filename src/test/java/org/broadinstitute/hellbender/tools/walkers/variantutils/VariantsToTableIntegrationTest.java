@@ -240,7 +240,7 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
 
     @Test
     public void testNoFieldsSpecified() throws IOException {
-        final File inputFile = new File(getToolTestDataDir(), "multiallelic.vcf");
+        final File inputFile = new File(getToolTestDataDir(), "vcfexample2.vcf");
         final File outputFile = new File(getToolTestDataDir(), "noFieldsOutput.vcf");
         //createTempFile("noFieldsOutput", ".table");
 

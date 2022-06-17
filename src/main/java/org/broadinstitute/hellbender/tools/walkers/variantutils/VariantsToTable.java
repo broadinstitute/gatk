@@ -2,9 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLineCount;
+import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
@@ -135,7 +133,6 @@ public final class VariantsToTable extends VariantWalker {
             shortName="F",
             doc="The name of a standard VCF field or an INFO field to include in the output table", optional=true)
     protected List<String> fieldsToTake = new ArrayList<>();
-    //protected List<String> fieldsToTake = VCFHeader.HEADER_FIELDS.name();
 
 
 
@@ -218,7 +215,8 @@ public final class VariantsToTable extends VariantWalker {
 
         if (genotypeFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty()) {
             samples = Collections.emptySortedSet();
-        } else {
+        }
+         else {
             final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
             samples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
 
@@ -243,11 +241,30 @@ public final class VariantsToTable extends VariantWalker {
         } else {
             final List<String> fields = new ArrayList<>();
 
-            // if no fields specified, default to all mandatory fields
-            if(fieldsToTake.isEmpty()){
+            // if no fields specified, include all fields listed in header into table
+            if(fieldsToTake.isEmpty() && genotypeFieldsToTake.isEmpty() && asFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty()){
+                logger.warn("No fields were specified. All fields will be included in output table.");
+
+                // if
+                final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
+                samples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
+
+                // add all mandatory fields except INFO
                 for(VCFHeader.HEADER_FIELDS header : VCFHeader.HEADER_FIELDS.values()){
-                    fieldsToTake.add(header.name());
+                    if(header.name() != "INFO")
+                        fieldsToTake.add(header.name());
                 }
+
+                // add all INFO fields present in header
+                for (final VCFInfoHeaderLine infoLine : inputHeader.getInfoHeaderLines()) {
+                    fieldsToTake.add(infoLine.getID());
+                }
+
+                // add all FORMAT fields present in header
+                for (final VCFFormatHeaderLine formatLine : inputHeader.getFormatHeaderLines()) {
+                    genotypeFieldsToTake.add(formatLine.getID());
+                }
+
             }
 
             fields.addAll(fieldsToTake);
