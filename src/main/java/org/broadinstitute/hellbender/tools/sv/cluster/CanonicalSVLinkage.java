@@ -106,7 +106,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
     }
 
     protected boolean strandsMatch(final SVCallRecord a, final SVCallRecord b) {
-        return a.getStrandA() == b.getStrandA() || a.getStrandB() == b.getStrandB();
+        return a.getStrandA() == b.getStrandA() && a.getStrandB() == b.getStrandB();
     }
 
     protected boolean validPair(final SVCallRecord a, final SVCallRecord b) {

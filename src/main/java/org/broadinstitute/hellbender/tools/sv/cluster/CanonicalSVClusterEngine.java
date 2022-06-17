@@ -55,7 +55,7 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
         final T item = getItem(itemId);
         // Get list of item IDs from active clusters that cluster with this item
         final Set<Integer> linkedItems = getClusters().stream().map(BasicCluster::getMembers)
-                .flatMap(List::stream)
+                .flatMap(Set::stream)
                 .distinct()
                 .filter(other -> !other.equals(itemId) && linkage.areClusterable(item, getItem(other)))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -68,7 +68,7 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
         final Set<List<Integer>> clustersToSeedWith = new HashSet<>();    // Use set to prevent creating duplicate clusters
         for (final Integer clusterIndex : getClusterIds()) {
             final BasicCluster cluster = getCluster(clusterIndex);
-            final List<Integer> clusterItems = cluster.getMembers();
+            final Set<Integer> clusterItems = cluster.getMembers();
             if (item.getPositionA() <= cluster.getMaxClusterableStart()) {
                 if (clusteringType.equals(CLUSTERING_TYPE.MAX_CLIQUE)) {
                     final List<Integer> linkedClusterItems = clusterItems.stream().filter(linkedItems::contains).collect(Collectors.toList());
@@ -149,7 +149,7 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
      */
     private final void addToCluster(final int clusterId, final Integer itemId) {
         final T item = getItem(itemId);
-        getCluster(clusterId).addMember(clusterId, item.getPositionA(), linkage.getMaxClusterableStartingPosition(item));
+        getCluster(clusterId).addMember(itemId, item.getPositionA(), linkage.getMaxClusterableStartingPosition(item));
     }
 
     /**
@@ -162,7 +162,7 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
         final Collection<BasicCluster> clusters = removeClusters(clusterIds);
         final List<Integer> clusterItems = clusters.stream()
                 .map(BasicCluster::getMembers)
-                .flatMap(List::stream)
+                .flatMap(Set::stream)
                 .distinct()
                 .collect(Collectors.toList());
         final List<Integer> newClusterItems = new ArrayList<>(clusterItems.size() + 1);

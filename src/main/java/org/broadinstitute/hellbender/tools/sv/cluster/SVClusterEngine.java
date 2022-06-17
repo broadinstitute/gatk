@@ -172,18 +172,18 @@ public abstract class SVClusterEngine<T extends SVLocatable, C extends BasicClus
     private final Collection<Integer> finalizeCluster(final int clusterIndex) {
         final C cluster = getCluster(clusterIndex);
         idToClusterMap.remove(clusterIndex);
-        final List<Integer> clusterItemIds = cluster.getMembers();
+        final Set<Integer> clusterItemIds = cluster.getMembers();
         buffer.add(createOutputCluster(cluster));
         // Clean up item id map
         if (clusterItemIds.size() == 1) {
             // Singletons won't be present in any other clusters
-            idToItemMap.remove(clusterItemIds.get(0));
+            idToItemMap.remove(clusterItemIds.iterator().next());
             return clusterItemIds;
         } else {
             // Need to check that items aren't present in any other clusters
             final Set<Integer> activeItemIds = idToClusterMap.values().stream()
                     .map(BasicCluster::getMembers)
-                    .flatMap(List::stream)
+                    .flatMap(Set::stream)
                     .collect(Collectors.toSet());
             final List<Integer> itemsToRemove = idToItemMap.keySet().stream().filter(i -> !activeItemIds.contains(i))
                     .collect(Collectors.toList());
@@ -213,12 +213,18 @@ public abstract class SVClusterEngine<T extends SVLocatable, C extends BasicClus
      * Finalizes clusters given the current item. If passed null, finalizes all clusters.
      */
     protected final void finalizeClusters(final T currentItem) {
-        final Set<Integer> finalizedItemIds = new HashSet<>();
-        for (final Map.Entry<Integer, C> entry : idToClusterMap.entrySet()) {
-            if (currentItem == null || currentItem.getPositionA() > entry.getValue().getMaxClusterableStart()) {
-                finalizedItemIds.addAll(finalizeCluster(entry.getKey()));
-            }
+        final Set<Integer> finalizedClusterIds;
+        if (currentItem == null) {
+            // Copy ids to avoid ConcurrentModificationException
+            finalizedClusterIds = new HashSet<>(idToClusterMap.keySet());
+        } else {
+            finalizedClusterIds = idToClusterMap.entrySet().stream()
+                    .filter(e -> currentItem.getPositionA() > e.getValue().getMaxClusterableStart())
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toSet());
         }
+        final Set<Integer> finalizedItemIds = finalizedClusterIds.stream().map(this::finalizeCluster)
+                .flatMap(Collection::stream).collect(Collectors.toSet());
         // Update min active start position
         if (finalizedItemIds.contains(minActiveStartingPositionItemId)) {
             findAndSetMinActiveStart();

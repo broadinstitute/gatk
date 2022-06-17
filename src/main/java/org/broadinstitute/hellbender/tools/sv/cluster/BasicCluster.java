@@ -2,20 +2,21 @@ package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Container class for clustered items
  */
 public class BasicCluster {
-    private final List<Integer> members;
+    private final Set<Integer> members;
     private int minStart;
     private int maxClusterableStart;
 
     public BasicCluster(final List<Integer> members, final int minStart, final int maxClusterableStart) {
         Utils.nonNull(members);
-        this.members = new ArrayList<>(members);
+        this.members = new HashSet<>(members);
         this.minStart = minStart;
         this.maxClusterableStart = maxClusterableStart;
     }
@@ -26,7 +27,7 @@ public class BasicCluster {
         minStart = Math.max(minStart, memberStart);
     }
 
-    public List<Integer> getMembers() {
+    public Set<Integer> getMembers() {
         return members;
     }
 

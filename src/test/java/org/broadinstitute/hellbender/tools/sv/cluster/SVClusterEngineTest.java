@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.TestException;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -22,13 +21,6 @@ import static org.broadinstitute.hellbender.tools.sv.cluster.SVClusterEngine.CLU
 import static org.broadinstitute.hellbender.tools.sv.cluster.SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE;
 
 public class SVClusterEngineTest {
-
-    private final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.defaultSingleLinkageEngine;
-
-    @BeforeTest
-    public void initializeClusterEngine() {
-        engine.add(SVTestUtils.call1);
-    }
 
     @Test
     public void testCollapser() {
@@ -71,6 +63,7 @@ public class SVClusterEngineTest {
 
     @Test
     public void testClusterTogether() {
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         Assert.assertTrue(engine.getLinkage().areClusterable(SVTestUtils.depthOnly, SVTestUtils.depthAndStuff));
         Assert.assertFalse(engine.getLinkage().areClusterable(SVTestUtils.depthOnly, SVTestUtils.inversion));
         Assert.assertFalse(engine.getLinkage().areClusterable(SVTestUtils.call1, SVTestUtils.call2));
@@ -88,12 +81,14 @@ public class SVClusterEngineTest {
                 null, Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Collections.emptyList(), Collections.emptyMap(), SVTestUtils.hg38Dict);
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         engine.getLinkage().areClusterable(deletion1, deletion2);
         Assert.fail("Expected exception not thrown");
     }
 
     @Test
     public void testGetClusteringIntervalEdge() {
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         //edge case - end of contig
         Assert.assertTrue(engine.getLinkage().getMaxClusterableStartingPosition(SVTestUtils.rightEdgeCall) <= SVTestUtils.chr1Length);
     }
@@ -115,6 +110,7 @@ public class SVClusterEngineTest {
     }
 
     private void testGetMaxClusterableStartingPositionWithAlgorithm(final int start, final int end, final String algorithm) {
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", start, true, "chr1", end, false, StructuralVariantType.DEL,
                 end - start + 1, Collections.singletonList(algorithm),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
@@ -146,6 +142,7 @@ public class SVClusterEngineTest {
 
     @Test
     public void testGetClusteringIntervalLists() {
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         //test overloaded function with List
         final List<SVCallRecord> pesrClusterList = new ArrayList<>();
         pesrClusterList.add(SVTestUtils.depthAndStuff);
@@ -192,6 +189,7 @@ public class SVClusterEngineTest {
 
     @Test(dataProvider= "clusterTogetherVaryPositionsProvider")
     public void testClusterTogetherVaryPositions(final int start1, final int end1, final int start2, final int end2, final boolean result) {
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", start1, true,
                 "chr1", end1, false,
                 StructuralVariantType.DEL, end1 - start1 + 1, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
@@ -207,6 +205,7 @@ public class SVClusterEngineTest {
 
     @Test
     public void testClusterTogetherVaryTypes() {
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         for (final StructuralVariantType type1 : StructuralVariantType.values()) {
             // Pass in null strands to let them be determined automatically
             final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, SVTestUtils.getValidTestStrandA(type1),
@@ -226,6 +225,7 @@ public class SVClusterEngineTest {
 
     @Test
     public void testClusterTogetherVaryStrands() {
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final List<Boolean> bools = Lists.newArrayList(Boolean.TRUE, Boolean.FALSE);
         for (final Boolean strand1A : bools) {
             for (final Boolean strand1B : bools) {
@@ -249,6 +249,7 @@ public class SVClusterEngineTest {
 
     @Test
     public void testClusterTogetherVaryContigs() {
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final List<String> contigs = Lists.newArrayList("chr1", "chrX");
         for (int i = 0; i < contigs.size(); i++) {
             final String contig1A = contigs.get(i);
@@ -276,6 +277,7 @@ public class SVClusterEngineTest {
 
     @Test
     public void testClusterTogetherVaryAlgorithms() {
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final List<List<String>> algorithmsList = Lists.newArrayList(
                 Arrays.asList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Arrays.asList(GATKSVVCFConstants.DEPTH_ALGORITHM, SVTestUtils.PESR_ALGORITHM),

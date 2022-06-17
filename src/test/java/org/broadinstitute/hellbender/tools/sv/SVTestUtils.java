@@ -56,9 +56,6 @@ public class SVTestUtils {
     public static final ClusteringParameters defaultMixedParameters = ClusteringParameters.createMixedParameters(0.8, 1000, 0);
     public static final ClusteringParameters defaultEvidenceParameters = ClusteringParameters.createPesrParameters(0.5, 500, 0);
 
-    public static final CanonicalSVClusterEngine<SVCallRecord> defaultSingleLinkageEngine = getNewDefaultSingleLinkageEngine();
-    public static final CanonicalSVClusterEngine<SVCallRecord> defaultMaxCliqueEngine = getNewDefaultMaxCliqueEngine();
-
     public final static int start = 10001;
 
     public final static int length = 10000;
