@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEngine<T, SVClusterEngine.Cluster> {
+public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEngine<T, BasicCluster, BasicOutputCluster<T>> {
 
     protected final CLUSTERING_TYPE clusteringType;
 
@@ -22,22 +22,29 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
     }
 
     @Override
-    protected void createItemClusterComparator() {
+    protected ClusterSortingBuffer<BasicOutputCluster<T>> createClusterSortingBuffer() {
         Utils.nonNull(itemComparator);
-        final Comparator<OutputCluster> comparator = (o1, o2) -> {
+        final Comparator<BasicOutputCluster<T>> comparator = (o1, o2) -> {
             final T min1 = Collections.min(o1.getMembers(), itemComparator);
             final T min2 = Collections.min(o2.getMembers(), itemComparator);
             return itemComparator.compare(min1, min2);
         };
-        buffer = new ClusterSortingBuffer(comparator);
+        return new ClusterSortingBuffer<>(comparator);
+    }
+
+    protected BasicCluster createCluster(final List<Integer> itemIds) {
+        return new BasicCluster(itemIds, getMinStartingPositionByIds(itemIds), getMaxClusterableStartingPositionByIds(itemIds));
     }
 
     @Override
-    protected Cluster createCluster(final List<Integer> itemIds) {
-        final List<T> items = itemIds.stream().map(this::getItem).collect(Collectors.toList());
-        return new Cluster(linkage.getMaxClusterableStartingPosition(items), itemIds);
+    protected BasicOutputCluster createOutputCluster(final BasicCluster cluster) {
+        return new BasicOutputCluster(cluster.getMembers().stream().map(this::getItem).collect(Collectors.toList()));
     }
 
+    @Override
+    protected BasicOutputCluster<T> createSingleItemOutputClusterForBuffer(final T item) {
+        return new BasicOutputCluster<>(Collections.singletonList(item));
+    }
 
     /**
      * Add a new {@param <T>} to the current clusters and determine which are complete
@@ -47,7 +54,7 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
     protected void cluster(final Integer itemId) {
         final T item = getItem(itemId);
         // Get list of item IDs from active clusters that cluster with this item
-        final Set<Integer> linkedItems = getClusters().stream().map(Cluster::getMembers)
+        final Set<Integer> linkedItems = getClusters().stream().map(BasicCluster::getMembers)
                 .flatMap(List::stream)
                 .distinct()
                 .filter(other -> !other.equals(itemId) && linkage.areClusterable(item, getItem(other)))
@@ -60,7 +67,7 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
         // New clusters, formed from subsets of currently active clusters, to which we will add the item
         final Set<List<Integer>> clustersToSeedWith = new HashSet<>();    // Use set to prevent creating duplicate clusters
         for (final Integer clusterIndex : getClusterIds()) {
-            final Cluster cluster = getCluster(clusterIndex);
+            final BasicCluster cluster = getCluster(clusterIndex);
             final List<Integer> clusterItems = cluster.getMembers();
             if (item.getPositionA() <= cluster.getMaxClusterableStart()) {
                 if (clusteringType.equals(CLUSTERING_TYPE.MAX_CLIQUE)) {
@@ -87,7 +94,7 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
             // Currently existing clusters to which we will add the current item
             final List<Set<Integer>> augmentedClusterItemLists = clustersToAugment.stream()
                     .map(this::getCluster)
-                    .map(Cluster::getMembers)
+                    .map(BasicCluster::getMembers)
                     .map(HashSet::new)
                     .collect(Collectors.toList());
             final List<Set<Integer>> triggeredClusterItemSets = new ArrayList<>(clustersToSeedWith.size() + augmentedClusterItemLists.size());
@@ -128,6 +135,12 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
         }
     }
 
+    private void seedCluster(final Integer itemId) {
+        final List<Integer> members = new ArrayList<>(1);
+        members.add(itemId);
+        registerCluster(createCluster(members));
+    }
+
     /**
      * Add the item specified by {@param itemId} to the cluster specified by {@param clusterIndex}
      * and expand the clustering interval
@@ -135,12 +148,8 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
      * @param itemId
      */
     private final void addToCluster(final int clusterId, final Integer itemId) {
-        final Cluster cluster = getCluster(clusterId);
-        final List<Integer> clusterItems = cluster.getMembers();
-        clusterItems.add(itemId);
         final T item = getItem(itemId);
-        final int itemClusterableStartPosition = linkage.getMaxClusterableStartingPosition(item);
-        cluster.setMaxClusterableStart(Math.max(cluster.getMaxClusterableStart(), itemClusterableStartPosition));
+        getCluster(clusterId).addMember(clusterId, item.getPositionA(), linkage.getMaxClusterableStartingPosition(item));
     }
 
     /**
@@ -150,9 +159,9 @@ public class CanonicalSVClusterEngine<T extends SVLocatable> extends SVClusterEn
      * @param itemId id of item to add to new cluster
      */
     protected final void combineClusters(final Collection<Integer> clusterIds, final Integer itemId) {
-        final Collection<Cluster> clusters = removeClusters(clusterIds);
+        final Collection<BasicCluster> clusters = removeClusters(clusterIds);
         final List<Integer> clusterItems = clusters.stream()
-                .map(Cluster::getMembers)
+                .map(BasicCluster::getMembers)
                 .flatMap(List::stream)
                 .distinct()
                 .collect(Collectors.toList());

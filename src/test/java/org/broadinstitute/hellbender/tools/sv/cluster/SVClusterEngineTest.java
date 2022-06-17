@@ -23,7 +23,7 @@ import static org.broadinstitute.hellbender.tools.sv.cluster.SVClusterEngine.CLU
 
 public class SVClusterEngineTest {
 
-    private final SVClusterEngine<SVCallRecord> engine = SVTestUtils.defaultSingleLinkageEngine;
+    private final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.defaultSingleLinkageEngine;
 
     @BeforeTest
     public void initializeClusterEngine() {
@@ -297,7 +297,7 @@ public class SVClusterEngineTest {
 
     @Test
     public void testClusterTogetherVaryParameters() {
-        final SVClusterEngine<SVCallRecord> testEngine1 = SVTestUtils.getNewDefaultSingleLinkageEngine();
+        final CanonicalSVClusterEngine<SVCallRecord> testEngine1 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         final SVCallRecord call1 = new SVCallRecord("call1", "chr1", 1000, true,
                 "chr1", 2001, false, StructuralVariantType.DEL,
                 1002, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), SVTestUtils.hg38Dict);
@@ -332,7 +332,7 @@ public class SVClusterEngineTest {
                                      final int positionA3, final int positionB3,
                                      final SVClusterEngine.CLUSTERING_TYPE type,
                                      final int result) {
-        final SVClusterEngine<SVCallRecord> engine;
+        final CanonicalSVClusterEngine<SVCallRecord> engine;
         if (type == SINGLE_LINKAGE) {
             engine = SVTestUtils.getNewDefaultSingleLinkageEngine();
         } else if (type == MAX_CLIQUE) {
@@ -361,14 +361,14 @@ public class SVClusterEngineTest {
     @Test
     public void testAdd() {
         //single-sample merge case, ignoring sample sets
-        final SVClusterEngine<SVCallRecord> temp1 = SVTestUtils.getNewDefaultSingleLinkageEngine();
+        final CanonicalSVClusterEngine<SVCallRecord> temp1 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         Assert.assertTrue(temp1.isEmpty());
         temp1.add(SVTestUtils.call1);
         Assert.assertFalse(temp1.isEmpty());
         //force new cluster by adding a non-overlapping event
         temp1.add(SVTestUtils.call3);
         final List<SVCallRecord> output1 = temp1.forceFlush().stream()
-                .map(SVClusterEngine.Cluster::getMembers)
+                .map(BasicOutputCluster::getMembers)
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList()); //flushes all clusters
         Assert.assertTrue(temp1.isEmpty());
@@ -376,13 +376,13 @@ public class SVClusterEngineTest {
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call3, output1.get(1));
 
-        final SVClusterEngine<SVCallRecord> temp2 = SVTestUtils.getNewDefaultSingleLinkageEngine();
+        final CanonicalSVClusterEngine<SVCallRecord> temp2 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         temp2.add(SVTestUtils.call1);
         temp2.add(SVTestUtils.overlapsCall1);
         //force new cluster by adding a call on another contig
         temp2.add(SVTestUtils.call4_chr10);
         final List<SVCallRecord> output2 = temp2.forceFlush().stream()
-                .map(SVClusterEngine.Cluster::getMembers)
+                .map(BasicOutputCluster::getMembers)
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(output2.size(), 2);
@@ -392,11 +392,11 @@ public class SVClusterEngineTest {
         SVTestUtils.assertEqualsExceptMembershipAndGT(output2.get(1), SVTestUtils.call4_chr10);
 
         //checking insensitivity to sample set overlap
-        final SVClusterEngine<SVCallRecord> temp3 = SVTestUtils.getNewDefaultSingleLinkageEngine();
+        final CanonicalSVClusterEngine<SVCallRecord> temp3 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         temp3.add(SVTestUtils.call1);
         temp3.add(SVTestUtils.sameBoundsSampleMismatch);
         final List<SVCallRecord> output3 = temp3.forceFlush().stream()
-                .map(SVClusterEngine.Cluster::getMembers)
+                .map(BasicOutputCluster::getMembers)
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(output3.size(), 1);
@@ -409,7 +409,7 @@ public class SVClusterEngineTest {
     @Test
     public void testAddMaxCliqueLarge() {
         final int numRecords = 100;
-        final SVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
         final int length = 5000;
         for (int i = 0; i < numRecords; i++) {
             final int start = 1000 + 10 * i;
@@ -417,7 +417,7 @@ public class SVClusterEngineTest {
             engine.add(SVTestUtils.newCallRecordWithIntervalAndType(start, end, StructuralVariantType.DEL));
         }
         final List<SVCallRecord> result = engine.forceFlush().stream()
-                .map(SVClusterEngine.Cluster::getMembers)
+                .map(BasicOutputCluster::getMembers)
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(result.size(), 50);
@@ -522,10 +522,10 @@ public class SVClusterEngineTest {
             final int pos2 = rand.nextInt(10000) + 1;
             records.add(SVTestUtils.newCallRecordWithIntervalAndType(Math.min(pos1, pos2), Math.max(pos1, pos2), StructuralVariantType.DEL));
         }
-        final SVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
         records.stream().sorted(SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict)).forEach(engine::add);
         final List<SVCallRecord> output = engine.forceFlush().stream()
-                .map(SVClusterEngine.Cluster::getMembers)
+                .map(BasicOutputCluster::getMembers)
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(output.size(), 2926);

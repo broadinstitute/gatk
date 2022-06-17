@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
 import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -282,7 +283,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 2000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 500, 0);
-        final SVClusterEngine<SVCallRecord> engine = SVClusterEngineFactory.createCanonical(
+        final CanonicalSVClusterEngine<SVCallRecord> engine = SVClusterEngineFactory.createCanonical(
                 SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE,
                 referenceSequenceFile.getSequenceDictionary(),
                 false,
@@ -297,7 +298,10 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .forEach(engine::add);
 
         final Comparator<SVCallRecord> recordComparator = SVCallRecordUtils.getCallComparator(referenceSequenceFile.getSequenceDictionary());
+        final SVCollapser<SVCallRecord> collapser = SVTestUtils.defaultCollapser;
         final List<VariantContext> expectedVariants = engine.forceFlush().stream()
+                .map(BasicOutputCluster::getMembers)
+                .map(collapser::collapse)
                 .sorted(recordComparator)
                 .map(SVCallRecordUtils::getVariantBuilder)
                 .map(VariantContextBuilder::make)

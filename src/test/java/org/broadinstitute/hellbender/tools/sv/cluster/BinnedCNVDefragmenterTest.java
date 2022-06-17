@@ -18,8 +18,8 @@ public class BinnedCNVDefragmenterTest {
 
     private static final double paddingFraction = 0.5;
     private static final double sampleOverlap = 0.9;
-    private static final SVClusterEngine<SVCallRecord> defaultDefragmenter = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, paddingFraction, sampleOverlap);
-    private static final SVClusterEngine<SVCallRecord> binnedDefragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, paddingFraction, 0, SVTestUtils.targetIntervals);
+    private static final CanonicalSVClusterEngine<SVCallRecord> defaultDefragmenter = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, paddingFraction, sampleOverlap);
+    private static final CanonicalSVClusterEngine<SVCallRecord> binnedDefragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, paddingFraction, 0, SVTestUtils.targetIntervals);
 
     @Test
     public void testCollapser() {
@@ -95,25 +95,25 @@ public class BinnedCNVDefragmenterTest {
     @Test
     public void testAdd() {
         //single-sample merge case, ignoring sample sets
-        final SVClusterEngine<SVCallRecord> temp1 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, paddingFraction, 0.8, SVTestUtils.targetIntervals);
+        final CanonicalSVClusterEngine<SVCallRecord> temp1 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, paddingFraction, 0.8, SVTestUtils.targetIntervals);
         temp1.add(SVTestUtils.call1);
         //force new cluster by adding a non-overlapping event
         temp1.add(SVTestUtils.call3);
         final List<SVCallRecord> output1 = temp1.forceFlush().stream()
-                .map(SVClusterEngine.Cluster::getMembers)
+                .map(BasicOutputCluster::getMembers)
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList()); //flushes all clusters
         Assert.assertEquals(output1.size(), 2);
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call1, output1.get(0));
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call3, output1.get(1));
 
-        final SVClusterEngine<SVCallRecord> temp2 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, paddingFraction, 0.8, SVTestUtils.targetIntervals);
+        final CanonicalSVClusterEngine<SVCallRecord> temp2 = SVClusterEngineFactory.createBinnedCNVDefragmenter(SVTestUtils.hg38Dict, paddingFraction, 0.8, SVTestUtils.targetIntervals);
         temp2.add(SVTestUtils.call1);
         temp2.add(SVTestUtils.call2);  //should overlap after padding
         //force new cluster by adding a call on another contig
         temp2.add(SVTestUtils.call4_chr10);
         final List<SVCallRecord> output2 = temp2.forceFlush().stream()
-                .map(SVClusterEngine.Cluster::getMembers)
+                .map(BasicOutputCluster::getMembers)
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(output2.size(), 2);
@@ -122,11 +122,11 @@ public class BinnedCNVDefragmenterTest {
         SVTestUtils.assertEqualsExceptMembershipAndGT(output2.get(1), SVTestUtils.call4_chr10);
 
         //cohort case, checking sample set overlap
-        final SVClusterEngine<SVCallRecord> temp3 = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, CNVLinkage.DEFAULT_PADDING_FRACTION, CNVLinkage.DEFAULT_SAMPLE_OVERLAP);
+        final CanonicalSVClusterEngine<SVCallRecord> temp3 = SVClusterEngineFactory.createCNVDefragmenter(SVTestUtils.hg38Dict, CNVLinkage.DEFAULT_PADDING_FRACTION, CNVLinkage.DEFAULT_SAMPLE_OVERLAP);
         temp3.add(SVTestUtils.call1);
         temp3.add(SVTestUtils.sameBoundsSampleMismatch);
         final List<SVCallRecord> output3 = temp3.forceFlush().stream()
-                .map(SVClusterEngine.Cluster::getMembers)
+                .map(BasicOutputCluster::getMembers)
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(output3.size(), 2);

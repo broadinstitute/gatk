@@ -19,14 +19,11 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
-import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVLinkage;
-import org.broadinstitute.hellbender.tools.sv.cluster.PartitionedSVClusterEngine;
-import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterEngineArgumentsCollection;
+import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * <p>Clusters structural variants based on coordinates, event type, and supporting algorithms. Primary use cases include:</p>
@@ -263,35 +260,17 @@ public final class SVOverlap extends MultiVariantWalker {
     }
 
     private void flush(final boolean force) {
-        (force ? engine.forceFlush() : engine.flush()).stream().forEach((this::processCluster));
+        (force ? engine.forceFlush() : engine.flush()).stream().forEach(this::processCluster);
     }
 
-    private void processCluster(final Collection<PartitionedSVCallRecord> cluster) {
-        final List<SVCallRecord> callsetRecords = cluster.stream().filter(r -> r.isPrimaryVariant()).collect(Collectors.toList());
-        final List<SVCallRecord> matchedRecords = cluster.stream().filter(r -> !r.isPrimaryVariant()).collect(Collectors.toList());
-
+    private void processCluster(final PartitionedOutputCluster<PartitionedSVCallRecord> cluster) {
+        // TODO : implement
     }
 
     private VCFHeader createHeader() {
         final VCFHeader header = getHeaderForVariants();
         header.addMetaDataLine(new VCFFormatHeaderLine("MGT", 1, VCFHeaderLineType.String, "Genotype from matched variant"));
         return header;
-    }
-
-    public static final class PartitionedSVCallRecord extends SVCallRecord {
-        private final boolean primaryVariant;
-        public PartitionedSVCallRecord(final SVCallRecord record, final boolean callsetVariant) {
-            super(record);
-            this.primaryVariant = callsetVariant;
-        }
-
-        public static PartitionedSVCallRecord create(final SVCallRecord record, final boolean callsetVariant) {
-            return new PartitionedSVCallRecord(record, callsetVariant);
-        }
-
-        public boolean isPrimaryVariant() {
-            return primaryVariant;
-        }
     }
 
     private static final class PartitionedCallSetLinkage extends CanonicalSVLinkage<PartitionedSVCallRecord> {

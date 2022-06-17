@@ -412,7 +412,7 @@ public final class SVCluster extends MultiVariantWalker {
 
     private void write(final boolean force) {
         (force ? clusterEngine.forceFlush() : clusterEngine.flush()).stream()
-                .map(SVClusterEngine.OutputCluster::getMembers)
+                .map(BasicOutputCluster::getMembers)
                 .map(collapser::collapse)
                 .map(this::buildVariantContext)
                 .forEachOrdered(writer::add);
