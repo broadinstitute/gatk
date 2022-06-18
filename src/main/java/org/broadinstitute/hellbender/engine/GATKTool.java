@@ -22,6 +22,7 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadTransformerPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
@@ -236,10 +237,11 @@ public abstract class GATKTool extends CommandLineProgram {
     @Override
     public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
         GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
+        GATKReadTransformerPluginDescriptor readTransformerDescriptor = new GATKReadTransformerPluginDescriptor(getDefaultReadTransformers());
         return useVariantAnnotations()?
-                Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
+                Arrays.asList(readFilterDescriptor, readTransformerDescriptor, new GATKAnnotationPluginDescriptor(
                         getDefaultVariantAnnotations(), getDefaultVariantAnnotationGroups())):
-                Collections.singletonList(readFilterDescriptor);
+                Arrays.asList(readFilterDescriptor, readTransformerDescriptor);
     }
 
     /**
@@ -255,6 +257,21 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     public List<ReadFilter> getDefaultReadFilters() {
         return Collections.singletonList(new WellformedReadFilter());
+    }
+
+    /**
+     * Returns the default list of ReadTransformers that are used for this tool. The transformers returned
+     * by this method are subject to selective enabling/disabling by the user via the command line. The
+     * default implementation returns an empty list. Subclasses can override to provide alternative transformers.
+     *
+     * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
+     * available through {@link #getHeaderForReads}. The actual SAMFileHeader is propagated to the read transformers
+     * by {@link #makeReadTransformer} after the transformers have been merged with command line arguments.
+     *
+     * @return List of individual transformers to be applied for this tool.
+     */
+    public List<ReadTransformer> getDefaultReadTransformers() {
+        return Collections.emptyList();
     }
 
     /**
@@ -280,6 +297,31 @@ public abstract class GATKTool extends CommandLineProgram {
         return hasReads() ?
                 readFilterPlugin.getMergedCountingReadFilter(getHeaderForReads()) :
                 new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
+    }
+
+    /**
+     * Returns a read transformer (simple or composite) that can be applied to reads. This implementation combines
+     * the default read transformers for this tool (returned by {@link #getDefaultReadTransformers} along with any read transformer
+     * command line directives specified by the user (such as enabling other transformers or disabling default transformers);
+     * wraps each transformer in the resulting list with a CountingReadTransformer; and returns a single composite transformer
+     * resulting from the list by and'ing them together.
+     *
+     * NOTE: Most tools will not need to override the method, and should only do so in order to provide custom
+     * behavior or processing of the final merged read transformer. To change the default read transformers used by the tool,
+     * override {@link #getDefaultReadTransformers} instead.
+     *
+     * Implementations of {@link #traverse()} should call this method once before iterating over the reads, in order to
+     * unnecessary avoid object allocation. Nevertheless, keeping state in transformer objects is strongly discouraged.
+     *
+     * Multiple transformers can be composed by using {@link org.broadinstitute.hellbender.transformers.ReadTransformer}
+     * composition methods.
+     */
+    public ReadTransformer makeReadTransformer(){
+        final GATKReadTransformerPluginDescriptor readTransformerPlugin =
+                getCommandLineParser().getPluginDescriptor(GATKReadTransformerPluginDescriptor.class);
+        return hasReads() ?
+                readTransformerPlugin.getMergedReadTransformer(getHeaderForReads()) :
+                ReadTransformer.identity();
     }
 
     /**
@@ -363,7 +405,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
      */
     public ReadTransformer makePostReadFilterTransformer(){
-        return ReadTransformer.identity();
+        return makeReadTransformer();
     }
 
 

@@ -151,6 +151,9 @@ public interface GATKConfig extends Mutable, Accessible {
     @DefaultValue("org.broadinstitute.hellbender.engine.filters")
     List<String> read_filter_packages();
 
+    @DefaultValue("org.broadinstitute.hellbender.engine.transformers")
+    List<String> read_transformer_packages();
+
     @DefaultValue(DEFAULT_ANNOTATION_PACKAGES)
     List<String> annotation_packages();
 
