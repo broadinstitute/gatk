@@ -8,9 +8,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 public class IdentityTransformerUnitTest extends GATKBaseTest {
 
     final static String ATTR1 = "A1";

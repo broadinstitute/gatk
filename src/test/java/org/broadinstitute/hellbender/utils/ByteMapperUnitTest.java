@@ -29,7 +29,7 @@ public class ByteMapperUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "mapping")
-    public void testMapping(GATKPath path, Byte[] src, Byte[] dst) {
+    public void testMapping(final GATKPath path, final Byte[] src, final Byte[] dst) {
 
         final ByteMapper      mapper = new ByteMapper(path);
         Utils.validate(src.length == dst.length, "src and dst should be the same length");
