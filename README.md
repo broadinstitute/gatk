@@ -51,9 +51,9 @@ releases of the toolkit.
 
 ## <a name="requirements">Requirements</a>
 * To run GATK:
-    * Java 8 is needed to run or build GATK. 
+    * Java 17 is needed to run or build GATK. 
     We recommend one of the following:
-        * Download the Eclipse Foundation's distribution of OpenJDK 8 from [adoptium.net](https://adoptium.net/). Navigate to the [release archive](https://adoptium.net/temurin/archive/?version=8) to find downloads for Java 8.
+        * Download the Eclipse Foundation's distribution of OpenJDK 17 from [adoptium.net](https://adoptium.net/). Navigate to the [release archive](https://adoptium.net/temurin/archive/?version=8) to find downloads for Java 8.
         * On Mac OS, you can install the [Homebrew package manager](https://brew.sh/) and run `brew tap homebrew/cask-versions` followed by `brew install --cask temurin8` to install the Eclipse Foundation's OpenJDK 8. 
         * Or you can download the older [OracleJDK 8](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
     which requires an Oracle account to download and comes with restrictive [license conditions](https://www.oracle.com/downloads/licenses/javase-license1.html).
@@ -62,7 +62,7 @@ releases of the toolkit.
       See [Python Dependencies](#python) for more information.
     * R 3.2.5 (needed for producing plots in certain tools)
 * To build GATK:
-    * A Java 8 JDK
+    * A Java 17 JDK
     * Git 2.5 or greater
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater. Required to download the large files used to build GATK, and
       test files required to run the test suite. Run `git lfs install` after downloading, followed by `git lfs pull` from
@@ -455,7 +455,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
 
 #### <a name="intellij">Creating a GATK project in the IntelliJ IDE (last tested with version 2016.2.4):</a>
 
-* Ensure that you have `gradle` and the Java 8 JDK installed
+* Ensure that you have `gradle` and the Java 17 JDK installed
 
 * You may need to install the TestNG and Gradle plugins (in preferences)
 
@@ -477,7 +477,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
 
 * After downloading project dependencies, IntelliJ should open a new window with your GATK project
 
-* Make sure that the Java version is set correctly by going to File -> "Project Structure" -> "Project". Check that the "Project SDK" is set to your Java 1.8 JDK, and "Project language level" to 8 (you may need to add your Java 8 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
+* Make sure that the Java version is set correctly by going to File -> "Project Structure" -> "Project". Check that the "Project SDK" is set to your Java 1.17 JDK, and "Project language level" to 17 (you may need to add your Java 17 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
 
 #### <a name="debugging">Setting up debugging in IntelliJ</a>
 
