@@ -8,10 +8,26 @@ ADD . /gatk
 WORKDIR /gatk
 
 # Get an updated gcloud signing key, in case the one in the base image has expired
-RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list
+RUN apt update
+RUN apt-key list
+RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
 RUN add-apt-repository universe && apt update
 RUN apt-get --assume-yes install git-lfs
 RUN git lfs install --force
+
+##Get Java 17 temurin JDK
+#RUN apt update && apt upgrade
+RUN apt install wget
+RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.1%2B12/OpenJDK17U-jdk_x64_linux_hotspot_17.0.1_12.tar.gz
+RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
+RUN mv jdk-17.0.1+12 /opt/
+#
+ENV JAVA_HOME /opt/jdk-17.0.1+12
+ENV PATH $JAVA_HOME/bin:$PATH
+RUN echo $JAVA_HOME
+RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.1+12/bin/java 1
+RUN java -version
 
 #Download only resources required for the build, not for testing
 RUN git lfs pull --include src/main/resources/large
@@ -22,6 +38,23 @@ RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unz
 
 # Using OpenJDK 8
 FROM broadinstitute/gatk:gatkbase-2.3.0
+
+RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list
+RUN apt update
+RUN apt-key list
+
+#Get Java 17 temurin JDK
+#RUN apt update && apt upgrade
+RUN apt install wget
+RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.1%2B12/OpenJDK17U-jdk_x64_linux_hotspot_17.0.1_12.tar.gz
+RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
+RUN mv jdk-17.0.1+12 /opt/
+
+ENV JAVA_HOME /opt/jdk-17.0.1+12
+ENV PATH $JAVA_HOME/bin:$PATH
+RUN echo $JAVA_HOME
+RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.1+12/bin/java 1
+RUN java -version
 
 WORKDIR /gatk
 
@@ -43,6 +76,9 @@ RUN mkdir .gradle
 
 WORKDIR /gatk
 
+# use UTF-8 encoding to get around (??) scala class name shapeless/$tilde$qmark$greater$?.class
+ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8"
+
 # Create a simple unit test runner
 ENV CI true
 # "export GATK_DOCKER_CONTAINER=true" is used to allow tests to determine when the're running on the docker
@@ -56,11 +92,11 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "mkdir /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "cp -rp /gatkCloneMountPoint/src/main/java/* /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export SOURCE_DIR=/gatk/srcdir" >> /root/run_unit_tests.sh && \
-    echo "export GRADLE_OPTS=\"-Xmx1024m -Dorg.gradle.daemon=false\"" /root/run_unit_tests.sh && \
-    echo "export CP_DIR=/gatk/testClasses" /root/run_unit_tests.sh && \
+    echo "export GRADLE_OPTS=\"-Xmx1024m -Dorg.gradle.daemon=false --add-opens java.prefs/java.util.prefs=ALL-UNNAMED\"" >> /root/run_unit_tests.sh && \
+    echo "export CP_DIR=/gatk/testClasses" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
+    echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -Dfile.encoding=UTF-8 -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk

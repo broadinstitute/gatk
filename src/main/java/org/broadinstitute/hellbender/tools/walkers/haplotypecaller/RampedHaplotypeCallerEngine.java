@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ramps.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.ReservoirDownsampler;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -61,7 +62,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
     public RampedHaplotypeCallerEngine(final HaplotypeCallerArgumentCollection hcArgs, AssemblyRegionArgumentCollection assemblyRegionArgs, boolean createBamOutIndex,
                                        boolean createBamOutMD5, final SAMFileHeader readsHeader,
-                                       ReferenceSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine,
+                                       CachingIndexedFastaSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine,
                                        RampedHaplotypeCallerArgumentCollection rpArgs) {
 
         super(hcArgs, assemblyRegionArgs, createBamOutIndex,

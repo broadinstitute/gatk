@@ -17,12 +17,12 @@ import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
-import org.spark_project.guava.collect.Lists;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -129,7 +129,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = vcf.getKey();
         final List<VariantContext> records = vcf.getValue();
 
-        Assert.assertEquals(header.getSampleNamesInOrder(), Lists.newArrayList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
+        Assert.assertEquals(header.getSampleNamesInOrder(), Arrays.asList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
 
         Assert.assertEquals(records.size(), 1793);
 
@@ -201,7 +201,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = vcf.getKey();
         final List<VariantContext> records = vcf.getValue();
 
-        Assert.assertEquals(header.getSampleNamesInOrder(), Lists.newArrayList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
+        Assert.assertEquals(header.getSampleNamesInOrder(), Arrays.asList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
 
         Assert.assertEquals(records.size(), 1338);
 
@@ -263,7 +263,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
                 .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
 
-        final List<String> vcfInputFilenames = Lists.newArrayList(
+        final List<String> vcfInputFilenames = Arrays.asList(
                 "1kgp_test.cnvs.vcf.gz",
                 "HG00096.manta.vcf.gz",
                 "HG00096.wham.vcf.gz",
@@ -365,7 +365,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = vcf.getKey();
         final List<VariantContext> records = vcf.getValue();
 
-        Assert.assertEquals(header.getSampleNamesInOrder(), Lists.newArrayList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
+        Assert.assertEquals(header.getSampleNamesInOrder(), Arrays.asList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
 
         //Assert.assertEquals(records.size(), 1353);
 
@@ -496,7 +496,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = vcf.getKey();
         final List<VariantContext> records = vcf.getValue();
 
-        Assert.assertEquals(header.getSampleNamesInOrder(), Lists.newArrayList("HG00096", "HG00129", "HG00150"));
+        Assert.assertEquals(header.getSampleNamesInOrder(), Arrays.asList("HG00096", "HG00129", "HG00150"));
 
         Assert.assertEquals(records.size(), 536);
 
