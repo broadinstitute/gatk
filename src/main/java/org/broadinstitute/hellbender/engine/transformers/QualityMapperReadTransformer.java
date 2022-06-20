@@ -2,17 +2,9 @@ package org.broadinstitute.hellbender.engine.transformers;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.ByteMapper;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * A read transformer to modify the quality of a read using a provided lookup table
