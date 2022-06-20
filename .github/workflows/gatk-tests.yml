@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  CROMWELL_VERSION: 51
+  CROMWELL_VERSION: 84
   TERM: dumb
   GRADLE_OPTS: "-Xmx2048m -Dorg.gradle.daemon=false"
   HELLBENDER_TEST_INPUTS: gs://hellbender/test/resources/
@@ -73,19 +73,10 @@ jobs:
     needs: check-secrets
     strategy:
       matrix:
-        java: [ 8, 11.0.11+9 ]
+        java: [ 17 ]
         experimental: [ false ]
-        scalaVersion: [ 2.11, 2.12 ]
+        scalaVersion: [ 2.12 ]
         testType: [ cloud, integration, unit ]
-        exclude:
-          - java: 11.0.11+9
-            scalaVersion: 2.11
-          - java: 8
-            scalaVersion: 2.12
-          - java: 8
-            testType: integration
-          - java: 8
-            testType: unit
       fail-fast: false
     continue-on-error: ${{ matrix.experimental }}
     env:
@@ -100,7 +91,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: ${{ matrix.Java }}
-          distribution: 'adopt'
+          distribution: 'temurin'
           cache: gradle
 
       - name: 'Compile with Gradle'
@@ -120,6 +111,10 @@ jobs:
         if: needs.check-secrets.outputs.google-credentials == 'true'
         run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
+      # See https://cloud.google.com/compute/docs/troubleshooting/known-issues#ubuntu-systems
+      - name: "get the updated signature key for google cloud"
+        run: curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+
       - name: 'Set up Cloud SDK'
         if: needs.check-secrets.outputs.google-credentials == 'true'
         uses: google-github-actions/setup-gcloud@v0
@@ -134,7 +129,7 @@ jobs:
         if: ${{ needs.check-secrets.outputs.google-credentials == 'true' || matrix.testType != 'cloud'}}
         id: jacoco-tests
         run: |
-          ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} jacocoTestReport
+          ./gradlew --daemon -Dscala.version=${{ env.SCALA_VERSION }} jacocoTestReport
 
       - uses: ./.github/actions/upload-gatk-test-results
         if: always()
@@ -154,9 +149,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [ 8 ]
+        java: [ 17 ]
         experimental: [ false ]
-        scalaVersion: [ 2.11 ]
+        scalaVersion: [ 2.12 ]
         testType: [ integration, unit, variantcalling, conda ]
       fail-fast: false
     continue-on-error: ${{ matrix.experimental }}
@@ -174,7 +169,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: ${{ matrix.Java }}
-          distribution: 'adopt'
+          distribution: 'temurin'
           cache: gradle
 
       #Google Cloud stuff
@@ -189,6 +184,10 @@ jobs:
       - name: "export the credentials for GATK tests"
         if: needs.check-secrets.outputs.google-credentials == 'true'
         run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
+
+      # See https://cloud.google.com/compute/docs/troubleshooting/known-issues#ubuntu-systems
+      - name: "get the updated signature key for google cloud"
+        run: curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
 
       - name: 'Set up Cloud SDK'
         if: needs.check-secrets.outputs.google-credentials == 'true'
@@ -259,6 +258,12 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch: 0
+      - name: Set up java 17
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
       - uses: ./.github/actions/install-cromwell
         with:
           CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
@@ -273,11 +278,11 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch: 0
-      - name: Set up java 8
+      - name: Set up java 17
         uses: actions/setup-java@v2
         with:
-          java-version: '8'
-          distribution: 'adopt'
+          java-version: '17'
+          distribution: 'temurin'
           cache: gradle
       - uses: ./.github/actions/install-cromwell
         with:
@@ -300,11 +305,11 @@ jobs:
           fetch-depth: 0
       - name: pull lfs files
         run: git lfs pull
-      - name: Set up java 8
+      - name: Set up java 17
         uses: actions/setup-java@v2
         with:
-          java-version: '8'
-          distribution: 'adopt'
+          java-version: '17'
+          distribution: 'temurin'
           cache: gradle
       - uses: ./.github/actions/install-cromwell
         with:
@@ -335,6 +340,8 @@ jobs:
         run: |
           echo "Running CNV somatic workflows";
           bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+          echo "Gather CNV somatic cromwell workflows logs";
+          bash -c "find /home/runner/work/gatk/gatk/scripts/cnv_cromwell_tests/somatic/cromwell-executions -exec cat {} \;";
 
       - name: "M2_WDL_TEST"
         if: ${{ matrix.wdlTest == 'RUN_M2_WDL' }}

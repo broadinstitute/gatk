@@ -33,7 +33,7 @@ sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_D
 echo "Running Filtering WDL through cromwell"
 
 cat $WORKING_DIR/vcf_site_level_filtering_mod.json
-java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_mod.json
+java -DLOG_LEVEL=TRACE -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_mod.json
 
 cat $WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json
-java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json
+java -DLOG_LEVEL=TRACE -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json

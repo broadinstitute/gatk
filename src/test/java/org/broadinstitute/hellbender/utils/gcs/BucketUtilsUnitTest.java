@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -201,6 +202,11 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
         final String src = publicTestDir + "empty.vcf";
         File dest = createTempFile("copy-empty", ".vcf");
 
+        // see https://github.com/eclipse/jetty.project/issues/8549
+        if (isGATKDockerContainer()) {
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
             final String intermediate = BucketUtils.randomRemotePath(MiniClusterUtils.getWorkingDir(cluster).toString(), "test-copy-empty", ".vcf");
             Assert.assertTrue(BucketUtils.isHadoopUrl(intermediate), "!BucketUtils.isHadoopUrl(intermediate)");

@@ -56,7 +56,7 @@ public class AssemblyRegionIteratorUnitTest extends GATKBaseTest {
     public void testRegionsHaveCorrectReadsAndSize( final String reads, final String reference, final List<SimpleInterval> shardIntervals, final int minRegionSize, final int maxRegionSize, final int assemblyRegionPadding ) throws IOException {
         try (final ReadsDataSource readsSource = new ReadsPathDataSource(IOUtils.getPath(reads));
              final ReferenceDataSource refSource = ReferenceDataSource.of(IOUtils.getPath(reference));
-             final ReferenceSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21));
+             final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(IOUtils.getPath(b37_reference_20_21));
         ) {
             final SAMSequenceDictionary readsDictionary = readsSource.getSequenceDictionary();
             final MultiIntervalLocalReadShard readShard = new MultiIntervalLocalReadShard(shardIntervals, assemblyRegionPadding, readsSource);
