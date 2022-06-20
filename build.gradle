@@ -392,8 +392,8 @@ processTestResources {
     include "org/broadinstitute/hellbender/utils/io/*"
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+sourceCompatibility = 1.17
+targetCompatibility = 1.17
 
 def createSymlinks(archivePath, symlinkLocation) {
     exec {
