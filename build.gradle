@@ -21,10 +21,7 @@ plugins {
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
-
-import javax.tools.ToolProvider
 import java.time.format.DateTimeFormatter
-import java.time.ZonedDateTime
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -48,7 +45,6 @@ task downloadGsaLibFile(type: Download) {
 repositories {
     mavenCentral()
 
-    jcenter()
     maven {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
@@ -141,11 +137,11 @@ def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, sk
     if (!JavaVersion.current().equals(JavaVersion.VERSION_17)) {
         println("Warning: using Java ${JavaVersion.current()} but only Java 17 has been tested.")
     }
-    if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
-        throw new GradleException(
-                "A Java 17 compatible (Java 17 or later) version is required to build GATK, but ${JavaVersion.current()} was found. "
-                        + "$buildPrerequisitesMessage")
-    }
+//    if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
+//        throw new GradleException(
+//                "A Java 17 compatible (Java 17 or later) version is required to build GATK, but ${JavaVersion.current()} was found. "
+//                        + "$buildPrerequisitesMessage")
+//    }
     if (!skipGitCheck && !looksLikeWereInAGitRepository() ) {
         throw new GradleException("This doesn't appear to be a git folder. " +
                 "The GATK Github repository must be cloned using \"git clone\" to run the build. " +
@@ -234,15 +230,7 @@ configurations {
     }
 }
 
-// Get the jdk files we need to run javaDoc. We need to use these during compile, testCompile,
-// test execution, and gatkDoc generation, but we don't want them as part of the runtime
-// classpath and we don't want to redistribute them in the uber jar.
-final javadocJDKFiles = ToolProvider.getSystemToolClassLoader() == null ? files([]) : files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
-
 dependencies {
-    // javadoc utilities; compile/test only to prevent redistribution of sdk jars
-    compileOnly(javadocJDKFiles)
-    testImplementation(javadocJDKFiles)
 
     implementation 'org.broadinstitute:barclay:' + barclayVersion
     // Library for configuration:
@@ -729,36 +717,36 @@ task testUtilsJar(type: Jar){
     from sourceSets.testUtils.output
 }
 
-//tasks.withType(Javadoc) {
-//    // do this for all javadoc tasks, including gatkDoc
-//    options.addStringOption('Xdoclint:none')
-//    options.addStringOption('encoding', 'UTF-8')
-//}
-//
-//javadoc {
-//    // This is a hack to disable the java default javadoc lint until we fix the html formatting
-//    // We only want to do this for the javadoc task, not gatkDoc
-//    options.addStringOption('Xdoclint:none', '-quiet')
-//    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
-//    include '**/*.java'
-//}
-//
-//
-//task testUtilsJavadoc(type: Javadoc) {
-//    // This is a hack to disable the java default javadoc lint until we fix the html formatting
-//    // We only want to do this for the javadoc task, not gatkDoc
-//    options.addStringOption('Xdoclint:none', '-quiet')
-//    source = sourceSets.testUtils.allJava
-//    classpath = sourceSets.testUtils.runtimeClasspath
-//    destinationDir = file("$docBuildDir/testUtilsJavadoc")
-//    include '**/*.java'
-//}
-//
-//task testUtilsJavadocJar(type: Jar, dependsOn: testUtilsJavadoc){
-//    archiveBaseName = "$project.name-test-utils"
-//    archiveClassifier = 'javadoc'
-//    from "$docBuildDir/testUtilsJavadoc"
-//}
+tasks.withType(Javadoc) {
+    // do this for all javadoc tasks, including gatkDoc
+    options.addStringOption('Xdoclint:none')
+    options.addStringOption('encoding', 'UTF-8')
+}
+
+javadoc {
+    // This is a hack to disable the java default javadoc lint until we fix the html formatting
+    // We only want to do this for the javadoc task, not gatkDoc
+    options.addStringOption('Xdoclint:none', '-quiet')
+    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
+    include '**/*.java'
+}
+
+
+task testUtilsJavadoc(type: Javadoc) {
+    // This is a hack to disable the java default javadoc lint until we fix the html formatting
+    // We only want to do this for the javadoc task, not gatkDoc
+    options.addStringOption('Xdoclint:none', '-quiet')
+    source = sourceSets.testUtils.allJava
+    classpath = sourceSets.testUtils.runtimeClasspath
+    destinationDir = file("$docBuildDir/testUtilsJavadoc")
+    include '**/*.java'
+}
+
+task testUtilsJavadocJar(type: Jar, dependsOn: testUtilsJavadoc){
+    archiveBaseName = "$project.name-test-utils"
+    archiveClassifier = 'javadoc'
+    from "$docBuildDir/testUtilsJavadoc"
+}
 
 task testUtilsSourcesJar(type: Jar){
     archiveBaseName = "$project.name-test-utils"
@@ -767,234 +755,234 @@ task testUtilsSourcesJar(type: Jar){
 }
 
 // Generate GATK Online Doc
-//task gatkDoc(type: Javadoc, dependsOn: classes) {
-//    final File gatkDocDir = new File("$docBuildDir/gatkdoc")
-//    doFirst {
-//        // make sure the output folder exists or we can create it
-//        if (!gatkDocDir.exists() && !gatkDocDir.mkdirs()) {
-//            throw new GradleException(String.format("Failure creating folder (%s) for GATK doc output in task (%s)",
-//                    gatkDocDir.getAbsolutePath(),
-//                    it.name));
-//        }
-//        copy {
-//            from('src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates')
-//            include 'gatkDoc.css'
-//            into gatkDocDir
-//        }
-//    }
-//    // Include the Picard source jar, which contains various .R, .sh, .css, .html, .xml and .MF files and
-//    // other resources, but we only want the files that javadoc can handle, so just take the .java files.
-//    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
-//    include '**/*.java'
-//
-//    // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
-//    // runtime classpath.
-//    classpath = sourceSets.main.runtimeClasspath
-//    options.docletpath = classpath.asType(List)
-//    options.doclet = "org.broadinstitute.hellbender.utils.help.GATKHelpDoclet"
-//
-//    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
-//    options.noTimestamp(false)
-//
-//    outputs.dir(gatkDocDir)
-//    options.destinationDirectory(gatkDocDir)
-//
-//    options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates");
-//    if (project.hasProperty('phpDoc')) {
-//        // use -PphpDoc to generate .php file extensions, otherwise rely on default of .html
-//        final String phpExtension = "php"
-//        options.addStringOption("output-file-extension", phpExtension)
-//        options.addStringOption("index-file-extension", phpExtension)
-//    }
-//    options.addStringOption("absolute-version", getVersion())
-//    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME))
-//}
-//
+task gatkDoc(type: Javadoc, dependsOn: classes) {
+    final File gatkDocDir = new File("$docBuildDir/gatkdoc")
+    doFirst {
+        // make sure the output folder exists or we can create it
+        if (!gatkDocDir.exists() && !gatkDocDir.mkdirs()) {
+            throw new GradleException(String.format("Failure creating folder (%s) for GATK doc output in task (%s)",
+                    gatkDocDir.getAbsolutePath(),
+                    it.name));
+        }
+        copy {
+            from('src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates')
+            include 'gatkDoc.css'
+            into gatkDocDir
+        }
+    }
+    // Include the Picard source jar, which contains various .R, .sh, .css, .html, .xml and .MF files and
+    // other resources, but we only want the files that javadoc can handle, so just take the .java files.
+    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
+    include '**/*.java'
+
+    // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
+    // runtime classpath.
+    classpath = sourceSets.main.runtimeClasspath
+    options.docletpath = classpath.asType(List)
+    options.doclet = "org.broadinstitute.hellbender.utils.help.GATKHelpDoclet"
+
+    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
+    options.noTimestamp(false)
+
+    outputs.dir(gatkDocDir)
+    options.destinationDirectory(gatkDocDir)
+
+    options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/helpTemplates");
+    if (project.hasProperty('phpDoc')) {
+        // use -PphpDoc to generate .php file extensions, otherwise rely on default of .html
+        final String phpExtension = "php"
+        options.addStringOption("output-file-extension", phpExtension)
+        options.addStringOption("index-file-extension", phpExtension)
+    }
+    options.addStringOption("absolute-version", getVersion())
+    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME).toString())
+}
+
 // Generate GATK Bash Tab Completion File
-//task gatkTabComplete(type: Javadoc, dependsOn: classes) {
-//    final File tabCompletionDir = new File("$docBuildDir/tabCompletion")
-//    doFirst {
-//        // make sure the output folder exists or we can create it
-//        if (!tabCompletionDir.exists() && !tabCompletionDir.mkdirs()) {
-//            throw new GradleException(String.format("Failure creating folder (%s) for GATK tab completion output in task (%s)",
-//                    tabCompletionDir.getAbsolutePath(),
-//                    it.name));
-//        }
-//    }
-//    // Include the Picard source jar, which contains various .R, .sh, .css, .html, .xml and .MF files and
-//    // other resources, but we only want the files that javadoc can handle, so just take the .java files.
-//    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
-//    include '**/*.java'
-//
-//    // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
-//    // runtime classpath, includin Picard.
-//    classpath = sourceSets.main.runtimeClasspath
-//
-//    options.docletpath = classpath.asType(List)
-//    options.doclet = "org.broadinstitute.barclay.help.BashTabCompletionDoclet"
-//
-//    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
-//    options.noTimestamp(false)
-//
-//    outputs.dir(tabCompletionDir)
-//    options.destinationDirectory(tabCompletionDir)
-//
-//    // This is a hack to work around a gross Gradle bug:
-//    options.addStringOption('use-default-templates', '-use-default-templates')
-//
-//    options.addStringOption("output-file-extension", "sh")
-//    options.addStringOption("index-file-extension", "sh")
-//    options.addStringOption("absolute-version", getVersion())
-//    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME))
-//
-//    options.addStringOption("caller-script-name", "gatk")
-//
-//    options.addStringOption("caller-pre-legal-args", "--help --list --dry-run --java-options")
-//    options.addStringOption("caller-pre-arg-val-types", "null null null String")
-//    options.addStringOption("caller-pre-mutex-args", "--help;list,dry-run,java-options --list;help,dry-run,java-options")
-//    options.addStringOption("caller-pre-alias-args", "--help;-h")
-//    options.addStringOption("caller-pre-arg-min-occurs", "0 0 0 0")
-//    options.addStringOption("caller-pre-arg-max-occurs", "1 1 1 1")
-//
-//    options.addStringOption("caller-post-legal-args", "--spark-runner --spark-master --cluster --dry-run --java-options --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors")
-//    options.addStringOption("caller-post-arg-val-types", "String String String null String file int int int int int")
-//    options.addStringOption("caller-post-mutex-args", "")
-//    options.addStringOption("caller-post-alias-args", "")
-//    options.addStringOption("caller-post-arg-min-occurs", "0 0 0 0 0 0 0 0 0 0")
-//    options.addStringOption("caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1")
-//}
-//
-//def getWDLInputJSONTestFileNameFromWDLName(File wdlName) {
-//    String fileWithoutExt = wdlName.name.take(wdlName.name.lastIndexOf('.'))
-//    return new File (wdlName.getParentFile(), fileWithoutExt + "Inputs.json").getAbsolutePath()
-//}
+task gatkTabComplete(type: Javadoc, dependsOn: classes) {
+    final File tabCompletionDir = new File("$docBuildDir/tabCompletion")
+    doFirst {
+        // make sure the output folder exists or we can create it
+        if (!tabCompletionDir.exists() && !tabCompletionDir.mkdirs()) {
+            throw new GradleException(String.format("Failure creating folder (%s) for GATK tab completion output in task (%s)",
+                    tabCompletionDir.getAbsolutePath(),
+                    it.name));
+        }
+    }
+    // Include the Picard source jar, which contains various .R, .sh, .css, .html, .xml and .MF files and
+    // other resources, but we only want the files that javadoc can handle, so just take the .java files.
+    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
+    include '**/*.java'
+
+    // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
+    // runtime classpath, includin Picard.
+    classpath = sourceSets.main.runtimeClasspath
+
+    options.docletpath = classpath.asType(List)
+    options.doclet = "org.broadinstitute.barclay.help.BashTabCompletionDoclet"
+
+    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
+    options.noTimestamp(false)
+
+    outputs.dir(tabCompletionDir)
+    options.destinationDirectory(tabCompletionDir)
+
+    // This is a hack to work around a gross Gradle bug:
+    options.addStringOption('use-default-templates', '-use-default-templates')
+
+    options.addStringOption("output-file-extension", "sh")
+    options.addStringOption("index-file-extension", "sh")
+    options.addStringOption("absolute-version", getVersion())
+    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME))
+
+    options.addStringOption("caller-script-name", "gatk")
+
+    options.addStringOption("caller-pre-legal-args", "--help --list --dry-run --java-options")
+    options.addStringOption("caller-pre-arg-val-types", "null null null String")
+    options.addStringOption("caller-pre-mutex-args", "--help;list,dry-run,java-options --list;help,dry-run,java-options")
+    options.addStringOption("caller-pre-alias-args", "--help;-h")
+    options.addStringOption("caller-pre-arg-min-occurs", "0 0 0 0")
+    options.addStringOption("caller-pre-arg-max-occurs", "1 1 1 1")
+
+    options.addStringOption("caller-post-legal-args", "--spark-runner --spark-master --cluster --dry-run --java-options --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors")
+    options.addStringOption("caller-post-arg-val-types", "String String String null String file int int int int int")
+    options.addStringOption("caller-post-mutex-args", "")
+    options.addStringOption("caller-post-alias-args", "")
+    options.addStringOption("caller-post-arg-min-occurs", "0 0 0 0 0 0 0 0 0 0")
+    options.addStringOption("caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1")
+}
+
+def getWDLInputJSONTestFileNameFromWDLName(File wdlName) {
+    String fileWithoutExt = wdlName.name.take(wdlName.name.lastIndexOf('.'))
+    return new File (wdlName.getParentFile(), fileWithoutExt + "Inputs.json").getAbsolutePath()
+}
 
 // Generate GATK Tool WDL
-//task gatkWDLGen(type: Javadoc, dependsOn: classes) {
-//    final File gatkWDLDir = new File("$docBuildDir/wdlGen")
-//    outputs.dir(gatkWDLDir)
-//    doFirst {
-//        // make sure the output folder exists or we can create it
-//        if (!gatkWDLDir.exists() && !gatkWDLDir.mkdirs()) {
-//            throw new GradleException(String.format("Failure creating folder (%s) for GATK WDL output in task (%s)",
-//                    gatkWDLDir.getAbsolutePath(),
-//                    it.name));
-//        }
-//        copy {
-//            from('src/main/resources/org/broadinstitute/hellbender/utils/wdlTemplates/common.html')
-//            into gatkWDLDir
-//        }
-//    }
-//    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
-//    include '**/*.java'
-//
-//    // The gatkWDLGen process instantiates any documented feature classes, so to run it we need the entire
-//    // runtime classpath, including picard.
-//    classpath = sourceSets.main.runtimeClasspath
-//    options.docletpath = classpath.asType(List)
-//    options.doclet = "org.broadinstitute.hellbender.utils.help.GATKWDLDoclet"
-//
-//    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
-//    options.noTimestamp(false)
-//
-//    outputs.dir(gatkWDLDir)
-//    options.destinationDirectory(gatkWDLDir)
-//
-//    options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/wdlTemplates");
-//    options.addStringOption("output-file-extension", "wdl")
-//    options.addStringOption("index-file-extension", "html")
-//
-//    options.addStringOption("absolute-version", getVersion())
-//    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME))
-//
-//    // the wdl doclet will populate the test JSON input files with the name of a dummy
-//    // file in this location, in order to satisfy cromwell's attempts to localize inputs and outputs
-//    options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath())
-//}
-//
-//def execWDLValidation = { validateWDL ->
-//    println "Executing: $validateWDL"
-//    try {
-//        def retCode = validateWDL.execute().waitFor()
-//        if (retCode.intValue() != 0) {
-//            throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
-//        }
-//        return retCode
-//    } catch (IOException e) {
-//        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
-//    }
-//}
-//
-//task gatkValidateScriptsWdl() {
-//    doFirst {
-//        // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
-//        // WOMTOOL_JAR set to the jar locations
-//        if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
-//            throw new GradleException("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
-//        }
-//    }
-//
-//    doLast {
-//        // Run the womtool validator on all WDL files in the 'scripts' directory
-//        final File wdlFolder = new File("scripts")
-//        def wdlFiles = fileTree(dir: wdlFolder).filter {
-//            f -> f.getAbsolutePath().endsWith(".wdl")
-//        }
-//        final womtoolLocation = System.getenv('WOMTOOL_JAR')
-//        wdlFiles.any() { wdlFile ->
-//            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
-//            execWDLValidation(validateWDLCommand)
-//        }
-//    }
-//}
-//
-//task gatkValidateGeneratedWdl(dependsOn: [gatkWDLGen, shadowJar]) {
-//    doFirst {
-//        // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
-//        // WOMTOOL_JAR set to the jar locations
-//        if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
-//            throw new GradleException("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
-//        }
-//    }
-//
-//    doLast {
-//        // first, run the womtool validator on WDL files in the 'docs/wdlGen' directory
-//        final File wdlGenFolder = new File("$docBuildDir/wdlGen")
-//        def wdlFiles = fileTree(dir: wdlGenFolder).filter {
-//            f -> !f.getAbsolutePath().endsWith(".html") && !f.getAbsolutePath().endsWith(".json")
-//        }
-//        final womtoolLocation = System.getenv('WOMTOOL_JAR')
-//        wdlFiles.any() { wdlFile ->
-//            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
-//            execWDLValidation(validateWDLCommand)
-//        }
-//
-//        // now execute the *AllArgs test wdls using cromwell
-//        wdlFiles = fileTree(dir: wdlGenFolder).filter {
-//            f -> f.getAbsolutePath().endsWith("AllArgsTest.wdl")
-//        }
-//
-//        // the test JSON input file is populated by the WDL gen process with the name of this dummy file
-//        // to satisfy cromwell's attempt to de/localize input/output files
-//        def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath()
-//        final dummyWDLTestFileName = "$buildDir/dummyWDLTestFile"
-//        final File dummyWDLTestFile = file(dummyWDLTestFileName)
-//        final cromwellLocation = System.getenv('CROMWELL_JAR')
-//        try {
-//            wdlFiles.any() { wdlFile ->
-//                final testInputJSON = getWDLInputJSONTestFileNameFromWDLName(wdlFile)
-//                final runWDLCommand = "java -jar $cromwellLocation run --inputs $testInputJSON $wdlFile"
-//                execWDLValidation("touch $dummyWDLTestFileName")
-//                execWDLValidation(runWDLCommand)
-//            }
-//        } finally {
-//            // delete the dummy test file and the 'cromwell-executions' directory left behind by cromwell
-//            dummyWDLTestFile.delete()
-//            file("$buildDir/cromwell-executions").deleteDir()
-//            file("$buildDir/cromwell-workflow-logs").deleteDir()
-//        }
-//    }
-//}
+task gatkWDLGen(type: Javadoc, dependsOn: classes) {
+    final File gatkWDLDir = new File("$docBuildDir/wdlGen")
+    outputs.dir(gatkWDLDir)
+    doFirst {
+        // make sure the output folder exists or we can create it
+        if (!gatkWDLDir.exists() && !gatkWDLDir.mkdirs()) {
+            throw new GradleException(String.format("Failure creating folder (%s) for GATK WDL output in task (%s)",
+                    gatkWDLDir.getAbsolutePath(),
+                    it.name));
+        }
+        copy {
+            from('src/main/resources/org/broadinstitute/hellbender/utils/wdlTemplates/common.html')
+            into gatkWDLDir
+        }
+    }
+    source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
+    include '**/*.java'
+
+    // The gatkWDLGen process instantiates any documented feature classes, so to run it we need the entire
+    // runtime classpath, including picard.
+    classpath = sourceSets.main.runtimeClasspath
+    options.docletpath = classpath.asType(List)
+    options.doclet = "org.broadinstitute.hellbender.utils.help.GATKWDLDoclet"
+
+    //gradle 6.x+ defaults to setting this true which breaks the barclay doclet
+    options.noTimestamp(false)
+
+    outputs.dir(gatkWDLDir)
+    options.destinationDirectory(gatkWDLDir)
+
+    options.addStringOption("settings-dir", "src/main/resources/org/broadinstitute/hellbender/utils/wdlTemplates");
+    options.addStringOption("output-file-extension", "wdl")
+    options.addStringOption("index-file-extension", "html")
+
+    options.addStringOption("absolute-version", getVersion())
+    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME))
+
+    // the wdl doclet will populate the test JSON input files with the name of a dummy
+    // file in this location, in order to satisfy cromwell's attempts to localize inputs and outputs
+    options.addStringOption("build-dir", System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath())
+}
+
+def execWDLValidation = { validateWDL ->
+    println "Executing: $validateWDL"
+    try {
+        def retCode = validateWDL.execute().waitFor()
+        if (retCode.intValue() != 0) {
+            throw new GradleException("Execution of \"$validateWDL\" failed with exit code: $retCode.")
+        }
+        return retCode
+    } catch (IOException e) {
+        throw new GradleException("An IOException occurred while attempting to execute the command $validateWDL.")
+    }
+}
+
+task gatkValidateScriptsWdl() {
+    doFirst {
+        // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
+        // WOMTOOL_JAR set to the jar locations
+        if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
+            throw new GradleException("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
+        }
+    }
+
+    doLast {
+        // Run the womtool validator on all WDL files in the 'scripts' directory
+        final File wdlFolder = new File("scripts")
+        def wdlFiles = fileTree(dir: wdlFolder).filter {
+            f -> f.getAbsolutePath().endsWith(".wdl")
+        }
+        final womtoolLocation = System.getenv('WOMTOOL_JAR')
+        wdlFiles.any() { wdlFile ->
+            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
+            execWDLValidation(validateWDLCommand)
+        }
+    }
+}
+
+task gatkValidateGeneratedWdl(dependsOn: [gatkWDLGen, shadowJar]) {
+    doFirst {
+        // running this task requires a local cromwell installation, with environment variables CROMWELL_JAR,
+        // WOMTOOL_JAR set to the jar locations
+        if (System.getenv('CROMWELL_JAR') == null || System.getenv('WOMTOOL_JAR') == null) {
+            throw new GradleException("Running this task requires the CROMWELL_JAR and WOMTOOL_JAR environment variables to be set")
+        }
+    }
+
+    doLast {
+        // first, run the womtool validator on WDL files in the 'docs/wdlGen' directory
+        final File wdlGenFolder = new File("$docBuildDir/wdlGen")
+        def wdlFiles = fileTree(dir: wdlGenFolder).filter {
+            f -> !f.getAbsolutePath().endsWith(".html") && !f.getAbsolutePath().endsWith(".json")
+        }
+        final womtoolLocation = System.getenv('WOMTOOL_JAR')
+        wdlFiles.any() { wdlFile ->
+            final validateWDLCommand = "java -jar $womtoolLocation validate $wdlFile"
+            execWDLValidation(validateWDLCommand)
+        }
+
+        // now execute the *AllArgs test wdls using cromwell
+        wdlFiles = fileTree(dir: wdlGenFolder).filter {
+            f -> f.getAbsolutePath().endsWith("AllArgsTest.wdl")
+        }
+
+        // the test JSON input file is populated by the WDL gen process with the name of this dummy file
+        // to satisfy cromwell's attempt to de/localize input/output files
+        def buildDir = System.getenv("TRAVIS_BUILD_DIR") ?: new File(".").getAbsolutePath()
+        final dummyWDLTestFileName = "$buildDir/dummyWDLTestFile"
+        final File dummyWDLTestFile = file(dummyWDLTestFileName)
+        final cromwellLocation = System.getenv('CROMWELL_JAR')
+        try {
+            wdlFiles.any() { wdlFile ->
+                final testInputJSON = getWDLInputJSONTestFileNameFromWDLName(wdlFile)
+                final runWDLCommand = "java -jar $cromwellLocation run --inputs $testInputJSON $wdlFile"
+                execWDLValidation("touch $dummyWDLTestFileName")
+                execWDLValidation(runWDLCommand)
+            }
+        } finally {
+            // delete the dummy test file and the 'cromwell-executions' directory left behind by cromwell
+            dummyWDLTestFile.delete()
+            file("$buildDir/cromwell-executions").deleteDir()
+            file("$buildDir/cromwell-workflow-logs").deleteDir()
+        }
+    }
+}
 
 
 /**
