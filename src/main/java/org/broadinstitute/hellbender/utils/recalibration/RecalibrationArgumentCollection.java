@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.recalibration;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
@@ -42,18 +41,6 @@ public final class RecalibrationArgumentCollection implements Serializable {
      */
     @Argument(fullName = "indels-context-size", shortName = "ics", doc = "Size of the k-mer context to be used for base insertions and deletions", optional = true)
     public int INDELS_CONTEXT_SIZE = 3;
-
-    /**
-     * experimental parameter indicating that we are going the extended version of the context covariate
-     */
-    @Argument(fullName = "extended-context-lookahead", shortName = "ecl", doc = "amount of lookahead (out of the context) when using the extended context covariate", optional = true)
-    public int EXTENDED_CONTEXT_LOOKAHEAD;
-
-    @Argument(fullName = "extended-context-reference", shortName = "ecr", doc = "reference for assembling the extended context", optional = true)
-    public GATKPath EXTENDED_CONTEXT_REFERENCE;
-
-    @Argument(fullName = "extended-context-alt-embedded", shortName = "ecae", doc = "alt base, when extending context, embedded in context", optional = true)
-    public boolean EXTENDED_CONTEXT_ALT_EMBEDDED;
 
     /**
      * The cycle covariate will generate an error if it encounters a cycle greater than this value.
@@ -177,12 +164,6 @@ public final class RecalibrationArgumentCollection implements Serializable {
         argumentsTable.set("mismatches_context_size", RecalUtils.ARGUMENT_VALUE_COLUMN_NAME, MISMATCHES_CONTEXT_SIZE);
         argumentsTable.addRowID("indels_context_size", true);
         argumentsTable.set("indels_context_size", RecalUtils.ARGUMENT_VALUE_COLUMN_NAME, INDELS_CONTEXT_SIZE);
-        argumentsTable.addRowID("extended_context_lookahead", true);
-        argumentsTable.set("extended_context_lookahead", RecalUtils.ARGUMENT_VALUE_COLUMN_NAME, EXTENDED_CONTEXT_LOOKAHEAD);
-        argumentsTable.addRowID("extended_context_reference", true);
-        argumentsTable.set("extended_context_reference", RecalUtils.ARGUMENT_VALUE_COLUMN_NAME, EXTENDED_CONTEXT_REFERENCE);
-        argumentsTable.addRowID("extended_context_alt_embedded", true);
-        argumentsTable.set("extended_context_alt_embedded", RecalUtils.ARGUMENT_VALUE_COLUMN_NAME, EXTENDED_CONTEXT_ALT_EMBEDDED);
         argumentsTable.addRowID("mismatches_default_quality", true);
         argumentsTable.set("mismatches_default_quality", RecalUtils.ARGUMENT_VALUE_COLUMN_NAME, MISMATCHES_DEFAULT_QUALITY);
         argumentsTable.addRowID("deletions_default_quality", true);
@@ -231,8 +212,6 @@ public final class RecalibrationArgumentCollection implements Serializable {
         compareSimpleReportArgument(result,"solid_recal_mode", SOLID_RECAL_MODE, SOLID_RECAL_MODE,thisRole,otherRole);
         compareSimpleReportArgument(result,"solid_nocall_strategy", SOLID_NOCALL_STRATEGY, SOLID_NOCALL_STRATEGY,thisRole,otherRole);
         compareSimpleReportArgument(result,"mismatches_context_size", MISMATCHES_CONTEXT_SIZE,other.MISMATCHES_CONTEXT_SIZE,thisRole,otherRole);
-        compareSimpleReportArgument(result,"extended_context_lookahead", EXTENDED_CONTEXT_LOOKAHEAD,other.EXTENDED_CONTEXT_LOOKAHEAD,thisRole,otherRole);
-        compareSimpleReportArgument(result,"extended_context_reference", EXTENDED_CONTEXT_REFERENCE,other.EXTENDED_CONTEXT_REFERENCE,thisRole,otherRole);
         compareSimpleReportArgument(result,"mismatches_default_quality", MISMATCHES_DEFAULT_QUALITY, other.MISMATCHES_DEFAULT_QUALITY,thisRole,otherRole);
         compareSimpleReportArgument(result,"deletions_default_quality", DELETIONS_DEFAULT_QUALITY, other.DELETIONS_DEFAULT_QUALITY,thisRole,otherRole);
         compareSimpleReportArgument(result,"insertions_default_quality", INSERTIONS_DEFAULT_QUALITY, other.INSERTIONS_DEFAULT_QUALITY,thisRole,otherRole);

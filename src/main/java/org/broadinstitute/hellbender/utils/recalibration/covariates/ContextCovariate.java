@@ -1,26 +1,20 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 
-import java.util.Arrays;
-
-public class ContextCovariate implements Covariate {
+public final class ContextCovariate implements Covariate {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LogManager.getLogger(ContextCovariate.class);
 
@@ -30,7 +24,7 @@ public class ContextCovariate implements Covariate {
     private final int mismatchesKeyMask;
     private final int indelsKeyMask;
 
-    protected static final int LENGTH_BITS = 4;
+    private static final int LENGTH_BITS = 4;
     private static final int LENGTH_MASK = 15;
 
 
@@ -38,16 +32,6 @@ public class ContextCovariate implements Covariate {
     // not negative and we reserve 4 more bits to represent the length of the context; it takes 2 bits to encode one base.
     private static final int MAX_DNA_CONTEXT = 13;
     private final byte lowQualTail;
-
-    /**
-     * amount of lookhead allocated from the context size. The first by of the lookahead is always taken from the reference
-     *
-     * For example, if the context size is 3 and the amount of lookahead allocated is 2 then
-     * the context will be composed of 1 byte before the location, 1 byte from the reference and 1 byte after the location
-     */
-    private int lookaheadSize;
-    private ReferenceDataSource referenceDataSource;
-    private boolean altEmbedded;
 
     public ContextCovariate(final RecalibrationArgumentCollection RAC){
         mismatchesContextSize = RAC.MISMATCHES_CONTEXT_SIZE;
@@ -69,16 +53,6 @@ public class ContextCovariate implements Covariate {
 
         mismatchesKeyMask = createMask(mismatchesContextSize);
         indelsKeyMask = createMask(indelsContextSize);
-
-        if ( RAC.EXTENDED_CONTEXT_LOOKAHEAD != 0 ) {
-            Utils.nonNull(RAC.EXTENDED_CONTEXT_REFERENCE, "extended context reference can not be null");
-            Utils.validate(RAC.EXTENDED_CONTEXT_LOOKAHEAD > 0, "lookahead must be positive");
-            Utils.validate(RAC.EXTENDED_CONTEXT_LOOKAHEAD <= Math.min(RAC.MISMATCHES_CONTEXT_SIZE, RAC.INDELS_CONTEXT_SIZE), "lookahead can not be larger than the context");
-
-            this.lookaheadSize = RAC.EXTENDED_CONTEXT_LOOKAHEAD;
-            this.referenceDataSource = ReferenceDataSource.of(RAC.EXTENDED_CONTEXT_REFERENCE.toPath());
-            this.altEmbedded = RAC.EXTENDED_CONTEXT_ALT_EMBEDDED;
-        }
     }
 
     @Override
@@ -88,13 +62,10 @@ public class ContextCovariate implements Covariate {
 
         // store the original bases and then write Ns over low quality ones
         final byte[] strandedClippedBases = getStrandedClippedBytes(read, lowQualTail);  //Note: this makes a copy of the read
-        final byte[] refBases = isExtended() ? getReadReferenceBases(read) : null;
 
         //Note: we're using a non-standard library here because boxing came up on profiling as taking 20% of time in applyBQSR.
         //IntList avoids boxing
-        final IntList mismatchKeys = isExtended()
-                ? contextWith(strandedClippedBases, mismatchesContextSize, mismatchesKeyMask, refBases)
-                : contextWith(strandedClippedBases, mismatchesContextSize, mismatchesKeyMask);
+        final IntList mismatchKeys = contextWith(strandedClippedBases, mismatchesContextSize, mismatchesKeyMask);
 
         final int readLengthAfterClipping = strandedClippedBases.length;
 
@@ -113,9 +84,7 @@ public class ContextCovariate implements Covariate {
 
         //Note: duplicated the loop to avoid checking recordIndelValues on each iteration
         if (recordIndelValues) {
-            final IntList indelKeys = isExtended()
-                    ? contextWith(strandedClippedBases, indelsContextSize, indelsKeyMask, refBases)
-                    : contextWith(strandedClippedBases, indelsContextSize, indelsKeyMask);
+            final IntList indelKeys = contextWith(strandedClippedBases, indelsContextSize, indelsKeyMask);
             for (int i = 0; i < readLengthAfterClipping; i++) {
                 final int readOffset = getStrandedOffset(negativeStrand, i, readLengthAfterClipping);
                 final int indelKey = indelKeys.getInt(i);
@@ -186,11 +155,12 @@ public class ContextCovariate implements Covariate {
 
     /**
      * calculates the context of a base independent of the covariate mode (mismatch, insertion or deletion)
-     *  @param bases       the bases in the read to build the context from
+     *
+     * @param bases       the bases in the read to build the context from
      * @param contextSize context size to use building the context
      * @param mask        mask for pulling out just the context bits
      */
-    protected IntList contextWith(final byte[] bases, final int contextSize, final int mask) {
+    private static IntList contextWith(final byte[] bases, final int contextSize, final int mask) {
 
         final int readLength = bases.length;
 
@@ -249,7 +219,7 @@ public class ContextCovariate implements Covariate {
         return keys;
     }
 
-    public int keyFromContext(final String dna) {
+    public static int keyFromContext(final String dna) {
         return keyFromContext(dna.getBytes(), 0, dna.length());
     }
 
@@ -305,126 +275,12 @@ public class ContextCovariate implements Covariate {
     @Override
     public int maximumKeyValue() {
         // the maximum value is T (11 in binary) for each base in the context
-        final int length = Math.max(mismatchesContextSize, indelsContextSize)
-                + (altEmbedded ? 1 : 0);  // the length of the context
+        final int length = Math.max(mismatchesContextSize, indelsContextSize);  // the length of the context
         int key = length;
         int bitOffset = LENGTH_BITS;
         for (int i = 0; i <length ; i++) {
             key |= (3 << bitOffset);
             bitOffset += 2;
-        }
-        return key;
-    }
-
-    private boolean isExtended() {
-        return lookaheadSize != 0;
-    }
-
-    /**
-     * calculates the context of a base independent of the covariate mode (mismatch, insertion or deletion)
-     *  @param bases       the bases in the read to build the context from
-     * @param contextSize context size to use building the context
-     * @param mask        mask for pulling out just the context bits
-     */
-    protected IntList contextWith(final byte[] bases, final int contextSize, final int mask, final byte[] refBases) {
-
-        if ( bases.length == 0 ) {
-            return new IntArrayList(0);
-        }
-
-        Utils.validate(bases.length == refBases.length, "read and references bases array not same length");
-
-        final int readLength = bases.length;
-
-        //Note: we use a specialized collection to avoid the cost of boxing and unboxing that otherwise comes up on the profiler.
-        final IntList keys = new IntArrayList(readLength);
-
-        // determine where context will actually start and end in relationship to the base in question
-        if ( readLength < contextSize ) {
-            for ( int i = 0 ; i < readLength ; i++ ) {
-                keys.add(-1);
-            }
-            return keys;
-        }
-        final int contextBefore =  contextSize - lookaheadSize;   // how many bases before current base are part of the context
-        final int contextAfter = lookaheadSize - 1;              // how many bases after current base are part of the context
-
-        // before context can be established
-        for ( int i = 0 ; i < contextBefore ; i++ ) {
-            keys.add(-1);
-        }
-
-        // main loop, for now compute for each position
-        for ( int i = contextBefore ; i < readLength - contextAfter ; i++ ) {
-
-            int currentKey = keyFromContext(bases, i - contextBefore, i + contextAfter + 1, i, refBases[i]);
-            keys.add(currentKey);
-        }
-
-        // after context can be established
-        for ( int i = readLength - contextAfter ; i < readLength ; i++ ) {
-            keys.add(-1);
-        }
-
-        Utils.validate(keys.size() == readLength, "generated keys and readLength differ");;
-
-        return keys;
-    }
-
-    protected byte[] getReadReferenceBases(GATKRead read) {
-        final byte[]    refBases = referenceDataSource.queryAndPrefetch(read.getContig(), read.getStart(), read.getEnd()).getBases();
-        final byte[]    readRefBases = new byte[read.getLength()];
-        int             readOfs = 0;
-        int             refOfs = 0;
-        for (CigarElement elem : read.getCigarElements() ) {
-            final CigarOperator op = elem.getOperator();
-            final int length = elem.getLength();
-            if ( op.consumesReadBases() && op.consumesReferenceBases() ) {
-                // simple case - copy from reference
-                System.arraycopy(refBases, refOfs, readRefBases, readOfs, length);
-                refOfs += length;
-                readOfs += length;
-            } else if ( op.consumesReadBases() ) {
-                // has read bases but not reference bases -> INS. supplement reference with N
-                Arrays.fill(readRefBases, readOfs, readOfs + length, (byte)'N');
-                readOfs += length;
-            } else if ( op.consumesReferenceBases() ) {
-                // has reference but not read bases -> DEL. skip on reference
-                refOfs += length;
-            }
-        }
-
-        Utils.validate(readOfs == read.getLength(), "did not read end of read");
-        Utils.validate(refOfs == refBases.length, "did not reach end of reference");
-
-        // reverse complement?
-        if ( read.isReverseStrand() ) {
-            return BaseUtils.simpleReverseComplement(readRefBases);
-        } else {
-            return readRefBases;
-        }
-    }
-
-    private int keyFromContext(final byte[] dna, final int start, final int end, final int refIndex, final byte refBase) {
-
-        int key = end - start + (altEmbedded ? 1 : 0);
-        int bitOffset = LENGTH_BITS;
-        for (int i = start; i < end; i++) {
-            final int baseIndex = BaseUtils.simpleBaseToBaseIndex((i != refIndex) ? dna[i] : refBase);
-            if (baseIndex == -1) { // ignore non-ACGT bases
-                return -1;
-            }
-            key |= (baseIndex << bitOffset);
-            bitOffset += 2;
-
-            if ( altEmbedded && i == refIndex ) {
-                final int altBaseIndex = BaseUtils.simpleBaseToBaseIndex(dna[i]);
-                if (altBaseIndex == -1) { // ignore non-ACGT bases
-                    return -1;
-                }
-                key |= (altBaseIndex << bitOffset);
-                bitOffset += 2;
-            }
         }
         return key;
     }

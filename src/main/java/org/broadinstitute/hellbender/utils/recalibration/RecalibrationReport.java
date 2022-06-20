@@ -4,7 +4,6 @@ package org.broadinstitute.hellbender.utils.recalibration;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -326,30 +325,6 @@ public final class RecalibrationReport {
     private static RecalibrationArgumentCollection initializeArgumentCollectionTable(GATKReportTable table) {
         final RecalibrationArgumentCollection RAC = new RecalibrationArgumentCollection();
 
-        // peek for lookahead argument - since it may change the list of covariates
-        for ( int i = 0; i < table.getNumRows(); i++ ) {
-            final String argument = table.get(i, "Argument").toString();
-            Object value = table.get(i, RecalUtils.ARGUMENT_VALUE_COLUMN_NAME);
-            if (value.equals("null")) {
-                value = null; // generic translation of null values that were printed out as strings | todo -- add this capability to the GATKReport
-            }
-            if (argument.equals("extended_context_lookahead"))
-                RAC.EXTENDED_CONTEXT_LOOKAHEAD = decodeInteger(value);
-
-            else if (argument.equals("extended_context_reference"))
-                RAC.EXTENDED_CONTEXT_REFERENCE = (value != null) ? new GATKPath((String)value) : null;
-
-            else if (argument.equals("extended_context_alt_embedded"))
-                RAC.EXTENDED_CONTEXT_ALT_EMBEDDED = decodeBoolean(value);
-
-            else if (argument.equals("mismatches_context_size"))
-                RAC.MISMATCHES_CONTEXT_SIZE = decodeInteger(value);
-
-            else if (argument.equals("indels_context_size"))
-                RAC.INDELS_CONTEXT_SIZE = decodeInteger(value);
-        }
-
-
         final List<String> standardCovariateClassNames = new StandardCovariateList(RAC, Collections.emptyList()).getStandardCovariateClassNames();
 
         for ( int i = 0; i < table.getNumRows(); i++ ) {
@@ -381,6 +356,12 @@ public final class RecalibrationReport {
                     throw new UserException("Solid is not supported. Only " + RecalibrationArgumentCollection.SOLID_NOCALL_STRATEGY + " is allowed as value for solid_nocall_strategy");
                 }
             }
+            else if (argument.equals("mismatches_context_size"))
+                RAC.MISMATCHES_CONTEXT_SIZE = decodeInteger(value);
+
+            else if (argument.equals("indels_context_size"))
+                RAC.INDELS_CONTEXT_SIZE = decodeInteger(value);
+
             else if (argument.equals("mismatches_default_quality"))
                 RAC.MISMATCHES_DEFAULT_QUALITY = decodeByte(value);
 
