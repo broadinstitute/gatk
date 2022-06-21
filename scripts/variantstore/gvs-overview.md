@@ -75,7 +75,7 @@ Input gVCF files for the GVS workflow must include the annotations described in 
 
 ### Inputs
 
-The GVS workflow inputs are specified in the Terra GVS beta workspace [workflow configuration](LINK).
+The GVS workflow inputs are described in the sections below and are specified in the Terra GVS beta workspace [workflow configuration](LINK).
 
 #### Sample data input
 
