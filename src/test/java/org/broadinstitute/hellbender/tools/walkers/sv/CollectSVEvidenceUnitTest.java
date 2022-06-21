@@ -4,8 +4,10 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.tools.sv.SiteDepth;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
 import org.broadinstitute.hellbender.tools.walkers.sv.CollectSVEvidence.*;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 import org.broadinstitute.hellbender.utils.io.FeatureOutputStream;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -14,13 +16,58 @@ import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.PriorityQueue;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class CollectSVEvidenceUnitTest extends GATKBaseTest {
+    @Test
+    public void testLocusComparator() {
+        final SAMFileHeader hdr = ArtificialReadUtils.createArtificialSamHeader();
+        final SAMSequenceDictionary dict = hdr.getSequenceDictionary();
+        Assert.assertTrue(dict.getSequences().size() >= 3, "need 3 sequences");
+        final LocusComparator lComp = new LocusComparatorImpl(dict);
+        final String curContig = dict.getSequence(1).getContig();
+        final SimpleInterval interval =
+                new SimpleInterval(curContig, 1001, 2000);
+        final String prevContig = dict.getSequence(0).getContig();
+        Assert.assertEquals(lComp.compareLocus(prevContig, 1500, interval), -1);
+        final String nextContig = dict.getSequence(2).getContig();
+        Assert.assertEquals(lComp.compareLocus(nextContig, 1500, interval), 1);
+        Assert.assertEquals(lComp.compareLocus(curContig, 1000, interval), -1);
+        Assert.assertEquals(lComp.compareLocus(curContig, 1001, interval), 0);
+        Assert.assertEquals(lComp.compareLocus(curContig, 2000, interval), 0);
+        Assert.assertEquals(lComp.compareLocus(curContig, 2001, interval), 1);
+    }
+
+    @Test
+    public void testEffectOfCigarAndMinQOnAlleleCounting() {
+        final SAMFileHeader hdr = ArtificialReadUtils.createArtificialSamHeader();
+        final LocusComparator lComp = new LocusComparatorImpl(hdr.getSequenceDictionary());
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(hdr, "30M5D30M5I30M");
+        final int readQ = read.getBaseQuality(0);
+        Assert.assertEquals(read.getBase(0), (byte)'A');
+        final String contig = read.getContig();
+        final int start = read.getStart();
+        final String sample = "smpl";
+        final List<SiteDepth> sites = new ArrayList<>(5);
+        sites.add(new SiteDepth(contig, start - 1, sample, 0, 0, 0, 0));
+        sites.add(new SiteDepth(contig, start, sample, 0, 0, 0, 0));
+        sites.add(new SiteDepth(contig, start+30, sample, 0, 0, 0, 0));
+        sites.add(new SiteDepth(contig, start+35, sample, 0, 0, 0, 0));
+        sites.add(new SiteDepth(contig, start+95, sample, 0, 0, 0, 0));
+        AlleleCounter.walkReadMatches(read, readQ+1, sites, lComp);
+        for ( final SiteDepth sd : sites ) {
+            // no counts because quality too low
+            Assert.assertEquals(sd.getDepth(0), 0);
+        }
+        AlleleCounter.walkReadMatches(read, readQ, sites, lComp);
+        Assert.assertEquals(sites.get(0).getDepth(0), 0); // upstream, so no count
+        Assert.assertEquals(sites.get(1).getDepth(0), 1); // in first 30M, 1 count
+        Assert.assertEquals(sites.get(2).getDepth(0), 0); // in 5D, so no count
+        Assert.assertEquals(sites.get(3).getDepth(0), 1); // in second 30M, 1 count
+        Assert.assertEquals(sites.get(4).getDepth(0), 0); // downstream, so no count
+    }
 
     @Test
     public void testGetReportableDiscordantReadPair() {

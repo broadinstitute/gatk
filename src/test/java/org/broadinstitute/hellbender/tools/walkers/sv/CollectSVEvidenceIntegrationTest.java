@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.codecs.DiscordantPairEvidenceCodec;
+import org.broadinstitute.hellbender.utils.codecs.SiteDepthCodec;
 import org.broadinstitute.hellbender.utils.codecs.SplitReadEvidenceCodec;
 import org.testng.annotations.Test;
 
@@ -12,6 +13,7 @@ import java.util.Collections;
 public class CollectSVEvidenceIntegrationTest extends CommandLineProgramTest {
 
     public static final String pesrTestDir = toolsTestDir + "walkers/sv/pesr";
+    public static final String tinyVCF = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.vcf";
 
     @Test
     public void testPESRCollection() throws Exception {
@@ -27,6 +29,11 @@ public class CollectSVEvidenceIntegrationTest extends CommandLineProgramTest {
                 Collections.singletonList(pesrTestDir + "/NA12878" + SplitReadEvidenceCodec.FORMAT_SUFFIX + ".gz"));
         spec2.setOutputFileExtension(SplitReadEvidenceCodec.FORMAT_SUFFIX + ".gz");
         spec2.executeTest("base PESR collection", this);
-    }
 
+        IntegrationTestSpec spec3 = new IntegrationTestSpec(
+                "-I " + NA12878_20_21_WGS_bam + " --sample-name NA12878 -F " + tinyVCF + " -AC %s",
+                Collections.singletonList(pesrTestDir + "/NA12878" + SiteDepthCodec.FORMAT_SUFFIX + ".gz"));
+        spec3.setOutputFileExtension(SiteDepthCodec.FORMAT_SUFFIX + ".gz");
+        spec3.executeTest("base PESR collection", this);
+    }
 }

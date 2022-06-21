@@ -8,7 +8,7 @@ import java.util.*;
 
 /** The read depth of each base call for a sample at some locus. */
 @VisibleForTesting
-public final class LocusDepth implements SVFeature {
+public final class SiteDepth implements SVFeature {
     private final String contig;
     private final int position;
     private final String sample;
@@ -16,12 +16,12 @@ public final class LocusDepth implements SVFeature {
 
     public final static String BCI_VERSION = "1.0";
 
-    public LocusDepth( final Locatable loc, final String sample ) {
+    public SiteDepth( final Locatable loc, final String sample ) {
         this(loc.getContig(), loc.getStart(), sample, 0, 0, 0, 0);
     }
 
-    public LocusDepth( final String contig, final int position, final String sample,
-                       final int aDepth, final int cDepth, final int gDepth, final int tDepth ) {
+    public SiteDepth( final String contig, final int position, final String sample,
+                      final int aDepth, final int cDepth, final int gDepth, final int tDepth ) {
         Utils.nonNull(contig, "contig may not be null");
         Utils.validateArg(position > 0, "starting position must be positive");
         Utils.nonNull(sample, "sample must not be null");
@@ -66,17 +66,17 @@ public final class LocusDepth implements SVFeature {
     public int getDepth( final int idx ) { return depths[idx]; }
 
     @Override
-    public LocusDepth extractSamples( final Set<String> sampleNames, final Object header ) {
+    public SiteDepth extractSamples( final Set<String> sampleNames, final Object header ) {
         return sampleNames.contains(sample) ? this : null;
     }
 
     @Override
     public boolean equals( final Object obj ) {
-        if ( !(obj instanceof LocusDepth) ) return false;
-        return equals((LocusDepth)obj);
+        if ( !(obj instanceof SiteDepth) ) return false;
+        return equals((SiteDepth)obj);
     }
 
-    public boolean equals( final LocusDepth that ) {
+    public boolean equals( final SiteDepth that ) {
         return this.position == that.position &&
                 this.depths[0] == that.depths[0] && this.depths[1] == that.depths[1] &&
                 this.depths[2] == that.depths[2] && this.depths[3] == that.depths[3] &&

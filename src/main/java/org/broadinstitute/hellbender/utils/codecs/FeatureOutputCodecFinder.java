@@ -20,12 +20,12 @@ public final class FeatureOutputCodecFinder {
         outputCodecs.add(new BafEvidenceCodec());
         outputCodecs.add(new DepthEvidenceCodec());
         outputCodecs.add(new DiscordantPairEvidenceCodec());
-        outputCodecs.add(new LocusDepthCodec());
+        outputCodecs.add(new SiteDepthCodec());
         outputCodecs.add(new SplitReadEvidenceCodec());
         outputCodecs.add(new BafEvidenceBCICodec());
         outputCodecs.add(new DepthEvidenceBCICodec());
         outputCodecs.add(new DiscordantPairEvidenceBCICodec());
-        outputCodecs.add(new LocusDepthBCICodec());
+        outputCodecs.add(new SiteDepthBCICodec());
         outputCodecs.add(new SplitReadEvidenceBCICodec());
     }
 
