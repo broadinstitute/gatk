@@ -367,7 +367,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_389_xy_reweighting_2022_05_24"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_query_labels_20220621"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
