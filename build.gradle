@@ -63,8 +63,9 @@ repositories {
 final htsjdkVersion = System.getProperty('htsjdk.version','2.24.1')
 final picardVersion = System.getProperty('picard.version','2.27.1')
 final barclayVersion = System.getProperty('barclay.version','4.0.2')
-final sparkVersion = System.getProperty('spark.version', '2.4.5')
-final scalaVersion = System.getProperty('scala.version', '2.11')
+//TODO: scala 2.12 for Sparkk 3.3.0 ?
+final sparkVersion = System.getProperty('spark.version', '3.3.0')
+final scalaVersion = System.getProperty('scala.version', '2.12')
 final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.3')
@@ -231,7 +232,7 @@ configurations {
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
         exclude group: 'com.esotericsoftware.kryo'
-        exclude module: 'spark-mllib_2.11'
+        exclude module: 'spark-mllib_2.12'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
     }
