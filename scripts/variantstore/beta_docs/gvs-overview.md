@@ -109,27 +109,25 @@ The steps of the workflow, in addition to the tools used in each step, are descr
 
 ### 1. Import sample gVCF files
 
-Tools used: CreateVariantIngestFiles (GATK)
+Custom tools used: CreateVariantIngestFiles
 
 This step validates that sample gVCF files contain required annotations and loads samples into BigQuery tables.
 
 ### 2. Train the filtering model
 
-Tools used: [SplitIntervals (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), [VariantRecalibrator](https://gatk.broadinstitute.org/hc/en-us/articles/5358906115227), [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339), ExtractFeatures, CreateFilteringFiles, CreateSiteFilteringFiles
+GATK tools used: [SplitIntervals (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), [VariantRecalibrator](https://gatk.broadinstitute.org/hc/en-us/articles/5358906115227), [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339)
+
+Custom tools used: ExtractFeatures, CreateFilteringFiles, CreateSiteFilteringFiles
 
 This step splits alternate alleles, calculates annotations to be used for filtering, and creates a non-deterministic filtering model using VQSR and annotations from a random subset of the input samples. SNPs are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, and `AS_SOR`. Indels are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR`, and `AS_MQ`.
 
 ### 3. Extract VCF files
 
-To extract joint VCF files, the GVS workflow calls two subworkflows detailed below.
+GATK tools used: [SplitIntervals (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699)
 
-#### A. GvsPrepareRangesCallset
+Custom tools used: ExtractCohort
 
-The [GvsPrepareRangesCallset subworkflow (alias = PrepareRangesCallset)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl) transposes data into a new access pattern based on genomic coordinates.
-
-#### B. GvsExtractCallset
-
-The [GvsExtractCallset subworkflow (alias = ExtractCallset)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsExtractCallset.wdl) calculates annotations including allele count (`AC`), allele number (`AN`), and allele frequency (`AF`). The subworkflow also creates and outputs a sharded joint VCF file that includes desired samples, filter sites and genotypes flagged as probable artifacts, and calculated annotations. The output VCF file is split so shards do not span multiple chromosomes.
+This step calculates annotations including allele count (`AC`), allele number (`AN`), and allele frequency (`AF`), and creates and outputs a sharded joint VCF file. The output VCF file includes desired samples, calculated annotations, and flagged probable artifacts. The output VCF file is split so shards do not span multiple chromosomes.
 
 ## Outputs
 
