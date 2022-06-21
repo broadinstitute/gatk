@@ -99,29 +99,19 @@ The table below describes the GVS workflow input variables:
 
 ## Tasks and tools
 
-The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) imports a second WDL, [GvsUnified](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsUnified.wdl), that imports additional WDL scripts containing the workflow tasks. Links to these additional WDL scripts (subtasks/subworkflows) are provided below.
-
 Overall, the GVS workflow:
 
 1. Imports sample gVCF files.
 1. Trains the filtering model.
 1. Extracts VCF files.
 
-To see specific tool parameters used in each step of the workflow, select the WDL link in the table; then find the task and view the `command {}` section of the task in the WDL script.
-
-To view or use the exact tool software, see the task's Docker image, which is specified in the task `runtime {}` section as `docker: `.
+The steps of the workflow, in addition to the tools used in each step, are described below.
 
 ### 1. Import sample gVCF files
 
-To import sample gVCF files, the GVS workflow calls two subworkflows detailed below.
+Tools used: CreateVariantIngestFiles (GATK), [GatherVcfsCloud (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555)
 
-#### A. GvsAssignIds
-
-The [GvsAssignIds subworkflow (alias = AssignIds)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsAssignIds.wdl) assigns GVS-specific IDs to each of the samples in the sample set which are used as an access pattern. The IDs enable easy access to specific sample data. GvsAssignIds imports an additional workflow, [GvsCreateTables](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsCreateTables.wdl).
-
-#### B. GvsImportGenomes
-
-The [GvsImportGenomes subworkflow (alias = ImportGenomes)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsImportGenomes.wdl) validates that sample gVCF files contain required annotations and loads samples into several tables in BigQuery. GvsImportGenomes imports an additional workflow, [GvsUtils (alias = Utils)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsUtils.wdl).
+This step validates that sample gVCF files contain required annotations and loads samples into BigQuery tables.
 
 ### 2. Train the filtering model
 
