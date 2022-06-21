@@ -95,10 +95,11 @@ The table below describes the GVS workflow input variables:
 | input_vcfs | Cloud paths to the sample gVCF files. | Array of files |
 | input_vcf_indexes | Cloud paths to the sample gVCF index files. | Array of files |
 | callset_identifier | String used as the name of the filter model and as the prefix to the names of the BigQuery extract tables and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
+| extract_output_gcs_dir | Optional string describing the desired cloud path for output files. | String |
 
 ## Tasks and tools
 
-The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) imports additional WDL scripts that contain the workflow tasks. Links to these additional WDL scripts (subtasks/subworkflows) are provided below.
+The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) imports a second WDL, [GvsUnified](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsUnified.wdl), that imports additional WDL scripts containing the workflow tasks. Links to these additional WDL scripts (subtasks/subworkflows) are provided below.
 
 Overall, the GVS workflow:
 
