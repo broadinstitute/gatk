@@ -9,7 +9,7 @@
 
 ## Introduction to the Genomic Variant Store pipeline
 
-The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard as a solution for variant discovery at scales previously inaccessible to most researchers due to large cohort sizes and high computational and financial costs. The GVS is powered by BigQuery and currently supports the creation of joint callsets of up to 100,000 human genomes faster, cheaper, and more reliably than existing solutions.
+The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard as a solution for variant discovery on a large scale. The GVS is powered by BigQuery and creates joint callsets of up to 100,000 human genomes more reliably with decreased time and cost compared to previous solutions.
 
 The [GVS pipeline](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the GVS. The workflow takes in up to 100,000 single sample gVCF files and combines them into a variant filtering model driven by machine learning. The model is applied to the data, and a sharded joint VCF with variant calls is output.
 
@@ -61,16 +61,16 @@ Input gVCF files for the GVS workflow must include the annotations described in 
 
 | Annotation | Description | Notes |
 | --- | --- | --- |
-| Ref | Reference allele | --- |
-| Alt | Alternate allele | --- |
-| AS_RAW_MQ, RAW_MQandDP, or RAW_MQ | RMS mapping quality (‘AS’: allele-specific) | Required for VQSR Data |
-| AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate versus reference read mapping qualities | Required for VQSR Data |
-| QUALapprox | Sum of PL[0] values; used to approximate the QUAL score | Required for VQSR Data |
-| AS_QUALapprox | Allele-specific sum of PL[0] values; used to approximate the QUAL score | Required for VQSR Data |
-| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE | Allele-specific forward/reverse read counts for strand bias tests | Required for VQSR Data |
-| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or read depth  (‘AS’: allele-specific) | Required for VQSR Data |
-| call_GT | Genotype | --- |
-| call_GQ | Genotype quality | --- |
+| Ref | Reference allele. | --- |
+| Alt | Alternate allele. | --- |
+| AS_RAW_MQ, RAW_MQandDP, or RAW_MQ | RMS mapping quality (‘AS’: allele-specific). | Required for VQSR Data |
+| AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate versus reference read mapping qualities. | Required for VQSR Data |
+| QUALapprox | Sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR Data |
+| AS_QUALapprox | Allele-specific sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR Data |
+| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE | Allele-specific forward/reverse read counts for strand bias tests. | Required for VQSR Data |
+| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or read depth  (‘AS’: allele-specific). | Required for VQSR Data |
+| call_GT | Genotype. | --- |
+| call_GQ | Genotype quality. | --- |
 
 ### Inputs
 
