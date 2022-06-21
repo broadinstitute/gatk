@@ -19,7 +19,6 @@ workflow GvsJointVariantCalling {
       Int extract_maxretries_override = ""
       Int extract_preemptible_override = ""
       Int extract_scatter_count = ""
-      File gatk_override = ""
       Int load_data_preemptible_override = ""
       Int load_data_maxretries_override = ""
       Array[String] query_labels = []
@@ -32,6 +31,7 @@ workflow GvsJointVariantCalling {
       Int SNP_VQSR_max_gaussians_override = 6
       Int SNP_VQSR_mem_gb_override = ""
     }
+    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-531-gf8f4ede-SNAPSHOT-local.jar"
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
