@@ -109,21 +109,15 @@ The steps of the workflow, in addition to the tools used in each step, are descr
 
 ### 1. Import sample gVCF files
 
-Tools used: CreateVariantIngestFiles (GATK), [GatherVcfsCloud (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555)
+Tools used: CreateVariantIngestFiles (GATK)
 
 This step validates that sample gVCF files contain required annotations and loads samples into BigQuery tables.
 
 ### 2. Train the filtering model
 
-To train the filtering model, the GVS workflow calls two subworkflows detailed below.
+Tools used: [SplitIntervals (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), [VariantRecalibrator](https://gatk.broadinstitute.org/hc/en-us/articles/5358906115227), [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339), ExtractFeatures, CreateFilteringFiles, CreateSiteFilteringFiles
 
-#### A. GvsCreateAltAllele
-
-The [GvsCreateAltAllele subworkflow (alias = CreateAltAllele)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsCreateAltAllele.wdl) splits alternate alleles and calculates additional annotations to be used for filtering. GvsCreateAltAllele imports an additional workflow, [GvsUtils (alias = Utils)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsUtils.wdl).
-
-#### B. GvsCreateFilterSet
-
-The [GvsCreateFilterSet subworkflow (alias = CreateFilterSet)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsCreateFilterSet.wdl) creates a non-deterministic filtering model using [VQSR](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612) and annotations from a random subset of the input samples. SNPs are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, and `AS_SOR`. Indels are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR`, and `AS_MQ`. GvsCreateFilterSet imports two additional WDL scripts, [GvsWarpTasks (alias = Tasks)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsWarpTasks.wdl) and [GvsUtils (alias = Utils)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsUtils.wdl).
+This step splits alternate alleles, calculates annotations to be used for filtering, and creates a non-deterministic filtering model using VQSR and annotations from a random subset of the input samples. SNPs are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, and `AS_SOR`. Indels are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR`, and `AS_MQ`.
 
 ### 3. Extract VCF files
 
