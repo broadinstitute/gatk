@@ -21,7 +21,8 @@ The following table provides a quick overview of the GVS pipeline features:
 
 | Pipeline features | Description | Source | 
 | --- | --- | --- |
-| Overall workflow | Joint Calling with the Genomic Variant Store using a machine learning-powered filter model | Code available from [GitHub](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) |
+| Overall workflow | End-to-end joint calling pipeline that imports samples, trains the filtering model, and extracts VCF files | Code available from [GitHub](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) |
+| Filtering model | Machine-learning powered; uses VQSR and sample annotations | [VQSR](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612) |
 | Workflow language | WDL 1.0 | [openWDL](https://github.com/openwdl/wdl) |
 | Genomic reference sequence | GRCh38 (hg38) human genome primary sequence | Genome Reference Consortium [GRCh38](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.39) |
 | Data input file format | File format in which input data is provided | [gVCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531812) |
