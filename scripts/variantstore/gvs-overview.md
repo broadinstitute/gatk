@@ -4,14 +4,14 @@
 | :----: | :---: | :----: | :--------------: |
 | [GvsJointVariantCalling](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) | June, 2022 | [Kaylee Mathews](mailto:kmathews@broadinstitute.org) and [Aurora Cremer](mailto:aurora@broadinstitute.org) | If you have questions or feedback, contact the [Broad Variants team](mailto:variants@broadinstitute.org) |
  
-![Diagram depicting the Broad Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then used to extract cohorts and produce sharded joint VCF files. Each step integrates BigQuery and GATK tools.](/scripts/variantstore/genomic-variant-store_diagram.png)
+![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then used to extract cohorts and produce sharded joint VCF files. Each step integrates BigQuery and GATK tools.](/scripts/variantstore/genomic-variant-store_diagram.png)
 
 
 ## Introduction to the Genomic Variant Store pipeline
 
-The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard as a solution for variant discovery at scales previously inaccessible to most researchers due to large cohort sizes and high computational and financial costs. The Broad GVS is powered by BigQuery and currently supports the creation of joint callsets of up to 100,000 human genomes faster, cheaper, and more reliably than existing solutions.
+The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard as a solution for variant discovery at scales previously inaccessible to most researchers due to large cohort sizes and high computational and financial costs. The GVS is powered by BigQuery and currently supports the creation of joint callsets of up to 100,000 human genomes faster, cheaper, and more reliably than existing solutions.
 
-The [GVS pipeline](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the Broad GVS. The workflow takes in up to 100,000 single sample gVCF files and combines them into a variant filtering model driven by machine learning. The model is applied to the data, and a sharded joint VCF with variant calls is output.
+The [GVS pipeline](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the GVS. The workflow takes in up to 100,000 single sample gVCF files and combines them into a variant filtering model driven by machine learning. The model is applied to the data, and a sharded joint VCF with variant calls is output.
 
 The filtering model is based on the [WARP Joint Genotyping workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/JointGenotyping.wdl) and uses the [Variant Quality Score Recalibration (VQSR)](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612) technique which uses machine learning to model the technical profile of variants to flag probable artifacts.
 
@@ -21,7 +21,7 @@ The following table provides a quick overview of the GVS pipeline features:
 
 | Pipeline features | Description | Source | 
 | --- | --- | --- |
-| Overall workflow | Joint Calling with the Broad Genomic Variant Store using a machine learning-powered filter model | Code available from [GitHub](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) |
+| Overall workflow | Joint Calling with the Genomic Variant Store using a machine learning-powered filter model | Code available from [GitHub](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) |
 | Workflow language | WDL 1.0 | [openWDL](https://github.com/openwdl/wdl) |
 | Genomic reference sequence | GRCh38 (hg38) human genome primary sequence | Genome Reference Consortium [GRCh38](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.39) |
 | Data input file format | File format in which input data is provided | [gVCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531812) |
@@ -31,7 +31,7 @@ The following table provides a quick overview of the GVS pipeline features:
 
 ### Getting started with Terra
 
-The GVS workflow is available on Terra, a cloud-based platform for biomedical research. After registering, you can access the [GVS workspace](LINK), which contains instructions for performing joint calling with the Broad GVS using example data uploaded to the workspace. For more information on using the Terra platform, see the [Terra Support Center](https://support.terra.bio/hc/en-us).
+The GVS workflow is available on Terra, a cloud-based platform for biomedical research. After registering, you can access the [GVS workspace](LINK), which contains instructions for performing joint calling with the GVS using example data uploaded to the workspace. For more information on using the Terra platform, see the [Terra Support Center](https://support.terra.bio/hc/en-us).
 
 If you are new to Terra, you’ll need to [register for a Terra account](https://support.terra.bio/hc/en-us/articles/360028235911). Beta testers of the GVS will be given access to a Broad-managed billing project, but to use Terra for other projects, you’ll need to [set up a billing project](https://support.terra.bio/hc/en-us/articles/360046295092).
 
@@ -93,7 +93,7 @@ The table below describes the GVS workflow input variables:
 | external_sample_names | Strings describing the unique sample IDs in the Terra data model. | Array of strings |
 | input_vcfs | Cloud paths to the sample gVCF files. | Array of files |
 | input_vcf_indexes | Cloud paths to the sample gVCF index files. | Array of files |
-| callset_identifier | String used as the name of the filter model and as the prefix to the names of the BigQuery extract tables and final joint VCF shards. | String |
+| callset_identifier | String used as the name of the filter model and as the prefix to the names of the BigQuery extract tables and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
 
 ## Tasks and tools
 
