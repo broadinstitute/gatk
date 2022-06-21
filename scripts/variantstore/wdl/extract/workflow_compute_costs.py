@@ -75,7 +75,8 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
         workflows.sort(key=lambda w: w['submission_timestamp'], reverse=True)
         # Add summary cost and links
         workflow_costs[wdl]['total'] = {
-            'cost': sum([w['cost'] for w in workflows]),
+            # Firecloud currently reports costs to 6 decimal places so keep the sum at that precision.
+            'cost': round(sum([w['cost'] for w in workflows]), 6),
             'links': [w['link'] for w in workflows]
         }
 
