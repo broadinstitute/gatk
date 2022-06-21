@@ -102,7 +102,7 @@ The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-us
 
 Overall, the GVS workflow:
 
-1. Imports sample genomes.
+1. Imports sample gVCF files.
 1. Trains the filtering model.
 1. Extracts VCF files.
 
@@ -110,9 +110,9 @@ To see specific tool parameters used in each step of the workflow, select the WD
 
 To view or use the exact tool software, see the task's Docker image, which is specified in the task `runtime {}` section as `docker: `.
 
-### 1. Import sample genomes
+### 1. Import sample gVCF files
 
-To import sample genomes, the GVS workflow calls two subworkflows detailed below.
+To import sample gVCF files, the GVS workflow calls two subworkflows detailed below.
 
 #### A. GvsAssignIds
 
