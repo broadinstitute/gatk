@@ -4,18 +4,18 @@ workflow GvsCallsetCost {
     input {
         String project_name
         String dataset_name
-#        String workspace_namespace
-#        String workspace_name
-#        String callset_name
+        String workspace_namespace
+        String workspace_name
+        String callset_name
         Array[String] excluded_submission_ids = []
     }
 
-    # call WorkflowComputeCosts {
-    #     input:
-    #         workspace_namespace = workspace_namespace,
-    #         workspace_name = workspace_name,
-    #         excluded_submission_ids = excluded_submission_ids
-    # }
+    call WorkflowComputeCosts {
+        input:
+            workspace_namespace = workspace_namespace,
+            workspace_name = workspace_name,
+            excluded_submission_ids = excluded_submission_ids
+    }
 
     call CoreStorageModelSizes {
         input:
@@ -23,12 +23,6 @@ workflow GvsCallsetCost {
             dataset_name = dataset_name
     }
 
-#    call BigQueryWriteAPICost {
-#        input:
-#            project_id = project_id,
-#            dataset_name = dataset_name
-#    }
-#
 #    call BigQueryScannedCost {
 #        input:
 #            project_id = project_id,
@@ -44,8 +38,8 @@ workflow GvsCallsetCost {
 #    }
 
     output {
-        # File workflow_compute_costs = WorkflowComputeCosts.costs
-        # File workflow_compute_costs_log = WorkflowComputeCosts.log
+        File workflow_compute_costs = WorkflowComputeCosts.costs
+        File workflow_compute_costs_log = WorkflowComputeCosts.log
         String vet_gib = CoreStorageModelSizes.vet_gib
         String ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
         String alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
@@ -136,7 +130,7 @@ task CoreStorageModelSizes {
 
         if [[ $dataset_name_length -lt 1 ]] || [[ $dataset_name_length -gt 1024 ]]
         then
-            echo "Invalid dataset name '~{dataset_name}': must be no more than 1024 characters."
+            echo "Invalid dataset name '~{dataset_name}': must be at least one but no more than 1024 characters."
             fail=1
         fi
 
@@ -158,30 +152,6 @@ task CoreStorageModelSizes {
         Float alt_allele_gib = read_float("alt_allele_gib.txt")
     }
 }
-
-#task BigQueryWriteAPICost {
-#    meta {
-#        description: "Estimate GvsImportGenomes use of the BQ Write API via core storage costs from the sizes of vet_% and ref_ranges_% tables."
-#        volatile: true
-#    }
-#
-#    input {
-#        String project_id
-#        String dataset_name
-#    }
-#    command <<<
-#    >>>
-#
-#    runtime {
-#        docker: ""
-#    }
-#
-#    output {
-#        Float vet_gib = read_float("")
-#        Float ref_ranges_gib = read_float("")
-#        Float import_genomes_cost = 3
-#    }
-#}
 
 #task BigQueryScannedCost {
 #    meta {
