@@ -6,14 +6,13 @@
  
 ![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then used to extract cohorts and produce sharded joint VCF files. Each step integrates BigQuery and GATK tools.](/scripts/variantstore/genomic-variant-store_diagram.png)
 
-
 ## Introduction to the Genomic Variant Store pipeline
 
-The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard as a solution for variant discovery on a large scale. The GVS is powered by BigQuery and creates joint callsets of up to 100,000 human genomes more reliably with decreased time and cost compared to previous solutions.
+The [Genomic Variant Store (GVS)](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) was developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard as a solution for variant discovery on a large scale. The GVS is powered by BigQuery and creates large joint callsets more reliably with decreased time and cost compared to previous solutions.
 
-The [GVS pipeline](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the GVS. The workflow takes in up to 100,000 single sample gVCF files and combines them into a variant filtering model driven by machine learning. The model is applied to the data, and a sharded joint VCF with variant calls is output.
+The [GVS pipeline](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the GVS. The workflow takes in single sample gVCF files, loads them into [BigQuery](https://cloud.google.com/bigquery/docs) tables, and combines them into a variant filtering model driven by machine learning. The model is uploaded back into BigQuery and applied to the data. The workflow produces sharded joint VCF files with indices, a manifest file, and metrics.
 
-The filtering model is based on the [WARP Joint Genotyping workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/JointGenotyping.wdl) and uses the [Variant Quality Score Recalibration (VQSR)](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612) technique, which uses machine learning to model the technical profile of variants to flag probable artifacts.
+The filtering model is based on the [WARP Joint Genotyping workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/JointGenotyping.wdl) and uses the [Variant Quality Score Recalibration (VQSR)](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612) technique, which uses machine learning to model the technical profile of variants and flag probable artifacts.
 
 ## Quickstart table
 
@@ -22,7 +21,7 @@ The following table provides a quick overview of the GVS pipeline features:
 | Pipeline features | Description | Source | 
 | --- | --- | --- |
 | Overall workflow | End-to-end joint calling pipeline that imports samples, trains the filtering model, and extracts VCF files | Code available from [GitHub](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) |
-| Filtering model | Machine-learning powered; uses VQSR and sample annotations | [VQSR](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612) |
+| Filtering model | Powered by machine learning; uses VQSR and sample annotations | [VQSR](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612) |
 | Workflow language | WDL 1.0 | [openWDL](https://github.com/openwdl/wdl) |
 | Genomic reference sequence | GRCh38 (hg38) human genome primary sequence | Genome Reference Consortium [GRCh38](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.39) |
 | Data input file format | File format in which input data is provided | [gVCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531812) |
@@ -79,7 +78,7 @@ The GVS workflow inputs are described in the sections below and are specified in
 
 #### Sample data input
 
-The GVS workflow takes in reblocked single sample gVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. While the GVS workflow takes in up to 100,000 single sample gVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
+The GVS workflow takes in reblocked single sample gVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. While the GVS workflow has been tested with 100,000 single sample gVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
 
 The [Terra GVS beta workspace](LINK) has been configured with example reblocked gVCF files that you can use to test the workflow. To test the workflow on your own sample data, you’ll need to create an additional data table in your workspace that specifies the locations of the files in the cloud. For step-by-step instructions on creating data tables in Terra, see [How to make a data table from scratch or a template](https://support.terra.bio/hc/en-us/articles/6197368140955). If your data is stored locally, you can upload it to your workspace bucket using the Data Uploader in Terra by following the instructions in the article, [How to use the Data Uploader](https://support.terra.bio/hc/en-us/articles/4419428208411). You’ll also need to ensure that you have a BigQuery dataset and Google project with the correct permissions and that your gVCF files are reblocked, as described in the [Workflow requirements](#workflow-requirements) section above.
 
