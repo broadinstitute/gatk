@@ -1336,7 +1336,8 @@ public class ExtractCohortEngine {
             if (refRow.getLocation() <= location) {
 
                 // always add to the appropriate cache for use downstream
-                mergeIntoReferenceCache(referenceCache.get(refRow.getSampleId()), refRow);
+                //mergeIntoReferenceCache(referenceCache.get(refRow.getSampleId()), refRow);
+                referenceCache.get(refRow.getSampleId()).add(refRow);
 
                 // if this is for the requested sample, return the value
                 if (refRow.getSampleId() == sampleId) {
@@ -1346,7 +1347,8 @@ public class ExtractCohortEngine {
 
             // we are now past the position, put this one entry in the cache and return the inferred state
             if (refRow.getLocation() > location) {
-                mergeIntoReferenceCache(referenceCache.get(refRow.getSampleId()), refRow);
+                //mergeIntoReferenceCache(referenceCache.get(refRow.getSampleId()), refRow);
+                referenceCache.get(refRow.getSampleId()).add(refRow);
                 return inferredReferenceRecord;
             }
         }
