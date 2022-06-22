@@ -209,6 +209,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsCallsetCost
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetCost.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_472_workflow_compute_costs
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

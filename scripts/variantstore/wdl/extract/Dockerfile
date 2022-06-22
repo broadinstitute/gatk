@@ -4,6 +4,7 @@ FROM gcr.io/google.com/cloudsdktool/cloud-sdk:349.0.0
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 RUN apt-get update && apt-get -y upgrade && apt-get -y install bcftools
+RUN pip install firecloud
 
 # Copy the application source code.
 COPY create_variant_annotation_table.py /app
@@ -16,5 +17,6 @@ COPY utils.py /app
 COPY add_max_as_vqslod.py /app
 COPY curate_input_array_files.py /app
 COPY scale_xy_bed_values.py /app
+COPY workflow_compute_costs.py /app
 
 WORKDIR /app
