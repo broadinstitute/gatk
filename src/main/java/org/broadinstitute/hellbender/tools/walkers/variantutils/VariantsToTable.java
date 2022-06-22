@@ -213,10 +213,37 @@ public final class VariantsToTable extends VariantWalker {
         inputHeader = getHeaderForVariants();
         outputStream = createPrintStream();
 
-        if (genotypeFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty()) {
-            samples = Collections.emptySortedSet();
+        // if no fields specified, default to include all fields listed in header into table
+        if(fieldsToTake.isEmpty() && genotypeFieldsToTake.isEmpty() && asFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty()){
+            logger.warn("No fields were specified. All fields will be included in output table.");
+
+            // add all mandatory VCF fields (except INFO)
+            for(VCFHeader.HEADER_FIELDS header : VCFHeader.HEADER_FIELDS.values()){
+                if(header.name() != "INFO")
+                    fieldsToTake.add(header.name());
+            }
+
+            // add all INFO fields present in VCF header
+            for (final VCFInfoHeaderLine infoLine : inputHeader.getInfoHeaderLines()) {
+                fieldsToTake.add(infoLine.getID());
+            }
+
+            // add all FORMAT fields present in VCF header
+            for (final VCFFormatHeaderLine formatLine : inputHeader.getFormatHeaderLines()) {
+                if(formatLine.getID().equals("GT")){
+                    genotypeFieldsToTake.add(0, formatLine.getID());
+                }
+                else {
+                    genotypeFieldsToTake.add(formatLine.getID());
+                }
+            }
         }
-         else {
+
+        // if fields specified, but none are genotype fields, set samples to empty
+        if (genotypeFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty() && (!fieldsToTake.isEmpty() || !asFieldsToTake.isEmpty())) {
+                samples = Collections.emptySortedSet();
+        }
+        else {
             final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
             samples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
 
@@ -240,32 +267,6 @@ public final class VariantsToTable extends VariantWalker {
             outputStream.println("RecordID\tSample\tVariable\tValue");
         } else {
             final List<String> fields = new ArrayList<>();
-
-            // if no fields specified, include all fields listed in header into table
-            if(fieldsToTake.isEmpty() && genotypeFieldsToTake.isEmpty() && asFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty()){
-                logger.warn("No fields were specified. All fields will be included in output table.");
-
-                // if
-                final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
-                samples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
-
-                // add all mandatory fields except INFO
-                for(VCFHeader.HEADER_FIELDS header : VCFHeader.HEADER_FIELDS.values()){
-                    if(header.name() != "INFO")
-                        fieldsToTake.add(header.name());
-                }
-
-                // add all INFO fields present in header
-                for (final VCFInfoHeaderLine infoLine : inputHeader.getInfoHeaderLines()) {
-                    fieldsToTake.add(infoLine.getID());
-                }
-
-                // add all FORMAT fields present in header
-                for (final VCFFormatHeaderLine formatLine : inputHeader.getFormatHeaderLines()) {
-                    genotypeFieldsToTake.add(formatLine.getID());
-                }
-
-            }
 
             fields.addAll(fieldsToTake);
             fields.addAll(asFieldsToTake);
