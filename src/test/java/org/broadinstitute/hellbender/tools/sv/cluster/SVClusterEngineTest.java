@@ -25,8 +25,11 @@ public class SVClusterEngineTest {
     @Test
     public void testCollapser() {
         //depth only and depthAndStuff have same bounds, less than call2
-        final List<SVCallRecord> testCluster = Arrays.asList(SVTestUtils.depthOnly, SVTestUtils.depthAndStuff, SVTestUtils.call2);
-        final SVCallRecord flattened = SVTestUtils.defaultCollapser.collapse(testCluster);
+        final Map<Long, SVCallRecord> case1 = new HashMap<>();
+        case1.put(0L, SVTestUtils.depthOnly);
+        case1.put(1L, SVTestUtils.depthAndStuff);
+        case1.put(2L, SVTestUtils.call2);
+        final SVCallRecord flattened = SVTestUtils.defaultCollapser.collapse(new BasicOutputCluster<>(case1));
         Assert.assertEquals(flattened.getPositionA(), SVTestUtils.depthAndStuff.getPositionA());
         Assert.assertEquals(flattened.getPositionB(), SVTestUtils.depthAndStuff.getPositionB());
         //should have all the algs
@@ -39,13 +42,18 @@ public class SVClusterEngineTest {
         SVTestUtils.assertContainsAllIgnoreRefAlleleBase(flattened.getGenotypes(), SVTestUtils.call2.getGenotypes(), true);
 
         // Test subtyped insertions
-        final List<SVCallRecord> subtypedRecords = Lists.newArrayList(
+        final Map<Long, SVCallRecord> case2 = new HashMap<>();
+        case2.put(
+                0L,
                 SVTestUtils.newCallRecordWithAlleles(
                         Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                         Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
                         StructuralVariantType.INS,
                         2,
-                        null),
+                        null)
+        );
+        case2.put(
+                1L,
                 SVTestUtils.newCallRecordWithAlleles(
                         Lists.newArrayList(Allele.REF_N, Allele.create("<INS:MEI>")),
                         Lists.newArrayList(Allele.REF_N, Allele.create("<INS:MEI>")),
@@ -53,7 +61,7 @@ public class SVClusterEngineTest {
                         2,
                         null)
         );
-        final SVCallRecord subtypedFlattened = SVTestUtils.defaultCollapser.collapse(subtypedRecords);
+        final SVCallRecord subtypedFlattened = SVTestUtils.defaultCollapser.collapse(new BasicOutputCluster<>(case2));
         Assert.assertEquals(subtypedFlattened.getAlleles().size(), 2);
         Assert.assertEquals(subtypedFlattened.getAltAlleles().size(), 1);
         final List<Allele> collapsedAlleles = subtypedFlattened.getGenotypes().stream().map(Genotype::getAlleles)
@@ -354,10 +362,10 @@ public class SVClusterEngineTest {
                 "chr1", positionB3, false, StructuralVariantType.DEL,
                 positionB3 - positionA3 + 1, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), SVTestUtils.hg38Dict);
-        engine.add(call1);
-        engine.add(call2);
-        engine.add(call3);
-        Assert.assertEquals(engine.forceFlush().size(), result);
+        engine.add(call1, 0L);
+        engine.add(call2, 1L);
+        engine.add(call3, 2L);
+        Assert.assertEquals(engine.flush(true).size(), result);
     }
 
     @Test
@@ -365,12 +373,11 @@ public class SVClusterEngineTest {
         //single-sample merge case, ignoring sample sets
         final CanonicalSVClusterEngine<SVCallRecord> temp1 = SVTestUtils.getNewDefaultSingleLinkageEngine();
         Assert.assertTrue(temp1.isEmpty());
-        temp1.add(SVTestUtils.call1);
+        temp1.add(SVTestUtils.call1, 0L);
         Assert.assertFalse(temp1.isEmpty());
         //force new cluster by adding a non-overlapping event
-        temp1.add(SVTestUtils.call3);
-        final List<SVCallRecord> output1 = temp1.forceFlush().stream()
-                .map(BasicOutputCluster::getMembers)
+        temp1.add(SVTestUtils.call3, 1L);
+        final List<SVCallRecord> output1 = temp1.flush(true).stream()
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList()); //flushes all clusters
         Assert.assertTrue(temp1.isEmpty());
@@ -379,12 +386,11 @@ public class SVClusterEngineTest {
         SVTestUtils.assertEqualsExceptMembershipAndGT(SVTestUtils.call3, output1.get(1));
 
         final CanonicalSVClusterEngine<SVCallRecord> temp2 = SVTestUtils.getNewDefaultSingleLinkageEngine();
-        temp2.add(SVTestUtils.call1);
-        temp2.add(SVTestUtils.overlapsCall1);
+        temp2.add(SVTestUtils.call1, 0L);
+        temp2.add(SVTestUtils.overlapsCall1, 1L);
         //force new cluster by adding a call on another contig
-        temp2.add(SVTestUtils.call4_chr10);
-        final List<SVCallRecord> output2 = temp2.forceFlush().stream()
-                .map(BasicOutputCluster::getMembers)
+        temp2.add(SVTestUtils.call4_chr10, 2L);
+        final List<SVCallRecord> output2 = temp2.flush(true).stream()
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(output2.size(), 2);
@@ -395,10 +401,9 @@ public class SVClusterEngineTest {
 
         //checking insensitivity to sample set overlap
         final CanonicalSVClusterEngine<SVCallRecord> temp3 = SVTestUtils.getNewDefaultSingleLinkageEngine();
-        temp3.add(SVTestUtils.call1);
-        temp3.add(SVTestUtils.sameBoundsSampleMismatch);
-        final List<SVCallRecord> output3 = temp3.forceFlush().stream()
-                .map(BasicOutputCluster::getMembers)
+        temp3.add(SVTestUtils.call1, 0L);
+        temp3.add(SVTestUtils.sameBoundsSampleMismatch, 1L);
+        final List<SVCallRecord> output3 = temp3.flush(true).stream()
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(output3.size(), 1);
@@ -416,10 +421,9 @@ public class SVClusterEngineTest {
         for (int i = 0; i < numRecords; i++) {
             final int start = 1000 + 10 * i;
             final int end = start + length - 1;
-            engine.add(SVTestUtils.newCallRecordWithIntervalAndType(start, end, StructuralVariantType.DEL));
+            engine.add(SVTestUtils.newCallRecordWithIntervalAndType(start, end, StructuralVariantType.DEL), (long) i);
         }
-        final List<SVCallRecord> result = engine.forceFlush().stream()
-                .map(BasicOutputCluster::getMembers)
+        final List<SVCallRecord> result = engine.flush(true).stream()
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(result.size(), 50);
@@ -525,9 +529,11 @@ public class SVClusterEngineTest {
             records.add(SVTestUtils.newCallRecordWithIntervalAndType(Math.min(pos1, pos2), Math.max(pos1, pos2), StructuralVariantType.DEL));
         }
         final CanonicalSVClusterEngine<SVCallRecord> engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
-        records.stream().sorted(SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict)).forEach(engine::add);
-        final List<SVCallRecord> output = engine.forceFlush().stream()
-                .map(BasicOutputCluster::getMembers)
+        final List<SVCallRecord> sortedRecords = records.stream().sorted(SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict)).collect(Collectors.toList());
+        for (int i = 0; i < sortedRecords.size(); i++) {
+            engine.add(sortedRecords.get(i), (long) i);
+        }
+        final List<SVCallRecord> output = engine.flush(true).stream()
                 .map(SVTestUtils.defaultCollapser::collapse)
                 .collect(Collectors.toList());
         Assert.assertEquals(output.size(), 2926);

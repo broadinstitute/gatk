@@ -45,7 +45,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
                 .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.DEFRAGMENT_CNV)
                 .add(SVCluster.DEFRAG_PADDING_FRACTION_LONG_NAME, 0.25)
-                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0.5);
+                .add(SVCluster.DEFRAG_SAMPLE_OVERLAP_LONG_NAME, 0.5);
 
         runCommandLine(args, SVCluster.class.getSimpleName());
 
@@ -291,16 +291,18 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 mixedParameters,
                 pesrParameters);
 
-        vcfInputFilenames.stream()
+        final List<SVCallRecord> records = vcfInputFilenames.stream()
                 .flatMap(vcfFilename -> VariantContextTestUtils.readEntireVCFIntoMemory(getToolTestDataDir() + vcfFilename).getValue().stream())
                 .sorted(IntervalUtils.getDictionaryOrderComparator(referenceSequenceFile.getSequenceDictionary()))
                 .map(SVCallRecordUtils::create)
-                .forEach(engine::add);
+                .collect(Collectors.toList());
+        for (int i = 0; i < records.size(); i++) {
+            engine.add(records.get(i), (long) i);
+        }
 
         final Comparator<SVCallRecord> recordComparator = SVCallRecordUtils.getCallComparator(referenceSequenceFile.getSequenceDictionary());
         final SVCollapser<SVCallRecord> collapser = SVTestUtils.defaultCollapser;
-        final List<VariantContext> expectedVariants = engine.forceFlush().stream()
-                .map(BasicOutputCluster::getMembers)
+        final List<VariantContext> expectedVariants = engine.flush(true).stream()
                 .map(collapser::collapse)
                 .sorted(recordComparator)
                 .map(SVCallRecordUtils::getVariantBuilder)

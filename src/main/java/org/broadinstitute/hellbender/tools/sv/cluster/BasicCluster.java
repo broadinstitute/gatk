@@ -10,29 +10,29 @@ import java.util.Set;
  * Container class for clustered items
  */
 public class BasicCluster {
-    private final Set<Integer> members;
-    private int minStart;
+    private final Set<Long> members;
+    private String contig;
     private int maxClusterableStart;
 
-    public BasicCluster(final List<Integer> members, final int minStart, final int maxClusterableStart) {
+    public BasicCluster(final List<Long> members, final String contig, final int maxClusterableStart) {
         Utils.nonNull(members);
-        this.members = new HashSet<>(members);
-        this.minStart = minStart;
+        this.members = Utils.nonNull(new HashSet<>(members));
+        this.contig = Utils.nonNull(contig);
         this.maxClusterableStart = maxClusterableStart;
     }
 
-    public void addMember(final int member, final int memberStart, final int memberMaxClusterableStart) {
+    public void addMember(final Long member, final String memberContig, final int memberMaxClusterableStart) {
+        Utils.validate(contig.equals(memberContig), "Attempted to add member on contig " + memberContig  + " to cluster on contig " + contig);
         members.add(member);
         maxClusterableStart = Math.max(maxClusterableStart, memberMaxClusterableStart);
-        minStart = Math.max(minStart, memberStart);
     }
 
-    public Set<Integer> getMembers() {
+    public Set<Long> getMembers() {
         return members;
     }
 
-    public int getMinStart() {
-        return minStart;
+    public String getContig() {
+        return contig;
     }
 
     public int getMaxClusterableStart() {

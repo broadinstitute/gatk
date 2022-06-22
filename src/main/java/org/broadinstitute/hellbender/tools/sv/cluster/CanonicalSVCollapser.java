@@ -10,6 +10,7 @@ import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.SVLocatable;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -95,6 +96,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
     private final InsertionLengthSummaryStrategy insertionLengthSummaryStrategy;
     private final ReferenceSequenceFile reference;
     private final SAMSequenceDictionary dictionary;
+    private final Comparator<SVLocatable> comparator;
 
     private static final AlleleCollectionCollapserComparator ALLELE_COMPARATOR = new AlleleCollectionCollapserComparator();
 
@@ -107,10 +109,12 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         this.altAlleleSummaryStrategy = altAlleleSummaryStrategy;
         this.breakpointSummaryStrategy = breakpointSummaryStrategy;
         this.insertionLengthSummaryStrategy = insertionLengthSummaryStrategy;
+        this.comparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
     }
 
     @Override
-    public SVCallRecord collapse(final Collection<SVCallRecord> items) {
+    public SVCallRecord collapse(final BasicOutputCluster<SVCallRecord> cluster) {
+        final Collection<SVCallRecord> items = cluster.getMembers();
         validateRecords(items);
         final String id = collapseIds(items);
         final List<String> algorithms = collapseAlgorithms(items);

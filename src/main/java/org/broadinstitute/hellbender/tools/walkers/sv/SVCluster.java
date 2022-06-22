@@ -20,10 +20,13 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.SVLocatable;
+import org.broadinstitute.hellbender.tools.sv.SVLocus;
 import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSegmentation.BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME;
 
@@ -328,9 +331,13 @@ public final class SVCluster extends MultiVariantWalker {
     private VariantContextWriter writer;
     private CanonicalSVClusterEngine<SVCallRecord> clusterEngine;
     private SVCollapser<SVCallRecord> collapser;
+    private SVRecordSortingBuffer<SVCallRecord> buffer;
     private Set<String> samples;
-    private String currentContig;
+    private String currentContig = null;
     private int numVariantsBuilt = 0;
+    private long nextItemId = 0L;
+    private final Map<Long, SVLocus> activeItemLoci = new HashMap<>();
+    private PriorityQueue<Long> activeItemIds;
 
     @Override
     public boolean requiresReference() {
@@ -350,6 +357,8 @@ public final class SVCluster extends MultiVariantWalker {
         if (algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
             clusterEngine = SVClusterEngineFactory.createCNVDefragmenter(dictionary,
                     defragPaddingFraction, defragSampleOverlapFraction);
+            collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy,
+                    CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, insertionLengthSummaryStrategy);
         } else if (algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE || algorithm == CLUSTER_ALGORITHM.MAX_CLIQUE) {
             final SVClusterEngine.CLUSTERING_TYPE type = algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE ?
                     SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE : SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE;
@@ -357,14 +366,17 @@ public final class SVCluster extends MultiVariantWalker {
                     dictionary, enableCnv,
                     clusterParameterArgs.getDepthParameters(), clusterParameterArgs.getMixedParameters(),
                     clusterParameterArgs.getPESRParameters());
+            collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, breakpointSummaryStrategy, insertionLengthSummaryStrategy);
         } else {
             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm.name());
         }
-        collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, breakpointSummaryStrategy, insertionLengthSummaryStrategy);
 
+        final Comparator<SVLocatable> locusComparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
+        activeItemIds = new PriorityQueue<>((o1, o2) -> locusComparator.compare(activeItemLoci.get(o1), activeItemLoci.get(o2)));
+
+        buffer = new SVRecordSortingBuffer<>(locusComparator);
         writer = createVCFWriter(outputFile);
         writer.writeHeader(createHeader());
-        currentContig = null;
     }
 
     @Override
@@ -401,19 +413,40 @@ public final class SVCluster extends MultiVariantWalker {
         }
 
         // Add to clustering buffer
+        final List<SVCallRecord> recordsList;
         if (convertInversions) {
-            SVCallRecordUtils.convertInversionsToBreakends(filteredCall, dictionary).forEachOrdered(clusterEngine::add);
+            recordsList = SVCallRecordUtils.convertInversionsToBreakends(filteredCall, dictionary).collect(Collectors.toList());
         } else {
-            clusterEngine.add(filteredCall);
+            recordsList = Collections.singletonList(filteredCall);
+        }
+        for (final SVCallRecord record : recordsList) {
+            activeItemLoci.put(nextItemId, record.getAsLocus());
+            activeItemIds.add(nextItemId);
+            clusterEngine.add(record, nextItemId++);
         }
 
         write(false);
     }
 
     private void write(final boolean force) {
-        (force ? clusterEngine.forceFlush() : clusterEngine.flush()).stream()
-                .map(BasicOutputCluster::getMembers)
-                .map(collapser::collapse)
+        final Collection<BasicOutputCluster<SVCallRecord>> output = clusterEngine.flush(force).stream()
+                .collect(Collectors.toList());
+        final Set<Long> engineItemIds = clusterEngine.getItemIds();
+        final Set<Long> finalizedItemIds = output.stream()
+                .map(BasicOutputCluster::getMemberIds)
+                .flatMap(Collection::stream)
+                .filter(id -> !engineItemIds.contains(id))  // Items could still be active in other clusters
+                .collect(Collectors.toSet());
+        for (final Long id : finalizedItemIds) {
+            activeItemIds.remove(id);
+            activeItemLoci.remove(id);
+        }
+        if (force) {
+            int x = 0;
+        }
+        output.stream().map(collapser::collapse).forEachOrdered(buffer::add);
+        final SVLocus minActiveStart = force ? null : activeItemLoci.get(activeItemIds.peek());
+        buffer.flush(minActiveStart).stream()
                 .map(this::buildVariantContext)
                 .forEachOrdered(writer::add);
     }

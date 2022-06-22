@@ -108,6 +108,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private boolean isMultiSampleInput = false;
     private ReferenceSequenceFile reference;
     private final Set<String> allosomalContigs = new LinkedHashSet<>(Arrays.asList("X","Y","chrX","chrY"));
+    private long nextItemId = 0L;
 
     class CopyNumberAndEndRecord {
         private MutablePair<Integer, Integer> record;
@@ -283,9 +284,9 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
             final SVCallRecord record = createDepthOnlyFromGCNVWithOriginalGenotypes(vc, minQS, allosomalContigs, refAutosomalCopyNumber, sampleDB);
             if (record != null) {
                 if (!isMultiSampleInput) {
-                    defragmenter.add(record);
+                    defragmenter.add(record, nextItemId++);
                 } else {
-                    clusterEngine.add(record);
+                    clusterEngine.add(record, nextItemId++);
                 }
             }
         }
@@ -303,14 +304,14 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
      * new contig.
      */
     private void processClusters() {
-        final List<SVCallRecord> defragmentedCalls = defragmenter.forceFlush().stream()
-                .map(BasicOutputCluster::getMembers)
+        final List<SVCallRecord> defragmentedCalls = defragmenter.flush(true).stream()
                 .map(defragmentCollapser::collapse)
                 .collect(Collectors.toList());
-        defragmentedCalls.stream().forEachOrdered(clusterEngine::add);
+        for (final SVCallRecord record : defragmentedCalls) {
+            clusterEngine.add(record, nextItemId++);
+        }
         //Jack and Isaac cluster first and then defragment
-        final List<SVCallRecord> clusteredCalls = clusterEngine.forceFlush().stream()
-                .map(BasicOutputCluster::getMembers)
+        final List<SVCallRecord> clusteredCalls = clusterEngine.flush(true).stream()
                 .map(clusterCollapser::collapse)
                 .collect(Collectors.toList());
         write(clusteredCalls);

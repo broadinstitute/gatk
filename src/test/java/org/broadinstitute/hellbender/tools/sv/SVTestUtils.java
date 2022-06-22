@@ -31,6 +31,12 @@ public class SVTestUtils {
                     CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
                     CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
                     CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+    public static final SVCollapser<SVCallRecord> defragmentCollapser =
+            new CanonicalSVCollapser(
+                    hg38Reference,
+                    CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+                    CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END,
+                    CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
 
     public static final String PESR_ALGORITHM = "pesr";
     public static final List<String> DEPTH_ONLY_ALGORITHM_LIST = Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM);

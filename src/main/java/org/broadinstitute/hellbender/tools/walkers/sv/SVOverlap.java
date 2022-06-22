@@ -203,6 +203,7 @@ public final class SVOverlap extends MultiVariantWalker {
     private Iterator<VariantContext> callsetVariants;
     private VariantContext currentCallsetVariant;
     private Comparator<VariantContext> variantComparator;
+    private long nextItemId = 0L;
 
     @Override
     public boolean requiresReference() {
@@ -251,16 +252,16 @@ public final class SVOverlap extends MultiVariantWalker {
         while (currentCallsetVariant == null && callsetVariants.hasNext()) {
             currentCallsetVariant = callsetVariants.next();
             if (variantComparator.compare(currentCallsetVariant, variant) <= 0) {
-                engine.add(new PartitionedSVCallRecord(SVCallRecordUtils.create(currentCallsetVariant), true));
+                engine.add(new PartitionedSVCallRecord(SVCallRecordUtils.create(currentCallsetVariant), true), nextItemId++);
                 currentCallsetVariant = null;
             }
         }
-        engine.add(new PartitionedSVCallRecord(SVCallRecordUtils.create(variant), false));
+        engine.add(new PartitionedSVCallRecord(SVCallRecordUtils.create(variant), false), nextItemId++);
         flush(false);
     }
 
     private void flush(final boolean force) {
-        (force ? engine.forceFlush() : engine.flush()).stream().forEach(this::processCluster);
+        engine.flush(force).stream().forEach(this::processCluster);
     }
 
     private void processCluster(final PartitionedOutputCluster<PartitionedSVCallRecord> cluster) {

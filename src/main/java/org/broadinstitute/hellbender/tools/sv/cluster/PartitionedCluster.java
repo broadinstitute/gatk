@@ -1,20 +1,22 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.util.List;
 
 public class PartitionedCluster extends BasicCluster {
 
-    final int primaryItem;
+    final Long primaryItem;
 
-    public PartitionedCluster(final List<Integer> members,
-                              final int minStart,
+    public PartitionedCluster(final List<Long> members,
+                              final String contig,
                               final int maxClusterableStart,
-                              final int primaryItem) {
-        super(members, minStart, maxClusterableStart);
-        this.primaryItem = primaryItem;
+                              final Long primaryItem) {
+        super(members, contig, maxClusterableStart);
+        this.primaryItem = Utils.nonNull(primaryItem);
     }
 
-    public Integer getPrimaryItem() {
+    public Long getPrimaryItem() {
         return primaryItem;
     }
 }

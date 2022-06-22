@@ -325,7 +325,6 @@ public class SVCallRecord implements SVLocatable {
         return strandB;
     }
 
-    @Override
     public StructuralVariantType getType() {
         return type;
     }

@@ -17,7 +17,7 @@ import java.util.Collections;
 public class CNVDefragmenterTest {
 
     private final SAMSequenceDictionary dictionary = SVTestUtils.hg38Dict;
-    private final CNVLinkage defragmenter = new CNVLinkage(dictionary, 0.5, 0.6);
+    private final CNVLinkage<SVCallRecord> defragmenter = new CNVLinkage<>(dictionary, 0.5, 0.6);
 
     @Test
     public void testClusterTogether() {
