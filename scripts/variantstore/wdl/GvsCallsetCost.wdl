@@ -102,7 +102,7 @@ task CoreStorageModelSizes {
             bq query --location=US --project_id='~{project_name}' --format=csv --use_legacy_sql=false \
                 "SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2) \
                      FROM \`~{project_name}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-                     WHERE table_name LIKE '${table_pattern}'" > ${output_file_name}
+                     WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
         }
 
         fail=0
