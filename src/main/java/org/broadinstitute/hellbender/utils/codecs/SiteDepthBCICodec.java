@@ -47,11 +47,6 @@ public class SiteDepthBCICodec extends AbstractBCICodec<SiteDepth> {
                                        final SAMSequenceDictionary dict,
                                        final List<String> sampleNames,
                                        final int compressionLevel ) {
-        if ( sampleNames.size() != 1 ) {
-            throw new UserException("SiteDepth records do not encode their sample, and must all " +
-                                    "refer to a single sample, but the list of sample names is of " +
-                                    "size=" + sampleNames.size());
-        }
         final String className = SiteDepth.class.getSimpleName();
         return new Writer<>(path,
                             new SVFeaturesHeader(className, SiteDepth.BCI_VERSION, dict, sampleNames),
