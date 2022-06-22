@@ -329,9 +329,8 @@ public final class SVCluster extends MultiVariantWalker {
     private ReferenceSequenceFile reference;
     private PloidyTable ploidyTable;
     private VariantContextWriter writer;
-    private CanonicalSVClusterEngine<SVCallRecord> clusterEngine;
     private SVCollapser<SVCallRecord> collapser;
-    private SVRecordSortingBuffer<SVCallRecord> buffer;
+    private CollapsingClusteringSortingBuffer<SVCallRecord, BasicOutputCluster<SVCallRecord>> buffer;
     private Set<String> samples;
     private String currentContig = null;
     private int numVariantsBuilt = 0;
@@ -354,15 +353,16 @@ public final class SVCluster extends MultiVariantWalker {
         ploidyTable = new PloidyTable(ploidyTablePath.toPath());
         samples = getSamplesForVariants();
 
+        final CanonicalSVClusterEngine<SVCallRecord> engine;
         if (algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
-            clusterEngine = SVClusterEngineFactory.createCNVDefragmenter(dictionary,
+            engine = SVClusterEngineFactory.createCNVDefragmenter(dictionary,
                     defragPaddingFraction, defragSampleOverlapFraction);
             collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy,
                     CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, insertionLengthSummaryStrategy);
         } else if (algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE || algorithm == CLUSTER_ALGORITHM.MAX_CLIQUE) {
             final SVClusterEngine.CLUSTERING_TYPE type = algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE ?
                     SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE : SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE;
-            clusterEngine = SVClusterEngineFactory.createCanonical(type,
+            engine = SVClusterEngineFactory.createCanonical(type,
                     dictionary, enableCnv,
                     clusterParameterArgs.getDepthParameters(), clusterParameterArgs.getMixedParameters(),
                     clusterParameterArgs.getPESRParameters());
@@ -374,7 +374,7 @@ public final class SVCluster extends MultiVariantWalker {
         final Comparator<SVLocatable> locusComparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
         activeItemIds = new PriorityQueue<>((o1, o2) -> locusComparator.compare(activeItemLoci.get(o1), activeItemLoci.get(o2)));
 
-        buffer = new SVRecordSortingBuffer<>(locusComparator);
+        buffer = new CollapsingClusteringSortingBuffer<>(engine, collapser, dictionary);
         writer = createVCFWriter(outputFile);
         writer.writeHeader(createHeader());
     }
@@ -422,31 +422,14 @@ public final class SVCluster extends MultiVariantWalker {
         for (final SVCallRecord record : recordsList) {
             activeItemLoci.put(nextItemId, record.getAsLocus());
             activeItemIds.add(nextItemId);
-            clusterEngine.add(record, nextItemId++);
+            buffer.add(record, nextItemId++);
         }
 
         write(false);
     }
 
     private void write(final boolean force) {
-        final Collection<BasicOutputCluster<SVCallRecord>> output = clusterEngine.flush(force).stream()
-                .collect(Collectors.toList());
-        final Set<Long> engineItemIds = clusterEngine.getItemIds();
-        final Set<Long> finalizedItemIds = output.stream()
-                .map(BasicOutputCluster::getMemberIds)
-                .flatMap(Collection::stream)
-                .filter(id -> !engineItemIds.contains(id))  // Items could still be active in other clusters
-                .collect(Collectors.toSet());
-        for (final Long id : finalizedItemIds) {
-            activeItemIds.remove(id);
-            activeItemLoci.remove(id);
-        }
-        if (force) {
-            int x = 0;
-        }
-        output.stream().map(collapser::collapse).forEachOrdered(buffer::add);
-        final SVLocus minActiveStart = force ? null : activeItemLoci.get(activeItemIds.peek());
-        buffer.flush(minActiveStart).stream()
+        buffer.flush(force).stream()
                 .map(this::buildVariantContext)
                 .forEachOrdered(writer::add);
     }

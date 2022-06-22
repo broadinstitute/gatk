@@ -25,7 +25,9 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SVClusterIntegrationTest extends CommandLineProgramTest {
@@ -427,12 +429,18 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(args, SVCluster.class.getSimpleName());
 
+        final Set<String> inputRecordIds = new HashSet<>();
+        inputRecordIds.addAll(VariantContextTestUtils.readEntireVCFIntoMemory(getToolTestDataDir() + "1kgp_test.batch1.pesr.chr22.vcf.gz").getValue().stream().map(VariantContext::getID).collect(Collectors.toList()));
+        inputRecordIds.addAll(VariantContextTestUtils.readEntireVCFIntoMemory(getToolTestDataDir() + "1kgp_test.batch1.depth.chr22.vcf.gz").getValue().stream().map(VariantContext::getID).collect(Collectors.toList()));
+
         final Pair<VCFHeader, List<VariantContext>> vcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
         final VCFHeader header = vcf.getKey();
         final List<VariantContext> records = vcf.getValue();
 
         Assert.assertEquals(header.getSampleNamesInOrder().size(), 156);
+        final Set<String> clusterMembers = records.stream().flatMap(r -> r.getAttributeAsStringList(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, "").stream()).collect(Collectors.toSet());
 
+        Assert.assertEquals(clusterMembers.size(), inputRecordIds.size());
         Assert.assertEquals(records.size(), 1705);
 
         // Check for one record
