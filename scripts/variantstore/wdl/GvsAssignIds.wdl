@@ -214,7 +214,7 @@ task CreateCostObservabilityTable {
     fi
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_16"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_query_labels_20220621"
   }
   output {
     Boolean done = true

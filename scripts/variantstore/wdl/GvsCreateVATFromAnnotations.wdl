@@ -92,7 +92,7 @@ task GetAnnotations {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20211101"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_query_labels_20220621"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -151,7 +151,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_05_02"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_query_labels_20220621"
         memory: "8 GB"
         preemptible: 5
         cpu: "1"
